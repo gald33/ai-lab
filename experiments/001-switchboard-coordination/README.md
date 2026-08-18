@@ -31,9 +31,10 @@ what agents infer about each other — is anyone else on this file, when will th
 be done, is it safe to start — is state that a system could simply *hold*, and
 hand over as fact.
 
-I ran into this building a production assistant where several agents edit one
-codebase. Adding coordination conventions helped. I couldn't say why, because
-that system has far too many moving parts to attribute anything to anything.
+I ran into this building Lucille, a production assistant where several agents
+edit one codebase. Adding coordination conventions helped. I couldn't say why,
+because that system has far too many moving parts to attribute anything to
+anything.
 This experiment exists to make the attribution possible.
 
 ## Design: five stages

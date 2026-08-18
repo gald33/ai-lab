@@ -1,4 +1,4 @@
-# AI Lab
+# Gal's AI Lab
 
 Experiments in how AI systems reason, coordinate, remember, and use tools.
 
@@ -10,13 +10,13 @@ experiments to work out what's going on. This is where those experiments live.
 The questions come from systems that are already running, because that is where
 the surprises are.
 
-The first one came from an assistant I run in production — persistent memory, a
-job queue, a worker loop, several agents working the same codebase at once. Over
-time I added coordination conventions between those agents, and logic that ran
-outside the model's own loop rather than inside its prompt. Both helped. Neither
-was explicable: the system had far too many moving parts for me to say *which*
-part of "agents coordinate better now" was doing the work, or why moving a
-decision out of the model improved it.
+The first one came from Lucille, an assistant I run in production — persistent
+memory, a job queue, a worker loop, several agents working the same codebase at
+once. Over time I added coordination conventions between those agents, and
+logic that ran outside the model's own loop rather than inside its prompt. Both
+helped. Neither was explicable: the system had far too many moving parts for me
+to say *which* part of "agents coordinate better now" was doing the work, or
+why moving a decision out of the model improved it.
 
 So I built a much smaller thing — [Switchboard](https://github.com/gald33/switchboard),
 a coordination hub with presence, leases and a shared board — where one claim
