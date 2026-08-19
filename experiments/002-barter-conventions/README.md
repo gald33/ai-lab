@@ -164,6 +164,41 @@ not add safety; it adds leverage.
 Floor 0.448, ceiling 0.539. Only `bound` and `free` clear the floor; the rest
 left their agents worse off than never trading.
 
+### Tier 2 harness probes (single arm, `paid`, seed 41, 3 agents, 1 round)
+
+Three islands isolating one harness change each, so they compare to each other
+directly. Floor 0.626, ceiling 0.713.
+
+| shape | efficiency | settled | missed | cut | held | cost |
+|---|---|---|---|---|---|---|
+| muster, three 60s windows | 0.540 | 1/7 | 2 | — | — | $0.74 |
+| + batched tools, 60/150/150, hard deadline | 0.546 | 0/7 | 1 | 0 | 3 | $0.80 |
+| unstaged, one 300s window | ruined 1 | **2/17** | 0 | 0 | 3 | $0.63 |
+
+The mechanical numbers improve monotonically and the economic ones do not. By
+the third the harness has stopped being the story: nothing missed, nothing cut,
+volume up 2.4×, first settlements — and the island fails on its own terms, with
+all three traders producing the same good.
+
+### Tier 2 at minimum size (seven arms, 3 agents, 1 round)
+
+$4.48, floor 0.626, ceiling 0.713. **Every arm finished below the floor.**
+Diagnostic rather than comparative: it made the settle-window starvation
+countable, and the count is the reason the shape changed.
+
+| arm | settle turns | agents who got one | settled |
+|---|---|---|---|
+| `paid` | 1 | 1/3 | 0/6 |
+| `built` | 1 | 1/3 | 0/8 |
+| `bound` | 2 | 2/3 | 0/5 |
+| `free` | 2 | 2/3 | 2/8 |
+| `told` | 3 | 3/3 | 2/4 |
+| `spend` | 4 | 2/3 | 2/7 |
+| `silent` | 5 | 3/3 | 2/11 |
+
+Both islands where all three agents reached the settle window settled trades;
+two of the three where only one did settled nothing.
+
 **These are not yet evidence about conventions.** Settlement is catastrophic
 across every arm — one to seven trades of twenty-odd proposed — and the causes
 found so far are all harness:
@@ -176,7 +211,14 @@ found so far are all harness:
 - Windows were equal and turns are not. A production turn runs 18–33 seconds and
   a trading turn 68–169, against sixty-second windows, so every trading turn
   outlived the window it began in. `silent` spent 84% of its turns in a window
-  where the only available action can be taken once.
+  where the only available action can be taken once. **Fixed** by the probes
+  above — batched tools, unequal windows, a hard round deadline — which is why
+  the seven-arm tables were not re-run against them: the fix arrived after the
+  sweeps and the sweeps have not been repeated.
+
+The first two are open. Until they are closed the ladder is measuring the
+mechanism, and the seven-arm orderings above should be read as "no arm has
+demonstrated it can clear the floor reliably" rather than as a ranking.
 
 ## Negative results
 
@@ -228,6 +270,7 @@ experiment/barter_experiment.py       Tier 1 runner (scripted, free)
 experiment/barter_llm_experiment.py   Tier 2 runner (models, paid)
 experiment/tests/           130 offline gates; no network, no model calls
 results/                    one JSON per run, kept whole
+results/README.md           what each record is, and which measure the harness
 ```
 
 Each Tier 2 record carries the full switch vector, both efficiency brackets,
