@@ -1,0 +1,12 @@
+# Switchboard is the thing under test's substrate, not a vendored copy: the
+# experiment builds an economy out of its four primitives and nothing else.
+# Pinned, because the muster reads presence and the order board reads
+# `updated_by`, and neither existed before 0.9.
+agent-switchboard>=0.9.0
+
+# Tier 2 only. Tier 1 is scripted and free, and the offline gates drive the
+# whole harness with a stand-in, so neither imports this.
+claude-agent-sdk>=0.1.0
+
+anyio>=4.0
+pytest>=8.0
