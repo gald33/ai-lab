@@ -263,8 +263,6 @@
       "windows": 1,
       "staged": false,
       "window_seconds": [
-        300.0,
-        300.0,
         300.0
       ],
       "sweep_every": 1.0,

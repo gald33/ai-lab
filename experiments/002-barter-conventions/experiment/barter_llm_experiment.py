@@ -457,8 +457,11 @@ def record_for(*, island, manager, played, telling, arm, seed, model, cost,
         # other. Two runs at different values are not the same market.
         "flow": {"trade_rounds": rounds, "windows": 3 if staged else 1,
                  "staged": staged,
-                 "window_seconds": (list(window) if isinstance(window, (list, tuple))
-                                    else [window] * 3),
+                 # What the run actually was, not what was typed. An unstaged
+                 # island has one window however the durations arrived, and a
+                 # record that said "three 300s windows" would describe a
+                 # fifteen-minute round that never happened.
+                 "window_seconds": _window_seconds(window, staged),
                  "sweep_every": sweep_every,
                  "muster": ({"lead": muster.lead, "ack_within": muster.ack_within,
                              "attempts": muster.attempts} if muster else None),
@@ -481,6 +484,20 @@ def record_for(*, island, manager, played, telling, arm, seed, model, cost,
         "sweep_errors": sweep_errors,
         "transcript": transcript,
     }
+
+
+def _window_seconds(window: Any, staged: bool) -> list[float]:
+    """The windows a run actually had, mirroring `flow.play`'s own reading.
+
+    A scalar means "one number for every window", so unstaged it is one window
+    of that length and not three of them summed. Getting this wrong put
+    `[300, 300, 300]` on a record for a five-minute round, which describes a
+    fifteen-minute island that never happened.
+    """
+    if isinstance(window, (list, tuple)):
+        parts = [float(w) for w in window]
+        return parts if staged else [sum(parts)]
+    return [float(window)] * 3 if staged else [float(window)]
 
 
 def _stage_note(result: dict) -> str:
