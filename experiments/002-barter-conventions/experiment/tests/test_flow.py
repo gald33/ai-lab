@@ -218,3 +218,24 @@ def test_a_well_fed_price_arm_has_nothing_left_to_learn():
     assert err < 0.01, f"one period of talk should already find the price, got {err}"
     for t in traders:
         assert normalise(t.price) == pytest.approx(belief), "and everyone agrees"
+
+
+def test_the_bell_is_not_a_rejection():
+    # Offers open when a period ends are settled as `expired` so their escrow
+    # returns — but nobody declined them, the clock ran out. Counting them as
+    # rejections would make every flow run look more contentious than a stock
+    # run by construction, which is a difference the harness invented.
+    island = draw_island(12, 5, seed=1)
+    out = run_island_flow(island, "C", seed=1, periods=3, rounds_per_period=10)
+    assert out.expired_at_bell > 0, "this island does leave offers open at the bell"
+    assert out.rejected + out.executed + out.expired_at_bell <= out.proposed
+    assert "expired_at_bell" in out.to_json()
+
+
+def test_a_stock_run_has_no_bell_to_expire_at():
+    m = fresh()
+    assert m.period_expiries == 0
+    for agent_id in m.agents:
+        m.op_produce(agent_id, {"fish": 1.0})
+    m.close_period()
+    assert m.period_expiries == 0, "nothing was open, so nothing expired at the bell"

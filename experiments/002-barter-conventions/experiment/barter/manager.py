@@ -313,6 +313,12 @@ class Manager:
     #: but a run that consumed nothing and a run that consumed everything would
     #: otherwise look identical in the record.
     consumed: list[float] = field(default_factory=list)
+    #: Offers that were open when a period ended. They are settled as `expired`
+    #: so their escrow returns, but they are **not** rejections — nobody
+    #: declined them, the bell rang. Counted separately so a flow run's
+    #: rejection count stays comparable to a stock run's, where the only way to
+    #: expire is to sit unanswered past the TTL.
+    period_expiries: int = 0
     #: Serialises agent requests. Agents within a stage act concurrently -- six
     #: stages of waiting per round is most of an island's wall clock, and they
     #: are waiting on each other for no reason -- so two of them can be inside
@@ -824,6 +830,7 @@ class Manager:
         for trade in self.trades.values():
             if trade.status == "pending":
                 self._settle(trade, "expired", "the period ended")
+                self.period_expiries += 1
 
         self.check_conservation()
 
