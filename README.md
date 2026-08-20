@@ -82,6 +82,7 @@ Most experiments stop at Publish. That's fine.
 |---|---|---|---|
 | 001 | [Switchboard coordination](experiments/001-switchboard-coordination/) | Does coordination improve because agents reason harder about each other, or because they have less to reason about? | Run; results not yet published |
 | 002 | [Barter conventions](experiments/002-barter-conventions/) | Does a shared convention for talking about value make agents better off — and is it the words, the machinery, or the disposition that does the work? | Running; Tier 1 complete, Tier 3 designed |
+| 003 | [Promotion rules](experiments/003-promotion-rules/) | When solutions to a task compete and the winner is promoted automatically, what rule converges on the good solution rather than the lucky one — and does a solution whose value depends on being shared need a different rule? | Designed; not run |
 
 ## Layout
 
