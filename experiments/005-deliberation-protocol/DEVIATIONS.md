@@ -7,14 +7,15 @@ deviation noticed afterwards is a result about the author.
 Nothing in `PREREGISTRATION.md` is edited. Everything below is a departure from
 it, with the reason, and with what it costs.
 
-## D1 — the round budget is 6 submissions, not 21
+## D1 — the round budget is 5 submissions, not 21
 
 The accepted pilot configuration is `n8-k4-s0.15-w2-a0.3-r20`: eight agents,
-four goods, twenty talking rounds. The agent run uses **six submissions**
-(`r0` before anyone has heard anything, then five rounds of talk-and-resubmit).
+four goods, twenty talking rounds. The agent run uses **five submissions**
+(`r0` before anyone has heard anything, then four rounds of talk-and-resubmit).
 
 Reason: cost and wall-clock. Twenty rounds is `4 cells x 12 worlds x 8 agents x
-21 = 8,064` model calls. Six is 2,304.
+21 = 8,064` model calls. Five is 1,920, which is about two and a half hours
+of wall-clock on this four-core container at eight concurrent calls.
 
 Cost: `budget_exhausted` becomes a much more likely classification, and the
 pilot's calibration of "not pinned at the ceiling" (P3) does not transfer. The
