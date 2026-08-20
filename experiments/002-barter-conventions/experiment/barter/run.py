@@ -288,6 +288,229 @@ def run_island(
                  instalments=instalments)
 
 
+@dataclass(frozen=True)
+class FlowOutcome:
+    """One flow island. Kept separate from ``Outcome`` rather than bolted onto
+    it: a stock run has one score and a flow run has a trajectory, and giving
+    them one type would mean every field was absent half the time."""
+
+    arm: str
+    seed: int
+    periods: int
+    #: Utility per agent per period. The whole record — welfare is the sum down
+    #: a column and convergence is the shape of one.
+    trajectory: tuple[tuple[float, ...], ...]
+    #: Mean per-period utility per agent.
+    mean_utilities: tuple[float, ...]
+    #: Efficiency of the mean period against the one-period frontier.
+    #:
+    #: Comparable to a stock run's number *because* Cobb-Douglas exponents sum
+    #: to one on this island, so utility is homogeneous of degree one: T
+    #: identical periods sum to T times one period's utility, and the frontier
+    #: of the sum is T times the one-period frontier. Dividing back out by T
+    #: puts a flow island and a one-shot stock island on the same axis rather
+    #: than on two axes that merely look alike.
+    efficiency: Efficiency
+    #: Efficiency of the first and last period alone. The gap is convergence,
+    #: and it is the measurement a one-shot score cannot make at all.
+    first_efficiency: Efficiency
+    last_efficiency: Efficiency
+    #: (agent, period) pairs scoring exactly zero — the flow analogue of ruin,
+    #: and bounded rather than terminal.
+    zero_periods: int
+    #: Agents that scored zero in *every* period. This is the stock model's
+    #: ruin: no recovery anywhere.
+    always_zero: int
+    #: Zero periods that were followed by a positive one. Recovery is the thing
+    #: the stock model structurally cannot exhibit, so counting it is how the
+    #: two models are told apart.
+    recoveries: int
+    messages: int
+    proposed: int
+    executed: int
+    rejected: int
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "arm": self.arm, "seed": self.seed, "periods": self.periods,
+            "trajectory": [list(r) for r in self.trajectory],
+            "mean_utilities": list(self.mean_utilities),
+            "efficiency": None if self.efficiency.ruined else self.efficiency.lower,
+            "efficiency_ruined": list(self.efficiency.ruined),
+            "first_efficiency": (None if self.first_efficiency.ruined
+                                 else self.first_efficiency.lower),
+            "last_efficiency": (None if self.last_efficiency.ruined
+                                else self.last_efficiency.lower),
+            "zero_periods": self.zero_periods,
+            "always_zero": self.always_zero,
+            "recoveries": self.recoveries,
+            "messages": self.messages, "proposed": self.proposed,
+            "executed": self.executed, "rejected": self.rejected,
+        }
+
+
+def score_flow(island: Island, manager: Manager, *, arm: str, seed: int,
+               messages: int = 0, periods: int = 0) -> FlowOutcome:
+    """Turn a finished flow manager into a FlowOutcome."""
+    traj = [tuple(row) for row in manager.period_utilities]
+    if not traj:
+        raise ValueError("a flow island must close at least one period")
+    n = island.n_agents
+    t = len(traj)
+    mean = [sum(row[i] for row in traj) / t for i in range(n)]
+
+    zero_periods = sum(1 for row in traj for u in row if u <= 1e-12)
+    always_zero = sum(1 for i in range(n) if all(row[i] <= 1e-12 for row in traj))
+    recoveries = sum(1 for i in range(n) for k in range(t - 1)
+                     if traj[k][i] <= 1e-12 < traj[k + 1][i])
+
+    summary = manager.summary()
+    return FlowOutcome(
+        arm=arm, seed=seed, periods=t,
+        trajectory=tuple(traj),
+        mean_utilities=tuple(mean),
+        efficiency=efficiency(island, mean),
+        first_efficiency=efficiency(island, list(traj[0])),
+        last_efficiency=efficiency(island, list(traj[-1])),
+        zero_periods=zero_periods,
+        always_zero=always_zero,
+        recoveries=recoveries,
+        messages=messages,
+        proposed=summary["proposed"],
+        executed=summary["executed"],
+        rejected=summary["rejected"] + summary["expired"],
+    )
+
+
+def run_island_flow(
+    island: Island,
+    arm: str,
+    *,
+    seed: int = 0,
+    periods: int = 8,
+    rounds_per_period: int = 8,
+    announced: list[float] | tuple[float, ...] | None = None,
+    adherence: float = 1.0,
+) -> "FlowOutcome":
+    """The same island as a repeated economy: produce, trade, **eat**, repeat.
+
+    The stock island (:func:`run_island`) accumulates holdings for the whole run
+    and scores them once at the end. That makes a production bet irrecoverable:
+    a good an agent failed to make in the first instalment is still missing at
+    the last, and Cobb-Douglas zeroes on it. Half of 002's ruin is that property
+    rather than anything about conventions — at the exactly correct price,
+    fully adopted, the stock island still ruins half its islands.
+
+    Here every period is a whole economy. One unit of labour, produce, trade,
+    consume, and start again with nothing. A bad period costs one period's
+    utility instead of the run, so ruin stops being terminal and welfare becomes
+    a sum over periods rather than a single Cobb-Douglas product.
+
+    **What carries across a period is only what agents have learned.** Holdings
+    do not, labour does not, open offers do not. The traders are constructed
+    once and keep their price beliefs, so arm C's tatonnement continues across
+    periods and the convention is the sole carrier of anything from one period
+    to the next. That is the point rather than a convenience: it is what makes
+    "does the convention help a newborn agent converge" a question this island
+    can answer, and it is why the stock model's holdings-based instalment rule
+    is not used here — with holdings reset, "make the thing you are short of"
+    has nothing to read.
+    """
+    rng = random.Random(seed * 1000 + ord(arm))
+    manager = Manager(island=island, labour_per_round=1.0, rolling=False)
+    goods = manager.goods
+
+    floor = Floor(enabled=arm != "A")
+
+    adopters: set[str] = set(manager.agents)
+    if announced is not None and adherence < 1.0:
+        ids = list(manager.agents)
+        random.Random(seed * 7919 + 13).shuffle(ids)
+        adopters = set(ids[:round(adherence * len(ids))])
+
+    # Constructed once, outside the period loop. This is the learning.
+    traders = {
+        agent_id: Trader(
+            agent_id, state.index, island,
+            arm if (announced is None or agent_id in adopters) else "A",
+            random.Random(rng.random() * 1e9),
+            announced=announced if agent_id in adopters else None)
+        for agent_id, state in manager.agents.items()
+    }
+    for trader in traders.values():
+        trader.goods = goods
+
+    ports: dict[str, Any] = {a: _DirectPort(manager, a) for a in manager.agents}
+
+    def call(agent_id: str, op: str, **kwargs: Any) -> dict[str, Any]:
+        return ports[agent_id].call(op, **kwargs)
+
+    order = list(traders)
+    discovery = 0
+
+    for period in range(periods):
+        # Talk. Arm C's belief persists across periods, so a later period starts
+        # from a better price than the first one did — and that improvement is
+        # the only thing an agent carries forward.
+        for _ in range(DISCOVERY_ROUNDS):
+            for trader in traders.values():
+                trader.declare(discovery, floor)
+            for trader in traders.values():
+                trader.observe_prices(discovery, floor)
+            discovery += 1
+        for trader in traders.values():
+            trader.adopt_own_price(floor)
+
+        for agent_id, trader in traders.items():
+            call(agent_id, "produce", plan=trader.production_plan(floor))
+        manager.check_conservation()
+
+        manager.open(LEVEL_OFFER)
+        manager.open(LEVEL_SETTLE)
+
+        for _ in range(rounds_per_period):
+            rng.shuffle(order)
+            holdings = {a: list(manager.agents[a].holdings) for a in traders}
+
+            for agent_id in order:
+                trader = traders[agent_id]
+                offer = propose_for(trader, holdings[agent_id],
+                                    list(traders.values()), holdings, rng)
+                if offer is None:
+                    continue
+                seller, give, want = offer
+                reply = call(agent_id, "propose", seller=seller, give=give, want=want)
+                if reply.get("ok"):
+                    holdings[agent_id] = list(manager.agents[agent_id].holdings)
+
+            for agent_id in order:
+                for pair in call(agent_id, "pending").get("crossed_pairs", []):
+                    doomed = gives_way(pair)
+                    if manager.trades[doomed].buyer == agent_id:
+                        call(agent_id, "cancel", trade_id=doomed)
+            manager.check_conservation()
+
+            for agent_id in order:
+                trader = traders[agent_id]
+                for trade in call(agent_id, "pending").get("awaiting_your_approval", []):
+                    current = list(manager.agents[agent_id].holdings)
+                    if trader.accepts(current, trade["give"], trade["want"]):
+                        call(agent_id, "approve", trade_id=trade["id"])
+
+            manager.next_round()
+            manager.open(LEVEL_OFFER)
+            manager.open(LEVEL_SETTLE)
+            manager.check_conservation()
+
+        # Eat. Conservation is asserted inside, before anything is consumed.
+        manager.close_period()
+        manager.next_round()
+
+    manager.close()
+    return score_flow(island, manager, arm=arm, seed=seed, messages=floor.sent,
+                      periods=periods)
+
+
 def score(island: Island, manager: Manager, *, arm: str, seed: int,
           messages: int = 0, instalments: int = 1) -> Outcome:
     """Turn a finished manager into an Outcome.
