@@ -296,6 +296,79 @@ tatonnement's approximation does, which buys the last 0.003 of efficiency and
 costs one more ruined island. An instrument that did *not* reproduce arm C's
 shape at delta 0 would be measuring something else.
 
+### The calibration curve
+
+48 islands per cell, full adherence, both directions, seeds 1–48. Benchmarks
+for this island set: autarky floor 0.437, exchange ceiling 0.520.
+
+| δ | realised error | flatten survived | sharpen survived |
+|---|---|---|---|
+| 0.0 | 0.000 | 23/48 (0.34–0.62) | 23/48 (0.34–0.62) |
+| 0.05 | ~0.019 | 19/48 (0.27–0.54) | **7/48 (0.07–0.27)** |
+| 0.1 | ~0.039 | 18/48 (0.25–0.52) | 6/48 (0.06–0.25) |
+| 0.2 | ~0.078 | 7/48 (0.07–0.27) | 5/48 (0.05–0.22) |
+| 0.3 | ~0.116 | 9/48 (0.10–0.32) | 1/48 (0.00–0.11) |
+| 0.5 | ~0.19 | 3/48 (0.02–0.17) | 0/48 (0.00–0.07) |
+| 0.75 | ~0.28 | 0/48 (0.00–0.07) | 0/48 |
+| 1.0 | ~0.37 | 0/48 (0.00–0.07) | 0/48 |
+
+Survival is islands where nobody was ruined; intervals are Wilson at 95%.
+
+Three things, and the first invalidates the readout the design originally
+asked for.
+
+**Efficiency carries no signal about δ.** Across the entire sweep — every
+delta, both directions, 121 surviving islands — survivor efficiency has median
+0.972 and range 0.741–1.000. It is 0.978 at δ=0 and 0.998 at δ=0.3 sharpen,
+where a single island survived. Survivors are always near the frontier,
+because an island that manages to give every agent every good was coordinated
+enough to trade well whatever the price said. **The whole effect of content
+error is on whether an island survives at all**, and it is binary.
+
+So `eff(·)` in the δ\* definition above has to be read as survival, not as
+efficiency. Written as an efficiency comparison, δ\* would be estimated from a
+line that does not move.
+
+**The failure is a cliff, not a slope — the pre-registered shape, in the wrong
+variable.** The prediction was that the common-arm curve would cliff rather
+than slope. It does: survival goes 23 → 19 → 18 → 7 and then to zero, with
+non-overlapping intervals across the drop. But the prediction expected that
+cliff in efficiency, and efficiency is exactly where it is not.
+
+**The two directions are not the same mistake, and the gap is at small
+errors.** At a matched realised error of 0.019, flattening leaves 19/48 alive
+and sharpening 7/48, intervals barely touching. By an error of 0.078 both are
+near-dead and the distinction is gone. So overstating how much better the best
+good is destroys islands at a perturbation an agent would struggle to notice,
+while understating the spread degrades them gracefully over an order of
+magnitude more error. That is Tier 1's "the convention adds leverage, not
+safety" on a continuous dial: leverage is asymmetric, and it is the
+specialise-harder direction that carries it.
+
+### What the baseline says about the harness
+
+At δ=0 — the exactly correct convention, fully adopted — only **23 of 48
+islands survive**. Half the islands are ruined by a convention with no error in
+it at all.
+
+That is not a δ effect and it caps what this instrument can measure: the whole
+curve runs from 48% survival to 0%, and half the damage is present before the
+perturbation starts. The cause is structural. Holdings accumulate for the whole
+run and are scored once at the end, so a production bet that misses is
+permanent — a good an agent never made in the first instalment is still missing
+at the last, and Cobb-Douglas zeroes on it. There is no consumption step and no
+recovery.
+
+A repeated-flow version of the island — goods consumed each period, utility
+summed across periods — would bound that: a bad period would cost one period's
+utility instead of the run, ruin would stop being terminal, and the outcome
+measure would regain the dynamic range this one lost. It would also make a
+convention's value measurable as a *rate* — how fast a population converges on
+good decisions — rather than only as a level. That is a different experiment
+and it would not inherit these numbers; the stock/flow difference would itself
+be a finding about whether irrecoverable commitment was doing the work all
+along.
+
 ### What this tier cannot measure
 
 A scripted trader has no beliefs about other agents. Announcing a vector *to the
