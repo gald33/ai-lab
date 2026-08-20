@@ -127,6 +127,8 @@ def run_island(
     run: str = "barter",
     trade_rounds: int | None = None,
     instalments: int = 1,
+    announced: list[float] | tuple[float, ...] | None = None,
+    adherence: float = 1.0,
 ) -> Outcome:
     """One island, one arm, start to finish.
 
@@ -146,8 +148,25 @@ def run_island(
     goods = manager.goods
 
     floor = Floor(enabled=arm != "A")
+
+    # An announced price is handed to a *prefix* of the agents, chosen by a
+    # shuffle of a seeded RNG rather than by index, so partial adherence is not
+    # confounded with whatever the island's agent ordering happens to correlate
+    # with. An agent that does not adopt falls back to arm A — no announced
+    # price, no floor, no specialisation — which is what "did not adopt the
+    # convention" has to mean if adherence is to measure anything.
+    adopters: set[str] = set(manager.agents)
+    if announced is not None and adherence < 1.0:
+        ids = list(manager.agents)
+        random.Random(seed * 7919 + 13).shuffle(ids)
+        adopters = set(ids[:round(adherence * len(ids))])
+
     traders = {
-        agent_id: Trader(agent_id, state.index, island, arm, random.Random(rng.random() * 1e9))
+        agent_id: Trader(
+            agent_id, state.index, island,
+            arm if (announced is None or agent_id in adopters) else "A",
+            random.Random(rng.random() * 1e9),
+            announced=announced if agent_id in adopters else None)
         for agent_id, state in manager.agents.items()
     }
     for trader in traders.values():

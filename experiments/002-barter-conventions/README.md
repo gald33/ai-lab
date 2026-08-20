@@ -133,7 +133,7 @@ counts.
 | C `price` | **0.997** | **6/12** |
 | D `money` | 0.872 | **10/12** |
 
-Autarky floor 0.405, exchange ceiling 0.493 (medians).
+Autarky floor 0.403, exchange ceiling 0.484 (medians).
 
 The ladder is **not** monotone and the hypothesis is wrong in a specific way.
 `silent` trades almost perfectly and still lands at the exchange ceiling,
