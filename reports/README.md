@@ -36,3 +36,4 @@ ranked, with what evidence would settle each. Start there.
 | [2026-08-20 — 002 Tier 3 calibration](2026-08-20-002-tier3-calibration.md) | manufacturing conventions of known quality; the δ curve |
 | [2026-08-20 — 003 Tier 1](2026-08-20-003-promotion-rules.md) | promotion rules over strategies and protocols |
 | [2026-08-20 — 004](2026-08-20-004-stock-and-flow.md) | stock vs flow; whether ruin was ever about conventions |
+| [2026-08-20 — 005 pilot](2026-08-20-005-pilot.md) | whether an unguided market has coordination headroom at all |

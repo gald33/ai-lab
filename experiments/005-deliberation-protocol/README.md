@@ -1,7 +1,16 @@
 # 005 — The deliberation protocol
 
-**Status: designed, unrun.** No code, no results. This document is the
-pre-registration; it is meant to be attacked before anything is built.
+**Status: pilot run and passed. The paid 2×2 is designed and unrun.**
+
+- Design: this document.
+- Frozen commitments: [`PREREGISTRATION.md`](PREREGISTRATION.md) — primary
+  metric, threshold, acceptance band, logging, and the sha256 of both stimuli.
+- Frozen stimuli: [`stimuli/protocol.md`](stimuli/protocol.md),
+  [`stimuli/placebo.md`](stimuli/placebo.md). Guarded by
+  [`tools/check_stimuli.py`](tools/check_stimuli.py), which runs in the gates.
+- Pilot result: [report](../../reports/2026-08-20-005-pilot.md) — 27
+  configurations evaluated, 6 accepted, 5 surviving a 200-world confirmation.
+  **The gate passes; the threshold sensitivity is the open problem.**
 
 ## Question
 
@@ -110,8 +119,8 @@ no signal. Either way every arm reads the same and the experiment is dead.
 So the first thing built is **unguided worlds only**, swept over market
 configurations, with a pre-registered acceptance band:
 
-- unguided coordination succeeds in a **strict minority but not never** — target
-  a success rate in **[0.15, 0.60]** across seeded worlds;
+- unguided coordination succeeds in a **strict minority but not never** — a
+  success rate in **[0.15, 0.60]** across seeded worlds (P1);
 - and time-to-coordination has visible spread rather than being pinned at the
   floor or the ceiling of the round budget.
 
@@ -200,3 +209,26 @@ has headroom at all.
    is second.
 4. Is leaving mechanism unmeasured acceptable, or does a positive result without
    it under-determine the conclusion to the point of not being worth the money?
+
+
+## Pilot outcome
+
+Run 2026-08-20. Unguided worlds only, no manipulation of any kind. 27
+configurations on a grid fixed before the run, 40 worlds each, zero harness
+failures; the six accepted configurations re-run at 200 worlds, of which five
+survive.
+
+Recommended configuration for the paid arms:
+`n=8, k=4, sigma=0.30, width=2, anchor=0.15, rounds=20` — coordination rate
+0.405, median 6 rounds, IQR 6, median error 0.115.
+
+Three things the pilot changed about what comes next:
+
+1. **The threshold is doing most of the work.** Nothing coordinates at τ=0.05
+   and almost everything does at τ=0.20. Whether that is a real cluster or a
+   quantile through a smooth distribution is unresolved, and it is the first
+   thing a reviewer should attack.
+2. **The round budget is not binding** — non-coordinating worlds fail as
+   `agent_failure` 22–24 to `budget_exhausted` 1–6. Twenty rounds is enough.
+3. **A scripted proxy gates a model experiment only weakly.** The accepted
+   configuration should be re-piloted with models before the 2×2 is bought.
