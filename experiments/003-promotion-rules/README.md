@@ -1,7 +1,7 @@
 # 003 — Promotion rules
 
-**Status: designed, not run. Nothing below is a result.** The design and the
-pre-registered prediction are here; there is no code and no data yet.
+**Status: Tier 1 complete.** The scripted tier is run and reported below. Tier 2
+— the same promoter over real instincts — is not designed and not run.
 
 ## Question
 
@@ -196,21 +196,208 @@ is not evidence that the promotion was right.
 
 ## Experimental artifacts
 
+## Results
+
+### Tier 1 (40 pools per rule per mode per start, 400 steps, 20 invocations/step)
+
+Regret is cumulative against the whole population having used the best
+candidate for the whole stream, so lower is better and the scale is arbitrary —
+only comparisons within a table mean anything. `correct` is how many of the 40
+replications ended on the true best candidate.
+
+**Strategy mode, starting on the worst candidate.**
+
+| rule | regret (median) | IQR | correct | first correct | entrenched steps |
+|---|---|---|---|---|---|
+| `greedy` | **7.1** | 5.2–9.2 | 38/40 | 1 | 3 |
+| `nmin` | 20.3 | 15.9–25.4 | **39/40** | 59 | 60 |
+| `interval` | 22.4 | 18.3–25.5 | 31/40 | 59 | 60 |
+| `bandit` | 11.2 | 10.0–12.4 | 38/40 | 6 | 7 |
+| `gated` | 99.4 | 79.3–122.6 | 0/40 | — | 400 |
+
+**Protocol mode (`linear`), starting on the worst candidate.**
+
+| rule | regret (median) | IQR | correct | first correct | promotions |
+|---|---|---|---|---|---|
+| `greedy` | 153.0 | 135.2–177.5 | **0/40** | — | **0** |
+| `nmin` | 153.0 | 135.2–177.5 | **0/40** | — | **0** |
+| `interval` | 153.0 | 135.2–177.5 | **0/40** | — | **0** |
+| `bandit` | **11.5** | 10.3–12.6 | 37/40 | 6 | 1 |
+| `gated` | 153.0 | 135.2–177.5 | 0/40 | — | 0 |
+
+The pattern holds under `protocol-step` (regret 124.2 for the four, 11.5 for
+`bandit`) and from every starting point. Four rules produce **identical** regret
+to three decimal places in protocol mode, because they all do the same thing:
+nothing.
+
+Both clauses of the prediction hold, and the second holds harder than
+predicted.
+
+**On strategies, the rules converge and fail by entrenchment, ordered by how
+much evidence they demand.** Entrenched steps run 3 → 60 → 60 → 400 across
+`greedy`, `nmin`, `interval`, `gated`. Conservatism buys nothing here: `interval`
+carries *more* regret than `nmin` and is right less often (31/40 against 39/40),
+because the runs where it never accumulates a distinguishable gap are runs where
+it never promotes at all. The careful rule is not slower to be right; it is
+sometimes never right.
+
+**On protocols, three of the rules never promote — not once in 120
+replications.** Not "promote the wrong one", not "promote late". A challenger
+held at the exploration share is scored at the exploration share: at 2.5% of
+traffic under `linear` coupling it observes about 0.02 against a leader's 0.5,
+so no amount of evidence makes it look better, and demanding more evidence
+changes nothing because more evidence of a crushed number is still a crushed
+number. `gated`, which declines to promote by construction, scores **identically
+to the three rules that were trying**. That equality is the cleanest statement of
+the result: under a coordination payoff, automated promotion and no promotion at
+all are the same policy.
+
+**The exception is the one rule that never runs a split population.** `bandit`
+is correct in 37–40 of 40 in every mode and carries essentially the same regret
+in protocol mode as in strategy mode (11.5 against 11.2) — the coordination
+coupling costs it almost nothing. The mechanism is visible in its allocation:
+
 ```
-experiment/    the promoter, the two payoff modes, the rules, the runner
-results/       one JSON per run, kept whole
-analysis/      the comparison across rules and modes
+greedy    shares=[0.9, 0.025, 0.025, 0.025, 0.025]   max share 0.90
+interval  shares=[0.9, 0.025, 0.025, 0.025, 0.025]   max share 0.90
+bandit    shares=[0.0, 0.0, 0.0, 0.0, 1.0]           max share 1.00
 ```
 
-Nothing here yet.
+UCB sends the whole step to one candidate, so every trial runs at full
+adoption and `f(a) = f(1) = 1`. It is not that the bandit explores better. It is
+that **it performs a population-wide cutover on every step and therefore never
+pays the coordination cost at all.** The design predicted that promoting a
+protocol would need a population-wide switch; the run produced one without being
+asked, as the only strategy that works.
+
+## Interpretation
+
+What the numbers support: under a payoff that scales with adoption, promotion
+rules of the try-a-bit-then-decide family do not merely underperform — they are
+structurally unable to act, and the more evidence they require the more
+completely the requirement cannot be met. The failure is not statistical
+timidity. A trial at 2.5% adoption is not a small sample of the candidate's
+value; it is an accurate measurement of a different quantity.
+
+What they do not support: any claim that the *bandit* is the answer. Its
+immunity comes from a harness in which switching the entire population costs
+nothing and takes one step. That is exactly the assumption a real protocol
+migration violates — versioning, in-flight requests, agents that have not read
+the new spec. Read the bandit result as *what shape a working protocol promoter
+has to be* (all-in, population-wide, reversible), not as a rule anyone can
+deploy. Whether that shape survives a switching cost is untested and is the
+first follow-up.
+
+Nor do they support ranking `greedy` first for strategies. It wins on regret
+by acting on a single observation, and the same haste shows up as churn: median
+3 promotions against `nmin`'s 1, and 2 promotions even when it *starts* on the
+best candidate — it demotes the correct leader on noise and finds its way back.
+Low regret over 400 steps and a leader that moves on one sample are the same
+behaviour, and a system with any switching cost would price them very
+differently.
+
+## Negative results
+
+**The `gated` control is not a safety story.** It was included as the person who
+looked at 002's `bound` at n=1 and declined, and the expectation was that it
+would trade regret for correctness. In strategy mode it is the worst arm by a
+factor of five and never right — declining to act is not conservative, it is
+just wrong more slowly. Its only good showing is starting on the best candidate,
+where doing nothing is optimal by construction and tells you nothing.
+
+**Conservatism is not a dial between speed and accuracy.** The expectation was
+that `interval` would be slower than `nmin` and more often correct. It is slower
+and *less* often correct (31/40 against 39/40). There is no rung of the ladder
+where demanding more evidence bought correctness, in either mode.
+
+## Limitations and confounders
+
+- **The promoter and the traffic allocator are not separable**, and this run
+  shows why that matters more than expected: `bandit` differs from the others in
+  allocation, not in its promotion test, and allocation is the whole result.
+  Rules are reported as (allocation, promotion) pairs and should not be cited as
+  promotion rules alone.
+- **A population-wide switch is free here.** No switching cost, no migration
+  window, no agent left on the old protocol. This is the assumption the bandit
+  result rests on entirely, and it is the least realistic thing in the harness.
+- **Manufactured quality is stationary.** Real instincts drift; nothing here
+  tests a rule against a moving target, and a rule that converges once may be
+  the wrong shape for a world that keeps changing.
+- **`f` is invented.** Both a linear and a step form were run and they agree on
+  every qualitative claim, which is weak evidence that the shape is not carrying
+  the result — but both are monotone in adoption and a non-monotone coupling
+  was not tried.
+- **Entrenchment is measured in stream position**, so it is partly a restatement
+  of exploration share. It is reported next to `explore` for that reason, and
+  the exploration share is identical (0.1) across every non-bandit rule, which
+  is what makes the 3 → 60 → 400 ordering attributable to the promotion test.
+- **Tier 1 is a simulator of a promoter**, with no agents in it. It can show a
+  rule unsound. It cannot show a sound rule workable on real instincts.
+
+## Harness faults found and fixed
+
+Kept because the first run of this experiment produced a full set of confident,
+entirely false numbers.
+
+**Exploration never reached most of the pool.** With five candidates and a 10%
+exploration share, each challenger is owed 0.5 of the 20 invocations in a step.
+Largest-remainder allocation gave every challenger an identical remainder and
+broke the tie by index, so the same two low indices took the spare invocations
+on every step of every run, and the rest of the pool was **never sampled at
+all** — by any rule, in any mode, for the whole stream. The first tables read
+0/40 correct almost everywhere with the best candidate's traffic share at
+exactly 0.0, which is the tell. The tie-break now rotates within the contested
+group, and two gates pin it: one asserting every candidate is reached and the
+spread across challengers stays within 25%, one asserting the *unrotated*
+version still starves, so the regression cannot come back silently.
+
+Rotating by one position per step was not enough either — it walks the full
+index space rather than the tie group and left a 240/240/160/160 split across
+four challengers. Rotating within the contested group brings the spread to ≤1
+invocation in 400 steps at every pool size tried.
+
+## Experimental artifacts
+
+```
+experiment/promotion/world.py    pool, coupling, observation, allocation
+experiment/promotion/rules.py    the five (allocation, promotion) pairs
+experiment/promotion/run.py      one stream, and the record it leaves
+experiment/promotion/report.py   medians and IQRs across replications
+experiment/promotion_experiment.py   Tier 1 runner
+experiment/tests/                42 offline gates; no network, no models
+results/tier1.json               every record from the reported run
+```
+
+Each record carries the rule, mode, seed, start, the pool's true qualities, the
+full promotion sequence with steps, and every mechanism counter.
+
+## Reproduction
+
+```bash
+pip install -r experiment/requirements.txt
+
+# The reported run. Seconds, no network, no model calls.
+cd experiment
+python promotion_experiment.py --replications 40 --steps 400 --json ../results/tier1.json
+
+# The gates.
+python -m pytest tests -q
+```
 
 ## Follow-up questions
 
-- If protocol promotion needs a population-wide switch, what is the smallest
-  rule that performs one safely — a versioned negotiation, a scheduled cutover,
-  a quorum?
-- Does an entrenched wrong leader ever recover without exploration being forced,
-  or is forced exploration the only exit?
+- **The bandit result is the whole follow-up.** Add a switching cost — a fixed
+  charge per cutover, or a window where part of the population is still on the
+  old candidate — and see whether the all-in shape survives it. If it does not,
+  nothing here promotes protocols and the answer is that protocol change cannot
+  be delegated to a promoter at all.
+- What is the smallest safe population-wide switch: a versioned negotiation, a
+  scheduled cutover, a quorum? The run says the shape is necessary; it says
+  nothing about which one.
+- Entrenchment ordered cleanly with evidence demanded (3 → 60 → 400 steps) at a
+  fixed exploration share. Does that ordering survive varying the share, or do
+  the rules converge once exploration is generous enough to make the demand
+  cheap?
 - 002 asks how wrong a *shared* convention can be and still be worth holding.
   This asks how a system would ever notice. The two numbers are related and it
   is not yet clear how.

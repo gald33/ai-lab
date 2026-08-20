@@ -125,7 +125,8 @@ class Trader:
     """One scripted agent. ``arm`` selects the policy; the rest is shared."""
 
     def __init__(self, agent_id: str, index: int, island: Island, arm: str,
-                 rng: random.Random) -> None:
+                 rng: random.Random,
+                 announced: list[float] | tuple[float, ...] | None = None) -> None:
         self.agent_id = agent_id
         self.index = index
         self.alpha = island.alpha[index]
@@ -137,6 +138,16 @@ class Trader:
         #: Arm C's belief about the public price. Starts at "everything is
         #: worth the same", which is what an agent with no information has.
         self.price = [1.0] * self.k
+        #: A price handed down rather than discovered. Set only by the Tier 3
+        #: calibration, which needs a convention of *known* quality: with this
+        #: set the agent skips discovery and produces and trades against the
+        #: announced vector, so the arm is arm C in every respect except where
+        #: its price came from. Everything else — the specialisation rule, the
+        #: acceptance test, the proposal search — is untouched, which is what
+        #: makes the perturbation the only thing that moved.
+        self.announced = list(announced) if announced is not None else None
+        if self.announced is not None:
+            self.price = list(self.announced)
 
     # --- production ---------------------------------------------------------
 
@@ -199,6 +210,11 @@ class Trader:
         of a convention nobody quite shares.
         """
         if self.arm not in ("C", "D"):
+            return
+        if self.announced is not None:
+            # An announced price is not discovered. Letting tatonnement run on
+            # top of it would walk the vector back toward equilibrium and quietly
+            # undo the perturbation the calibration is measuring.
             return
         quotes = floor.read("quote", round_no=round_no)
         if not quotes:
