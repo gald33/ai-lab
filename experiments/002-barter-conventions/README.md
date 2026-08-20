@@ -1,7 +1,7 @@
 # 002 — Barter conventions
 
 **Status: running. Tier 1 is complete; Tier 2 is mid-flight and the harness is
-still moving under it.** The Tier 1 ladder below is a result. The Tier 2 numbers
+still moving under it; [Tier 3](tier3-design.md) is designed and unrun.** The Tier 1 ladder below is a result. The Tier 2 numbers
 are recorded honestly but most of them measure the harness, and the section that
 says which is the point of publishing them at all.
 
@@ -245,6 +245,30 @@ everything opens at once now. So the original instinct was right about the need
 and wrong about the remedy: deliberation does have to precede commitment; what
 broke things was staging the *trading*.
 
+## Tier 3 — the coordination premium
+
+Designed, not run: [tier3-design.md](tier3-design.md).
+
+The ladder is retired. Tiers 1 and 2 vary words, machinery and disposition
+together, so no gap between rungs is attributable to any one of them — which is
+why the Tier 1 non-monotonicity above reads as a broken hypothesis rather than a
+finding. Tier 3 replaces the ranking with a measurement, using the one property
+this island has that a real system does not: `walras()` computes the
+equilibrium, so a convention can be **manufactured to a known content-quality**
+and its correctness varied independently of whether it is shared.
+
+Two axes — content error δ from the true price vector, and distribution (common
+knowledge, private, absent) — give four cells whose gaps are named quantities:
+the value of sharedness with content held fixed, and the value of content with
+sharedness held fixed. The headline number is δ\*, the error at which a
+wrong-but-shared convention stops beating a correct-but-private one. That is the
+coordination premium, and it is what "conventions are important" reduces to when
+it is made falsifiable.
+
+Efficiency stops being the goal and becomes an instrument: adoption is measured
+from manager state, and welfare only says whether adoption mattered. Enforcement
+is held fixed throughout — the manager is substrate, not an arm.
+
 ## Limitations and confounders
 
 - **Tier 2 is n=1 per arm.** One island is an anecdote. The Tier 1 spread across
@@ -300,6 +324,9 @@ python -m pytest experiment/tests -q
 Wall clock is exact: rounds × the sum of `--window`, plus the muster lead.
 
 ## Follow-up questions
+
+Several of these are now folded into the [Tier 3 design](tier3-design.md); the
+escrow and visibility items remain prerequisites for it.
 
 - Does deliberation-before-commitment survive if only *production* is staged and
   trading is left open throughout? That is the shape the negative results point

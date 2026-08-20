@@ -1,0 +1,252 @@
+# Tier 3 — the coordination premium
+
+**Status: designed, not run.** This is the design document for the next tier of
+[002](README.md). Nothing here has data behind it. The prediction at the end is
+pre-registered so that it can be wrong in public.
+
+## Why the ladder has to go
+
+Tiers 1 and 2 rank arms. `silent`, `disclose`, `price`, `money` — each rung adds
+words *and* machinery *and* a disposition at the same time, so no gap between
+two rungs is attributable to any one of them. That is why the Tier 1
+non-monotonicity reads as a broken hypothesis rather than a finding: `disclose`
+lands below silence and `price` reaches the frontier while ruining half its
+islands, and the design cannot say which ingredient did either.
+
+It also measures the wrong thing. Efficiency was the dependent variable, so a
+good convention and a good economy were the same number. The island is a
+setup, not a goal — solving it well is available at any time by computing the
+equilibrium and handing it over, and that would answer nothing.
+
+So Tier 3 stops ranking conventions and starts measuring one property of them.
+
+## The instrument property nobody else has
+
+`economy.walras()` returns the competitive equilibrium: a price vector, the
+production shares it implies for each agent's private capacities, and a
+convergence certificate. That makes this island the rare setting where a
+convention can be **manufactured to a known content-quality**.
+
+In a real system — Lucille, or any deployment — you never know whether the
+incumbent convention is actually right, so "shared" and "correct" arrive
+together and cannot be separated. Here they are two independent dials. That
+capability, not the economy, is what the harness is for.
+
+## Design: two axes and a dial
+
+Every arm is a point in:
+
+**Content quality δ.** The distance of the announced price vector from
+`walras(island).prices`. `δ = 0` is exactly right. `δ` is continuous, so arms
+are a sweep rather than a pair.
+
+**Distribution.** How the vector arrives:
+
+- *common* — announced to the island, stated as having gone to every agent
+- *private* — handed to each agent alone, with no indication anyone else has one
+- *absent* — no vector
+
+The cells:
+
+|                    | private | common |
+|--------------------|---------|--------|
+| **δ = 0** (correct) | CP | CS |
+| **δ > 0** (wrong)   | WP | WS |
+| **no content**      | `silent` | — |
+
+Each gap is a named quantity rather than a rung:
+
+- **CS − CP** — the value of common knowledge, content held byte-identical.
+  This is the number the whole "conventions matter" claim lives or dies on.
+- **CS − WS** — the value of content, coordination held fixed.
+- **WS − silent** — whether a shared *wrong* belief beats no belief. Tier 1
+  says uncoordinated beliefs are worse than none (`disclose` < `silent`); this
+  asks whether coordinated wrong ones are still better than none.
+- **WP** — the control against the boring explanation. If WP ≈ WS, agents are
+  following instructions and the sharedness never mattered.
+
+`silent` carries over unchanged from Tier 2, as the no-content floor.
+
+## The headline number
+
+Sweep δ for the common arms and find **δ\***, the error at which wrong-but-
+shared stops beating correct-but-private:
+
+```
+eff(common, δ*) = eff(private, 0)
+```
+
+δ\* is the **coordination premium**: how wrong a convention may be and still be
+worth holding, purely because everyone holds it. That is "conventions are
+important" as an exchange rate rather than a slogan.
+
+- **δ\* ≈ 0** — conventions are information transport. Sharedness is
+  decoration, and the claim dies.
+- **δ\* large** — a newborn agent should adopt the incumbent convention *even
+  believing it substantially wrong*, with a bound on "substantially".
+
+## Conventions, protocols, strategies
+
+The rules in an arm are tagged rather than the arm being classified. Three
+columns, and every rule in every arm gets a row:
+
+| | enforced by | violation visible as |
+|---|---|---|
+| **mechanism** | the manager | impossible |
+| **protocol** | a verifier on the transcript | malformed, typed, countable |
+| **strategy** | nothing | only in outcomes, after the fact |
+
+Protocols are the conventions with a verifier; strategies are the conventions
+with a scorer. Enforcement is **held fixed** across all of Tier 3 — the manager
+is the substrate, and varying it varies the substrate. The `told`/`built` pair
+already isolates the verifier column, and carries over unchanged.
+
+This split is what makes adoption measurable at all: protocol adoption is
+checkable without the answer key, strategy adoption needs it, and the two
+degrade independently.
+
+## Adoption is the mechanism metric
+
+Commitments move through the manager, so adoption is observable from state
+rather than from self-report. Agent claims stay unscored, as everywhere in 002.
+
+- **Protocol adoption** — a transcript verifier: quotes denominated in the
+  numeraire, conformant to the board's format, referencing the announced
+  vector. Typed and countable per message.
+- **Strategy adoption** — the distance between the recorded `produce` split and
+  the split the announced vector implies for that agent's capacities, straight
+  out of `walras()`. One number per agent per island, from manager state.
+- **Disposition** — adoption as a function of δ, restricted to agents whose own
+  capacities contradict the announced vector. An agent that follows a
+  convention its private information disputes is deferring to the group. The
+  defection-rate-versus-δ curve is disposition measured rather than requested,
+  which is what the `money` clause has been asking for in prose.
+
+Every arm then lands in the quadrant the repo's own rule demands — mechanism
+separately from outcome:
+
+|                 | outcome moved | outcome didn't |
+|-----------------|---------------|----------------|
+| **adopted**     | the convention did the work | **dead convention** — worked as designed, moved nothing |
+| **not adopted** | confound: something else moved it | null, correctly |
+
+No Tier 2 arm can currently be placed in this table. That is the sharpest
+statement of what was missing.
+
+## What the tiers become
+
+**Tier 1 — instrument calibration, not a parallel result.** Scripted traders
+already carry a price belief (`Trader.price`) and a rule for producing against
+it (`_book`, `production_plan`). Seed that belief with a perturbed `walras`
+vector, skip tatonnement, and add an adherence parameter. That yields
+`eff(δ | full adoption)` as a replicated curve across islands, for free. It is
+the answer key for the answer key.
+
+**Tier 2 — models.** Measures the two things scripts cannot: **adoption(δ)**,
+and the gap between observed efficiency and the calibrated curve *at the
+observed adoption level*. That gives the decomposition:
+
+```
+observed shortfall = calibrated loss from δ
+                   + loss from partial adoption
+                   + residual (harness)
+```
+
+The harness counters already recorded are the third term. Tier 2's settlement
+catastrophe stops contaminating the finding and gets subtracted, per the
+existing doctrine that harness counters exist to be subtracted.
+
+**Words, machinery, disposition** finally separate into three measurements
+instead of three ingredients of one rung:
+
+| claim | measured by |
+|---|---|
+| words | CP vs `silent` — content moves behaviour with no coordination and no enforcement |
+| machinery | the `told`/`built` pair applied to the announced vector — validation on/off, content and distribution byte-identical |
+| disposition | the defection-versus-δ curve |
+
+## The newborn claim, made literal
+
+A newborn agent's alternative to adopting a convention is deriving one, and
+derivation has a price in turns and tokens that the record already carries. So:
+
+```
+newborn value = utility(adopt blind) − utility(derive alone) − derivation cost
+```
+
+CP vs `silent` measures the derivation burden. CS − CP measures what the newborn
+gets additionally from everyone *else* having been born into the same thing. If
+CS − CP is the larger term, the original intuition holds in its strong form:
+what a newborn needs is not the right answer but the *same* answer.
+
+## Switches
+
+Tier 3 adds to `llm.Telling` rather than replacing it. Existing switches keep
+their meaning and their dependencies.
+
+| switch | what it does |
+|---|---|
+| `announced` | a price vector is handed to the agent at the start |
+| `common` | the announcement states that every agent received this vector. Requires `announced` |
+| `delta` | perturbation magnitude applied to `walras` prices. Not a boolean — recorded as a float in the switch vector |
+| `delta_dir` | direction of perturbation: toward specialisation, or toward autarky |
+
+The existing dependency rule applies: `common` without `announced` is
+incoherent and should raise rather than run. The arms above are combinations —
+CS is `announced + common + delta=0`, WP is `announced + delta>0`.
+
+## Confounders
+
+- **Detection.** An agent may notice the vector is wrong, because its own
+  capacities contradict it. That is not a bug — it is the disposition
+  measurement — but δ must be perturbed in directions that are partially
+  detectable, and detectability recorded per agent as a flag. Haiku may detect
+  nothing, flattening the disposition curve into pure obedience. That is a
+  model-capability result worth having, and must be reported as one rather than
+  as a disposition finding.
+- **Common knowledge by assertion.** "Everyone received this" is a harness
+  claim the agent must trust. The harness is trusted infrastructure, so this is
+  acceptable — but it means CS measures *believed* common knowledge. If
+  CS ≈ CP, check the transcripts for whether agents acted on the sharedness at
+  all before concluding sharedness is worthless.
+- **Perturbation direction.** A δ-wrong vector still pointing toward
+  specialisation is a different object from one pointing toward autarky. Both
+  directions run, reported separately. A single scalar δ hides this, which is
+  why `delta_dir` is its own switch.
+- **Obedience versus convention.** WP is the main control, but instruction-
+  following is a specific pressure on model agents. Vary the framing of one arm
+  at fixed δ — "we suggest" against "the island uses" — to size it.
+- **Cobb-Douglas cliffs.** Unchanged from Tier 2. Ruin is reported separately
+  and never averaged in.
+- **δ is not a welfare distance.** It is a distance in price space; the
+  efficiency cost of a given δ is what Tier 1 calibration measures rather than
+  assumes. Do not read δ as "how much worse this convention is".
+
+## Prediction, pre-registered
+
+**δ\* > 0, and the common-arm curve cliffs rather than slopes.** Sharedness buys
+real tolerance for error, and then punishes excess error harder than privacy
+does, because agents specialise more confidently on a shared error than on
+private doubt.
+
+- Wrong in the first clause → conventions do not matter here, and the claim
+  that opened 002 is dead.
+- Wrong in the second → conventions are free after all, and Tier 1's "the
+  convention adds leverage, not safety" was specific to that mechanism rather
+  than general.
+
+Either outcome is worth the run. The one that would make the tier
+uninterpretable is adoption near zero across every arm, which is a harness
+result and should be caught by Tier 1 calibration before any model is paid for.
+
+## What this does not do
+
+It does not test enforcement. Auctions, clearing rules, and anything else that
+removes a decision from the agent are deliberately out: the manager is held
+fixed as substrate, and an arm that varies enforcement varies the thing
+everything else is measured against.
+
+It does not fix the Tier 2 settlement problem, which is still open and still
+harness. The [open questions](README.md#follow-up-questions) about escrow
+release and counterparty visibility are prerequisites for the Tier 2 half of
+this design; the Tier 1 calibration half is free and runnable now.
