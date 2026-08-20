@@ -301,6 +301,18 @@ class Manager:
     #: escrow creates rather than solves, and counting it is the only way to say
     #: whether a convention helps agents avoid it.
     crossings: list[dict[str, Any]] = field(default_factory=list)
+    #: Utility per agent per closed period, in island index order. Empty on a
+    #: stock island, which never closes a period — its single score is read off
+    #: the final holdings instead. On a flow island this is the record: total
+    #: welfare is the sum down each column, and the shape of a column over
+    #: periods is whether the island *converged*, which a one-shot score cannot
+    #: show at all.
+    period_utilities: list[list[float]] = field(default_factory=list)
+    #: Everything eaten so far, per good. Not needed by the conservation check —
+    #: which runs before consumption, while the books still balance exactly —
+    #: but a run that consumed nothing and a run that consumed everything would
+    #: otherwise look identical in the record.
+    consumed: list[float] = field(default_factory=list)
     #: Serialises agent requests. Agents within a stage act concurrently -- six
     #: stages of waiting per round is most of an island's wall clock, and they
     #: are waiting on each other for no reason -- so two of them can be inside
@@ -311,6 +323,8 @@ class Manager:
     _lock: Any = field(default_factory=threading.RLock, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        if not self.consumed:
+            self.consumed = [0.0] * self.island.n_goods
         if not self.agents:
             for i, agent_id in enumerate(self.island.agent_ids()):
                 self.agents[agent_id] = AgentState(
@@ -778,6 +792,53 @@ class Manager:
         """Final utility per agent, in island index order."""
         return [utility(s.alpha, s.holdings)
                 for s in sorted(self.agents.values(), key=lambda s: s.index)]
+
+    def close_period(self) -> list[float]:
+        """End a period: expire what is open, consume everything, start again.
+
+        This is the whole of the flow model, and it is deliberately the *only*
+        thing that differs from the stock island. A stock run never calls it, so
+        holdings accumulate for the whole run and a production bet that missed
+        is missed permanently — a good an agent never made in the first
+        instalment is still missing at the last, and Cobb-Douglas zeroes on it.
+        A flow run calls it every period, so a bad period costs one period's
+        utility and the next one starts clean.
+
+        Order matters and is not a detail:
+
+        1. Every pending proposal expires, which returns its escrow to the
+           buyer. Goods in escrow are goods nobody can eat, and carrying an
+           open offer across a period boundary would either strand them or
+           quietly hand the buyer a second period's worth.
+        2. Conservation is checked *before* anything is consumed. At this point
+           the period's books must balance exactly — everything produced is
+           held by somebody — so the invariant stays as strong as it is in the
+           stock model rather than being relaxed to accommodate consumption.
+        3. Utility is read off the holdings, and only then are they zeroed.
+        4. Labour is restored. Each period is a fresh unit of labour against a
+           fresh set of wants; what carries across is what agents have learned,
+           and nothing else.
+
+        Returns this period's utility per agent, in island index order.
+        """
+        for trade in self.trades.values():
+            if trade.status == "pending":
+                self._settle(trade, "expired", "the period ended")
+
+        self.check_conservation()
+
+        utils = self.utilities()
+        self.period_utilities.append(utils)
+
+        for state in self.agents.values():
+            for g in range(self.island.n_goods):
+                self.consumed[g] += state.holdings[g]
+                state.holdings[g] = 0.0
+            state.shares = [0.0] * self.island.n_goods
+            state.spent = 0.0
+            state.idle = 0.0
+            state.last_spent_tick = None
+        return utils
 
     def check_conservation(self) -> None:
         """Holdings plus escrow equals everything produced. Raises if not.
