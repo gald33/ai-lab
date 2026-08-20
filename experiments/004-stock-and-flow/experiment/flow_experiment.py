@@ -42,6 +42,13 @@ def main(argv: list[str] | None = None) -> int:
     # flow arm looks worse for want of trading rounds, which would be a finding
     # about the budget rather than about the model.
     p.add_argument("--rounds", type=int, default=60)
+    # Talking rounds inside a period, before its production is committed. At
+    # 002's default of 30, tatonnement reaches the equilibrium within period 0
+    # and every agent agrees exactly, so nothing is left for a later period to
+    # learn and convergence is unmeasurable — not absent, unmeasurable. Starve
+    # it and the price must be found across periods instead.
+    p.add_argument("--discovery", type=int, default=None,
+                   help="talking rounds per period; None uses 002's 30")
     p.add_argument("--arms", nargs="*", default=list(ARMS))
     p.add_argument("--json", type=str, default=None)
     args = p.parse_args(argv)
@@ -64,7 +71,8 @@ def main(argv: list[str] | None = None) -> int:
         for i, island in enumerate(islands):
             st = run_island(island, arm, seed=seeds[i], trade_rounds=args.rounds)
             fl = run_island_flow(island, arm, seed=seeds[i], periods=args.periods,
-                                 rounds_per_period=args.rounds)
+                                 rounds_per_period=args.rounds,
+                                 discovery_rounds=args.discovery)
             if st.efficiency.ruined:
                 stock_ruined += 1
             else:

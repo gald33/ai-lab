@@ -167,3 +167,54 @@ def test_flow_bounds_ruin_that_the_stock_model_makes_terminal():
     assert stock.efficiency.ruined, "seed 1 arm D is the ruined stock island"
     assert flow.always_zero == 0
     assert flow.recoveries > 0
+
+
+def test_discovery_defaults_to_002s_thirty_rounds():
+    a = run_island_flow(ISLAND, "C", seed=5, periods=2, rounds_per_period=6)
+    b = run_island_flow(ISLAND, "C", seed=5, periods=2, rounds_per_period=6,
+                        discovery_rounds=None)
+    assert a.trajectory == b.trajectory
+
+
+def test_starving_discovery_changes_what_agents_produce():
+    # The knob has to actually bite, or a convergence measurement made with it
+    # is measuring nothing.
+    island = draw_island(12, 5, seed=1)
+    rich = run_island_flow(island, "C", seed=1, periods=3, rounds_per_period=20,
+                           discovery_rounds=30)
+    poor = run_island_flow(island, "C", seed=1, periods=3, rounds_per_period=20,
+                           discovery_rounds=1)
+    assert rich.trajectory != poor.trajectory
+
+
+def test_a_well_fed_price_arm_has_nothing_left_to_learn():
+    # Why convergence is unmeasurable at the default: tatonnement reaches the
+    # equilibrium inside period 0, so a later period starts from the same place
+    # the first one ended. This gate pins the *reason* the starved regime
+    # exists, so removing the knob would break it loudly.
+    import random as _random
+    from barter.calibrate import normalise
+    from barter.economy import walras
+    from barter.run import DISCOVERY_ROUNDS
+    from barter.traders import Floor, Trader
+
+    island = draw_island(12, 5, seed=1)
+    truth = normalise(walras(island).prices)
+    floor = Floor(enabled=True)
+    traders = [Trader(f"a{i}", i, island, "C", _random.Random(1))
+               for i in range(island.n_agents)]
+    for t in traders:
+        t.goods = [f"g{g}" for g in range(island.n_goods)]
+
+    for step in range(DISCOVERY_ROUNDS):
+        for t in traders:
+            t.declare(step, floor)
+        for t in traders:
+            t.observe_prices(step, floor)
+
+    belief = normalise(traders[0].price)
+    err = (sum((belief[g] - truth[g]) ** 2 for g in range(island.n_goods)) ** 0.5
+           / sum(x * x for x in truth) ** 0.5)
+    assert err < 0.01, f"one period of talk should already find the price, got {err}"
+    for t in traders:
+        assert normalise(t.price) == pytest.approx(belief), "and everyone agrees"

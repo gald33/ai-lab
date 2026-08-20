@@ -391,6 +391,7 @@ def run_island_flow(
     rounds_per_period: int = 8,
     announced: list[float] | tuple[float, ...] | None = None,
     adherence: float = 1.0,
+    discovery_rounds: int | None = None,
 ) -> "FlowOutcome":
     """The same island as a repeated economy: produce, trade, **eat**, repeat.
 
@@ -447,12 +448,22 @@ def run_island_flow(
 
     order = list(traders)
     discovery = 0
+    # How much talking happens *inside* a period, before its production is
+    # committed. This is the knob that decides whether cross-period learning is
+    # measurable at all: at the default 30, tatonnement reaches the equilibrium
+    # within period 0 to a relative error of 0.001 and every agent agrees
+    # exactly, so there is nothing left for a later period to learn and any
+    # convergence measurement is of a channel with no work to do. Starve it and
+    # the price has to be discovered *across* periods, which is the only
+    # arrangement in which "does the convention help agents converge" is a
+    # question with an answer.
+    talk = DISCOVERY_ROUNDS if discovery_rounds is None else max(0, discovery_rounds)
 
     for period in range(periods):
         # Talk. Arm C's belief persists across periods, so a later period starts
         # from a better price than the first one did — and that improvement is
         # the only thing an agent carries forward.
-        for _ in range(DISCOVERY_ROUNDS):
+        for _ in range(talk):
             for trader in traders.values():
                 trader.declare(discovery, floor)
             for trader in traders.values():
