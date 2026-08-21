@@ -265,6 +265,29 @@ def test_a_refused_call_is_reported_and_never_repaired(monkeypatch):
     assert all(u == 0.0 for u in ep.trajectory[0]), "nobody produced anything"
 
 
+def test_every_call_the_base_block_advertises_is_accepted(monkeypatch):
+    """The surface described to agents and the surface implemented must match.
+
+    The pilot spent 43 of its 154 refusals on `read` and `pending` -- calls the
+    base block documents and the executor did not accept. A harness that
+    refuses what its own instructions offer is measuring its own inconsistency.
+    """
+    import re as _re
+    from v2.prompt import STIM
+    advertised = set(_re.findall(r"^- `(\w+)\(", (STIM / "base.md").read_text(),
+                                 _re.M))
+    calls = [{"call": c} for c in sorted(advertised)]
+
+    def stub(prompt, cwd):
+        return Turn(actions=calls, raw="")
+    monkeypatch.setattr(episode_mod, "ask", stub)
+    ep = run_episode(island=ISLAND, cell="bare", seed=1, periods=1, cwd=".",
+                     concurrency=2)
+    unknown = [r for row in ep.transcript for r in row["results"]
+               if "no such call" in r]
+    assert not unknown, f"base.md advertises calls the executor rejects: {unknown[:3]}"
+
+
 def test_the_stubbed_loop_completes_and_is_scorable(monkeypatch):
     def stub(prompt, cwd):
         if "production stage is open" in prompt:

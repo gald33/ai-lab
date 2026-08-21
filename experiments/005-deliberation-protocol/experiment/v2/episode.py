@@ -87,6 +87,21 @@ def _apply(world: World, name: str, actions: list[dict]) -> list[str]:
             elif call == "cancel":
                 world.cancel(name, a.get("offer_id", ""))
                 out.append(f"cancelled {a.get('offer_id')}")
+            elif call == "read":
+                # The base block advertises `read()` as part of the surface, so
+                # refusing it was the harness contradicting its own
+                # description. Delivery is automatic -- the next prompt carries
+                # the inbox -- and saying so is more honest than a refusal that
+                # reads as "you may not do that".
+                out.append("read: messages are delivered to you automatically; "
+                           "everything new is in this prompt")
+            elif call == "pending":
+                out.append(f"pending: {world.pending(name)}")
+            elif call == "state":
+                # Also advertised, also delivered automatically: the prompt
+                # already carries this agent's private state every turn.
+                out.append("state: your private state is in this prompt, "
+                           "under 'Your private state'")
             else:
                 out.append(f"REFUSED: no such call {call!r}")
         except ActionError as exc:
