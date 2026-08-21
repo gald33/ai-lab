@@ -9,6 +9,16 @@ This module never repairs a malformed action into a plausible one. A production
 plan invented by the harness is the harness making a production decision, which
 the design forbids outright. One retry on unparseable output, then the world is
 a `harness_failure` -- excluded from every rate and counted on its own.
+
+Two kinds of failure, counted apart because they mean different things:
+
+* **transport** -- the CLI exits non-zero or times out. Measured here at eight
+  concurrent callers, this happens sporadically and with an empty stderr, and
+  it retries clean. It is a fact about the runtime, not about the agent, so it
+  is retried with backoff and counted separately.
+* **content** -- the model replied but the reply is not a list of actions. That
+  is the agent's output, so it gets exactly one more chance at the same prompt
+  and is counted as an agent-level retry.
 """
 
 from __future__ import annotations
@@ -16,10 +26,17 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 
 MODEL = "claude-haiku-4-5-20251001"
 CALL_SECONDS = 240.0
+
+#: Transport retries and the backoff between them. Sporadic non-zero exits
+#: under concurrency are a runtime property; giving up on the first one would
+#: turn a flaky process launch into a discarded world.
+TRANSPORT_TRIES = 5
+BACKOFF = (2.0, 4.0, 8.0, 16.0)
 
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.S)
 
@@ -28,11 +45,18 @@ class AgentFault(Exception):
     """The agent's output could not be read as a list of actions."""
 
 
+class TransportFault(Exception):
+    """The CLI itself failed. Not the agent's doing."""
+
+
 @dataclass
 class Turn:
     actions: list[dict]
     raw: str
+    #: The model replied with something unreadable and was asked again.
     retried: bool = False
+    #: The CLI failed to run and was relaunched. Counted apart from `retried`.
+    transport_retries: int = 0
     seconds: float = 0.0
     faults: list[str] = field(default_factory=list)
 
@@ -61,22 +85,33 @@ def _read(obj: dict) -> list[dict]:
     return actions
 
 
-def _invoke(prompt: str, cwd: str) -> str:
-    proc = subprocess.run(
-        ["claude", "-p", "--model", MODEL, "--max-turns", "1"],
-        input=prompt, capture_output=True, text=True, cwd=cwd,
-        timeout=CALL_SECONDS)
-    if proc.returncode != 0:
-        raise AgentFault(f"cli exit {proc.returncode}: "
-                         f"{proc.stderr.strip()[:200]}")
-    return proc.stdout
+def _launch(prompt: str, cwd: str) -> str:
+    """One CLI call, retried through transport faults only."""
+    last = ""
+    for attempt in range(TRANSPORT_TRIES):
+        try:
+            proc = subprocess.run(
+                ["claude", "-p", "--model", MODEL, "--max-turns", "1"],
+                input=prompt, capture_output=True, text=True, cwd=cwd,
+                timeout=CALL_SECONDS)
+            if proc.returncode == 0:
+                return proc.stdout
+            last = f"exit {proc.returncode}: {proc.stderr.strip()[:200]}"
+        except subprocess.TimeoutExpired:
+            last = f"timed out after {CALL_SECONDS:.0f}s"
+        if attempt < len(BACKOFF):
+            time.sleep(BACKOFF[attempt])
+    raise TransportFault(f"cli failed {TRANSPORT_TRIES} times; last: {last}")
 
 
 def ask(prompt: str, cwd: str) -> Turn:
+    started = time.perf_counter()
+    raw = _launch(prompt, cwd)
     try:
-        raw = _invoke(prompt, cwd)
-        return Turn(actions=_read(_extract(raw)), raw=raw)
-    except (AgentFault, subprocess.TimeoutExpired):
+        return Turn(actions=_read(_extract(raw)), raw=raw,
+                    seconds=time.perf_counter() - started)
+    except AgentFault:
         pass
-    raw = _invoke(prompt, cwd)
-    return Turn(actions=_read(_extract(raw)), raw=raw, retried=True)
+    raw = _launch(prompt, cwd)
+    return Turn(actions=_read(_extract(raw)), raw=raw, retried=True,
+                seconds=time.perf_counter() - started)

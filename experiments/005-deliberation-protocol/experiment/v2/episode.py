@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from .prompt import turn as build_turn
-from .runner import AgentFault, Turn, ask
+from .runner import AgentFault, TransportFault, Turn, ask
 from .world import ActionError, FLOOR, MARKET, PRODUCTION, World
 
 SCORED, AGENT_FAILURE, HARNESS_FAILURE = "scored", "agent_failure", "harness_failure"
@@ -39,13 +39,16 @@ class Episode:
     trajectory: list[list[float]] = field(default_factory=list)
     transcript: list[dict] = field(default_factory=list)
     retries: int = 0
+    transport_retries: int = 0
     refused: int = 0
     seconds: float = 0.0
 
     def to_json(self) -> dict:
         return {"cell": self.cell, "seed": self.seed, "outcome": self.outcome,
                 "note": self.note, "trajectory": self.trajectory,
-                "retries": self.retries, "refused": self.refused,
+                "retries": self.retries,
+                "transport_retries": self.transport_retries,
+                "refused": self.refused,
                 "seconds": round(self.seconds, 1),
                 "transcript": self.transcript}
 
@@ -122,6 +125,7 @@ def run_episode(*, island, cell: str, seed: int, periods: int, cwd: str,
                     for n in order:
                         r = replies[n]
                         ep.retries += int(r.retried)
+                        ep.transport_retries += r.transport_retries
                         out = _apply(world, n, r.actions)
                         ep.refused += sum(1 for o in out if o.startswith("REFUSED"))
                         results[n] = out
@@ -129,7 +133,7 @@ def run_episode(*, island, cell: str, seed: int, periods: int, cwd: str,
                             {"period": world.period, "stage": stage,
                              "agent": n, "actions": r.actions, "results": out})
             ep.trajectory.append(world.close_period())
-    except (AgentFault, Exception) as exc:  # noqa: BLE001 - any raise is a fault
+    except (AgentFault, TransportFault, Exception) as exc:  # noqa: BLE001
         ep.outcome = HARNESS_FAILURE
         ep.note = f"{type(exc).__name__}: {exc}"
         ep.seconds = time.perf_counter() - started
