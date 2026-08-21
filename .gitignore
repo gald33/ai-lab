@@ -26,3 +26,8 @@ Thumbs.db
 # experiments/<n>/results/ and are added deliberately, not by default.
 scratch/
 *.tmp
+
+# 005 v3 agent working directories: a per-agent .mcp.json (which carries a hub
+# token) and a session log, both rewritten on every run. The result of a run is
+# the manager's record and the hub's channel, not an agent's scratch dir.
+experiments/005-deliberation-protocol/results/v3/*/T*/
