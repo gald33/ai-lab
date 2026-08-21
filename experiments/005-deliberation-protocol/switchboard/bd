@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""bd — the only thing an agent uses. Reads the board, or appends to it.
+
+    bd read          everything on the board since you last read it
+    bd all           the whole board from the beginning
+    bd say <text>    append one line, attributed to you
+
+The board is shared. `bd say` writes; nothing else does.
+"""
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from switchboard.board import Board  # noqa: E402
+
+BOARD = os.environ["BD_BOARD"]
+ME = os.environ["BD_NAME"]
+CURSOR = Path(os.environ.get("BD_CURSOR", "/tmp/bd_cursor"))
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 2
+    board, cmd = Board(BOARD), sys.argv[1]
+    if cmd in ("read", "all"):
+        start = 0
+        if cmd == "read" and CURSOR.exists():
+            start = int(CURSOR.read_text() or 0)
+        lines = board.since(start)
+        if not lines:
+            print("(nothing new)")
+        origin = board.read()[0].at if board.read() else 0.0
+        for line in lines:
+            print(line.render(origin))
+        if lines:
+            CURSOR.write_text(str(lines[-1].seq + 1))
+        return 0
+    if cmd == "say":
+        text = " ".join(sys.argv[2:])
+        if not text.strip():
+            print("say what?")
+            return 2
+        board.say(ME, text)
+        print("posted")
+        return 0
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

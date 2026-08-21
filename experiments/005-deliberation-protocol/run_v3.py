@@ -1,0 +1,223 @@
+"""Start the sessions, run the clock, read the board, settle, score.
+
+That is the whole job. There is no scheduler here: agents are launched once and
+never called again. They read and write the board on their own initiative, at
+whatever moment they choose, and this process never waits for any of them. The
+clock advances on wall time whether anybody has spoken or not.
+
+    python run_v3.py --arms bare both --rounds 1 --episodes 8 --agents 2
+
+Per arm, per round: a fresh board, a fresh island under the round's seed, one
+long-lived session per agent, and a manager reading the board behind them.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "002-barter-conventions" / "experiment"))
+
+from barter.economy import draw_island  # noqa: E402
+
+from switchboard.board import Board  # noqa: E402
+from switchboard.manager import MANAGER, Manager  # noqa: E402
+
+MODEL = "claude-haiku-4-5-20251001"
+STIM = HERE / "stimuli" / "v3"
+
+#: arm -> (stimulus block or None, hint or not)
+ARMS = {
+    "bare":     (None,       False),
+    "placebo":  ("placebo",  False),
+    "protocol": ("protocol", False),
+    "hint":     (None,       True),
+    "both":     ("protocol", True),
+}
+
+#: The schedule, in seconds. Announced on the board and acknowledged before
+#: every round, because context resets at the round boundary and an
+#: acknowledgement carried over is consent from agents who no longer remember
+#: giving it.
+ACK_SECONDS = 60
+PRODUCTION_SECONDS = 45
+EPISODE_SECONDS = 120
+
+#: How often the manager looks at the board. It is a reader, so this only
+#: decides how promptly receipts appear, never when an agent may act.
+DRAIN_EVERY = 1.5
+
+
+def body(text: str) -> str:
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("## "):
+            return "\n".join(lines[i:]).strip()
+    raise ValueError("stimulus has no body heading")
+
+
+def instructions(arm: str, private: str, episodes: int) -> str:
+    block, hint = ARMS[arm]
+    parts = [body((STIM / "base.md").read_text())]
+    if block:
+        parts.append(body((STIM / f"{block}.md").read_text()))
+    if hint:
+        parts.append(body((STIM / "hint.md").read_text()))
+    parts.append(f"""## This round
+
+{private}
+
+This round is {episodes} episodes long, and every episode lasts
+{EPISODE_SECONDS} seconds. Production is open for the first
+{PRODUCTION_SECONDS} seconds of each episode; the market is open from then
+until the bell.
+
+Nobody will prompt you. Decide for yourself when to read and when to write. If
+there is nothing you want to do right now, wait a little and look again --
+`sleep 10` then `bd read` is a reasonable way to pass time without burning the
+clock. Keep going until the manager writes that the round is over, then stop.""")
+    return "\n\n".join(parts)
+
+
+def launch(name: str, arm: str, private: str, episodes: int, workdir: Path,
+           board_path: Path) -> subprocess.Popen:
+    """One agent, one long-lived session. Started once and never called again."""
+    home = workdir / name
+    home.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env.update({"BD_BOARD": str(board_path), "BD_NAME": name,
+                "BD_CURSOR": str(home / "cursor"),
+                "PATH": f"{HERE / 'switchboard'}:{env['PATH']}"})
+    return subprocess.Popen(
+        ["claude", "-p", instructions(arm, private, episodes),
+         "--model", MODEL, "--max-turns", "400", "--allowedTools", "Bash"],
+        cwd=home, env=env,
+        stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
+
+
+def schedule_text(episodes: int, names: tuple[str, ...]) -> str:
+    return (f"Schedule for this round. {len(names)} traders: "
+            f"{', '.join(names)}. {episodes} episodes, {EPISODE_SECONDS}s each. "
+            f"In every episode PRODUCE is settled only in the first "
+            f"{PRODUCTION_SECONDS}s; PROPOSE and APPROVE are settled from then "
+            f"until the bell. At the bell open proposals lapse and everything "
+            f"held is consumed. Acknowledge with a line beginning ACK. "
+            f"Episode 1 opens in {ACK_SECONDS}s whether or not everyone has.")
+
+
+def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
+              outdir: Path) -> dict:
+    island = draw_island(agents, goods, seed=seed)
+    workdir = outdir / f"{arm}-seed{seed}"
+    workdir.mkdir(parents=True, exist_ok=True)
+    board = Board(workdir / "board.jsonl")
+    mgr = Manager(island=island, board=board)
+    started = time.time()
+
+    board.say(MANAGER, schedule_text(episodes, mgr.names))
+    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir,
+                    workdir / "board.jsonl") for n in mgr.names]
+
+    def wait_until(deadline: float) -> None:
+        while time.time() < deadline:
+            mgr.drain()
+            time.sleep(DRAIN_EVERY)
+        mgr.drain()
+
+    wait_until(started + ACK_SECONDS)
+    board.say(MANAGER, f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
+                       f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
+                       f"Episode 1 opens now.")
+
+    for e in range(episodes):
+        mgr.production_open, mgr.market_open = True, False
+        t0 = time.time()
+        board.say(MANAGER, f"episode {e + 1} of {episodes} is open. PRODUCE is "
+                           f"settled for the next {PRODUCTION_SECONDS}s.")
+        wait_until(t0 + PRODUCTION_SECONDS)
+        mgr.production_open, mgr.market_open = False, True
+        board.say(MANAGER, "production is closed. PROPOSE and APPROVE are "
+                           "settled until the bell.")
+        wait_until(t0 + EPISODE_SECONDS)
+        mgr.close_episode()
+
+    board.say(MANAGER, "the round is over. Stop; nothing further will settle.")
+    time.sleep(3)
+    for p in procs:
+        p.terminate()
+    for p in procs:
+        try:
+            p.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            p.kill()
+
+    return {"arm": arm, "seed": seed, "episodes": episodes,
+            "trajectory": mgr.episode_utilities,
+            "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
+            "acknowledged": sorted(mgr.acknowledged),
+            "board_lines": len(board.read()),
+            "seconds": round(time.time() - started, 1),
+            "board": str(workdir / "board.jsonl")}
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arms", nargs="+", default=["bare", "both"])
+    ap.add_argument("--rounds", type=int, default=1)
+    ap.add_argument("--episodes", type=int, default=8)
+    ap.add_argument("--agents", type=int, default=2)
+    ap.add_argument("--goods", type=int, default=4)
+    ap.add_argument("--out", default="results/v3")
+    args = ap.parse_args()
+
+    for arm in args.arms:
+        if arm not in ARMS:
+            raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
+
+    outdir = HERE / args.out
+    outdir.mkdir(parents=True, exist_ok=True)
+    wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
+    print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
+          f"episodes {args.episodes}  agents {args.agents}")
+    print(f"clock-bound: {wall:.1f} min per arm-round, "
+          f"{wall * len(args.arms) * args.rounds:.1f} min total\n")
+
+    from switchboard.score import score  # noqa: PLC0415
+
+    records = []
+    for arm in args.arms:
+        for seed in range(1, args.rounds + 1):
+            rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
+                            agents=args.agents, goods=args.goods, outdir=outdir)
+            island = draw_island(args.agents, args.goods, seed=seed)
+            s = score(island, rec["trajectory"])
+            rec["score"] = s.to_json()
+            per = " ".join(f"{x:.2f}" for x in s.eff_episode)
+            print(f"  {arm:9s} seed {seed}  eff_round {s.eff_round:.3f}  "
+                  f"floor {s.floor:.3f}  per-episode [{per}]  "
+                  f"settled {rec['settled']}  refused {rec['refused']}  "
+                  f"talk {rec['talk']}  ack {len(rec['acknowledged'])}/"
+                  f"{args.agents}  {rec['seconds'] / 60:.0f}m")
+            records.append(rec)
+
+    path = outdir / "v3.json"
+    path.write_text(json.dumps(
+        {"experiment": "005-v3", "model": MODEL, "arms": args.arms,
+         "agents": args.agents, "goods": args.goods,
+         "episodes_per_round": args.episodes,
+         "schedule": {"ack_seconds": ACK_SECONDS,
+                      "production_seconds": PRODUCTION_SECONDS,
+                      "episode_seconds": EPISODE_SECONDS},
+         "rounds": records}, indent=1))
+    print(f"\nwrote {path}")
+
+
+if __name__ == "__main__":
+    main()
