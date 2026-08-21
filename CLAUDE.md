@@ -44,6 +44,45 @@ the system invents is the system making a production decision.
 **Self-reports are non-authoritative.** Metrics come from settled state, never
 from what an agent says about what it did.
 
+## Agents run themselves. There is no scheduler.
+
+**Every agent is its own long-lived session**, running concurrently and
+continuously. An agent is not a function the runner calls.
+
+- **No turn-taking, no rounds of play, no waves, no batching.** Never build all
+  agents' prompts from one snapshot, never fire them in parallel, never block
+  on all of them returning. There is no such thing as a "turn" here.
+- **Each agent reads the board when it wants and writes when it wants.**
+  Nobody is prompted to act.
+- **Nothing waits for an agent.** An agent that says nothing has said nothing;
+  the bell rings anyway and the episode closes on the clock.
+
+**The manager is a reader, not a driver.** It watches the board, recognises
+formatted messages that declare production, propose an exchange or approve one,
+settles them, and keeps score. It never tells an agent to do anything and never
+asks an agent for anything.
+
+Concretely: the board is an append-only file; each agent is a long-lived
+session with read and append access to it; the manager is a separate process
+watching that file. The runner's whole job is to start the sessions, run the
+clock, read the board, settle, and score.
+
+### The drift to watch for
+
+Building a loop that calls each agent in sequence or in parallel and applies
+their replies **is the forbidden thing**, however natural it looks in code. It
+has been built twice already. If the design starts to need a "turn", stop —
+something has gone wrong.
+
+## Timing
+
+The schedule is **announced on the board and acknowledged before every round**,
+because context resets at the round boundary: an acknowledgement carried over
+from an earlier round is consent from agents who no longer remember giving it.
+
+The manager enforces the schedule by what it will still settle after a
+deadline, not by controlling when agents act.
+
 ## Vocabulary
 
 | term | what resets at its boundary |
