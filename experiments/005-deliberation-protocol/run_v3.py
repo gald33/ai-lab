@@ -125,6 +125,10 @@ this round, and so is everyone else's.
 An episode is short. Reading the whole channel every time will cost you more of
 it than it is worth.
 
+**Begin now.** Do not ask whether to start and do not wait to be told; there is
+nobody to answer you, and the clock is already running. Your first act should be
+`checkin`.
+
 Nobody will prompt you, ever. Nothing will wake you up. There is no turn that
 comes round to you, and if you stop acting you have left the island for good --
 the clock keeps running, the other traders keep dealing, and the bell rings on
@@ -139,7 +143,9 @@ Thinking is not free here. Time spent composing a plan you never say is time
 the episode spent without you. If you have worked something out, say it or act
 on it, then check in again.
 
-Keep going until the manager says the round is over. Only then stop.""")
+Never finish a reply without having called `checkin` or `say`. If you have
+nothing to do, call `checkin` with `wait` set to 25 and see what arrives. Keep
+going until the manager says the round is over. Only then stop.""")
     return "\n\n".join(parts)
 
 
@@ -193,18 +199,25 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
              for n in mgr.names]
 
 
-    # A session that dies on launch -- an unreachable API, a bad MCP config --
-    # is a harness fault, and running ten minutes of clock over it would record
-    # an empty round as though the agents had chosen silence. Check once, early,
-    # and refuse the round rather than manufacture that. An agent that starts
-    # and later stops is a different thing entirely, and is left alone.
+    # A session that cannot start -- unreachable API, bad MCP config -- is a
+    # harness fault, and spending ten minutes of clock on it would record an
+    # empty round as though the agents had chosen silence. But a session that
+    # starts and then stops has made a choice, and that is a datum, not a
+    # fault. The two are told apart by what the runtime said, not by the fact
+    # of exiting.
     time.sleep(20)
-    dead = {n: (workdir / n / "session.log").read_text()[:200]
-            for n, proc in zip(mgr.names, procs) if proc.poll() is not None}
-    if dead:
-        mgr.say(f"harness fault: {', '.join(sorted(dead))} did not start")
+    broken = {}
+    for name, proc in zip(mgr.names, procs):
+        if proc.poll() is None:
+            continue
+        log = (workdir / name / "session.log").read_text()
+        if any(sig in log for sig in ("API Error", "Invalid MCP",
+                                      "not found", "Execution error")):
+            broken[name] = log[:200]
+    if broken:
+        mgr.say(f"harness fault: {', '.join(sorted(broken))} could not start")
         raise RuntimeError("agent sessions failed to start: "
-                           + "; ".join(f"{n}: {w.strip()}" for n, w in dead.items()))
+                           + "; ".join(f"{n}: {w.strip()}" for n, w in broken.items()))
     def wait_until(deadline: float) -> None:
         while time.time() < deadline:
             mgr.drain()
