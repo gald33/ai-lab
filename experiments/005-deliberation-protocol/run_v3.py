@@ -274,6 +274,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
 
 
 def main() -> None:
+    global ACK_SECONDS, EPISODE_SECONDS, PRODUCTION_SECONDS
     ap = argparse.ArgumentParser()
     ap.add_argument("--arms", nargs="+", default=["bare", "both"])
     ap.add_argument("--rounds", type=int, default=1)
@@ -281,17 +282,16 @@ def main() -> None:
     ap.add_argument("--agents", type=int, default=2)
     ap.add_argument("--goods", type=int, default=4)
     ap.add_argument("--out", default="results/v3")
-    ap.add_argument("--episode-seconds", type=int, default=EPISODE_SECONDS)
+    ap.add_argument("--episode-seconds", type=int, default=60)
     ap.add_argument("--production-seconds", type=int, default=None,
                     help="default: half the episode")
-    ap.add_argument("--ack-seconds", type=int, default=ACK_SECONDS)
+    ap.add_argument("--ack-seconds", type=int, default=120)
     args = ap.parse_args()
 
     for arm in args.arms:
         if arm not in ARMS:
             raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
 
-    global ACK_SECONDS, EPISODE_SECONDS, PRODUCTION_SECONDS
     ACK_SECONDS = args.ack_seconds
     EPISODE_SECONDS = args.episode_seconds
     PRODUCTION_SECONDS = (args.production_seconds if args.production_seconds
