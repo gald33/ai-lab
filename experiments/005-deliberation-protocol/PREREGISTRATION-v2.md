@@ -54,8 +54,10 @@ passes.
 | P1 | median `W` ≤ 0.85 × exchange ceiling |
 | P2 | `W` ≥ 1.05 × autarky floor in ≥ 40% of worlds |
 
-Both benchmarks are `economy.efficiency` lower bounds, the same scale as `W`
-itself, so no criterion crosses units.
+The autarky floor is an `economy.efficiency` lower bound, the same scale as `W`
+itself, so no criterion crosses units. The exchange ceiling is **1.0 by the
+first welfare theorem**, asserted in the probe rather than estimated, so P1
+reduces to `median W ≤ 0.85`.
 | P3 | ≥ 15% of agent-periods are zero-utility |
 | P4 | IQR of `W` ≥ 0.10 across ≥ 12 scored worlds |
 
@@ -64,10 +66,10 @@ If baseline saturates, difficulty rises; agents are never weakened.
 ## Frozen population size
 
 `N = 8` traders, 4 goods. Chosen from `analysis/world_probe.py` before any run,
-on the efficiency scale: the exchange-minus-autarky gap is 0.508 at `N = 8` and
-flat to `N = 12`, against 0.224 at `N = 2`; `N = 8` also has the tightest
-efficiency bracket measured (0.0022 against 0.0251 at `N = 2`) and the narrowest
-island-to-island gap range below `N = 12`. `N` is a parameter and the
+on the efficiency scale: the gap from the autarky floor to the frontier is 0.508
+at `N = 8` and flat to `N = 12`, against 0.239 at `N = 2`; `N = 8` also has the
+tightest efficiency bracket measured (0.0022 against 0.0251 at `N = 2`) and the
+narrowest island-to-island gap range below `N = 12`. `N` is a parameter and the
 pilot may move it; any move is recorded as a deviation.
 
 ## Frozen predictions

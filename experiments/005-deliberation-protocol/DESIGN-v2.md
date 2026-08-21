@@ -238,40 +238,50 @@ Listed because they are unresolved, not because they are handled.
 `N` is a design parameter, not a constant, and `analysis/world_probe.py`
 measures what it does to the world before any agent is involved.
 
-Both benchmarks are put through **`economy.efficiency`** — the same certified
-sandwich the primary metric `W` uses — so this table and every number the
-experiment will later report are on one scale. An earlier cut of this probe
-divided sums of Cobb-Douglas utilities by the equal-weight planner point; that
-denominator is the Nash bargaining solution rather than a utilitarian ceiling,
-so the Walrasian numerator exceeded it at `N = 2` and `N = 3` and the column was
-not a distance to anything. `efficiency` has neither problem, and it reports the
-width of its own bracket.
+The autarky floor is an **`economy.efficiency`** lower bound — the same
+certified sandwich the primary metric `W` uses — so this table and every number
+the experiment will later report are on one scale.
 
-24 islands per row, 4 goods, efficiency lower bounds:
+**The ceiling is 1.000 and is asserted, not estimated.** The competitive
+equilibrium is Pareto-optimal by the first welfare theorem, so its efficiency is
+1 by construction; the probe raises if `efficiency`'s *upper* bound fails to
+reach 1 on any island, and it does reach it on every island at every size tried.
+Two earlier cuts of this table got that column wrong in two different ways —
+first by dividing sums of Cobb-Douglas utilities by the equal-weight planner
+point, which is the Nash bargaining solution rather than a utilitarian ceiling
+and which the Walrasian numerator therefore exceeded; then by reporting
+`efficiency`'s *lower* bound at the equilibrium, which is not economics but the
+achievability search's shortfall. Both are now impossible: the ceiling is a
+constant with an assertion behind it, and the shortfall is a diagnostic column.
 
-| agents | labour/good | autarky floor | exchange ceiling | gap | gap range | max bracket |
-|---|---|---|---|---|---|---|
-| **2** | 0.50 | 0.761 | 0.988 | **0.224** | 0.027–0.464 | 0.0251 |
-| 3 | 0.75 | 0.636 | 0.996 | 0.354 | 0.077–0.572 | 0.0194 |
-| 4 | 1.00 | 0.595 | 0.998 | 0.401 | 0.189–0.604 | 0.0076 |
-| 6 | 1.50 | 0.505 | 0.999 | 0.494 | 0.261–0.604 | 0.0080 |
-| **8** | 2.00 | 0.492 | 1.000 | **0.508** | 0.340–0.604 | 0.0022 |
-| 12 | 3.00 | 0.490 | 1.000 | 0.509 | 0.441–0.633 | 0.0022 |
-| 16 | 4.00 | 0.455 | 1.000 | 0.544 | 0.453–0.645 | 0.0027 |
+24 islands per row, 4 goods:
 
-The **gap** — exchange ceiling minus autarky floor, both as efficiency lower
-bounds — is the entire prize for dealing with anyone at all, and therefore the
-ceiling on any treatment effect. It rises steeply to about `N = 6` and is flat
-from `N = 8` to `N = 12`.
+| agents | labour/good | autarky floor | ± | ceiling | gap | gap range | slack |
+|---|---|---|---|---|---|---|---|
+| **2** | 0.50 | 0.761 | 0.0251 | 1.000 | **0.239** | 0.052–0.477 | 0.0243 |
+| 3 | 0.75 | 0.636 | 0.0194 | 1.000 | 0.364 | 0.085–0.574 | 0.0124 |
+| 4 | 1.00 | 0.595 | 0.0076 | 1.000 | 0.405 | 0.194–0.604 | 0.0069 |
+| 6 | 1.50 | 0.505 | 0.0060 | 1.000 | 0.495 | 0.269–0.604 | 0.0080 |
+| **8** | 2.00 | 0.492 | 0.0022 | 1.000 | **0.508** | 0.341–0.604 | 0.0012 |
+| 12 | 3.00 | 0.490 | 0.0022 | 1.000 | 0.510 | 0.441–0.634 | 0.0021 |
 
-**max bracket** is the widest sandwich in the row, and it is itself a reason to
-avoid small populations: at `N = 2` the bracket is **0.025**, more than ten
-times its width at `N = 8`, so the benchmark that anchors the pilot gate is at
-its least certain exactly where the prize is smallest.
+Three columns that are easy to confuse, kept apart on purpose:
 
-**`N = 2` is the worst available choice for this experiment.** Its gap is the
-smallest of any size tried, 0.224 against `N = 8`'s 0.508, and its
-island-to-island range (0.027–0.464) is wider than its median — so a large share of two-agent worlds
+- **gap** = `1 − autarky floor`. The entire prize for dealing with anyone at
+  all, and therefore the ceiling on any treatment effect. It rises steeply to
+  about `N = 6` and is flat from `N = 8` to `N = 12`.
+- **gap range** = smallest and largest *per-island* gap in the row. **Not an
+  error bar.** It is how much islands differ from one another — the between-world
+  variance a paired test has to see through.
+- **±** = the widest autarky-floor bracket in the row. This one *is* an error
+  bar. **slack** = worst shortfall of `efficiency`'s lower bound at the
+  equilibrium, where the true value is 1; pure solver convergence.
+
+**`N = 2` is the worst available choice for this experiment, on every column
+independently.** Its gap is the smallest of any size tried, 0.239 against
+`N = 8`'s 0.508; its error bar is the widest, 0.0251 against 0.0022; its solver
+slack is the worst; and its island-to-island range (0.052–0.477) is wider than
+its median — so a large share of two-agent worlds
 have almost nothing on the table, and a paired test would be dominated by which
 worlds happened to be drawn. Two agents also removes the couplings the design
 rests on: there is no assignment problem worth talking about between two people
@@ -279,7 +289,8 @@ who each have enough labour to cover every good alone, congestion barely bites,
 and a "public board" with one reader on it is a direct message. A conversational
 protocol is close to definitionally untestable on a two-party conversation.
 
-`N = 8` is the default: it is where the gap curve flattens, its bracket is the
-tightest measured, its gap range is the narrowest below `N = 12`, and it is the
+`N = 8` is the default: it is where the gap curve flattens, its error bar and
+solver slack are the tightest measured, its gap range is the narrowest below
+`N = 12`, and it is the
 smallest size at which the board carries a genuinely multi-party conversation. `N` is nonetheless
 exposed as a parameter so the pilot can move it if P1–P4 demand it.

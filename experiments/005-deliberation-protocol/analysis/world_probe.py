@@ -38,22 +38,31 @@ def spread(n_agents: int, n_goods: int, seeds: range) -> dict:
     problem: it is a distance to the frontier, in [0, 1], with the width of the
     bracket reported rather than assumed away.
     """
-    floors, ceilings, gaps, widths = [], [], [], []
+    floors, widths, gaps, ceil_slack = [], [], [], []
     for seed in seeds:
         island = draw_island(n_agents, n_goods, seed=seed)
         _, auto_utils = autarky(island)
         wal = walras(island)
         lo = efficiency(island, list(auto_utils))
+        # The Walrasian point is on the frontier by the first welfare theorem,
+        # so its efficiency is 1 by construction and is not measured here --
+        # it is *checked*. What `efficiency` returns for it is a bracket whose
+        # upper bound is 1 and whose lower bound is however far the
+        # achievability search got, which at small n is visibly short of it.
+        # Reporting that lower bound as "the ceiling" would be reporting solver
+        # slack as economics, so the ceiling is 1.0 and the slack is a
+        # diagnostic column instead.
         hi = efficiency(island, list(wal.utilities))
+        ceil_slack.append(1.0 - hi.lower)
+        assert hi.upper >= 1.0 - 1e-9, f"walras point below the frontier: {hi}"
         floors.append(lo.lower)
-        ceilings.append(hi.lower)
-        gaps.append(hi.lower - lo.lower)
-        widths.append(max(lo.upper - lo.lower, hi.upper - hi.lower))
+        widths.append(lo.upper - lo.lower)
+        gaps.append(1.0 - lo.lower)
     return {"floor": statistics.median(floors),
-            "ceiling": statistics.median(ceilings),
+            "floor_width": max(widths),
             "gap": statistics.median(gaps),
             "gap_min": min(gaps), "gap_max": max(gaps),
-            "width": max(widths)}
+            "slack": max(ceil_slack)}
 
 
 def coverage_pressure(n_agents: int, n_goods: int) -> float:
@@ -68,11 +77,11 @@ def coverage_pressure(n_agents: int, n_goods: int) -> float:
 
 def main(sizes: list[int], n_goods: int = 4, islands: int = 24) -> None:
     seeds = range(1, islands + 1)
-    print(f"{n_goods} goods, {islands} islands per row. Benchmarks are "
-          f"economy.efficiency\nlower bounds -- the same scale as the primary "
-          f"metric W.\n")
-    print(f"{'agents':>6s} {'labour/good':>11s} {'autarky':>8s} {'exchange':>9s} "
-          f"{'gap':>6s} {'gap range':>14s} {'max bracket':>12s}")
+    print(f"{n_goods} goods, {islands} islands per row. The autarky floor is "
+          f"an\neconomy.efficiency lower bound -- the same scale as the "
+          f"primary metric W.\n")
+    print(f"{'agents':>6s} {'labour/good':>11s} {'autarky':>8s} {'+/-':>7s} "
+          f"{'ceiling':>8s} {'gap':>6s} {'gap range':>14s} {'slack':>7s}")
     for n in sizes:
         if n < 2:
             print(f"{n:>6d}   -- refused: an exchange economy needs at least "
@@ -80,15 +89,29 @@ def main(sizes: list[int], n_goods: int = 4, islands: int = 24) -> None:
             continue
         s = spread(n, n_goods, seeds)
         print(f"{n:>6d} {coverage_pressure(n, n_goods):>11.2f} "
-              f"{s['floor']:>8.3f} {s['ceiling']:>9.3f} {s['gap']:>6.3f} "
-              f"{s['gap_min']:>6.3f}-{s['gap_max']:<7.3f} {s['width']:>12.4f}")
-    print("\ngap = exchange ceiling - autarky floor, both as efficiency lower "
-          "bounds.\nIt is the whole prize on the table for dealing with anyone "
-          "at all, and\ntherefore the ceiling on any treatment effect. A "
-          "population size whose gap\nis near zero cannot show one however "
-          "good the treatment is.\n\nmax bracket is the widest sandwich "
-          "(upper - lower) seen in the row: the\nhonest error bar on every "
-          "number beside it.")
+              f"{s['floor']:>8.3f} {s['floor_width']:>7.4f} {1.0:>8.3f} "
+              f"{s['gap']:>6.3f} "
+              f"{s['gap_min']:>6.3f}-{s['gap_max']:<7.3f} {s['slack']:>7.4f}")
+    print("""
+ceiling  1.000 in every row, and not an estimate: the competitive equilibrium
+         is Pareto-optimal by the first welfare theorem, and the run asserts
+         that efficiency's upper bound reaches it on every island.
+
+gap      1 - autarky floor. The whole prize on the table for dealing with
+         anyone at all, and therefore the ceiling on any treatment effect. A
+         population size whose gap is near zero cannot show one however good
+         the treatment is.
+
+range    the smallest and largest per-island gap in the row -- not an error
+         bar. It says how much the islands differ from each other, which is
+         the variance a paired test has to see through.
+
++/-      widest autarky-floor bracket (efficiency upper - lower) in the row.
+         This one *is* an error bar.
+
+slack    worst shortfall of efficiency's lower bound at the equilibrium, where
+         the true value is 1. Pure solver convergence, reported so it is never
+         mistaken for an economic result.""")
 
 
 if __name__ == "__main__":
