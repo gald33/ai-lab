@@ -60,10 +60,10 @@ def client_for(agent_id: str, workspace: str) -> Client:
 
 #: The only tools an agent has. Everything else it might want to do, it does by
 #: saying something on the channel.
-TOOLS = ["mcp__switchboard__say", "mcp__switchboard__history",
-         "mcp__switchboard__inbox", "mcp__switchboard__dm",
-         "mcp__switchboard__roster", "mcp__switchboard__whoami",
-         "Bash(sleep:*)"]
+TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
+         "mcp__switchboard__history", "mcp__switchboard__inbox",
+         "mcp__switchboard__dm", "mcp__switchboard__roster",
+         "mcp__switchboard__whoami", "Bash(sleep:*)"]
 
 MCP_CONFIG = {
     "mcpServers": {
@@ -125,10 +125,21 @@ this round, and so is everyone else's.
 An episode is short. Reading the whole channel every time will cost you more of
 it than it is worth.
 
-Nobody will prompt you. Decide for yourself when to read and when to write. If
-there is nothing you want to do right now, wait a little and look again --
-`sleep 10` then `bd read` is a reasonable way to pass time without burning the
-clock. Keep going until the manager writes that the round is over, then stop.""")
+Nobody will prompt you, ever. Nothing will wake you up. There is no turn that
+comes round to you, and if you stop acting you have left the island for good --
+the clock keeps running, the other traders keep dealing, and the bell rings on
+an episode you did nothing in.
+
+So keep yourself awake. `checkin` is the loop tool: it says you are still here
+and returns anything addressed to you since last time, and with `wait` it
+blocks for up to 25 seconds until something arrives. Call it, act on whatever
+came back, call it again. That is how you schedule your own next moment.
+
+Thinking is not free here. Time spent composing a plan you never say is time
+the episode spent without you. If you have worked something out, say it or act
+on it, then check in again.
+
+Keep going until the manager says the round is over. Only then stop.""")
     return "\n\n".join(parts)
 
 
