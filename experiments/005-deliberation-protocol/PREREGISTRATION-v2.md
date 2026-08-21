@@ -14,16 +14,24 @@ agents.
 |---|---|---|
 | `stimuli/v2/base.md` | `c6daef3b7fcdd54c7228377d04864af65642cb51af45c191834fdd19cd185b0f` | 866 |
 | `stimuli/v2/protocol.md` | `377ff6f82295098daf1a5b4b407de80d0040ed1e9fce5eb4736356e89bc5bf99` | 355 |
+| `stimuli/v2/placebo.md` | `72a9211f69061fd50bb622d7f674e52f1f4fdee2e5a91034c3553277f0639a5c` | 365 |
 | `stimuli/v2/hint.md` | `a56382aa74077c57df6c5d11c2b0f5a741819c36df75c539058fad320f10afec` | 225 |
 
 ## Frozen assembled cells
 
-| cell | protocol | hint | words | sha256 (first 16) |
+Five cells. Hashes are recomputed and pinned by `tools/check_v2.py`, which
+fails the suite if any assembled cell moves.
+
+| cell | stimulus | hint | words | sha256 (first 16) |
 |---|---|---|---|---|
-| `baseline` | no | no | 866 | `c6daef3b7fcdd54c` |
-| `protocol` | **yes** | no | 1221 | `fd2c97fdf48925ce` |
-| `hint` | no | **yes** | 1091 | `9d17d9e48703056a` |
-| `both` | **yes** | **yes** | 1446 | `7eec9478511e9fe4` |
+| `bare` | none | no | 866 | `c6daef3b7fcdd54c` |
+| `placebo` | placebo | no | 1231 | `b453179ddccbc268` |
+| `protocol` | protocol | no | 1221 | `fd2c97fdf48925ce` |
+| `hint` | none | **yes** | 1091 | `9d17d9e48703056a` |
+| `both` | protocol | **yes** | 1446 | `7eec9478511e9fe4` |
+
+**Primary protocol contrast: `protocol` − `placebo`.** `protocol` − `bare` is
+secondary, and the gap between the two contrasts estimates document-presence.
 
 ## Frozen primary metric
 
@@ -50,6 +58,13 @@ passes.
 
 If baseline saturates, difficulty rises; agents are never weakened.
 
+## Frozen population size
+
+`N = 8` traders, 4 goods. Chosen from `analysis/world_probe.py` before any run:
+the exchange-minus-autarky gap flattens at about `N = 6`–8, and `N = 8` has the
+narrowest island-to-island gap range below `N = 12`. `N` is a parameter and the
+pilot may move it; any move is recorded as a deviation.
+
 ## Frozen predictions
 
 1. **Hint main effect > protocol main effect** on `W`. The coupling is the
@@ -65,9 +80,13 @@ If baseline saturates, difficulty rises; agents are never weakened.
 
 ## Declared in advance
 
-- **No placebo cell.** `protocol` differs from `baseline` by the advice and by
-  the existence of advice. A positive protocol effect will not separate the two.
-  Recommended and not adopted; recorded here so it cannot be discovered later.
+- **The placebo is not crossed with the hint.** There is no `placebo + hint`
+  cell, so the interaction term is estimated against `bare`, not against the
+  matched control.
+- **The placebo is not perfectly inert.** It passes the domain-leak check and is
+  length-matched, but general advice about deciding under uncertainty is not
+  nothing on this task. `protocol` − `placebo` should be read as a floor on the
+  protocol effect.
 - **Treatments are not length-matched to each other** (355 vs 225 words).
 - **Adoption is not measured.** No transcript scoring, no compliance judging.
   The mechanism is reported as unmeasured.

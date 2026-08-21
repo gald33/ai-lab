@@ -24,12 +24,26 @@ Three, kept separate on purpose.
 
 ## Design
 
-2×2, crossed, paired on identical seeded worlds.
+2×2, crossed, paired on identical seeded worlds, **plus a matched placebo
+control**.
 
 | | no hint | hint |
 |---|---|---|
-| **no protocol** | `baseline` | `hint` |
+| **no protocol** | `bare` | `hint` |
 | **protocol** | `protocol` | `both` |
+| **placebo** | `placebo` | — |
+
+`placebo` carries a length- and register-matched block of general, domain-free
+advice about working on something unfamiliar. It contains no convention about
+how a distributed group should converse, so `protocol` − `placebo` isolates
+*this convention* from *having been handed a considered-looking document*, which
+`protocol` − `bare` cannot. The placebo is not crossed with the hint: one cell
+buys the separation and a sixth would cost 20% more for a term the design does
+not need.
+
+**The primary protocol contrast is `protocol` − `placebo`.** `protocol` − `bare`
+is reported as a secondary, and the difference between the two contrasts is
+itself the estimate of how much of any protocol effect is document-presence.
 
 Every cell receives the **same base block**: the same world, the same private
 and public information, the same decisions, the same clock, the same Switchboard
@@ -42,7 +56,7 @@ choice, a trade, or a message.
 
 ## The world, and why it is coupled
 
-Eight traders, four goods, one unit of labour each per period, Cobb-Douglas
+`N` traders, four goods, one unit of labour each per period, Cobb-Douglas
 tastes, per-period consumption (the flow model from
 [004](../004-stock-and-flow/)). Capacities and tastes are drawn per agent and
 are **private**.
@@ -73,7 +87,7 @@ things agents may find useful; none of them is named as a goal.
 
 ## Communication
 
-The public board is genuinely public: `post` is visible to all eight, permanent
+The public board is genuinely public: `post` is visible to every trader, permanent
 and attributed. `message` is targeted. `read` returns both, tagged by sender
 and channel. There is no cap on volume and no artificial peer sampling — v1's
 "you see two random others per round" is gone, and with it the confound that
@@ -189,13 +203,13 @@ If no configuration is accepted, v2 stops at the pilot and says so.
 
 Listed because they are unresolved, not because they are handled.
 
-1. **There is no placebo in this 2×2.** The brief specifies a bare baseline, so
-   `protocol` differs from `baseline` by 355 words of advice *and* by the fact
-   that advice was given at all. A positive protocol effect will not separate
-   "this convention helps" from "being handed a considered-looking document
-   helps". A fifth, length-matched inert cell would separate them at 25% more
-   cost. **My recommendation is to add it**; the design as specified does not,
-   and this is the single largest interpretive risk here.
+1. **The placebo may be too good or not good enough.** It is matched on length
+   (365 vs 355 words), register and shape, and it passes the same domain-leak
+   check the protocol does. But "notice your assumptions" and "decide in time"
+   are not inert on *any* task, including this one. If the placebo is really a
+   weak treatment, `protocol` − `placebo` understates the protocol. This is the
+   price of a good control and it is the right price to pay, but it should be
+   read as a floor on the protocol effect rather than an unbiased estimate.
 2. **The two treatments are not length-matched to each other** (355 vs 225
    words). A main-effect difference between them is partly a difference in how
    much text arrived. The interaction term is unaffected.
@@ -213,7 +227,44 @@ Listed because they are unresolved, not because they are handled.
    then excellent scores like one that is mediocre throughout. The trajectory
    metric is reported for exactly this reason and should be read with the
    primary, not after it.
-6. **Cost.** Eight agents × four stages × periods × worlds × four cells, with
-   full board context, is materially more expensive than v1's 1,920 calls. The
-   pilot is the place to measure the per-world price before the 2×2 is
-   authorised.
+6. **Cost.** `N` agents × four stages × periods × worlds × five cells, with
+   full board context, is materially more expensive than v1's 1,920 calls, and
+   it scales with `N` twice over — more callers per stage, and a longer board
+   for each of them to read. The pilot is the place to measure the per-world
+   price before the paid cells are authorised.
+
+## Population size is a parameter
+
+`N` is a design parameter, not a constant, and `analysis/world_probe.py`
+measures what it does to the world before any agent is involved. Measured over
+24 islands per row, 4 goods, benchmarks as a share of the equal-weight planner
+point:
+
+| agents | labour/good | autarky floor | exchange ceiling | gap | gap range |
+|---|---|---|---|---|---|
+| **2** | 0.50 | 0.786 | 1.002 | **0.242** | 0.042–0.495 |
+| 3 | 0.75 | 0.636 | 1.001 | 0.362 | 0.097–0.592 |
+| 4 | 1.00 | 0.604 | 0.999 | 0.403 | 0.186–0.717 |
+| 6 | 1.50 | 0.505 | 0.991 | 0.472 | 0.255–0.609 |
+| 8 | 2.00 | 0.491 | 0.992 | 0.495 | 0.346–0.622 |
+| 12 | 3.00 | 0.473 | 0.989 | 0.496 | 0.404–0.657 |
+| 16 | 4.00 | 0.465 | 0.990 | 0.521 | 0.450–0.642 |
+
+The **gap** — exchange ceiling minus autarky floor — is the entire prize for
+dealing with anyone at all, and it is the ceiling on any treatment effect. It
+rises steeply to about `N = 6` and is nearly flat after `N = 8`.
+
+**`N = 2` is the worst available choice for this experiment.** Its gap is the
+smallest of any size tried, half of `N = 8`'s, and its island-to-island range
+(0.042–0.495) is wider than its median — so a large share of two-agent worlds
+have almost nothing on the table, and a paired test would be dominated by which
+worlds happened to be drawn. Two agents also removes the couplings the design
+rests on: there is no assignment problem worth talking about between two people
+who each have enough labour to cover every good alone, congestion barely bites,
+and a "public board" with one reader on it is a direct message. A conversational
+protocol is close to definitionally untestable on a two-party conversation.
+
+`N = 8` is the default: it is at the flat part of the gap curve, it has the
+narrowest gap range of the sizes below 12, and it is the smallest size at which
+the board carries a genuinely multi-party conversation. `N` is nonetheless
+exposed as a parameter so the pilot can move it if P1–P4 demand it.
