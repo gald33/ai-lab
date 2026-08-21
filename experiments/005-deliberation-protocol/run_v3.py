@@ -192,6 +192,19 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace)
              for n in mgr.names]
 
+
+    # A session that dies on launch -- an unreachable API, a bad MCP config --
+    # is a harness fault, and running ten minutes of clock over it would record
+    # an empty round as though the agents had chosen silence. Check once, early,
+    # and refuse the round rather than manufacture that. An agent that starts
+    # and later stops is a different thing entirely, and is left alone.
+    time.sleep(20)
+    dead = {n: (workdir / n / "session.log").read_text()[:200]
+            for n, proc in zip(mgr.names, procs) if proc.poll() is not None}
+    if dead:
+        mgr.say(f"harness fault: {', '.join(sorted(dead))} did not start")
+        raise RuntimeError("agent sessions failed to start: "
+                           + "; ".join(f"{n}: {w.strip()}" for n, w in dead.items()))
     def wait_until(deadline: float) -> None:
         while time.time() < deadline:
             mgr.drain()
