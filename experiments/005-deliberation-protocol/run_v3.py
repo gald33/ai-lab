@@ -97,6 +97,10 @@ ARMS = {
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
 #: giving it.
+#:
+#: Defaults, overridable per run and recorded in the result: the shape of the
+#: clock is a design parameter, not a constant, and a record that does not say
+#: which clock it ran on cannot be compared with one that ran on another.
 ACK_SECONDS = 120
 PRODUCTION_SECONDS = 30
 EPISODE_SECONDS = 60
@@ -277,11 +281,23 @@ def main() -> None:
     ap.add_argument("--agents", type=int, default=2)
     ap.add_argument("--goods", type=int, default=4)
     ap.add_argument("--out", default="results/v3")
+    ap.add_argument("--episode-seconds", type=int, default=EPISODE_SECONDS)
+    ap.add_argument("--production-seconds", type=int, default=None,
+                    help="default: half the episode")
+    ap.add_argument("--ack-seconds", type=int, default=ACK_SECONDS)
     args = ap.parse_args()
 
     for arm in args.arms:
         if arm not in ARMS:
             raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
+
+    global ACK_SECONDS, EPISODE_SECONDS, PRODUCTION_SECONDS
+    ACK_SECONDS = args.ack_seconds
+    EPISODE_SECONDS = args.episode_seconds
+    PRODUCTION_SECONDS = (args.production_seconds if args.production_seconds
+                          is not None else args.episode_seconds // 2)
+    if PRODUCTION_SECONDS >= EPISODE_SECONDS:
+        raise SystemExit("production must close before the bell")
 
     outdir = HERE / args.out
     outdir.mkdir(parents=True, exist_ok=True)
