@@ -325,6 +325,10 @@ class FlowOutcome:
     #: the stock model structurally cannot exhibit, so counting it is how the
     #: two models are told apart.
     recoveries: int
+    #: Offers still open when a period ended. Reported apart from ``rejected``
+    #: because nobody declined them — the bell rang. Folding them in would make
+    #: every flow run look more contentious than a stock run by construction.
+    expired_at_bell: int
     messages: int
     proposed: int
     executed: int
@@ -344,6 +348,7 @@ class FlowOutcome:
             "zero_periods": self.zero_periods,
             "always_zero": self.always_zero,
             "recoveries": self.recoveries,
+            "expired_at_bell": self.expired_at_bell,
             "messages": self.messages, "proposed": self.proposed,
             "executed": self.executed, "rejected": self.rejected,
         }
@@ -375,10 +380,12 @@ def score_flow(island: Island, manager: Manager, *, arm: str, seed: int,
         zero_periods=zero_periods,
         always_zero=always_zero,
         recoveries=recoveries,
+        expired_at_bell=manager.period_expiries,
         messages=messages,
         proposed=summary["proposed"],
         executed=summary["executed"],
-        rejected=summary["rejected"] + summary["expired"],
+        # Period-end expiries are excluded: they are the clock, not a refusal.
+        rejected=summary["rejected"] + summary["expired"] - manager.period_expiries,
     )
 
 

@@ -90,9 +90,14 @@ Most experiments stop at Publish. That's fine.
 ```
 experiments/     one directory per experiment; number-prefixed, ordered by start
 games/           experiments opened for participation — direction only, nothing playable
+reports/         session reports: what was run, what it supports, where it is weakest
 templates/       a starting point for a new experiment
 tools/           shared utilities, once a second experiment needs them
 ```
+
+[reports/](reports/) is where a working session is written up across experiments
+— including the results that were wrong before they were right. Each report
+grades its own claims and names what to attack first.
 
 Each experiment owns its own code, results and analysis. There is no shared
 framework, deliberately — experiments that have to fit a framework end up
