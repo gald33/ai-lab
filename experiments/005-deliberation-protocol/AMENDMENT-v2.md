@@ -96,3 +96,71 @@ The pilot ran **6 worlds, not the 12 P4 requires**, so P4 cannot pass on either
 metric without more worlds. That was a sizing decision made before the metric
 problem was known, and it is a second reason the paid cells are not authorised
 yet.
+
+---
+
+# Amendment 2: rounds, episodes, and memory between them
+
+**Written before any run under the new structure.** The pilot reported above
+was run under the old one and is superseded as a baseline: three episodes with
+no memory is not five episodes with memory, and the two are not comparable.
+
+## The structure, corrected
+
+| term | what resets at its boundary |
+|---|---|
+| **episode** | item stocks, labour, open offers, episode utility |
+| **round** (one seed) | agent context and history, accumulated utility |
+
+A round is **k = 5 episodes on one island**. Abilities, tastes, traders and the
+island are identical across a round's episodes. What carries between them is
+only what each agent has been told and has seen happen.
+
+This inverts the vocabulary the earlier design used, where "period" meant
+episode and "world" meant round.
+
+## Two efficiencies, on two different objects
+
+- **`eff_episode`** — the episode's utility vector against the one-episode
+  frontier. A coverage measure: one agent at zero puts the vector maximally far
+  from the frontier, so a single ruined trader zeroes the episode however well
+  the other seven did.
+- **`eff_round`** — the **accumulated** utility vector against the frontier of
+  the total. **This is the primary.** An agent ruined in one episode and fed in
+  four has positive accumulated utility, so the single-zero annihilation that
+  made the old `W` near-binary cannot occur.
+
+The frontier of the total is `k ×` the one-episode frontier, because Σα = 1
+makes utility homogeneous of degree 1. `eff_round` is computed by dividing the
+accumulated vector by `k` and scoring it against the one-episode frontier.
+**That identity is 004's argument and its own review target #1**, so it is
+gated: `k` identical episodes must score exactly what one episode scores, at
+k = 2, 3, 5, 8.
+
+`G` is demoted from companion primary to diagnostic. It was invented to survive
+a metric problem that the round-level measure removes at the source.
+
+## Memory is now implemented, and it is the point
+
+Each agent carries a private record — what it did, what the world answered,
+what it heard — appended every turn and handed back in the next prompt. It
+resets at the round boundary and at no other time.
+
+Without it a five-episode round is five unrelated one-episode rounds and there
+is nothing for an agent to learn, which is the whole reason a round has more
+than one episode. It is trimmed oldest-first past 14,000 characters, and the
+trim is **announced in the prompt** rather than done silently: an agent that
+has forgotten something should know that it has.
+
+## What this costs
+
+Prompts grow through a round, so the per-call price rises with episode number.
+The record now stores the largest history any agent carried and whether anyone
+was trimmed, so the cost is measured rather than assumed.
+
+## Re-freeze
+
+`base.md` changed — episode/round vocabulary, and a paragraph stating that
+abilities and tastes are constant across a round and that only learning
+carries. All five assembled cells are re-hashed in `PREREGISTRATION-v2.md`.
+The protocol, placebo and hint blocks are **byte-identical** to before.

@@ -12,7 +12,7 @@ agents.
 
 | file | body sha256 | words |
 |---|---|---|
-| `stimuli/v2/base.md` | `c6daef3b7fcdd54c7228377d04864af65642cb51af45c191834fdd19cd185b0f` | 866 |
+| `stimuli/v2/base.md` | `23b4f5d5eec7624c1ecf17e5b6a534e37aa1058cf754dbc0f5944a5e434affce` | 911 |
 | `stimuli/v2/protocol.md` | `377ff6f82295098daf1a5b4b407de80d0040ed1e9fce5eb4736356e89bc5bf99` | 355 |
 | `stimuli/v2/placebo.md` | `72a9211f69061fd50bb622d7f674e52f1f4fdee2e5a91034c3553277f0639a5c` | 365 |
 | `stimuli/v2/hint.md` | `a56382aa74077c57df6c5d11c2b0f5a741819c36df75c539058fad320f10afec` | 225 |
@@ -24,11 +24,11 @@ fails the suite if any assembled cell moves.
 
 | cell | stimulus | hint | words | sha256 (first 16) |
 |---|---|---|---|---|
-| `bare` | none | no | 866 | `c6daef3b7fcdd54c` |
-| `placebo` | placebo | no | 1231 | `b453179ddccbc268` |
-| `protocol` | protocol | no | 1221 | `fd2c97fdf48925ce` |
-| `hint` | none | **yes** | 1091 | `9d17d9e48703056a` |
-| `both` | protocol | **yes** | 1446 | `7eec9478511e9fe4` |
+| `bare` | none | no | 911 | `23b4f5d5eec7624c` |
+| `placebo` | placebo | no | 1276 | `7de97b2991f95507` |
+| `protocol` | protocol | no | 1266 | `c8430038af54e962` |
+| `hint` | none | **yes** | 1136 | `b04f3305abcddb3d` |
+| `both` | protocol | **yes** | 1491 | `d879c962269bf3b1` |
 
 **Primary protocol contrast: `protocol` − `placebo`.** `protocol` − `bare` is
 secondary, and the gap between the two contrasts estimates document-presence.

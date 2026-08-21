@@ -6,7 +6,16 @@ Two layers, kept apart so the experiment's factors cannot leak into each other:
   frozen files in ``stimuli/v2`` rather than duplicated here. Identical on
   every turn of a run.
 * **The turn** -- this agent's private state, its unread messages, its open
-  offers, and the action format. Rendered from authoritative world state.
+  offers, the action format, and **everything that has happened to it so far
+  this round**. Rendered from authoritative world state.
+
+The history block is the round's only channel between episodes. Item stocks,
+labour and open offers all reset at each episode's bell; what carries is what an
+agent has been told and what it has seen happen. Without it a five-episode round
+is five unrelated one-episode rounds, and there is nothing for an agent to
+learn. It is trimmed oldest-first when it grows past `HISTORY_CHARS`, and the
+trim is announced in the prompt rather than done silently -- an agent that has
+forgotten something should know that it has.
 
 ``tools/check_v2.py`` hashes the stimulus half and asserts the cells differ by
 exactly their treatments, so the parity claim is a test rather than a promise.
@@ -27,6 +36,10 @@ CELLS = {
     "hint":     (None,       True),
     "both":     ("protocol", True),
 }
+
+#: How much round history an agent carries. Oldest entries are dropped first
+#: and the drop is stated in the prompt.
+HISTORY_CHARS = 14000
 
 ACTIONS = """\
 ## How to act
@@ -61,11 +74,12 @@ def body(text: str) -> str:
     raise ValueError("stimulus has no body heading")
 
 
-def stimulus(cell: str, periods: int) -> str:
+def stimulus(cell: str, episodes: int) -> str:
     if cell not in CELLS:
         raise ValueError(f"unknown cell {cell!r}")
     block, hint = CELLS[cell]
-    parts = [body((STIM / "base.md").read_text()).replace("{periods}", str(periods))]
+    parts = [body((STIM / "base.md").read_text())
+             .replace("{periods}", str(episodes))]
     if block:
         parts.append(body((STIM / f"{block}.md").read_text()))
     if hint:
@@ -83,12 +97,31 @@ def _inbox(items: list[dict]) -> str:
     return "\n".join(out)
 
 
+def _history(entries: list[str]) -> tuple[str, bool]:
+    """Most recent last, oldest dropped first if it does not fit."""
+    kept: list[str] = []
+    used = 0
+    for entry in reversed(entries):
+        if used + len(entry) > HISTORY_CHARS:
+            return "\n".join(reversed(kept)), True
+        kept.append(entry)
+        used += len(entry)
+    return "\n".join(reversed(kept)), False
+
+
 def turn(*, cell: str, state: dict, inbox: list[dict], pending: dict,
-         results: list[str], periods: int) -> str:
+         results: list[str], episodes: int, history: list[str] | None = None) -> str:
     """The full prompt for one agent on one turn."""
-    parts = [stimulus(cell, periods), "", "---", "",
-             f"## Period {state['period'] + 1} of {periods} — "
-             f"the {state['stage']} stage is open", ""]
+    parts = [stimulus(cell, episodes), "", "---", ""]
+    if history:
+        text, trimmed = _history(history)
+        parts += [f"## What has happened so far this round", ""]
+        if trimmed:
+            parts.append("*(earlier turns have been dropped to save room; "
+                         "what follows is the most recent part)*\n")
+        parts += [text, ""]
+    parts += [f"## Episode {state['episode'] + 1} of {episodes} — "
+              f"the {state['stage']} stage is open", ""]
     if results:
         parts += ["### What happened to your last actions", ""]
         parts += [f"- {r}" for r in results]

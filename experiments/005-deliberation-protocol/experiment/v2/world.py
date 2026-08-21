@@ -9,7 +9,7 @@ Two invariants are asserted rather than trusted:
 
 * **Conservation.** Goods are created only by ``produce`` and destroyed only at
   the bell. The check runs at the bell *before* anything is consumed, while the
-  books still balance, so a flow period is exactly as strongly checked as a
+  books still balance, so a flow episode is exactly as strongly checked as a
   stock one. This is 004's ordering, and the reason for it is that relaxing the
   invariant to accommodate eating is how a harness quietly lets an island
   manufacture goods and beat its own frontier.
@@ -44,13 +44,13 @@ class Message:
     text: str
     public: bool
     to: str | None
-    period: int
+    episode: int
     stage: str
 
     def to_json(self) -> dict:
         return {"from": self.sender, "text": self.text,
                 "public": self.public, "to": self.to,
-                "period": self.period, "stage": self.stage}
+                "episode": self.episode, "stage": self.stage}
 
 
 @dataclass
@@ -60,13 +60,13 @@ class Offer:
     taker: str
     give: dict[str, float]
     want: dict[str, float]
-    period: int
+    episode: int
     status: str = "open"
 
     def to_json(self) -> dict:
         return {"offer_id": self.offer_id, "from": self.maker, "to": self.taker,
                 "give": self.give, "want": self.want,
-                "period": self.period, "status": self.status}
+                "episode": self.episode, "status": self.status}
 
 
 @dataclass
@@ -75,7 +75,7 @@ class Trader:
     index: int
     holdings: list[float]
     spent: float = 0.0
-    produced_this_period: bool = False
+    produced_this_episode: bool = False
     #: Index into the message log of the last item this trader has read.
     read_cursor: int = 0
 
@@ -85,15 +85,15 @@ class World:
     """One island, one run. Deterministic given the island and the seed."""
 
     island: Island
-    periods: int
+    episodes: int
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
-    period: int = 0
+    episode: int = 0
     stage: str = FLOOR
     traders: dict[str, Trader] = field(default_factory=dict)
     log: list[Message] = field(default_factory=list)
     offers: dict[str, Offer] = field(default_factory=dict)
-    #: One row of per-agent utilities per closed period.
-    period_utilities: list[list[float]] = field(default_factory=list)
+    #: One row of per-agent utilities per closed episode.
+    episode_utilities: list[list[float]] = field(default_factory=list)
     consumed: list[float] = field(default_factory=list)
     _next_offer: int = 1
     #: Counters that separate one kind of non-trade from another. A bell
@@ -155,7 +155,7 @@ class World:
         self._trader(name)
         if not isinstance(text, str) or not text.strip():
             raise ActionError("a post needs text")
-        self.log.append(Message(name, text, True, None, self.period, self.stage))
+        self.log.append(Message(name, text, True, None, self.episode, self.stage))
         self.posts += 1
         self.chars += len(text)
         return {"ok": True, "channel": "board"}
@@ -168,7 +168,7 @@ class World:
             raise ActionError("you cannot message yourself")
         if not isinstance(text, str) or not text.strip():
             raise ActionError("a message needs text")
-        self.log.append(Message(name, text, False, to, self.period, self.stage))
+        self.log.append(Message(name, text, False, to, self.episode, self.stage))
         self.directs += 1
         self.chars += len(text)
         return {"ok": True, "channel": "direct"}
@@ -194,8 +194,8 @@ class World:
     def produce(self, name: str, plan: dict[str, float]) -> dict:
         self._require(PRODUCTION)
         t = self._trader(name)
-        if t.produced_this_period:
-            raise ActionError("you have already produced this period")
+        if t.produced_this_episode:
+            raise ActionError("you have already produced this episode")
         if not isinstance(plan, dict) or not plan:
             raise ActionError("a plan is {good: share} with at least one good")
         total = 0.0
@@ -219,7 +219,7 @@ class World:
                 t.holdings[g] += qty
                 made[self.goods[g]] = round(qty, 4)
         t.spent = total
-        t.produced_this_period = True
+        t.produced_this_episode = True
         return {"ok": True, "produced": made, "labour_unspent": round(1 - total, 4)}
 
     def offer(self, name: str, to: str, give: dict, want: dict) -> dict:
@@ -237,7 +237,7 @@ class World:
                     f"not {qty:.4f}; goods in open offers are already committed")
         oid = f"o{self._next_offer}"
         self._next_offer += 1
-        self.offers[oid] = Offer(oid, name, to, give_q, want_q, self.period)
+        self.offers[oid] = Offer(oid, name, to, give_q, want_q, self.episode)
         self.made += 1
         return {"ok": True, "offer_id": oid}
 
@@ -315,7 +315,7 @@ class World:
     def state(self, name: str) -> dict:
         t = self._trader(name)
         return {
-            "you": name, "period": self.period, "of_periods": self.periods,
+            "you": name, "episode": self.episode, "of_episodes": self.episodes,
             "stage": self.stage,
             "capacity": {g: round(self.island.capacity[t.index][i], 4)
                          for i, g in enumerate(self.goods)},
@@ -324,8 +324,8 @@ class World:
             "holdings": {g: round(t.holdings[i], 4)
                          for i, g in enumerate(self.goods)},
             "escrowed": {g: round(q, 4) for g, q in self._escrowed(name).items()},
-            "labour_left": round(1.0 - t.spent, 4) if not t.produced_this_period else 0.0,
-            "utility_if_period_ended_now": round(
+            "labour_left": round(1.0 - t.spent, 4) if not t.produced_this_episode else 0.0,
+            "utility_if_episode_ended_now": round(
                 utility(self.island.alpha[t.index], t.holdings), 6),
             "traders": sorted(self.traders),
         }
@@ -344,7 +344,7 @@ class World:
             if held < -_EPS:
                 raise AssertionError(f"negative total of {self.goods[g]}")
 
-    def close_period(self) -> list[float]:
+    def close_episode(self) -> list[float]:
         """The bell. Order matters and is 004's, deliberately.
 
         Offers expire first so escrow returns -- goods in escrow are goods
@@ -361,13 +361,13 @@ class World:
         for name in sorted(self.traders, key=lambda n: self.traders[n].index):
             t = self.traders[name]
             utils.append(utility(self.island.alpha[t.index], t.holdings))
-        self.period_utilities.append(utils)
+        self.episode_utilities.append(utils)
         for t in self.traders.values():
             for g in range(self.island.n_goods):
                 self.consumed[g] += t.holdings[g]
                 t.holdings[g] = 0.0
             t.spent = 0.0
-            t.produced_this_period = False
-        self.period += 1
+            t.produced_this_episode = False
+        self.episode += 1
         self.open(FLOOR)
         return utils
