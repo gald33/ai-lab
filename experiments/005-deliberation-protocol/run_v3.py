@@ -34,6 +34,7 @@ from barter.economy import draw_island  # noqa: E402
 
 
 from switchboard.client import Client  # noqa: E402
+from switchboard.config import ClientConfig  # noqa: E402
 
 from island.manager import MANAGER, Manager  # noqa: E402
 
@@ -43,6 +44,19 @@ STIM = HERE / "stimuli" / "v3"
 HUB = os.environ.get("SWITCHBOARD_URL", "http://127.0.0.1:8787")
 TOKEN = os.environ.get("SWITCHBOARD_TOKEN", "sb_public_lucille")
 WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
+
+def client_for(agent_id: str, workspace: str) -> Client:
+    """A client pinned to one workspace.
+
+    Workspace cannot come from the environment here: the arms run in threads of
+    one process and would share it. Each arm is its own workspace, so that two
+    arms cannot see each other's roster, inboxes or direct messages -- a
+    channel alone would not separate them, and `T1` in one arm and `T1` in the
+    other are different traders who must not share an identity.
+    """
+    return Client(ClientConfig(url=HUB, url_source="explicit", token=TOKEN,
+                               workspace=workspace, agent_id=agent_id))
+
 
 #: The only tools an agent has. Everything else it might want to do, it does by
 #: saying something on the channel.
@@ -119,16 +133,17 @@ clock. Keep going until the manager writes that the round is over, then stop."""
 
 
 def launch(name: str, arm: str, private: str, episodes: int,
-           workdir: Path) -> subprocess.Popen:
+           workdir: Path, workspace: str) -> subprocess.Popen:
     """One agent, one long-lived session. Started once and never called again."""
     home = workdir / name
     home.mkdir(parents=True, exist_ok=True)
     config = json.loads(json.dumps(MCP_CONFIG))
     config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_AGENT_ID"] = name
+    config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_WORKSPACE"] = workspace
     (home / ".mcp.json").write_text(json.dumps(config, indent=1))
     env = dict(os.environ)
     env.update({"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
-                "SWITCHBOARD_WORKSPACE": WORKSPACE,
+                "SWITCHBOARD_WORKSPACE": workspace,
                 "SWITCHBOARD_AGENT_ID": name})
     return subprocess.Popen(
         ["claude", "-p", instructions(arm, private, episodes),
@@ -154,15 +169,16 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     island = draw_island(agents, goods, seed=seed)
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
-    channel = f"island-{arm}-{seed}"
-    client = Client(agent_id=MANAGER)
+    workspace = f"{WORKSPACE}-{arm}-{seed}"
+    channel = "island"
+    client = client_for(MANAGER, workspace)
     mgr = Manager(island=island, client=client, channel=channel)
     for n in mgr.names:
-        mgr.bind(Client(agent_id=n).peer_id(n), n)
+        mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
 
     mgr.say(schedule_text(episodes, mgr.names))
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir)
+    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace)
              for n in mgr.names]
 
     def wait_until(deadline: float) -> None:
@@ -202,7 +218,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             "trajectory": mgr.episode_utilities,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
-            "channel": channel,
+            "workspace": workspace, "channel": channel,
             "channel_messages": len(client.history(channel, limit=1000)),
             "seconds": round(time.time() - started, 1)}
 
