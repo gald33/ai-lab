@@ -21,7 +21,9 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -72,11 +74,11 @@ ARMS = {
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
 #: giving it.
-ACK_SECONDS = 60
-PRODUCTION_SECONDS = 45
-EPISODE_SECONDS = 120
+ACK_SECONDS = 120
+PRODUCTION_SECONDS = 30
+EPISODE_SECONDS = 60
 
-#: How often the manager looks at the board. It is a reader, so this only
+#: How often the manager looks at the channel. It is a reader, so this only
 #: decides how promptly receipts appear, never when an agent may act.
 DRAIN_EVERY = 1.5
 
@@ -103,7 +105,11 @@ def instructions(arm: str, private: str, episodes: int) -> str:
 This round is {episodes} episodes long, and every episode lasts
 {EPISODE_SECONDS} seconds. Production is open for the first
 {PRODUCTION_SECONDS} seconds of each episode; the market is open from then
-until the bell.
+until the bell. Your capacities and tastes are the same in every episode of
+this round, and so is everyone else's.
+
+An episode is short. Reading the whole channel every time will cost you more of
+it than it is worth.
 
 Nobody will prompt you. Decide for yourself when to read and when to write. If
 there is nothing you want to do right now, wait a little and look again --
@@ -220,26 +226,37 @@ def main() -> None:
     wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
     print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
           f"episodes {args.episodes}  agents {args.agents}")
-    print(f"clock-bound: {wall:.1f} min per arm-round, "
-          f"{wall * len(args.arms) * args.rounds:.1f} min total\n")
+    print(f"clock-bound: {wall:.1f} min, and the arms run at the same time on "
+          f"separate channels, so the wall-clock is {wall:.1f} min however "
+          f"many arms there are.\n")
 
     from island.score import score  # noqa: PLC0415
 
-    records = []
-    for arm in args.arms:
-        for seed in range(1, args.rounds + 1):
-            rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
-                            agents=args.agents, goods=args.goods, outdir=outdir)
-            island = draw_island(args.agents, args.goods, seed=seed)
-            s = score(island, rec["trajectory"])
-            rec["score"] = s.to_json()
-            per = " ".join(f"{x:.2f}" for x in s.eff_episode)
+    jobs = [(arm, seed) for arm in args.arms
+            for seed in range(1, args.rounds + 1)]
+    lock = threading.Lock()
+
+    def one(job):
+        arm, seed = job
+        rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
+                        agents=args.agents, goods=args.goods, outdir=outdir)
+        s = score(draw_island(args.agents, args.goods, seed=seed),
+                  rec["trajectory"])
+        rec["score"] = s.to_json()
+        per = " ".join(f"{x:.2f}" for x in s.eff_episode)
+        with lock:
             print(f"  {arm:9s} seed {seed}  eff_round {s.eff_round:.3f}  "
                   f"floor {s.floor:.3f}  per-episode [{per}]  "
                   f"settled {rec['settled']}  refused {rec['refused']}  "
                   f"talk {rec['talk']}  ack {len(rec['acknowledged'])}/"
-                  f"{args.agents}  {rec['seconds'] / 60:.0f}m")
-            records.append(rec)
+                  f"{args.agents}  {rec['seconds'] / 60:.0f}m", flush=True)
+        return rec
+
+    # Arms are independent worlds on independent channels. Running them at the
+    # same time is not a shortcut: nothing crosses between them, and the clock
+    # each one runs on is its own.
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+        records = list(pool.map(one, jobs))
 
     path = outdir / "v3.json"
     path.write_text(json.dumps(
