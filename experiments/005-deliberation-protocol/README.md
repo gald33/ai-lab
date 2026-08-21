@@ -1,6 +1,8 @@
 # 005 — The deliberation protocol
 
-**Status: pilot run and passed. The paid 2×2 is designed and unrun.**
+**Status: run.** Pilot passed; all four cells run with agents. The headline is
+a **null** — the deliberation protocol produced no detectable coordination gain
+over a matched placebo. See the [run report](../../reports/2026-08-21-005-deliberation-protocol.md).
 
 - Design: this document.
 - Frozen commitments: [`PREREGISTRATION.md`](PREREGISTRATION.md) — primary
