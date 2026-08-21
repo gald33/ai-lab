@@ -1,0 +1,302 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "placebo",
+  "protocol",
+  "hint",
+  "both"
+ ],
+ "agents": 2,
+ "goods": 4,
+ "episodes_per_round": 8,
+ "schedule": {
+  "ack_seconds": 120,
+  "production_seconds": 30,
+  "episode_seconds": 60
+ },
+ "rounds": [
+  {
+   "arm": "placebo",
+   "seed": 1,
+   "episodes": 8,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.23146145891058936,
+     0.16325293136063887
+    ],
+    [
+     0.0,
+     0.16325293136063887
+    ],
+    [
+     0.23146145891058936,
+     0.16325293136063887
+    ],
+    [
+     0.0,
+     0.2180015849495193
+    ],
+    [
+     0.23146145891058936,
+     0.2180015849495193
+    ],
+    [
+     0.23146145891058936,
+     0.2180015849495193
+    ]
+   ],
+   "settled": 12,
+   "refused": 4,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island7-placebo-1",
+   "channel": "island",
+   "channel_messages": 61,
+   "seconds": 607.0,
+   "score": {
+    "eff_round": 0.468615,
+    "eff_round_upper": 0.47571,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.716729,
+     0.0,
+     0.716729,
+     0.0,
+     0.817508,
+     0.817508
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.577894,
+    "gain_worst": 0.499965,
+    "below_autarky": 2,
+    "zero_agent_episodes": 6,
+    "agent_episodes": 16,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "protocol",
+   "seed": 1,
+   "episodes": 8,
+   "trajectory": [
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ],
+    [
+     0.0,
+     0.1945658806624538
+    ]
+   ],
+   "settled": 10,
+   "refused": 0,
+   "talk": 8,
+   "acknowledged": [
+    "T2"
+   ],
+   "workspace": "island7-protocol-1",
+   "channel": "island",
+   "channel_messages": 56,
+   "seconds": 606.7,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.446249,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 8,
+    "agent_episodes": 16,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "hint",
+   "seed": 1,
+   "episodes": 8,
+   "trajectory": [
+    [
+     0.1320658290683801,
+     0.0
+    ],
+    [
+     0.17480158800051787,
+     0.08441275713831183
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.2073706520637475,
+     0.0
+    ],
+    [
+     0.2073706520637475,
+     0.11282709494865734
+    ],
+    [
+     0.2073706520637475,
+     0.0
+    ],
+    [
+     0.12921273726588797,
+     0.1787047378690179
+    ]
+   ],
+   "settled": 23,
+   "refused": 11,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island7-hint-1",
+   "channel": "island",
+   "channel_messages": 97,
+   "seconds": 607.2,
+   "score": {
+    "eff_round": 0.33202,
+    "eff_round_upper": 0.335469,
+    "eff_episode": [
+     0.0,
+     0.478066,
+     0.0,
+     0.0,
+     0.0,
+     0.580963,
+     0.0,
+     0.558024
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.393498,
+    "gain_worst": 0.215563,
+    "below_autarky": 2,
+    "zero_agent_episodes": 7,
+    "agent_episodes": 16,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "both",
+   "seed": 1,
+   "episodes": 8,
+   "trajectory": [
+    [
+     0.0,
+     0.14904459678088652
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.14904459678088652
+    ],
+    [
+     0.0,
+     0.14904459678088652
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.1569661497688491
+    ],
+    [
+     0.0,
+     0.1569661497688491
+    ]
+   ],
+   "settled": 9,
+   "refused": 4,
+   "talk": 15,
+   "acknowledged": [
+    "T2"
+   ],
+   "workspace": "island7-both-1",
+   "channel": "island",
+   "channel_messages": 69,
+   "seconds": 607.1,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.218194,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 11,
+    "agent_episodes": 16,
+    "first_above_floor": null
+   }
+  }
+ ]
+}
