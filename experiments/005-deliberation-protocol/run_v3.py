@@ -219,7 +219,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
             "workspace": workspace, "channel": channel,
-            "channel_messages": len(client.history(channel, limit=1000)),
+            "channel_messages": len(client.history(channel, limit=500)),
             "seconds": round(time.time() - started, 1)}
 
 
