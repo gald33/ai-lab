@@ -38,6 +38,13 @@ class FakeHub:
         self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
                           "channel": channel, "from": MANAGER, "body": body})
 
+    def envelope(self, who: str, text: str) -> None:
+        """A `say` that carried a timing forecast: the body is an envelope."""
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who,
+                          "body": {"text": text,
+                                   "timing_forecast": {"p50": "2026-01-01T00:00:00Z"}}})
+
     def as_(self, who: str, body: str) -> None:
         self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
                           "channel": "c", "from": who, "body": body})
@@ -193,6 +200,22 @@ def test_a_good_nobody_makes_zeroes_everyone():
         m.hub.as_(n, "PRODUCE bread=0.34 cloth=0.33 iron=0.33")
     m.drain()
     assert all(u == 0.0 for u in m.close_episode())
+
+
+def test_a_message_carrying_a_timing_forecast_is_still_read():
+    """Switchboard wraps a `say` that carries a forecast; the text is inside.
+
+    Two rounds reported 1/2 acknowledged because a trader's ACK arrived as an
+    envelope and the manager stringified the whole dict. Every match against it
+    failed silently -- an action that never settled and never refused.
+    """
+    m = fresh()
+    m.hub.envelope("T1", "ACK ready")
+    m.hub.envelope("T2", EVEN)
+    m.drain()
+    assert m.acknowledged == {"T1"}
+    assert m.holders["T2"].produced, "a wrapped PRODUCE must settle like a bare one"
+    assert m.refused == 0
 
 
 def test_an_acknowledgement_is_just_a_board_line():

@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]
 from barter.economy import Island, utility  # noqa: E402
 
 from switchboard.client import Client  # noqa: E402
+from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 
@@ -111,7 +112,15 @@ class Manager:
             author = self.alias.get(str(msg.get("from") or ""), "")
             if not author or author == MANAGER:
                 continue
-            self._consider(author, str(msg.get("body") or ""))
+            # A Switchboard `say` that carries a timing forecast arrives as an
+            # envelope, not a string. Stringifying it turns "ACK. Ready." into
+            # "{'text': 'ACK. Ready.', 'timing_forecast': {...}}" and every
+            # match against it fails -- which is how two protocol-arm rounds
+            # came to report 1/2 acknowledged when both traders had in fact
+            # acknowledged. Unwrap with Switchboard's own inverse rather than
+            # guessing at the shape.
+            body, _forecast = unwrap_forecast(msg.get("body"))
+            self._consider(author, body if isinstance(body, str) else "")
 
     def _consider(self, author: str, text: str) -> None:
         if author not in self.holders:
