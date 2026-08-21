@@ -2,7 +2,10 @@
 
 The runtime is the `claude` CLI headless, one process per agent-turn, run in an
 empty directory so the repository's own instructions cannot reach a
-participant. An agent's memory of the run is exactly what `prompt.turn` puts in
+participant. The cell's stimulus is passed as a system prompt rather than as
+user text: it is byte-identical across every turn of a cell, and sending it
+through the channel the runtime caches saves re-reading ~1,300 words on each of
+a round's 160 calls. An agent's memory of the run is exactly what `prompt.turn` puts in
 front of it, which makes "what this agent knew" a recorded fact.
 
 This module never repairs a malformed action into a plausible one. A production
@@ -85,13 +88,16 @@ def _read(obj: dict) -> list[dict]:
     return actions
 
 
-def _launch(prompt: str, cwd: str) -> str:
+def _launch(prompt: str, cwd: str, system: str | None = None) -> str:
     """One CLI call, retried through transport faults only."""
     last = ""
+    argv = ["claude", "-p", "--model", MODEL, "--max-turns", "1"]
+    if system:
+        argv += ["--append-system-prompt", system]
     for attempt in range(TRANSPORT_TRIES):
         try:
             proc = subprocess.run(
-                ["claude", "-p", "--model", MODEL, "--max-turns", "1"],
+                argv,
                 input=prompt, capture_output=True, text=True, cwd=cwd,
                 timeout=CALL_SECONDS)
             if proc.returncode == 0:
@@ -104,14 +110,14 @@ def _launch(prompt: str, cwd: str) -> str:
     raise TransportFault(f"cli failed {TRANSPORT_TRIES} times; last: {last}")
 
 
-def ask(prompt: str, cwd: str) -> Turn:
+def ask(prompt: str, cwd: str, system: str | None = None) -> Turn:
     started = time.perf_counter()
-    raw = _launch(prompt, cwd)
+    raw = _launch(prompt, cwd, system)
     try:
         return Turn(actions=_read(_extract(raw)), raw=raw,
                     seconds=time.perf_counter() - started)
     except AgentFault:
         pass
-    raw = _launch(prompt, cwd)
+    raw = _launch(prompt, cwd, system)
     return Turn(actions=_read(_extract(raw)), raw=raw, retried=True,
                 seconds=time.perf_counter() - started)

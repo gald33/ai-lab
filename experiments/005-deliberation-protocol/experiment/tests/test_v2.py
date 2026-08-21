@@ -292,7 +292,7 @@ def test_a_turn_prompt_carries_state_inbox_and_format():
 
 def test_a_refused_call_is_reported_and_never_repaired(monkeypatch):
     """The harness must not invent a production plan for a bad one."""
-    def stub(prompt, cwd):
+    def stub(prompt, cwd, system=None):
         if "production stage is open" in prompt:
             return Turn(actions=[{"call": "produce",
                                   "plan": {"bread": 0.9, "cloth": 0.9}}], raw="")
@@ -303,6 +303,33 @@ def test_a_refused_call_is_reported_and_never_repaired(monkeypatch):
     assert ep.outcome == "scored"
     assert ep.refused == 8, "every trader's over-budget plan should be refused"
     assert all(u == 0.0 for u in ep.trajectory[0]), "nobody produced anything"
+
+
+def test_the_stimulus_travels_as_a_system_prompt_not_as_user_text(monkeypatch):
+    """Caching, and parity, both depend on this split.
+
+    The stimulus is byte-identical on every one of a round's turns, so it is
+    sent through the channel the runtime caches. If it leaked back into the
+    user message it would be re-read on every call -- and the turn text would
+    stop being the small volatile thing the cache design assumes.
+    """
+    seen: list[tuple[str, str | None]] = []
+
+    def stub(prompt, cwd, system=None):
+        seen.append((prompt, system))
+        return Turn(actions=[], raw="")
+
+    monkeypatch.setattr(round_mod, "ask", stub)
+    run_round(island=ISLAND, cell="both", seed=4, episodes=1, cwd=".",
+              concurrency=2)
+    assert seen, "the round made calls"
+    for prompt, system in seen:
+        assert system, "every call carries the stimulus as a system prompt"
+        assert "What the island is" in system
+        assert "A shared way of talking" in system, "and the cell's treatment"
+        assert "What the island is" not in prompt, \
+            "the stimulus must not also be in the user message"
+    assert len({s for _, s in seen}) == 1, "and it is identical on every call"
 
 
 def test_every_call_the_base_block_advertises_is_accepted(monkeypatch):
@@ -318,7 +345,7 @@ def test_every_call_the_base_block_advertises_is_accepted(monkeypatch):
                                  _re.M))
     calls = [{"call": c} for c in sorted(advertised)]
 
-    def stub(prompt, cwd):
+    def stub(prompt, cwd, system=None):
         return Turn(actions=calls, raw="")
     monkeypatch.setattr(round_mod, "ask", stub)
     ep = run_round(island=ISLAND, cell="bare", seed=1, episodes=1, cwd=".",
@@ -338,7 +365,7 @@ def test_memory_carries_across_episodes_inside_a_round(monkeypatch):
     """
     seen: list[str] = []
 
-    def stub(prompt, cwd):
+    def stub(prompt, cwd, system=None):
         seen.append(prompt)
         if "production stage is open" in prompt:
             return Turn(actions=[{"call": "produce",
@@ -368,7 +395,7 @@ def test_history_is_trimmed_oldest_first_and_says_so():
 
 
 def test_the_stubbed_loop_completes_and_is_scorable(monkeypatch):
-    def stub(prompt, cwd):
+    def stub(prompt, cwd, system=None):
         if "production stage is open" in prompt:
             return Turn(actions=[{"call": "produce",
                                   "plan": {"bread": .25, "cloth": .25,

@@ -19,7 +19,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from .prompt import turn as build_turn
+from .prompt import stimulus, turn as build_turn
 from .runner import AgentFault, TransportFault, Turn, ask
 from .world import ActionError, FLOOR, MARKET, PRODUCTION, World
 
@@ -127,6 +127,9 @@ def run_round(*, island, cell: str, seed: int, episodes: int, cwd: str,
               concurrency: int = 8) -> Round:
     world = World(island=island, episodes=episodes)
     rec = Round(cell=cell, seed=seed)
+    # Built once per round and sent as a system prompt on every call, because
+    # it does not vary and the runtime caches that channel.
+    system = stimulus(cell, episodes)
     names = sorted(world.traders)
     rng = random.Random(seed * 7919 + 13)
     results: dict[str, list[str]] = {n: [] for n in names}
@@ -148,7 +151,7 @@ def run_round(*, island, cell: str, seed: int, episodes: int, cwd: str,
                             pending=world.pending(n), results=results[n],
                             episodes=episodes, history=history[n])
                     with ThreadPoolExecutor(max_workers=concurrency) as pool:
-                        futures = {n: pool.submit(ask, prompts[n], cwd)
+                        futures = {n: pool.submit(ask, prompts[n], cwd, system)
                                    for n in order}
                         replies: dict[str, Turn] = {n: f.result()
                                                     for n, f in futures.items()}

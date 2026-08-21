@@ -1,6 +1,8 @@
 """Assembling what one agent sees on one turn.
 
-Two layers, kept apart so the experiment's factors cannot leak into each other:
+Two layers, kept apart so the experiment's factors cannot leak into each other
+-- and, since they are separated anyway, sent down two different channels so
+the invariant one can be cached.
 
 * **The stimulus** -- base, plus the cell's treatment blocks, read from the
   frozen files in ``stimuli/v2`` rather than duplicated here. Identical on
@@ -19,6 +21,16 @@ forgotten something should know that it has.
 
 ``tools/check_v2.py`` hashes the stimulus half and asserts the cells differ by
 exactly their treatments, so the parity claim is a test rather than a promise.
+
+Caching
+-------
+The stimulus is identical on every one of a round's 160 agent-turns, so it goes
+in the **system prompt**, which the runtime caches, rather than being re-sent as
+user text 160 times. What remains in the user message is ordered by how often it
+changes: the round history first, because it is strictly append-only and
+therefore a growing cacheable prefix, then this turn's state, inbox and open
+offers, which change every turn. Trimming the history rewrites that prefix and
+costs a cache miss, which is one more reason to trim rarely.
 """
 
 from __future__ import annotations
@@ -111,8 +123,12 @@ def _history(entries: list[str]) -> tuple[str, bool]:
 
 def turn(*, cell: str, state: dict, inbox: list[dict], pending: dict,
          results: list[str], episodes: int, history: list[str] | None = None) -> str:
-    """The full prompt for one agent on one turn."""
-    parts = [stimulus(cell, episodes), "", "---", ""]
+    """The turn half of the prompt. The stimulus half travels separately.
+
+    Ordered most-stable-first so that as much of it as possible is a cacheable
+    prefix: append-only history, then the volatile per-turn blocks.
+    """
+    parts = []
     if history:
         text, trimmed = _history(history)
         parts += [f"## What has happened so far this round", ""]
