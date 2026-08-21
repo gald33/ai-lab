@@ -41,6 +41,15 @@ from island.manager import MANAGER, Manager  # noqa: E402
 MODEL = "claude-haiku-4-5-20251001"
 STIM = HERE / "stimuli" / "v3"
 
+# A SWITCHBOARD_KEY in this process's environment makes the *manager* sign and
+# encrypt, whether or not the config asks for it, and the workspace becomes an
+# encrypted one. Agents launched without that key can still read, so the
+# failure looks partial and reads like a hub fault -- which is exactly how one
+# of them diagnosed it: "read operations work... the hub's signing service is
+# not responding to write requests". Nothing was wrong with the hub. Drop the
+# key before any client is built, so manager and agents are on the same footing.
+os.environ.pop("SWITCHBOARD_KEY", None)
+
 HUB = os.environ.get("SWITCHBOARD_URL", "http://127.0.0.1:8787")
 TOKEN = os.environ.get("SWITCHBOARD_TOKEN", "sb_public_lucille")
 WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")

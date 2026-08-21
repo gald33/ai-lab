@@ -1,0 +1,85 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "bare"
+ ],
+ "agents": 2,
+ "goods": 4,
+ "episodes_per_round": 8,
+ "schedule": {
+  "ack_seconds": 120,
+  "production_seconds": 30,
+  "episode_seconds": 60
+ },
+ "rounds": [
+  {
+   "arm": "bare",
+   "seed": 1,
+   "episodes": 8,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ]
+   ],
+   "settled": 0,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [],
+   "workspace": "island5-bare-1",
+   "channel": "island",
+   "channel_messages": 27,
+   "seconds": 606.2,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.0,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 16,
+    "agent_episodes": 16,
+    "first_above_floor": null
+   }
+  }
+ ]
+}
