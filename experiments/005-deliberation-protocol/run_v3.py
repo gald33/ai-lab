@@ -1,7 +1,10 @@
 """Start the sessions, run the clock, read the board, settle, score.
 
 That is the whole job. There is no scheduler here: agents are launched once and
-never called again. They read and write the board on their own initiative, at
+never called again. Agents reach the hub through the **native Switchboard MCP
+server** and nothing else -- there is no bespoke transport, no wrapper script,
+and no tool this experiment invented. The manager reaches the same channel
+through the Switchboard client, as one more participant. They read and write the board on their own initiative, at
 whatever moment they choose, and this process never waits for any of them. The
 clock advances on wall time whether anybody has spoken or not.
 
@@ -27,11 +30,34 @@ sys.path.insert(0, str(HERE.parent / "002-barter-conventions" / "experiment"))
 
 from barter.economy import draw_island  # noqa: E402
 
-from switchboard.board import Board  # noqa: E402
-from switchboard.manager import MANAGER, Manager  # noqa: E402
+
+from switchboard.client import Client  # noqa: E402
+
+from island.manager import MANAGER, Manager  # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
 STIM = HERE / "stimuli" / "v3"
+
+HUB = os.environ.get("SWITCHBOARD_URL", "http://127.0.0.1:8787")
+TOKEN = os.environ.get("SWITCHBOARD_TOKEN", "sb_public_lucille")
+WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
+
+#: The only tools an agent has. Everything else it might want to do, it does by
+#: saying something on the channel.
+TOOLS = ["mcp__switchboard__say", "mcp__switchboard__history",
+         "mcp__switchboard__inbox", "mcp__switchboard__dm",
+         "mcp__switchboard__roster", "mcp__switchboard__whoami",
+         "Bash(sleep:*)"]
+
+MCP_CONFIG = {
+    "mcpServers": {
+        "switchboard": {
+            "command": "switchboard-mcp",
+            "env": {"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
+                    "SWITCHBOARD_WORKSPACE": WORKSPACE},
+        }
+    }
+}
 
 #: arm -> (stimulus block or None, hint or not)
 ARMS = {
@@ -86,18 +112,23 @@ clock. Keep going until the manager writes that the round is over, then stop."""
     return "\n\n".join(parts)
 
 
-def launch(name: str, arm: str, private: str, episodes: int, workdir: Path,
-           board_path: Path) -> subprocess.Popen:
+def launch(name: str, arm: str, private: str, episodes: int,
+           workdir: Path) -> subprocess.Popen:
     """One agent, one long-lived session. Started once and never called again."""
     home = workdir / name
     home.mkdir(parents=True, exist_ok=True)
+    config = json.loads(json.dumps(MCP_CONFIG))
+    config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_AGENT_ID"] = name
+    (home / ".mcp.json").write_text(json.dumps(config, indent=1))
     env = dict(os.environ)
-    env.update({"BD_BOARD": str(board_path), "BD_NAME": name,
-                "BD_CURSOR": str(home / "cursor"),
-                "PATH": f"{HERE / 'switchboard'}:{env['PATH']}"})
+    env.update({"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
+                "SWITCHBOARD_WORKSPACE": WORKSPACE,
+                "SWITCHBOARD_AGENT_ID": name})
     return subprocess.Popen(
         ["claude", "-p", instructions(arm, private, episodes),
-         "--model", MODEL, "--max-turns", "400", "--allowedTools", "Bash"],
+         "--model", MODEL, "--max-turns", "400",
+         "--mcp-config", str(home / ".mcp.json"),
+         "--allowedTools", *TOOLS],
         cwd=home, env=env,
         stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
 
@@ -117,13 +148,16 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     island = draw_island(agents, goods, seed=seed)
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
-    board = Board(workdir / "board.jsonl")
-    mgr = Manager(island=island, board=board)
+    channel = f"island-{arm}-{seed}"
+    client = Client(agent_id=MANAGER)
+    mgr = Manager(island=island, client=client, channel=channel)
+    for n in mgr.names:
+        mgr.bind(Client(agent_id=n).peer_id(n), n)
     started = time.time()
 
-    board.say(MANAGER, schedule_text(episodes, mgr.names))
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir,
-                    workdir / "board.jsonl") for n in mgr.names]
+    mgr.say(schedule_text(episodes, mgr.names))
+    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir)
+             for n in mgr.names]
 
     def wait_until(deadline: float) -> None:
         while time.time() < deadline:
@@ -132,23 +166,23 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         mgr.drain()
 
     wait_until(started + ACK_SECONDS)
-    board.say(MANAGER, f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
+    mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
                        f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
                        f"Episode 1 opens now.")
 
     for e in range(episodes):
         mgr.production_open, mgr.market_open = True, False
         t0 = time.time()
-        board.say(MANAGER, f"episode {e + 1} of {episodes} is open. PRODUCE is "
+        mgr.say(f"episode {e + 1} of {episodes} is open. PRODUCE is "
                            f"settled for the next {PRODUCTION_SECONDS}s.")
         wait_until(t0 + PRODUCTION_SECONDS)
         mgr.production_open, mgr.market_open = False, True
-        board.say(MANAGER, "production is closed. PROPOSE and APPROVE are "
+        mgr.say("production is closed. PROPOSE and APPROVE are "
                            "settled until the bell.")
         wait_until(t0 + EPISODE_SECONDS)
         mgr.close_episode()
 
-    board.say(MANAGER, "the round is over. Stop; nothing further will settle.")
+    mgr.say("the round is over. Stop; nothing further will settle.")
     time.sleep(3)
     for p in procs:
         p.terminate()
@@ -162,9 +196,9 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             "trajectory": mgr.episode_utilities,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
-            "board_lines": len(board.read()),
-            "seconds": round(time.time() - started, 1),
-            "board": str(workdir / "board.jsonl")}
+            "channel": channel,
+            "channel_messages": len(client.history(channel, limit=1000)),
+            "seconds": round(time.time() - started, 1)}
 
 
 def main() -> None:
@@ -189,7 +223,7 @@ def main() -> None:
     print(f"clock-bound: {wall:.1f} min per arm-round, "
           f"{wall * len(args.arms) * args.rounds:.1f} min total\n")
 
-    from switchboard.score import score  # noqa: PLC0415
+    from island.score import score  # noqa: PLC0415
 
     records = []
     for arm in args.arms:

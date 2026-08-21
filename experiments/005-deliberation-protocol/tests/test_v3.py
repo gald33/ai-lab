@@ -16,11 +16,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]
                        / "002-barter-conventions" / "experiment"))
 
 from barter.economy import draw_island  # noqa: E402
-from switchboard.board import Board  # noqa: E402
-from switchboard.manager import MANAGER, Manager  # noqa: E402
-from switchboard.protocol import (Approve, Malformed, Produce,  # noqa: E402
-                                  Propose, parse)
-from switchboard.score import score  # noqa: E402
+from island.manager import MANAGER, Manager  # noqa: E402
+from island.protocol import (Approve, Malformed, Produce,  # noqa: E402
+                             Propose, parse)
+from island.score import score  # noqa: E402
+
+
+class FakeHub:
+    """A stand-in for the Switchboard client, so the gates stay offline.
+
+    It implements exactly the two calls the manager makes -- ``post`` and
+    ``history`` -- and returns rows shaped like the hub's. Testing the manager
+    against the real hub would be testing Switchboard, which is not this
+    experiment's code and has its own tests.
+    """
+
+    def __init__(self) -> None:
+        self.rows: list[dict] = []
+
+    def post(self, channel: str, body: str) -> None:
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": channel, "from": MANAGER, "body": body})
+
+    def as_(self, who: str, body: str) -> None:
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who, "body": body})
+
+    def history(self, channel: str, *, limit: int = 50, **kw) -> list[dict]:
+        return list(self.rows)
 
 ISLAND = draw_island(2, 4, seed=1)
 GOODS = ("bread", "cloth", "iron", "salt")
@@ -28,34 +51,12 @@ EVEN = "PRODUCE bread=0.25 cloth=0.25 iron=0.25 salt=0.25"
 
 
 def fresh() -> Manager:
-    d = Path(tempfile.mkdtemp())
-    return Manager(island=draw_island(2, 4, seed=1), board=Board(d / "b.jsonl"))
-
-
-# --- the board ----------------------------------------------------------
-
-def test_the_board_keeps_what_was_written_in_order():
-    b = Board(Path(tempfile.mkdtemp()) / "b.jsonl")
-    b.say("T1", "first")
-    b.say("T2", "second")
-    assert [(l.author, l.text) for l in b.read()] == [("T1", "first"),
-                                                      ("T2", "second")]
-
-
-def test_a_reader_can_resume_from_its_own_cursor():
-    b = Board(Path(tempfile.mkdtemp()) / "b.jsonl")
-    b.say("T1", "one")
-    seen = b.read()
-    b.say("T1", "two")
-    assert [l.text for l in b.since(seen[-1].seq + 1)] == ["two"]
-
-
-def test_nothing_on_the_board_is_ever_rewritten():
-    b = Board(Path(tempfile.mkdtemp()) / "b.jsonl")
-    b.say("T1", "one")
-    before = b.path.read_text()
-    b.say("T2", "two")
-    assert b.path.read_text().startswith(before)
+    hub = FakeHub()
+    m = Manager(island=draw_island(2, 4, seed=1), client=hub, channel="c")
+    for n in m.names:
+        m.bind(n, n)
+    m.hub = hub  # type: ignore[attr-defined]
+    return m
 
 
 # --- format -------------------------------------------------------------
@@ -86,12 +87,12 @@ def test_a_near_miss_is_malformed_and_never_guessed(bad):
 
 def test_the_manager_says_why_rather_than_repairing():
     m = fresh()
-    m.board.say("T1", "PRODUCE bread")
+    m.hub.as_("T1", "PRODUCE bread")
     m.drain()
     assert m.refused == 1 and m.settled == 0
     assert not m.holders["T1"].produced, "nothing was invented on the agent's behalf"
-    assert any(l.author == MANAGER and "not settled" in l.text
-               for l in m.board.read())
+    assert any(r["from"] == MANAGER and "not settled" in r["body"]
+               for r in m.hub.history("c"))
 
 
 # --- timing -------------------------------------------------------------
@@ -99,30 +100,30 @@ def test_the_manager_says_why_rather_than_repairing():
 def test_production_after_its_deadline_is_refused():
     m = fresh()
     m.production_open = False
-    m.board.say("T1", EVEN)
+    m.hub.as_("T1", EVEN)
     m.drain()
     assert m.refused == 1 and not m.holders["T1"].produced
 
 
 def test_the_market_is_shut_while_production_is_open():
     m = fresh()
-    m.board.say("T1", EVEN)
-    m.board.say("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
     m.drain()
     assert m.settled == 1 and m.refused == 1
 
 
 def test_producing_twice_in_one_episode_is_refused():
     m = fresh()
-    m.board.say("T1", EVEN)
-    m.board.say("T1", "PRODUCE bread=1.0")
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T1", "PRODUCE bread=1.0")
     m.drain()
     assert m.settled == 1 and m.refused == 1
 
 
 def test_the_labour_budget_is_enforced():
     m = fresh()
-    m.board.say("T1", "PRODUCE bread=0.7 iron=0.7")
+    m.hub.as_("T1", "PRODUCE bread=0.7 iron=0.7")
     m.drain()
     assert m.refused == 1
 
@@ -132,7 +133,7 @@ def test_the_labour_budget_is_enforced():
 def stocked() -> Manager:
     m = fresh()
     for n in m.names:
-        m.board.say(n, EVEN)
+        m.hub.as_(n, EVEN)
     m.drain()
     m.production_open, m.market_open = False, True
     return m
@@ -141,18 +142,18 @@ def stocked() -> Manager:
 def test_an_open_proposal_commits_the_goods_it_offers():
     m = stocked()
     free = m._free("T1", "bread")
-    m.board.say("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=salt:0.1")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=salt:0.1")
     m.drain()
-    m.board.say("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=iron:0.1")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=iron:0.1")
     m.drain()
     assert m.refused == 1, "the same goods cannot back two open proposals"
 
 
 def test_only_the_addressee_can_approve():
     m = stocked()
-    m.board.say("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
     m.drain()
-    m.board.say("T1", "APPROVE p1")
+    m.hub.as_("T1", "APPROVE p1")
     m.drain()
     assert m.refused == 1
     assert m.proposals["p1"].status == "open"
@@ -161,14 +162,14 @@ def test_only_the_addressee_can_approve():
 def test_approving_moves_goods_both_ways_and_settles_once():
     m = stocked()
     b1 = m._free("T1", "bread")
-    m.board.say("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.04")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.04")
     m.drain()
-    m.board.say("T2", "APPROVE p1")
+    m.hub.as_("T2", "APPROVE p1")
     m.drain()
     assert m.proposals["p1"].status == "settled"
     assert m._free("T1", "bread") == pytest.approx(b1 - 0.05)
     assert m._free("T1", "salt") > 0
-    m.board.say("T2", "APPROVE p1")
+    m.hub.as_("T2", "APPROVE p1")
     m.drain()
     assert m.refused == 1
 
@@ -177,7 +178,7 @@ def test_approving_moves_goods_both_ways_and_settles_once():
 
 def test_open_proposals_lapse_at_the_bell_and_holdings_are_eaten():
     m = stocked()
-    m.board.say("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
     m.drain()
     m.close_episode()
     assert m.proposals["p1"].status == "lapsed"
@@ -189,14 +190,14 @@ def test_open_proposals_lapse_at_the_bell_and_holdings_are_eaten():
 def test_a_good_nobody_makes_zeroes_everyone():
     m = fresh()
     for n in m.names:
-        m.board.say(n, "PRODUCE bread=0.34 cloth=0.33 iron=0.33")
+        m.hub.as_(n, "PRODUCE bread=0.34 cloth=0.33 iron=0.33")
     m.drain()
     assert all(u == 0.0 for u in m.close_episode())
 
 
 def test_an_acknowledgement_is_just_a_board_line():
     m = fresh()
-    m.board.say("T1", "ACK — schedule understood")
+    m.hub.as_("T1", "ACK — schedule understood")
     m.drain()
     assert m.acknowledged == {"T1"}
     assert m.settled == 0, "acknowledging is not an economic action"
@@ -206,8 +207,8 @@ def test_an_acknowledgement_is_just_a_board_line():
 
 def test_scoring_reads_settled_state_not_what_anyone_claimed():
     m = fresh()
-    m.board.say("T1", EVEN)
-    m.board.say("T2", "I produced a huge amount of everything")
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T2", "I produced a huge amount of everything")
     m.drain()
     utils = m.close_episode()
     assert utils[0] > 0 and utils[1] == 0.0

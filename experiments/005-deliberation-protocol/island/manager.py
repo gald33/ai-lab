@@ -1,9 +1,14 @@
 """The manager: a reader of the board and a settler of state.
 
 It never calls an agent, never asks an agent for anything, and never waits for
-one. It watches the board, recognises the three formatted messages, settles
-them against the island, and writes its own lines back so that what it did is
-visible to everyone -- a receipt is a board line like any other.
+one. It reads the Switchboard channel, recognises the three formatted messages,
+settles them against the island, and says its own lines back so that what it
+did is visible to everyone -- a receipt is a channel message like any other.
+
+The board here is **native Switchboard**, reached through its own client. The
+agents reach the same channel through the Switchboard MCP server. There is no
+intermediate script, no bespoke transport, and nothing either side can call
+that Switchboard does not already provide.
 
 It enforces exactly three things:
 
@@ -26,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]
 
 from barter.economy import Island, utility  # noqa: E402
 
-from .board import Board  # noqa: E402
+from switchboard.client import Client  # noqa: E402
+
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 
 MANAGER = "manager"
@@ -55,10 +61,11 @@ class Proposal:
 
 @dataclass
 class Manager:
-    """Reads the board from a cursor; settles what it recognises."""
+    """Reads the channel from a cursor; settles what it recognises."""
 
     island: Island
-    board: Board
+    client: Client
+    channel: str = "island"
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
     names: tuple[str, ...] = ()
     episode: int = 0
@@ -66,11 +73,16 @@ class Manager:
     production_open: bool = True
     #: True while PROPOSE and APPROVE will still be settled this episode.
     market_open: bool = False
-    cursor: int = 0
+    #: Message ids already considered. Switchboard history is append-only, so
+    #: a seen-set is enough and no ordering assumption is needed.
+    seen: set[str] = field(default_factory=set)
     holders: dict[str, Holder] = field(default_factory=dict)
     proposals: dict[str, Proposal] = field(default_factory=dict)
     episode_utilities: list[list[float]] = field(default_factory=list)
     acknowledged: set[str] = field(default_factory=set)
+    #: Switchboard peer id -> trader name. Filled in as agents register, so
+    #: the manager scores the trader rather than the transport's identity.
+    alias: dict[str, str] = field(default_factory=dict)
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -84,13 +96,22 @@ class Manager:
 
     # --- reading -----------------------------------------------------------
 
+    def say(self, text: str) -> None:
+        self.client.post(self.channel, text)
+
     def drain(self) -> None:
         """Read whatever has appeared since last time. Never blocks anyone."""
-        for line in self.board.since(self.cursor):
-            self.cursor = line.seq + 1
-            if line.author == MANAGER:
+        rows = sorted(self.client.history(self.channel, limit=500),
+                      key=lambda r: r.get("seq", 0))
+        for msg in rows:
+            mid = str(msg.get("id"))
+            if mid in self.seen:
                 continue
-            self._consider(line.author, line.text)
+            self.seen.add(mid)
+            author = self.alias.get(str(msg.get("from") or ""), "")
+            if not author or author == MANAGER:
+                continue
+            self._consider(author, str(msg.get("body") or ""))
 
     def _consider(self, author: str, text: str) -> None:
         if author not in self.holders:
@@ -103,7 +124,7 @@ class Manager:
             action = parse(text)
         except Malformed as exc:
             self.refused += 1
-            self.board.say(MANAGER, f"@{author} not settled: {exc}")
+            self.say(f"@{author} not settled: {exc}")
             return
         if action is None:
             self.talk += 1
@@ -117,7 +138,7 @@ class Manager:
                 self._approve(author, action)
         except Refused as exc:
             self.refused += 1
-            self.board.say(MANAGER, f"@{author} not settled: {exc}")
+            self.say(f"@{author} not settled: {exc}")
 
     # --- settling ----------------------------------------------------------
 
@@ -150,7 +171,7 @@ class Manager:
             made[good] = round(qty, 4)
         h.spent, h.produced = total, True
         self.settled += 1
-        self.board.say(MANAGER, f"@{author} produced {made}; "
+        self.say(f"@{author} produced {made}; "
                                 f"{round(1 - total, 4)} labour unspent")
 
     def _propose(self, author: str, action: Propose) -> None:
@@ -169,7 +190,7 @@ class Manager:
         self.proposals[pid] = Proposal(pid, author, action.to, action.give,
                                        action.want, self.episode)
         self.settled += 1
-        self.board.say(MANAGER, f"{pid}: {author} offers {action.give} to "
+        self.say(f"{pid}: {author} offers {action.give} to "
                                 f"{action.to} for {action.want} — open until "
                                 f"the bell")
 
@@ -198,7 +219,7 @@ class Manager:
             maker.holdings[g] += qty
         p.status = "settled"
         self.settled += 1
-        self.board.say(MANAGER, f"{p.pid} settled: {p.maker} and {author} "
+        self.say(f"{p.pid} settled: {p.maker} and {author} "
                                 f"exchanged {p.give} for {p.want}")
 
     # --- the clock ---------------------------------------------------------
@@ -220,11 +241,15 @@ class Manager:
             h.spent, h.produced = 0.0, False
         self.episode += 1
         self.production_open, self.market_open = True, False
-        self.board.say(MANAGER, f"bell — episode {self.episode} closed. "
+        self.say(f"bell — episode {self.episode} closed. "
                                 f"{len(lapsed)} proposal(s) lapsed. "
                                 f"Everything held has been consumed; stocks and "
                                 f"labour are reset.")
         return utils
+
+    def bind(self, peer_id: str, name: str) -> None:
+        """Bind a Switchboard identity to a trader name, once, at launch."""
+        self.alias[peer_id] = name
 
     def private_state(self, name: str) -> str:
         h = self.holders[name]
