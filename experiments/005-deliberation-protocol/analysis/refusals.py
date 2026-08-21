@@ -58,11 +58,11 @@ def main(path: str) -> None:
     calls: Counter[str] = Counter()
     by_stage: Counter[str] = Counter()
     refusals: Counter[str] = Counter()
-    produced_in_period: Counter[tuple[int, int]] = Counter()
+    produced_in_episode: Counter[tuple[int, int]] = Counter()
     turns = 0
     examples: dict[str, str] = {}
 
-    for ep in data["episodes"]:
+    for ep in data["rounds"]:
         for row in ep.get("transcript", []):
             turns += 1
             for a in row["actions"]:
@@ -76,7 +76,7 @@ def main(path: str) -> None:
             if row["stage"] == "production":
                 for a, r in zip(row["actions"], row["results"]):
                     if a.get("call") == "produce" and not r.startswith("REFUSED"):
-                        produced_in_period[(ep["seed"], row["period"])] += 1
+                        produced_in_episode[(ep["seed"], row["episode"])] += 1
 
     print(f"{turns} agent-turns, {sum(calls.values())} calls, "
           f"{sum(refusals.values())} refused "
@@ -91,17 +91,17 @@ def main(path: str) -> None:
         print(f"  {n:5d}  {name}")
         print(f"         e.g. {examples[name][:100]}")
 
-    print("\ntraders who actually produced, per (seed, period)")
+    print("\ntraders who actually produced, per (seed, episode)")
     agents = data["agents"]
-    missed = [k for k, v in produced_in_period.items() if v < agents]
-    for seed, period in sorted(produced_in_period):
-        n = produced_in_period[(seed, period)]
+    missed = [k for k, v in produced_in_episode.items() if v < agents]
+    for seed, episode in sorted(produced_in_episode):
+        n = produced_in_episode[(seed, episode)]
         flag = "" if n == agents else "   <-- not everyone worked"
-        print(f"  seed {seed} period {period}: {n}/{agents}{flag}")
+        print(f"  seed {seed} episode {episode}: {n}/{agents}{flag}")
     if missed:
-        print(f"\n{len(missed)} of {len(produced_in_period)} periods had at "
+        print(f"\n{len(missed)} of {len(produced_in_episode)} episodes had at "
               f"least one trader produce nothing.\nWith one production turn per "
-              f"period, a trader that talks instead of working\nhas no second "
+              f"episode, a trader that talks instead of working\nhas no second "
               f"chance -- which is a property of the clock, not of the world.")
 
 
