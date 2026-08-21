@@ -168,8 +168,8 @@ configuration is **accepted** iff all four hold:
 
 | # | criterion | test |
 |---|---|---|
-| P1 | not trivial | median `W` over the sweep's worlds is **≤ 0.85** of the exchange ceiling |
-| P2 | not hopeless | median `W` is **≥ 1.05 ×** the autarky floor in at least **40%** of worlds |
+| P1 | not trivial | median `W` over the sweep's worlds is **≤ 0.85** of the exchange ceiling, both as efficiency lower bounds |
+| P2 | not hopeless | `W` is **≥ 1.05 ×** the autarky floor in at least **40%** of worlds, both as efficiency lower bounds |
 | P3 | genuine coordination difficulty | at least **15%** of agent-periods are zero-utility, i.e. coverage actually fails sometimes |
 | P4 | headroom to move | interquartile range of `W` across worlds is **≥ 0.10**, over **≥ 12** scored worlds |
 
@@ -236,27 +236,42 @@ Listed because they are unresolved, not because they are handled.
 ## Population size is a parameter
 
 `N` is a design parameter, not a constant, and `analysis/world_probe.py`
-measures what it does to the world before any agent is involved. Measured over
-24 islands per row, 4 goods, benchmarks as a share of the equal-weight planner
-point:
+measures what it does to the world before any agent is involved.
 
-| agents | labour/good | autarky floor | exchange ceiling | gap | gap range |
-|---|---|---|---|---|---|
-| **2** | 0.50 | 0.786 | 1.002 | **0.242** | 0.042–0.495 |
-| 3 | 0.75 | 0.636 | 1.001 | 0.362 | 0.097–0.592 |
-| 4 | 1.00 | 0.604 | 0.999 | 0.403 | 0.186–0.717 |
-| 6 | 1.50 | 0.505 | 0.991 | 0.472 | 0.255–0.609 |
-| 8 | 2.00 | 0.491 | 0.992 | 0.495 | 0.346–0.622 |
-| 12 | 3.00 | 0.473 | 0.989 | 0.496 | 0.404–0.657 |
-| 16 | 4.00 | 0.465 | 0.990 | 0.521 | 0.450–0.642 |
+Both benchmarks are put through **`economy.efficiency`** — the same certified
+sandwich the primary metric `W` uses — so this table and every number the
+experiment will later report are on one scale. An earlier cut of this probe
+divided sums of Cobb-Douglas utilities by the equal-weight planner point; that
+denominator is the Nash bargaining solution rather than a utilitarian ceiling,
+so the Walrasian numerator exceeded it at `N = 2` and `N = 3` and the column was
+not a distance to anything. `efficiency` has neither problem, and it reports the
+width of its own bracket.
 
-The **gap** — exchange ceiling minus autarky floor — is the entire prize for
-dealing with anyone at all, and it is the ceiling on any treatment effect. It
-rises steeply to about `N = 6` and is nearly flat after `N = 8`.
+24 islands per row, 4 goods, efficiency lower bounds:
+
+| agents | labour/good | autarky floor | exchange ceiling | gap | gap range | max bracket |
+|---|---|---|---|---|---|---|
+| **2** | 0.50 | 0.761 | 0.988 | **0.224** | 0.027–0.464 | 0.0251 |
+| 3 | 0.75 | 0.636 | 0.996 | 0.354 | 0.077–0.572 | 0.0194 |
+| 4 | 1.00 | 0.595 | 0.998 | 0.401 | 0.189–0.604 | 0.0076 |
+| 6 | 1.50 | 0.505 | 0.999 | 0.494 | 0.261–0.604 | 0.0080 |
+| **8** | 2.00 | 0.492 | 1.000 | **0.508** | 0.340–0.604 | 0.0022 |
+| 12 | 3.00 | 0.490 | 1.000 | 0.509 | 0.441–0.633 | 0.0022 |
+| 16 | 4.00 | 0.455 | 1.000 | 0.544 | 0.453–0.645 | 0.0027 |
+
+The **gap** — exchange ceiling minus autarky floor, both as efficiency lower
+bounds — is the entire prize for dealing with anyone at all, and therefore the
+ceiling on any treatment effect. It rises steeply to about `N = 6` and is flat
+from `N = 8` to `N = 12`.
+
+**max bracket** is the widest sandwich in the row, and it is itself a reason to
+avoid small populations: at `N = 2` the bracket is **0.025**, more than ten
+times its width at `N = 8`, so the benchmark that anchors the pilot gate is at
+its least certain exactly where the prize is smallest.
 
 **`N = 2` is the worst available choice for this experiment.** Its gap is the
-smallest of any size tried, half of `N = 8`'s, and its island-to-island range
-(0.042–0.495) is wider than its median — so a large share of two-agent worlds
+smallest of any size tried, 0.224 against `N = 8`'s 0.508, and its
+island-to-island range (0.027–0.464) is wider than its median — so a large share of two-agent worlds
 have almost nothing on the table, and a paired test would be dominated by which
 worlds happened to be drawn. Two agents also removes the couplings the design
 rests on: there is no assignment problem worth talking about between two people
@@ -264,7 +279,7 @@ who each have enough labour to cover every good alone, congestion barely bites,
 and a "public board" with one reader on it is a direct message. A conversational
 protocol is close to definitionally untestable on a two-party conversation.
 
-`N = 8` is the default: it is at the flat part of the gap curve, it has the
-narrowest gap range of the sizes below 12, and it is the smallest size at which
-the board carries a genuinely multi-party conversation. `N` is nonetheless
+`N = 8` is the default: it is where the gap curve flattens, its bracket is the
+tightest measured, its gap range is the narrowest below `N = 12`, and it is the
+smallest size at which the board carries a genuinely multi-party conversation. `N` is nonetheless
 exposed as a parameter so the pilot can move it if P1–P4 demand it.
