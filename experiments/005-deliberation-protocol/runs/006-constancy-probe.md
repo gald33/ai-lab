@@ -1,6 +1,6 @@
 # Run 006 — Does saying what constancy *implies* change anything?
 
-**Opened:** 2026-08-22 · **Status:** specified
+**Opened:** 2026-08-22 · **Status:** running
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -41,7 +41,8 @@ way to see what the fix alone did. Conflating the two was the thing to avoid.
 | models | `claude-haiku-4-5-20251001` |
 | stimuli | `stimuli/v3/base.md` body sha256 `c1ff3e80038c66314adcfbf711f5f873d4d129fcb02a2321400b3200fdd2b342`; `stimuli/probe/constant.md`, **not frozen** |
 | command | `python run_v3.py --arms probe-bare probe-constant --rounds 3 --episodes 10 --episode-seconds 180 --agents 4 --no-control --out results/006-probe` |
-| cost | **24 agent sessions**, ~33 min, six rounds in one wave. Paid: needs an explicit go, recorded here. |
+| cost | **24 agent sessions**, ~33 min, six rounds in one wave. Expected spend at that size. |
+| go | Given by the owner on 2026-08-22 ("run it"), before launch. |
 
 ## The two comparisons
 
