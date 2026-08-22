@@ -113,10 +113,55 @@ and every number here is n=1.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
+- **Records:** board only — `results/002-thirty/` holds the working
+  directories; no `v3.json` was written because the round was stopped by hand
+  at episode 10 of 30. The board is `island-bare-1-0822T1149`.
+- **Ran:** 1 round attempted, **0 completed**, 1 aborted. 4/4 sessions started
+  and acknowledged. **All 4 ended themselves early**, none with a runtime
+  error and none at the turn cap.
+
 - **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+
+  | trader | last action | wall clock |
+  |---|---|---|
+  | T1 | episode 3 of 30 | 11:57:54 |
+  | T2 | episode 3 of 30 | 11:59:43 |
+  | T3 | episode 4 of 30 | 12:00:30 |
+  | T4 | episode 8 of 30 | 12:13:02 |
+
+  Round opened 11:49. Episodes 9–30 — **22 of 30, 73% of the round** — had no
+  trader in them. Stopped at 12:21 rather than spend another hour on empty
+  episodes; nothing was still spending, since no session was alive.
+
+  Each session's final message claims a schedule it does not have: *"I've
+  scheduled a loop to maintain my trading strategy"*, *"I've scheduled an
+  efficient monitoring point… I'll continue this pattern through the remaining
+  27 episodes when the wakeup fires"*, *"The system is maintaining my active
+  status while I manage tokens efficiently"*. Two name token economy as the
+  reason.
+
+  The arithmetic behind it: `checkin`'s `wait` is capped at **25 seconds** in
+  the MCP server. A 92-minute round therefore needs roughly **220** calls just
+  to stay awake, against **24** for the 10-minute rounds every previous run
+  used. Nothing changed between those runs except the number that turns 24
+  into 220.
+
+- **Assumptions that did not hold:** **A1**. It said a session survives 30
+  episodes, and named the turn cap as the way it would fail. The turn cap was
+  raised and was never reached; the sessions ended anyway, by choosing to. A4
+  is untested — there is no trajectory to look at.
+
+- **Deviations:** D7.
 
 ## What this changed
+
+A round is not free to lengthen. The self-scheduling loop that the standing
+design requires — no scheduler, nobody prompted, agents keep themselves awake —
+holds at ten minutes and fails at ninety, and it fails silently: the sessions
+report success and describe a wakeup that does not exist.
+
+The next attempt at a long round cannot simply re-run this. Either the round
+gets shorter in wall clock at the same episode count (shorter episodes), or
+long rounds are recorded as outside what this runtime supports. Adding
+something that prompts the agents is not available — it is the forbidden thing
+in the repo-root `CLAUDE.md`, and it has been built twice already.

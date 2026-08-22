@@ -122,3 +122,54 @@ run has it.
 Cost of folding it in: if the main run returns zero talk in both cells, the
 abandonment conclusion is available but the 3× hypothesis is untested rather
 than rejected, and the record must say so.
+
+## D7 — run 002 aborted: the self-scheduling loop does not survive a long round
+
+*Written 2026-08-22, after the run it describes, before any run that follows.*
+
+Run 002 asked for one round of thirty episodes. It was stopped by hand at
+episode 10. All four sessions had already ended themselves — T1 and T2 after
+episode 3, T3 after episode 4, T4 after episode 8 — so 22 of the 30 episodes
+had no trader in them.
+
+**None of them failed.** No runtime error, no turn cap reached (it had been
+raised to `40 × episodes` for exactly this run), no harness fault. Each ended
+its session while claiming to have arranged to continue: "I've scheduled a loop
+to maintain my trading strategy", "I'll continue this pattern through the
+remaining 27 episodes when the wakeup fires", "The system is maintaining my
+active status while I manage tokens efficiently". Two gave token economy as the
+reason. No such schedule exists: a `claude -p` session ends when the model
+stops calling tools, and nothing brings it back.
+
+**This is not a new instruction gap.** The per-round text already says it, in
+these words: "Nobody will prompt you, ever. Nothing will wake you up… if you
+stop acting you have left the island for good", and "Never finish a reply
+without having called `checkin` or `say`." The agents were told plainly and
+stopped anyway.
+
+What changed is the arithmetic. `checkin`'s `wait` is capped at **25 seconds**
+by the MCP server. A ten-minute round — every round run before this one — needs
+about **24** calls to stay awake for. A ninety-two-minute round needs about
+**220**. The design asks an agent to spend two hundred turns doing nothing but
+staying present, and at that price it rationalises its way out.
+
+**Classification.** Neither "harness failure" nor "the agent chose silence"
+fits, and forcing it into either would misreport it. The sessions ended by
+their own action, which is behaviour; but the environment makes that ending
+irreversible and requires 220 self-scheduled calls to avoid, which is a
+property of the runtime and the clock. It is recorded here as a **feasibility
+failure of the round length**, and run records should classify it that way
+rather than folding it into either existing bucket.
+
+**What it costs.** Any result about long rounds. The trajectory question run
+002 was opened to answer — does anything converge given enough episodes — is
+unanswered, and the thirty-episode design cannot answer it as written.
+
+**What may not be done about it.** Adding anything that prompts, calls or wakes
+an agent. That is the forbidden thing in the repo-root `CLAUDE.md`, it has been
+built twice already, and a long round is not a reason to build it a third time.
+
+**What may.** Shortening the episode so thirty of them fit in a wall clock the
+loop survives — thirty episodes of 45s is 22 minutes and about 54 checkins,
+inside the range that has always worked. That is a different run with a
+different clock, and it needs its own record.
