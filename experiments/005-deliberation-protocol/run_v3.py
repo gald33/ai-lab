@@ -218,6 +218,16 @@ ARMS.update({
 TICKING = {"idle-tick"}
 TICK_SECONDS = 30
 
+#: The maximal treatment (run 005). One cell of text against a bare control, at
+#: the clock the baselines were measured on. Deliberately impure -- talk,
+#: disclosure, prices and the production/trade link at once -- because its job
+#: is to find out whether any text moves this environment at all. It separates
+#: nothing, and the record says so.
+ARMS.update({
+    "max-bare": (None, False),
+    "max-talk": ("max/talk", False),
+})
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember

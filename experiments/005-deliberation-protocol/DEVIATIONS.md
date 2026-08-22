@@ -330,3 +330,33 @@ a fault. `spoke` is the discriminator, and it is gated offline.
 acknowledgement window than its neighbours. That is recorded per round rather
 than corrected, and a cell whose result depends on a relaunched trader should
 be read with that in view.
+
+## D11 — run 005's treatment is deliberately impure
+
+*Written 2026-08-22, before the run it affects.*
+
+`stimuli/max/talk.md` mixes what 005 was built to separate. It encourages
+talking, disclosing needs and capabilities, asking, naming a rate rather than
+only goods, improving an offer rather than taking the first, and choosing
+production with intended trades in mind. Protocol and hint at once, and more
+besides.
+
+That is the point rather than a compromise. Four runs have gone into why
+sessions stop and none into whether text changes anything, and the cheapest way
+to find out is to try the strongest text available before spending on a design
+that separates ingredients. If a text this strong moves neither talk nor
+efficiency, the 2×2 has nothing to decompose and that is worth knowing for
+forty sessions.
+
+**What may not be claimed from it.** Nothing about deliberation protocols
+specifically, nothing about hints specifically, and nothing about which
+ingredient did any work. A positive result licenses a decomposition run; it is
+not itself evidence for any component.
+
+**The manipulation check is part of the design, not a nicety.** If talk does not
+rise in the treated cell, the text did not take, and a null then says nothing
+about what the text describes. Talk per trader-episode is reported beside the
+primary metric and never in place of it.
+
+**Not frozen.** The file carries that in its own header, alongside the
+statement that no result from it may be reported as evidence about protocols.
