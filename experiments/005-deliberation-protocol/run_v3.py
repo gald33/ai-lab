@@ -199,6 +199,25 @@ HIDE_HORIZON = {"persist-nocount"}
 #: How many episodes the manager names at once when the horizon is hidden.
 CHUNK = 5
 
+#: The idle check (run 004). Run 003 showed the same instructions and the same
+#: announced horizon persist to episode 30 at 45s and die by episode 8 at 180s,
+#: so a harness parameter is doing the work. These cells ask which one: the
+#: length of the episode, or the emptiness of the wait inside it.
+#:
+#: `idle-tick` keeps the 180s episode and has the manager post the time
+#: remaining every 30s, so a `checkin(wait=25)` returns with something instead
+#: of timing out on a dead board. That is a **timing announcement** -- it is
+#: addressed to nobody, tells no one to act, and asks no one for anything, which
+#: is the line the standing decisions draw. It is still a departure from a
+#: silent episode and is recorded as one.
+ARMS.update({
+    "idle-long":  (None, False),
+    "idle-tick":  (None, False),
+    "idle-short": (None, False),
+})
+TICKING = {"idle-tick"}
+TICK_SECONDS = 30
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
@@ -407,9 +426,15 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         mgr.say(f"harness fault: {', '.join(sorted(broken))} could not start")
         raise RuntimeError("agent sessions failed to start: "
                            + "; ".join(f"{n}: {w.strip()}" for n, w in broken.items()))
-    def wait_until(deadline: float) -> None:
+    ticks = arm in TICKING
+
+    def wait_until(deadline: float, *, tick: bool = False) -> None:
+        next_tick = time.time() + TICK_SECONDS
         while time.time() < deadline:
             mgr.drain()
+            if tick and time.time() >= next_tick and deadline - time.time() > 5:
+                mgr.say(f"{round(deadline - time.time())}s remain in this episode.")
+                next_tick = time.time() + TICK_SECONDS
             time.sleep(DRAIN_EVERY)
         mgr.drain()
 
@@ -433,7 +458,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         else:
             mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
                     f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
-        wait_until(t0 + EPISODE_SECONDS)
+        wait_until(t0 + EPISODE_SECONDS, tick=ticks)
         mgr.close_episode()
 
     mgr.say("the round is over. Stop; nothing further will settle.")

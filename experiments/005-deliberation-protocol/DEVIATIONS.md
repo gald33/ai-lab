@@ -260,3 +260,32 @@ the finding is that *a reason to continue* matters — not which reason.
 **Cost if this is wrong.** If the hidden horizon leaks anywhere unchecked, the
 cell measures nothing and the run's central comparison is void. That is why the
 leak is gated offline and the board is searched for the count afterwards.
+
+## D9 — run 004 has the manager announce the time remaining
+
+*Written 2026-08-22, before the run it affects.*
+
+In `idle-tick` the manager posts one line every 30 seconds inside an open
+episode: "Ns remain in this episode." Nothing else about the cell differs from
+`idle-long`.
+
+**Why it is not the forbidden thing.** The standing decisions permit the system
+to enforce timing and forbid it to drive: the manager "never tells an agent to
+do anything and never asks an agent for anything". A tick is addressed to
+nobody, names only the clock, and requests nothing; an agent may ignore every
+one of them. It is the same kind of line as "episode 3 is open for 180s", which
+the manager already posts, at a higher frequency. Two offline gates check that
+only the one arm ticks and that the wording contains no agent name and no verb
+asking for an action.
+
+**Why it is still a deviation.** It changes what an idle `checkin(wait=25)`
+returns — content instead of a timeout — and that is precisely the mechanism
+under test. A reader should be able to see that the manipulation works *through*
+the agent's waiting behaviour, and decide for themselves whether that is a
+timing change or a nudge. It is recorded here so that judgement is available
+rather than buried.
+
+**Named risk.** Six ticks per 180s episode add to a board that carried about 37
+messages per episode at four traders. If an agent's cost of reading history
+rises enough to change its behaviour, the cell has moved two things at once.
+Message counts per cell are reported for that reason.
