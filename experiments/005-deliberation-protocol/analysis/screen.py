@@ -23,9 +23,28 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
+#: What this reads out of a round. The first version of this file asked for
+#: "floor"; the scorer writes "autarky_floor", and nothing said so until fifty
+#: rounds had finished and the analysis crashed on the result. Name the
+#: contract here and check it before reading anything.
+NEEDED = ("eff_round", "eff_episode", "autarky_floor", "zero_agent_episodes")
+
+
+def check_schema(rounds: list[dict]) -> None:
+    if not rounds:
+        raise SystemExit("no rounds in the record")
+    missing = [k for k in NEEDED if k not in rounds[0]["score"]]
+    if missing:
+        raise SystemExit(
+            f"the record does not carry {', '.join(missing)}; it has "
+            f"{', '.join(sorted(rounds[0]['score']))}. The analysis and the "
+            "scorer have drifted apart -- fix one of them before reading this.")
+
+
 def main(path: Path) -> None:
     data = json.loads(path.read_text())
     rounds = data["rounds"]
+    check_schema(rounds)
     by_arm: dict[str, list[dict]] = {}
     for r in rounds:
         by_arm.setdefault(r["arm"], []).append(r)
@@ -65,6 +84,20 @@ def main(path: Path) -> None:
         rows.append((mean, arm))
         print(f"{arm:5s} " + " ".join(cells) +
               f" {mean:+8.3f} {med:+8.3f} {above:>4d}/{len(diffs)} {zeros:>6d}")
+
+    print("\ncoverage: agent-episodes ending with none of some good.")
+    print("It is the strongest single predictor in this design -- rounds with "
+          "none of\nthem beat autarky on average, and the slope is monotone -- "
+          "so it is reported\nas an endpoint, not read off the utilities "
+          "after the fact.")
+    buckets: dict[int, list[float]] = {}
+    for r in rounds:
+        buckets.setdefault(r["score"]["zero_agent_episodes"], []).append(
+            r["score"]["eff_round"] - r["score"]["autarky_floor"])
+    for z in sorted(buckets):
+        v = buckets[z]
+        print(f"  {z} zero agent-episodes: n={len(v):3d}  "
+              f"mean vs floor {statistics.fmean(v):+.3f}")
 
     print("\nranked by mean paired difference:")
     for mean, arm in sorted(rows, reverse=True):

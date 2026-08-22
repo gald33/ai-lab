@@ -272,6 +272,50 @@ def launch(name: str, arm: str, private: str, episodes: int,
         stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
 
 
+def preflight() -> None:
+    """Prove an agent's own toolchain works before spending a run on it.
+
+    The screen's first attempt died four minutes in: every session started,
+    found every Switchboard tool returning "internal error", asked to have the
+    connection fixed, and stopped. The manager was fine -- it had the parent
+    environment -- so nothing upstream looked wrong, and the guard below reads
+    a session that starts and stops as a choice, which is what it usually is.
+
+    An agent reaches the hub through `switchboard-mcp` with the env this file
+    hands it, and nothing else. So check that exact path: spawn the server the
+    way an agent gets it and call one tool. Ten seconds here against fifty
+    rounds of silence is not a close trade.
+    """
+    import shutil  # noqa: PLC0415
+
+    if not shutil.which("switchboard-mcp"):
+        raise SystemExit("preflight: switchboard-mcp is not on PATH")
+    env = dict(MCP_CONFIG["mcpServers"]["switchboard"]["env"])
+    env["SWITCHBOARD_AGENT_ID"] = "preflight"
+    calls = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+         "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                    "clientInfo": {"name": "preflight", "version": "0"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+         "params": {"name": "whoami", "arguments": {}}},
+    ]
+    try:
+        done = subprocess.run(  # noqa: S603
+            ["switchboard-mcp"], input="\n".join(json.dumps(c) for c in calls),
+            env=env, capture_output=True, text=True, timeout=45, check=False)
+    except subprocess.TimeoutExpired:
+        raise SystemExit("preflight: switchboard-mcp did not answer in 45s") from None
+    out = done.stdout + done.stderr
+    if '"isError": true' in out or '"id": 2' not in out:
+        raise SystemExit(
+            "preflight: an agent's own MCP server could not reach the hub, so "
+            "every agent would start, find its tools broken and stop. This is "
+            "a harness fault, not agent behaviour.\n"
+            f"  hub {HUB}\n  last output: {out[-400:].strip()}")
+    print(f"preflight: an agent's switchboard-mcp reached {HUB}")
+
+
 def schedule_text(episodes: int, names: tuple[str, ...]) -> str:
     return (f"Schedule for this round. {len(names)} traders: "
             f"{', '.join(names)}. {episodes} episodes, {EPISODE_SECONDS}s each. "
@@ -336,7 +380,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                        f"Episode 1 opens now.")
 
     for e in range(episodes):
-        mgr.episode_open = True
+        mgr.open_episode()
         t0 = time.time()
         mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
                 f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
@@ -355,6 +399,9 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
 
     return {"arm": arm, "seed": seed, "episodes": episodes,
             "trajectory": mgr.episode_utilities,
+            # The screen had to be diagnosed by re-reading boards that expire
+            # in an hour. What the metrics cannot say goes in the record.
+            "episode_log": mgr.episode_log, "refusals": mgr.refusals,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
             "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,
@@ -378,6 +425,8 @@ def main() -> None:
     # headroom; it changes nothing any agent sees, since each round's clock
     # starts when that round starts.
     ap.add_argument("--max-concurrent", type=int, default=10)
+    ap.add_argument("--no-control", action="store_true",
+                    help="run without a control arm, and record that choice")
     args = ap.parse_args()
 
     for arm in args.arms:
@@ -386,6 +435,20 @@ def main() -> None:
 
     ACK_SECONDS = args.ack_seconds
     EPISODE_SECONDS = args.episode_seconds
+
+    # A run without a control measures its arms against the autarky floor and
+    # nothing else, so it cannot say whether any block beat saying nothing.
+    # The ten-arm screen had no control and could not answer that -- and a
+    # baseline cannot be borrowed from an earlier run, whose code, clock and
+    # trust settings all differed. Refuse by default; allow it to be waived
+    # out loud, in the command that runs it and in the record.
+    CONTROLS = ("bare", "placebo")
+    if not any(a in CONTROLS for a in args.arms) and not args.no_control:
+        raise SystemExit(
+            f"no control arm: none of {', '.join(CONTROLS)} is in {args.arms}. "
+            "Without one, 'no arm beat the floor' cannot be told from 'no arm "
+            "beat saying nothing'. Add a control, or pass --no-control if the "
+            "run genuinely does not need one.")
 
     outdir = HERE / args.out
     outdir.mkdir(parents=True, exist_ok=True)
@@ -398,6 +461,8 @@ def main() -> None:
           f"{args.max_concurrent} at a time is {waves} wave(s), so about "
           f"{waves * wall:.0f} min of wall-clock and {n_jobs * args.agents} "
           f"agent sessions.\n")
+
+    preflight()
 
     from island.score import score  # noqa: PLC0415
 
@@ -431,6 +496,7 @@ def main() -> None:
     path = outdir / "v3.json"
     path.write_text(json.dumps(
         {"experiment": "005-v3", "model": MODEL, "arms": args.arms,
+         "no_control": bool(args.no_control),
          "agents": args.agents, "goods": args.goods,
          "episodes_per_round": args.episodes,
          "schedule": {"ack_seconds": ACK_SECONDS,
