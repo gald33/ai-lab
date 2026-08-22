@@ -1,0 +1,2375 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "s01",
+  "s02",
+  "s03",
+  "s04",
+  "s05",
+  "s06",
+  "s07",
+  "s08",
+  "s09",
+  "s10"
+ ],
+ "agents": 2,
+ "goods": 4,
+ "episodes_per_round": 3,
+ "schedule": {
+  "ack_seconds": 120,
+  "episode_seconds": 180
+ },
+ "rounds": [
+  {
+   "arm": "s01",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.10328673972365306,
+     0.1629770189156581
+    ],
+    [
+     0.12111807734775216,
+     0.18604417802685125
+    ],
+    [
+     0.0,
+     0.18037450968062854
+    ]
+   ],
+   "settled": 17,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s01-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 670.7,
+   "score": {
+    "eff_round": 0.454955,
+    "eff_round_upper": 0.463477,
+    "eff_episode": [
+     0.486623,
+     0.557929,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.566308,
+    "gain_worst": 0.323148,
+    "below_autarky": 2,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s01",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.5028865380571561,
+     0.2772081389553183
+    ],
+    [
+     0.5028865380571561,
+     0.2336058652294817
+    ]
+   ],
+   "settled": 16,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s01-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 43,
+   "seconds": 667.1,
+   "score": {
+    "eff_round": 0.47736,
+    "eff_round_upper": 0.485531,
+    "eff_episode": [
+     0.0,
+     0.749081,
+     0.684184
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.911298,
+    "gain_worst": 0.899821,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s01",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.13796582005534344,
+     0.6682753671836508
+    ],
+    [
+     0.2226374372041677,
+     0.34984744673047236
+    ],
+    [
+     0.22713621587746646,
+     0.6243740834311232
+    ]
+   ],
+   "settled": 15,
+   "refused": 3,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s01-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 667.9,
+   "score": {
+    "eff_round": 0.480166,
+    "eff_round_upper": 0.485504,
+    "eff_episode": [
+     0.433016,
+     0.451512,
+     0.553406
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.980804,
+    "gain_worst": 0.558132,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s01",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.6921230894284286,
+     0.32448767063930917
+    ],
+    [
+     0.6472944492675339,
+     0.5397244704145034
+    ],
+    [
+     0.6294388047943641,
+     0.5809483917631345
+    ]
+   ],
+   "settled": 14,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s01-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 39,
+   "seconds": 668.1,
+   "score": {
+    "eff_round": 0.725679,
+    "eff_round_upper": 0.740697,
+    "eff_episode": [
+     0.64123,
+     0.743803,
+     0.780439
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.046835,
+    "gain_worst": 0.990473,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s01",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.3317438810454493,
+     0.23518541314910868
+    ],
+    [
+     0.3317438810454493,
+     0.23518541314910868
+    ],
+    [
+     0.3317438810454493,
+     0.23518541314910868
+    ]
+   ],
+   "settled": 18,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s01-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 669.4,
+   "score": {
+    "eff_round": 0.810011,
+    "eff_round_upper": 0.817041,
+    "eff_episode": [
+     0.810011,
+     0.810011,
+     0.810011
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.333602,
+    "gain_worst": 1.311351,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s02",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.185942716996289,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ]
+   ],
+   "settled": 14,
+   "refused": 3,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s02-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 669.0,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.133881,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 5,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s02",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.48970939718153006,
+     0.2797041829308031
+    ],
+    [
+     0.48970939718153006,
+     0.2797041829308031
+    ]
+   ],
+   "settled": 12,
+   "refused": 0,
+   "talk": 2,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s02-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 37,
+   "seconds": 667.4,
+   "score": {
+    "eff_round": 0.499353,
+    "eff_round_upper": 0.502419,
+    "eff_episode": [
+     0.0,
+     0.749029,
+     0.749029
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.942008,
+    "gain_worst": 0.898595,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s02",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.2950958871921239,
+     0.6948372311698283
+    ],
+    [
+     0.29526285639913347,
+     0.22786431381913974
+    ],
+    [
+     0.29814725414070564,
+     0.6322209704086189
+    ]
+   ],
+   "settled": 14,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s02-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 41,
+   "seconds": 668.5,
+   "score": {
+    "eff_round": 0.622789,
+    "eff_round_upper": 0.631317,
+    "eff_episode": [
+     0.681866,
+     0.526587,
+     0.665484
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 1.086197,
+    "gain_worst": 0.843748,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s02",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.6712097856705038,
+     0.6070836582576433
+    ],
+    [
+     0.7301050628712958,
+     0.6051513824328243
+    ],
+    [
+     0.6712097856705038,
+     0.5874688780782235
+    ]
+   ],
+   "settled": 15,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s02-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 41,
+   "seconds": 668.6,
+   "score": {
+    "eff_round": 0.83051,
+    "eff_round_upper": 0.842408,
+    "eff_episode": [
+     0.822163,
+     0.85555,
+     0.808362
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.197376,
+    "gain_worst": 1.161285,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s02",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.34065178884566966,
+     0.1893059996114008
+    ],
+    [
+     0.34065178884566966,
+     0.1893059996114008
+    ],
+    [
+     0.34065178884566966,
+     0.1893059996114008
+    ]
+   ],
+   "settled": 12,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s02-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 35,
+   "seconds": 667.5,
+   "score": {
+    "eff_round": 0.760118,
+    "eff_round_upper": 0.773329,
+    "eff_episode": [
+     0.760118,
+     0.760118,
+     0.760118
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.223898,
+    "gain_worst": 1.055536,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s03",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.15767422845910123,
+     0.21021831871352126
+    ],
+    [
+     0.13095670078952598,
+     0.19950990368145735
+    ],
+    [
+     0.12093405028391625,
+     0.17571206030653733
+    ]
+   ],
+   "settled": 19,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s03-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 49,
+   "seconds": 667.9,
+   "score": {
+    "eff_round": 0.597075,
+    "eff_round_upper": 0.614371,
+    "eff_episode": [
+     0.669066,
+     0.599468,
+     0.534732
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.742473,
+    "gain_worst": 0.589783,
+    "below_autarky": 2,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s03",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.16284886724924227
+    ],
+    [
+     0.4676530025031651,
+     0.16004833698144558
+    ]
+   ],
+   "settled": 16,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s03-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 670.3,
+   "score": {
+    "eff_round": 0.265166,
+    "eff_round_upper": 0.26742,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.551844
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.498929,
+    "gain_worst": 0.429061,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "s03",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.3456843671095064,
+     0.6612164774214525
+    ],
+    [
+     0.0,
+     0.24287814056168913
+    ]
+   ],
+   "settled": 15,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s03-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 668.4,
+   "score": {
+    "eff_round": 0.275092,
+    "eff_round_upper": 0.280474,
+    "eff_episode": [
+     0.0,
+     0.742363,
+     0.0
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.550399,
+    "gain_worst": 0.328271,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s03",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.47443357610688014,
+     0.25836517681468707
+    ],
+    [
+     0.7180199860360522,
+     0.5636310326220174
+    ]
+   ],
+   "settled": 18,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s03-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 668.4,
+   "score": {
+    "eff_round": 0.432341,
+    "eff_round_upper": 0.436239,
+    "eff_episode": [
+     0.0,
+     0.461772,
+     0.815412
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 0.615767,
+    "gain_worst": 0.563373,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "s03",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.2641767040097408,
+     0.12248009046557377
+    ],
+    [
+     0.3707037059694825,
+     0.16484388116470292
+    ],
+    [
+     0.3707037059694825,
+     0.1628119387323406
+    ]
+   ],
+   "settled": 17,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s03-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 668.4,
+   "score": {
+    "eff_round": 0.701118,
+    "eff_round_upper": 0.712452,
+    "eff_episode": [
+     0.55886,
+     0.775893,
+     0.772904
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.103291,
+    "gain_worst": 0.836626,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s04",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.14454662157363674,
+     0.09889411410518378
+    ],
+    [
+     0.12870249443058676,
+     0.11463994560938834
+    ],
+    [
+     0.14454662157363674,
+     0.10337986205269079
+    ]
+   ],
+   "settled": 15,
+   "refused": 1,
+   "talk": 1,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s04-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 44,
+   "seconds": 668.5,
+   "score": {
+    "eff_round": 0.442741,
+    "eff_round_upper": 0.45506,
+    "eff_episode": [
+     0.443585,
+     0.441387,
+     0.448122
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.543105,
+    "gain_worst": 0.484574,
+    "below_autarky": 2,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s04",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.5087909875013745,
+     0.0
+    ],
+    [
+     0.4855711840399659,
+     0.12464892865371872
+    ],
+    [
+     0.520786212560725,
+     0.16874022969518154
+    ]
+   ],
+   "settled": 17,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s04-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 668.1,
+   "score": {
+    "eff_round": 0.492477,
+    "eff_round_upper": 0.494046,
+    "eff_episode": [
+     0.0,
+     0.516547,
+     0.608375
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.953466,
+    "gain_worst": 0.516818,
+    "below_autarky": 1,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 6,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "s04",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.3913213074536165,
+     0.40830613805535154
+    ],
+    [
+     0.3921318240090404,
+     0.3891299944691762
+    ]
+   ],
+   "settled": 17,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s04-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 670.2,
+   "score": {
+    "eff_round": 0.489573,
+    "eff_round_upper": 0.498469,
+    "eff_episode": [
+     0.0,
+     0.735359,
+     0.731081
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.712689,
+    "gain_worst": 0.681391,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s04",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.6769813895797476,
+     0.5531293743387132
+    ],
+    [
+     0.6769813895797476,
+     0.5531293743387132
+    ],
+    [
+     0.6769813895797476,
+     0.5531293743387132
+    ]
+   ],
+   "settled": 24,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s04-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 61,
+   "seconds": 670.5,
+   "score": {
+    "eff_round": 0.790977,
+    "eff_round_upper": 0.801853,
+    "eff_episode": [
+     0.790977,
+     0.790977,
+     0.790977
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.137642,
+    "gain_worst": 1.137298,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s04",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.31711401052708416,
+     0.2715537341497661
+    ],
+    [
+     0.31711401052708416,
+     0.30792875973693223
+    ],
+    [
+     0.31711401052708416,
+     0.2831177283258616
+    ]
+   ],
+   "settled": 16,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s04-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 43,
+   "seconds": 667.8,
+   "score": {
+    "eff_round": 0.835635,
+    "eff_round_upper": 0.866169,
+    "eff_episode": [
+     0.823038,
+     0.86794,
+     0.841708
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.449647,
+    "gain_worst": 1.29606,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s05",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.18967008164722127,
+     0.20174034055524193
+    ],
+    [
+     0.1343370221773395,
+     0.24714879329759373
+    ],
+    [
+     0.0,
+     0.0
+    ]
+   ],
+   "settled": 16,
+   "refused": 4,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s05-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 51,
+   "seconds": 668.6,
+   "score": {
+    "eff_round": 0.466159,
+    "eff_round_upper": 0.475098,
+    "eff_episode": [
+     0.711322,
+     0.688263,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.576474,
+    "gain_worst": 0.466578,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s05",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.20729842104452942,
+     0.30074162656499576
+    ],
+    [
+     0.20729842104452942,
+     0.30074162656499576
+    ],
+    [
+     0.20729842104452942,
+     0.30074162656499576
+    ]
+   ],
+   "settled": 18,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s05-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 669.4,
+   "score": {
+    "eff_round": 0.574996,
+    "eff_round_upper": 0.591903,
+    "eff_episode": [
+     0.574996,
+     0.574996,
+     0.574996
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 1.079941,
+    "gain_worst": 0.570575,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s05",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.7008990875801858
+    ],
+    [
+     0.31582437864784196,
+     0.7008990875801858
+    ],
+    [
+     0.3229607196642811,
+     0.7008990875801858
+    ]
+   ],
+   "settled": 15,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s05-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 43,
+   "seconds": 669.2,
+   "score": {
+    "eff_round": 0.556791,
+    "eff_round_upper": 0.561914,
+    "eff_episode": [
+     0.0,
+     0.711586,
+     0.716038
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 1.201656,
+    "gain_worst": 0.606606,
+    "below_autarky": 1,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s05",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.6464047560025628,
+     0.5316240020193519
+    ],
+    [
+     0.6464047560025628,
+     0.5316240020193519
+    ],
+    [
+     0.6464047560025628,
+     0.5316240020193519
+    ]
+   ],
+   "settled": 15,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s05-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 41,
+   "seconds": 668.3,
+   "score": {
+    "eff_round": 0.753837,
+    "eff_round_upper": 0.767947,
+    "eff_episode": [
+     0.753837,
+     0.753837,
+     0.753837
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.089834,
+    "gain_worst": 1.086588,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s05",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.3531204280507076,
+     0.25384845759998587
+    ],
+    [
+     0.3403106593812636,
+     0.28607720508672896
+    ],
+    [
+     0.23596542674345095,
+     0.12741217401893284
+    ]
+   ],
+   "settled": 14,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s05-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 41,
+   "seconds": 667.3,
+   "score": {
+    "eff_round": 0.757653,
+    "eff_round_upper": 0.76588,
+    "eff_episode": [
+     0.861996,
+     0.878667,
+     0.513425
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.25324,
+    "gain_worst": 1.240318,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s06",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.16965452559169533
+    ],
+    [
+     0.16099090503989014,
+     0.0
+    ],
+    [
+     0.20069870649727758,
+     0.0
+    ]
+   ],
+   "settled": 19,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s06-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 53,
+   "seconds": 667.3,
+   "score": {
+    "eff_round": 0.326236,
+    "eff_round_upper": 0.329907,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.390125,
+    "gain_worst": 0.259409,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s06",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.5734681609749188,
+     0.0
+    ],
+    [
+     0.5734681609749188,
+     0.0
+    ],
+    [
+     0.5734681609749188,
+     0.0
+    ]
+   ],
+   "settled": 12,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s06-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 35,
+   "seconds": 667.5,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.789216,
+    "gain_worst": 0.0,
+    "below_autarky": 1,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s06",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.9965306200751759
+    ],
+    [
+     0.0,
+     0.10546130636431054
+    ],
+    [
+     0.3129761877462939,
+     0.2972928526678028
+    ]
+   ],
+   "settled": 18,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s06-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 51,
+   "seconds": 668.8,
+   "score": {
+    "eff_round": 0.312468,
+    "eff_round_upper": 0.317606,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.578575
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.746433,
+    "gain_worst": 0.29721,
+    "below_autarky": 1,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s06",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.45600281293143896,
+     0.0
+    ],
+    [
+     0.6012212200579286,
+     0.5298908503412015
+    ]
+   ],
+   "settled": 17,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s06-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 49,
+   "seconds": 668.6,
+   "score": {
+    "eff_round": 0.333767,
+    "eff_round_upper": 0.34087,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.728297
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 0.47778,
+    "gain_worst": 0.363172,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "s06",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.44906108163150094,
+     0.11806604975271165
+    ],
+    [
+     0.4423790348213566,
+     0.15575765653590123
+    ],
+    [
+     0.44906108163150094,
+     0.13374274683576723
+    ]
+   ],
+   "settled": 14,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s06-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 39,
+   "seconds": 669.7,
+   "score": {
+    "eff_round": 0.854846,
+    "eff_round_upper": 0.868993,
+    "eff_episode": [
+     0.836391,
+     0.879582,
+     0.857042
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.291868,
+    "gain_worst": 0.757506,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s07",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.24211072913776194,
+     0.0
+    ],
+    [
+     0.215569679505923,
+     0.0
+    ],
+    [
+     0.215569679505923,
+     0.0
+    ]
+   ],
+   "settled": 13,
+   "refused": 0,
+   "talk": 1,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s07-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 38,
+   "seconds": 667.5,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.484748,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s07",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.3164758963860176,
+     0.2907842504398142
+    ],
+    [
+     0.44478876572977655,
+     0.28472720573113164
+    ],
+    [
+     0.3180063662836245,
+     0.26493251650217486
+    ]
+   ],
+   "settled": 16,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s07-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 43,
+   "seconds": 669.3,
+   "score": {
+    "eff_round": 0.656755,
+    "eff_round_upper": 0.665903,
+    "eff_episode": [
+     0.638268,
+     0.723837,
+     0.604614
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 1.235343,
+    "gain_worst": 0.990207,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s07",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.3581094203658593,
+     0.4980173622303327
+    ],
+    [
+     0.27893957392890506,
+     0.1440134562636688
+    ]
+   ],
+   "settled": 12,
+   "refused": 0,
+   "talk": 3,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s07-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 38,
+   "seconds": 668.7,
+   "score": {
+    "eff_round": 0.396912,
+    "eff_round_upper": 0.402736,
+    "eff_episode": [
+     0.0,
+     0.708932,
+     0.476357
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.576779,
+    "gain_worst": 0.548601,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s07",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.7827577076723686,
+     0.512750470401985
+    ],
+    [
+     0.7598344443911693,
+     0.5989581895211676
+    ],
+    [
+     0.7598344443911693,
+     0.5989581895211676
+    ]
+   ],
+   "settled": 17,
+   "refused": 1,
+   "talk": 3,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s07-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 50,
+   "seconds": 669.3,
+   "score": {
+    "eff_round": 0.852083,
+    "eff_round_upper": 0.870946,
+    "eff_episode": [
+     0.827633,
+     0.868534,
+     0.868534
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.231274,
+    "gain_worst": 1.172443,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s07",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.2039630334259774,
+     0.20292533909888136
+    ],
+    [
+     0.15251137203918683,
+     0.2987153931096169
+    ],
+    [
+     0.15251137203918683,
+     0.2987153931096169
+    ]
+   ],
+   "settled": 20,
+   "refused": 3,
+   "talk": 1,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s07-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 58,
+   "seconds": 667.4,
+   "score": {
+    "eff_round": 0.595468,
+    "eff_round_upper": 0.607109,
+    "eff_episode": [
+     0.56678,
+     0.610969,
+     0.610969
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.090482,
+    "gain_worst": 0.693416,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s08",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.23147759924331418,
+     0.0
+    ],
+    [
+     0.23137333287466794,
+     0.0
+    ],
+    [
+     0.23137333287466794,
+     0.1858834632952927
+    ]
+   ],
+   "settled": 16,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s08-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 668.9,
+   "score": {
+    "eff_round": 0.540892,
+    "eff_round_upper": 0.553846,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.755889
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.641962,
+    "gain_worst": 0.284223,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s08",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.42566342651395006,
+     0.1870363708320177
+    ],
+    [
+     0.42566342651395006,
+     0.1870363708320177
+    ],
+    [
+     0.42566342651395006,
+     0.1870363708320177
+    ]
+   ],
+   "settled": 21,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s08-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 53,
+   "seconds": 669.2,
+   "score": {
+    "eff_round": 0.563942,
+    "eff_round_upper": 0.585026,
+    "eff_episode": [
+     0.563942,
+     0.563942,
+     0.563942
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 1.080014,
+    "gain_worst": 0.988418,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s08",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.2623725580860659,
+     0.0
+    ],
+    [
+     0.335049075889495,
+     0.0
+    ]
+   ],
+   "settled": 14,
+   "refused": 3,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s08-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 668.9,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.283663,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 4,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s08",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.6618712273200017,
+     0.3760119156996357
+    ],
+    [
+     0.5744441971256741,
+     0.5588245749874761
+    ],
+    [
+     0.5103203504084295,
+     0.5193234514230866
+    ]
+   ],
+   "settled": 17,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s08-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 668.9,
+   "score": {
+    "eff_round": 0.668415,
+    "eff_round_upper": 0.695716,
+    "eff_episode": [
+     0.652685,
+     0.734576,
+     0.669345
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 0.987661,
+    "gain_worst": 0.978682,
+    "below_autarky": 2,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s08",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.20019397470918726
+    ],
+    [
+     0.223732461269719,
+     0.2979485585792111
+    ],
+    [
+     0.0,
+     0.2329505691836196
+    ]
+   ],
+   "settled": 18,
+   "refused": 4,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s08-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 55,
+   "seconds": 667.3,
+   "score": {
+    "eff_round": 0.424727,
+    "eff_round_upper": 0.428711,
+    "eff_episode": [
+     0.0,
+     0.716839,
+     0.0
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 0.831808,
+    "gain_worst": 0.304802,
+    "below_autarky": 1,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "s09",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.2475977593922806,
+     0.0
+    ],
+    [
+     0.21790369572774698,
+     0.0
+    ],
+    [
+     0.22511965094402264,
+     0.0
+    ]
+   ],
+   "settled": 16,
+   "refused": 3,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s09-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 49,
+   "seconds": 668.5,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.497256,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s09",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.29606316856492965,
+     0.27519455527821574
+    ],
+    [
+     0.31230565254156784,
+     0.25420427867686674
+    ],
+    [
+     0.31230565254156784,
+     0.25420427867686674
+    ]
+   ],
+   "settled": 18,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s09-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 47,
+   "seconds": 668.2,
+   "score": {
+    "eff_round": 0.587905,
+    "eff_round_upper": 0.602595,
+    "eff_episode": [
+     0.600974,
+     0.58996,
+     0.58996
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 1.112524,
+    "gain_worst": 0.844698,
+    "below_autarky": 1,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s09",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.30162648035991607,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.22320959803708834,
+     0.48592191122787093
+    ]
+   ],
+   "settled": 15,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s09-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 45,
+   "seconds": 668.0,
+   "score": {
+    "eff_round": 0.319551,
+    "eff_round_upper": 0.325314,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.499886
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 0.456803,
+    "gain_worst": 0.415209,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s09",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.7914041655430659,
+     0.5143353361867471
+    ],
+    [
+     0.7914041655430659,
+     0.5143353361867471
+    ],
+    [
+     0.7914041655430659,
+     0.5143353361867471
+    ]
+   ],
+   "settled": 12,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s09-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 35,
+   "seconds": 666.9,
+   "score": {
+    "eff_round": 0.834214,
+    "eff_round_upper": 0.84491,
+    "eff_episode": [
+     0.834214,
+     0.834214,
+     0.834214
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 1.193931,
+    "gain_worst": 1.057533,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s09",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.27101789343496635,
+     0.2700924288477151
+    ],
+    [
+     0.2611862227406593,
+     0.2782786977147615
+    ],
+    [
+     0.2611862227406593,
+     0.2782786977147615
+    ]
+   ],
+   "settled": 16,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s09-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 43,
+   "seconds": 667.4,
+   "score": {
+    "eff_round": 0.749251,
+    "eff_round_upper": 0.763568,
+    "eff_episode": [
+     0.753209,
+     0.747891,
+     0.747891
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 1.308646,
+    "gain_worst": 1.080874,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s10",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.27134746411661853,
+     0.02070886867604672
+    ],
+    [
+     0.0,
+     0.0
+    ]
+   ],
+   "settled": 17,
+   "refused": 6,
+   "talk": 11,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s10-1-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 68,
+   "seconds": 667.6,
+   "score": {
+    "eff_round": 0.18106,
+    "eff_round_upper": 0.184631,
+    "eff_episode": [
+     0.0,
+     0.543181,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.211206,
+    "gain_worst": 0.031665,
+    "below_autarky": 2,
+    "zero_agent_episodes": 4,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s10",
+   "seed": 2,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.18922807429693345
+    ],
+    [
+     0.25026233508581186,
+     0.18922807429693345
+    ],
+    [
+     0.3062162485794684,
+     0.18922807429693345
+    ]
+   ],
+   "settled": 8,
+   "refused": 0,
+   "talk": 3,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s10-2-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 30,
+   "seconds": 668.9,
+   "score": {
+    "eff_round": 0.402457,
+    "eff_round_upper": 0.410471,
+    "eff_episode": [
+     0.0,
+     0.450504,
+     0.480588
+    ],
+    "autarky_floor": 0.523167,
+    "gain_median": 0.755278,
+    "gain_worst": 0.510557,
+    "below_autarky": 2,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "s10",
+   "seed": 3,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.4139009000684108,
+     0.4281486869632043
+    ],
+    [
+     0.394473010274779,
+     0.4493425652166683
+    ],
+    [
+     0.394473010274779,
+     0.4477517244485172
+    ]
+   ],
+   "settled": 20,
+   "refused": 2,
+   "talk": 2,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s10-3-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 57,
+   "seconds": 667.9,
+   "score": {
+    "eff_round": 0.753102,
+    "eff_round_upper": 0.770514,
+    "eff_episode": [
+     0.776801,
+     0.750283,
+     0.750059
+    ],
+    "autarky_floor": 0.665641,
+    "gain_median": 1.137322,
+    "gain_worst": 1.13239,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s10",
+   "seed": 4,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.7520220953584388,
+     0.4724903765930008
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.5916769515695964,
+     0.6501763552079557
+    ]
+   ],
+   "settled": 12,
+   "refused": 2,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s10-4-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 39,
+   "seconds": 668.7,
+   "score": {
+    "eff_round": 0.515297,
+    "eff_round_upper": 0.536152,
+    "eff_episode": [
+     0.780423,
+     0.0,
+     0.810241
+    ],
+    "autarky_floor": 0.695317,
+    "gain_median": 0.761176,
+    "gain_worst": 0.752907,
+    "below_autarky": 2,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 6,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "s10",
+   "seed": 5,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.2354613790179162,
+     0.0
+    ],
+    [
+     0.3436227175153794,
+     0.2376709118295172
+    ]
+   ],
+   "settled": 14,
+   "refused": 9,
+   "talk": 3,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-s10-5-0822T0557",
+   "channel": "island",
+   "run_stamp": "0822T0557",
+   "channel_messages": 60,
+   "seconds": 668.7,
+   "score": {
+    "eff_round": 0.392958,
+    "eff_round_upper": 0.401983,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.828066
+    ],
+    "autarky_floor": 0.598943,
+    "gain_median": 0.615326,
+    "gain_worst": 0.441737,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": 2
+   }
+  }
+ ]
+}

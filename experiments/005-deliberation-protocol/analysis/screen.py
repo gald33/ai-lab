@@ -35,7 +35,7 @@ def main(path: Path) -> None:
           f"{data['episodes_per_round']} episodes of "
           f"{data['schedule']['episode_seconds']}s, model {data['model']}\n")
 
-    floors = {r["seed"]: r["score"]["floor"] for r in rounds}
+    floors = {r["seed"]: r["score"]["autarky_floor"] for r in rounds}
     print("floor by seed (autarky, the same for every arm):")
     print("  " + "  ".join(f"s{s}={floors[s]:.3f}" for s in seeds) + "\n")
 
@@ -53,7 +53,7 @@ def main(path: Path) -> None:
             if r is None:
                 cells.append(f"{'--':>8s}")
                 continue
-            d = r["score"]["eff_round"] - r["score"]["floor"]
+            d = r["score"]["eff_round"] - r["score"]["autarky_floor"]
             diffs.append(d)
             zeros += sum(1 for e in r["score"]["eff_episode"] if e == 0.0)
             cells.append(f"{d:+8.3f}")
