@@ -105,6 +105,10 @@ class Manager:
     #: often the manager said no; only the reason says what the traders could
     #: not manage to express.
     refusals: list[dict] = field(default_factory=list)
+    #: True if a single drain ever came back full. The manager reads the most
+    #: recent rows and skips what it has seen, which is safe while it drains
+    #: faster than the board fills -- and silently lossy if it ever does not.
+    saturated: bool = False
     _settled_this_episode: int = 0
     _next: int = 1
 
@@ -123,6 +127,8 @@ class Manager:
         """Read whatever has appeared since last time. Never blocks anyone."""
         rows = sorted(self.client.history(self.channel, limit=500),
                       key=lambda r: r.get("seq", 0))
+        if len(rows) >= 500:
+            self.saturated = True
         for msg in rows:
             mid = str(msg.get("id"))
             if mid in self.seen:

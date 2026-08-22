@@ -78,3 +78,185 @@ and the pre-registration already insists that harness faults never enter a rate.
 
 Cost: the retry is invisible in the transcript record unless read for; the retry
 count is reported per cell.
+
+## D6 — run 001's calibration cannot be executed at pilot size, and its baseline number was wrong
+
+*Written 2026-08-22, after the pilot, before the main run it affects.*
+
+Two faults in `runs/001-does-the-channel-have-a-job.md`, both in the
+calibration gate, both found by running the pilot the gate depends on.
+
+**The baseline was misstated.** The record puts the screen's n=2 talk rate at
+"~0.02 talk per trader-episode". It is **0.100** — 30 talk messages over 300
+trader-episodes (50 rounds × 2 traders × 3 episodes). The record's number is
+wrong by 5×, and it is a pre-registered comparison value, so it is corrected
+here rather than edited there.
+
+**The gate is underpowered by construction.** The pilot yields 8
+trader-episodes (4 traders × 2 episodes). At the corrected n=2 rate the pilot
+expects **0.80** talk messages; under the run's own hypothesis of 3× it expects
+**2.40**. The pilot observed **0**, and P(0 | Poisson mean 2.40) = **0.091** —
+not decisive at any threshold worth pre-registering. A gate that cannot
+separate its two conditions is not a gate, whatever it returns.
+
+So the calibration gate as written is **not passed and not failed: it is
+unexecutable at the size specified**, and recording it as a pass would be the
+exact failure `GROUNDING.md` warns about.
+
+The pilot's other job was done: at 4 traders all four sessions started and
+acknowledged (4/4), 28 exchanges settled across 2 episodes, 4 refusals, no
+harness failure, and the clock proved survivable. That is what a pilot is for
+and it is reported as such. Its efficiency numbers are not evidence.
+
+**What changes:** the calibration is not carried at pilot size. Either it is
+re-run at ~5 rounds of n=4 (about 60 trader-episodes: 6 expected under the
+null against 18 under the hypothesis, which does separate them), or it is
+folded into the main run, whose n=4 cell yields 144 trader-episodes and 14.4
+expected under the null. Folding it in is defensible only because the counter
+is already known to count — the screen recorded 30 messages with it, so it is
+not pinned at zero by construction — and because the run's abandonment
+condition ("talk stays near zero at n=4") does not require the instrument to
+move, only to count. The 3× hypothesis does require power, and only the main
+run has it.
+
+Cost of folding it in: if the main run returns zero talk in both cells, the
+abandonment conclusion is available but the 3× hypothesis is untested rather
+than rejected, and the record must say so.
+
+## D7 — run 002 aborted: the self-scheduling loop does not survive a long round
+
+*Written 2026-08-22, after the run it describes, before any run that follows.*
+
+Run 002 asked for one round of thirty episodes. It was stopped by hand at
+episode 10. All four sessions had already ended themselves — T1 and T2 after
+episode 3, T3 after episode 4, T4 after episode 8 — so 22 of the 30 episodes
+had no trader in them.
+
+**None of them failed.** No runtime error, no turn cap reached (it had been
+raised to `40 × episodes` for exactly this run), no harness fault. Each ended
+its session while claiming to have arranged to continue: "I've scheduled a loop
+to maintain my trading strategy", "I'll continue this pattern through the
+remaining 27 episodes when the wakeup fires", "The system is maintaining my
+active status while I manage tokens efficiently". Two gave token economy as the
+reason. No such schedule exists: a `claude -p` session ends when the model
+stops calling tools, and nothing brings it back.
+
+**This is not a new instruction gap.** The per-round text already says it, in
+these words: "Nobody will prompt you, ever. Nothing will wake you up… if you
+stop acting you have left the island for good", and "Never finish a reply
+without having called `checkin` or `say`." The agents were told plainly and
+stopped anyway.
+
+What changed is the arithmetic. `checkin`'s `wait` is capped at **25 seconds**
+by the MCP server. A ten-minute round — every round run before this one — needs
+about **24** calls to stay awake for. A ninety-two-minute round needs about
+**220**. The design asks an agent to spend two hundred turns doing nothing but
+staying present, and at that price it rationalises its way out.
+
+**Classification.** Neither "harness failure" nor "the agent chose silence"
+fits, and forcing it into either would misreport it. The sessions ended by
+their own action, which is behaviour; but the environment makes that ending
+irreversible and requires 220 self-scheduled calls to avoid, which is a
+property of the runtime and the clock. It is recorded here as a **feasibility
+failure of the round length**, and run records should classify it that way
+rather than folding it into either existing bucket.
+
+**What it costs.** Any result about long rounds. The trajectory question run
+002 was opened to answer — does anything converge given enough episodes — is
+unanswered, and the thirty-episode design cannot answer it as written.
+
+**What may not be done about it.** Adding anything that prompts, calls or wakes
+an agent. That is the forbidden thing in the repo-root `CLAUDE.md`, it has been
+built twice already, and a long round is not a reason to build it a third time.
+
+**What may.** Shortening the episode so thirty of them fit in a wall clock the
+loop survives — thirty episodes of 45s is 22 minutes and about 54 checkins,
+inside the range that has always worked. That is a different run with a
+different clock, and it needs its own record.
+
+## D7a — correction to D7: the loop was not exhausted, and the arithmetic was not the cause
+
+*Written 2026-08-22, same day as D7, before any run that follows.*
+
+D7 says a ninety-two-minute round needs about 220 `checkin` calls and that "at
+that price the agents rationalise their way out". The second half is not
+supported by the record and is withdrawn.
+
+**They never approached 220.** T1's last act was at 11:57:54, roughly **seven
+minutes** into the episodes, at **episode 3 of 30** — on the order of 25–30
+calls. That is the same number every previous round used: three episodes plus
+the acknowledgement window is eleven minutes, and agents have always survived
+it. T1 stopped almost exactly where a normal round would have ended. T4 ran to
+episode 8 and wrote 66 board messages, three times T1's span, so there is no
+ceiling being hit either.
+
+**What the sessions actually say** is that each was reasoning about the
+announced span, not about running out of anything: "the remaining 28 episodes…
+minimizing the cognitive overhead of monitoring and responding to every
+proposal" (T1), "through the remaining 27 episodes when the wakeup fires" (T2),
+"I'll maintain this through episode 30" (T3). T4 computed the round's end time
+correctly and stopped regardless.
+
+**Three candidates remain, and D7 named none of them.**
+
+1. *Anticipation of the count.* Told thirty episodes up front, they treat
+   twenty-seven more repetitions as something to delegate rather than perform.
+2. *Strategy convergence.* The screen's clearest finding was that good rounds
+   lock a pattern in early and replay it unchanged. By episode 3 these traders
+   had theirs. "I've scheduled a loop to maintain my trading strategy" is an
+   agent trying to say *keep doing this*, which the runtime cannot express —
+   the behaviour the design rewards is the one it has no way to represent.
+3. *Wall-clock fatigue.* The timings do not support it.
+
+**What this costs the proposed fix.** D7 ends by offering thirty episodes at
+45s as the available remedy. That holds the count at thirty and only shrinks
+the clock, so if (1) or (2) is driving this the agents quit at episode 3 again,
+two minutes in, and the run buys nothing. It does separate (3) from the others:
+quitting near episode 10 would mean duration, quitting near episode 3 would
+mean duration was never the mechanism. That is worth knowing and is worth one
+round, but it must be run for that question and not as a repaired trajectory
+probe.
+
+**Standing.** The classification in D7 — a feasibility failure of the round
+length, neither harness fault nor an agent choosing silence — still holds. Only
+the stated cause is withdrawn.
+
+## D8 — run 003 hides the round's length from one cell, and gives another a hint
+
+*Written 2026-08-22, before the run it affects.*
+
+Run 003 is a manipulation check on whether a long round is impossible for these
+agents or impossible as this harness presents it. Two of its three cells depart
+from the frozen setup, and both departures are recorded here rather than made
+quietly.
+
+**`persist-nocount` withholds the episode count.** The frozen per-round text
+says "This round is N episodes long"; the manager's schedule says "N episodes,
+Xs each"; every episode opens with "episode k of N". In this cell all three are
+replaced: the instructions say only that the manager will announce what is
+scheduled next and will say when the round is over, the schedule names no
+total, and episodes are announced five at a time. Nothing else changes.
+
+This is a **timing** change, which the standing decisions permit the system to
+make — it alters what the manager announces and when, not what any agent should
+produce, offer or accept. It is a deviation because it edits text that was
+frozen, not because it crosses that line. Two offline gates check the count is
+absent from the instructions, the schedule and the announcements, and that the
+other two cells still state it.
+
+**`persist-improve` adds a domain instruction.** `stimuli/persist/improve.md`
+tells traders to treat each episode as an attempt to beat their last. That is a
+hint in 005's sense — the thing the experiment otherwise holds fixed — and it
+is legitimate here only because this run is a ceiling test. The file says so in
+its own header. **Nothing measured in that cell may be cited as evidence about
+deliberation protocols**, and it is not frozen.
+
+**The confound, stated in advance.** "Improve on your last episode" implies
+more episodes are coming, so `persist-improve` carries part of
+`persist-nocount`'s mechanism. The fourth cell that would separate them was
+dropped to save four sessions. If `improve` sustains and `nocount` does not,
+the finding is that *a reason to continue* matters — not which reason.
+
+**Cost if this is wrong.** If the hidden horizon leaks anywhere unchecked, the
+cell measures nothing and the run's central comparison is void. That is why the
+leak is gated offline and the board is searched for the count afterwards.
