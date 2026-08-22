@@ -42,7 +42,7 @@ This run holds the episode at 180s and removes only the emptiness.
 | stimuli | `stimuli/v3/base.md` only, body sha256 `c1ff3e80038c66314adcfbf711f5f873d4d129fcb02a2321400b3200fdd2b342`. No advice block in any cell. |
 | hub | managed Switchboard hub, one run-stamped workspace per cell |
 | command | `python run_v3.py --arms idle-long idle-tick --rounds 1 --episodes 10 --episode-seconds 180 --agents 4 --no-control --out results/004-idle-long` then `python run_v3.py --arms idle-short --rounds 1 --episodes 10 --episode-seconds 45 --agents 4 --no-control --out results/004-idle-short` |
-| cost | **12 agent sessions**; the 180s cells run ~32 min concurrently, the 45s cell ~10 min. Paid: needs an explicit go, recorded here. |
+| cost | **go given 2026-08-22.** **12 agent sessions**; the 180s cells run ~32 min concurrently, the 45s cell ~10 min. Paid: needs an explicit go, recorded here. |
 
 Ten episodes, not thirty: at 180s every session in run 002 was gone by episode
 8, so ten is enough to see the failure and costs a third of the clock. The two
