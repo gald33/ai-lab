@@ -1,6 +1,6 @@
 # Run 007 — Is the autarky floor a floor these agents can reach?
 
-**Opened:** 2026-08-22 · **Status:** running
+**Opened:** 2026-08-22 · **Status:** reported
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -114,10 +114,113 @@ interpreted.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** the twelve boards under `results/007-solo/boards/`, pulled off
+  the hub before the TTL. **There is no `v3.json`**: the run died at 20:29 to a
+  dropped connection before it could be written (D16). Numbers below are
+  computed by `analysis/solo_floor.py` from the boards.
+
+- **Ran:** twelve solo rounds launched, run stamp `0822T1938`. **Nine played
+  all ten episodes and were closed by their manager.** Seed 3's T2, T3 and T4
+  were truncated by the abort at 9, 7 and 3 episodes. Every episode on every
+  board carries exactly one settled production; no episode passed without one.
+
+- **Numbers -- primary.** Solo capture, `u(produced) / u(autarky optimum)`, per
+  production act. Denominator = 104 settled production acts. No act dropped.
+
+  | seed | trader | acts | mean | at optimum |
+  |---|---|---|---|---|
+  | 1 | T1, T2, T3, T4 | 10 each | 1.000 | 40/40 |
+  | 2 | T1 | 9 | **0.708** | 0/9 |
+  | 2 | T2 | 9 | 1.000 | 9/9 |
+  | 2 | T3 | 10 | **0.968** | 0/10 |
+  | 2 | T4 | 10 | 1.000 | 10/10 |
+  | 3 | T1 | 8 | 1.000 | 8/8 |
+  | 3 | T2 | 8 | 1.000 | 8/8 |
+  | 3 | T3 | 7 | 1.000 | 7/7 |
+  | 3 | T4 | 3 | 1.001 | 3/3 |
+
+  **Pooled: mean 0.972, median 1.000, 85 of 104 acts within 1% of the
+  optimum.** Ten of twelve traders sit at the optimum on every act they made.
+  The 1.001 is the manager rounding produced bundles to four decimals, not an
+  agent beating a maximum.
+
+- **Numbers -- MRS/MRT gap (D15).** Mean |log gap| is 0.001 or below for every
+  trader except seed 2's T1 (1.301) and T3 (0.342). **Zero unmade goods across
+  all 104 acts** -- no corner bundles anywhere, in 312 good-slots.
+
+  Seed 2's T1 is a stable wrong answer, not noise: the same split on all nine
+  acts. Tastes `[.502, .474, .009, .014]`, capacities `[1.951, .326, .718,
+  .548]`, optimal shares equal to the tastes; it produced `bread=0.15
+  cloth=0.83 iron=0.01 salt=0.01` every time. That yields bread 0.293 and cloth
+  0.271 -- it equalised the *quantities* of the two goods it valued near
+  equally, rather than the *labour shares*. All its gaps are negative on cloth
+  against bread, which is that error's signature.
+
+- **Numbers -- secondary.** Production acts per trader-episode: 104 acts over
+  104 trader-episodes played, i.e. **1.00** -- every trader produced in every
+  episode it saw. Talk: no free-text message on any of the twelve boards; every
+  trader message was an acknowledgement or a formatted `PRODUCE`.
+
+  **Alive fraction and the rescue count are not reported.** They live in
+  `v3.json`, which the abort destroyed, and cannot be recovered from a board
+  without inferring them from message counts -- a self-report by another name.
+  See D16.
+
+- **Assumptions that did not hold:** none.
+
+  **A1 holds, emphatically.** The worry was that corner bundles would appear
+  from trading habit and make the measure inconclusive. Zero corners in 312
+  good-slots.
+
+  **A2 holds** -- the optima the analysis recomputes are the ones runs 005 and
+  006 were scored against; same seeds, same 4-agent draw.
+
+  **A3 holds** -- the D14 impurity did not bite. Traders given text about
+  counterparties who do not exist produced in every episode anyway, and none
+  spent a message looking for anyone.
+
+  **A4 holds** -- production settled through the same parser and budget rule;
+  refusals were in kind with run 006's.
+
+- **Deviations:** D14 and D15 as written. **D16**, the abort, written after it
+  and before anything was concluded from the run.
 
 ## What this changed
+
+**The hypothesis was wrong and the record said what would refute it.** It
+expected a mean in 0.5–0.8 and named "a mean above 0.95" as the surprise. The
+result is **0.972**, with 85 of 104 acts exactly at the optimum. Alone, these
+agents solve the Cobb-Douglas allocation.
+
+**So the floor is a floor they reach, and the deficit in runs 003–006 is a
+trading failure.** Those runs keep their numbers and now keep their reading
+too: `eff_round` below `autarky_floor` means the traders did worse *together*
+than each would have done alone, and it cannot be explained by an inability to
+allocate labour. The amendment the record anticipated is not needed. That is
+the strongest statement this experiment has been able to make about where the
+loss is.
+
+**The peopled-board proxy was confounded, exactly as flagged.** The same
+measure over run 006's boards gave a pooled mean of 0.361 with 155 corner
+bundles. Run 007 has zero corners. The difference is not skill; it is that a
+trader intending to trade produces corners on purpose and a trader alone never
+does. The proxy is not evidence of anything and should not be cited.
+
+**What the gap measure bought.** Two traders missed the optimum, and the gap
+named how rather than merely how much: seed 2's T1 equalised quantities where
+it should have equalised labour shares, stably, for nine episodes. A capture
+number alone would have said "0.708" and left the error unnamed. It was added
+mid-run under D15 and it earned the addition.
+
+**What this does not say.** It says nothing about deliberation, protocols or
+hints — no instruction text was added or varied, and the stopping rule from run
+006 stands untouched. It also cannot say whether an agent that allocates well
+alone will allocate well *while* negotiating; the solo task has no distraction
+in it, and 180 seconds is a long time to make one decision.
+
+**What it unblocks.** `PROPOSAL-ratio-disclosure.md` was gated on this result:
+if solo capture had been low, telling agents to post cost and payoff ratios
+would have been aimed at a competence that was not the binding constraint. It
+is high, so the binding constraint is in the trading, which is what ratio
+disclosure targets. The proposal is now worth running — as a new experiment,
+not under 005.
