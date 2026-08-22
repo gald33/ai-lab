@@ -16,7 +16,6 @@ Claim before starting: `python scripts/roadmap.py claim <key>`
   - ↔ related: **`005-word-cap-fits-the-protocol`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - `now` **`005-word-cap-fits-the-protocol`** — Establish whether the 60-word cap can physically hold the protocol's five steps
   - ↔ related: **`005-display-precision-artifact`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
-- `now` **`lab-grounding-and-preflight`** — Ground each experiment in its own documents, and gate a run before it spends
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
@@ -49,7 +48,6 @@ graph TD
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
-  lab_grounding_and_preflight["Ground each experiment in its own documents, and gate a run before it spends"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
   005_display_precision_artifact --> 005_rerun_at_twenty_one_rounds
@@ -283,42 +281,6 @@ graph TD
 > present per message, and whether any message that attempted all of them was
 > truncated. A null on a manipulation the format cannot express is a result
 > about the format.
-
-</details>
-
-### `lab-grounding-and-preflight`
-
-- **title:** Ground each experiment in its own documents, and gate a run before it spends
-- **status:** ready
-- **arc:** lab-practice
-- **priority:** now
-- **refs:**
-  - `experiments/GROUNDING.md`
-  - `templates/experiment/runs/RUN-TEMPLATE.md`
-  - `templates/experiment/PREFLIGHT.md`
-  - `tools/ground.py`
-
-<details><summary>evidence</summary>
-
-> Two gaps, both of which had already cost something. An agent working on one
-> experiment was carrying every experiment's documents, and grounding from a
-> sibling arrives looking authoritative — it imports a metric, a threshold or a
-> harness assumption frozen for a different question, and a number produced
-> under those is not a weak result but an unattributable one. Separately, the
-> standing decisions and the pre-registrations said what the lab believes and
-> what a *tier* freezes, but nothing recorded what was decided for a particular
-> run, so a stored result could not be read back against the assumptions it was
-> produced under.
->
-> The second gap had a cost attached: CLAUDE.md forbids spending without a go,
-> and a paid run is the worst place to discover that the harness is broken or
-> that the instrument reads nothing.
->
-> Done when an agent can be started against one experiment and be grounded in
-> that experiment only; when every run whose result is kept has a record —
-> specification, assumptions, hypothesis — committed before it runs; and when
-> each experiment declares smoke, calibration and pilot gates whose commands
-> have actually been run.
 
 </details>
 
