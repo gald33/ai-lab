@@ -86,8 +86,8 @@ at zero for four traders.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `b25893c` | **pass** — `101 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `b25893c` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | the instrument is `eff_round`, and run 004 showed it separating conditions at 0.514 / 0.219 / 0.144 on this exact clock and population. The talk counter separated 30 from 0 in the screen. Neither is new or moved. | — | not needed — instrument unchanged since run 004 |
 | pilot | runs 001, 003 and 004 cover this code path, population, clock and hub | `47363d1`, `7435faf` | reused |
 
