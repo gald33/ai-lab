@@ -102,10 +102,10 @@ settle nothing.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
-| calibration | pilot at n=4 against the screen's n=2 talk rate | | |
-| pilot | `python run_v3.py --arms bare --rounds 1 --episodes 2 --agents 4` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `e801240` | **pass** — `96 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `e801240` | **pass** — an agent's `switchboard-mcp` reached the hub |
+| calibration | pilot at n=4 against the screen's n=2 talk rate | | not yet run — needs the pilot |
+| pilot | `python run_v3.py --arms bare --rounds 1 --episodes 2 --agents 4` | | not yet run — **paid, awaiting the go** |
 
 **Calibration is required here and is not being skipped.** The primary metric
 is new, and an instrument that cannot move returns an unattributable null —
