@@ -113,6 +113,48 @@ Each experiment owns its own code, results and analysis. There is no shared
 framework, deliberately — experiments that have to fit a framework end up
 measuring the framework.
 
+## Grounding a run
+
+An agent running an experiment is grounded in three things and nothing else:
+the standing decisions in [CLAUDE.md](CLAUDE.md), the general
+[experiments/GROUNDING.md](experiments/GROUNDING.md), and that experiment's own
+`CLAUDE.md`. **No other experiment's directory is in scope** — grounding from a
+sibling experiment arrives looking authoritative and silently imports a metric
+or an assumption frozen for a different question.
+
+`tools/ground.py <n>` prints exactly that bundle, and
+`tools/ground.py <n> --new-run "<name>"` opens a run record.
+
+### Before anything is spent
+
+Three free gates, in order, each answering a different question — and passing
+one says nothing about the others:
+
+- **smoke** — does the basic flow work at all? Offline tests, freeze checks, and
+  the entry point at absurdly small parameters. A smoke run's *numbers are not
+  evidence*; only that it produced them.
+- **calibration** — does the instrument read? Whether the metric separates a
+  known-different pair and sits off its own floor and ceiling. An instrument
+  pinned at either end returns a null that cannot be told apart from a real one.
+- **pilot** — does it run, small, for real? Real agents, real board, real clock,
+  few and short. It reports attempted / completed / failed with denominators,
+  classifies harness and timing failures apart from agent behaviour, and gives a
+  cost per unit to extrapolate.
+
+Each experiment declares its own gates, with real commands, in its
+`PREFLIGHT.md`; `tools/ground.py <n> --preflight` prints them. There is no
+shared gate runner, for the same reason there is no shared framework. A failed
+gate is a finding and goes in the run record — quietly fixing the harness until
+it passes, and recording only the pass, is how a harness bug becomes a result.
+
+Every run whose result is meant to be kept gets a record under
+`experiments/<n>/runs/`, committed **before** the run. It carries the
+**specification** (enough to rebuild the run without asking anyone), the
+**assumptions** (what has to be true for the output to mean what it is meant
+to mean, each written so it could be found false), and the **hypothesis**
+(what is expected, and what would change your mind). Only the outcome is
+written afterwards.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

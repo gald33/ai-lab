@@ -10,6 +10,18 @@ One rule worth keeping: **a heading kept with nothing under it is worse than no
 heading.** An empty "Limitations and confounders" reads as a claim that there
 aren't any. If a section has nothing to say, delete it.
 
+Alongside this file, a new experiment directory gets:
+
+- **`CLAUDE.md`** — from [`../CLAUDE.md`](CLAUDE.md) in this template: the
+  grounding an agent working on *this* experiment carries, and no other.
+- **`PREFLIGHT.md`** — from [`../PREFLIGHT.md`](PREFLIGHT.md): the smoke,
+  calibration and pilot gates that stand between a specified run and a spent
+  one, declared with real commands.
+- **`runs/`** — one record per run, from
+  [`runs/RUN-TEMPLATE.md`](runs/RUN-TEMPLATE.md), written before the run.
+
+[`experiments/GROUNDING.md`](../../experiments/GROUNDING.md) says why.
+
 ---
 
 ## Question
