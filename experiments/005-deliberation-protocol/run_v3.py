@@ -250,7 +250,7 @@ going until the manager says the round is over. Only then stop.""")
 
 
 def launch(name: str, arm: str, private: str, episodes: int,
-           workdir: Path, workspace: str) -> subprocess.Popen:
+           workdir: Path, workspace: str, *, max_turns: int) -> subprocess.Popen:
     """One agent, one long-lived session. Started once and never called again."""
     home = workdir / name
     home.mkdir(parents=True, exist_ok=True)
@@ -265,7 +265,7 @@ def launch(name: str, arm: str, private: str, episodes: int,
                 "SWITCHBOARD_AGENT_ID": name})
     return subprocess.Popen(
         ["claude", "-p", instructions(arm, private, episodes),
-         "--model", MODEL, "--max-turns", "400",
+         "--model", MODEL, "--max-turns", str(max_turns),
          "--mcp-config", str(home / ".mcp.json"),
          "--allowedTools", *TOOLS],
         cwd=home, env=env,
@@ -345,7 +345,11 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     started = time.time()
 
     mgr.say(schedule_text(episodes, mgr.names))
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace)
+    # A turn cap that never bound at three episodes will bind at thirty, and an
+    # agent cut off mid-round goes silent in a way that reads exactly like
+    # choosing to stop. Scale it with the work, with headroom.
+    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace,
+                    max_turns=max(400, 40 * episodes))
              for n in mgr.names]
 
 
@@ -405,7 +409,12 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
             "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,
-            "channel_messages": len(client.history(channel, limit=500)),
+            # Counted by the manager as it drained, not by a final history
+            # call: that call caps at 500 rows, and hub messages expire after
+            # an hour, so on a round longer than that the board is no longer a
+            # complete record of itself. The per-episode ledger is.
+            "channel_messages": len(mgr.seen),
+            "drain_saturated": mgr.saturated,
             "seconds": round(time.time() - started, 1)}
 
 
