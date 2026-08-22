@@ -16,10 +16,7 @@ Claim before starting: `python scripts/roadmap.py claim <key>`
   - ↔ related: **`005-word-cap-fits-the-protocol`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - `now` **`005-word-cap-fits-the-protocol`** — Establish whether the 60-word cap can physically hold the protocol's five steps
   - ↔ related: **`005-display-precision-artifact`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
-- `next` **`001-publish-results`** — Clean 001's data, write the analysis, and publish or withdraw the numbers
-- `next` **`002-tier3-run`** — Run 002 Tier 3
 - `next` **`005-transport-retry-audit`** — Confirm a silent transport retry cannot mask a model refusing the format
-- `later` **`003-tier2-design`** — Design 003 Tier 2 — the same promoter over real instincts
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
 
 ## ⏸ Deferred — startable, deliberately not now
@@ -41,9 +38,6 @@ _Nothing claimed._
 
 ```mermaid
 graph TD
-  001_publish_results["Clean 001's data, write the analysis, and publish or withdraw the numbers"]
-  002_tier3_run["Run 002 Tier 3"]
-  003_tier2_design["Design 003 Tier 2 — the same promoter over real instincts"]
   005_display_precision_artifact["Find every focal point the 005 instrument creates by formatting"]
   005_paired_statistic_choice["Decide whether minimum dispersion is the right paired statistic"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
@@ -58,74 +52,6 @@ graph TD
 ```
 
 ## Items
-
-### `001-publish-results`
-
-- **title:** Clean 001's data, write the analysis, and publish or withdraw the numbers
-- **status:** ready
-- **arc:** switchboard-coordination
-- **priority:** next
-- **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
-
-<details><summary>evidence</summary>
-
-> The experiment README says it plainly: run, not published; the data is not
-> cleaned and the analysis is not written, and the repo README's experiment
-> table carries "results not yet published". The design and one preserved
-> negative result are already written, so what is missing is the analysis, not
-> the reasoning.
->
-> Done when the experiment directory states an outcome for the question it
-> asked — including "the data does not support an answer", which is an outcome
-> — and the README table stops saying results are pending.
-
-</details>
-
-### `002-tier3-run`
-
-- **title:** Run 002 Tier 3
-- **status:** ready
-- **arc:** barter-conventions
-- **priority:** next
-- **refs:**
-  - `experiments/002-barter-conventions/tier3-design.md`
-  - `reports/2026-08-20-002-tier3-calibration.md`
-
-<details><summary>evidence</summary>
-
-> Tier 3 is designed and calibrated and unrun — the design document exists and
-> the calibration has its own report. Tier 2 is separately mid-flight with the
-> harness moving under it, which is why its numbers are recorded as measuring
-> the harness.
->
-> Done when the tier is pre-registered, run against seeded rounds paired across
-> conditions, and reported with denominators — including the runs that failed
-> and which failures were harness rather than behaviour.
-
-</details>
-
-### `003-tier2-design`
-
-- **title:** Design 003 Tier 2 — the same promoter over real instincts
-- **status:** ready
-- **arc:** promotion-rules
-- **priority:** later
-- **refs:**
-  - `experiments/003-promotion-rules/README.md`
-  - `reports/2026-08-20-003-promotion-rules.md`
-
-<details><summary>evidence</summary>
-
-> Tier 1, the scripted tier, is complete and reported; the README says Tier 2
-> is not designed and not run. Tier 1 answers the rule question over scripted
-> candidates, which leaves open the thing the experiment is actually about: a
-> promoter choosing among solutions a model wrote.
->
-> Done when there is a design document naming the question, what is held fixed,
-> and which result would change what gets built — not an implementation.
-
-</details>
 
 ### `005-display-precision-artifact`
 

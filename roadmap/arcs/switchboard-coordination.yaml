@@ -1,8 +1,17 @@
 id: switchboard-coordination
 title: 001 — is coordination better reasoning, or less to reason about?
+state: closed
+state_evidence: |
+  Closed by decision on 2026-08-22 to focus the lab on 005. The tail was
+  WITHDRAWN, not finished: `001-publish-results` was deleted unstarted, so the
+  run's data stays uncleaned and its analysis unwritten. The experiment
+  directory's own status line — run, not published, nothing below is a result —
+  remains the accurate description, and closing the arc does not turn it into
+  one.
 refs:
   - experiments/001-switchboard-coordination/README.md
 narrative: |
-  Run, not published. The data is not cleaned and the analysis is not written,
-  so the experiment directory carries the design and one preserved negative
-  result and no numbers. The tail is the publication, not the run.
+  Run, not published, and now closed with that still true. The design and the
+  one preserved negative result are in the experiment directory; the numbers
+  are not, and no longer have an item saying they will be. Reopening means
+  filing the analysis item again, not re-running anything.
