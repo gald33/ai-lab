@@ -475,3 +475,46 @@ the run's data. The hypothesis and the threshold in the record are untouched.
 ratio; the answer — that at the optimum it adds nothing, and away from the
 optimum it names the direction — is the measure. It is also written up in
 `PROPOSAL-ratio-disclosure.md`, which belongs to a later experiment.
+
+## D16 — Run 007 died to a dropped connection, and nine finished rounds died with it
+
+**Written after run 007's abort, before anything was concluded from it.
+2026-08-22.**
+
+At 20:29, twelve minutes before the second wave would have ended, the hub
+disconnected without answering a manager read. The exception was
+`httpx.RemoteProtocolError`. D13's retry catches `SwitchboardError` — the hub
+answering badly — and this was the hub not answering at all, so it went past
+the except clause, out of `run_round`, out of the thread pool, and killed the
+process. `v3.json` was never written.
+
+**Two faults, and the second is the one that keeps costing.**
+
+1. *The retry was too narrow.* Fixed: `TRANSPORT_FAULTS` now covers
+   `httpx.TransportError` and `httpx.RemoteProtocolError` alongside the 5xx
+   case, on the same bounded four attempts. A read is still safe to repeat.
+2. *One round's death destroyed every other round's record.* This is the
+   second time — run 006 lost six rounds to the same shape. The rounds are
+   independent worlds and their records now fail independently: `one()` catches
+   everything, prints the failure, and writes `{"failed": true, "error": ...}`
+   into the result. **A failed round is written down as failed and stays in the
+   denominator; it is never dropped.**
+
+**What survived, and why it is usable.** Nine of the twelve solo rounds had
+already played all ten episodes and been closed by their manager; seed 3's T2,
+T3 and T4 were truncated at 9, 7 and 3 episodes. The boards were pulled off the
+hub before the TTL and are saved under `results/007-solo/boards/`. Every
+production act on them is settled state that the manager had already accepted
+and announced. The endpoint is computed over those 104 acts, with the truncated
+rounds' shorter denominators shown per trader rather than averaged away.
+
+**What did not survive.** `v3.json`, and with it the per-round record: `spoke`,
+`acknowledged`, `relaunched`, `drain_errors`, `seconds`. Alive fraction and the
+rescue count are therefore **not reported for run 007** — they cannot be
+reconstructed from a board, and inferring them from message counts would be a
+self-report by another name. The run record says so rather than substituting a
+proxy.
+
+**This is a harness failure and is classified as one.** It is not evidence
+about agents, and the numbers it interrupted are reported with the interruption
+named beside them.

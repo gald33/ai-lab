@@ -32,7 +32,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]
 
 from barter.economy import Island, utility  # noqa: E402
 
+import httpx  # noqa: E402
+
 from switchboard.client import Client, SwitchboardError  # noqa: E402
+
+#: What a hub that is briefly unwell looks like from here. `SwitchboardError`
+#: is the hub answering badly; the `httpx` errors are it not answering at all
+#: -- a dropped connection, a refused socket, a read that timed out. D13
+#: caught only the first kind, and run 007 died at 20:29 to the second: a
+#: `RemoteProtocolError` from a server that disconnected without a response
+#: went straight past the except clause and took nine finished rounds' records
+#: with it. Both kinds are the same event for our purposes and both are safe
+#: to repeat on a read.
+TRANSPORT_FAULTS = (httpx.TransportError, httpx.RemoteProtocolError)
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
@@ -137,6 +149,12 @@ class Manager:
             try:
                 return sorted(self.client.history(self.channel, limit=500),
                               key=lambda r: r.get("seq", 0))
+            except TRANSPORT_FAULTS:
+                if attempt == tries - 1:
+                    raise
+                self.drain_errors += 1
+                time.sleep(delay)
+                delay *= 2
             except SwitchboardError as exc:
                 transient = exc.status is None or exc.status >= 500
                 if not transient or attempt == tries - 1:

@@ -661,9 +661,23 @@ def main() -> None:
 
     def one(job):
         arm, seed, only = job
-        rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
-                        agents=args.agents, goods=args.goods, outdir=outdir,
-                        only=only)
+        # A round that dies must not take the others with it. Twice now a
+        # single hub fault mid-round has propagated out of the thread pool and
+        # destroyed every finished round's record along with the failing one --
+        # run 006 lost six, run 007 lost nine that had already played all ten
+        # episodes. The rounds are independent worlds; their records should
+        # fail independently too. A failed round is written down as failed,
+        # never dropped, so it stays in the denominator.
+        try:
+            rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
+                            agents=args.agents, goods=args.goods,
+                            outdir=outdir, only=only)
+        except Exception as exc:  # noqa: BLE001 -- deliberately everything
+            with lock:
+                print(f"  {arm:9s} seed {seed}{'/' + only if only else ''}  "
+                      f"FAILED {type(exc).__name__}: {exc}"[:300], flush=True)
+            return {"arm": arm, "seed": seed, "only": only, "failed": True,
+                    "error": f"{type(exc).__name__}: {exc}"[:500]}
         rec["only"] = only
         s = score(draw_island(args.agents, args.goods, seed=seed),
                   rec["trajectory"])
@@ -684,6 +698,10 @@ def main() -> None:
     workers = min(args.max_concurrent, len(jobs))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         records = list(pool.map(one, jobs))
+    failed = [r for r in records if r.get("failed")]
+    if failed:
+        print(f"\n{len(failed)} of {len(records)} rounds failed and are "
+              f"written to the result as failed, not dropped.")
 
     path = outdir / "v3.json"
     path.write_text(json.dumps(
