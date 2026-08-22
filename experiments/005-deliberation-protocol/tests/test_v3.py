@@ -38,6 +38,13 @@ class FakeHub:
         self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
                           "channel": channel, "from": MANAGER, "body": body})
 
+    def envelope(self, who: str, text: str) -> None:
+        """A `say` that carried a timing forecast: the body is an envelope."""
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who,
+                          "body": {"text": text,
+                                   "timing_forecast": {"p50": "2026-01-01T00:00:00Z"}}})
+
     def as_(self, who: str, body: str) -> None:
         self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
                           "channel": "c", "from": who, "body": body})
@@ -56,6 +63,10 @@ def fresh() -> Manager:
     for n in m.names:
         m.bind(n, n)
     m.hub = hub  # type: ignore[attr-defined]
+    # An episode starts shut, so the acknowledgement window cannot become part
+    # of episode 1. Every test below acts inside an open episode; the ones
+    # about the bell shut it themselves.
+    m.open_episode()
     return m
 
 
@@ -75,7 +86,8 @@ def test_the_three_shapes_parse():
 
 @pytest.mark.parametrize("bad", [
     "PRODUCE bread", "PRODUCE", "PRODUCE bread=", "PRODUCE bread=-0.5",
-    "PROPOSE to=T2 give=iron:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
+    "PROPOSE to=T2 give=iron:0.4",
+    "PROPOSE to=T2 give=bread:0.02 cloth:0.15 want=salt:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
     "PROPOSE to=T2 give=iron want=salt:0.3",
     "PROPOSE to=T2 give=iron:0 want=salt:0.3",
     "APPROVE", "APPROVE p1 p2",
@@ -97,20 +109,33 @@ def test_the_manager_says_why_rather_than_repairing():
 
 # --- timing -------------------------------------------------------------
 
-def test_production_after_its_deadline_is_refused():
+def test_nothing_from_a_closed_episode_settles():
     m = fresh()
-    m.production_open = False
-    m.hub.as_("T1", EVEN)
-    m.drain()
-    assert m.refused == 1 and not m.holders["T1"].produced
-
-
-def test_the_market_is_shut_while_production_is_open():
-    m = fresh()
+    m.episode_open = False
     m.hub.as_("T1", EVEN)
     m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
     m.drain()
-    assert m.settled == 1 and m.refused == 1
+    assert m.refused == 2 and not m.holders["T1"].produced
+
+
+def test_an_episode_has_no_stages_inside_it():
+    """Producing and dealing settle in the same window, in either order.
+
+    The clock divides episodes from each other and nothing else. An earlier
+    version split each episode into a production window and a market window,
+    and agents in every arm spent their first offers being refused for
+    proposing "too early" -- a rule they had been told and still read as the
+    episode simply having begun.
+    """
+    m = fresh()
+    for n in m.names:
+        m.hub.as_(n, EVEN)
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 0
+    assert m.settled == 4
+    assert m.proposals["p1"].status == "settled"
 
 
 def test_producing_twice_in_one_episode_is_refused():
@@ -135,7 +160,6 @@ def stocked() -> Manager:
     for n in m.names:
         m.hub.as_(n, EVEN)
     m.drain()
-    m.production_open, m.market_open = False, True
     return m
 
 
@@ -147,6 +171,46 @@ def test_an_open_proposal_commits_the_goods_it_offers():
     m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=iron:0.1")
     m.drain()
     assert m.refused == 1, "the same goods cannot back two open proposals"
+
+
+def test_a_trader_cannot_approve_its_own_proposal():
+    """The mistake that cost two arms a whole round.
+
+    T1 offered to T2 and then approved its own offer, twice, in different
+    episodes, while T2's genuine offers sat open and lapsed at the bell. Making
+    an offer and taking it yourself is not a trade, and the refusal has to say
+    so rather than quietly doing nothing.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open", "and it stays takeable by T2"
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "settled"
+
+
+def test_your_own_open_proposal_can_leave_you_short_to_approve():
+    """The other half of that round: escrow blindness.
+
+    T1 tried to approve an offer it could not pay for, because its own open
+    proposal was holding the goods. The refusal names the shortfall, which is
+    the only way an agent can tell this apart from having produced too little.
+    """
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=cloth:0.01")
+    m.drain()
+    m.hub.as_("T2", "PROPOSE to=T1 give=cloth:0.02 want=bread:0.02")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.refused == 1
+    said = [r["body"] for r in m.hub.history("c") if "uncommitted" in r["body"]]
+    assert said, "the refusal must name the shortfall"
 
 
 def test_only_the_addressee_can_approve():
@@ -195,6 +259,22 @@ def test_a_good_nobody_makes_zeroes_everyone():
     assert all(u == 0.0 for u in m.close_episode())
 
 
+def test_a_message_carrying_a_timing_forecast_is_still_read():
+    """Switchboard wraps a `say` that carries a forecast; the text is inside.
+
+    Two rounds reported 1/2 acknowledged because a trader's ACK arrived as an
+    envelope and the manager stringified the whole dict. Every match against it
+    failed silently -- an action that never settled and never refused.
+    """
+    m = fresh()
+    m.hub.envelope("T1", "ACK ready")
+    m.hub.envelope("T2", EVEN)
+    m.drain()
+    assert m.acknowledged == {"T1"}
+    assert m.holders["T2"].produced, "a wrapped PRODUCE must settle like a bare one"
+    assert m.refused == 0
+
+
 def test_an_acknowledgement_is_just_a_board_line():
     m = fresh()
     m.hub.as_("T1", "ACK — schedule understood")
@@ -223,3 +303,75 @@ def test_k_identical_episodes_score_exactly_one_episode():
     for k in (2, 3, 5, 8):
         assert score(ISLAND, [list(auto)] * k).eff_round == pytest.approx(
             one, abs=1e-6)
+
+
+# --- what the record has to be able to answer later ----------------------
+
+def test_nothing_settles_before_the_episode_is_rung_in() -> None:
+    """The acknowledgement window is not part of episode 1.
+
+    It was, for the whole ten-arm screen: production settled while the manager
+    was still waiting for ACKs, so episode 1 ran longer than episodes 2 and 3,
+    and longer for a trader who produced early than for one who waited. An
+    episode that is not the same length as its siblings is not a repeat of it.
+    """
+    m = fresh()
+    m.episode_open = False
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.settled == 0
+    assert any("closed" in str(r["body"]) for r in m.hub.rows
+               if r["from"] == MANAGER)
+
+
+def test_the_bell_leaves_the_next_episode_shut() -> None:
+    m = fresh()
+    m.close_episode()
+    assert m.episode_open is False
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.settled == 0
+
+
+def test_a_refusal_keeps_the_reason_it_gave() -> None:
+    """A count says how often the manager said no; only the reason says what
+    the traders could not manage to express."""
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread")
+    m.drain()
+    assert m.refused == 1
+    (r,) = m.refusals
+    assert r["trader"] == "T1"
+    assert r["kind"] == "malformed"
+    assert r["line"] == "PRODUCE bread"
+    assert r["reason"]
+
+
+def test_the_bell_records_who_went_without_and_in_what() -> None:
+    """A zero episode is one trader holding none of one good, and the utility
+    vector cannot say which trader or which good. That is the question every
+    post-mortem of the screen turned out to ask, and boards expire in an hour.
+    """
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    m.close_episode()
+    (log,) = m.episode_log
+    assert log["episode"] == 1
+    assert log["produced"] == ["T1"]
+    assert set(log["starved"]["T1"]) == {"cloth", "iron", "salt"}
+    assert set(log["starved"]["T2"]) == {"bread", "cloth", "iron", "salt"}
+    assert log["utilities"]["T1"] == 0.0
+    assert log["holdings"]["T1"]["bread"] > 0
+
+
+def test_the_bell_records_which_proposals_lapsed() -> None:
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
+    m.drain()
+    m.close_episode()
+    (log,) = m.episode_log
+    assert log["lapsed"] == ["p1"]
+    assert log["settled"] == 2

@@ -30,7 +30,13 @@ scratch/
 # 005 v3 agent working directories: a per-agent .mcp.json (which carries a hub
 # token) and a session log, both rewritten on every run. The result of a run is
 # the manager's record and the hub's channel, not an agent's scratch dir.
-experiments/005-deliberation-protocol/results/v3/*/T*/
+experiments/005-deliberation-protocol/results/*/*/T*/
+
+# The runner's own stdout while a run is in flight. The record of a run
+# is the manager's v3.json, committed once the run has finished; a log
+# committed mid-run is half a file.
+experiments/005-deliberation-protocol/results-*.log
+experiments/005-deliberation-protocol/.ca-bundle.pem
 
 # Roadmap store — derived, rebuilt by `roadmap push` from roadmap/items/*.yaml.
 # A binary file in git conflicts on every claim.

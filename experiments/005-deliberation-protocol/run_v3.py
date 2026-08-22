@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pathlib
 import subprocess
 import sys
 import threading
@@ -50,9 +51,61 @@ STIM = HERE / "stimuli" / "v3"
 # key before any client is built, so manager and agents are on the same footing.
 os.environ.pop("SWITCHBOARD_KEY", None)
 
-HUB = os.environ.get("SWITCHBOARD_URL", "http://127.0.0.1:8787")
-TOKEN = os.environ.get("SWITCHBOARD_TOKEN", "sb_public_lucille")
+
+# TLS trust. This session reaches the hub through an egress proxy, and the CA
+# file the environment points every tool at carries the proxy's own roots but
+# not the public ones -- and the hub presents a real public chain. curl happens
+# to survive that; anything on Python's ssl module does not, so httpx raises
+# CERTIFICATE_VERIFY_FAILED and every Switchboard call becomes "internal
+# error". That is a harness fault wearing the costume of agent silence: the
+# sessions start, find every tool broken, ask to have it fixed, and stop. It
+# cost a run mid-flight when the bundle was rewritten one minute after launch.
+#
+# So build one bundle that holds both: every certificate in the system store
+# and every certificate the proxy supplies. Verification stays on -- this adds
+# roots, it never disables a check -- and the file is exported so that the
+# agents' MCP subprocesses, which get an explicit env and would otherwise
+# inherit nothing, trust exactly what the manager trusts.
+def _ca_bundle() -> str:
+    import glob
+    import re
+
+    out: list[str] = []
+    for f in [*sorted(glob.glob("/etc/ssl/certs/*.pem")),
+              os.environ.get("SSL_CERT_FILE", ""),
+              "/root/.ccr/ca-bundle.crt"]:
+        if not f:
+            continue
+        try:
+            text = pathlib.Path(f).read_text()
+        except OSError:
+            continue
+        out += re.findall(
+            r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", text, re.S)
+    seen: set[str] = set()
+    keep = [c for c in out if not (c in seen or seen.add(c))]
+    path = HERE / ".ca-bundle.pem"
+    path.write_text("\n".join(keep) + "\n")
+    return str(path)
+
+
+CA_BUNDLE = _ca_bundle()
+for _var in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+    os.environ[_var] = CA_BUNDLE
+
+# The managed hub is the default: a local `switchboard serve` is one more
+# thing to keep alive, and it died between runs more than once. The managed
+# one is reachable, versioned and not this experiment's to operate.
+from switchboard.config import MANAGED_HUB_TOKEN, MANAGED_HUB_URL  # noqa: E402
+
+HUB = os.environ.get("SWITCHBOARD_URL") or MANAGED_HUB_URL
+TOKEN = os.environ.get("SWITCHBOARD_TOKEN") or MANAGED_HUB_TOKEN
 WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
+
+# One stamp per run, so every round of it gets a workspace no earlier run has
+# written to. Recorded in the result: a board that cannot be found again is not
+# evidence.
+RUN_STAMP = time.strftime("%m%dT%H%M", time.gmtime())
 
 def client_for(agent_id: str, workspace: str) -> Client:
     """A client pinned to one workspace.
@@ -79,7 +132,16 @@ MCP_CONFIG = {
         "switchboard": {
             "command": "switchboard-mcp",
             "env": {"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
-                    "SWITCHBOARD_WORKSPACE": WORKSPACE},
+                    "SWITCHBOARD_WORKSPACE": WORKSPACE,
+                    # An MCP server gets this env and not the parent's, so the
+                    # trust and proxy settings have to be named here or every
+                    # tool the agent holds fails at the TLS handshake.
+                    "SSL_CERT_FILE": CA_BUNDLE,
+                    "REQUESTS_CA_BUNDLE": CA_BUNDLE,
+                    "PATH": os.environ.get("PATH", ""),
+                    "HOME": os.environ.get("HOME", ""),
+                    "HTTPS_PROXY": os.environ.get("HTTPS_PROXY", ""),
+                    "NO_PROXY": os.environ.get("NO_PROXY", "")},
         }
     }
 }
@@ -93,12 +155,37 @@ ARMS = {
     "both":     ("protocol", True),
 }
 
+#: The screen. Ten one-off advice blocks, run as ten arms on one seed, to find
+#: out cheaply which kinds of advice move anything at all. These are
+#: deliberately impure — a block may mix a communication convention with a
+#: domain suggestion — because the point is to find a live one and only then
+#: decompose it into its protocol part and its hint part and test those
+#: separately. A screen is not an experiment: ten numbers on one draw have no
+#: error bars, and whatever wins here is a hypothesis to be re-run, not a
+#: result. Nothing under stimuli/screen/ is frozen or citable.
+SCREEN = {
+    "s01": "screen/s01-manager",
+    "s02": "screen/s02-protocol",
+    "s03": "screen/s03-coupling",
+    "s04": "screen/s04-coverage",
+    "s05": "screen/s05-advantage",
+    "s06": "screen/s06-example",
+    "s07": "screen/s07-checklist",
+    "s08": "screen/s08-population",
+    "s09": "screen/s09-failures",
+    "s10": "screen/s10-ask",
+}
+ARMS.update({name: (block, False) for name, block in SCREEN.items()})
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
 #: giving it.
+#:
+#: Defaults, overridable per run and recorded in the result: the shape of the
+#: clock is a design parameter, not a constant, and a record that does not say
+#: which clock it ran on cannot be compared with one that ran on another.
 ACK_SECONDS = 120
-PRODUCTION_SECONDS = 30
 EPISODE_SECONDS = 60
 
 #: How often the manager looks at the channel. It is a reader, so this only
@@ -118,7 +205,11 @@ def instructions(arm: str, private: str, episodes: int) -> str:
     block, hint = ARMS[arm]
     parts = [body((STIM / "base.md").read_text())]
     if block:
-        parts.append(body((STIM / f"{block}.md").read_text()))
+        # A block naming a directory ("screen/s01-terse") is resolved against
+        # the stimuli root, so the screen's un-frozen blocks never sit in the
+        # frozen v3 directory.
+        path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
+        parts.append(body(path.read_text()))
     if hint:
         parts.append(body((STIM / "hint.md").read_text()))
     parts.append(f"""## This round
@@ -126,10 +217,10 @@ def instructions(arm: str, private: str, episodes: int) -> str:
 {private}
 
 This round is {episodes} episodes long, and every episode lasts
-{EPISODE_SECONDS} seconds. Production is open for the first
-{PRODUCTION_SECONDS} seconds of each episode; the market is open from then
-until the bell. Your capacities and tastes are the same in every episode of
-this round, and so is everyone else's.
+{EPISODE_SECONDS} seconds. There are no stages inside an episode: from the
+moment it opens until the bell, producing, proposing and approving all settle.
+Your capacities and tastes are the same in every episode of this round, and so
+is everyone else's.
 
 An episode is short. Reading the whole channel every time will cost you more of
 it than it is worth.
@@ -168,7 +259,8 @@ def launch(name: str, arm: str, private: str, episodes: int,
     config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_WORKSPACE"] = workspace
     (home / ".mcp.json").write_text(json.dumps(config, indent=1))
     env = dict(os.environ)
-    env.update({"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
+    env.update({"SSL_CERT_FILE": CA_BUNDLE, "REQUESTS_CA_BUNDLE": CA_BUNDLE,
+                "SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
                 "SWITCHBOARD_WORKSPACE": workspace,
                 "SWITCHBOARD_AGENT_ID": name})
     return subprocess.Popen(
@@ -180,13 +272,57 @@ def launch(name: str, arm: str, private: str, episodes: int,
         stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
 
 
+def preflight() -> None:
+    """Prove an agent's own toolchain works before spending a run on it.
+
+    The screen's first attempt died four minutes in: every session started,
+    found every Switchboard tool returning "internal error", asked to have the
+    connection fixed, and stopped. The manager was fine -- it had the parent
+    environment -- so nothing upstream looked wrong, and the guard below reads
+    a session that starts and stops as a choice, which is what it usually is.
+
+    An agent reaches the hub through `switchboard-mcp` with the env this file
+    hands it, and nothing else. So check that exact path: spawn the server the
+    way an agent gets it and call one tool. Ten seconds here against fifty
+    rounds of silence is not a close trade.
+    """
+    import shutil  # noqa: PLC0415
+
+    if not shutil.which("switchboard-mcp"):
+        raise SystemExit("preflight: switchboard-mcp is not on PATH")
+    env = dict(MCP_CONFIG["mcpServers"]["switchboard"]["env"])
+    env["SWITCHBOARD_AGENT_ID"] = "preflight"
+    calls = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+         "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                    "clientInfo": {"name": "preflight", "version": "0"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+         "params": {"name": "whoami", "arguments": {}}},
+    ]
+    try:
+        done = subprocess.run(  # noqa: S603
+            ["switchboard-mcp"], input="\n".join(json.dumps(c) for c in calls),
+            env=env, capture_output=True, text=True, timeout=45, check=False)
+    except subprocess.TimeoutExpired:
+        raise SystemExit("preflight: switchboard-mcp did not answer in 45s") from None
+    out = done.stdout + done.stderr
+    if '"isError": true' in out or '"id": 2' not in out:
+        raise SystemExit(
+            "preflight: an agent's own MCP server could not reach the hub, so "
+            "every agent would start, find its tools broken and stop. This is "
+            "a harness fault, not agent behaviour.\n"
+            f"  hub {HUB}\n  last output: {out[-400:].strip()}")
+    print(f"preflight: an agent's switchboard-mcp reached {HUB}")
+
+
 def schedule_text(episodes: int, names: tuple[str, ...]) -> str:
     return (f"Schedule for this round. {len(names)} traders: "
             f"{', '.join(names)}. {episodes} episodes, {EPISODE_SECONDS}s each. "
-            f"In every episode PRODUCE is settled only in the first "
-            f"{PRODUCTION_SECONDS}s; PROPOSE and APPROVE are settled from then "
-            f"until the bell. At the bell open proposals lapse and everything "
-            f"held is consumed. Acknowledge with a line beginning ACK. "
+            f"Within an episode there are no stages: PRODUCE, PROPOSE and "
+            f"APPROVE all settle for as long as the episode is open. At the "
+            f"bell open proposals lapse and everything held is consumed. "
+            f"Acknowledge with a line beginning ACK. "
             f"Episode 1 opens in {ACK_SECONDS}s whether or not everyone has.")
 
 
@@ -195,7 +331,12 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     island = draw_island(agents, goods, seed=seed)
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
-    workspace = f"{WORKSPACE}-{arm}-{seed}"
+    # The stamp is what keeps one run's board out of the next one's. Messages
+    # live an hour on the hub, so a workspace named only for its arm and seed
+    # still holds the last run's schedule, bells and episode openings -- and a
+    # trader calling history reads a bell that belongs to a round that no
+    # longer exists. That is contamination of the stimulus, not untidiness.
+    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
     channel = "island"
     client = client_for(MANAGER, workspace)
     mgr = Manager(island=island, client=client, channel=channel)
@@ -239,14 +380,10 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                        f"Episode 1 opens now.")
 
     for e in range(episodes):
-        mgr.production_open, mgr.market_open = True, False
+        mgr.open_episode()
         t0 = time.time()
-        mgr.say(f"episode {e + 1} of {episodes} is open. PRODUCE is "
-                           f"settled for the next {PRODUCTION_SECONDS}s.")
-        wait_until(t0 + PRODUCTION_SECONDS)
-        mgr.production_open, mgr.market_open = False, True
-        mgr.say("production is closed. PROPOSE and APPROVE are "
-                           "settled until the bell.")
+        mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
+                f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
         wait_until(t0 + EPISODE_SECONDS)
         mgr.close_episode()
 
@@ -262,14 +399,18 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
 
     return {"arm": arm, "seed": seed, "episodes": episodes,
             "trajectory": mgr.episode_utilities,
+            # The screen had to be diagnosed by re-reading boards that expire
+            # in an hour. What the metrics cannot say goes in the record.
+            "episode_log": mgr.episode_log, "refusals": mgr.refusals,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
-            "workspace": workspace, "channel": channel,
+            "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,
             "channel_messages": len(client.history(channel, limit=500)),
             "seconds": round(time.time() - started, 1)}
 
 
 def main() -> None:
+    global ACK_SECONDS, EPISODE_SECONDS
     ap = argparse.ArgumentParser()
     ap.add_argument("--arms", nargs="+", default=["bare", "both"])
     ap.add_argument("--rounds", type=int, default=1)
@@ -277,20 +418,51 @@ def main() -> None:
     ap.add_argument("--agents", type=int, default=2)
     ap.add_argument("--goods", type=int, default=4)
     ap.add_argument("--out", default="results/v3")
+    ap.add_argument("--episode-seconds", type=int, default=60)
+    ap.add_argument("--ack-seconds", type=int, default=120)
+    # Rounds are independent worlds and could all run at once, but the box and
+    # the hub are not independent of each other. A cap trades wall-clock for
+    # headroom; it changes nothing any agent sees, since each round's clock
+    # starts when that round starts.
+    ap.add_argument("--max-concurrent", type=int, default=10)
+    ap.add_argument("--no-control", action="store_true",
+                    help="run without a control arm, and record that choice")
     args = ap.parse_args()
 
     for arm in args.arms:
         if arm not in ARMS:
             raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
 
+    ACK_SECONDS = args.ack_seconds
+    EPISODE_SECONDS = args.episode_seconds
+
+    # A run without a control measures its arms against the autarky floor and
+    # nothing else, so it cannot say whether any block beat saying nothing.
+    # The ten-arm screen had no control and could not answer that -- and a
+    # baseline cannot be borrowed from an earlier run, whose code, clock and
+    # trust settings all differed. Refuse by default; allow it to be waived
+    # out loud, in the command that runs it and in the record.
+    CONTROLS = ("bare", "placebo")
+    if not any(a in CONTROLS for a in args.arms) and not args.no_control:
+        raise SystemExit(
+            f"no control arm: none of {', '.join(CONTROLS)} is in {args.arms}. "
+            "Without one, 'no arm beat the floor' cannot be told from 'no arm "
+            "beat saying nothing'. Add a control, or pass --no-control if the "
+            "run genuinely does not need one.")
+
     outdir = HERE / args.out
     outdir.mkdir(parents=True, exist_ok=True)
     wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
     print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
           f"episodes {args.episodes}  agents {args.agents}")
-    print(f"clock-bound: {wall:.1f} min, and the arms run at the same time on "
-          f"separate channels, so the wall-clock is {wall:.1f} min however "
-          f"many arms there are.\n")
+    n_jobs = len(args.arms) * args.rounds
+    waves = -(-n_jobs // min(args.max_concurrent, n_jobs))
+    print(f"clock-bound: {wall:.1f} min per round; {n_jobs} rounds at "
+          f"{args.max_concurrent} at a time is {waves} wave(s), so about "
+          f"{waves * wall:.0f} min of wall-clock and {n_jobs * args.agents} "
+          f"agent sessions.\n")
+
+    preflight()
 
     from island.score import score  # noqa: PLC0415
 
@@ -317,16 +489,17 @@ def main() -> None:
     # Arms are independent worlds on independent channels. Running them at the
     # same time is not a shortcut: nothing crosses between them, and the clock
     # each one runs on is its own.
-    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+    workers = min(args.max_concurrent, len(jobs))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         records = list(pool.map(one, jobs))
 
     path = outdir / "v3.json"
     path.write_text(json.dumps(
         {"experiment": "005-v3", "model": MODEL, "arms": args.arms,
+         "no_control": bool(args.no_control),
          "agents": args.agents, "goods": args.goods,
          "episodes_per_round": args.episodes,
          "schedule": {"ack_seconds": ACK_SECONDS,
-                      "production_seconds": PRODUCTION_SECONDS,
                       "episode_seconds": EPISODE_SECONDS},
          "rounds": records}, indent=1))
     print(f"\nwrote {path}")

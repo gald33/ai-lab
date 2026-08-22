@@ -60,15 +60,30 @@ exactly:
 
     PRODUCE bread=0.5 iron=0.5
         Commits your labour for this episode. Shares must sum to at most 1.
-            Once per episode, and only while production is open.
+        Once per episode.
 
     PROPOSE to=T2 give=iron:0.4 want=salt:0.3
-        Offers a named trader an exchange. The goods you offer are committed
-        until it is settled or the bell rings. Only while the market is open.
+    PROPOSE to=T2 give=iron:0.4,cloth:0.15 want=salt:0.3
+        Offers a named trader an exchange. Several goods on a side are
+        separated by commas and no spaces — a space starts a new key=value,
+        so `give=iron:0.4 cloth:0.15` does not parse.
+
+        You can only offer what you already hold, so producing first is what
+        makes an offer possible. The goods you offer are **committed** the
+        moment the proposal is open: they cannot back a second proposal, and
+        they cannot pay for a proposal you want to approve. If you are short
+        when you try to approve, an offer of your own is probably holding what
+        you need — cancelling is not possible, so size your offers with that
+        in mind.
 
     APPROVE p3
-        Accepts a proposal that was addressed to you, by its id. The exchange
-        happens immediately.
+        Accepts a proposal **another trader addressed to you**, by its id. The
+        exchange happens immediately.
+
+        You cannot approve your own proposal. Making an offer and accepting it
+        yourself is not a trade; only the trader it was sent to can take it. If
+        you want a deal, either send an offer and wait for them to approve it,
+        or approve one of theirs.
 
 Say them on the **island** channel; that is where the manager reads. A private
 `dm` is real and nobody else sees it, but the manager does not read it, so an
@@ -84,10 +99,13 @@ whom you should deal with, or on what terms.
 
 ## The schedule
 
-The manager says the schedule on the island channel before the round begins. Read it
-and acknowledge it by writing a line beginning `ACK`. Deadlines are real: after
-production closes, a `PRODUCE` line is refused, and this episode you will have
-produced nothing.
+The manager says the schedule on the island channel before the round begins.
+Read it and acknowledge it by writing a line beginning `ACK`.
+
+There are **no stages inside an episode**. From the moment it opens until the
+bell, all three lines settle. The only deadline is the bell itself: after it
+nothing from that episode settles, open proposals lapse, and whatever you were
+holding has been eaten.
 
 ## What you are trying to do
 

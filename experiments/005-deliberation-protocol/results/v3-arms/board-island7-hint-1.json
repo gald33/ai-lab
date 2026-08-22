@@ -1,0 +1,588 @@
+{
+ "workspace": "island7-hint-1",
+ "channel": "island",
+ "messages": [
+  {
+   "seq": 206,
+   "at": "2026-08-21T19:43:41.518075Z",
+   "author": "manager",
+   "body": "Schedule for this round. 2 traders: T1, T2. 8 episodes, 60s each. In every episode PRODUCE is settled only in the first 30s; PROPOSE and APPROVE are settled from then until the bell. At the bell open proposals lapse and everything held is consumed. Acknowledge with a line beginning ACK. Episode 1 opens in 120s whether or not everyone has."
+  },
+  {
+   "seq": 210,
+   "at": "2026-08-21T19:44:13.740499Z",
+   "author": "T2",
+   "body": "ACK Schedule received. Ready for episode 1."
+  },
+  {
+   "seq": 211,
+   "at": "2026-08-21T19:44:13.830059Z",
+   "author": "T1",
+   "body": "ACK Ready to trade."
+  },
+  {
+   "seq": 225,
+   "at": "2026-08-21T19:45:42.547907Z",
+   "author": "manager",
+   "body": "2/2 acknowledged (T1, T2). Episode 1 opens now."
+  },
+  {
+   "seq": 227,
+   "at": "2026-08-21T19:45:42.552063Z",
+   "author": "manager",
+   "body": "episode 1 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 229,
+   "at": "2026-08-21T19:45:52.450412Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.6 bread=0.4"
+  },
+  {
+   "seq": 230,
+   "at": "2026-08-21T19:45:53.100524Z",
+   "author": "manager",
+   "body": "@T2 produced {'salt': 0.9227, 'bread': 0.4016}; 0.0 labour unspent"
+  },
+  {
+   "seq": 234,
+   "at": "2026-08-21T19:45:56.631394Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.4 iron=0.4 bread=0.1 salt=0.1"
+  },
+  {
+   "seq": 237,
+   "at": "2026-08-21T19:45:57.614793Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.4102, 'iron': 0.1766, 'bread': 0.0417, 'salt': 0.0317}; 0.0 labour unspent"
+  },
+  {
+   "seq": 243,
+   "at": "2026-08-21T19:46:12.663410Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 247,
+   "at": "2026-08-21T19:46:24.470054Z",
+   "author": "T2",
+   "body": "PROPOSE to=T1 give=salt:0.4 want=iron:0.15"
+  },
+  {
+   "seq": 248,
+   "at": "2026-08-21T19:46:24.723291Z",
+   "author": "manager",
+   "body": "p1: T2 offers {'salt': 0.4} to T1 for {'iron': 0.15} \u2014 open until the bell"
+  },
+  {
+   "seq": 251,
+   "at": "2026-08-21T19:46:37.870082Z",
+   "author": "T1",
+   "body": "APPROVE p1"
+  },
+  {
+   "seq": 252,
+   "at": "2026-08-21T19:46:38.282224Z",
+   "author": "manager",
+   "body": "p1 settled: T2 and T1 exchanged {'salt': 0.4} for {'iron': 0.15}"
+  },
+  {
+   "seq": 253,
+   "at": "2026-08-21T19:46:40.944556Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.15 want=bread:0.15"
+  },
+  {
+   "seq": 254,
+   "at": "2026-08-21T19:46:41.294934Z",
+   "author": "manager",
+   "body": "p2: T1 offers {'cloth': 0.15} to T2 for {'bread': 0.15} \u2014 open until the bell"
+  },
+  {
+   "seq": 261,
+   "at": "2026-08-21T19:46:42.806579Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 1 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 262,
+   "at": "2026-08-21T19:46:42.811174Z",
+   "author": "manager",
+   "body": "episode 2 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 264,
+   "at": "2026-08-21T19:46:54.066737Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.4 iron=0.3 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 265,
+   "at": "2026-08-21T19:46:54.856780Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.4102, 'iron': 0.1324, 'bread': 0.0626, 'salt': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 268,
+   "at": "2026-08-21T19:47:03.265010Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.35 iron=0.15"
+  },
+  {
+   "seq": 269,
+   "at": "2026-08-21T19:47:03.888263Z",
+   "author": "manager",
+   "body": "@T2 produced {'salt': 0.7689, 'bread': 0.3514, 'iron': 0.045}; 0.0 labour unspent"
+  },
+  {
+   "seq": 275,
+   "at": "2026-08-21T19:47:12.917331Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 280,
+   "at": "2026-08-21T19:47:24.223050Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.2 want=salt:0.3"
+  },
+  {
+   "seq": 281,
+   "at": "2026-08-21T19:47:24.966851Z",
+   "author": "manager",
+   "body": "p3: T1 offers {'cloth': 0.2} to T2 for {'salt': 0.3} \u2014 open until the bell"
+  },
+  {
+   "seq": 285,
+   "at": "2026-08-21T19:47:33.207233Z",
+   "author": "T2",
+   "body": "APPROVE p3"
+  },
+  {
+   "seq": 286,
+   "at": "2026-08-21T19:47:34.002230Z",
+   "author": "manager",
+   "body": "p3 settled: T1 and T2 exchanged {'cloth': 0.2} for {'salt': 0.3}"
+  },
+  {
+   "seq": 290,
+   "at": "2026-08-21T19:47:43.062359Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 2 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 292,
+   "at": "2026-08-21T19:47:43.072446Z",
+   "author": "manager",
+   "body": "episode 3 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 295,
+   "at": "2026-08-21T19:47:46.885335Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.15 want=bread:0.15"
+  },
+  {
+   "seq": 296,
+   "at": "2026-08-21T19:47:47.605451Z",
+   "author": "manager",
+   "body": "@T1 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 302,
+   "at": "2026-08-21T19:48:00.861217Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.6 bread=0.3 iron=0.1"
+  },
+  {
+   "seq": 303,
+   "at": "2026-08-21T19:48:01.163900Z",
+   "author": "manager",
+   "body": "@T2 produced {'salt': 0.9227, 'bread': 0.3012, 'iron': 0.03}; 0.0 labour unspent"
+  },
+  {
+   "seq": 311,
+   "at": "2026-08-21T19:48:13.226792Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 312,
+   "at": "2026-08-21T19:48:18.016812Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.4 iron=0.3 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 313,
+   "at": "2026-08-21T19:48:19.276318Z",
+   "author": "manager",
+   "body": "@T1 not settled: production for this episode has closed"
+  },
+  {
+   "seq": 324,
+   "at": "2026-08-21T19:48:43.388228Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 3 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 326,
+   "at": "2026-08-21T19:48:43.396774Z",
+   "author": "manager",
+   "body": "episode 4 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 340,
+   "at": "2026-08-21T19:49:13.566804Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 341,
+   "at": "2026-08-21T19:49:15.298158Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.25 iron=0.2 cloth=0.05"
+  },
+  {
+   "seq": 342,
+   "at": "2026-08-21T19:49:15.940187Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.35 iron=0.35 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 343,
+   "at": "2026-08-21T19:49:16.591472Z",
+   "author": "manager",
+   "body": "@T2 not settled: production for this episode has closed"
+  },
+  {
+   "seq": 344,
+   "at": "2026-08-21T19:49:16.594471Z",
+   "author": "manager",
+   "body": "@T1 not settled: production for this episode has closed"
+  },
+  {
+   "seq": 353,
+   "at": "2026-08-21T19:49:43.714542Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 4 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 354,
+   "at": "2026-08-21T19:49:43.718366Z",
+   "author": "manager",
+   "body": "episode 5 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 363,
+   "at": "2026-08-21T19:49:58.654823Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.35 iron=0.35 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 364,
+   "at": "2026-08-21T19:49:58.782853Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.3589, 'iron': 0.1545, 'bread': 0.0626, 'salt': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 367,
+   "at": "2026-08-21T19:50:13.858956Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 371,
+   "at": "2026-08-21T19:50:16.088857Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.25 iron=0.2 cloth=0.05"
+  },
+  {
+   "seq": 372,
+   "at": "2026-08-21T19:50:16.883406Z",
+   "author": "manager",
+   "body": "@T2 not settled: production for this episode has closed"
+  },
+  {
+   "seq": 380,
+   "at": "2026-08-21T19:50:44.033312Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 5 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 382,
+   "at": "2026-08-21T19:50:44.037524Z",
+   "author": "manager",
+   "body": "episode 6 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 387,
+   "at": "2026-08-21T19:50:55.369739Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.25 iron=0.2 cloth=0.05"
+  },
+  {
+   "seq": 388,
+   "at": "2026-08-21T19:50:56.160635Z",
+   "author": "manager",
+   "body": "@T2 produced {'salt': 0.7689, 'bread': 0.251, 'iron': 0.06, 'cloth': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 391,
+   "at": "2026-08-21T19:51:00.998229Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.35 iron=0.35 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 392,
+   "at": "2026-08-21T19:51:02.188450Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.3589, 'iron': 0.1545, 'bread': 0.0626, 'salt': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 398,
+   "at": "2026-08-21T19:51:14.235303Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 399,
+   "at": "2026-08-21T19:51:21.934561Z",
+   "author": "T2",
+   "body": "PROPOSE to=T1 give=salt:0.3 want=iron:0.12"
+  },
+  {
+   "seq": 400,
+   "at": "2026-08-21T19:51:22.749318Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.2 want=salt:0.3"
+  },
+  {
+   "seq": 401,
+   "at": "2026-08-21T19:51:23.278032Z",
+   "author": "manager",
+   "body": "p4: T2 offers {'salt': 0.3} to T1 for {'iron': 0.12} \u2014 open until the bell"
+  },
+  {
+   "seq": 402,
+   "at": "2026-08-21T19:51:23.281810Z",
+   "author": "manager",
+   "body": "p5: T1 offers {'cloth': 0.2} to T2 for {'salt': 0.3} \u2014 open until the bell"
+  },
+  {
+   "seq": 410,
+   "at": "2026-08-21T19:51:44.379449Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 6 closed. 2 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 411,
+   "at": "2026-08-21T19:51:44.382783Z",
+   "author": "manager",
+   "body": "episode 7 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 412,
+   "at": "2026-08-21T19:51:49.413093Z",
+   "author": "T1",
+   "body": "APPROVE p4"
+  },
+  {
+   "seq": 413,
+   "at": "2026-08-21T19:51:49.489930Z",
+   "author": "T2",
+   "body": "APPROVE p4"
+  },
+  {
+   "seq": 414,
+   "at": "2026-08-21T19:51:49.661733Z",
+   "author": "T2",
+   "body": "APPROVE p5"
+  },
+  {
+   "seq": 417,
+   "at": "2026-08-21T19:51:50.412093Z",
+   "author": "manager",
+   "body": "@T1 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 418,
+   "at": "2026-08-21T19:51:50.415454Z",
+   "author": "manager",
+   "body": "@T2 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 419,
+   "at": "2026-08-21T19:51:50.418839Z",
+   "author": "manager",
+   "body": "@T2 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 422,
+   "at": "2026-08-21T19:51:51.831041Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=iron:0.05 want=bread:0.15"
+  },
+  {
+   "seq": 423,
+   "at": "2026-08-21T19:51:51.927580Z",
+   "author": "manager",
+   "body": "@T1 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 430,
+   "at": "2026-08-21T19:52:11.822146Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.35 iron=0.35 bread=0.15 salt=0.15"
+  },
+  {
+   "seq": 431,
+   "at": "2026-08-21T19:52:13.009783Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.3589, 'iron': 0.1545, 'bread': 0.0626, 'salt': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 435,
+   "at": "2026-08-21T19:52:14.518497Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 436,
+   "at": "2026-08-21T19:52:17.432993Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.25 iron=0.2 cloth=0.05"
+  },
+  {
+   "seq": 437,
+   "at": "2026-08-21T19:52:17.536367Z",
+   "author": "manager",
+   "body": "@T2 not settled: production for this episode has closed"
+  },
+  {
+   "seq": 440,
+   "at": "2026-08-21T19:52:22.472397Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.2 want=salt:0.3"
+  },
+  {
+   "seq": 441,
+   "at": "2026-08-21T19:52:23.561286Z",
+   "author": "manager",
+   "body": "p6: T1 offers {'cloth': 0.2} to T2 for {'salt': 0.3} \u2014 open until the bell"
+  },
+  {
+   "seq": 449,
+   "at": "2026-08-21T19:52:44.638763Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 7 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 450,
+   "at": "2026-08-21T19:52:44.642204Z",
+   "author": "manager",
+   "body": "episode 8 of 8 is open. PRODUCE is settled for the next 30s."
+  },
+  {
+   "seq": 453,
+   "at": "2026-08-21T19:52:50.772520Z",
+   "author": "T1",
+   "body": "PRODUCE cloth=0.4 iron=0.35 bread=0.15 salt=0.1"
+  },
+  {
+   "seq": 456,
+   "at": "2026-08-21T19:52:52.173868Z",
+   "author": "manager",
+   "body": "@T1 produced {'cloth': 0.4102, 'iron': 0.1545, 'bread': 0.0626, 'salt': 0.0317}; 0.0 labour unspent"
+  },
+  {
+   "seq": 459,
+   "at": "2026-08-21T19:52:56.853572Z",
+   "author": "T2",
+   "body": "PRODUCE salt=0.5 bread=0.25 iron=0.2 cloth=0.05"
+  },
+  {
+   "seq": 461,
+   "at": "2026-08-21T19:52:58.199828Z",
+   "author": "manager",
+   "body": "@T2 produced {'salt': 0.7689, 'bread': 0.251, 'iron': 0.06, 'cloth': 0.0475}; 0.0 labour unspent"
+  },
+  {
+   "seq": 465,
+   "at": "2026-08-21T19:53:02.341612Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.25 want=salt:0.4"
+  },
+  {
+   "seq": 466,
+   "at": "2026-08-21T19:53:02.721233Z",
+   "author": "manager",
+   "body": "@T1 not settled: the market for this episode is not open"
+  },
+  {
+   "seq": 472,
+   "at": "2026-08-21T19:53:14.768276Z",
+   "author": "manager",
+   "body": "production is closed. PROPOSE and APPROVE are settled until the bell."
+  },
+  {
+   "seq": 473,
+   "at": "2026-08-21T19:53:19.214919Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=cloth:0.25 want=salt:0.35"
+  },
+  {
+   "seq": 474,
+   "at": "2026-08-21T19:53:19.291083Z",
+   "author": "manager",
+   "body": "p7: T1 offers {'cloth': 0.25} to T2 for {'salt': 0.35} \u2014 open until the bell"
+  },
+  {
+   "seq": 475,
+   "at": "2026-08-21T19:53:21.808290Z",
+   "author": "T1",
+   "body": "PROPOSE to=T2 give=iron:0.08 want=bread:0.15"
+  },
+  {
+   "seq": 476,
+   "at": "2026-08-21T19:53:22.305074Z",
+   "author": "manager",
+   "body": "p8: T1 offers {'iron': 0.08} to T2 for {'bread': 0.15} \u2014 open until the bell"
+  },
+  {
+   "seq": 477,
+   "at": "2026-08-21T19:53:34.488238Z",
+   "author": "T2",
+   "body": "APPROVE p7"
+  },
+  {
+   "seq": 478,
+   "at": "2026-08-21T19:53:34.716923Z",
+   "author": "T2",
+   "body": "APPROVE p8"
+  },
+  {
+   "seq": 479,
+   "at": "2026-08-21T19:53:35.857139Z",
+   "author": "manager",
+   "body": "p7 settled: T1 and T2 exchanged {'cloth': 0.25} for {'salt': 0.35}"
+  },
+  {
+   "seq": 480,
+   "at": "2026-08-21T19:53:35.861233Z",
+   "author": "manager",
+   "body": "p8 settled: T1 and T2 exchanged {'iron': 0.08} for {'bread': 0.15}"
+  },
+  {
+   "seq": 487,
+   "at": "2026-08-21T19:53:44.906889Z",
+   "author": "manager",
+   "body": "bell \u2014 episode 8 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset."
+  },
+  {
+   "seq": 488,
+   "at": "2026-08-21T19:53:44.910228Z",
+   "author": "manager",
+   "body": "the round is over. Stop; nothing further will settle."
+  }
+ ]
+}

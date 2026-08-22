@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]
 from barter.economy import Island, utility  # noqa: E402
 
 from switchboard.client import Client  # noqa: E402
+from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 
@@ -69,10 +70,17 @@ class Manager:
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
     names: tuple[str, ...] = ()
     episode: int = 0
-    #: True while PRODUCE will still be settled this episode.
-    production_open: bool = True
-    #: True while PROPOSE and APPROVE will still be settled this episode.
-    market_open: bool = False
+    #: True between an episode opening and its bell. There are no stages
+    #: inside an episode: producing, proposing and approving all settle for as
+    #: long as the episode is open. The clock divides episodes from each other
+    #: and nothing else.
+    #:
+    #: It starts **shut**, and the bell leaves it shut. Starting it open made
+    #: the acknowledgement window part of episode 1: production settled before
+    #: episode 1 was announced, so that episode ran longer than the others and
+    #: longer for whoever produced early than for whoever waited. An episode
+    #: that is not the same length as its siblings is not a repeat of them.
+    episode_open: bool = False
     #: Message ids already considered. Switchboard history is append-only, so
     #: a seen-set is enough and no ordering assumption is needed.
     seen: set[str] = field(default_factory=set)
@@ -86,6 +94,18 @@ class Manager:
     settled: int = 0
     refused: int = 0
     talk: int = 0
+    #: One record per episode, written at the bell. The screen had to be
+    #: diagnosed by re-reading boards, and a board lives an hour on the hub --
+    #: so by the time a result looked odd the evidence for it had expired.
+    #: What the metrics cannot say on their own goes here instead: which
+    #: proposals lapsed, who ended with nothing of what, and what each trader
+    #: actually got.
+    episode_log: list[dict] = field(default_factory=list)
+    #: Every refusal, with the reason the trader was given. A count says how
+    #: often the manager said no; only the reason says what the traders could
+    #: not manage to express.
+    refusals: list[dict] = field(default_factory=list)
+    _settled_this_episode: int = 0
     _next: int = 1
 
     def __post_init__(self) -> None:
@@ -111,7 +131,15 @@ class Manager:
             author = self.alias.get(str(msg.get("from") or ""), "")
             if not author or author == MANAGER:
                 continue
-            self._consider(author, str(msg.get("body") or ""))
+            # A Switchboard `say` that carries a timing forecast arrives as an
+            # envelope, not a string. Stringifying it turns "ACK. Ready." into
+            # "{'text': 'ACK. Ready.', 'timing_forecast': {...}}" and every
+            # match against it fails -- which is how two protocol-arm rounds
+            # came to report 1/2 acknowledged when both traders had in fact
+            # acknowledged. Unwrap with Switchboard's own inverse rather than
+            # guessing at the shape.
+            body, _forecast = unwrap_forecast(msg.get("body"))
+            self._consider(author, body if isinstance(body, str) else "")
 
     def _consider(self, author: str, text: str) -> None:
         if author not in self.holders:
@@ -123,8 +151,7 @@ class Manager:
         try:
             action = parse(text)
         except Malformed as exc:
-            self.refused += 1
-            self.say(f"@{author} not settled: {exc}")
+            self._refuse(author, "malformed", str(exc), text)
             return
         if action is None:
             self.talk += 1
@@ -137,8 +164,15 @@ class Manager:
             elif isinstance(action, Approve):
                 self._approve(author, action)
         except Refused as exc:
-            self.refused += 1
-            self.say(f"@{author} not settled: {exc}")
+            self._refuse(author, type(action).__name__.lower(), str(exc), text)
+
+    def _refuse(self, author: str, kind: str, reason: str, text: str) -> None:
+        """Say no, and keep why. The reason is the diagnostic, not the count."""
+        self.refused += 1
+        self.refusals.append({"episode": self.episode + 1, "trader": author,
+                              "kind": kind, "reason": reason,
+                              "line": text.strip()[:200]})
+        self.say(f"@{author} not settled: {reason}")
 
     # --- settling ----------------------------------------------------------
 
@@ -155,14 +189,19 @@ class Manager:
         return held
 
     def _produce(self, author: str, action: Produce) -> None:
-        if not self.production_open:
-            raise Refused("production for this episode has closed")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         h = self.holders[author]
         if h.produced:
             raise Refused("you have already produced this episode")
         total = sum(action.plan.values())
         if total > 1.0 + 1e-6:
-            raise Refused(f"shares sum to {total:.3f}; the budget is 1.0")
+            # Enough precision to show the excess. A plan over budget by 1e-4
+            # rounds to "sums to 1.000; the budget is 1.0", which reads as the
+            # manager refusing a plan that obeys it, and the trader spends a
+            # message finding out otherwise.
+            raise Refused(f"shares sum to {total:.6g}, over the budget of 1.0 "
+                          f"by {total - 1.0:.6g}")
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
@@ -171,12 +210,13 @@ class Manager:
             made[good] = round(qty, 4)
         h.spent, h.produced = total, True
         self.settled += 1
+        self._settled_this_episode += 1
         self.say(f"@{author} produced {made}; "
                                 f"{round(1 - total, 4)} labour unspent")
 
     def _propose(self, author: str, action: Propose) -> None:
-        if not self.market_open:
-            raise Refused("the market for this episode is not open")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         if action.to not in self.holders:
             raise Refused(f"no such trader {action.to!r}")
         if action.to == author:
@@ -190,13 +230,14 @@ class Manager:
         self.proposals[pid] = Proposal(pid, author, action.to, action.give,
                                        action.want, self.episode)
         self.settled += 1
+        self._settled_this_episode += 1
         self.say(f"{pid}: {author} offers {action.give} to "
                                 f"{action.to} for {action.want} — open until "
                                 f"the bell")
 
     def _approve(self, author: str, action: Approve) -> None:
-        if not self.market_open:
-            raise Refused("the market for this episode is not open")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         p = self.proposals.get(action.proposal_id)
         if p is None:
             raise Refused(f"no such proposal {action.proposal_id!r}")
@@ -219,10 +260,15 @@ class Manager:
             maker.holdings[g] += qty
         p.status = "settled"
         self.settled += 1
+        self._settled_this_episode += 1
         self.say(f"{p.pid} settled: {p.maker} and {author} "
                                 f"exchanged {p.give} for {p.want}")
 
     # --- the clock ---------------------------------------------------------
+
+    def open_episode(self) -> None:
+        """Ring the episode in. Nothing settles until this has been called."""
+        self.episode_open = True
 
     def close_episode(self) -> list[float]:
         """The bell. Open proposals lapse, holdings are eaten, labour returns."""
@@ -236,11 +282,32 @@ class Manager:
             h = self.holders[name]
             utils.append(utility(self.island.alpha[h.index], h.holdings))
         self.episode_utilities.append(utils)
+
+        # What the numbers alone cannot answer later: who went without, and in
+        # what. A zero episode is one trader holding none of one good, and the
+        # utility vector cannot say which trader or which good -- but that is
+        # exactly the question every post-mortem of this run turned out to ask.
+        self.episode_log.append({
+            "episode": self.episode + 1,
+            "utilities": {n: round(u, 6) for n, u in zip(self.names, utils)},
+            "holdings": {n: {g: round(self.holders[n].holdings[i], 6)
+                             for i, g in enumerate(self.goods)}
+                         for n in self.names},
+            "starved": {n: [g for i, g in enumerate(self.goods)
+                            if self.holders[n].holdings[i] <= _EPS]
+                        for n in self.names
+                        if any(self.holders[n].holdings[i] <= _EPS
+                               for i in range(len(self.goods)))},
+            "produced": [n for n in self.names if self.holders[n].produced],
+            "lapsed": lapsed,
+            "settled": self._settled_this_episode,
+        })
+        self._settled_this_episode = 0
         for h in self.holders.values():
             h.holdings = [0.0] * self.island.n_goods
             h.spent, h.produced = 0.0, False
         self.episode += 1
-        self.production_open, self.market_open = True, False
+        self.episode_open = False
         self.say(f"bell — episode {self.episode} closed. "
                                 f"{len(lapsed)} proposal(s) lapsed. "
                                 f"Everything held has been consumed; stocks and "
