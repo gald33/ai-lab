@@ -107,14 +107,14 @@ ARMS = {
 #: error bars, and whatever wins here is a hypothesis to be re-run, not a
 #: result. Nothing under stimuli/screen/ is frozen or citable.
 SCREEN = {
-    "s01": "screen/s01-terse",
+    "s01": "screen/s01-manager",
     "s02": "screen/s02-protocol",
     "s03": "screen/s03-coupling",
     "s04": "screen/s04-coverage",
     "s05": "screen/s05-advantage",
     "s06": "screen/s06-example",
     "s07": "screen/s07-checklist",
-    "s08": "screen/s08-roles",
+    "s08": "screen/s08-population",
     "s09": "screen/s09-failures",
     "s10": "screen/s10-ask",
 }
@@ -310,6 +310,11 @@ def main() -> None:
     ap.add_argument("--out", default="results/v3")
     ap.add_argument("--episode-seconds", type=int, default=60)
     ap.add_argument("--ack-seconds", type=int, default=120)
+    # Rounds are independent worlds and could all run at once, but the box and
+    # the hub are not independent of each other. A cap trades wall-clock for
+    # headroom; it changes nothing any agent sees, since each round's clock
+    # starts when that round starts.
+    ap.add_argument("--max-concurrent", type=int, default=10)
     args = ap.parse_args()
 
     for arm in args.arms:
@@ -324,9 +329,12 @@ def main() -> None:
     wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
     print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
           f"episodes {args.episodes}  agents {args.agents}")
-    print(f"clock-bound: {wall:.1f} min, and the arms run at the same time on "
-          f"separate channels, so the wall-clock is {wall:.1f} min however "
-          f"many arms there are.\n")
+    n_jobs = len(args.arms) * args.rounds
+    waves = -(-n_jobs // min(args.max_concurrent, n_jobs))
+    print(f"clock-bound: {wall:.1f} min per round; {n_jobs} rounds at "
+          f"{args.max_concurrent} at a time is {waves} wave(s), so about "
+          f"{waves * wall:.0f} min of wall-clock and {n_jobs * args.agents} "
+          f"agent sessions.\n")
 
     from island.score import score  # noqa: PLC0415
 
@@ -353,7 +361,8 @@ def main() -> None:
     # Arms are independent worlds on independent channels. Running them at the
     # same time is not a shortcut: nothing crosses between them, and the clock
     # each one runs on is its own.
-    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+    workers = min(args.max_concurrent, len(jobs))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         records = list(pool.map(one, jobs))
 
     path = outdir / "v3.json"
