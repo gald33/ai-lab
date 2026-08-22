@@ -1,0 +1,157 @@
+# island-max-bare-5-0822T1657 — 154 messages
+16:57:29  manager   Schedule for this round. 4 traders: T1, T2, T3, T4. 10 episodes, 180s each. Within an episode there are no stages: PRODUCE, PROPOSE and APPROVE all settle for as long as the episode is open. At the bell open proposals lapse and everything held is consumed. Acknowledge with a line beginning ACK. Episode 1 opens in 120s whether or not everyone has.
+16:58:44  manager   T2's session did not join and has been restarted once. Nothing it might have said was settled.
+16:58:51  T4        ACK schedule acknowledged, standing by for episode 1
+16:58:55  T3        ACK Ready to begin
+16:58:57  T1        ACK Schedule acknowledged. Ready for episode 1.
+16:59:15  T2        ACK Schedule acknowledged. T2 ready for episode 1.
+16:59:30  manager   4/4 acknowledged (T1, T2, T3, T4). Episode 1 opens now.
+16:59:30  manager   episode 1 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+16:59:39  T1        PRODUCE iron=0.5 salt=0.35 bread=0.1 cloth=0.05
+16:59:40  manager   @T1 produced {'iron': 1.2064, 'salt': 0.4117, 'bread': 0.0892, 'cloth': 0.0082}; 0.0 labour unspent
+16:59:49  T3        PRODUCE iron=0.6 salt=0.3 bread=0.1
+16:59:50  manager   @T3 produced {'iron': 0.6817, 'salt': 0.1975, 'bread': 0.1048}; 0.0 labour unspent
+16:59:56  T4        PRODUCE iron=0.65 salt=0.2 bread=0.1 cloth=0.05
+16:59:57  manager   @T4 produced {'iron': 3.2632, 'salt': 0.1672, 'bread': 0.1151, 'cloth': 0.0857}; 0.0 labour unspent
+16:59:59  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:00:00  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:00:12  T2        PROPOSE to=T4 give=cloth:0.3 want=iron:0.8
+17:00:14  manager   p1: T2 offers {'cloth': 0.3} to T4 for {'iron': 0.8} — open until the bell
+17:00:14  T4        PROPOSE to=T1 give=iron:0.8 want=salt:0.3
+17:00:15  manager   p2: T4 offers {'iron': 0.8} to T1 for {'salt': 0.3} — open until the bell
+17:00:17  T3        PROPOSE to=T1 give=iron:0.3 want=salt:0.25
+17:00:19  manager   p3: T3 offers {'iron': 0.3} to T1 for {'salt': 0.25} — open until the bell
+17:00:21  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:00:23  manager   p4: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:00:39  T4        PROPOSE to=T2 give=iron:0.4 want=bread:0.1
+17:00:39  T2        APPROVE p4
+17:00:39  manager   p5: T4 offers {'iron': 0.4} to T2 for {'bread': 0.1} — open until the bell
+17:00:39  manager   p4 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:01:21  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.12,iron:0.2
+17:01:21  manager   @T2 not settled: you have 0.1116 cloth uncommitted, not 0.2000
+17:01:23  T4        PROPOSE to=T3 give=iron:0.5 want=salt:0.2
+17:01:25  manager   p6: T4 offers {'iron': 0.5} to T3 for {'salt': 0.2} — open until the bell
+17:01:50  T2        PROPOSE to=T3 give=cloth:0.1 want=bread:0.08
+17:01:51  manager   p7: T2 offers {'cloth': 0.1} to T3 for {'bread': 0.08} — open until the bell
+17:02:31  manager   bell — episode 1 closed. 6 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:02:31  manager   episode 2 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:02:43  T3        PRODUCE iron=0.5 salt=0.3 bread=0.1 cloth=0.1
+17:02:45  manager   @T3 produced {'iron': 0.5681, 'salt': 0.1975, 'bread': 0.1048, 'cloth': 0.0625}; 0.0 labour unspent
+17:02:49  T1        PRODUCE iron=0.4 salt=0.35 cloth=0.15 bread=0.1
+17:02:50  manager   @T1 produced {'iron': 0.9651, 'salt': 0.4117, 'cloth': 0.0247, 'bread': 0.0892}; 0.0 labour unspent
+17:03:02  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:03:03  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:03:07  T4        PRODUCE iron=0.65 salt=0.2 bread=0.1 cloth=0.05
+17:03:08  manager   @T4 produced {'iron': 3.2632, 'salt': 0.1672, 'bread': 0.1151, 'cloth': 0.0857}; 0.0 labour unspent
+17:03:22  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:03:22  manager   p8: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:03:22  T4        PROPOSE to=T1 give=iron:0.9 want=salt:0.32
+17:03:22  T4        PROPOSE to=T3 give=iron:0.6 want=salt:0.18
+17:03:23  T4        PROPOSE to=T2 give=iron:0.5 want=bread:0.12
+17:03:24  manager   p9: T4 offers {'iron': 0.9} to T1 for {'salt': 0.32} — open until the bell
+17:03:24  manager   p10: T4 offers {'iron': 0.6} to T3 for {'salt': 0.18} — open until the bell
+17:03:24  manager   p11: T4 offers {'iron': 0.5} to T2 for {'bread': 0.12} — open until the bell
+17:03:32  T3        PROPOSE to=T1 give=iron:0.3,cloth:0.05 want=salt:0.3
+17:03:33  manager   p12: T3 offers {'iron': 0.3, 'cloth': 0.05} to T1 for {'salt': 0.3} — open until the bell
+17:03:45  T2        APPROVE p8
+17:03:46  manager   p8 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:03:52  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:03:53  manager   p13: T2 offers {'cloth': 0.2} to T3 for {'bread': 0.1} — open until the bell
+17:04:17  T3        APPROVE p13
+17:04:19  manager   p13 settled: T2 and T3 exchanged {'cloth': 0.2} for {'bread': 0.1}
+17:05:32  manager   bell — episode 2 closed. 4 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:05:32  manager   episode 3 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:05:43  T4        PRODUCE iron=0.3 salt=0.4 bread=0.25 cloth=0.05
+17:05:44  manager   @T4 produced {'iron': 1.5061, 'salt': 0.3345, 'bread': 0.2877, 'cloth': 0.0857}; 0.0 labour unspent
+17:05:48  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:05:49  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:05:50  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:05:51  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:05:56  T3        PRODUCE iron=0.4 salt=0.4 bread=0.1 cloth=0.1
+17:05:56  manager   @T3 produced {'iron': 0.4545, 'salt': 0.2633, 'bread': 0.1048, 'cloth': 0.0625}; 0.0 labour unspent
+17:06:09  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:06:10  manager   p14: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:06:17  T2        APPROVE p14
+17:06:18  manager   p14 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:06:20  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:06:20  manager   p15: T2 offers {'cloth': 0.2} to T3 for {'bread': 0.1} — open until the bell
+17:06:48  T3        APPROVE p15
+17:06:49  manager   p15 settled: T2 and T3 exchanged {'cloth': 0.2} for {'bread': 0.1}
+17:06:52  T3        PROPOSE to=T4 give=iron:0.2 want=salt:0.15
+17:06:54  manager   p16: T3 offers {'iron': 0.2} to T4 for {'salt': 0.15} — open until the bell
+17:08:32  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:08:34  manager   @T2 not settled: you have already produced this episode
+17:08:34  manager   bell — episode 3 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:08:34  manager   episode 4 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:08:38  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:08:39  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:08:51  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:08:51  T4        PRODUCE iron=0.3 salt=0.4 bread=0.25 cloth=0.05
+17:08:51  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:08:53  manager   @T4 produced {'iron': 1.5061, 'salt': 0.3345, 'bread': 0.2877, 'cloth': 0.0857}; 0.0 labour unspent
+17:08:55  T3        PRODUCE iron=0.3 salt=0.5 bread=0.1 cloth=0.1
+17:08:57  manager   @T3 produced {'iron': 0.3408, 'salt': 0.3291, 'bread': 0.1048, 'cloth': 0.0625}; 0.0 labour unspent
+17:09:10  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:09:12  manager   p17: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:09:31  T2        APPROVE p17
+PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:09:32  manager   @T2 not settled: APPROVE wants exactly one proposal id
+17:10:07  T2        APPROVE p17
+17:10:08  manager   p17 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:10:09  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:10:10  manager   p18: T2 offers {'cloth': 0.2} to T3 for {'bread': 0.1} — open until the bell
+17:11:35  manager   bell — episode 4 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:11:35  manager   episode 5 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:11:47  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:11:49  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:12:08  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:12:09  manager   p19: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:12:15  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:12:16  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:12:17  T2        APPROVE p19
+17:12:18  manager   p19 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:12:19  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:12:19  manager   p20: T2 offers {'cloth': 0.2} to T3 for {'bread': 0.1} — open until the bell
+17:13:59  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:14:00  manager   @T2 not settled: you have already produced this episode
+17:14:37  manager   bell — episode 5 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:14:37  manager   episode 6 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:14:48  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:14:49  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:14:51  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:14:53  manager   p21: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:15:08  T2        PRODUCE bread=0.25 cloth=0.5 iron=0.15 salt=0.1
+17:15:09  manager   @T2 produced {'bread': 0.1385, 'cloth': 0.5616, 'iron': 0.0549, 'salt': 0.0753}; 0.0 labour unspent
+17:15:11  T2        APPROVE p21
+17:15:11  manager   p21 settled: T1 and T2 exchanged {'iron': 0.4, 'salt': 0.05} for {'cloth': 0.15}
+17:15:12  T2        PROPOSE to=T3 give=cloth:0.2 want=bread:0.1
+17:15:13  manager   p22: T2 offers {'cloth': 0.2} to T3 for {'bread': 0.1} — open until the bell
+17:17:38  manager   bell — episode 6 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:17:38  manager   episode 7 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:18:07  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:18:09  manager   @T1 not settled: PRODUCE wants good=share pairs, got 'PROPOSE'
+17:18:41  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:18:42  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:18:44  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:18:44  manager   p23: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:20:40  manager   bell — episode 7 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:20:41  manager   episode 8 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:21:12  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:21:13  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:21:14  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:21:14  manager   p24: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:23:41  manager   bell — episode 8 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:23:42  manager   episode 9 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:24:12  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:24:13  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:24:14  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:24:15  manager   p25: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:26:43  manager   bell — episode 9 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:26:43  manager   episode 10 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:27:36  T1        PRODUCE iron=0.4 salt=0.3 cloth=0.2 bread=0.1
+17:27:36  T1        PROPOSE to=T2 give=iron:0.4,salt:0.05 want=cloth:0.15
+17:27:36  manager   @T1 produced {'iron': 0.9651, 'salt': 0.3529, 'cloth': 0.0329, 'bread': 0.0892}; 0.0 labour unspent
+17:27:38  manager   p26: T1 offers {'iron': 0.4, 'salt': 0.05} to T2 for {'cloth': 0.15} — open until the bell
+17:29:45  manager   bell — episode 10 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:29:45  manager   the round is over. Stop; nothing further will settle.

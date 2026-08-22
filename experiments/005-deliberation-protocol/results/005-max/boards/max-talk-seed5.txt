@@ -1,0 +1,154 @@
+# island-max-talk-5-0822T1657 — 153 messages
+16:57:29  manager   Schedule for this round. 4 traders: T1, T2, T3, T4. 10 episodes, 180s each. Within an episode there are no stages: PRODUCE, PROPOSE and APPROVE all settle for as long as the episode is open. At the bell open proposals lapse and everything held is consumed. Acknowledge with a line beginning ACK. Episode 1 opens in 120s whether or not everyone has.
+16:58:47  T2        ACK - T2 ready to trade
+16:58:49  T3        ACK Schedule noted. Episode 1 in 120s.
+16:58:52  T3        T3 here. This round I'll produce bread and iron efficiently. I need salt badly. Looking to trade bread and iron for salt at favorable rates. Who can produce salt? What do you need?
+16:59:00  T1        ACK Schedule understood. T1 here. I produce iron very efficiently (capacity 2.4128). I also produce salt well (1.1762). I need salt and cloth most. I'm looking for salt and cloth in exchange for iron. What can you all produce?
+16:59:08  T4        ACK Schedule noted. T4 ready. I produce iron and salt efficiently. I need bread and cloth. Looking to trade iron for your bread and cloth.
+16:59:20  T3        T1, T4 - I can produce bread well (1.0476 capacity). I'll have bread this episode. T4, if you produce salt, could you trade some salt for my bread? What rate interests you? (e.g., 2 bread for 1 salt?)
+16:59:26  T2        T2 here. I produce cloth very efficiently (1.1233) and salt well (0.753). I need bread and iron. I can supply salt to T1 and T3, and cloth to T1 and T4. Ready to negotiate terms.
+16:59:30  manager   4/4 acknowledged (T1, T2, T3, T4). Episode 1 opens now.
+16:59:30  manager   episode 1 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+16:59:48  T4        PRODUCE salt=0.4 iron=0.6
+16:59:48  T1        PRODUCE iron=0.85 bread=0.15
+16:59:48  manager   @T4 produced {'salt': 0.3345, 'iron': 3.0122}; 0.0 labour unspent
+16:59:49  T2        PRODUCE salt=0.5 cloth=0.5
+16:59:50  manager   @T1 produced {'iron': 2.0509, 'bread': 0.1337}; 0.0 labour unspent
+16:59:50  manager   @T2 produced {'salt': 0.3765, 'cloth': 0.5616}; 0.0 labour unspent
+16:59:51  T3        PRODUCE bread=0.6 iron=0.4
+16:59:52  manager   @T3 produced {'bread': 0.6286, 'iron': 0.4545}; 0.0 labour unspent
+16:59:55  T1        PROPOSE to=T2 give=iron:0.6,bread:0.1 want=salt:0.35,cloth:0.25
+16:59:55  manager   p1: T1 offers {'iron': 0.6, 'bread': 0.1} to T2 for {'salt': 0.35, 'cloth': 0.25} — open until the bell
+16:59:56  T4        PROPOSE to=T3 give=salt:0.15 want=bread:0.3
+16:59:56  T4        PROPOSE to=T2 give=iron:1.5 want=cloth:0.4
+16:59:57  manager   p2: T4 offers {'salt': 0.15} to T3 for {'bread': 0.3} — open until the bell
+16:59:57  manager   p3: T4 offers {'iron': 1.5} to T2 for {'cloth': 0.4} — open until the bell
+17:00:07  T3        APPROVE p2
+17:00:07  manager   p2 settled: T4 and T3 exchanged {'salt': 0.15} for {'bread': 0.3}
+17:00:13  T2        APPROVE p3
+17:00:14  manager   p3 settled: T4 and T2 exchanged {'iron': 1.5} for {'cloth': 0.4}
+17:00:17  T2        PROPOSE to=T3 give=salt:0.3 want=bread:0.6
+17:00:18  manager   p4: T2 offers {'salt': 0.3} to T3 for {'bread': 0.6} — open until the bell
+17:00:18  T3        PROPOSE to=T2 give=bread:0.2,iron:0.3 want=salt:0.25
+17:00:19  manager   p5: T3 offers {'bread': 0.2, 'iron': 0.3} to T2 for {'salt': 0.25} — open until the bell
+17:00:34  T2        APPROVE p5
+17:00:35  manager   @T2 not settled: you have 0.0765 salt uncommitted, not the 0.2500 it asks for
+17:00:41  T4        T1, I still have iron. Want to trade 1 iron for salt? Flexible on rates.
+17:00:53  T1        PROPOSE to=T2 give=iron:1.0 want=salt:0.3,cloth:0.1
+17:00:55  manager   p6: T1 offers {'iron': 1.0} to T2 for {'salt': 0.3, 'cloth': 0.1} — open until the bell
+17:01:01  T4        PROPOSE to=T1 give=iron:1.0 want=salt:0.3
+17:01:02  T2        APPROVE p4
+17:01:03  manager   p7: T4 offers {'iron': 1.0} to T1 for {'salt': 0.3} — open until the bell
+17:01:03  manager   @T2 not settled: p4 was not addressed to you
+17:01:08  T3        T2 - I need to adjust. I must hold ALL four goods or my utility is zero. I can't do p4 or p5 as proposed. How about: I give bread:0.25,iron:0.25 and you give me salt:0.15,cloth:0.08?
+17:01:46  T2        PROPOSE to=T3 give=salt:0.15,cloth:0.08 want=bread:0.25,iron:0.25
+17:01:47  manager   @T2 not settled: you have 0.0765 salt uncommitted, not 0.1500
+17:02:00  T1        T2 - everyone needs all four goods. You need bread, I need salt/cloth. p6 (iron for salt+cloth) gets you iron which you want, and leaves you salt to negotiate for bread elsewhere. Approve p6?
+17:02:30  manager   bell — episode 1 closed. 5 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:02:30  manager   episode 2 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:02:40  T3        T1, T2, T4 - Episode 2. New approach: I need bread, cloth, iron, AND salt (all four). I produce bread well and iron well. I propose: I'll produce bread:0.5,iron:0.4. I need tiny amounts of cloth+salt. Who can guarantee me salt+cloth for bread+iron? Let's agree FIRST.
+17:02:46  T4        Episode 2: I'll produce iron and salt. Need bread and cloth. Looking to trade iron for bread at good rates.
+17:02:47  T4        PRODUCE salt=0.3 iron=0.7
+17:02:47  manager   @T4 produced {'salt': 0.2508, 'iron': 3.5143}; 0.0 labour unspent
+17:02:56  T2        T3 - I produce cloth very efficiently (1.1233) and salt (0.753). I can supply salt and cloth. What rates do you need for bread and iron? I need to ensure I get bread+cloth+iron+salt for positive utility.
+17:02:59  T2        PRODUCE cloth=0.5 salt=0.5
+17:02:59  manager   @T2 produced {'cloth': 0.5616, 'salt': 0.3765}; 0.0 labour unspent
+17:03:00  T4        PROPOSE to=T3 give=iron:1.0 want=bread:0.4
+17:03:01  T4        PROPOSE to=T2 give=iron:1.2 want=cloth:0.35
+17:03:01  manager   p8: T4 offers {'iron': 1.0} to T3 for {'bread': 0.4} — open until the bell
+17:03:03  manager   p9: T4 offers {'iron': 1.2} to T2 for {'cloth': 0.35} — open until the bell
+17:03:06  T3        T2 - Excellent. Here's my proposal: I produce bread:0.5,iron:0.4 → yields ~0.524 bread, 0.455 iron. I trade you: bread:0.3,iron:0.2 for your salt:0.15,cloth:0.08. This leaves me with all four goods and you with what you need. Does this work for you?
+17:03:19  T2        APPROVE p9
+17:03:19  manager   p9 settled: T4 and T2 exchanged {'iron': 1.2} for {'cloth': 0.35}
+17:03:22  T2        T3 - Yes, that works perfectly! PROPOSE to=T3 give=salt:0.15,cloth:0.08 want=bread:0.3,iron:0.2
+17:03:23  T3        PRODUCE bread=0.5 iron=0.4
+17:03:24  T1        PRODUCE iron=0.5 cloth=0.2 salt=0.3
+17:03:25  manager   @T3 produced {'bread': 0.5238, 'iron': 0.4545}; 0.1 labour unspent
+17:03:25  manager   @T1 produced {'iron': 1.2064, 'cloth': 0.0329, 'salt': 0.3529}; 0.0 labour unspent
+17:03:32  T1        T3 - I can supply salt+cloth (I produce both). I propose: I give salt:0.15,cloth:0.08 for your bread:0.2,iron:0.15. Gives you all four goods, rebalances me. Approve?
+17:03:44  T2        PROPOSE to=T3 give=salt:0.15,cloth:0.08 want=bread:0.3,iron:0.2
+17:03:44  T3        T1 - Yes! Please send formal PROPOSE: to=T3 give=salt:0.15,cloth:0.08 want=bread:0.2,iron:0.15. I'll approve immediately.
+17:03:45  manager   p10: T2 offers {'salt': 0.15, 'cloth': 0.08} to T3 for {'bread': 0.3, 'iron': 0.2} — open until the bell
+17:04:12  T1        PROPOSE to=T3 give=salt:0.15,cloth:0.03 want=bread:0.15,iron:0.1
+17:04:13  manager   p11: T1 offers {'salt': 0.15, 'cloth': 0.03} to T3 for {'bread': 0.15, 'iron': 0.1} — open until the bell
+17:04:14  T3        APPROVE p10
+17:04:15  manager   p10 settled: T2 and T3 exchanged {'salt': 0.15, 'cloth': 0.08} for {'bread': 0.3, 'iron': 0.2}
+17:04:29  T4        PROPOSE to=T1 give=iron:0.8 want=bread:0.15,salt:0.05
+17:04:30  manager   p12: T4 offers {'iron': 0.8} to T1 for {'bread': 0.15, 'salt': 0.05} — open until the bell
+17:04:54  T1        T4 - Waiting on p11 to settle (T3 will approve soon), then I'll have bread:0.15. Can approve p12 immediately after. Sound good?
+17:05:08  T1        T3 - PLEASE approve p11 immediately! I need the bread to complete p12 with T4. Just seconds left in the episode!
+17:05:32  manager   bell — episode 2 closed. 3 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:05:32  manager   episode 3 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:05:36  T3        APPROVE p11
+17:05:37  manager   @T3 not settled: p11 is already lapsed
+17:05:44  T2        PRODUCE cloth=0.5 salt=0.5
+17:05:44  manager   @T2 produced {'cloth': 0.5616, 'salt': 0.3765}; 0.0 labour unspent
+17:05:50  T4        Episode 3: I'll produce iron and salt. Critical: need bread. Will trade iron at good rates for bread from T3.
+17:05:51  T4        PRODUCE salt=0.35 iron=0.65
+17:05:51  manager   @T4 produced {'salt': 0.2927, 'iron': 3.2632}; 0.0 labour unspent
+17:05:52  T1        Episode 3: I'll produce bread (0.8916 capacity) + iron. Who needs bread? I want salt + cloth. Let's agree on rates NOW before I produce.
+17:05:53  T3        Episode 3. Same approach: I produce bread:0.5,iron:0.4 and trade for salt+cloth to hold all four goods. T2, can you do the same trade as last episode?
+17:05:55  T3        PRODUCE bread=0.5 iron=0.4
+17:05:56  manager   @T3 produced {'bread': 0.5238, 'iron': 0.4545}; 0.1 labour unspent
+17:05:58  T2        T3 - Yes! Same trade works great. PROPOSE to=T3 give=salt:0.15,cloth:0.08 want=bread:0.3,iron:0.2
+17:06:06  T4        T1 - I want bread. I'll give you iron:0.8 + salt:0.1 for bread:0.35. Fair?
+17:06:06  T4        PROPOSE to=T3 give=iron:1.0 want=bread:0.35
+17:06:08  manager   p13: T4 offers {'iron': 1.0} to T3 for {'bread': 0.35} — open until the bell
+17:06:12  T1        PRODUCE bread=0.6 iron=0.4
+17:06:13  manager   @T1 produced {'bread': 0.535, 'iron': 0.9651}; 0.0 labour unspent
+17:06:13  T2        PROPOSE to=T3 give=salt:0.15,cloth:0.08 want=bread:0.3,iron:0.2
+17:06:15  manager   p14: T2 offers {'salt': 0.15, 'cloth': 0.08} to T3 for {'bread': 0.3, 'iron': 0.2} — open until the bell
+17:06:17  T1        PROPOSE to=T2 give=bread:0.2,iron:0.2 want=salt:0.15,cloth:0.15
+17:06:18  manager   p15: T1 offers {'bread': 0.2, 'iron': 0.2} to T2 for {'salt': 0.15, 'cloth': 0.15} — open until the bell
+17:06:20  T3        APPROVE p14
+17:06:22  manager   p14 settled: T2 and T3 exchanged {'salt': 0.15, 'cloth': 0.08} for {'bread': 0.3, 'iron': 0.2}
+17:06:23  T4        PROPOSE to=T1 give=iron:0.9,salt:0.15 want=bread:0.35
+17:06:24  manager   p16: T4 offers {'iron': 0.9, 'salt': 0.15} to T1 for {'bread': 0.35} — open until the bell
+17:06:48  T2        APPROVE p15
+17:06:49  manager   p15 settled: T1 and T2 exchanged {'bread': 0.2, 'iron': 0.2} for {'salt': 0.15, 'cloth': 0.15}
+17:06:50  T1        T2 - Please approve p15! I give you bread:0.2,iron:0.2 for salt:0.15,cloth:0.15. I need the cloth to hold all four goods for utility. Fair trade?
+17:08:10  T1        Episode 3 status check - still active?
+17:08:25  T3        Episode 3 - still running? Bell should have rung 50 seconds ago at 17:07:32.
+17:08:34  manager   bell — episode 3 closed. 2 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:08:34  manager   episode 4 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:08:45  T2        PRODUCE cloth=0.5 salt=0.5
+17:08:46  manager   @T2 produced {'cloth': 0.5616, 'salt': 0.3765}; 0.0 labour unspent
+17:08:51  T1        Episode 4: Same winning formula. I produce bread+iron, trade with T2 for salt+cloth to hold all four goods. T2, ready for the same deal?
+17:08:51  T1        PRODUCE bread=0.6 iron=0.4
+17:08:53  manager   @T1 produced {'bread': 0.535, 'iron': 0.9651}; 0.0 labour unspent
+17:08:55  T4        PRODUCE salt=0.4 iron=0.6
+17:08:56  manager   @T4 produced {'salt': 0.3345, 'iron': 3.0122}; 0.0 labour unspent
+17:09:02  T4        PROPOSE to=T3 give=iron:0.8 want=bread:0.3
+17:09:02  T3        PRODUCE bread=0.5 iron=0.4
+17:09:02  T4        PROPOSE to=T2 give=iron:1.0 want=cloth:0.35
+17:09:03  manager   p17: T4 offers {'iron': 0.8} to T3 for {'bread': 0.3} — open until the bell
+17:09:03  manager   @T3 produced {'bread': 0.5238, 'iron': 0.4545}; 0.1 labour unspent
+17:09:03  manager   p18: T4 offers {'iron': 1.0} to T2 for {'cloth': 0.35} — open until the bell
+17:09:09  T1        PROPOSE to=T2 give=bread:0.2,iron:0.2 want=salt:0.15,cloth:0.15
+17:09:10  manager   p19: T1 offers {'bread': 0.2, 'iron': 0.2} to T2 for {'salt': 0.15, 'cloth': 0.15} — open until the bell
+17:09:14  T3        PROPOSE to=T2 give=bread:0.3,iron:0.2 want=salt:0.15,cloth:0.08
+17:09:15  manager   p20: T3 offers {'bread': 0.3, 'iron': 0.2} to T2 for {'salt': 0.15, 'cloth': 0.08} — open until the bell
+17:09:23  T3        APPROVE p20
+17:09:24  manager   @T3 not settled: p20 was not addressed to you
+17:09:44  T1        T2 - APPROVE p19! I give bread:0.2,iron:0.2 for salt:0.15,cloth:0.15. Fast!
+17:10:01  T3        T2 - Please APPROVE p20! I give bread:0.3,iron:0.2 for your salt:0.15,cloth:0.08. We need to move fast!
+17:11:35  manager   bell — episode 4 closed. 4 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:11:35  manager   episode 5 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:11:58  T3        PRODUCE bread=0.5 iron=0.4
+17:11:59  manager   @T3 produced {'bread': 0.5238, 'iron': 0.4545}; 0.1 labour unspent
+17:12:13  T3        T2 - URGENT: I propose bread:0.3,iron:0.2 for salt:0.15,cloth:0.08. Please respond and APPROVE ASAP before bell! This must settle this episode!
+17:12:15  T3        PROPOSE to=T2 give=bread:0.3,iron:0.2 want=salt:0.15,cloth:0.08
+17:12:15  manager   p21: T3 offers {'bread': 0.3, 'iron': 0.2} to T2 for {'salt': 0.15, 'cloth': 0.08} — open until the bell
+17:13:02  T3        T2 APPROVE p21 NOW! Only 35 seconds until bell! APPROVE p21 APPROVE p21
+17:14:37  manager   bell — episode 5 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:14:37  manager   episode 6 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:17:39  manager   bell — episode 6 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:17:39  manager   episode 7 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:20:41  manager   bell — episode 7 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:20:41  manager   episode 8 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:23:41  manager   bell — episode 8 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:23:42  manager   episode 9 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:26:43  manager   bell — episode 9 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:26:44  manager   episode 10 of 10 is open for 180s. PRODUCE, PROPOSE and APPROVE all settle until the bell.
+17:29:46  manager   bell — episode 10 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.
+17:29:46  manager   the round is over. Stop; nothing further will settle.

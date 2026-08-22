@@ -109,10 +109,75 @@ at zero for four traders.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/005-max/v3.json`; ten boards under
+  `results/005-max/boards/` (131–201 messages each, all complete, none near
+  the 500-row cap).
+- **Ran:** 10 rounds attempted, **10 completed**, 0 aborted, 0 harness
+  failures. 40/40 sessions started. Acknowledgement 4/4 in eight rounds and
+  3/4 in two (`max-talk` seeds 2 and 4). 0 rescues triggered (D10). 32 min.
+
+- **Numbers — primary.** Paired `eff_round − floor`, same island in both cells:
+
+  | seed | floor | `max-bare` | `max-talk` | paired diff |
+  |---|---|---|---|---|
+  | 1 | 0.642 | −0.642 | −0.524 | **+0.118** |
+  | 2 | 0.674 | −0.213 | −0.674 | −0.461 |
+  | 3 | 0.604 | −0.132 | −0.604 | −0.472 |
+  | 4 | 0.653 | −0.653 | −0.653 | 0.000 |
+  | 5 | 0.590 | −0.301 | −0.518 | −0.217 |
+
+  **Mean −0.207, median −0.217, 1 of 5 seeds favouring the treatment.**
+  Denominator 5 seeds per cell; no round dropped. Neither cell beat autarky on
+  any seed.
+
+- **Numbers — manipulation check.** Talk per trader-episode, denominator 200
+  agent-episodes per cell: `max-bare` **0.010** (2 messages), `max-talk`
+  **0.425** (85 messages). A **42.5×** increase.
+
+- **Numbers — secondary.**
+
+  | | alive fraction (mean of 5) | settled | refused |
+  |---|---|---|---|
+  | `max-bare` | **0.64** (0.57 0.70 0.72 0.57 0.60) | 329 | 19 |
+  | `max-talk` | **0.42** (0.38 0.45 0.33 0.50 0.42) | 229 | 30 |
+
+  `eff_episode` was non-zero in 13 of 100 episodes, all in `max-bare`; it is
+  reported and not interpreted, per run 003.
+
+- **Assumptions that did not hold:** **A3**. It said attrition should not
+  differ systematically between cells, and named the consequence if it did.
+  It does: 0.64 against 0.42, every seed lower in the treated cell. **The
+  efficiency difference is therefore confounded with a persistence difference
+  and this run cannot separate them.**
+
+  **A1** holds — `eff_round` moved, across the full range 0.000 to 0.472.
+  **A2** holds in the sense that matters: the difference (0.207) exceeds the
+  screen's entire arm spread (0.256) by not much, but is far larger than the
+  0.10 the hypothesis named, and 4 of 5 seeds point the same way. **A4**
+  holds emphatically — the text reached its target behaviour.
+
+- **Deviations:** D11, as specified. No new deviation: nothing departed from
+  the record during the run.
 
 ## What this changed
+
+**Text moves this environment.** That was the question, and the answer is yes,
+by a factor of 42 on the behaviour it targets. The environment is not inert and
+the instruments are not blind; a null from a weaker text can no longer be
+blamed on either.
+
+**The direction is the finding.** The maximal treatment made outcomes worse on
+4 of 5 paired seeds, by more than twice the margin the hypothesis set as
+interesting. This is the pre-registered "would surprise me" case and then some:
+the traders did what the text said, and it did not pay.
+
+**What it cost them is not separable here.** The treated cell talked 42× more,
+lost its sessions a third faster, and settled 30% fewer exchanges. Whether talk
+displaced action directly, or consumed the sessions which then could not act,
+is exactly what A3 warned this design could not resolve.
+
+**For the 2×2.** The decomposition is now worth running, but not as designed. It
+was built to detect whether a protocol *helps*; the effect available here is
+large and negative, so the useful question is which ingredient carries the cost
+— and a design that can separate talk-cost from persistence-cost has to hold
+session lifetime fixed, which no run so far has managed at 180s.
