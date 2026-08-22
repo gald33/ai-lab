@@ -39,7 +39,7 @@ assuming it away.
 | stimuli | `stimuli/v3/base.md` body sha256 `c1ff3e80038c66314adcfbf711f5f873d4d129fcb02a2321400b3200fdd2b342`; `stimuli/max/talk.md`, **not frozen** |
 | hub | managed Switchboard hub, one run-stamped workspace per cell × seed |
 | command | `python run_v3.py --arms max-bare max-talk --rounds 5 --episodes 10 --episode-seconds 180 --agents 4 --no-control --out results/005-max` |
-| cost | **40 agent sessions**, ~33 min wall clock — 10 rounds fit one concurrent wave. Paid: needs an explicit go, recorded here. |
+| cost | **go given 2026-08-22.** **40 agent sessions**, ~33 min wall clock — 10 rounds fit one concurrent wave. Paid: needs an explicit go, recorded here. |
 
 `--no-control` is passed deliberately: `max-bare` is the control and the guard
 only recognises arms named `bare`/`placebo`.
