@@ -102,6 +102,11 @@ HUB = os.environ.get("SWITCHBOARD_URL") or MANAGED_HUB_URL
 TOKEN = os.environ.get("SWITCHBOARD_TOKEN") or MANAGED_HUB_TOKEN
 WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
 
+# One stamp per run, so every round of it gets a workspace no earlier run has
+# written to. Recorded in the result: a board that cannot be found again is not
+# evidence.
+RUN_STAMP = time.strftime("%m%dT%H%M", time.gmtime())
+
 def client_for(agent_id: str, workspace: str) -> Client:
     """A client pinned to one workspace.
 
@@ -282,7 +287,12 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     island = draw_island(agents, goods, seed=seed)
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
-    workspace = f"{WORKSPACE}-{arm}-{seed}"
+    # The stamp is what keeps one run's board out of the next one's. Messages
+    # live an hour on the hub, so a workspace named only for its arm and seed
+    # still holds the last run's schedule, bells and episode openings -- and a
+    # trader calling history reads a bell that belongs to a round that no
+    # longer exists. That is contamination of the stimulus, not untidiness.
+    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
     channel = "island"
     client = client_for(MANAGER, workspace)
     mgr = Manager(island=island, client=client, channel=channel)
@@ -347,7 +357,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             "trajectory": mgr.episode_utilities,
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
-            "workspace": workspace, "channel": channel,
+            "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,
             "channel_messages": len(client.history(channel, limit=500)),
             "seconds": round(time.time() - started, 1)}
 

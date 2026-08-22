@@ -172,7 +172,12 @@ class Manager:
             raise Refused("you have already produced this episode")
         total = sum(action.plan.values())
         if total > 1.0 + 1e-6:
-            raise Refused(f"shares sum to {total:.3f}; the budget is 1.0")
+            # Enough precision to show the excess. A plan over budget by 1e-4
+            # rounds to "sums to 1.000; the budget is 1.0", which reads as the
+            # manager refusing a plan that obeys it, and the trader spends a
+            # message finding out otherwise.
+            raise Refused(f"shares sum to {total:.6g}, over the budget of 1.0 "
+                          f"by {total - 1.0:.6g}")
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
