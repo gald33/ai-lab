@@ -98,6 +98,28 @@ ARMS = {
     "both":     ("protocol", True),
 }
 
+#: The screen. Ten one-off advice blocks, run as ten arms on one seed, to find
+#: out cheaply which kinds of advice move anything at all. These are
+#: deliberately impure — a block may mix a communication convention with a
+#: domain suggestion — because the point is to find a live one and only then
+#: decompose it into its protocol part and its hint part and test those
+#: separately. A screen is not an experiment: ten numbers on one draw have no
+#: error bars, and whatever wins here is a hypothesis to be re-run, not a
+#: result. Nothing under stimuli/screen/ is frozen or citable.
+SCREEN = {
+    "s01": "screen/s01-terse",
+    "s02": "screen/s02-protocol",
+    "s03": "screen/s03-coupling",
+    "s04": "screen/s04-coverage",
+    "s05": "screen/s05-advantage",
+    "s06": "screen/s06-example",
+    "s07": "screen/s07-checklist",
+    "s08": "screen/s08-roles",
+    "s09": "screen/s09-failures",
+    "s10": "screen/s10-ask",
+}
+ARMS.update({name: (block, False) for name, block in SCREEN.items()})
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
@@ -126,7 +148,11 @@ def instructions(arm: str, private: str, episodes: int) -> str:
     block, hint = ARMS[arm]
     parts = [body((STIM / "base.md").read_text())]
     if block:
-        parts.append(body((STIM / f"{block}.md").read_text()))
+        # A block naming a directory ("screen/s01-terse") is resolved against
+        # the stimuli root, so the screen's un-frozen blocks never sit in the
+        # frozen v3 directory.
+        path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
+        parts.append(body(path.read_text()))
     if hint:
         parts.append(body((STIM / "hint.md").read_text()))
     parts.append(f"""## This round
