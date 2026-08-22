@@ -173,3 +173,50 @@ built twice already, and a long round is not a reason to build it a third time.
 loop survives — thirty episodes of 45s is 22 minutes and about 54 checkins,
 inside the range that has always worked. That is a different run with a
 different clock, and it needs its own record.
+
+## D7a — correction to D7: the loop was not exhausted, and the arithmetic was not the cause
+
+*Written 2026-08-22, same day as D7, before any run that follows.*
+
+D7 says a ninety-two-minute round needs about 220 `checkin` calls and that "at
+that price the agents rationalise their way out". The second half is not
+supported by the record and is withdrawn.
+
+**They never approached 220.** T1's last act was at 11:57:54, roughly **seven
+minutes** into the episodes, at **episode 3 of 30** — on the order of 25–30
+calls. That is the same number every previous round used: three episodes plus
+the acknowledgement window is eleven minutes, and agents have always survived
+it. T1 stopped almost exactly where a normal round would have ended. T4 ran to
+episode 8 and wrote 66 board messages, three times T1's span, so there is no
+ceiling being hit either.
+
+**What the sessions actually say** is that each was reasoning about the
+announced span, not about running out of anything: "the remaining 28 episodes…
+minimizing the cognitive overhead of monitoring and responding to every
+proposal" (T1), "through the remaining 27 episodes when the wakeup fires" (T2),
+"I'll maintain this through episode 30" (T3). T4 computed the round's end time
+correctly and stopped regardless.
+
+**Three candidates remain, and D7 named none of them.**
+
+1. *Anticipation of the count.* Told thirty episodes up front, they treat
+   twenty-seven more repetitions as something to delegate rather than perform.
+2. *Strategy convergence.* The screen's clearest finding was that good rounds
+   lock a pattern in early and replay it unchanged. By episode 3 these traders
+   had theirs. "I've scheduled a loop to maintain my trading strategy" is an
+   agent trying to say *keep doing this*, which the runtime cannot express —
+   the behaviour the design rewards is the one it has no way to represent.
+3. *Wall-clock fatigue.* The timings do not support it.
+
+**What this costs the proposed fix.** D7 ends by offering thirty episodes at
+45s as the available remedy. That holds the count at thirty and only shrinks
+the clock, so if (1) or (2) is driving this the agents quit at episode 3 again,
+two minutes in, and the run buys nothing. It does separate (3) from the others:
+quitting near episode 10 would mean duration, quitting near episode 3 would
+mean duration was never the mechanism. That is worth knowing and is worth one
+round, but it must be run for that question and not as a repaired trajectory
+probe.
+
+**Standing.** The classification in D7 — a feasibility failure of the round
+length, neither harness fault nor an agent choosing silence — still holds. Only
+the stated cause is withdrawn.

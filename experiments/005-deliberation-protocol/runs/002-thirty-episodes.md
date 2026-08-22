@@ -151,7 +151,8 @@ and every number here is n=1.
   raised and was never reached; the sessions ended anyway, by choosing to. A4
   is untested — there is no trajectory to look at.
 
-- **Deviations:** D7.
+- **Deviations:** D7, and **D7a**, which withdraws D7's stated cause. The
+  agents stopped at roughly 25–30 calls, not the ~220 D7 blamed.
 
 ## What this changed
 
