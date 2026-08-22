@@ -37,7 +37,7 @@ disqualifying in that context.
 | stimuli | `stimuli/v3/base.md` body sha256 `c1ff3e80038c66314adcfbf711f5f873d4d129fcb02a2321400b3200fdd2b342`; `persist-improve` adds `stimuli/persist/improve.md`, which is **not frozen** |
 | hub | managed Switchboard hub, one run-stamped workspace per cell |
 | command | `python run_v3.py --arms persist-bare persist-nocount persist-improve --rounds 1 --episodes 30 --episode-seconds 45 --agents 4 --no-control --out results/003-persist` |
-| cost | **12 agent sessions**, ~24 min wall clock; cells run concurrently. Paid: needs an explicit go, recorded here. |
+| cost | **go given 2026-08-22.** **12 agent sessions**, ~24 min wall clock; cells run concurrently. Paid: needs an explicit go, recorded here. |
 
 `--no-control` is passed deliberately: `persist-bare` *is* this run's control,
 and the guard only recognises the arms named `bare`/`placebo`. Recorded rather
@@ -99,8 +99,8 @@ Denominators printed everywhere; no cell or round leaves one.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `47363d1` | **pass** — `98 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `47363d1` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not applicable — this run compares three cells against each other on a count read from settled state; no instrument is being asked to separate conditions it has not separated before. The offline gates on the hidden horizon stand in for it. | — | n/a |
 | pilot | run 001's pilot covers the code path, population and hub; the clock is new and untested at 45s, which A3 names | `b26628e` | reused, with A3 carrying the residual risk |
 
