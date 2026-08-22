@@ -234,6 +234,11 @@ ARMS.update({
 #: control under the fix, which is the only way to see what the fix itself did.
 ARMS.update({
     "probe-bare":     (None, False),
+    #: Run 007. Base instructions, one trader, nobody else on the island. The
+    #: text is deliberately unchanged -- it still speaks of other traders, and
+    #: the roster is what tells the trader otherwise -- so that population is
+    #: the only difference from `probe-bare`. Recorded as D14.
+    "solo":           (None, False),
     "probe-constant": ("probe/constant", False),
 })
 
@@ -427,32 +432,42 @@ def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
-              outdir: Path) -> dict:
+              outdir: Path, only: str | None = None) -> dict:
+    """One round. With `only`, one trader is launched and nobody else exists.
+
+    The island is still drawn at `agents`, so the trader keeps exactly the
+    capacities and tastes it had in a peopled run and its autarky optimum is
+    the same number -- which is the whole point of a solo round: it measures
+    what an agent alone actually reaches against the optimum the floor assumes
+    it reaches. The absent traders are not simulated, replaced or stood in for.
+    Nobody is there.
+    """
     island = draw_island(agents, goods, seed=seed)
-    workdir = outdir / f"{arm}-seed{seed}"
+    workdir = outdir / (f"{arm}-seed{seed}" + (f"-{only}" if only else ""))
     workdir.mkdir(parents=True, exist_ok=True)
     # The stamp is what keeps one run's board out of the next one's. Messages
     # live an hour on the hub, so a workspace named only for its arm and seed
     # still holds the last run's schedule, bells and episode openings -- and a
     # trader calling history reads a bell that belongs to a round that no
     # longer exists. That is contamination of the stimulus, not untidiness.
-    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
+    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}" + (f"-{only}" if only else "")
     channel = "island"
     client = client_for(MANAGER, workspace)
     mgr = Manager(island=island, client=client, channel=channel)
-    for n in mgr.names:
+    present = (only,) if only else mgr.names
+    for n in present:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
     ack_deadline = started + ACK_SECONDS
 
     hide = arm in HIDE_HORIZON
-    mgr.say(schedule_text(episodes, mgr.names, hide=hide, opens_at=ack_deadline))
+    mgr.say(schedule_text(episodes, present, hide=hide, opens_at=ack_deadline))
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
     procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace,
                     max_turns=max(400, 40 * episodes))
-             for n in mgr.names]
+             for n in present]
 
 
     # A session that cannot start -- unreachable API, bad MCP config -- is a
@@ -463,7 +478,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # of exiting.
     time.sleep(20)
     broken = {}
-    for name, proc in zip(mgr.names, procs):
+    for name, proc in zip(present, procs):
         if proc.poll() is None:
             continue
         log = (workdir / name / "session.log").read_text()
@@ -488,7 +503,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     relaunched: dict[str, int] = {}
 
     def rescue() -> None:
-        for i, name in enumerate(mgr.names):
+        for i, name in enumerate(present):
             if (procs[i].poll() is not None and name not in mgr.spoke
                     and relaunched.get(name, 0) < 1):
                 stale = workdir / name / "session.log"
@@ -519,7 +534,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         rescue()
         time.sleep(DRAIN_EVERY)
     mgr.drain()
-    mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
+    mgr.say(f"{len(mgr.acknowledged)}/{len(present)} acknowledged "
                        f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
                        f"Episode 1 opens now.")
 
@@ -588,6 +603,11 @@ def main() -> None:
     # the hub are not independent of each other. A cap trades wall-clock for
     # headroom; it changes nothing any agent sees, since each round's clock
     # starts when that round starts.
+    ap.add_argument("--solo", action="store_true",
+                    help="one trader per board, nobody else present. Each "
+                         "seed becomes `agents` rounds. The island is still "
+                         "drawn at `agents`, so capacities and the autarky "
+                         "optimum are unchanged.")
     ap.add_argument("--max-concurrent", type=int, default=10)
     ap.add_argument("--no-control", action="store_true",
                     help="run without a control arm, and record that choice")
@@ -619,31 +639,39 @@ def main() -> None:
     wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
     print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
           f"episodes {args.episodes}  agents {args.agents}")
-    n_jobs = len(args.arms) * args.rounds
+    n_jobs = len(args.arms) * args.rounds * (args.agents if args.solo else 1)
     waves = -(-n_jobs // min(args.max_concurrent, n_jobs))
     print(f"clock-bound: {wall:.1f} min per round; {n_jobs} rounds at "
           f"{args.max_concurrent} at a time is {waves} wave(s), so about "
-          f"{waves * wall:.0f} min of wall-clock and {n_jobs * args.agents} "
+          f"{waves * wall:.0f} min of wall-clock and {n_jobs * (1 if args.solo else args.agents)} "
           f"agent sessions.\n")
 
     preflight()
 
     from island.score import score  # noqa: PLC0415
 
-    jobs = [(arm, seed) for arm in args.arms
-            for seed in range(1, args.rounds + 1)]
+    # A solo round is one trader alone on its own board, so a seed becomes
+    # `agents` rounds rather than one. The island is still drawn at `agents`:
+    # the trader keeps the capacities the floor was computed from.
+    names = tuple(f"T{i + 1}" for i in range(args.agents))
+    jobs = [(arm, seed, only) for arm in args.arms
+            for seed in range(1, args.rounds + 1)
+            for only in (names if args.solo else (None,))]
     lock = threading.Lock()
 
     def one(job):
-        arm, seed = job
+        arm, seed, only = job
         rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
-                        agents=args.agents, goods=args.goods, outdir=outdir)
+                        agents=args.agents, goods=args.goods, outdir=outdir,
+                        only=only)
+        rec["only"] = only
         s = score(draw_island(args.agents, args.goods, seed=seed),
                   rec["trajectory"])
         rec["score"] = s.to_json()
         per = " ".join(f"{x:.2f}" for x in s.eff_episode)
         with lock:
-            print(f"  {arm:9s} seed {seed}  eff_round {s.eff_round:.3f}  "
+            print(f"  {arm:9s} seed {seed}{'/' + only if only else ''}  "
+                  f"eff_round {s.eff_round:.3f}  "
                   f"floor {s.floor:.3f}  per-episode [{per}]  "
                   f"settled {rec['settled']}  refused {rec['refused']}  "
                   f"talk {rec['talk']}  ack {len(rec['acknowledged'])}/"

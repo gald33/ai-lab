@@ -417,3 +417,32 @@ run that limped is distinguishable from one that did not.
 price, role, trade or production decision is affected, and no malformed message
 becomes a well-formed one. The relaunch is the same specification, the same
 seeds and the same stimuli as the aborted attempt, under a new run stamp.
+
+## D14 — A solo trader is given text that speaks of other traders
+
+**Written before run 007. 2026-08-22.**
+
+Run 007 puts one trader on a board with no counterparties, to measure what an
+agent alone reaches against the autarky optimum every earlier run has scored
+against. The base instructions are handed to it **unchanged** — they still
+describe other traders, proposing and approving.
+
+**Why not write a solo variant.** Two reasons, and the second is the binding
+one. First, the point of the run is to measure the same agent under the same
+instructions with the population removed; rewriting the text would change two
+things at once and the number would no longer speak to runs 003–006. Second,
+run 006 closed the question of whether added or altered instruction text helps,
+and it closed it in the negative — composing a new block here would be exactly
+the move that run's stopping rule forbids.
+
+**The cost.** A trader may spend episodes waiting for counterparties who do not
+exist, and produce less than it otherwise would. That is named as A3 in the run
+record: if it happens, it is reported as this impurity biting, not as an agent
+failing to allocate labour. The roster is what tells the trader it is alone;
+the manager does not announce it, because announcing it would be the system
+making a decision the agents should read off the board themselves.
+
+**What is not affected.** Nothing about production settlement changes: same
+parser, same budget rule, same refusals (A4). The island is still drawn at four
+agents, so the trader's capacities, tastes and autarky optimum are the ones it
+had in runs 005 and 006 (A2).
