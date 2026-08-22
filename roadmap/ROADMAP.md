@@ -122,26 +122,30 @@ graph TD
 > per-episode list and already carries `first_above_floor`: the first episode
 > index above the autarky floor. That is this metric at one threshold, chosen
 > for a reason that has nothing to do with quality. Generalising it is a
-> ladder, not a new instrument, and `exchange_ceiling()`, `walras()` and
-> `capture()` in `002-barter-conventions/experiment/barter/economy.py` supply
-> the rest of the rungs.
+> ladder, not a new instrument, and `exchange_ceiling()` and `capture()` in
+> `002-barter-conventions/experiment/barter/economy.py` supply the other rung
+> and the scale.
 >
 > **The ladder is autarky and exchange, not round numbers.** Both are already
 > computed. `autarky()` gives the floor — what each agent gets making
 > everything itself — and `score.py` already records it as `autarky_floor` and
 > uses it for `first_above_floor`. `exchange_ceiling()` is the best reachable
-> by swapping only, never changing what is produced, and `walras()` is the
-> competitive equilibrium a perfect price mechanism would find. Those are three
-> named rungs that mean something — cleared autarky, finished swapping, matched
-> the auctioneer — where 0.25 and 0.75 mean nothing.
+> by swapping only, never changing what is produced. Those are two rungs that
+> mean something — cleared autarky, finished swapping — where 0.25 and 0.75
+> mean nothing.
 >
-> Separating the first two is the point of the ladder rather than a refinement.
+> Separating them is the point of the ladder rather than a refinement.
 > Everything below the exchange ceiling is a failure to swap; everything above
-> it requires having produced differently. Time-to-clear on each therefore
-> answers different questions about the same round, and on the settled island
-> the two are close (0.823 and 0.856) while the equilibrium is far (0.995) —
-> so nearly all the gain on that island needs different production, not better
-> haggling.
+> it requires having produced differently, so time-to-clear on each answers a
+> different question about the same round. On the settled island they are close
+> — 0.823 and 0.856 — which says nearly all the gain there needs different
+> production, not better haggling.
+>
+> **The frontier itself is the top of the ladder and needs no rung of its
+> own.** Efficiency is measured *against* the frontier, so 1.0 already is
+> "reached it", and `walras()` is one particular frontier point the solver
+> happens to land on rather than an independent standard. Scoring
+> time-to-clear on it would be timing the solver, not the agents.
 >
 > **The anchors are island-relative, and that is what makes rounds comparable.**
 > The autarky floor is a property of the draw, so a fixed absolute threshold
@@ -155,10 +159,9 @@ graph TD
 >
 >     autarky   0.8232  ->  never cleared (censored at 8)
 >     exchange  0.8561  ->  never cleared (censored at 8)
->     walras    0.9947  ->  never cleared (censored at 8)
 >
 > The round never reaches even the autarky floor — those agents did worse than
-> not trading. So every rung is censored, and a mean over only the rounds that
+> not trading. So both rungs are censored, and a mean over only the rounds that
 > cleared would report a *faster* time the higher the rung, because the slow
 > rounds leave the denominator: a metric that improves as performance worsens.
 > CLAUDE.md's rule applies exactly — print denominators, never drop failed runs
