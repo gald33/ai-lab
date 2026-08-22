@@ -439,11 +439,31 @@ def test_a_hidden_horizon_never_states_the_round_length() -> None:
     assert "30 episodes" not in text
     assert "scheduled next" in text
 
-    posted = run_v3.schedule_text(30, ("T1", "T2"), hide=True)
-    assert "30" not in posted
+    # The clock time in the announcement is an absolute UTC stamp, so it may
+    # contain any digits at all. The horizon is what must be absent from what
+    # is left once the stamp is removed.
+    opens_at = 1_700_000_000.0
+    posted = run_v3.schedule_text(30, ("T1", "T2"), hide=True, opens_at=opens_at)
+    assert "30" not in posted.replace(run_v3.stamp(opens_at), "")
 
-    shown = run_v3.schedule_text(30, ("T1", "T2"), hide=False)
+    shown = run_v3.schedule_text(30, ("T1", "T2"), hide=False, opens_at=opens_at)
     assert "30 episodes" in shown
+
+
+def test_the_schedule_states_an_absolute_time_not_a_countdown() -> None:
+    """A trader acknowledged run 005's schedule with "Episode 1 in 120s" long
+    after the announcement, when episode 1 was about thirty seconds away. A
+    relative deadline is only true at the instant it is posted, and nobody here
+    is prompted to read one promptly. So the announcement names a clock time,
+    and points at the `now` every tool result carries."""
+    import run_v3  # noqa: PLC0415
+
+    opens_at = 1_700_000_000.0
+    posted = run_v3.schedule_text(3, ("T1", "T2"), opens_at=opens_at)
+    assert run_v3.stamp(opens_at) in posted
+    assert f"in {run_v3.ACK_SECONDS}s" not in posted
+    assert "`now`" in posted
+    assert run_v3.stamp(opens_at).endswith("Z")
 
 
 def test_the_other_persistence_arms_still_state_it() -> None:

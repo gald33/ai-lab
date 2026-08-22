@@ -244,6 +244,23 @@ EPISODE_SECONDS = 60
 DRAIN_EVERY = 1.5
 
 
+def stamp(ts: float) -> str:
+    """A deadline as an absolute UTC clock time.
+
+    A deadline stated as "in 120s" is only true at the instant it is posted.
+    An agent that reads the schedule ninety seconds after the manager wrote it
+    -- which is ordinary, since nobody is prompted and a session may spend its
+    first turns starting up -- reads "in 120s" and plans against a window that
+    has already mostly gone. Run 005 has a trader acknowledging with "Episode 1
+    in 120s" when episode 1 was about thirty seconds away.
+
+    So every deadline the manager posts is an absolute time. Every Switchboard
+    tool result carries the current time as `now` in the same form, so a
+    reader can tell how long it has left however late it arrives.
+    """
+    return time.strftime("%H:%M:%SZ", time.gmtime(ts))
+
+
 def body(text: str) -> str:
     lines = text.splitlines()
     for i, line in enumerate(lines):
@@ -284,6 +301,12 @@ is everyone else's.
 
 An episode is short. Reading the whole channel every time will cost you more of
 it than it is worth.
+
+Every deadline the manager posts is an absolute UTC clock time, and every
+Switchboard tool result carries the current time as `now` in the same form. A
+message you read is not a message just written -- work out how long you have
+by comparing the stated time with `now`, never by counting from when you read
+it.
 
 **Begin now.** Do not ask whether to start and do not wait to be told; there is
 nobody to answer you, and the clock is already running. Your first act should be
@@ -376,7 +399,8 @@ def preflight() -> None:
     print(f"preflight: an agent's switchboard-mcp reached {HUB}")
 
 
-def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False) -> str:
+def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
+                  opens_at: float | None = None) -> str:
     span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
             f"as they come." if hide
             else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
@@ -386,7 +410,11 @@ def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False) 
             f"APPROVE all settle for as long as the episode is open. At the "
             f"bell open proposals lapse and everything held is consumed. "
             f"Acknowledge with a line beginning ACK. "
-            f"Episode 1 opens in {ACK_SECONDS}s whether or not everyone has.")
+            f"Every time on this board is absolute UTC, and every tool result "
+            f"carries the current time as `now`: read the deadline against "
+            f"that, not against when this message was written. "
+            f"Episode 1 opens at {stamp(opens_at if opens_at is not None else time.time() + ACK_SECONDS)} "
+            f"whether or not everyone has.")
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
@@ -406,9 +434,10 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     for n in mgr.names:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
+    ack_deadline = started + ACK_SECONDS
 
     hide = arm in HIDE_HORIZON
-    mgr.say(schedule_text(episodes, mgr.names, hide=hide))
+    mgr.say(schedule_text(episodes, mgr.names, hide=hide, opens_at=ack_deadline))
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
@@ -468,14 +497,14 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         while time.time() < deadline:
             mgr.drain()
             if tick and time.time() >= next_tick and deadline - time.time() > 5:
-                mgr.say(f"{round(deadline - time.time())}s remain in this episode.")
+                mgr.say(f"{round(deadline - time.time())}s remain in this "
+                        f"episode; the bell is at {stamp(deadline)}.")
                 next_tick = time.time() + TICK_SECONDS
             time.sleep(DRAIN_EVERY)
         mgr.drain()
 
     # Only during the acknowledgement window: after the first episode opens, a
     # session that stops has taken part and its stopping is data.
-    ack_deadline = started + ACK_SECONDS
     while time.time() < ack_deadline:
         mgr.drain()
         rescue()
@@ -488,6 +517,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     for e in range(episodes):
         mgr.open_episode()
         t0 = time.time()
+        bell = t0 + EPISODE_SECONDS
         if hide:
             # A few at a time, and never a total. An agent that cannot count
             # the episodes left cannot decide to delegate them.
@@ -495,12 +525,14 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                 last = min(e + CHUNK, episodes)
                 mgr.say(f"episodes {e + 1} to {last} are scheduled next, "
                         f"{EPISODE_SECONDS}s each.")
-            mgr.say(f"episode {e + 1} is open for {EPISODE_SECONDS}s. "
+            mgr.say(f"episode {e + 1} is open; the bell is at {stamp(bell)} "
+                    f"({EPISODE_SECONDS}s). "
                     f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
         else:
-            mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
+            mgr.say(f"episode {e + 1} of {episodes} is open; the bell is at "
+                    f"{stamp(bell)} ({EPISODE_SECONDS}s). "
                     f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
-        wait_until(t0 + EPISODE_SECONDS, tick=ticks)
+        wait_until(bell, tick=ticks)
         mgr.close_episode()
 
     mgr.say("the round is over. Stop; nothing further will settle.")
