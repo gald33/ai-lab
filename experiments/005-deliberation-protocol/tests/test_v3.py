@@ -82,7 +82,8 @@ def test_the_three_shapes_parse():
 
 @pytest.mark.parametrize("bad", [
     "PRODUCE bread", "PRODUCE", "PRODUCE bread=", "PRODUCE bread=-0.5",
-    "PROPOSE to=T2 give=iron:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
+    "PROPOSE to=T2 give=iron:0.4",
+    "PROPOSE to=T2 give=bread:0.02 cloth:0.15 want=salt:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
     "PROPOSE to=T2 give=iron want=salt:0.3",
     "PROPOSE to=T2 give=iron:0 want=salt:0.3",
     "APPROVE", "APPROVE p1 p2",
@@ -166,6 +167,46 @@ def test_an_open_proposal_commits_the_goods_it_offers():
     m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=iron:0.1")
     m.drain()
     assert m.refused == 1, "the same goods cannot back two open proposals"
+
+
+def test_a_trader_cannot_approve_its_own_proposal():
+    """The mistake that cost two arms a whole round.
+
+    T1 offered to T2 and then approved its own offer, twice, in different
+    episodes, while T2's genuine offers sat open and lapsed at the bell. Making
+    an offer and taking it yourself is not a trade, and the refusal has to say
+    so rather than quietly doing nothing.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open", "and it stays takeable by T2"
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "settled"
+
+
+def test_your_own_open_proposal_can_leave_you_short_to_approve():
+    """The other half of that round: escrow blindness.
+
+    T1 tried to approve an offer it could not pay for, because its own open
+    proposal was holding the goods. The refusal names the shortfall, which is
+    the only way an agent can tell this apart from having produced too little.
+    """
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=cloth:0.01")
+    m.drain()
+    m.hub.as_("T2", "PROPOSE to=T1 give=cloth:0.02 want=bread:0.02")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.refused == 1
+    said = [r["body"] for r in m.hub.history("c") if "uncommitted" in r["body"]]
+    assert said, "the refusal must name the shortfall"
 
 
 def test_only_the_addressee_can_approve():
