@@ -16,8 +16,12 @@ Claim before starting: `python scripts/roadmap.py claim <key>`
   - ↔ related: **`005-word-cap-fits-the-protocol`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - `now` **`005-word-cap-fits-the-protocol`** — Establish whether the 60-word cap can physically hold the protocol's five steps
   - ↔ related: **`005-display-precision-artifact`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
+- `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
+  - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
+  - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - `next` **`005-transport-retry-audit`** — Confirm a silent transport retry cannot mask a model refusing the format
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
+  - ↔ related: **`005-episodes-to-threshold`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 
 ## ⏸ Deferred — startable, deliberately not now
 
@@ -39,6 +43,7 @@ _Nothing claimed._
 ```mermaid
 graph TD
   005_display_precision_artifact["Find every focal point the 005 instrument creates by formatting"]
+  005_episodes_to_threshold["Measure episodes-to-first-clear across a threshold ladder, not total efficiency"]
   005_paired_statistic_choice["Decide whether minimum dispersion is the right paired statistic"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
@@ -49,6 +54,8 @@ graph TD
   005_word_cap_fits_the_protocol --> 005_rerun_at_twenty_one_rounds
   lab_roadmap_adoption --> lab_roadmap_core_0_2_0
   005_display_precision_artifact -.- 005_word_cap_fits_the_protocol
+  005_episodes_to_threshold -.- 005_paired_statistic_choice
+  005_episodes_to_threshold -.- 005_rerun_at_twenty_one_rounds
 ```
 
 ## Items
@@ -82,12 +89,71 @@ graph TD
 
 </details>
 
+### `005-episodes-to-threshold`
+
+- **title:** Measure episodes-to-first-clear across a threshold ladder, not total efficiency
+- **status:** ready
+- **arc:** deliberation-protocol
+- **priority:** next
+- **related to** (not a dependency — both are startable):
+  - `005-paired-statistic-choice` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
+  - `005-rerun-at-twenty-one-rounds` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
+- **refs:**
+  - `experiments/005-deliberation-protocol/island/score.py`
+  - `experiments/005-deliberation-protocol/results/v3/v3.json`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> `eff_round` is a level: how good the accumulated bundle got. It cannot say
+> how *fast* quality arrived, and speed is the thing a round with k episodes
+> exists to show — that is why context persists across a round's episodes.
+> Two rounds ending at the same `eff_round` can differ entirely in whether the
+> agents got there in episode two or episode seven, and nothing currently
+> reported separates them.
+>
+> So: fix a ladder of thresholds τ, and for each, the episode index at which a
+> round's per-episode efficiency first reaches τ. Averaged over rounds that is
+> a speed-for-quality curve — episodes to reach this good — with `eff_round`
+> still reported beside it as the level.
+>
+> The machinery is already there. `island/score.py` records `eff_episode` as a
+> per-episode list and already carries `first_above_floor`: the first episode
+> index above the autarky floor. That is this metric at one threshold, chosen
+> for a reason that has nothing to do with quality. Generalising it is a
+> ladder, not a new instrument.
+>
+> **The estimator is the part to get right, and the existing record already
+> breaks the naive one.** On the single settled round in `results/v3/v3.json`
+> (bare arm, 8 episodes, eff_episode = [0.0, 0.0, 0.580, 0.580, ...]):
+>
+>     τ=0.25  first clear at episode 2
+>     τ=0.50  first clear at episode 2
+>     τ=0.75  never cleared  (censored at 8)
+>     τ=0.90  never cleared  (censored at 8)
+>
+> Half the ladder never clears. A mean over only the rounds that cleared
+> reports a *faster* time the higher the threshold, because the slow rounds
+> leave the denominator — a metric that improves as performance worsens.
+> CLAUDE.md's rule applies exactly: print denominators, never drop failed runs
+> from one.
+>
+> Done when the ladder is fixed and written down before the run it scores; the
+> estimator handles never-cleared rounds explicitly, reporting clear-rate per
+> τ beside the time so the two cannot be read apart; and the curve is computed
+> over the existing record so its shape is known on real data before any
+> pre-registration freezes it.
+
+</details>
+
 ### `005-paired-statistic-choice`
 
 - **title:** Decide whether minimum dispersion is the right paired statistic
 - **status:** ready
 - **arc:** deliberation-protocol
 - **priority:** later
+- **related to** (not a dependency — both are startable):
+  - `005-episodes-to-threshold` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
   - `experiments/005-deliberation-protocol/analysis`
@@ -113,6 +179,8 @@ graph TD
 - **arc:** deliberation-protocol
 - **priority:** now
 - **blocked on:** `005-display-precision-artifact`, `005-word-cap-fits-the-protocol`
+- **related to** (not a dependency — both are startable):
+  - `005-episodes-to-threshold` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
   - `experiments/005-deliberation-protocol/PREREGISTRATION.md`
