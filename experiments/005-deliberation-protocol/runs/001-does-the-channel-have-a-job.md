@@ -104,8 +104,8 @@ settle nothing.
 |---|---|---|---|
 | smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `e801240` | **pass** — `96 passed`, `stimuli unchanged`, `OK` |
 | toolchain | `python -c "import run_v3; run_v3.preflight()"` | `e801240` | **pass** — an agent's `switchboard-mcp` reached the hub |
-| calibration | pilot at n=4 against the screen's n=2 talk rate | | not yet run — needs the pilot |
-| pilot | `python run_v3.py --arms bare --rounds 1 --episodes 2 --agents 4` | | **go given 2026-08-22** for the pilot only, against 4 agent sessions and ~8 min. The main run's 96 sessions are not covered by it and need their own. |
+| calibration | pilot at n=4 against the screen's n=2 talk rate | `b26628e` | **unexecutable at this size — neither pass nor fail.** 8 trader-episodes expect 0.80 talk under the n=2 rate and 2.40 under the hypothesis; 0 observed, P(0 \| 2.40) = 0.091. See deviation D6. |
+| pilot | `python run_v3.py --arms bare --rounds 1 --episodes 2 --agents 4` | `b26628e` | **pass.** Go given 2026-08-22 for the pilot only. 4/4 sessions started and acknowledged, 28 settled, 4 refused, 0 harness failures, clock survivable at 4 traders. `results/001-pilot/v3.json`. Its outcome numbers are not evidence. |
 
 **Calibration is required here and is not being skipped.** The primary metric
 is new, and an instrument that cannot move returns an unattributable null —
