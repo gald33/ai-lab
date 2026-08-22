@@ -1,6 +1,6 @@
 # Run 006 — Does saying what constancy *implies* change anything?
 
-**Opened:** 2026-08-22 · **Status:** running
+**Opened:** 2026-08-22 · **Status:** reported
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -113,10 +113,109 @@ refused; `zero_agent_episodes`. `eff_episode` reported, not interpreted.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/006-probe/v3.json`, six rounds, run stamp `0822T1839`.
+  Boards saved under `results/006-probe/boards/`. The behavioural endpoint is
+  recomputed by `analysis/repeats.py` from those boards.
+
+- **Ran:** both cells in full. 3 seeds x 2 cells = 6 rounds, 10 episodes each,
+  4 traders each. 4/4 traders acknowledged in every round and all four spoke in
+  every round, so no cell lost a trader at the door. **Zero rescues** (D10 did
+  not fire). No round hit the 500-message history cap. `drain_errors` 0 in all
+  six -- D13's retry never fired.
+
+  **The 18:22 attempt is not in this and is counted nowhere.** It died to a hub
+  502 fifteen minutes in and wrote no round record; see D13.
+
+- **Numbers -- primary.** Paired `eff_round`, denominator 3 seeds per cell, no
+  round dropped.
+
+  | seed | floor | `probe-bare` | `probe-constant` | paired diff |
+  |---|---|---|---|---|
+  | 1 | 0.642 | 0.556 | 0.357 | -0.200 |
+  | 2 | 0.674 | 0.533 | 0.200 | -0.333 |
+  | 3 | 0.604 | 0.274 | 0.000 | -0.274 |
+
+  **Mean -0.269, median -0.274, 0 of 3 seeds favouring the treatment.**
+  Neither cell beat autarky on any seed: `eff_round - floor` is negative in all
+  six rounds, from -0.086 to -0.604.
+
+- **Numbers -- behavioural (A3).** Repeat exchanges, read from settled state.
+
+  | seed | `probe-bare` | `probe-constant` | diff |
+  |---|---|---|---|
+  | 1 | 0.88 (30/34) | 0.69 (11/16) | -0.19 |
+  | 2 | 0.86 (19/22) | 0.65 (11/17) | -0.22 |
+  | 3 | 0.50 (4/8) | 0.33 (2/6) | -0.17 |
+
+  Settled exchanges fell in every seed: 34->16, 22->17, 8->6. The first repeat
+  appears at episode 2 in five of six rounds and episode 1 in the sixth, in
+  both cells.
+
+- **Numbers -- comparison 1 (the fix).** `max-bare` -> `probe-bare` on the same
+  three islands, across runs: 0.000 -> 0.556, 0.461 -> 0.533, 0.472 -> 0.274.
+  Two up, one down; n=3 across runs, and A1's weakness applies.
+
+- **Numbers -- secondary.** Alive fraction, the mean over ten episodes of the
+  share of traders that produced that episode:
+
+  | | alive (mean of 3) | settled | refused | talk |
+  |---|---|---|---|---|
+  | `probe-bare` | **0.78** (0.88 0.85 0.60) | 273 | 24 | 0 |
+  | `probe-constant` | **0.59** (0.68 0.45 0.65) | 226 | 26 | 0 |
+
+  Zero-agent episodes, denominator 30 episodes per cell: `probe-bare` 17,
+  `probe-constant` 28. `eff_episode` reported, not interpreted.
+
+- **Assumptions that did not hold:** **A4**. It said persistence should not
+  differ systematically between cells and named the consequence if it did. It
+  does: 0.78 against 0.59, lower in the treated cell on all three seeds.
+  **The efficiency difference is therefore confounded with a persistence
+  difference and this run cannot separate them** -- the same failure, in the
+  same direction, that A3 produced in run 005. The repeat-exchange difference
+  is a share and so less mechanically driven by volume, but fewer exchanges are
+  fewer chances to repeat, and it is not independent of the attrition either.
+
+  **A3 holds** in that the block moved settled behaviour and not talk -- but
+  moved it downward, which is not the direction A3 anticipated. **A1** holds;
+  the diff between the two commits carries the deadline change and the arm
+  wiring only. **A2** holds: the paired difference (0.269) exceeds run 005's
+  (0.207) and the 0.10 the hypothesis named. **A5** holds -- no session failed
+  to join, so nothing was rescued and no log carries a runtime error.
+
+  **The manipulation check is missing and cannot be recovered.** `talk` is 0 in
+  all six rounds: no trader wrote a word of free text in either cell. Nothing on
+  the board shows whether a treated trader read the block, so "ignored it" and
+  "never attended to it" are not separable here.
+
+- **Deviations:** D12, as specified, and **D13**, written before the relaunch.
 
 ## What this changed
+
+**The stopping rule fired.** The record said, before the run: *"Would make me
+stop adding text: both this and run 005 negative. Two independent additions,
+one maximal and one minimal, both harmful, would say the cost is in the
+adding."* Run 005's maximal treatment came in at mean −0.207 (4 of 5 seeds
+against it); this minimal one at mean −0.269 (3 of 3 against it). Both
+negative, both in the same direction, and both bought with the same currency:
+a cell that trades less and stops sooner. **No further run in this experiment
+adds instruction text to see whether it helps.**
+
+**What the control refuted was the premise of the probe.** The question this
+run opened with was whether traders fail to act on constancy across episodes.
+They do not: `probe-bare` repeats 86–88% of its exchanges from episode 2 on,
+in the two rounds with enough exchanges to say so, with no prompting at all.
+Repetition was not the missing ingredient, and the rounds that repeat most are
+still below their own autarky floor. That is a finding about the island, not
+about the text.
+
+**What cannot be concluded.** Not that the block was ignored — with `talk` at 0
+in both cells there is no evidence either way about what a treated trader made
+of it. And not that the block *causes* the efficiency drop, because A4 failed:
+the treated cell also stopped sooner, and this design cannot separate the two.
+
+**Next, and only if it is worth doing.** The per-bell restatement — the manager
+sending each trader its own private block by `dm` at every bell — would test
+recall separately from reasoning, since the private state is currently handed
+over once at session start and is ten episodes back in context by the end. It
+is a change to what the manager *repeats*, not to what it *instructs*, so it
+does not violate the stopping rule above. It is not scheduled.
