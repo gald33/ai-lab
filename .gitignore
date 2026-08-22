@@ -37,3 +37,7 @@ experiments/005-deliberation-protocol/results/*/*/T*/
 # committed mid-run is half a file.
 experiments/005-deliberation-protocol/results-*.log
 experiments/005-deliberation-protocol/.ca-bundle.pem
+
+# Roadmap store — derived, rebuilt by `roadmap push` from roadmap/items/*.yaml.
+# A binary file in git conflicts on every claim.
+roadmap/roadmap.db

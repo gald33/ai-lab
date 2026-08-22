@@ -1,0 +1,14 @@
+id: deliberation-protocol
+title: 005 — does a content-free deliberation protocol help agents coordinate?
+refs:
+  - experiments/005-deliberation-protocol/README.md
+  - reports/2026-08-21-005-deliberation-protocol.md
+narrative: |
+  Four cells run with agents; the headline is a null. The protocol moved
+  nothing on top of a matched placebo, and nothing at all on top of a common
+  hint (12/12 ties). The arc stays open because the report's own first threat
+  to validity says the null is most likely a design choice: five rounds is not
+  the twenty-one the pilot accepted, and the protocol is a procedure over
+  rounds. The tail is the instrument review the report named, and then the
+  re-run that would make the null a result about protocols rather than about
+  five rounds of Haiku.
