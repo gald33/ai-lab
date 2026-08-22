@@ -19,23 +19,9 @@ The narrative layer above `roadmap/ROADMAP.md`: *why* each theme is still open. 
 
 ## 🟠 Open
 
-### 🟠 002 — words, machinery, or disposition: which part of a value convention works?
-
-`barter-conventions` · 1 item(s), 1 startable
-
-`experiments/002-barter-conventions/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
-
-Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
-it, so most of its numbers measure the harness. Tier 3 is designed,
-calibrated and unrun.
-
-| item | status | priority |
-|---|---|---|
-| `002-tier3-run` | ready | next |
-
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
-`deliberation-protocol` · 5 item(s), 4 startable
+`deliberation-protocol` · 6 item(s), 5 startable
 
 `experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
 
@@ -53,6 +39,7 @@ five rounds of Haiku.
 | `005-display-precision-artifact` | ready | now |
 | `005-rerun-at-twenty-one-rounds` | blocked | now |
 | `005-word-cap-fits-the-protocol` | ready | now |
+| `005-episodes-to-threshold` | ready | next |
 | `005-transport-retry-audit` | ready | next |
 | `005-paired-statistic-choice` | ready | later |
 
@@ -72,34 +59,40 @@ utility moves in when a second experiment needs it, not in anticipation).
 | `lab-roadmap-adoption` | verifying | now |
 | `lab-roadmap-core-0-2-0` | blocked | next |
 
-### 🟠 003 — which promotion rule converges on the good solution rather than the lucky one?
+## 🟢 Closed
 
-`promotion-rules` · 1 item(s), 1 startable
+### 🟢 002 — words, machinery, or disposition: which part of a value convention works?
+
+`barter-conventions` · 0 item(s), 0 startable
+
+**Declared `closed`.** Closed by decision on 2026-08-22 to focus the lab on 005. The tail was
+WITHDRAWN, not finished: `002-tier3-run` was deleted unstarted. Tier 1 stands
+as a result; Tier 2's numbers stay recorded as measuring the harness; Tier 3
+stays designed, calibrated and unrun.
+
+`experiments/002-barter-conventions/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
+
+Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
+it, so most of its numbers measure the harness. Tier 3 is designed,
+calibrated and unrun — and now closed in that state rather than run. The
+calibration report is what a re-opening would start from.
+
+### 🟢 003 — which promotion rule converges on the good solution rather than the lucky one?
+
+`promotion-rules` · 0 item(s), 0 startable
+
+**Declared `closed`.** Closed by decision on 2026-08-22 to focus the lab on 005. The tail was
+WITHDRAWN, not finished: `003-tier2-design` was deleted unstarted, so the
+question the experiment is actually about — a promoter choosing among
+solutions a model wrote — stays unasked. Tier 1, the scripted tier, is
+complete and reported and unaffected.
 
 `experiments/003-promotion-rules/README.md` · `reports/2026-08-20-003-promotion-rules.md`
 
 Tier 1, the scripted tier, is complete and reported. Tier 2 — the same
-promoter over real instincts — is neither designed nor run.
-
-| item | status | priority |
-|---|---|---|
-| `003-tier2-design` | ready | later |
-
-### 🟠 001 — is coordination better reasoning, or less to reason about?
-
-`switchboard-coordination` · 1 item(s), 1 startable
-
-`experiments/001-switchboard-coordination/README.md`
-
-Run, not published. The data is not cleaned and the analysis is not written,
-so the experiment directory carries the design and one preserved negative
-result and no numbers. The tail is the publication, not the run.
-
-| item | status | priority |
-|---|---|---|
-| `001-publish-results` | ready | next |
-
-## 🟢 Closed
+promoter over real instincts — is neither designed nor run, and is now closed
+in that state. The open question is recorded in the experiment README, not in
+an item.
 
 ### 🟢 004 — is 002's ruin about the convention, or about irrecoverable commitment?
 
@@ -115,3 +108,21 @@ because an arc with no items and a finished arc are the same empty set.
 Answered: whether ruin survives per-period consumption decides whether 002's
 finding is about conventions or about a world where a production commitment
 can never be taken back.
+
+### 🟢 001 — is coordination better reasoning, or less to reason about?
+
+`switchboard-coordination` · 0 item(s), 0 startable
+
+**Declared `closed`.** Closed by decision on 2026-08-22 to focus the lab on 005. The tail was
+WITHDRAWN, not finished: `001-publish-results` was deleted unstarted, so the
+run's data stays uncleaned and its analysis unwritten. The experiment
+directory's own status line — run, not published, nothing below is a result —
+remains the accurate description, and closing the arc does not turn it into
+one.
+
+`experiments/001-switchboard-coordination/README.md`
+
+Run, not published, and now closed with that still true. The design and the
+one preserved negative result are in the experiment directory; the numbers
+are not, and no longer have an item saying they will be. Reopening means
+filing the analysis item again, not re-running anything.

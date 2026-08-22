@@ -1,0 +1,90 @@
+id: 005-episodes-to-threshold
+title: Measure episodes-to-first-clear across a threshold ladder, not total efficiency
+arc: deliberation-protocol
+priority: next
+status: ready
+related_to:
+  - key: 005-paired-statistic-choice
+    note: |
+      Both decide what the next pre-registration freezes as its metric, and
+      both must be settled before it is written. Decide them together — a
+      speed-to-quality curve and a paired statistic on the same record are one
+      analysis pass, and freezing one without the other means amending.
+  - key: 005-rerun-at-twenty-one-rounds
+    note: |
+      This is the metric that re-run would be read with. CLAUDE.md requires
+      metrics and thresholds pre-registered before a run, so the ladder has to
+      be chosen and its estimator settled before that pre-registration is
+      written — not after the numbers are in.
+refs:
+  - experiments/005-deliberation-protocol/island/score.py
+  - experiments/005-deliberation-protocol/results/v3/v3.json
+  - experiments/002-barter-conventions/experiment/barter/economy.py
+  - CLAUDE.md
+evidence: |
+  `eff_round` is a level: how good the accumulated bundle got. It cannot say
+  how *fast* quality arrived, and speed is the thing a round with k episodes
+  exists to show — that is why context persists across a round's episodes.
+  Two rounds ending at the same `eff_round` can differ entirely in whether the
+  agents got there in episode two or episode seven, and nothing currently
+  reported separates them.
+
+  So: fix a ladder of thresholds, and for each, the episode index at which a
+  round's per-episode efficiency first reaches it. Averaged over rounds that is
+  a speed-for-quality curve — episodes to reach this good — with `eff_round`
+  still reported beside it as the level.
+
+  The machinery is already there. `island/score.py` records `eff_episode` as a
+  per-episode list and already carries `first_above_floor`: the first episode
+  index above the autarky floor. That is this metric at one threshold, chosen
+  for a reason that has nothing to do with quality. Generalising it is a
+  ladder, not a new instrument, and `exchange_ceiling()` and `capture()` in
+  `002-barter-conventions/experiment/barter/economy.py` supply the other rung
+  and the scale.
+
+  **The ladder is autarky and exchange, not round numbers.** Both are already
+  computed. `autarky()` gives the floor — what each agent gets making
+  everything itself — and `score.py` already records it as `autarky_floor` and
+  uses it for `first_above_floor`. `exchange_ceiling()` is the best reachable
+  by swapping only, never changing what is produced. Those are two rungs that
+  mean something — cleared autarky, finished swapping — where 0.25 and 0.75
+  mean nothing.
+
+  Separating them is the point of the ladder rather than a refinement.
+  Everything below the exchange ceiling is a failure to swap; everything above
+  it requires having produced differently, so time-to-clear on each answers a
+  different question about the same round. On the settled island they are close
+  — 0.823 and 0.856 — which says nearly all the gain there needs different
+  production, not better haggling.
+
+  **The frontier itself is the top of the ladder and needs no rung of its
+  own.** Efficiency is measured *against* the frontier, so 1.0 already is
+  "reached it", and `walras()` is one particular frontier point the solver
+  happens to land on rather than an independent standard. Scoring
+  time-to-clear on it would be timing the solver, not the agents.
+
+  **The anchors are island-relative, and that is what makes rounds comparable.**
+  The autarky floor is a property of the draw, so a fixed absolute threshold
+  measures the island as much as the agents. `capture()` already rescales
+  realised efficiency so autarky is 0.0 and the frontier is 1.0, and the ladder
+  should be read on that scale for anything pooled across seeds.
+
+  **Censoring is the common case here, not an edge case.** On the single
+  settled round in `results/v3/v3.json` (seed 1, 2 agents, 4 goods, 8 episodes,
+  eff_episode = [0.0, 0.0, 0.580, 0.580, ...]):
+
+      autarky   0.8232  ->  never cleared (censored at 8)
+      exchange  0.8561  ->  never cleared (censored at 8)
+
+  The round never reaches even the autarky floor — those agents did worse than
+  not trading. So both rungs are censored, and a mean over only the rounds that
+  cleared would report a *faster* time the higher the rung, because the slow
+  rounds leave the denominator: a metric that improves as performance worsens.
+  CLAUDE.md's rule applies exactly — print denominators, never drop failed runs
+  from one.
+
+  Done when the rungs are fixed and written down before the run they score;
+  the estimator handles never-cleared rounds explicitly, reporting clear-rate
+  per rung beside the time so the two cannot be read apart; and the curve is
+  computed over the existing record so its shape is known on real data before
+  any pre-registration freezes it.
