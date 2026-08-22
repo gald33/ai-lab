@@ -37,3 +37,8 @@ you think one of those constraints is wrong, that's an issue worth opening.
 Experiments follow [templates/experiment/](templates/experiment/README.md),
 loosely. It's a set of prompts, not a schema — a section with nothing under it
 should be deleted rather than filled with hedging.
+
+The one part that isn't loose is grounding: every run whose result is kept has
+a record written before it runs, and an experiment's grounding does not travel
+to another experiment. [experiments/GROUNDING.md](experiments/GROUNDING.md)
+says why and how.

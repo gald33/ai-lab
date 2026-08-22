@@ -103,6 +103,26 @@ Each experiment owns its own code, results and analysis. There is no shared
 framework, deliberately — experiments that have to fit a framework end up
 measuring the framework.
 
+## Grounding a run
+
+An agent running an experiment is grounded in three things and nothing else:
+the standing decisions in [CLAUDE.md](CLAUDE.md), the general
+[experiments/GROUNDING.md](experiments/GROUNDING.md), and that experiment's own
+`CLAUDE.md`. **No other experiment's directory is in scope** — grounding from a
+sibling experiment arrives looking authoritative and silently imports a metric
+or an assumption frozen for a different question.
+
+`tools/ground.py <n>` prints exactly that bundle, and
+`tools/ground.py <n> --new-run "<name>"` opens a run record.
+
+Every run whose result is meant to be kept gets a record under
+`experiments/<n>/runs/`, committed **before** the run. It carries the
+**specification** (enough to rebuild the run without asking anyone), the
+**assumptions** (what has to be true for the output to mean what it is meant
+to mean, each written so it could be found false), and the **hypothesis**
+(what is expected, and what would change your mind). Only the outcome is
+written afterwards.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
