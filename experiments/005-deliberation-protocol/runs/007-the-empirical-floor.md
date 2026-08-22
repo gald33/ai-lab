@@ -1,6 +1,6 @@
 # Run 007 — Is the autarky floor a floor these agents can reach?
 
-**Opened:** 2026-08-22 · **Status:** specified
+**Opened:** 2026-08-22 · **Status:** running
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -85,8 +85,8 @@ interpreted.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | (below) | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | (below) | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `572bc67` | **pass** — `105 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `572bc67` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not needed — solo capture is read from settled state against a closed form, not estimated. `tests/test_solo_floor.py` checks the measure calls the autarky split 1.0 and a corner bundle 0.0. | — | |
 | pilot | runs 001, 003–006 cover this code path, clock, hub and model. The solo path is new and is covered by the smoke gate and by the first round's board being read before the wave completes. | reused | |
 
