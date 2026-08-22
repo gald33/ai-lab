@@ -114,7 +114,10 @@ at zero for four traders.
   the 500-row cap).
 - **Ran:** 10 rounds attempted, **10 completed**, 0 aborted, 0 harness
   failures. 40/40 sessions started. Acknowledgement 4/4 in eight rounds and
-  3/4 in two (`max-talk` seeds 2 and 4). 0 rescues triggered (D10). 32 min.
+  3/4 in two (`max-talk` seeds 2 and 4). **Two sessions were relaunched under
+  D10** — `max-bare` seed 5 (T2) and `max-talk` seed 4 (T2), one per cell, so
+  the rescue did not fall on one side. One trader never reached the board at
+  all: `max-talk` seed 2, where only 3 of 4 ever spoke. 32 min.
 
 - **Numbers — primary.** Paired `eff_round − floor`, same island in both cells:
 
