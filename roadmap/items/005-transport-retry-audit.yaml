@@ -2,7 +2,7 @@ id: 005-transport-retry-audit
 title: Confirm a silent transport retry cannot mask a model refusing the format
 arc: deliberation-protocol
 priority: next
-status: ready
+status: done
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
   - experiments/005-deliberation-protocol/experiment
@@ -15,3 +15,18 @@ evidence: |
   Done when the two paths are separated in the record, or a case is exhibited
   where a refusal reaches the transport path. Either outcome changes what claim
   5 is allowed to say.
+
+  ---
+
+  **Closed 2026-08-22 — separated by construction, with a named residual.**
+  `INSTRUMENT-REVIEW.md` §3. A format refusal returns exit 0 with prose, so it
+  cannot reach `_invoke`'s uncounted transport retry; it fails later in
+  `_read(_extract(raw))` and is counted as a content retry. The recorded counts
+  are therefore counts of the right thing.
+
+  Residual the record cannot rule out: a refusal producing empty stdout or a
+  non-zero exit is indistinguishable from transport failure and would be
+  retried up to three times silently.
+
+  What claim 5 may say: that no content-retry rate stands on a moving
+  denominator. Not that the harness-failure count of zero is complete.

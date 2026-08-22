@@ -1,0 +1,33 @@
+id: 005-render-precision-fix
+title: Stop the instrument handing every agent the same printed number
+arc: deliberation-protocol
+priority: now
+status: ready
+blocks:
+  - 005-rerun-at-twenty-one-rounds
+refs:
+  - experiments/005-deliberation-protocol/INSTRUMENT-REVIEW.md
+  - experiments/005-deliberation-protocol/experiment/agents/prompt.py
+evidence: |
+  Opened 2026-08-22 by the instrument review that closed
+  `005-display-precision-artifact`. That item asked whether the renderer
+  creates a focal point; it does, and this is the work the answer implies.
+
+  Every number an agent sees goes through `prompt._vector`, which formats with
+  `f"{p:.3f}"`. So each agent given the hint is handed the same string, and
+  99.2% of submitted numbers already sit exactly on that 3-decimal grid.
+  Round-0 dispersion is exactly 0.000 in 11/12 `content-only` and 6/12 `both`
+  worlds — before anyone has spoken — while both unhinted cells are 0/12. The
+  hinted cells' coordination rate of 1.000 is the renderer, not deliberation.
+
+  This blocks the twenty-one-round re-run, which was already blocked on the two
+  reviews for exactly this reason: buying a second copy of a known display
+  artifact is not a go. Re-running as specified would reproduce it in 24 of 48
+  worlds.
+
+  Done when the hint (and the private signal, which snaps submissions to the
+  same grid) is either rendered at a precision that does not hand every agent
+  an identical string, or the hinted cells are dropped from the design — and
+  whichever is chosen is written into the next pre-registration before the run,
+  with the round-0 dispersion check named as an acceptance criterion so the
+  artifact cannot return unnoticed.

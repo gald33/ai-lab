@@ -19,7 +19,7 @@ The narrative layer above `roadmap/ROADMAP.md`: *why* each theme is still open. 
 
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
-`deliberation-protocol` · 6 item(s), 5 startable
+`deliberation-protocol` · 7 item(s), 3 startable
 
 `experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
 
@@ -34,11 +34,12 @@ five rounds of Haiku.
 
 | item | status | priority |
 |---|---|---|
-| `005-display-precision-artifact` | ready | now |
+| `005-display-precision-artifact` | done | now |
+| `005-render-precision-fix` | ready | now |
 | `005-rerun-at-twenty-one-rounds` | blocked | now |
-| `005-word-cap-fits-the-protocol` | ready | now |
+| `005-word-cap-fits-the-protocol` | done | now |
 | `005-episodes-to-threshold` | ready | next |
-| `005-transport-retry-audit` | ready | next |
+| `005-transport-retry-audit` | done | next |
 | `005-paired-statistic-choice` | ready | later |
 
 ### 🟠 How the lab itself is run — process, records, and the tools that hold them

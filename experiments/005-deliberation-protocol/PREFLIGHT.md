@@ -12,7 +12,7 @@ Paths below are relative to this directory.
     python tools/check_stimuli.py
     python tools/check_v2.py
 
-Expect: `84 passed` (~12s); `stimuli unchanged`; and `OK` from `check_v2`, which
+Expect: `93 passed` (~12s); `stimuli unchanged`; and `OK` from `check_v2`, which
 prints the hash table, the cell parity check, the domain-leakage check over both
 documents, and the protocol/placebo length match.
 
@@ -29,6 +29,28 @@ Expect: the sweep table, `27 configurations evaluated`, and
 `harness failures across the whole sweep: 0`. **`0 accepted` at two worlds is
 not a result** — the acceptance band cannot be met at that size. The only thing
 this establishes is that the sweep runs and the harness-failure counter is zero.
+
+### The agent's own toolchain
+
+    python -c "import run_v3; run_v3.preflight()"
+
+Expect: `preflight: an agent's switchboard-mcp reached <hub>`.
+
+An agent reaches the hub through `switchboard-mcp` with the environment
+`run_v3.py` hands it, and nothing else — the manager reaches it through the
+parent environment instead. So the manager can be fine while every agent is
+broken, and that is not hypothetical: a fifty-round run died four minutes in
+with every session reporting every Switchboard tool as an internal error, and
+nothing upstream looked wrong. The check spawns the MCP server exactly as an
+agent gets it and calls one tool.
+
+This is declared here as well as being called by `run_v3.py` at startup,
+because a gate that only runs inside the thing it guards cannot be recorded
+against a commit before the go.
+
+Failure means a harness fault, never agent behaviour, and it is the one thing
+the pilot below is worst at telling you: a session that starts, finds its
+tools broken, and stops reads exactly like an agent that chose to stop.
 
 ## 2. Calibration — does the instrument read?
 
@@ -84,6 +106,8 @@ the extrapolated cost.
 - The switchboard server extra (`fastapi`) is needed by the parts that stand up
   a hub. Missing it fails as `ModuleNotFoundError`, which reads like a broken
   test rather than a missing dependency.
-- Per-agent working directories under `results/v3/*/T*/` carry a `.mcp.json`
-  with a hub token and are gitignored. The result of a run is the manager's
-  record and the hub's channel, never an agent's scratch dir.
+- Per-agent working directories under `results/*/*/T*/` carry a `.mcp.json`
+  with a hub token and are gitignored. The rule was once `results/v3/*/T*/`,
+  which silently stopped covering a run written anywhere else. The result of a
+  run is the manager's record and the hub's channel, never an agent's scratch
+  dir.
