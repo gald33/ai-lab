@@ -89,8 +89,8 @@ efficiency number from this run means anything** and none is interpreted.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `66bbd10` | **pass** — `100 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `66bbd10` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not applicable in the usual sense: the instrument is a count read off the board, and run 003 demonstrated it separates conditions (0.80 against 0.57). The offline gates on the tick's scope and wording stand in for it. | — | n/a |
 | pilot | runs 001 and 003 cover the code path, population, hub and both clocks | `47363d1` | reused |
 
