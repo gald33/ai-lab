@@ -1,0 +1,27 @@
+id: 005-rerun-at-twenty-one-rounds
+title: Re-run 005's four cells at twenty-one rounds
+arc: deliberation-protocol
+priority: now
+status: ready
+blocked_on:
+  - 005-display-precision-artifact
+  - 005-word-cap-fits-the-protocol
+refs:
+  - reports/2026-08-21-005-deliberation-protocol.md
+  - experiments/005-deliberation-protocol/PREREGISTRATION.md
+  - experiments/005-deliberation-protocol/DEVIATIONS.md
+evidence: |
+  "What would change the answer", verbatim: run the same four cells at
+  twenty-one rounds, which is what the pilot accepted and what the protocol is
+  a procedure over. Threat 1 says five rounds is the most likely reason for the
+  null, and three `method-only` worlds were still converging at the bell.
+
+  Blocked on the two instrument reviews on purpose. This is a paid run — the
+  first one cost 1,920 calls and ~3h50m — and CLAUDE.md forbids spending on one
+  without an explicit go; buying a second copy of a known display artifact is
+  not a go.
+
+  Done when the amendment is written before the run, the run is recorded, and
+  the paired sign test on minimum dispersion is reported at twenty-one rounds.
+  Either result is publishable: survival makes the null a result about
+  deliberation protocols, and reversal makes it a result about five rounds.

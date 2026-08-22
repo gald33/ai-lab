@@ -1,0 +1,18 @@
+id: 005-paired-statistic-choice
+title: Decide whether minimum dispersion is the right paired statistic
+arc: deliberation-protocol
+priority: later
+status: ready
+refs:
+  - reports/2026-08-21-005-deliberation-protocol.md
+  - experiments/005-deliberation-protocol/analysis
+evidence: |
+  Review target 5: a world can dip below threshold once and diverge again, and
+  `min_r D(r)` scores that as a success. The statistic was pre-specified in
+  DEVIATIONS.md D2 before the run, so it stands for the run that used it —
+  this item is about what the *next* pre-registration should freeze.
+
+  Done when the alternative (terminal dispersion, or dispersion held below
+  threshold for k rounds) is computed over the existing record and the choice
+  is written down with the numbers that motivated it, before the re-run freezes
+  its own metrics.

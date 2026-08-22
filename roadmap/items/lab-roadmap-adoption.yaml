@@ -1,0 +1,23 @@
+id: lab-roadmap-adoption
+title: Adopt roadmap-core so lab work is filed as items rather than as prose
+arc: lab-practice
+priority: now
+status: verifying
+refs:
+  - roadmap/README.md
+  - https://github.com/gald33/roadmap-core
+  - https://pypi.org/project/roadmap-core/
+evidence: |
+  Reports already end in "what to attack first" and experiment READMEs already
+  end in what is unrun. Those are a backlog written six times in six places,
+  where nothing can say which of them is startable now.
+
+  `roadmap-core` is stdlib-only with a SQLite store inside the checkout, so
+  adopting it adds no service, no credential and no framework an experiment
+  could accidentally be shaped by — it stays outside experiments/, which is
+  what tools/README.md protects.
+
+  Done when the arcs and items here are the lab's actual queue: a session that
+  finishes a run files what it left open as an item, and `roadmap ready` is
+  what the next session reads. Verifying rather than done because that is a
+  claim about how sessions behave, and one commit cannot settle it.

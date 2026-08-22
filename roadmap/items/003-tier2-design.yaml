@@ -1,0 +1,16 @@
+id: 003-tier2-design
+title: Design 003 Tier 2 — the same promoter over real instincts
+arc: promotion-rules
+priority: later
+status: ready
+refs:
+  - experiments/003-promotion-rules/README.md
+  - reports/2026-08-20-003-promotion-rules.md
+evidence: |
+  Tier 1, the scripted tier, is complete and reported; the README says Tier 2
+  is not designed and not run. Tier 1 answers the rule question over scripted
+  candidates, which leaves open the thing the experiment is actually about: a
+  promoter choosing among solutions a model wrote.
+
+  Done when there is a design document naming the question, what is held fixed,
+  and which result would change what gets built — not an implementation.

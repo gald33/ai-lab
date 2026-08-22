@@ -1,0 +1,26 @@
+id: lab-roadmap-core-0-2-0
+title: Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI
+arc: lab-practice
+priority: next
+status: ready
+blocked_on:
+  - lab-roadmap-adoption
+refs:
+  - https://pypi.org/project/roadmap-core/
+  - https://github.com/gald33/roadmap-core
+evidence: |
+  PyPI serves roadmap-core 0.1.0; the repository is at 0.2.0. The generated
+  headers this lab committed therefore carry two things from the repository the
+  package was extracted from and not from here: they name
+  `python scripts/roadmap.py sync` as the command to regenerate, which is a
+  file this checkout does not have, and ARCS.md opens with a paragraph about a
+  flag ledger, a substrate-quality trace and a hygiene backlog under
+  `docs/architecture/`, none of which exist here. 0.2.0 fixes both — `CLI =
+  "roadmap"` and the paragraph is gone.
+
+  It lands in the one artifact written for a reader with nothing installed, so
+  the wrong command is the worst place for it to be.
+
+  Done when the workflow installs a version that has the fix, `roadmap sync`
+  regenerates, and the committed markdown names a command this repo actually
+  has.

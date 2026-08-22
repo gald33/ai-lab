@@ -1,0 +1,117 @@
+# ARCS.md — what's in flight, at arc level
+
+<!-- GENERATED FILE — DO NOT EDIT BY HAND. Regenerate with `python scripts/roadmap.py sync`. Edit roadmap/arcs/*.yaml instead. -->
+
+The narrative layer above `roadmap/ROADMAP.md`: *why* each theme is still open. Work items live in the roadmap graph and are listed per arc below; the prose here is the arc's own, and is the one place a multi-PR theme gets explained rather than enumerated. For when this was last regenerated ask git — `git log -1 --format=%cI -- ARCS.md` — because nothing here derives from the clock or from a graph-wide total, so two branches editing different arcs merge cleanly.
+
+**Three things that used to live here are not arcs** and moved out when this file became generated: the flag ledger ([`docs/architecture/flag-ledger.md`](docs/architecture/flag-ledger.md)), the substrate-quality trace ([`docs/architecture/substrate-quality.md`](docs/architecture/substrate-quality.md)), and the hygiene backlog ([`docs/architecture/hygiene-backlog.md`](docs/architecture/hygiene-backlog.md)). They are cross-cutting prose with no tail of their own to close, and forcing them into the arc schema is how the schema gets wrong. They stay hand-maintained.
+
+## Legend
+
+| State | Meaning |
+|---|---|
+| 🟠 open | Open tail — unfinished items, or a stated unresolved decision. |
+| 🔵 blocked | Nothing startable — every unfinished item is blocked, or the blocker is outside the graph and was declared. |
+| 🟡 dark | Code merged, flag off **in prod env**. Declared, never derived. |
+| 🟢 closed | Tail is empty and somebody said so. Declared, never derived. |
+
+`dark`, `closed` and `blocked` may be **declared** by a human with dated evidence, because each is about something the items cannot show: an environment flag, a closure whose finished items `prune` has deleted, or a blocker outside the graph entirely. `blocked` is *also* derived when every unfinished item is itself blocked. `open` is never declared — it is the fallback every check fires on, so stating it would only silence them.
+
+## 🟠 Open
+
+### 🟠 002 — words, machinery, or disposition: which part of a value convention works?
+
+`barter-conventions` · 1 item(s), 1 startable
+
+`experiments/002-barter-conventions/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
+
+Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
+it, so most of its numbers measure the harness. Tier 3 is designed,
+calibrated and unrun.
+
+| item | status | priority |
+|---|---|---|
+| `002-tier3-run` | ready | next |
+
+### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
+
+`deliberation-protocol` · 5 item(s), 4 startable
+
+`experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
+
+Four cells run with agents; the headline is a null. The protocol moved
+nothing on top of a matched placebo, and nothing at all on top of a common
+hint (12/12 ties). The arc stays open because the report's own first threat
+to validity says the null is most likely a design choice: five rounds is not
+the twenty-one the pilot accepted, and the protocol is a procedure over
+rounds. The tail is the instrument review the report named, and then the
+re-run that would make the null a result about protocols rather than about
+five rounds of Haiku.
+
+| item | status | priority |
+|---|---|---|
+| `005-display-precision-artifact` | ready | now |
+| `005-rerun-at-twenty-one-rounds` | blocked | now |
+| `005-word-cap-fits-the-protocol` | ready | now |
+| `005-transport-retry-audit` | ready | next |
+| `005-paired-statistic-choice` | ready | later |
+
+### 🟠 How the lab itself is run — process, records, and the tools that hold them
+
+`lab-practice` · 2 item(s), 0 startable
+
+`CLAUDE.md` · `CONTRIBUTING.md` · `reports/README.md`
+
+Not an experiment. This arc holds work on the lab's own practice: the
+standing decisions in CLAUDE.md, how runs are pre-registered and reported,
+and the small amount of tooling that survives the tools/README.md rule (a
+utility moves in when a second experiment needs it, not in anticipation).
+
+| item | status | priority |
+|---|---|---|
+| `lab-roadmap-adoption` | verifying | now |
+| `lab-roadmap-core-0-2-0` | blocked | next |
+
+### 🟠 003 — which promotion rule converges on the good solution rather than the lucky one?
+
+`promotion-rules` · 1 item(s), 1 startable
+
+`experiments/003-promotion-rules/README.md` · `reports/2026-08-20-003-promotion-rules.md`
+
+Tier 1, the scripted tier, is complete and reported. Tier 2 — the same
+promoter over real instincts — is neither designed nor run.
+
+| item | status | priority |
+|---|---|---|
+| `003-tier2-design` | ready | later |
+
+### 🟠 001 — is coordination better reasoning, or less to reason about?
+
+`switchboard-coordination` · 1 item(s), 1 startable
+
+`experiments/001-switchboard-coordination/README.md`
+
+Run, not published. The data is not cleaned and the analysis is not written,
+so the experiment directory carries the design and one preserved negative
+result and no numbers. The tail is the publication, not the run.
+
+| item | status | priority |
+|---|---|---|
+| `001-publish-results` | ready | next |
+
+## 🟢 Closed
+
+### 🟢 004 — is 002's ruin about the convention, or about irrecoverable commitment?
+
+`stock-and-flow` · 0 item(s), 0 startable
+
+**Declared `closed`.** Run and reported: experiments/004-stock-and-flow/README.md carries results,
+and reports/2026-08-20-004-stock-and-flow.md is the write-up. No unfinished
+items are filed against it as of 2026-08-22. Declared rather than derived
+because an arc with no items and a finished arc are the same empty set.
+
+`experiments/004-stock-and-flow/README.md` · `reports/2026-08-20-004-stock-and-flow.md`
+
+Answered: whether ruin survives per-period consumption decides whether 002's
+finding is about conventions or about a world where a production commitment
+can never be taken back.

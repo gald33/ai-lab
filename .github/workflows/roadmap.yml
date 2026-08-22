@@ -1,0 +1,51 @@
+# Is the committed roadmap still what the graph renders?
+#
+# Adapted from roadmap-core's `templates/roadmap.yml`. The lab has no other CI
+# on purpose (CONTRIBUTING.md), and this earns its exception narrowly: it
+# guards two *generated* files that are committed — `roadmap/ROADMAP.md` and
+# `ARCS.md` — precisely so they can be read with nothing installed. A generated
+# file nobody regenerates is a file that lies, and it lies to the reader least
+# able to check it.
+#
+# It touches nothing under `experiments/`, runs no experiment, and has no
+# schedule, credential, bot identity or commit back to the default branch: with
+# `ROADMAP_SOURCE=local` the store is a SQLite file rebuilt from the committed
+# YAML on first open, so there is no second copy to reconcile.
+
+name: Roadmap
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  roadmap:
+    runs-on: ubuntu-latest
+    env:
+      # Selects the SQLite store. Without it the CLI expects a served store and
+      # asks for a credential that does not exist here.
+      ROADMAP_SOURCE: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # `[files]` adds PyYAML. Authoring an item IS writing a YAML file, so
+      # without the extra every command below fails on the same import.
+      - run: pip install "roadmap-core[files]"
+
+      # Files -> store, built fresh each run. The store is not committed: it is
+      # derived, and a binary file in git conflicts on every claim.
+      - run: roadmap push
+
+      # Schema, evidence, dangling dependencies, cycles, arc coherence.
+      - run: roadmap validate
+
+      # `--check` exits 1 rather than rewriting, because CI must report a stale
+      # file, not quietly fix one in a container about to be discarded.
+      - run: roadmap sync --check

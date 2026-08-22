@@ -1,0 +1,9 @@
+id: barter-conventions
+title: "002 — words, machinery, or disposition: which part of a value convention works?"
+refs:
+  - experiments/002-barter-conventions/README.md
+  - reports/2026-08-20-002-tier3-calibration.md
+narrative: |
+  Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
+  it, so most of its numbers measure the harness. Tier 3 is designed,
+  calibrated and unrun.

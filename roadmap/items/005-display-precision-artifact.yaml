@@ -1,0 +1,20 @@
+id: 005-display-precision-artifact
+title: Find every focal point the 005 instrument creates by formatting
+arc: deliberation-protocol
+priority: now
+status: ready
+refs:
+  - reports/2026-08-21-005-deliberation-protocol.md
+  - experiments/005-deliberation-protocol/experiment
+evidence: |
+  The run report's claim 3: `content-only` and `both` reach dispersion exactly
+  0.000 at round 0, before anyone has spoken, and 0 of 96 round-0 submissions
+  equal the hint — they equal the hint *as the prompt printed it*, because
+  `prompt._vector` formats with `f"{p:.3f}"`. That artifact alone may account
+  for 24 of the 48 episodes.
+
+  Done when every place the instrument renders a number or a choice back to an
+  agent has been read for the same failure, and each is either shown not to
+  create a focal point or recorded as one that does. The output is a note in
+  the experiment directory naming what was checked; a re-run before that note
+  exists would buy the same artifact again.

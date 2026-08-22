@@ -1,0 +1,15 @@
+id: stock-and-flow
+title: 004 — is 002's ruin about the convention, or about irrecoverable commitment?
+state: closed
+state_evidence: |
+  Run and reported: experiments/004-stock-and-flow/README.md carries results,
+  and reports/2026-08-20-004-stock-and-flow.md is the write-up. No unfinished
+  items are filed against it as of 2026-08-22. Declared rather than derived
+  because an arc with no items and a finished arc are the same empty set.
+refs:
+  - experiments/004-stock-and-flow/README.md
+  - reports/2026-08-20-004-stock-and-flow.md
+narrative: |
+  Answered: whether ruin survives per-period consumption decides whether 002's
+  finding is about conventions or about a world where a production commitment
+  can never be taken back.

@@ -1,0 +1,24 @@
+id: 005-word-cap-fits-the-protocol
+title: Establish whether the 60-word cap can physically hold the protocol's five steps
+arc: deliberation-protocol
+priority: now
+status: ready
+related_to:
+  - key: 005-display-precision-artifact
+    note: |
+      Both are instrument reviews of the same run, and both bear on whether the
+      null measured the manipulation or the format. Read the message stream
+      once for both rather than twice.
+refs:
+  - reports/2026-08-21-005-deliberation-protocol.md
+  - experiments/005-deliberation-protocol/stimuli/protocol.md
+evidence: |
+  Threat to validity 4: the protocol asks for a proposal, a falsifier, an
+  accept-or-object and a convergence check, and the harness caps a message at
+  sixty words. If the steps do not fit, the manipulation was partly suppressed
+  by the format rather than absent.
+
+  Done when the recorded messages answer it: the distribution of steps actually
+  present per message, and whether any message that attempted all of them was
+  truncated. A null on a manipulation the format cannot express is a result
+  about the format.
