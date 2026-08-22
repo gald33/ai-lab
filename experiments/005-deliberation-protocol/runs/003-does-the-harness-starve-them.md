@@ -121,10 +121,75 @@ Denominators printed everywhere; no cell or round leaves one.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/003-persist/v3.json`.
+- **Ran:** 3 cells attempted, **3 completed**, 0 aborted, 0 harness failures.
+  12/12 sessions started, 12/12 acknowledged. **Every cell ran all 30
+  episodes.** 25 min wall clock.
+
+- **Numbers — primary (persistence).** Last episode in which each trader
+  produced, proposed or approved, read off the board; denominator 120
+  agent-episodes per cell.
+
+  | cell | alive fraction | T1 | T2 | T3 | T4 |
+  |---|---|---|---|---|---|
+  | `persist-bare` | **0.80** | 19 | 30 | 17 | 30 |
+  | `persist-nocount` | 0.63 | 6 | 25 | 30 | 15 |
+  | `persist-improve` | 0.57 | 14 | 17 | 7 | 30 |
+
+  The control has the highest persistence of the three. No horizon leak in
+  `persist-nocount`: 0 occurrences of the count on its board.
+
+  Against run 002 — same island, same population, same instructions, same
+  announced horizon of 30, only the episode length differs:
+
+  | | T1 | T2 | T3 | T4 |
+  |---|---|---|---|---|
+  | run 002, 30 × 180s | 3 | 3 | 4 | 8 |
+  | run 003 `persist-bare`, 30 × 45s | 19 | 30 | 17 | 30 |
+
+- **Numbers — secondary (economics).** `eff_episode` is **0.000 in 90 of 90
+  episodes**, and `eff_round` is 0.000 in all three cells against a floor of
+  0.642.
+
+  | cell | settled | refused | starved agent-episodes | agent-episodes holding all four goods |
+  |---|---|---|---|---|
+  | `persist-bare` | 180 | 61 | 75 / 120 | 45 / 120 |
+  | `persist-nocount` | 88 | 11 | 75 / 120 | 45 / 120 |
+  | `persist-improve` | 105 | 32 | 79 / 120 | 41 / 120 |
+
+  Episodes in which **all four** traders held all four goods: **0 of 90**.
+  Traders starved per episode, pooled: 1 trader in 6 episodes, 2 in 34, 3 in
+  45, 4 in 5. Missing goods are spread evenly (cloth 179, salt 177, bread 164,
+  iron 140). Talk: 0 in all three cells, over 360 trader-episodes.
+
+- **Assumptions that did not hold:** **A3**. It said a 45s episode would not
+  itself make the task impossible, and named "every cell collapses at episode
+  1–2 with no settled exchanges" as the falsifier. That is not what happened —
+  180 exchanges settled in the control — so A3 is not false as written, but its
+  intent fails: the economy ran and still scored zero everywhere, which A3 did
+  not anticipate and the run cannot distinguish from a 45s clock too short to
+  cover four goods. **A5** also fails in the direction it named: the cells
+  differ, but with one round each and attrition varying by trader inside a
+  cell, one round cannot resolve them.
+
+- **Deviations:** D8 (both departures, as specified). No new deviation: nothing
+  departed from the record during the run.
 
 ## What this changed
+
+Two things, and the second was not what this run was for.
+
+**The horizon is not what ended run 002.** Hiding the count did not help, and
+neither did a reason to continue — both scored *below* the control on
+persistence. What separates run 002 from this run is the episode length, and
+neither the announced count (identical at 30) nor total elapsed time (22 min
+here against 7 min there) explains it. That leaves idle time per episode as the
+live candidate, which none of D7a's three named.
+
+**At four traders the episode metric is pinned at zero.** An episode scores
+non-zero only if every trader ends holding some of every good, and that
+happened in 0 of 90 episodes despite 373 settled exchanges. `eff_episode`
+cannot move at this population, so it cannot measure anything here — and run
+001's design puts its n=4 cell on exactly this instrument. That comparison
+cannot be run until the metric is fixed or the population is reduced, and it is
+the calibration run 001's own gate was supposed to perform and could not.

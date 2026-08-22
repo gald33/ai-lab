@@ -88,6 +88,10 @@ class Manager:
     proposals: dict[str, Proposal] = field(default_factory=dict)
     episode_utilities: list[list[float]] = field(default_factory=list)
     acknowledged: set[str] = field(default_factory=set)
+    #: Every trader the manager has heard from at all, acknowledgement or
+    #: action. A session that exits without appearing here never reached the
+    #: board, which is a different event from one that acted and then stopped.
+    spoke: set[str] = field(default_factory=set)
     #: Switchboard peer id -> trader name. Filled in as agents register, so
     #: the manager scores the trader rather than the transport's identity.
     alias: dict[str, str] = field(default_factory=dict)
@@ -150,6 +154,7 @@ class Manager:
     def _consider(self, author: str, text: str) -> None:
         if author not in self.holders:
             return
+        self.spoke.add(author)
         upper = text.strip().upper()
         if upper.startswith("ACK"):
             self.acknowledged.add(author)

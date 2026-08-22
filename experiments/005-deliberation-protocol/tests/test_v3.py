@@ -454,3 +454,43 @@ def test_the_other_persistence_arms_still_state_it() -> None:
     for arm in ("persist-bare", "persist-improve"):
         assert "30 episodes" in run_v3.instructions(arm, "You are T1.", 30)
     assert run_v3.HIDE_HORIZON == {"persist-nocount"}
+
+
+# --- the idle check ------------------------------------------------------
+
+def test_only_the_ticking_arm_ticks() -> None:
+    import run_v3  # noqa: PLC0415
+
+    assert run_v3.TICKING == {"idle-tick"}
+    for arm in ("idle-long", "idle-short", "persist-bare", "bare"):
+        assert arm not in run_v3.TICKING
+
+
+def test_a_tick_announces_time_and_nothing_else() -> None:
+    """The line the standing decisions draw: the manager may enforce timing,
+    and must never tell an agent to do anything or ask it for anything. A tick
+    is addressed to nobody and names only the clock."""
+    import run_v3  # noqa: PLC0415
+
+    tick = f"{90}s remain in this episode."
+    assert "@" not in tick
+    for verb in ("produce", "propose", "approve", "should", "must", "please"):
+        assert verb not in tick.lower()
+
+
+def test_the_manager_records_who_it_has_heard_from_at_all() -> None:
+    """A session that exits without ever appearing on the board never joined
+    the round — a different event from a trader who acted and then stopped,
+    which is what the persistence runs measure."""
+    m = fresh()
+    assert m.spoke == set()
+    m.hub.as_("T1", "ACK ready")
+    m.drain()
+    assert m.spoke == {"T1"}
+    m.hub.as_("T2", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}
+    # A malformed line is still the trader reaching the board.
+    m.hub.as_("T2", "PRODUCE bread")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}

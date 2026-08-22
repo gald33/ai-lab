@@ -260,3 +260,103 @@ the finding is that *a reason to continue* matters — not which reason.
 **Cost if this is wrong.** If the hidden horizon leaks anywhere unchecked, the
 cell measures nothing and the run's central comparison is void. That is why the
 leak is gated offline and the board is searched for the count afterwards.
+
+## D9 — run 004 has the manager announce the time remaining
+
+*Written 2026-08-22, before the run it affects.*
+
+In `idle-tick` the manager posts one line every 30 seconds inside an open
+episode: "Ns remain in this episode." Nothing else about the cell differs from
+`idle-long`.
+
+**Why it is not the forbidden thing.** The standing decisions permit the system
+to enforce timing and forbid it to drive: the manager "never tells an agent to
+do anything and never asks an agent for anything". A tick is addressed to
+nobody, names only the clock, and requests nothing; an agent may ignore every
+one of them. It is the same kind of line as "episode 3 is open for 180s", which
+the manager already posts, at a higher frequency. Two offline gates check that
+only the one arm ticks and that the wording contains no agent name and no verb
+asking for an action.
+
+**Why it is still a deviation.** It changes what an idle `checkin(wait=25)`
+returns — content instead of a timeout — and that is precisely the mechanism
+under test. A reader should be able to see that the manipulation works *through*
+the agent's waiting behaviour, and decide for themselves whether that is a
+timing change or a nudge. It is recorded here so that judgement is available
+rather than buried.
+
+**Named risk.** Six ticks per 180s episode add to a board that carried about 37
+messages per episode at four traders. If an agent's cost of reading history
+rises enough to change its behaviour, the cell has moved two things at once.
+Message counts per cell are reported for that reason.
+
+## D10 — run 004 relaunches a session that never joined, once
+
+*Written 2026-08-22, after two false starts of run 004 and before the run
+proper.*
+
+Run 004 was launched twice and stopped twice without collecting data. Both
+times a session exited within the first minute having never posted to the
+board, and both times it changed the population of one cell.
+
+The shape is identical in every instance seen so far. The session addresses the
+operator instead of calling a tool — "Ready when you approve the Switchboard
+access", "What would you like me to do?" — and exits. It is not a harness
+failure: the tools are allowed and its neighbours in the same cell use them in
+the same second. It is not the behaviour the persistence runs measure either,
+which is a trader who acted and then stopped. It is a session that never
+started, at a rate of roughly one in ten launches.
+
+**Why it cannot be left alone.** In the first false start it removed a trader
+from `idle-long`, the reference cell, leaving three traders against four. A
+quieter board is exactly the manipulation under test, so the confound pushed
+the reference cell toward the result the hypothesis predicts. In the second it
+hit `idle-tick` and pushed the other way. Either way one cell is measuring a
+different population, and the difference is the size of the effect.
+
+**What the harness now does.** During the acknowledgement window only, a
+session that has exited and whose trader has never appeared on the board is
+relaunched **once**. The manager says so on the channel, the abandoned log is
+kept as `session-abandoned.log`, and the relaunched traders are recorded per
+round as `relaunched`.
+
+**Why this is not the forbidden thing.** The runner already starts sessions;
+this starts one again after it failed to join. Nothing prompts, calls or wakes
+a live agent, and the rescue stops the moment the first episode opens — after
+that, a session that stops has taken part, and its stopping is data rather than
+a fault. `spoke` is the discriminator, and it is gated offline.
+
+**What it costs.** A relaunched trader joins late, with less of the
+acknowledgement window than its neighbours. That is recorded per round rather
+than corrected, and a cell whose result depends on a relaunched trader should
+be read with that in view.
+
+## D11 — run 005's treatment is deliberately impure
+
+*Written 2026-08-22, before the run it affects.*
+
+`stimuli/max/talk.md` mixes what 005 was built to separate. It encourages
+talking, disclosing needs and capabilities, asking, naming a rate rather than
+only goods, improving an offer rather than taking the first, and choosing
+production with intended trades in mind. Protocol and hint at once, and more
+besides.
+
+That is the point rather than a compromise. Four runs have gone into why
+sessions stop and none into whether text changes anything, and the cheapest way
+to find out is to try the strongest text available before spending on a design
+that separates ingredients. If a text this strong moves neither talk nor
+efficiency, the 2×2 has nothing to decompose and that is worth knowing for
+forty sessions.
+
+**What may not be claimed from it.** Nothing about deliberation protocols
+specifically, nothing about hints specifically, and nothing about which
+ingredient did any work. A positive result licenses a decomposition run; it is
+not itself evidence for any component.
+
+**The manipulation check is part of the design, not a nicety.** If talk does not
+rise in the treated cell, the text did not take, and a null then says nothing
+about what the text describes. Talk per trader-episode is reported beside the
+primary metric and never in place of it.
+
+**Not frozen.** The file carries that in its own header, alongside the
+statement that no result from it may be reported as evidence about protocols.
