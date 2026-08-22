@@ -4,8 +4,7 @@ arc: deliberation-protocol
 priority: now
 status: ready
 blocked_on:
-  - 005-display-precision-artifact
-  - 005-word-cap-fits-the-protocol
+  - 005-render-precision-fix
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
   - experiments/005-deliberation-protocol/PREREGISTRATION.md
@@ -25,3 +24,12 @@ evidence: |
   the paired sign test on minimum dispersion is reported at twenty-one rounds.
   Either result is publishable: survival makes the null a result about
   deliberation protocols, and reversal makes it a result about five rounds.
+
+  ---
+
+  **Re-blocked 2026-08-22.** The two instrument reviews it waited on are done,
+  and they did not clear it — one of them found the artifact rather than ruling
+  it out. It now waits on `005-render-precision-fix` instead. Unblocking on the
+  reviews alone would run the same four cells into the same round-0 focal point
+  and buy a second copy of it, which is the thing the original block existed to
+  prevent.

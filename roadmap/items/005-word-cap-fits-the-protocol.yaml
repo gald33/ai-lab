@@ -2,7 +2,7 @@ id: 005-word-cap-fits-the-protocol
 title: Establish whether the 60-word cap can physically hold the protocol's five steps
 arc: deliberation-protocol
 priority: now
-status: ready
+status: done
 related_to:
   - key: 005-display-precision-artifact
     note: |
@@ -22,3 +22,16 @@ evidence: |
   present per message, and whether any message that attempted all of them was
   truncated. A null on a manipulation the format cannot express is a result
   about the format.
+
+  ---
+
+  **Closed 2026-08-22 — ruled out.** `INSTRUMENT-REVIEW.md` §2, offline over
+  `results/agents.json`. The cap never bound: 1,920 messages ran min 5, median
+  22, max 52 words, and 0 reached the 60-word cap. The format could express the
+  manipulation.
+
+  The steps were nonetheless barely performed — mean steps per message 0.77
+  (`method-only`) and 0.92 (`both`) against 0.70 for `baseline`, and four or
+  five steps never co-occur in any message in any cell. That strengthens the
+  null rather than undermining it: the manipulation was expressible and was not
+  performed.

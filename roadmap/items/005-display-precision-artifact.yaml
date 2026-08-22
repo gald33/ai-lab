@@ -2,7 +2,7 @@ id: 005-display-precision-artifact
 title: Find every focal point the 005 instrument creates by formatting
 arc: deliberation-protocol
 priority: now
-status: ready
+status: done
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
   - experiments/005-deliberation-protocol/experiment
@@ -18,3 +18,20 @@ evidence: |
   create a focal point or recorded as one that does. The output is a note in
   the experiment directory naming what was checked; a re-run before that note
   exists would buy the same artifact again.
+
+  ---
+
+  **Closed 2026-08-22 — confirmed, and larger than the report claimed.**
+  `INSTRUMENT-REVIEW.md` §1. All three places the instrument renders a number
+  back to an agent go through `prompt._vector` and its `f"{p:.3f}"`: the hint,
+  the agent's own signal, and the prices it hears.
+
+  99.2% of submitted numbers (5,714/5,760) already sit exactly on the
+  3-decimal grid. Round-0 dispersion — before anyone has spoken — is exactly
+  0.000 in 11/12 `content-only` and 6/12 `both` worlds, and 0/12 in both
+  unhinted cells; the hinted cells carry `median_rounds_to_coordinate = 0` and
+  a rate of 1.000 against 3/12 and 4/12 unhinted.
+
+  So the artifact accounts for the entire hint effect, not the "24 of 48
+  episodes" first estimated. Any v1 comparison involving `content-only` or
+  `both` measures the renderer. The unhinted cells remain readable.

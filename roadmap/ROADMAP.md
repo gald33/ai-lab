@@ -1,6 +1,6 @@
 # ROADMAP.md — open work items
 
-<!-- GENERATED FILE — DO NOT EDIT BY HAND. Regenerate with `python scripts/roadmap.py sync`. -->
+<!-- GENERATED FILE — DO NOT EDIT BY HAND. Regenerate with `roadmap sync`. -->
 
 This is the agent-readable projection of the roadmap graph; the store is the `roadmap_items` table (see `roadmap/README.md`). For when it was last regenerated ask git — `git log -1 --format=%cI -- roadmap/ROADMAP.md` — because nothing in this file is derived from the clock or from a graph-wide total, so that two branches editing different items merge cleanly. Do not add one back.
 
@@ -8,17 +8,13 @@ This is the agent-readable projection of the roadmap graph; the store is the `ro
 
 ## ▶ Ready — startable now
 
-Claim before starting: `python scripts/roadmap.py claim <key>`
+Claim before starting: `roadmap claim <key>`
 
 **In priority order, most important first.** An item with no marker carries no stated priority — take it as unjudged, not as low. The order within a band is alphabetical and means nothing.
 
-- `now` **`005-display-precision-artifact`** — Find every focal point the 005 instrument creates by formatting
-  - ↔ related: **`005-word-cap-fits-the-protocol`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
-- `now` **`005-word-cap-fits-the-protocol`** — Establish whether the 60-word cap can physically hold the protocol's five steps
-  - ↔ related: **`005-display-precision-artifact`** — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
+- `now` **`005-render-precision-fix`** — Stop the instrument handing every agent the same printed number
 - `next` **`001-publish-results`** — Clean 001's data, write the analysis, and publish or withdraw the numbers
 - `next` **`002-tier3-run`** — Run 002 Tier 3
-- `next` **`005-transport-retry-audit`** — Confirm a silent transport retry cannot mask a model refusing the format
 - `later` **`003-tier2-design`** — Design 003 Tier 2 — the same promoter over real instincts
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
 
@@ -33,7 +29,7 @@ _Nothing claimed._
 ## ⛔ Blocked
 
 - **`005-rerun-at-twenty-one-rounds`** — Re-run 005's four cells at twenty-one rounds  
-  waiting on `005-display-precision-artifact`, `005-word-cap-fits-the-protocol`
+  waiting on `005-render-precision-fix`
 - **`lab-roadmap-core-0-2-0`** — Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI  
   waiting on `lab-roadmap-adoption`
 
@@ -46,13 +42,13 @@ graph TD
   003_tier2_design["Design 003 Tier 2 — the same promoter over real instincts"]
   005_display_precision_artifact["Find every focal point the 005 instrument creates by formatting"]
   005_paired_statistic_choice["Decide whether minimum dispersion is the right paired statistic"]
+  005_render_precision_fix["Stop the instrument handing every agent the same printed number"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
-  005_display_precision_artifact --> 005_rerun_at_twenty_one_rounds
-  005_word_cap_fits_the_protocol --> 005_rerun_at_twenty_one_rounds
+  005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
   lab_roadmap_adoption --> lab_roadmap_core_0_2_0
   005_display_precision_artifact -.- 005_word_cap_fits_the_protocol
 ```
@@ -130,10 +126,9 @@ graph TD
 ### `005-display-precision-artifact`
 
 - **title:** Find every focal point the 005 instrument creates by formatting
-- **status:** ready
+- **status:** done
 - **arc:** deliberation-protocol
 - **priority:** now
-- **blocks:** `005-rerun-at-twenty-one-rounds`
 - **related to** (not a dependency — both are startable):
   - `005-word-cap-fits-the-protocol` — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - **refs:**
@@ -153,6 +148,23 @@ graph TD
 > create a focal point or recorded as one that does. The output is a note in
 > the experiment directory naming what was checked; a re-run before that note
 > exists would buy the same artifact again.
+>
+> ---
+>
+> **Closed 2026-08-22 — confirmed, and larger than the report claimed.**
+> `INSTRUMENT-REVIEW.md` §1. All three places the instrument renders a number
+> back to an agent go through `prompt._vector` and its `f"{p:.3f}"`: the hint,
+> the agent's own signal, and the prices it hears.
+>
+> 99.2% of submitted numbers (5,714/5,760) already sit exactly on the
+> 3-decimal grid. Round-0 dispersion — before anyone has spoken — is exactly
+> 0.000 in 11/12 `content-only` and 6/12 `both` worlds, and 0/12 in both
+> unhinted cells; the hinted cells carry `median_rounds_to_coordinate = 0` and
+> a rate of 1.000 against 3/12 and 4/12 unhinted.
+>
+> So the artifact accounts for the entire hint effect, not the "24 of 48
+> episodes" first estimated. Any v1 comparison involving `content-only` or
+> `both` measures the renderer. The unhinted cells remain readable.
 
 </details>
 
@@ -180,13 +192,51 @@ graph TD
 
 </details>
 
+### `005-render-precision-fix`
+
+- **title:** Stop the instrument handing every agent the same printed number
+- **status:** ready
+- **arc:** deliberation-protocol
+- **priority:** now
+- **blocks:** `005-rerun-at-twenty-one-rounds`
+- **refs:**
+  - `experiments/005-deliberation-protocol/INSTRUMENT-REVIEW.md`
+  - `experiments/005-deliberation-protocol/experiment/agents/prompt.py`
+
+<details><summary>evidence</summary>
+
+> Opened 2026-08-22 by the instrument review that closed
+> `005-display-precision-artifact`. That item asked whether the renderer
+> creates a focal point; it does, and this is the work the answer implies.
+>
+> Every number an agent sees goes through `prompt._vector`, which formats with
+> `f"{p:.3f}"`. So each agent given the hint is handed the same string, and
+> 99.2% of submitted numbers already sit exactly on that 3-decimal grid.
+> Round-0 dispersion is exactly 0.000 in 11/12 `content-only` and 6/12 `both`
+> worlds — before anyone has spoken — while both unhinted cells are 0/12. The
+> hinted cells' coordination rate of 1.000 is the renderer, not deliberation.
+>
+> This blocks the twenty-one-round re-run, which was already blocked on the two
+> reviews for exactly this reason: buying a second copy of a known display
+> artifact is not a go. Re-running as specified would reproduce it in 24 of 48
+> worlds.
+>
+> Done when the hint (and the private signal, which snaps submissions to the
+> same grid) is either rendered at a precision that does not hand every agent
+> an identical string, or the hinted cells are dropped from the design — and
+> whichever is chosen is written into the next pre-registration before the run,
+> with the round-0 dispersion check named as an acceptance criterion so the
+> artifact cannot return unnoticed.
+
+</details>
+
 ### `005-rerun-at-twenty-one-rounds`
 
 - **title:** Re-run 005's four cells at twenty-one rounds
 - **status:** blocked
 - **arc:** deliberation-protocol
 - **priority:** now
-- **blocked on:** `005-display-precision-artifact`, `005-word-cap-fits-the-protocol`
+- **blocked on:** `005-render-precision-fix`
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
   - `experiments/005-deliberation-protocol/PREREGISTRATION.md`
@@ -208,13 +258,22 @@ graph TD
 > the paired sign test on minimum dispersion is reported at twenty-one rounds.
 > Either result is publishable: survival makes the null a result about
 > deliberation protocols, and reversal makes it a result about five rounds.
+>
+> ---
+>
+> **Re-blocked 2026-08-22.** The two instrument reviews it waited on are done,
+> and they did not clear it — one of them found the artifact rather than ruling
+> it out. It now waits on `005-render-precision-fix` instead. Unblocking on the
+> reviews alone would run the same four cells into the same round-0 focal point
+> and buy a second copy of it, which is the thing the original block existed to
+> prevent.
 
 </details>
 
 ### `005-transport-retry-audit`
 
 - **title:** Confirm a silent transport retry cannot mask a model refusing the format
-- **status:** ready
+- **status:** done
 - **arc:** deliberation-protocol
 - **priority:** next
 - **refs:**
@@ -231,16 +290,30 @@ graph TD
 > Done when the two paths are separated in the record, or a case is exhibited
 > where a refusal reaches the transport path. Either outcome changes what claim
 > 5 is allowed to say.
+>
+> ---
+>
+> **Closed 2026-08-22 — separated by construction, with a named residual.**
+> `INSTRUMENT-REVIEW.md` §3. A format refusal returns exit 0 with prose, so it
+> cannot reach `_invoke`'s uncounted transport retry; it fails later in
+> `_read(_extract(raw))` and is counted as a content retry. The recorded counts
+> are therefore counts of the right thing.
+>
+> Residual the record cannot rule out: a refusal producing empty stdout or a
+> non-zero exit is indistinguishable from transport failure and would be
+> retried up to three times silently.
+>
+> What claim 5 may say: that no content-retry rate stands on a moving
+> denominator. Not that the harness-failure count of zero is complete.
 
 </details>
 
 ### `005-word-cap-fits-the-protocol`
 
 - **title:** Establish whether the 60-word cap can physically hold the protocol's five steps
-- **status:** ready
+- **status:** done
 - **arc:** deliberation-protocol
 - **priority:** now
-- **blocks:** `005-rerun-at-twenty-one-rounds`
 - **related to** (not a dependency — both are startable):
   - `005-display-precision-artifact` — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - **refs:**
@@ -258,6 +331,19 @@ graph TD
 > present per message, and whether any message that attempted all of them was
 > truncated. A null on a manipulation the format cannot express is a result
 > about the format.
+>
+> ---
+>
+> **Closed 2026-08-22 — ruled out.** `INSTRUMENT-REVIEW.md` §2, offline over
+> `results/agents.json`. The cap never bound: 1,920 messages ran min 5, median
+> 22, max 52 words, and 0 reached the 60-word cap. The format could express the
+> manipulation.
+>
+> The steps were nonetheless barely performed — mean steps per message 0.77
+> (`method-only`) and 0.92 (`both`) against 0.70 for `baseline`, and four or
+> five steps never co-occur in any message in any cell. That strengthens the
+> null rather than undermining it: the manipulation was expressible and was not
+> performed.
 
 </details>
 
