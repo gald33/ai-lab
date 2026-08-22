@@ -87,8 +87,8 @@ and every number here is n=1.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `4777f14` | **pass** — `96 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `4777f14` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not applicable — no instrument is being asked to separate conditions here; this run compares nothing. The metrics are the ones run 001 and the ladder already established. | — | n/a |
 | pilot | run 001's pilot, same code path, same population, same island: 4/4 acknowledged, 28 settled, 0 harness failures | `b26628e` | **pass** — reused, and the two shared episodes are checked against it |
 
