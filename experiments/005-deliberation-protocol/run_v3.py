@@ -228,6 +228,15 @@ ARMS.update({
     "max-talk": ("max/talk", False),
 })
 
+#: The constancy probe (run 006). Two arms, both carrying the absolute-UTC
+#: deadline fix from PR #23, so that fix is held constant between them and the
+#: instruction is the only difference. `probe-bare` also re-measures run 005's
+#: control under the fix, which is the only way to see what the fix itself did.
+ARMS.update({
+    "probe-bare":     (None, False),
+    "probe-constant": ("probe/constant", False),
+})
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember

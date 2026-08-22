@@ -360,3 +360,28 @@ primary metric and never in place of it.
 
 **Not frozen.** The file carries that in its own header, alongside the
 statement that no result from it may be reported as evidence about protocols.
+
+## D12 — run 006 adds an implication, not a fact, and holds the timing fix constant
+
+*Written 2026-08-22, before the run it affects.*
+
+`stimuli/probe/constant.md` states no fact the base instructions do not already
+carry. The base says "Your capacities and tastes are the same in every episode
+of this round, and so is everyone else's". The block draws the consequence:
+that knowledge about a trader keeps its value, that early episodes buy
+information and later ones should spend it, and that a poor rate reflects costs
+that do not move.
+
+It is a **domain instruction** and a run using it may not be cited as evidence
+about deliberation protocols. It is not frozen, and its own header says so.
+
+**Two changes were in flight and are deliberately not conflated.** PR #23
+replaced relative countdowns with absolute UTC deadlines. Both cells of run 006
+carry that fix, so it is constant between them and cannot explain a difference
+between the cells. Separately, `probe-bare` re-measures run 005's control under
+the fix, on the same three islands, which is the only way to see what the fix
+itself did — a weaker across-run comparison, reported as one.
+
+**Cost if the separation fails.** If anything other than the deadline format
+differs between run 005 and this run, comparison 1 measures that instead. A1
+names it and the commits are diffable.
