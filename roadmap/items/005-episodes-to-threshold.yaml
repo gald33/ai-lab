@@ -19,6 +19,7 @@ related_to:
 refs:
   - experiments/005-deliberation-protocol/island/score.py
   - experiments/005-deliberation-protocol/results/v3/v3.json
+  - experiments/002-barter-conventions/experiment/barter/economy.py
   - CLAUDE.md
 evidence: |
   `eff_round` is a level: how good the accumulated bundle got. It cannot say
@@ -28,8 +29,8 @@ evidence: |
   agents got there in episode two or episode seven, and nothing currently
   reported separates them.
 
-  So: fix a ladder of thresholds τ, and for each, the episode index at which a
-  round's per-episode efficiency first reaches τ. Averaged over rounds that is
+  So: fix a ladder of thresholds, and for each, the episode index at which a
+  round's per-episode efficiency first reaches it. Averaged over rounds that is
   a speed-for-quality curve — episodes to reach this good — with `eff_round`
   still reported beside it as the level.
 
@@ -37,25 +38,50 @@ evidence: |
   per-episode list and already carries `first_above_floor`: the first episode
   index above the autarky floor. That is this metric at one threshold, chosen
   for a reason that has nothing to do with quality. Generalising it is a
-  ladder, not a new instrument.
+  ladder, not a new instrument, and `exchange_ceiling()`, `walras()` and
+  `capture()` in `002-barter-conventions/experiment/barter/economy.py` supply
+  the rest of the rungs.
 
-  **The estimator is the part to get right, and the existing record already
-  breaks the naive one.** On the single settled round in `results/v3/v3.json`
-  (bare arm, 8 episodes, eff_episode = [0.0, 0.0, 0.580, 0.580, ...]):
+  **The ladder is autarky and exchange, not round numbers.** Both are already
+  computed. `autarky()` gives the floor — what each agent gets making
+  everything itself — and `score.py` already records it as `autarky_floor` and
+  uses it for `first_above_floor`. `exchange_ceiling()` is the best reachable
+  by swapping only, never changing what is produced, and `walras()` is the
+  competitive equilibrium a perfect price mechanism would find. Those are three
+  named rungs that mean something — cleared autarky, finished swapping, matched
+  the auctioneer — where 0.25 and 0.75 mean nothing.
 
-      τ=0.25  first clear at episode 2
-      τ=0.50  first clear at episode 2
-      τ=0.75  never cleared  (censored at 8)
-      τ=0.90  never cleared  (censored at 8)
+  Separating the first two is the point of the ladder rather than a refinement.
+  Everything below the exchange ceiling is a failure to swap; everything above
+  it requires having produced differently. Time-to-clear on each therefore
+  answers different questions about the same round, and on the settled island
+  the two are close (0.823 and 0.856) while the equilibrium is far (0.995) —
+  so nearly all the gain on that island needs different production, not better
+  haggling.
 
-  Half the ladder never clears. A mean over only the rounds that cleared
-  reports a *faster* time the higher the threshold, because the slow rounds
-  leave the denominator — a metric that improves as performance worsens.
-  CLAUDE.md's rule applies exactly: print denominators, never drop failed runs
+  **The anchors are island-relative, and that is what makes rounds comparable.**
+  The autarky floor is a property of the draw, so a fixed absolute threshold
+  measures the island as much as the agents. `capture()` already rescales
+  realised efficiency so autarky is 0.0 and the frontier is 1.0, and the ladder
+  should be read on that scale for anything pooled across seeds.
+
+  **Censoring is the common case here, not an edge case.** On the single
+  settled round in `results/v3/v3.json` (seed 1, 2 agents, 4 goods, 8 episodes,
+  eff_episode = [0.0, 0.0, 0.580, 0.580, ...]):
+
+      autarky   0.8232  ->  never cleared (censored at 8)
+      exchange  0.8561  ->  never cleared (censored at 8)
+      walras    0.9947  ->  never cleared (censored at 8)
+
+  The round never reaches even the autarky floor — those agents did worse than
+  not trading. So every rung is censored, and a mean over only the rounds that
+  cleared would report a *faster* time the higher the rung, because the slow
+  rounds leave the denominator: a metric that improves as performance worsens.
+  CLAUDE.md's rule applies exactly — print denominators, never drop failed runs
   from one.
 
-  Done when the ladder is fixed and written down before the run it scores; the
-  estimator handles never-cleared rounds explicitly, reporting clear-rate per
-  τ beside the time so the two cannot be read apart; and the curve is computed
-  over the existing record so its shape is known on real data before any
-  pre-registration freezes it.
+  Done when the rungs are fixed and written down before the run they score;
+  the estimator handles never-cleared rounds explicitly, reporting clear-rate
+  per rung beside the time so the two cannot be read apart; and the curve is
+  computed over the existing record so its shape is known on real data before
+  any pre-registration freezes it.
