@@ -122,10 +122,74 @@ contributed data; both are reported in **Ran** below.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/004-idle-long/v3.json` (both 180s cells),
+  `results/004-idle-short/v3.json`, boards saved under `results/004-boards/`
+  (151, 209 and 291 messages — all complete, none near the 500-row cap).
+- **Ran:** 3 cells attempted, **3 completed**, 0 harness failures. 12/12
+  sessions started and acknowledged; **0 rescues triggered** (D10). Two earlier
+  false starts collected no data and are described under Preflight.
+
+- **Numbers — primary.** Alive fraction over 40 agent-episodes per cell:
+
+  | cell | alive | T1 | T2 | T3 | T4 | settled | refused |
+  |---|---|---|---|---|---|---|---|
+  | `idle-long` (180s, silent) | 0.72 | 5 | 4 | 10 | 10 | 60 | 2 |
+  | `idle-tick` (180s, ticked) | **0.60** | 10 | 3 | 8 | 3 | 65 | 1 |
+  | `idle-short` (45s, silent) | **1.00** | 10 | 10 | 10 | 10 | 122 | 10 |
+
+  45 ticks delivered. Board messages: 151, 209, 291.
+
+- **Assumptions that did not hold:** **A1**, the one named as run-voiding.
+  `idle-long` was to reproduce run 002's collapse and did not: 0.72 here
+  against 0.15 there, with two of four traders lasting all ten episodes. The
+  reference condition is not run 002's, so **this run cannot answer the
+  question it was opened for.**
+
+  **A2** returns its negative case: `idle-tick` behaved no better than
+  `idle-long` — worse, at 0.60 against 0.72 — so the ticks did not buy
+  persistence. Because A1 failed, that comparison is between two conditions
+  neither of which collapsed, and it cannot separate "ticks do not help" from
+  "there was nothing to rescue".
+
+  **A4** is why the failure is visible: `idle-long` ran 32 minutes for its ten
+  episodes and `idle-short` 7.5, so the two differ in wall clock as well as
+  episode length, and the record says so rather than reporting only episodes.
+
+- **Deviations:** D9 (the tick, as specified) and **D10**, written after the
+  two false starts and before the run proper.
 
 ## What this changed
+
+**The idle hypothesis is unsupported, and the run that was meant to test it
+lost its reference condition.** Ticking a 180s episode did not improve
+persistence. But `idle-long` did not collapse either, so the honest reading is
+that run 004 did not reproduce the phenomenon it set out to explain.
+
+**Why the reference probably failed.** Run 002 announced thirty 180s episodes;
+run 004 announced ten. Putting every persistence cell run so far on one scale:
+
+  | cell | announced total | alive | per-trader spread |
+  |---|---|---|---|
+  | run 002, 30 × 180s | 90.0m | 0.15 | 3–8 of 30 |
+  | run 004 `idle-long`, 10 × 180s | 30.0m | 0.72 | 4–10 of 10 |
+  | run 004 `idle-tick`, 10 × 180s | 30.0m | 0.60 | 3–10 of 10 |
+  | run 003 `persist-bare`, 30 × 45s | 22.5m | 0.80 | 17–30 of 30 |
+  | run 003 `persist-nocount` | 22.5m | 0.63 | 6–30 of 30 |
+  | run 003 `persist-improve` | 22.5m | 0.57 | 7–30 of 30 |
+  | run 004 `idle-short`, 10 × 45s | 7.5m | 1.00 | 10–10 of 10 |
+
+  The two extremes separate cleanly. **The middle does not:** 30 minutes gives
+  0.60–0.72 and 22.5 minutes gives 0.57–0.80, overlapping ranges. Episode
+  length alone does not order them either — 10 × 180s (0.72) sits inside the
+  range of 30 × 45s (0.57–0.80).
+
+**The methodological finding, which is the useful one.** Every cell here is one
+round, and the spread *within* a cell is as large as the differences *between*
+cells: `idle-long` holds traders at 4, 5, 10 and 10. Four runs have now each
+overturned the last run's mechanism — the turn cap (A1 of run 002), then 220
+calls (D7, withdrawn by D7a), then the announced horizon (run 003), then idle
+emptiness (here). Every one of those was inferred from a single round.
+
+The next thing to do about persistence is not another mechanism. It is the same
+cell repeated enough times to know whether 0.60 and 0.72 are different numbers
+at all.
