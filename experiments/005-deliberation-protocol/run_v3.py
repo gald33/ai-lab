@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pathlib
 import subprocess
 import sys
 import threading
@@ -49,6 +50,48 @@ STIM = HERE / "stimuli" / "v3"
 # not responding to write requests". Nothing was wrong with the hub. Drop the
 # key before any client is built, so manager and agents are on the same footing.
 os.environ.pop("SWITCHBOARD_KEY", None)
+
+
+# TLS trust. This session reaches the hub through an egress proxy, and the CA
+# file the environment points every tool at carries the proxy's own roots but
+# not the public ones -- and the hub presents a real public chain. curl happens
+# to survive that; anything on Python's ssl module does not, so httpx raises
+# CERTIFICATE_VERIFY_FAILED and every Switchboard call becomes "internal
+# error". That is a harness fault wearing the costume of agent silence: the
+# sessions start, find every tool broken, ask to have it fixed, and stop. It
+# cost a run mid-flight when the bundle was rewritten one minute after launch.
+#
+# So build one bundle that holds both: every certificate in the system store
+# and every certificate the proxy supplies. Verification stays on -- this adds
+# roots, it never disables a check -- and the file is exported so that the
+# agents' MCP subprocesses, which get an explicit env and would otherwise
+# inherit nothing, trust exactly what the manager trusts.
+def _ca_bundle() -> str:
+    import glob
+    import re
+
+    out: list[str] = []
+    for f in [*sorted(glob.glob("/etc/ssl/certs/*.pem")),
+              os.environ.get("SSL_CERT_FILE", ""),
+              "/root/.ccr/ca-bundle.crt"]:
+        if not f:
+            continue
+        try:
+            text = pathlib.Path(f).read_text()
+        except OSError:
+            continue
+        out += re.findall(
+            r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", text, re.S)
+    seen: set[str] = set()
+    keep = [c for c in out if not (c in seen or seen.add(c))]
+    path = HERE / ".ca-bundle.pem"
+    path.write_text("\n".join(keep) + "\n")
+    return str(path)
+
+
+CA_BUNDLE = _ca_bundle()
+for _var in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+    os.environ[_var] = CA_BUNDLE
 
 # The managed hub is the default: a local `switchboard serve` is one more
 # thing to keep alive, and it died between runs more than once. The managed
@@ -84,7 +127,16 @@ MCP_CONFIG = {
         "switchboard": {
             "command": "switchboard-mcp",
             "env": {"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
-                    "SWITCHBOARD_WORKSPACE": WORKSPACE},
+                    "SWITCHBOARD_WORKSPACE": WORKSPACE,
+                    # An MCP server gets this env and not the parent's, so the
+                    # trust and proxy settings have to be named here or every
+                    # tool the agent holds fails at the TLS handshake.
+                    "SSL_CERT_FILE": CA_BUNDLE,
+                    "REQUESTS_CA_BUNDLE": CA_BUNDLE,
+                    "PATH": os.environ.get("PATH", ""),
+                    "HOME": os.environ.get("HOME", ""),
+                    "HTTPS_PROXY": os.environ.get("HTTPS_PROXY", ""),
+                    "NO_PROXY": os.environ.get("NO_PROXY", "")},
         }
     }
 }
@@ -202,7 +254,8 @@ def launch(name: str, arm: str, private: str, episodes: int,
     config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_WORKSPACE"] = workspace
     (home / ".mcp.json").write_text(json.dumps(config, indent=1))
     env = dict(os.environ)
-    env.update({"SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
+    env.update({"SSL_CERT_FILE": CA_BUNDLE, "REQUESTS_CA_BUNDLE": CA_BUNDLE,
+                "SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
                 "SWITCHBOARD_WORKSPACE": workspace,
                 "SWITCHBOARD_AGENT_ID": name})
     return subprocess.Popen(

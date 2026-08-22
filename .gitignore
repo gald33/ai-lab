@@ -36,3 +36,4 @@ experiments/005-deliberation-protocol/results/*/*/T*/
 # is the manager's v3.json, committed once the run has finished; a log
 # committed mid-run is half a file.
 experiments/005-deliberation-protocol/results-*.log
+experiments/005-deliberation-protocol/.ca-bundle.pem
