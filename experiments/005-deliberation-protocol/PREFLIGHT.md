@@ -12,7 +12,7 @@ Paths below are relative to this directory.
     python tools/check_stimuli.py
     python tools/check_v2.py
 
-Expect: `105 passed` (~12s); `stimuli unchanged`; and `OK` from `check_v2`, which
+Expect: `108 passed` (~12s); `stimuli unchanged`; and `OK` from `check_v2`, which
 prints the hash table, the cell parity check, the domain-leakage check over both
 documents, and the protocol/placebo length match.
 

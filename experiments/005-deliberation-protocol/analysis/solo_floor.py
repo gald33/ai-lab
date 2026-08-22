@@ -38,6 +38,34 @@ def capture(alpha: list[float], produced: list[float], optimum: float) -> float:
     return utility(alpha, produced) / optimum if optimum else 0.0
 
 
+def ratio_gap(alpha: list[float], capacity: list[float],
+              produced: list[float]) -> list[float]:
+    """Log gap between payoff ratio and cost ratio, per good, against good 0.
+
+    `MRS = (a_g/x_g)/(a_0/x_0)` and `MRT = capacity_0/capacity_g` are equal
+    exactly when the agent produced its own optimum -- the tangency condition,
+    and the reason a solo agent has one ratio to post rather than two. So the
+    gap is not another way of saying "how much was lost": it says **which
+    good** was over- or under-made. Positive means the good is worth more at
+    the margin than it cost, so too little of it was made.
+
+    A good that was not produced at all has infinite marginal utility and no
+    finite gap; it is reported as `inf` rather than dropped, because a corner
+    is the loudest misallocation there is.
+    """
+    import math
+
+    gaps = []
+    for g in range(len(alpha)):
+        if produced[g] <= 0 or produced[0] <= 0:
+            gaps.append(math.inf)
+            continue
+        mrs = (alpha[g] / produced[g]) / (alpha[0] / produced[0])
+        mrt = capacity[0] / capacity[g]
+        gaps.append(math.log(mrs / mrt))
+    return gaps
+
+
 def board_captures(board: list[dict], seed: int, agents: int = 4,
                    goods: int = 4) -> list[tuple[str, float]]:
     """(trader, solo capture) for every production the manager settled."""
@@ -56,6 +84,24 @@ def board_captures(board: list[dict], seed: int, agents: int = 4,
     return out
 
 
+def board_gaps(board: list[dict], seed: int, agents: int = 4,
+               goods: int = 4) -> list[tuple[str, list[float]]]:
+    """(trader, per-good log MRS/MRT gap) for every production settled."""
+    island = draw_island(agents, goods, seed=seed)
+    out = []
+    for msg in board:
+        if msg.get("from") != "manager":
+            continue
+        hit = PRODUCED.search(str(msg.get("body")))
+        if not hit:
+            continue
+        name, blob = hit.groups()
+        i = int(name[1:]) - 1
+        out.append((name, ratio_gap(island.alpha[i], island.capacity[i],
+                                    bundle_of(blob))))
+    return out
+
+
 def main(boards: Path) -> None:
     import statistics
     pooled: list[float] = []
@@ -68,6 +114,14 @@ def main(boards: Path) -> None:
             print(f"{path.stem:28} n={len(vals):3} mean {statistics.mean(vals):.3f} "
                   f"median {statistics.median(vals):.3f} "
                   f"at-optimum {sum(1 for v in vals if v >= 0.99)}/{len(vals)}")
+            gaps = [g for _, row in board_gaps(json.load(path.open()), seed)
+                    for g in row[1:]]
+            finite = [g for g in gaps if g not in (float("inf"), float("-inf"))]
+            corners = len(gaps) - len(finite)
+            if finite:
+                print(f"{'':28} MRS/MRT log-gap: mean |gap| "
+                      f"{statistics.mean(abs(g) for g in finite):.3f} over "
+                      f"{len(finite)} goods; {corners} unmade")
     if pooled:
         print(f"\npooled n={len(pooled)} mean {statistics.mean(pooled):.3f} "
               f"median {statistics.median(pooled):.3f} "

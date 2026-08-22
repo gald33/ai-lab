@@ -446,3 +446,32 @@ making a decision the agents should read off the board themselves.
 parser, same budget rule, same refusals (A4). The island is still drawn at four
 agents, so the trader's capacities, tastes and autarky optimum are the ones it
 had in runs 005 and 006 (A2).
+
+## D15 — A secondary measure added to run 007 after it opened
+
+**Written 2026-08-22, while run 007 was in its first wave and before any of its
+data had been read.**
+
+Run 007's record was committed with solo capture as its primary and a list of
+secondaries that did not include the MRS/MRT gap. The gap was added afterwards,
+and this records that honestly rather than letting the record read as though it
+had been planned.
+
+**What was added.** For each production act, the per-good log gap between the
+payoff ratio `(α_g/x_g)/(α_0/x_0)` and the cost ratio `capacity_0/capacity_g`.
+
+**Why it is not a new hypothesis.** The two ratios are equal exactly when an
+agent produced its own optimum — the tangency condition, verified in
+`tests/test_solo_floor.py`. So the gap is arithmetically implied by the primary:
+it is zero precisely when solo capture is 1, and it carries direction where
+capture carries only magnitude. It cannot turn a negative primary into a
+positive finding, and no threshold is attached to it.
+
+**Why the timing is safe.** It was written before any of run 007's boards were
+read, and its behaviour is fixed by tests on synthetic bundles rather than on
+the run's data. The hypothesis and the threshold in the record are untouched.
+
+**Where it came from.** The owner asked what the payoff ratio adds to the cost
+ratio; the answer — that at the optimum it adds nothing, and away from the
+optimum it names the direction — is the measure. It is also written up in
+`PROPOSAL-ratio-disclosure.md`, which belongs to a later experiment.

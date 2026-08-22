@@ -53,6 +53,15 @@ optimum, and the same broken down by trader and by episode index.
 Denominator = production acts settled; episodes with no production are counted
 separately and never silently dropped.
 
+**Secondary — the MRS/MRT gap.** Added after the run opened and before any of
+its data was read; see the note under Deviations. For each production act, the
+log gap between the payoff ratio `(α_g/x_g)/(α_0/x_0)` and the cost ratio
+`capacity_0/capacity_g`, per good. The two are equal exactly at the solo
+optimum, so the gap says **which** good was over- or under-made where solo
+capture says only how much was lost. A good left unmade is reported as `inf`
+and counted, never dropped. It is a decomposition of the primary and is not an
+independent test of it.
+
 **Secondary.** Production acts per trader-episode (denominator 120
 trader-episodes); episodes in which a solo trader produced nothing; alive
 fraction; talk. `eff_round` is written by the scorer and is **meaningless here**
