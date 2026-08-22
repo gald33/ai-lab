@@ -102,7 +102,6 @@ ARMS = {
 #: clock is a design parameter, not a constant, and a record that does not say
 #: which clock it ran on cannot be compared with one that ran on another.
 ACK_SECONDS = 120
-PRODUCTION_SECONDS = 30
 EPISODE_SECONDS = 60
 
 #: How often the manager looks at the channel. It is a reader, so this only
@@ -130,10 +129,10 @@ def instructions(arm: str, private: str, episodes: int) -> str:
 {private}
 
 This round is {episodes} episodes long, and every episode lasts
-{EPISODE_SECONDS} seconds. Production is open for the first
-{PRODUCTION_SECONDS} seconds of each episode; the market is open from then
-until the bell. Your capacities and tastes are the same in every episode of
-this round, and so is everyone else's.
+{EPISODE_SECONDS} seconds. There are no stages inside an episode: from the
+moment it opens until the bell, producing, proposing and approving all settle.
+Your capacities and tastes are the same in every episode of this round, and so
+is everyone else's.
 
 An episode is short. Reading the whole channel every time will cost you more of
 it than it is worth.
@@ -187,10 +186,10 @@ def launch(name: str, arm: str, private: str, episodes: int,
 def schedule_text(episodes: int, names: tuple[str, ...]) -> str:
     return (f"Schedule for this round. {len(names)} traders: "
             f"{', '.join(names)}. {episodes} episodes, {EPISODE_SECONDS}s each. "
-            f"In every episode PRODUCE is settled only in the first "
-            f"{PRODUCTION_SECONDS}s; PROPOSE and APPROVE are settled from then "
-            f"until the bell. At the bell open proposals lapse and everything "
-            f"held is consumed. Acknowledge with a line beginning ACK. "
+            f"Within an episode there are no stages: PRODUCE, PROPOSE and "
+            f"APPROVE all settle for as long as the episode is open. At the "
+            f"bell open proposals lapse and everything held is consumed. "
+            f"Acknowledge with a line beginning ACK. "
             f"Episode 1 opens in {ACK_SECONDS}s whether or not everyone has.")
 
 
@@ -243,14 +242,10 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                        f"Episode 1 opens now.")
 
     for e in range(episodes):
-        mgr.production_open, mgr.market_open = True, False
+        mgr.episode_open = True
         t0 = time.time()
-        mgr.say(f"episode {e + 1} of {episodes} is open. PRODUCE is "
-                           f"settled for the next {PRODUCTION_SECONDS}s.")
-        wait_until(t0 + PRODUCTION_SECONDS)
-        mgr.production_open, mgr.market_open = False, True
-        mgr.say("production is closed. PROPOSE and APPROVE are "
-                           "settled until the bell.")
+        mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
+                f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
         wait_until(t0 + EPISODE_SECONDS)
         mgr.close_episode()
 
@@ -274,7 +269,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
 
 
 def main() -> None:
-    global ACK_SECONDS, EPISODE_SECONDS, PRODUCTION_SECONDS
+    global ACK_SECONDS, EPISODE_SECONDS
     ap = argparse.ArgumentParser()
     ap.add_argument("--arms", nargs="+", default=["bare", "both"])
     ap.add_argument("--rounds", type=int, default=1)
@@ -283,8 +278,6 @@ def main() -> None:
     ap.add_argument("--goods", type=int, default=4)
     ap.add_argument("--out", default="results/v3")
     ap.add_argument("--episode-seconds", type=int, default=60)
-    ap.add_argument("--production-seconds", type=int, default=None,
-                    help="default: half the episode")
     ap.add_argument("--ack-seconds", type=int, default=120)
     args = ap.parse_args()
 
@@ -294,10 +287,6 @@ def main() -> None:
 
     ACK_SECONDS = args.ack_seconds
     EPISODE_SECONDS = args.episode_seconds
-    PRODUCTION_SECONDS = (args.production_seconds if args.production_seconds
-                          is not None else args.episode_seconds // 2)
-    if PRODUCTION_SECONDS >= EPISODE_SECONDS:
-        raise SystemExit("production must close before the bell")
 
     outdir = HERE / args.out
     outdir.mkdir(parents=True, exist_ok=True)
@@ -342,7 +331,6 @@ def main() -> None:
          "agents": args.agents, "goods": args.goods,
          "episodes_per_round": args.episodes,
          "schedule": {"ack_seconds": ACK_SECONDS,
-                      "production_seconds": PRODUCTION_SECONDS,
                       "episode_seconds": EPISODE_SECONDS},
          "rounds": records}, indent=1))
     print(f"\nwrote {path}")

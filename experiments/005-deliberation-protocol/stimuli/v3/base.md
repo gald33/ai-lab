@@ -60,11 +60,12 @@ exactly:
 
     PRODUCE bread=0.5 iron=0.5
         Commits your labour for this episode. Shares must sum to at most 1.
-            Once per episode, and only while production is open.
+        Once per episode.
 
     PROPOSE to=T2 give=iron:0.4 want=salt:0.3
         Offers a named trader an exchange. The goods you offer are committed
-        until it is settled or the bell rings. Only while the market is open.
+        until it is settled or the bell rings. You can only offer what you
+        already hold, so producing first is what makes an offer possible.
 
     APPROVE p3
         Accepts a proposal that was addressed to you, by its id. The exchange
@@ -84,10 +85,13 @@ whom you should deal with, or on what terms.
 
 ## The schedule
 
-The manager says the schedule on the island channel before the round begins. Read it
-and acknowledge it by writing a line beginning `ACK`. Deadlines are real: after
-production closes, a `PRODUCE` line is refused, and this episode you will have
-produced nothing.
+The manager says the schedule on the island channel before the round begins.
+Read it and acknowledge it by writing a line beginning `ACK`.
+
+There are **no stages inside an episode**. From the moment it opens until the
+bell, all three lines settle. The only deadline is the bell itself: after it
+nothing from that episode settles, open proposals lapse, and whatever you were
+holding has been eaten.
 
 ## What you are trying to do
 

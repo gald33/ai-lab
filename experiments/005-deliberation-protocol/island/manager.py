@@ -70,10 +70,11 @@ class Manager:
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
     names: tuple[str, ...] = ()
     episode: int = 0
-    #: True while PRODUCE will still be settled this episode.
-    production_open: bool = True
-    #: True while PROPOSE and APPROVE will still be settled this episode.
-    market_open: bool = False
+    #: True between an episode opening and its bell. There are no stages
+    #: inside an episode: producing, proposing and approving all settle for as
+    #: long as the episode is open. The clock divides episodes from each other
+    #: and nothing else.
+    episode_open: bool = True
     #: Message ids already considered. Switchboard history is append-only, so
     #: a seen-set is enough and no ordering assumption is needed.
     seen: set[str] = field(default_factory=set)
@@ -164,8 +165,8 @@ class Manager:
         return held
 
     def _produce(self, author: str, action: Produce) -> None:
-        if not self.production_open:
-            raise Refused("production for this episode has closed")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         h = self.holders[author]
         if h.produced:
             raise Refused("you have already produced this episode")
@@ -184,8 +185,8 @@ class Manager:
                                 f"{round(1 - total, 4)} labour unspent")
 
     def _propose(self, author: str, action: Propose) -> None:
-        if not self.market_open:
-            raise Refused("the market for this episode is not open")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         if action.to not in self.holders:
             raise Refused(f"no such trader {action.to!r}")
         if action.to == author:
@@ -204,8 +205,8 @@ class Manager:
                                 f"the bell")
 
     def _approve(self, author: str, action: Approve) -> None:
-        if not self.market_open:
-            raise Refused("the market for this episode is not open")
+        if not self.episode_open:
+            raise Refused("this episode has closed")
         p = self.proposals.get(action.proposal_id)
         if p is None:
             raise Refused(f"no such proposal {action.proposal_id!r}")
@@ -249,7 +250,7 @@ class Manager:
             h.holdings = [0.0] * self.island.n_goods
             h.spent, h.produced = 0.0, False
         self.episode += 1
-        self.production_open, self.market_open = True, False
+        self.episode_open = True
         self.say(f"bell — episode {self.episode} closed. "
                                 f"{len(lapsed)} proposal(s) lapsed. "
                                 f"Everything held has been consumed; stocks and "

@@ -104,20 +104,33 @@ def test_the_manager_says_why_rather_than_repairing():
 
 # --- timing -------------------------------------------------------------
 
-def test_production_after_its_deadline_is_refused():
+def test_nothing_from_a_closed_episode_settles():
     m = fresh()
-    m.production_open = False
-    m.hub.as_("T1", EVEN)
-    m.drain()
-    assert m.refused == 1 and not m.holders["T1"].produced
-
-
-def test_the_market_is_shut_while_production_is_open():
-    m = fresh()
+    m.episode_open = False
     m.hub.as_("T1", EVEN)
     m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
     m.drain()
-    assert m.settled == 1 and m.refused == 1
+    assert m.refused == 2 and not m.holders["T1"].produced
+
+
+def test_an_episode_has_no_stages_inside_it():
+    """Producing and dealing settle in the same window, in either order.
+
+    The clock divides episodes from each other and nothing else. An earlier
+    version split each episode into a production window and a market window,
+    and agents in every arm spent their first offers being refused for
+    proposing "too early" -- a rule they had been told and still read as the
+    episode simply having begun.
+    """
+    m = fresh()
+    for n in m.names:
+        m.hub.as_(n, EVEN)
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 0
+    assert m.settled == 4
+    assert m.proposals["p1"].status == "settled"
 
 
 def test_producing_twice_in_one_episode_is_refused():
@@ -142,7 +155,6 @@ def stocked() -> Manager:
     for n in m.names:
         m.hub.as_(n, EVEN)
     m.drain()
-    m.production_open, m.market_open = False, True
     return m
 
 
