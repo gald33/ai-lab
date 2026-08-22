@@ -89,10 +89,19 @@ efficiency number from this run means anything** and none is interpreted.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `66bbd10` | **pass** — `100 passed`, `stimuli unchanged`, `OK` |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `66bbd10` | **pass** — an agent's `switchboard-mcp` reached the hub |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `7435faf` | **pass** — `101 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `7435faf` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not applicable in the usual sense: the instrument is a count read off the board, and run 003 demonstrated it separates conditions (0.80 against 0.57). The offline gates on the tick's scope and wording stand in for it. | — | n/a |
 | pilot | runs 001 and 003 cover the code path, population, hub and both clocks | `47363d1` | reused |
+
+**Two false starts, before any data.** Run 004 was launched twice and stopped
+twice: each time a session exited inside the first minute having never posted
+to the board, changing the population of one cell — `idle-long` the first time
+(3 traders against 4, biasing the reference cell toward the hypothesis) and
+`idle-tick` the second. Deviation **D10** records the harness change that
+followed: during the acknowledgement window only, a session whose trader has
+never appeared on the board is relaunched once and counted. Neither false start
+contributed data; both are reported in **Ran** below.
 
 ## Failure modes anticipated
 
