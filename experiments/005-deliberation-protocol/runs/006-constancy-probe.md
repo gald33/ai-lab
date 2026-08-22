@@ -92,8 +92,8 @@ refused; `zero_agent_episodes`. `eff_episode` reported, not interpreted.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | | |
-| toolchain | `python -c "import run_v3; run_v3.preflight()"` | | |
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `eaf8b60` | **pass** — `102 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `eaf8b60` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | calibration | not needed — `eff_round` separated cells at −0.207 in run 005 on this exact clock and population, and the repeat-exchange measure is read from settled state rather than estimated. | — | instrument unchanged since run 005 |
 | pilot | runs 001, 003, 004 and 005 cover this code path, clock, population and hub | reused | |
 
