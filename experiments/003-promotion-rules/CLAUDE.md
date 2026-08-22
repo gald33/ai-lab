@@ -23,6 +23,7 @@ nor run.
 | document | what it settles |
 |---|---|
 | [`README.md`](README.md) | design and the Tier 1 result |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | smoke, calibration and pilot gates, with commands |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 ## Before running anything
@@ -30,6 +31,12 @@ nor run.
 Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and commit it **before** the run. `tools/ground.py 003` prints this bundle.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit — smoke, calibration, then a small real pilot.
+`tools/ground.py 003 --preflight` prints them. A failed gate is a finding and
+goes in the run record; quietly fixing the harness until it passes is how a
+harness bug becomes a result.
 
 Tier 2 needs a design document committed before its first run record, not
 assembled inside one.

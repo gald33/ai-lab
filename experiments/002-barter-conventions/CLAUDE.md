@@ -24,6 +24,7 @@ the README says which, and that section is the point of publishing them.
 |---|---|
 | [`README.md`](README.md) | design, tier structure, and which numbers are harness artefacts |
 | [`tier3-design.md`](tier3-design.md) | the designed, unrun tier |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | smoke, calibration and pilot gates, with commands |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 ## Before running anything
@@ -31,6 +32,12 @@ the README says which, and that section is the point of publishing them.
 Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and commit it **before** the run. `tools/ground.py 002` prints this bundle.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit — smoke, calibration, then a small real pilot.
+`tools/ground.py 002 --preflight` prints them. A failed gate is a finding and
+goes in the run record; quietly fixing the harness until it passes is how a
+harness bug becomes a result.
 
 Tier 3 is a paid design. It does not run without an explicit go, recorded in
 its run record with the expected spend.

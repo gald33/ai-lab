@@ -14,9 +14,15 @@ partly about the harness rather than the question.
 
     tools/ground.py 004                        # the grounding for exactly one experiment
     tools/ground.py 004 --paths                # just the paths
+    tools/ground.py 004 --preflight            # just the gates, before spending
     tools/ground.py 004 --new-run "<name>"     # open a run record from the template
 
 Prints the standing decisions, [`experiments/GROUNDING.md`](../experiments/GROUNDING.md),
-and one experiment's own `CLAUDE.md` — and nothing from any other experiment.
-It reads and copies; it runs nothing and is not part of any experiment's code
-path, so it cannot become the thing under test.
+and one experiment's own `CLAUDE.md` and `PREFLIGHT.md` — and nothing from any
+other experiment. It reads and copies; it runs nothing and is not part of any
+experiment's code path, so it cannot become the thing under test.
+
+That includes the gates: `--preflight` prints an experiment's smoke,
+calibration and pilot commands, and you run them yourself. A shared gate runner
+would end up shaping experiments to fit it, which is the failure mode this
+directory exists to avoid.

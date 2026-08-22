@@ -14,6 +14,9 @@ Alongside this file, a new experiment directory gets:
 
 - **`CLAUDE.md`** — from [`../CLAUDE.md`](CLAUDE.md) in this template: the
   grounding an agent working on *this* experiment carries, and no other.
+- **`PREFLIGHT.md`** — from [`../PREFLIGHT.md`](PREFLIGHT.md): the smoke,
+  calibration and pilot gates that stand between a specified run and a spent
+  one, declared with real commands.
 - **`runs/`** — one record per run, from
   [`runs/RUN-TEMPLATE.md`](runs/RUN-TEMPLATE.md), written before the run.
 

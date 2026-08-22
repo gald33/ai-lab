@@ -22,6 +22,7 @@ a run record says otherwise.
 | document | what it settles |
 |---|---|
 | [`README.md`](README.md) | design; explicitly claims no outcome yet |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | the gates before a run — none declarable yet, and why |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 There is no pre-registration for the runs already taken. That is the first
@@ -34,6 +35,12 @@ pre-pre-registration or not at all.
 Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and commit it **before** the run. `tools/ground.py 001` prints this bundle.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit — smoke, calibration, then a small real pilot.
+`tools/ground.py 001 --preflight` prints them. A failed gate is a finding and
+goes in the run record; quietly fixing the harness until it passes is how a
+harness bug becomes a result.
 
 ## Local decisions
 

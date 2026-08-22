@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Print the grounding bundle for exactly one experiment.
 
-    tools/ground.py 004            # what an agent working on 004 may carry
-    tools/ground.py 004 --paths    # just the paths, one per line
+    tools/ground.py 004              # what an agent working on 004 may carry
+    tools/ground.py 004 --paths      # just the paths, one per line
+    tools/ground.py 004 --preflight  # just the gates, before spending
     tools/ground.py 004 --new-run "consumption sweep"
 
 The point is the *exactly one* part. An agent running an experiment is grounded
@@ -42,6 +43,7 @@ def find(ident: str) -> Path:
 def bundle(exp: Path) -> list[Path]:
     paths = [ROOT / p for p in GENERAL]
     paths.append(exp / "CLAUDE.md")
+    paths.append(exp / "PREFLIGHT.md")
     return paths
 
 
@@ -79,9 +81,23 @@ def main() -> int:
     ap.add_argument("experiment", help="number or directory name, e.g. 004")
     ap.add_argument("--paths", action="store_true", help="print paths only")
     ap.add_argument("--new-run", metavar="NAME", help="open a run record from the template")
+    ap.add_argument("--preflight", action="store_true",
+                    help="print only this experiment's gates, before spending")
     args = ap.parse_args()
 
     exp = find(args.experiment)
+
+    if args.preflight:
+        path = exp / "PREFLIGHT.md"
+        if not path.exists():
+            print(f"{path.relative_to(ROOT)} — MISSING")
+            print("Declare the gates before spending. Start from")
+            print("templates/experiment/PREFLIGHT.md.")
+            return 1
+        print(path.read_text().rstrip())
+        print("\nThis prints the gates; it does not run them. Record every")
+        print("result, with the commit it ran on, in the run record.")
+        return 0
 
     if args.new_run:
         path = new_run(exp, args.new_run)

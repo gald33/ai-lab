@@ -25,6 +25,7 @@ production commitment can never be taken back? Full question in
 | document | what it settles |
 |---|---|
 | [`README.md`](README.md) | design, the inherited 002 claim, and the result |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | smoke, calibration and pilot gates, with commands |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 ## Before running anything
@@ -32,6 +33,12 @@ production commitment can never be taken back? Full question in
 Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and commit it **before** the run. `tools/ground.py 004` prints this bundle.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit — smoke, calibration, then a small real pilot.
+`tools/ground.py 004 --preflight` prints them. A failed gate is a finding and
+goes in the run record; quietly fixing the harness until it passes is how a
+harness bug becomes a result.
 
 ## Local decisions
 

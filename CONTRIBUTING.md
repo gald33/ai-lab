@@ -39,6 +39,7 @@ loosely. It's a set of prompts, not a schema — a section with nothing under it
 should be deleted rather than filled with hedging.
 
 The one part that isn't loose is grounding: every run whose result is kept has
-a record written before it runs, and an experiment's grounding does not travel
-to another experiment. [experiments/GROUNDING.md](experiments/GROUNDING.md)
-says why and how.
+a record written before it runs, an experiment's grounding does not travel to
+another experiment, and nothing is spent until that experiment's smoke,
+calibration and pilot gates have a recorded result on the current commit.
+[experiments/GROUNDING.md](experiments/GROUNDING.md) says why and how.

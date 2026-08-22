@@ -24,6 +24,7 @@ Where it actually is right now, in one line, and what the next unrun thing is.
 | [`README.md`](README.md) | design, and what is claimed |
 | `PREREGISTRATION.md` | frozen metric, thresholds, stimuli hashes |
 | `DEVIATIONS.md` | every departure, dated, written before the run it affects |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | smoke, calibration and pilot gates, with commands |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 Delete rows that do not exist yet rather than promising them.
@@ -34,6 +35,9 @@ Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md),
 fill in specification / assumptions / hypothesis, and commit it **before** the
 run. `tools/ground.py <NNN>` prints this bundle and lists existing runs.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit. `tools/ground.py <NNN> --preflight` prints them.
 
 ## Local decisions
 

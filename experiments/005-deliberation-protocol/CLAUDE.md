@@ -27,6 +27,7 @@ native-Switchboard rebuild — no harness, no scheduler.
 | [`DESIGN-v2.md`](DESIGN-v2.md), [`AMENDMENT-v2.md`](AMENDMENT-v2.md) | v2 design and its amendment |
 | [`DEVIATIONS.md`](DEVIATIONS.md) | every departure, dated, written before the run it affects |
 | [`stimuli/`](stimuli/) | frozen by hash; `tools/` recomputes and fails on drift |
+| [`PREFLIGHT.md`](PREFLIGHT.md) | smoke, calibration and pilot gates, with commands |
 | [`runs/`](runs/) | per-run specification, assumptions, hypothesis, outcome |
 
 A pre-registration is never revised in place. A revision is a new document at a
@@ -37,6 +38,12 @@ new version, and the old one stays in history.
 Open a run record from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and commit it **before** the run. `tools/ground.py 005` prints this bundle.
+
+Nothing spends until the [`PREFLIGHT.md`](PREFLIGHT.md) gates have a recorded
+result on the current commit — smoke, calibration, then a small real pilot.
+`tools/ground.py 005 --preflight` prints them. A failed gate is a finding and
+goes in the run record; quietly fixing the harness until it passes is how a
+harness bug becomes a result.
 
 Paid cells do not run without an explicit go, recorded in the run record with
 the expected spend.
@@ -50,6 +57,9 @@ the expected spend.
 - Stimuli are compared by **body** hash, excluding the repo-facing title and
   note that are not sent to agents. Never re-freeze a hash to make a check
   pass; a moved stimulus is a deviation.
+- `run_v3.py` imports `barter.economy` from 002's tree. A **code** dependency
+  is not grounding: the module is used, 002's documents are not read. If that
+  import needs to change, change it here and record why.
 - A silent agent has said nothing. That is different from a session that could
   not start, and every run record states how the two are told apart in its
   numbers.

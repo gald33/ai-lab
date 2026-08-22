@@ -62,6 +62,23 @@ Which pre-registered metrics this run reports, and their denominators. If the
 run introduces a metric that is not already pre-registered, say so explicitly
 — that is a new commitment, not a detail.
 
+## Preflight
+
+The gates from [`PREFLIGHT.md`](../PREFLIGHT.md), each with the commit it was
+run on. A pass on a commit that has since moved is not a pass.
+
+| gate | command | commit | result |
+|---|---|---|---|
+| smoke | | | |
+| calibration | | | not needed — instrument unchanged since run NNN |
+| pilot | | | |
+
+A gate that was skipped says which one and why, here. A gate that failed is a
+finding: what failed, what was changed, and whether that change is a deviation.
+
+**No smoke or pilot number is carried into this run's expectations.** Those
+runs are too small to be evidence; they establish that the thing runs.
+
 ## Failure modes anticipated
 
 Harness and timing failures that would make this run uninformative, and how
