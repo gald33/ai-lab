@@ -375,3 +375,52 @@ def test_the_bell_records_which_proposals_lapsed() -> None:
     (log,) = m.episode_log
     assert log["lapsed"] == ["p1"]
     assert log["settled"] == 2
+
+
+# --- the threshold ladder ------------------------------------------------
+
+def _round(effs: list[float], floor: float, seed: int = 1) -> dict:
+    return {"seed": seed, "score": {"eff_episode": effs, "autarky_floor": floor}}
+
+
+def test_time_to_clear_cannot_fall_as_the_bar_rises() -> None:
+    """Anything clearing x clears every y < x, so the curve is monotone per
+    round by construction. If this ever fails the estimator is broken, not the
+    agents."""
+    from analysis.ladder import check_monotone  # noqa: PLC0415
+
+    rounds = [_round([0.0, 0.7, 0.75], 0.5), _round([0.9, 0.0, 0.0], 0.5),
+              _round([0.5, 0.5, 0.5], 0.5)]
+    assert check_monotone(rounds) == 0
+
+
+def test_rounds_that_never_cleared_stay_in_the_denominator() -> None:
+    """The trap this ladder exists to avoid: averaging over only the rounds
+    that cleared drops the slowest ones as the bar rises, so the mean improves
+    while performance worsens."""
+    from analysis.ladder import ladder  # noqa: PLC0415
+
+    # One fast round that clears everything; one that never clears at all.
+    rounds = [_round([1.0, 1.0, 1.0], 0.0), _round([0.0, 0.0, 0.0], 0.0)]
+    high = next(r for r in ladder(rounds, k=3, grid=[0.9]) if True)
+    assert high.cleared == 1
+    assert high.n == 2                      # never dropped from the denominator
+    assert high.mean_cleared_only == 1.0    # the selected mean flatters
+    assert high.mean_censored == 2.5        # (1 + 4) / 2, censored at k + 1
+
+
+def test_the_exchange_rung_is_per_seed_and_may_sit_below_autarky() -> None:
+    """On seed 3 the autarky and exchange sandwiches overlap, so the exchange
+    rung lands below zero on the capture scale. Pooling the seeds into one line
+    would put the rung where no island has it."""
+    from analysis.ladder import exchange_rungs  # noqa: PLC0415
+    from island.score import score  # noqa: PLC0415
+
+    floors = {}
+    for seed in (1, 3):
+        island = draw_island(2, 4, seed=seed)
+        floors[seed] = score(island, [[0.0, 0.0]]).floor
+    rungs = exchange_rungs(2, 4, [1, 3], floors)
+    assert rungs[1] > 0
+    assert rungs[3] < 0
+    assert rungs[1] != rungs[3]
