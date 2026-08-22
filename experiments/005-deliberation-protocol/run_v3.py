@@ -428,6 +428,31 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                            + "; ".join(f"{n}: {w.strip()}" for n, w in broken.items()))
     ticks = arm in TICKING
 
+    #: A session that exits before it has said anything at all never joined the
+    #: round. It is not a harness failure -- the tools work, as its neighbours
+    #: demonstrate -- and it is not a trader who acted and then stopped, which
+    #: is the thing this experiment measures. Seen about once in ten launches,
+    #: always the same shape: the session addresses the operator ("Ready when
+    #: you approve the Switchboard access", "What would you like me to do?")
+    #: instead of calling a tool, and exits. Left alone it silently changes the
+    #: population of one cell, which is the same size as the effects under
+    #: test. So: relaunch it once, and count it.
+    relaunched: dict[str, int] = {}
+
+    def rescue() -> None:
+        for i, name in enumerate(mgr.names):
+            if (procs[i].poll() is not None and name not in mgr.spoke
+                    and relaunched.get(name, 0) < 1):
+                stale = workdir / name / "session.log"
+                if stale.exists():
+                    stale.rename(workdir / name / "session-abandoned.log")
+                relaunched[name] = 1
+                procs[i] = launch(name, arm, mgr.private_state(name), episodes,
+                                  workdir, workspace,
+                                  max_turns=max(400, 40 * episodes))
+                mgr.say(f"{name}'s session did not join and has been restarted "
+                        f"once. Nothing it might have said was settled.")
+
     def wait_until(deadline: float, *, tick: bool = False) -> None:
         next_tick = time.time() + TICK_SECONDS
         while time.time() < deadline:
@@ -438,7 +463,14 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             time.sleep(DRAIN_EVERY)
         mgr.drain()
 
-    wait_until(started + ACK_SECONDS)
+    # Only during the acknowledgement window: after the first episode opens, a
+    # session that stops has taken part and its stopping is data.
+    ack_deadline = started + ACK_SECONDS
+    while time.time() < ack_deadline:
+        mgr.drain()
+        rescue()
+        time.sleep(DRAIN_EVERY)
+    mgr.drain()
     mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
                        f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
                        f"Episode 1 opens now.")
@@ -476,6 +508,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             # The screen had to be diagnosed by re-reading boards that expire
             # in an hour. What the metrics cannot say goes in the record.
             "episode_log": mgr.episode_log, "refusals": mgr.refusals,
+            "relaunched": sorted(relaunched), "spoke": sorted(mgr.spoke),
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
             "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,

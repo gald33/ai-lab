@@ -289,3 +289,44 @@ rather than buried.
 messages per episode at four traders. If an agent's cost of reading history
 rises enough to change its behaviour, the cell has moved two things at once.
 Message counts per cell are reported for that reason.
+
+## D10 — run 004 relaunches a session that never joined, once
+
+*Written 2026-08-22, after two false starts of run 004 and before the run
+proper.*
+
+Run 004 was launched twice and stopped twice without collecting data. Both
+times a session exited within the first minute having never posted to the
+board, and both times it changed the population of one cell.
+
+The shape is identical in every instance seen so far. The session addresses the
+operator instead of calling a tool — "Ready when you approve the Switchboard
+access", "What would you like me to do?" — and exits. It is not a harness
+failure: the tools are allowed and its neighbours in the same cell use them in
+the same second. It is not the behaviour the persistence runs measure either,
+which is a trader who acted and then stopped. It is a session that never
+started, at a rate of roughly one in ten launches.
+
+**Why it cannot be left alone.** In the first false start it removed a trader
+from `idle-long`, the reference cell, leaving three traders against four. A
+quieter board is exactly the manipulation under test, so the confound pushed
+the reference cell toward the result the hypothesis predicts. In the second it
+hit `idle-tick` and pushed the other way. Either way one cell is measuring a
+different population, and the difference is the size of the effect.
+
+**What the harness now does.** During the acknowledgement window only, a
+session that has exited and whose trader has never appeared on the board is
+relaunched **once**. The manager says so on the channel, the abandoned log is
+kept as `session-abandoned.log`, and the relaunched traders are recorded per
+round as `relaunched`.
+
+**Why this is not the forbidden thing.** The runner already starts sessions;
+this starts one again after it failed to join. Nothing prompts, calls or wakes
+a live agent, and the rescue stops the moment the first episode opens — after
+that, a session that stops has taken part, and its stopping is data rather than
+a fault. `spoke` is the discriminator, and it is gated offline.
+
+**What it costs.** A relaunched trader joins late, with less of the
+acknowledgement window than its neighbours. That is recorded per round rather
+than corrected, and a cell whose result depends on a relaunched trader should
+be read with that in view.

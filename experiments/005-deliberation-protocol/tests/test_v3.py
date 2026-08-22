@@ -476,3 +476,21 @@ def test_a_tick_announces_time_and_nothing_else() -> None:
     assert "@" not in tick
     for verb in ("produce", "propose", "approve", "should", "must", "please"):
         assert verb not in tick.lower()
+
+
+def test_the_manager_records_who_it_has_heard_from_at_all() -> None:
+    """A session that exits without ever appearing on the board never joined
+    the round — a different event from a trader who acted and then stopped,
+    which is what the persistence runs measure."""
+    m = fresh()
+    assert m.spoke == set()
+    m.hub.as_("T1", "ACK ready")
+    m.drain()
+    assert m.spoke == {"T1"}
+    m.hub.as_("T2", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}
+    # A malformed line is still the trader reaching the board.
+    m.hub.as_("T2", "PRODUCE bread")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}
