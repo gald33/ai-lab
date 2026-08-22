@@ -41,7 +41,7 @@ instruction text and tests no instruction. It measures the yardstick.
 | models | `claude-haiku-4-5-20251001` |
 | stimuli | `stimuli/v3/base.md`, unchanged and unmodified for solo. See D14. |
 | command | `python run_v3.py --arms solo --rounds 3 --episodes 10 --episode-seconds 180 --agents 4 --solo --no-control --out results/007-solo` |
-| cost | **12 agent sessions**, ~33 min, twelve rounds in two waves. |
+| cost | **12 agent sessions**, twelve rounds in two waves. ~33 min *(written here before launch and **wrong**: two waves of a 32-minute round is ~64 min, which is what the runner printed and what it will take. The session count is right. Left as written, with the correction beside it, rather than edited away.)* |
 | go | Given by the owner on 2026-08-22 ("go"), before launch. |
 
 ## Metrics for this run
