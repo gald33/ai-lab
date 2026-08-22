@@ -50,8 +50,13 @@ STIM = HERE / "stimuli" / "v3"
 # key before any client is built, so manager and agents are on the same footing.
 os.environ.pop("SWITCHBOARD_KEY", None)
 
-HUB = os.environ.get("SWITCHBOARD_URL", "http://127.0.0.1:8787")
-TOKEN = os.environ.get("SWITCHBOARD_TOKEN", "sb_public_lucille")
+# The managed hub is the default: a local `switchboard serve` is one more
+# thing to keep alive, and it died between runs more than once. The managed
+# one is reachable, versioned and not this experiment's to operate.
+from switchboard.config import MANAGED_HUB_TOKEN, MANAGED_HUB_URL  # noqa: E402
+
+HUB = os.environ.get("SWITCHBOARD_URL") or MANAGED_HUB_URL
+TOKEN = os.environ.get("SWITCHBOARD_TOKEN") or MANAGED_HUB_TOKEN
 WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
 
 def client_for(agent_id: str, workspace: str) -> Client:
