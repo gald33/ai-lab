@@ -1,0 +1,8 @@
+id: switchboard-coordination
+title: 001 — is coordination better reasoning, or less to reason about?
+refs:
+  - experiments/001-switchboard-coordination/README.md
+narrative: |
+  Run, not published. The data is not cleaned and the analysis is not written,
+  so the experiment directory carries the design and one preserved negative
+  result and no numbers. The tail is the publication, not the run.

@@ -1,0 +1,11 @@
+id: lab-practice
+title: How the lab itself is run — process, records, and the tools that hold them
+refs:
+  - CLAUDE.md
+  - CONTRIBUTING.md
+  - reports/README.md
+narrative: |
+  Not an experiment. This arc holds work on the lab's own practice: the
+  standing decisions in CLAUDE.md, how runs are pre-registered and reported,
+  and the small amount of tooling that survives the tools/README.md rule (a
+  utility moves in when a second experiment needs it, not in anticipation).

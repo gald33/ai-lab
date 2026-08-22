@@ -91,9 +91,19 @@ Most experiments stop at Publish. That's fine.
 experiments/     one directory per experiment; number-prefixed, ordered by start
 games/           experiments opened for participation — direction only, nothing playable
 reports/         session reports: what was run, what it supports, where it is weakest
+roadmap/         what is still open, as a graph: arcs, items, and what is startable
 templates/       a starting point for a new experiment
 tools/           shared utilities, once a second experiment needs them
 ```
+
+[roadmap/ROADMAP.md](roadmap/ROADMAP.md) is what is startable now and
+[ARCS.md](ARCS.md) is why each question is still open. Both are generated from
+[roadmap/items/](roadmap/items/) and [roadmap/arcs/](roadmap/arcs/) by
+[roadmap-core](https://github.com/gald33/roadmap-core), and both are committed
+so they can be read with nothing installed — see
+[roadmap/README.md](roadmap/README.md). Every report here already ends in what
+to attack first; the roadmap is that, in one place, where it can say which of
+those things is waiting on another.
 
 [reports/](reports/) is where a working session is written up across experiments
 — including the results that were wrong before they were right. Each report

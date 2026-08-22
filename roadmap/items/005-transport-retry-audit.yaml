@@ -1,0 +1,17 @@
+id: 005-transport-retry-audit
+title: Confirm a silent transport retry cannot mask a model refusing the format
+arc: deliberation-protocol
+priority: next
+status: ready
+refs:
+  - reports/2026-08-21-005-deliberation-protocol.md
+  - experiments/005-deliberation-protocol/experiment
+evidence: |
+  Review target 3: `agents/runner.py` has two retry paths. Content retries are
+  counted; transport retries (non-zero exit, timeout) are silent and uncounted.
+  The run reports zero harness failures in 48 episodes, and claim 5 — that no
+  rate stands on a moving denominator — rests on that count being complete.
+
+  Done when the two paths are separated in the record, or a case is exhibited
+  where a refusal reaches the transport path. Either outcome changes what claim
+  5 is allowed to say.

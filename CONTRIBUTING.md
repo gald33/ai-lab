@@ -15,13 +15,17 @@ worth more to me than anything else on this page.
 part that matters is the question and what result would change your mind — not
 the implementation.
 
+**Take something off the roadmap.** [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
+lists what is open and what is startable now, with the evidence that put each
+item there. An item under `now` is one somebody would otherwise be doing.
+
 **Report a reproduction that disagrees.** If you run something here and get a
 different answer, that's a result. Include your model versions, run count, and
 raw records.
 
 ## Less useful right now
 
-Pull requests adding infrastructure — CI, a docs site, a shared experiment
+Pull requests adding infrastructure — a docs site, a shared experiment
 framework, test scaffolding. These are deliberately absent
 ([tools/](tools/README.md) explains why), and a PR adding one will probably be
 declined for reasons that have nothing to do with its quality.
