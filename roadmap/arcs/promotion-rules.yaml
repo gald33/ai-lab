@@ -1,8 +1,17 @@
 id: promotion-rules
 title: 003 — which promotion rule converges on the good solution rather than the lucky one?
+state: closed
+state_evidence: |
+  Closed by decision on 2026-08-22 to focus the lab on 005. The tail was
+  WITHDRAWN, not finished: `003-tier2-design` was deleted unstarted, so the
+  question the experiment is actually about — a promoter choosing among
+  solutions a model wrote — stays unasked. Tier 1, the scripted tier, is
+  complete and reported and unaffected.
 refs:
   - experiments/003-promotion-rules/README.md
   - reports/2026-08-20-003-promotion-rules.md
 narrative: |
   Tier 1, the scripted tier, is complete and reported. Tier 2 — the same
-  promoter over real instincts — is neither designed nor run.
+  promoter over real instincts — is neither designed nor run, and is now closed
+  in that state. The open question is recorded in the experiment README, not in
+  an item.

@@ -13,10 +13,11 @@ Claim before starting: `roadmap claim <key>`
 **In priority order, most important first.** An item with no marker carries no stated priority — take it as unjudged, not as low. The order within a band is alphabetical and means nothing.
 
 - `now` **`005-render-precision-fix`** — Stop the instrument handing every agent the same printed number
-- `next` **`001-publish-results`** — Clean 001's data, write the analysis, and publish or withdraw the numbers
-- `next` **`002-tier3-run`** — Run 002 Tier 3
-- `later` **`003-tier2-design`** — Design 003 Tier 2 — the same promoter over real instincts
+- `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
+  - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
+  - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
+  - ↔ related: **`005-episodes-to-threshold`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 
 ## ⏸ Deferred — startable, deliberately not now
 
@@ -37,10 +38,8 @@ _Nothing claimed._
 
 ```mermaid
 graph TD
-  001_publish_results["Clean 001's data, write the analysis, and publish or withdraw the numbers"]
-  002_tier3_run["Run 002 Tier 3"]
-  003_tier2_design["Design 003 Tier 2 — the same promoter over real instincts"]
   005_display_precision_artifact["Find every focal point the 005 instrument creates by formatting"]
+  005_episodes_to_threshold["Measure episodes-to-first-clear across a threshold ladder, not total efficiency"]
   005_paired_statistic_choice["Decide whether minimum dispersion is the right paired statistic"]
   005_render_precision_fix["Stop the instrument handing every agent the same printed number"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
@@ -51,77 +50,11 @@ graph TD
   005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
   lab_roadmap_adoption --> lab_roadmap_core_0_2_0
   005_display_precision_artifact -.- 005_word_cap_fits_the_protocol
+  005_episodes_to_threshold -.- 005_paired_statistic_choice
+  005_episodes_to_threshold -.- 005_rerun_at_twenty_one_rounds
 ```
 
 ## Items
-
-### `001-publish-results`
-
-- **title:** Clean 001's data, write the analysis, and publish or withdraw the numbers
-- **status:** ready
-- **arc:** switchboard-coordination
-- **priority:** next
-- **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
-
-<details><summary>evidence</summary>
-
-> The experiment README says it plainly: run, not published; the data is not
-> cleaned and the analysis is not written, and the repo README's experiment
-> table carries "results not yet published". The design and one preserved
-> negative result are already written, so what is missing is the analysis, not
-> the reasoning.
->
-> Done when the experiment directory states an outcome for the question it
-> asked — including "the data does not support an answer", which is an outcome
-> — and the README table stops saying results are pending.
-
-</details>
-
-### `002-tier3-run`
-
-- **title:** Run 002 Tier 3
-- **status:** ready
-- **arc:** barter-conventions
-- **priority:** next
-- **refs:**
-  - `experiments/002-barter-conventions/tier3-design.md`
-  - `reports/2026-08-20-002-tier3-calibration.md`
-
-<details><summary>evidence</summary>
-
-> Tier 3 is designed and calibrated and unrun — the design document exists and
-> the calibration has its own report. Tier 2 is separately mid-flight with the
-> harness moving under it, which is why its numbers are recorded as measuring
-> the harness.
->
-> Done when the tier is pre-registered, run against seeded rounds paired across
-> conditions, and reported with denominators — including the runs that failed
-> and which failures were harness rather than behaviour.
-
-</details>
-
-### `003-tier2-design`
-
-- **title:** Design 003 Tier 2 — the same promoter over real instincts
-- **status:** ready
-- **arc:** promotion-rules
-- **priority:** later
-- **refs:**
-  - `experiments/003-promotion-rules/README.md`
-  - `reports/2026-08-20-003-promotion-rules.md`
-
-<details><summary>evidence</summary>
-
-> Tier 1, the scripted tier, is complete and reported; the README says Tier 2
-> is not designed and not run. Tier 1 answers the rule question over scripted
-> candidates, which leaves open the thing the experiment is actually about: a
-> promoter choosing among solutions a model wrote.
->
-> Done when there is a design document naming the question, what is held fixed,
-> and which result would change what gets built — not an implementation.
-
-</details>
 
 ### `005-display-precision-artifact`
 
@@ -168,12 +101,100 @@ graph TD
 
 </details>
 
+### `005-episodes-to-threshold`
+
+- **title:** Measure episodes-to-first-clear across a threshold ladder, not total efficiency
+- **status:** ready
+- **arc:** deliberation-protocol
+- **priority:** next
+- **related to** (not a dependency — both are startable):
+  - `005-paired-statistic-choice` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
+  - `005-rerun-at-twenty-one-rounds` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
+- **refs:**
+  - `experiments/005-deliberation-protocol/island/score.py`
+  - `experiments/005-deliberation-protocol/results/v3/v3.json`
+  - `experiments/002-barter-conventions/experiment/barter/economy.py`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> `eff_round` is a level: how good the accumulated bundle got. It cannot say
+> how *fast* quality arrived, and speed is the thing a round with k episodes
+> exists to show — that is why context persists across a round's episodes.
+> Two rounds ending at the same `eff_round` can differ entirely in whether the
+> agents got there in episode two or episode seven, and nothing currently
+> reported separates them.
+>
+> So: fix a ladder of thresholds, and for each, the episode index at which a
+> round's per-episode efficiency first reaches it. Averaged over rounds that is
+> a speed-for-quality curve — episodes to reach this good — with `eff_round`
+> still reported beside it as the level.
+>
+> The machinery is already there. `island/score.py` records `eff_episode` as a
+> per-episode list and already carries `first_above_floor`: the first episode
+> index above the autarky floor. That is this metric at one threshold, chosen
+> for a reason that has nothing to do with quality. Generalising it is a
+> ladder, not a new instrument, and `exchange_ceiling()` and `capture()` in
+> `002-barter-conventions/experiment/barter/economy.py` supply the other rung
+> and the scale.
+>
+> **The ladder is autarky and exchange, not round numbers.** Both are already
+> computed. `autarky()` gives the floor — what each agent gets making
+> everything itself — and `score.py` already records it as `autarky_floor` and
+> uses it for `first_above_floor`. `exchange_ceiling()` is the best reachable
+> by swapping only, never changing what is produced. Those are two rungs that
+> mean something — cleared autarky, finished swapping — where 0.25 and 0.75
+> mean nothing.
+>
+> Separating them is the point of the ladder rather than a refinement.
+> Everything below the exchange ceiling is a failure to swap; everything above
+> it requires having produced differently, so time-to-clear on each answers a
+> different question about the same round. On the settled island they are close
+> — 0.823 and 0.856 — which says nearly all the gain there needs different
+> production, not better haggling.
+>
+> **The frontier itself is the top of the ladder and needs no rung of its
+> own.** Efficiency is measured *against* the frontier, so 1.0 already is
+> "reached it", and `walras()` is one particular frontier point the solver
+> happens to land on rather than an independent standard. Scoring
+> time-to-clear on it would be timing the solver, not the agents.
+>
+> **The anchors are island-relative, and that is what makes rounds comparable.**
+> The autarky floor is a property of the draw, so a fixed absolute threshold
+> measures the island as much as the agents. `capture()` already rescales
+> realised efficiency so autarky is 0.0 and the frontier is 1.0, and the ladder
+> should be read on that scale for anything pooled across seeds.
+>
+> **Censoring is the common case here, not an edge case.** On the single
+> settled round in `results/v3/v3.json` (seed 1, 2 agents, 4 goods, 8 episodes,
+> eff_episode = [0.0, 0.0, 0.580, 0.580, ...]):
+>
+>     autarky   0.8232  ->  never cleared (censored at 8)
+>     exchange  0.8561  ->  never cleared (censored at 8)
+>
+> The round never reaches even the autarky floor — those agents did worse than
+> not trading. So both rungs are censored, and a mean over only the rounds that
+> cleared would report a *faster* time the higher the rung, because the slow
+> rounds leave the denominator: a metric that improves as performance worsens.
+> CLAUDE.md's rule applies exactly — print denominators, never drop failed runs
+> from one.
+>
+> Done when the rungs are fixed and written down before the run they score;
+> the estimator handles never-cleared rounds explicitly, reporting clear-rate
+> per rung beside the time so the two cannot be read apart; and the curve is
+> computed over the existing record so its shape is known on real data before
+> any pre-registration freezes it.
+
+</details>
+
 ### `005-paired-statistic-choice`
 
 - **title:** Decide whether minimum dispersion is the right paired statistic
 - **status:** ready
 - **arc:** deliberation-protocol
 - **priority:** later
+- **related to** (not a dependency — both are startable):
+  - `005-episodes-to-threshold` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
   - `experiments/005-deliberation-protocol/analysis`
@@ -237,6 +258,8 @@ graph TD
 - **arc:** deliberation-protocol
 - **priority:** now
 - **blocked on:** `005-render-precision-fix`
+- **related to** (not a dependency — both are startable):
+  - `005-episodes-to-threshold` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
   - `experiments/005-deliberation-protocol/PREREGISTRATION.md`
