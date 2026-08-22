@@ -43,7 +43,7 @@ appears when traders have run out of new things to try.
 | stimuli | `stimuli/v3/base.md`, body sha256 `c1ff3e80038c66314adcfbf711f5f873d4d129fcb02a2321400b3200fdd2b342` |
 | hub | managed Switchboard hub, one run-stamped workspace |
 | command | `python run_v3.py --arms bare --rounds 1 --episodes 30 --episode-seconds 180 --agents 4 --out results/002-thirty` |
-| cost | **4 agent sessions**, ~92 min wall clock. Few sessions, but each is long and its context grows all round, so token cost per session is far above a 3-episode round's. Paid: needs an explicit go, recorded here. |
+| cost | **go given 2026-08-22.** **4 agent sessions**, ~92 min wall clock. Few sessions, but each is long and its context grows all round, so token cost per session is far above a 3-episode round's. Paid: needs an explicit go, recorded here. |
 
 ## Assumptions
 
