@@ -1,0 +1,250 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "bare",
+  "placebo",
+  "protocol",
+  "hint",
+  "both"
+ ],
+ "agents": 2,
+ "goods": 4,
+ "episodes_per_round": 3,
+ "schedule": {
+  "ack_seconds": 120,
+  "episode_seconds": 180
+ },
+ "rounds": [
+  {
+   "arm": "bare",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.19279094121112283,
+     0.06708380286397528
+    ],
+    [
+     0.23101036302533676,
+     0.13283084863153521
+    ],
+    [
+     0.23146145891058936,
+     0.16565703914785163
+    ]
+   ],
+   "settled": 14,
+   "refused": 0,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-bare-1",
+   "channel": "island",
+   "channel_messages": 39,
+   "seconds": 669.0,
+   "score": {
+    "eff_round": 0.618968,
+    "eff_round_upper": 0.633387,
+    "eff_episode": [
+     0.481084,
+     0.66361,
+     0.71921
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.751284,
+    "gain_worst": 0.558974,
+    "below_autarky": 2,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "placebo",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.20605719123990368,
+     0.19499563371556897
+    ],
+    [
+     0.20605719123990368,
+     0.19499563371556897
+    ],
+    [
+     0.20605719123990368,
+     0.19499563371556897
+    ]
+   ],
+   "settled": 15,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-placebo-1",
+   "channel": "island",
+   "channel_messages": 43,
+   "seconds": 669.6,
+   "score": {
+    "eff_round": 0.733957,
+    "eff_round_upper": 0.739504,
+    "eff_episode": [
+     0.733957,
+     0.733957,
+     0.733957
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.892325,
+    "gain_worst": 0.890182,
+    "below_autarky": 2,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "protocol",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.22948951530635303,
+     0.0
+    ],
+    [
+     0.22792187923949161,
+     0.0
+    ],
+    [
+     0.21068383184144335,
+     0.0
+    ]
+   ],
+   "settled": 16,
+   "refused": 4,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-protocol-1",
+   "channel": "island",
+   "channel_messages": 51,
+   "seconds": 669.7,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.481037,
+    "gain_worst": 0.0,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "hint",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.18100687591845865,
+     0.0
+    ],
+    [
+     0.21517460434896554,
+     0.11492028144827092
+    ],
+    [
+     0.21517460434896554,
+     0.11492028144827092
+    ]
+   ],
+   "settled": 21,
+   "refused": 3,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-hint-1",
+   "channel": "island",
+   "channel_messages": 59,
+   "seconds": 668.6,
+   "score": {
+    "eff_round": 0.51102,
+    "eff_round_upper": 0.526546,
+    "eff_episode": [
+     0.0,
+     0.604863,
+     0.604863
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.615902,
+    "gain_worst": 0.351436,
+    "below_autarky": 2,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "both",
+   "seed": 1,
+   "episodes": 3,
+   "trajectory": [
+    [
+     0.17646114335852764,
+     0.0
+    ],
+    [
+     0.2561716090696013,
+     0.0
+    ],
+    [
+     0.0,
+     0.11539958586368383
+    ]
+   ],
+   "settled": 16,
+   "refused": 4,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2"
+   ],
+   "workspace": "island-both-1",
+   "channel": "island",
+   "channel_messages": 51,
+   "seconds": 669.0,
+   "score": {
+    "eff_round": 0.337022,
+    "eff_round_upper": 0.344285,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.82318,
+    "gain_median": 0.399726,
+    "gain_worst": 0.176451,
+    "below_autarky": 2,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 6,
+    "first_above_floor": null
+   }
+  }
+ ]
+}
