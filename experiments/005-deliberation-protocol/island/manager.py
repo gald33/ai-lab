@@ -23,6 +23,7 @@ It enforces no price, no role, no partner and no plan.
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]
 
 from barter.economy import Island, utility  # noqa: E402
 
-from switchboard.client import Client  # noqa: E402
+from switchboard.client import Client, SwitchboardError  # noqa: E402
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
@@ -113,6 +114,9 @@ class Manager:
     #: recent rows and skips what it has seen, which is safe while it drains
     #: faster than the board fills -- and silently lossy if it ever does not.
     saturated: bool = False
+    #: Reads the hub refused with a transient error and we retried. Recorded
+    #: because a run that limped is not the same evidence as one that did not.
+    drain_errors: int = 0
     _settled_this_episode: int = 0
     _next: int = 1
 
@@ -127,10 +131,33 @@ class Manager:
     def say(self, text: str) -> None:
         self.client.post(self.channel, text)
 
+    def _history_with_retry(self, tries: int = 4) -> list:
+        delay = 2.0
+        for attempt in range(tries):
+            try:
+                return sorted(self.client.history(self.channel, limit=500),
+                              key=lambda r: r.get("seq", 0))
+            except SwitchboardError as exc:
+                transient = exc.status is None or exc.status >= 500
+                if not transient or attempt == tries - 1:
+                    raise
+                self.drain_errors += 1
+                time.sleep(delay)
+                delay *= 2
+        raise AssertionError("unreachable")
+
     def drain(self) -> None:
-        """Read whatever has appeared since last time. Never blocks anyone."""
-        rows = sorted(self.client.history(self.channel, limit=500),
-                      key=lambda r: r.get("seq", 0))
+        """Read whatever has appeared since last time. Never blocks anyone.
+
+        The hub is behind a gateway that returns 5xx now and then; a single
+        such refusal once killed a whole run mid-episode. A read is safe to
+        repeat -- history is refetched whole and deduplicated by id -- so a
+        transient refusal is retried rather than raised. A hub that stays down
+        past the last attempt still raises: a run that cannot read the board
+        cannot score it, and pretending otherwise would fabricate an empty
+        episode.
+        """
+        rows = self._history_with_retry()
         if len(rows) >= 500:
             self.saturated = True
         for msg in rows:

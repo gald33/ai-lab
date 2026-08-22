@@ -385,3 +385,35 @@ itself did — a weaker across-run comparison, reported as one.
 **Cost if the separation fails.** If anything other than the deadline format
 differs between run 005 and this run, comparison 1 measures that instead. A1
 names it and the commits are diffable.
+
+## D13 — The hub 502'd fifteen minutes into run 006, and the run died with it
+
+**Written after the abort, before the relaunch. 2026-08-22.**
+
+Run 006 launched at 18:22 UTC and stopped at 18:36. Preflight was green and the
+sessions were live; what failed was the hub's gateway, which answered one of
+the manager's `history` reads with a Cloudflare **502 Bad gateway**. That
+exception propagated out of `drain()`, out of `wait_until()`, out of the thread
+pool, and killed the process — taking all six rounds, not the one round whose
+read had failed. Nine agent sessions were left orphaned and were killed by
+hand. The hub answered 200 again minutes later.
+
+**This is a harness failure, classified as one, and it produced no data.** No
+round record was written; nothing from the 18:22 attempt is scored, cited, or
+counted in any denominator. Run 006's numbers come entirely from the relaunch.
+
+**The fix.** `Manager._history_with_retry` retries a transient read — no status
+or 5xx — four times at 2/4/8s. A read is safe to repeat: history is refetched
+whole and deduplicated by message id, so a retry cannot double-count or lose a
+message. A hub that is still refusing after the last attempt still raises: a
+manager that cannot read the board cannot score it, and swallowing that would
+fabricate an empty episode. Writes are **not** retried — a repeated `say` would
+duplicate an announcement on the board.
+
+Retries are counted in `drain_errors` and written into every round record, so a
+run that limped is distinguishable from one that did not.
+
+**Why this is not a design change.** It touches timing and transport only. No
+price, role, trade or production decision is affected, and no malformed message
+becomes a well-formed one. The relaunch is the same specification, the same
+seeds and the same stimuli as the aborted attempt, under a new run stamp.

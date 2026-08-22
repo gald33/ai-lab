@@ -569,6 +569,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             # complete record of itself. The per-episode ledger is.
             "channel_messages": len(mgr.seen),
             "drain_saturated": mgr.saturated,
+            "drain_errors": mgr.drain_errors,
             "seconds": round(time.time() - started, 1)}
 
 
