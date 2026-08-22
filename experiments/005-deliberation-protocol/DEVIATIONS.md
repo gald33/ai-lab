@@ -220,3 +220,43 @@ probe.
 **Standing.** The classification in D7 — a feasibility failure of the round
 length, neither harness fault nor an agent choosing silence — still holds. Only
 the stated cause is withdrawn.
+
+## D8 — run 003 hides the round's length from one cell, and gives another a hint
+
+*Written 2026-08-22, before the run it affects.*
+
+Run 003 is a manipulation check on whether a long round is impossible for these
+agents or impossible as this harness presents it. Two of its three cells depart
+from the frozen setup, and both departures are recorded here rather than made
+quietly.
+
+**`persist-nocount` withholds the episode count.** The frozen per-round text
+says "This round is N episodes long"; the manager's schedule says "N episodes,
+Xs each"; every episode opens with "episode k of N". In this cell all three are
+replaced: the instructions say only that the manager will announce what is
+scheduled next and will say when the round is over, the schedule names no
+total, and episodes are announced five at a time. Nothing else changes.
+
+This is a **timing** change, which the standing decisions permit the system to
+make — it alters what the manager announces and when, not what any agent should
+produce, offer or accept. It is a deviation because it edits text that was
+frozen, not because it crosses that line. Two offline gates check the count is
+absent from the instructions, the schedule and the announcements, and that the
+other two cells still state it.
+
+**`persist-improve` adds a domain instruction.** `stimuli/persist/improve.md`
+tells traders to treat each episode as an attempt to beat their last. That is a
+hint in 005's sense — the thing the experiment otherwise holds fixed — and it
+is legitimate here only because this run is a ceiling test. The file says so in
+its own header. **Nothing measured in that cell may be cited as evidence about
+deliberation protocols**, and it is not frozen.
+
+**The confound, stated in advance.** "Improve on your last episode" implies
+more episodes are coming, so `persist-improve` carries part of
+`persist-nocount`'s mechanism. The fourth cell that would separate them was
+dropped to save four sessions. If `improve` sustains and `nocount` does not,
+the finding is that *a reason to continue* matters — not which reason.
+
+**Cost if this is wrong.** If the hidden horizon leaks anywhere unchecked, the
+cell measures nothing and the run's central comparison is void. That is why the
+leak is gated offline and the board is searched for the count afterwards.

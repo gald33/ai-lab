@@ -177,6 +177,28 @@ SCREEN = {
 }
 ARMS.update({name: (block, False) for name, block in SCREEN.items()})
 
+#: The persistence check (run 003). Not about advice: run 002 aborted because
+#: every session ended itself while a round it had been told was thirty
+#: episodes long still had twenty-seven to go. These cells ask whether that is
+#: the harness starving the agents or the agents being unable to do the task.
+#:
+#: `persist-improve` is a domain instruction and is named as one. It is a
+#: ceiling test, and nothing measured with it is evidence about protocols.
+ARMS.update({
+    "persist-bare":    (None, False),
+    "persist-nocount": (None, False),
+    "persist-improve": ("persist/improve", False),
+})
+
+#: Arms in which the round's length is never stated. The manager announces a
+#: few episodes at a time and says nothing about the total, so an agent cannot
+#: reason about "the remaining 27 episodes" -- which is what every session in
+#: run 002 did on its way out.
+HIDE_HORIZON = {"persist-nocount"}
+
+#: How many episodes the manager names at once when the horizon is hidden.
+CHUNK = 5
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
@@ -201,6 +223,16 @@ def body(text: str) -> str:
     raise ValueError("stimulus has no body heading")
 
 
+def _horizon(arm: str, episodes: int) -> str:
+    """What the agent is told about how long the round is."""
+    if arm in HIDE_HORIZON:
+        return (f"Every episode lasts {EPISODE_SECONDS} seconds. The manager "
+                f"says which episodes are scheduled next and will tell you when "
+                f"the round is over; until it does, the round is still running.")
+    return (f"This round is {episodes} episodes long, and every episode lasts "
+            f"{EPISODE_SECONDS} seconds.")
+
+
 def instructions(arm: str, private: str, episodes: int) -> str:
     block, hint = ARMS[arm]
     parts = [body((STIM / "base.md").read_text())]
@@ -216,8 +248,7 @@ def instructions(arm: str, private: str, episodes: int) -> str:
 
 {private}
 
-This round is {episodes} episodes long, and every episode lasts
-{EPISODE_SECONDS} seconds. There are no stages inside an episode: from the
+{_horizon(arm, episodes)} There are no stages inside an episode: from the
 moment it opens until the bell, producing, proposing and approving all settle.
 Your capacities and tastes are the same in every episode of this round, and so
 is everyone else's.
@@ -316,9 +347,12 @@ def preflight() -> None:
     print(f"preflight: an agent's switchboard-mcp reached {HUB}")
 
 
-def schedule_text(episodes: int, names: tuple[str, ...]) -> str:
+def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False) -> str:
+    span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
+            f"as they come." if hide
+            else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
     return (f"Schedule for this round. {len(names)} traders: "
-            f"{', '.join(names)}. {episodes} episodes, {EPISODE_SECONDS}s each. "
+            f"{', '.join(names)}. {span} "
             f"Within an episode there are no stages: PRODUCE, PROPOSE and "
             f"APPROVE all settle for as long as the episode is open. At the "
             f"bell open proposals lapse and everything held is consumed. "
@@ -344,7 +378,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
 
-    mgr.say(schedule_text(episodes, mgr.names))
+    hide = arm in HIDE_HORIZON
+    mgr.say(schedule_text(episodes, mgr.names, hide=hide))
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
@@ -386,8 +421,18 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     for e in range(episodes):
         mgr.open_episode()
         t0 = time.time()
-        mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
-                f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
+        if hide:
+            # A few at a time, and never a total. An agent that cannot count
+            # the episodes left cannot decide to delegate them.
+            if e % CHUNK == 0:
+                last = min(e + CHUNK, episodes)
+                mgr.say(f"episodes {e + 1} to {last} are scheduled next, "
+                        f"{EPISODE_SECONDS}s each.")
+            mgr.say(f"episode {e + 1} is open for {EPISODE_SECONDS}s. "
+                    f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
+        else:
+            mgr.say(f"episode {e + 1} of {episodes} is open for {EPISODE_SECONDS}s. "
+                    f"PRODUCE, PROPOSE and APPROVE all settle until the bell.")
         wait_until(t0 + EPISODE_SECONDS)
         mgr.close_episode()
 

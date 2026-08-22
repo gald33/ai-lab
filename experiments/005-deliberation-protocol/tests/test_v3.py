@@ -424,3 +424,33 @@ def test_the_exchange_rung_is_per_seed_and_may_sit_below_autarky() -> None:
     assert rungs[1] > 0
     assert rungs[3] < 0
     assert rungs[1] != rungs[3]
+
+
+# --- the persistence check's hidden horizon ------------------------------
+
+def test_a_hidden_horizon_never_states_the_round_length() -> None:
+    """Run 002's sessions all ended reasoning about "the remaining 27
+    episodes". This arm exists to remove that number, so it must be absent
+    from every place the agent can read it: the instructions, the schedule the
+    manager posts, and every episode-open announcement."""
+    import run_v3  # noqa: PLC0415
+
+    text = run_v3.instructions("persist-nocount", "You are T1.", 30)
+    assert "30 episodes" not in text
+    assert "scheduled next" in text
+
+    posted = run_v3.schedule_text(30, ("T1", "T2"), hide=True)
+    assert "30" not in posted
+
+    shown = run_v3.schedule_text(30, ("T1", "T2"), hide=False)
+    assert "30 episodes" in shown
+
+
+def test_the_other_persistence_arms_still_state_it() -> None:
+    """Only the one arm hides it — otherwise the comparison measures two
+    things at once."""
+    import run_v3  # noqa: PLC0415
+
+    for arm in ("persist-bare", "persist-improve"):
+        assert "30 episodes" in run_v3.instructions(arm, "You are T1.", 30)
+    assert run_v3.HIDE_HORIZON == {"persist-nocount"}
