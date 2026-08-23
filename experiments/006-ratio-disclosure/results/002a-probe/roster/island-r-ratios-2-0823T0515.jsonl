@@ -103,3 +103,7 @@
 {"t": 1787462972.246465, "agent": "T2", "task": "Monitoring final Episode 5 trades"}
 {"t": 1787462972.2464988, "agent": "T3", "task": "final episode monitoring"}
 {"t": 1787462987.1736305, "agent": "T4", "task": "Monitoring final Episode 5 trades and waiting for responses"}
+{"t": 1787463002.0698051, "agent": "T1", "task": "Waiting for final T4 acceptance and Episode 5 closure"}
+{"t": 1787463002.0698812, "agent": "T3", "task": "final episode ending"}
+{"t": 1787463016.8394835, "agent": "T2", "task": "Waiting for final Episode 5 trades and bell"}
+{"t": 1787463016.839547, "agent": "T4", "task": "Waiting for final P24 settlement and Episode 5 bell"}
