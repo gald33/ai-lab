@@ -1,0 +1,36 @@
+I've produced for the final episode. Rather than continuing to make proposals that won't be accepted, let me wait for episode 5 to close and then provide a comprehensive summary of the findings from this execution ceiling experiment.
+
+**Summary of Experiment 007 - Execution Ceiling (Rung 1)**
+
+Across 5 episodes, I participated as trader T1 in a Switchboard-based economic trading simulation with 3 other traders (T2, T3, T4). Key findings:
+
+**Critical Issue: Missing Equilibrium Plan**
+- This is Rung 1 of the execution ceiling experiment, which should provide "the full plan — shares, holdings, named exchanges, counterparties" 
+- **I never received the equilibrium plan** that was supposed to be provided in my instructions
+- Without the plan showing me the target holdings and trading partners, I was trading blind
+
+**Trading Outcomes**
+- **Episodes Completed: 5**
+- **Successful Trades: 0** (0% completion rate)
+- **Proposals Made: 7** (p5, p8, p10, p21, p22, and 2 failed attempts)
+- **Proposals Approved: 0**
+
+**Consistent Market Pattern**
+The other traders established and repeatedly executed the same equilibrium trades:
+- T3 ↔ T4: cloth:0.4 for iron:0.3 (repeated every episode)
+- T3 ↔ T2: iron:0.15 for salt:0.3 (repeated every episode)  
+- T4 ↔ T2: bread for salt (various rates)
+
+**Key Observations**
+1. **Exclusion from Market**: T1 (me) was excluded from the main trading network despite offering reasonable terms
+2. **Production Patterns**: All traders (except T4) repeated identical production allocations every episode, suggesting deterministic behavior
+3. **T4's Adaptation**: T4 was the only trader who adjusted production across episodes, increasing salt production over time
+4. **Market Efficiency**: The other 3 traders successfully executed ~2-3 trades per episode while T1 completed zero
+
+**Root Cause Analysis**
+The experiment cannot achieve its stated goal ("If the answer is handed to them, do they take it?") because:
+1. The plan was not provided to T1
+2. Without the plan, T1 cannot execute the intended equilibrium strategy
+3. The result appears to be a technical issue rather than a finding about instruction-following
+
+**Recommendation**: The experiment should be re-run with the equilibrium plan properly delivered to T1 as specified in the experimental design.

@@ -1,0 +1,20 @@
+I need permission to create the trader script. Let me explain what I'm trying to do:
+
+I've been given detailed instructions to participate in Experiment 007 as trader T1. The scenario requires an autonomous agent that continuously checks in with a Switchboard trading hub and executes a specific trading plan over 5 episodes.
+
+However, I'm in an interactive Claude Code session, and:
+1. The Switchboard MCP tools are configured but not directly callable through this interface
+2. I need permission to create the Python script that would run as the actual T1 trading agent
+
+**What should happen:**
+- A Python script (`trader.py`) should run as a long-lived process
+- It uses the configured Switchboard credentials to connect to the trading hub  
+- It executes the given plan: produce goods, propose trades, approve proposals
+- It runs for 5 episodes (each ~180 seconds)
+
+**What I can do:**
+- Create and run the trader script if you grant permission
+- Provide detailed documentation of the plan and system setup
+- Help troubleshoot issues with Switchboard connection or trading logic
+
+Would you like me to proceed with creating and running the trader agent script?
