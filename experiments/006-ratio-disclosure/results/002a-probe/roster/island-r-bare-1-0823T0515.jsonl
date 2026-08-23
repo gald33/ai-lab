@@ -34,3 +34,5 @@
 {"t": 1787462477.0707705, "agent": "T1", "task": "Waiting for proposals near Episode 2 bell"}
 {"t": 1787462477.0708294, "agent": "T2", "task": "waiting for T3 response, episode nearing end"}
 {"t": 1787462477.070856, "agent": "T3", "task": "Waiting for better trading opportunities or episode close"}
+{"t": 1787462491.7028368, "agent": "T4", "task": "Monitoring proposals and responses in Episode 2"}
+{"t": 1787462506.7037303, "agent": "T3", "task": "Waiting for episode 2 bell"}
