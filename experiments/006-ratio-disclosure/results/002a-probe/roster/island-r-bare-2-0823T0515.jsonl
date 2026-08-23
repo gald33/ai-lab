@@ -111,3 +111,6 @@
 {"t": 1787463043.461253, "agent": "T2", "task": "Waiting for final bell"}
 {"t": 1787463058.5495882, "agent": "T1", "task": "final moments of round"}
 {"t": 1787463058.5496595, "agent": "T4", "task": "waiting for round end"}
+{"t": 1787463073.6204493, "agent": "T1", "task": "last minute before bell"}
+{"t": 1787463088.5286844, "agent": "T3", "task": "Final wait for round completion bell"}
+{"t": 1787463088.5287495, "agent": "T4", "task": "final bell approaching"}

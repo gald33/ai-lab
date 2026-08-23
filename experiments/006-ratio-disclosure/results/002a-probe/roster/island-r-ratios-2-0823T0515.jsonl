@@ -113,3 +113,7 @@
 {"t": 1787463046.8751695, "agent": "T4", "task": "Waiting for final Episode 5 bell and round completion"}
 {"t": 1787463061.852208, "agent": "T1", "task": "Final moments"}
 {"t": 1787463061.8522716, "agent": "T3", "task": "final bell approaching"}
+{"t": 1787463076.8313842, "agent": "T2", "task": "Waiting for final bell at 05:32:09Z"}
+{"t": 1787463076.8314893, "agent": "T4", "task": "Waiting for final bell at 05:32:09Z"}
+{"t": 1787463091.7142124, "agent": "T2", "task": "Final bell and round completion"}
+{"t": 1787463091.7142806, "agent": "T3", "task": "round ending"}
