@@ -1,6 +1,6 @@
 # Run 002 — Does committing the plan gradually beat committing it at once?
 
-**Opened:** 2026-08-23 · **Status:** specified
+**Opened:** 2026-08-23 · **Status:** running
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards.
@@ -28,7 +28,7 @@ change in [D4](../DEVIATIONS.md), the missing control in D5.
 | timing | window 45s, acknowledgement asked by 30s |
 | command | `python run.py --arms t-plan t-tranche --rounds 12 --episodes 5 --episode-seconds 180 --ack-seconds 45 --ack-by-seconds 30 --agents 4 --no-control --out results/002-tranche` |
 | cost | **96 agent sessions**, 3 waves, **~50 min** |
-| go | *(not yet given)* |
+| go | Given by the owner on 2026-08-23 ("Go"), before launch, with delivery confirmed as prompt-delivered per D1. Expected spend: 96 agent sessions, ~50 min. |
 
 ## Assumptions
 
