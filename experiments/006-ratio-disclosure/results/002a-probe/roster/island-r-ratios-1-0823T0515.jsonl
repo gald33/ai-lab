@@ -15,3 +15,5 @@
 {"t": 1787462256.7567532, "agent": "T1", "task": "Waiting for production confirmation and checking for trade proposals"}
 {"t": 1787462256.7568712, "agent": "T2", "task": "waiting for T3 response, monitoring market"}
 {"t": 1787462271.4703014, "agent": "T3", "task": "checking current holdings"}
+{"t": 1787462286.2101023, "agent": "T1", "task": "Checking for responses to my proposal to T3"}
+{"t": 1787462286.2101924, "agent": "T2", "task": "waiting for T3 to approve proposal p1"}
