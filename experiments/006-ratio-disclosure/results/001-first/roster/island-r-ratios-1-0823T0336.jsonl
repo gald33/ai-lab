@@ -13,3 +13,9 @@
 {"t": 1787459251.7426453, "agent": "T1", "task": "Episode 7"}
 {"t": 1787459251.7427156, "agent": "T2", "task": "Final minute of episode 6, waiting for settlements"}
 {"t": 1787459251.742742, "agent": "T4", "task": "Final completion of episodes 6-10"}
+{"t": 1787459283.3602915, "agent": "T1", "task": "Episodes 7-10 cycling"}
+{"t": 1787459283.36038, "agent": "T2", "task": "Final seconds of episode 6"}
+{"t": 1787459283.3604164, "agent": "T4", "task": "Waiting for round completion - episodes 6-10"}
+{"t": 1787459314.3072424, "agent": "T1", "task": "Episodes 8-10 cycle"}
+{"t": 1787459314.3073149, "agent": "T2", "task": "Waiting for episode 7 opening"}
+{"t": 1787459314.3073409, "agent": "T4", "task": "Final wait for round 10-episode completion"}

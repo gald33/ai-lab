@@ -9,3 +9,7 @@
 {"t": 1787459221.6094139, "agent": "T2", "task": "Moving through episodes 6-10"}
 {"t": 1787459252.467422, "agent": "T1", "task": "Waiting for final episodes 7-10 to complete the trading round"}
 {"t": 1787459252.4674942, "agent": "T2", "task": "Progressing 6-10"}
+{"t": 1787459284.0586808, "agent": "T1", "task": "Monitoring episodes 7-10 auto-completion"}
+{"t": 1787459284.0588036, "agent": "T2", "task": "Episode progression"}
+{"t": 1787459315.1393669, "agent": "T1", "task": "Final episodes auto-completing"}
+{"t": 1787459315.139436, "agent": "T2", "task": "Episode 6 nearing bell"}
