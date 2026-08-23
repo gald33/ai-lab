@@ -234,3 +234,20 @@ Three things the pilot changed about what comes next:
    `agent_failure` 22–24 to `budget_exhausted` 1–6. Twenty rounds is enough.
 3. **A scripted proxy gates a model experiment only weakly.** The accepted
    configuration should be re-piloted with models before the 2×2 is bought.
+
+## Watching a round
+
+[`viewer/`](viewer/) draws a round as a game — huts, shelves, offers as ropes
+across the square, goods crossing at a settle. It is presentation only: it reads
+the board and never writes, live through the Switchboard viewer or afterwards
+from a saved `board-*.json`.
+
+It draws **only what the manager said**. Tastes and capacities are private to
+each trader and never appear on the board, so they never appear live either —
+and utility needs a taste, so a live round has no score on screen at all. The
+hidden half is regenerated from the round's seed afterwards and shown in replay:
+each trader's utility on their card, their per-episode series and accumulated
+total in the rail, and `eff_round` against the autarky floor. Those are the
+manager's numbers, not the page's. `viewer/reveal.py --check` rebuilds every
+trader's holdings from the receipts and puts the resulting utilities against the
+recorded trajectory.
