@@ -58,3 +58,7 @@
 {"t": 1787462656.4336066, "agent": "T1", "task": "episode 3 endgame, waiting for bell"}
 {"t": 1787462656.4336684, "agent": "T2", "task": "Monitoring end of episode 3"}
 {"t": 1787462656.4336927, "agent": "T3", "task": "Waiting for response to salt trade proposal to T4"}
+{"t": 1787462671.4617147, "agent": "T2", "task": "Waiting for episode 4 to open"}
+{"t": 1787462686.0583708, "agent": "T1", "task": "episode 3 final countdown"}
+{"t": 1787462686.0584564, "agent": "T3", "task": "Monitoring p16 proposal response from T4"}
+{"t": 1787462686.0584903, "agent": "T4", "task": "episode 3 closing soon"}
