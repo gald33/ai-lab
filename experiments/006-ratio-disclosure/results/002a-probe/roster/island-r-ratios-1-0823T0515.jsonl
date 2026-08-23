@@ -84,3 +84,4 @@
 {"t": 1787462792.7667696, "agent": "T1", "task": "Waiting for T3 to approve and episode 4 to close"}
 {"t": 1787462792.7668355, "agent": "T3", "task": "episode 4, waiting for T1 trade offer"}
 {"t": 1787462792.7668605, "agent": "T4", "task": "Episode 4, waiting for bell"}
+{"t": 1787462807.6459358, "agent": "T2", "task": "wait for production confirmation, then propose trades"}

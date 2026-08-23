@@ -75,3 +75,5 @@
 {"t": 1787462778.9349985, "agent": "T2", "task": "Monitoring Episode 4 trades"}
 {"t": 1787462793.0052314, "agent": "T3", "task": "episode 4 production confirmed, monitoring proposals"}
 {"t": 1787462793.0052965, "agent": "T4", "task": "Monitoring production results and preparing trades for Episode 4"}
+{"t": 1787462808.0831618, "agent": "T3", "task": "monitoring episode 4, will reject bad trades"}
+{"t": 1787462808.0832388, "agent": "T4", "task": "Monitoring trades and waiting for responses in Episode 4"}
