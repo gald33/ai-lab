@@ -5,3 +5,7 @@
 {"t": 1787462177.706314, "agent": "T4", "task": "waiting for episode 1 to open"}
 {"t": 1787462192.7759194, "agent": "T1", "task": "waiting for episode 1 to open"}
 {"t": 1787462192.775985, "agent": "T3", "task": "Waiting for episode 1 to open"}
+{"t": 1787462208.695266, "agent": "T4", "task": "episode 1 starting soon"}
+{"t": 1787462223.5874002, "agent": "T1", "task": "waiting for episode 1 bell"}
+{"t": 1787462223.5874603, "agent": "T2", "task": "Waiting for manager confirmation of PRODUCE and monitoring for trade proposals"}
+{"t": 1787462223.5875287, "agent": "T3", "task": "Waiting for episode 1 bell"}

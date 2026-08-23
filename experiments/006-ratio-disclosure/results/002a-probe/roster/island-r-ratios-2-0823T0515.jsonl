@@ -5,3 +5,8 @@
 {"t": 1787462196.9693193, "agent": "T2", "task": "Waiting for Episode 1 to open"}
 {"t": 1787462196.9693816, "agent": "T3", "task": "waiting for episode 1 to start"}
 {"t": 1787462196.9694054, "agent": "T4", "task": "Waiting for Episode 1 to open, monitoring for any messages from other traders"}
+{"t": 1787462211.9645784, "agent": "T1", "task": "Waiting for Episode 1 to open at 05:17:04Z"}
+{"t": 1787462211.9646466, "agent": "T4", "task": "Waiting for Episode 1 opening at 05:17:04Z"}
+{"t": 1787462227.1988704, "agent": "T1", "task": "Monitoring for Episode 1 opening"}
+{"t": 1787462227.1989343, "agent": "T2", "task": "Monitoring for episode open"}
+{"t": 1787462227.198959, "agent": "T3", "task": "waiting for episode 1 bell"}
