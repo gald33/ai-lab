@@ -89,3 +89,10 @@
 {"t": 1787462822.6409714, "agent": "T3", "task": "episode 4, waiting for bell"}
 {"t": 1787462822.6409974, "agent": "T4", "task": "Episode 4 - waiting through to bell"}
 {"t": 1787462837.76979, "agent": "T2", "task": "waiting for T3 response on cloth-for-iron"}
+{"t": 1787462852.2126873, "agent": "T1", "task": "Waiting for episode 4 bell"}
+{"t": 1787462852.212751, "agent": "T2", "task": "waiting for T3 response to revised proposal"}
+{"t": 1787462852.2127762, "agent": "T3", "task": "episode 4 closing"}
+{"t": 1787462852.2127976, "agent": "T4", "task": "Episode 4 - approaching bell"}
+{"t": 1787462868.6820478, "agent": "T2", "task": "waiting for T3, then preparing to finish episode 4"}
+{"t": 1787462868.6821256, "agent": "T3", "task": "episode 4 ending"}
+{"t": 1787462868.6821575, "agent": "T4", "task": "Waiting for episode 4 bell"}

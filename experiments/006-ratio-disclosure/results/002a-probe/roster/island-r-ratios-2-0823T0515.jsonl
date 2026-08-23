@@ -81,3 +81,8 @@
 {"t": 1787462823.0142326, "agent": "T2", "task": "Waiting for Episode 4 final trades before bell"}
 {"t": 1787462838.1457398, "agent": "T3", "task": "waiting for episode 4 bell"}
 {"t": 1787462838.1458125, "agent": "T4", "task": "Waiting for P20 settlement and monitoring final Episode 4 minutes"}
+{"t": 1787462853.537701, "agent": "T1", "task": "Waiting for Episode 4 bell and final episode"}
+{"t": 1787462853.5377667, "agent": "T2", "task": "Waiting for Episode 4 bell and T3 response"}
+{"t": 1787462869.00216, "agent": "T2", "task": "Waiting for Episode 5 opening"}
+{"t": 1787462869.0023506, "agent": "T3", "task": "final moments episode 4"}
+{"t": 1787462869.002408, "agent": "T4", "task": "Waiting for Episode 4 bell and Episode 5 opening (final episode)"}
