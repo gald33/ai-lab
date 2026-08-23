@@ -15,18 +15,21 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { reduce, classify } from "../web/reducer.js";
+import { readBoard } from "./board.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RESULTS = join(HERE, "..", "..", "results");
 
-const board = (name) => JSON.parse(readFileSync(join(RESULTS, name), "utf8"));
+const board = (name) => readBoard(join(RESULTS, name));
 
 function boards() {
   const out = [];
   for (const dir of readdirSync(RESULTS, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;
     for (const f of readdirSync(join(RESULTS, dir.name))) {
-      if (f.startsWith("board-") && f.endsWith(".json")) out.push(`${dir.name}/${f}`);
+      if (f.startsWith("board-") && (f.endsWith(".json") || f.endsWith(".json.gz"))) {
+        out.push(`${dir.name}/${f}`);
+      }
     }
   }
   return out;

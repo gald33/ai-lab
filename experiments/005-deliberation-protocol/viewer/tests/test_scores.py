@@ -169,3 +169,107 @@ def test_a_player_is_ranked_on_the_median_not_the_best(tmp_path):
     # Sorted by median, and the denominator travels with the number.
     medians = [t["median"] for t in data["traders"]]
     assert medians == sorted(medians, reverse=True)
+
+
+# --- keeping many rounds affordable -----------------------------------------
+
+
+def test_the_boards_are_read_from_a_cache_and_the_cache_follows_the_record(tmp_path):
+    """Reading the boards must not cost a full parse of every round ever played."""
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    cache = ledger.with_name(scores.CACHE)
+    assert cache.is_file(), "ingest should leave the derived boards behind it"
+
+    first = scores.read_boards(ledger)
+    assert first["totals"]["rounds"] == len(scores.load(ledger))
+
+    # A round arriving has to move the boards, not be masked by the cache.
+    scores.ingest(RECORDS[1], ledger=ledger)
+    second = scores.read_boards(ledger)
+    assert second["totals"]["rounds"] > first["totals"]["rounds"]
+
+    # And the cache is derived, never authoritative: damaged, it is rebuilt.
+    cache.write_text("{ not json")
+    assert scores.read_boards(ledger)["totals"] == second["totals"]
+
+
+def test_a_stale_cache_is_ignored(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    cache = ledger.with_name(scores.CACHE)
+    held = json.loads(cache.read_text())
+    held["boards"]["totals"]["rounds"] = 9999
+    held["stamp"] = [["ledger.jsonl", 1, 1]]
+    cache.write_text(json.dumps(held))
+    assert scores.read_boards(ledger)["totals"]["rounds"] != 9999
+
+
+def test_dedupe_reads_ids_not_rounds(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    assert scores.seen(ledger) == {r["round_id"] for r in scores.load(ledger)}
+    # Without the index, and with a stale one, the answer is the same.
+    ledger.with_name(scores.INDEX).write_text('{"stamp": [], "round_ids": []}')
+    assert scores.seen(ledger) == {r["round_id"] for r in scores.load(ledger)}
+
+
+def test_a_rolled_off_ledger_part_is_still_read(tmp_path):
+    """Old rounds can be gzipped and set aside; they stay in the boards."""
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    scores.ingest(RECORDS[1], ledger=ledger)
+    everything = scores.load(ledger)
+
+    rows = everything[:1]
+    keep = everything[1:]
+    import gzip
+    with gzip.open(tmp_path / "ledger-old.jsonl.gz", "wt") as fh:
+        fh.write("\n".join(json.dumps(r) for r in rows) + "\n")
+    ledger.write_text("\n".join(json.dumps(r) for r in keep) + "\n")
+
+    assert len(scores.parts(ledger)) == 2
+    assert len(scores.load(ledger)) == len(everything)
+    assert scores.seen(ledger) == {r["round_id"] for r in everything}
+
+
+def test_packing_a_board_keeps_it_readable_and_keeps_its_identity(tmp_path):
+    """A packed board is the same board: same digest, same messages, one file."""
+    results = tmp_path / "results" / "v3"
+    results.mkdir(parents=True)
+    original = next(RESULTS.rglob("board-*.json"))
+    target = results / original.name
+    target.write_bytes(original.read_bytes())
+    before = scores.digest(target)
+
+    assert scores.pack(tmp_path / "results") == 0
+    assert not target.is_file()
+    packed = target.with_suffix(".json.gz")
+    assert packed.is_file()
+    assert packed.stat().st_size < original.stat().st_size
+
+    # Asked for by its unpacked name, which is what every reader and every
+    # saved link uses.
+    assert scores.read_board(target)["messages"] == json.loads(original.read_text())["messages"]
+    # The digest is of the contents, so packing must not make `--verify` claim
+    # the board it came from has changed.
+    assert scores.digest(target) == before
+
+
+def test_a_row_from_an_older_ledger_is_not_reported_as_tampering(tmp_path, capsys):
+    """Changing how a row is built must not look like ten boards changing.
+
+    It did once: `digest` moved from hashing a board's bytes to hashing its
+    contents, and every stored digest became unreproducible at the same moment.
+    A version on the row is what tells "built differently" from "changed".
+    """
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    rows = scores.load(ledger)
+    for row in rows:
+        row["v"] = scores.SCHEMA - 1
+        row["source"]["board_sha256"] = "0" * 16
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+
+    assert scores.verify(ledger) == []
+    assert "older ledger version" in capsys.readouterr().err

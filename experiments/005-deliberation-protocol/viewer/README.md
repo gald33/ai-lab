@@ -150,6 +150,54 @@ often.
 - **Need this file to be believed.** Each row carries its seed, its trajectory
   and the digest of the board it came from, so anybody can re-derive it without
   trusting the ledger.
+- **Confuse a schema change with tampering.** Rows carry the version they were
+  built under. When `digest` moved from hashing a board's bytes to hashing its
+  contents, every stored digest became unreproducible at once, and an
+  unversioned ledger reported that as ten boards having changed. A row built by
+  an older version is re-ingestable, and `--verify` says so instead.
+
+### Keeping many rounds
+
+Three different things scale differently, and only one of them was a problem.
+
+**Watching a replay does not care how many there are.** A replay is two files —
+the board and its sidecar, about 17 KiB — and you fetch the one you are
+watching. That is the same work at ten rounds and at ten thousand.
+
+**Reading the boards did care.** Parsing the whole ledger and recomputing the
+leaderboards on every request is a page that gets slower every time somebody
+plays: measured on one machine at 72,000 rounds, 4.6 s to parse plus 0.9 s to
+compute, for a 16 KiB answer that does not grow. So the ledger stays the record
+and the page reads `scores/boards.json`, derived and rewritten when rounds are
+added — **0.2 ms**, whatever the ledger holds. The cache carries the stamp of
+the parts it was built from; a stale or damaged one is rebuilt rather than
+trusted, so deleting it only ever costs one recomputation. `--refresh` forces it.
+
+Ingest checks `scores/index.json` — round ids and nothing else — instead of
+re-reading every round to ask whether it has seen this one.
+
+**Storage grows with what you keep.** A board is mostly the manager saying
+similar things, so it packs about sevenfold:
+
+```bash
+python viewer/scores.py --pack     # 109 KiB → 19 KiB across ten boards
+```
+
+Each is read back and compared before the original is removed. Afterwards the
+board is a `.json.gz`, and nothing else changes: `serve.py` answers a request
+for the unpacked name with `Content-Encoding: gzip`, so saved links keep
+working and the page never learns; every reader here — `scores.py`,
+`tests/board.mjs`, the tests — accepts either name; and the digest a ledger row
+carries is of the board's *contents*, so packing does not make `--verify` claim
+the board has changed.
+
+The ledger itself is line-oriented and append-only, so old parts can be rolled
+off and gzipped — `ledger-2026-08.jsonl.gz` beside `ledger.jsonl` — and are read
+back with it.
+
+What is **not** solved: where thousands of boards live. Forty megabytes of
+replays does not belong in a git repository, and that decision belongs with the
+joining mechanics rather than ahead of them.
 
 ### Known, and open until joining exists
 
@@ -217,7 +265,10 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
 | `web/scores.html` | the scoreboard |
 | `web/tokens.css` | the palette, shared by both pages |
-| `scores/ledger.jsonl` | every recorded round, append-only |
+| `scores/ledger.jsonl` | every recorded round, append-only. `ledger-*.jsonl.gz` parts are read with it |
+| `scores/boards.json` | the leaderboards, derived; rebuilt whenever it falls behind the record |
+| `scores/index.json` | round ids, so ingest need not re-read every round |
+| `tests/board.mjs` | reading a saved board, packed or not |
 | `reveal.py` | the hidden half, after the fact, with `--check` |
 
 ## Notes on the drawing

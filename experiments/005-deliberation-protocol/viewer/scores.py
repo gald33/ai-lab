@@ -39,6 +39,7 @@ can be re-derived years later by somebody who does not trust this file.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import statistics
@@ -55,6 +56,26 @@ from barter.economy import autarky, draw_island, efficiency  # noqa: E402
 from island.score import score as score_round  # noqa: E402
 
 LEDGER = HERE / "scores" / "ledger.jsonl"
+
+#: Reading the ledger is O(rounds) and computing the boards is O(rounds); doing
+#: both per request is a page that gets slower every time somebody plays. The
+#: record stays append-only and cold, and what the page actually reads is a
+#: derived file the size of the boards themselves -- rewritten when rounds are
+#: added, and rebuilt on demand if it ever falls behind the record.
+#:
+#: Measured on this machine at 72,000 rounds: 4.6 s to parse plus 0.9 s to
+#: compute, against a 16 KiB answer that does not grow. The cache is the whole
+#: difference between those two numbers and one file read.
+CACHE = "boards.json"
+INDEX = "index.json"
+
+#: How a row is built. Bumped when that changes in a way `verify` would
+#: otherwise report as tampering -- when `digest` moved from hashing a board's
+#: bytes to hashing its contents, every stored digest became unreproducible, and
+#: an unversioned ledger reports that as ten boards having changed. A row that
+#: predates the current version is re-ingestable, not suspect, and the
+#: difference has to be visible.
+SCHEMA = 1
 
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
@@ -89,26 +110,49 @@ def relative(path: Path | None) -> str | None:
         return str(path)
 
 
+def read_board(path: Path) -> dict | None:
+    """A saved board, whether or not it has been packed.
+
+    `--pack` gzips boards in place, so every reader has to accept both names or
+    packing a directory quietly breaks the tools that read it.
+    """
+    for candidate in (path, path.with_suffix(path.suffix + ".gz")):
+        if candidate.is_file():
+            try:
+                raw = (gzip.decompress(candidate.read_bytes())
+                       if candidate.name.endswith(".gz") else candidate.read_bytes())
+                return json.loads(raw)
+            except (ValueError, OSError):
+                return None
+    return None
+
+
 def played_at(board: Path | None) -> str | None:
     """When the round actually ran, from the last thing said on its board.
 
     `recorded_at` is when somebody typed the ingest command, which may be months
     later; a feed sorted by that is a list of when files were touched.
     """
-    if not board or not board.is_file():
+    if not board:
         return None
-    try:
-        stamps = [m.get("at") for m in json.loads(board.read_text()).get("messages", [])]
-    except (ValueError, OSError):
+    saved = read_board(board)
+    if not saved:
         return None
-    stamps = [s for s in stamps if s]
+    stamps = [m.get("at") for m in saved.get("messages", []) if m.get("at")]
     return max(stamps) if stamps else None
 
 
 def digest(path: Path | None) -> str | None:
-    if not path or not path.is_file():
+    """Of the board's contents, not of the file that happens to hold them.
+
+    Packing a board rewrites the file and must not invalidate the row that came
+    from it, so this hashes the messages rather than the bytes on disk.
+    """
+    saved = read_board(path) if path else None
+    if saved is None:
         return None
-    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    return hashlib.sha256(
+        json.dumps(saved, sort_keys=True).encode()).hexdigest()[:16]
 
 
 def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
@@ -144,8 +188,11 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     ratios = [(totals[i] / k) / auto[i] for i in range(agents)]
 
     board = source.with_name(f"board-{rnd['workspace']}.json") if source else None
+    kept = board is not None and (board.is_file()
+                                  or board.with_suffix(".json.gz").is_file())
     who = players or {}
     return {
+        "v": SCHEMA,
         "round_id": round_id(rnd["workspace"], seed, trajectory),
         "played_at": played_at(board),
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -180,7 +227,7 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         "acknowledged": rnd.get("acknowledged", []),
         "spoke": rnd.get("spoke", []),
         "source": {"result": relative(source),
-                   "board": relative(board) if board and board.is_file() else None,
+                   "board": relative(board) if kept else None,
                    "board_sha256": digest(board)},
     }
 
@@ -211,17 +258,93 @@ def level_label(key: tuple) -> str:
     return f"island {seed} · {agents} traders · {episodes} episodes"
 
 
-def load(path: Path = LEDGER) -> list[dict]:
-    if not path.is_file():
+def parts(path: Path = LEDGER) -> list[Path]:
+    """Every file the ledger is made of, oldest name first.
+
+    A ledger that keeps every round played is a file that only grows, so older
+    parts can be rolled off and gzipped -- `ledger-2026-08.jsonl.gz` beside
+    `ledger.jsonl` -- and are read back the same way. Appends always go to the
+    live part.
+    """
+    if not path.parent.is_dir():
         return []
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    stem = path.name.split(".")[0]
+    found = [p for p in path.parent.iterdir()
+             if p.name.startswith(stem)
+             and (p.name.endswith(".jsonl") or p.name.endswith(".jsonl.gz"))]
+    return sorted(found, key=lambda p: p.name)
+
+
+def _lines(path: Path):
+    if path.name.endswith(".gz"):
+        with gzip.open(path, "rt") as fh:
+            yield from fh
+    else:
+        yield from path.read_text().splitlines()
+
+
+def load(path: Path = LEDGER) -> list[dict]:
+    return [json.loads(line) for part in parts(path)
+            for line in _lines(part) if line.strip()]
+
+
+def stamp(path: Path = LEDGER) -> list:
+    """What the cache was built from. Cheap enough to check on every request."""
+    return [[p.name, p.stat().st_size, p.stat().st_mtime_ns] for p in parts(path)]
+
+
+def read_boards(path: Path = LEDGER) -> dict:
+    """The boards, from the cache when it is current and from the record when not.
+
+    Self-healing on purpose: the cache is derived, never authoritative, and
+    deleting it must only ever cost one recomputation.
+    """
+    cache = path.with_name(CACHE)
+    current = stamp(path)
+    if cache.is_file():
+        try:
+            held = json.loads(cache.read_text())
+            if held.get("stamp") == current:
+                return held["boards"]
+        except (ValueError, KeyError):
+            pass                      # a damaged cache is rebuilt, not trusted
+    return write_boards(path)["boards"]
+
+
+def write_boards(path: Path = LEDGER) -> dict:
+    rows = load(path)
+    held = {"stamp": stamp(path),
+            "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "boards": boards(rows)}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.with_name(CACHE).write_text(json.dumps(held, default=list))
+    # Ids only: this is what ingest checks against, and it must not carry the
+    # weight of a round to answer "have I seen this one".
+    path.with_name(INDEX).write_text(json.dumps({
+        "stamp": held["stamp"],
+        "round_ids": [r["round_id"] for r in rows],
+    }))
+    return held
+
+
+def seen(path: Path = LEDGER) -> set[str]:
+    """Round ids already in the ledger, from the index when it is current."""
+    index = path.with_name(INDEX)
+    if index.is_file():
+        try:
+            held = json.loads(index.read_text())
+            if held.get("stamp") == stamp(path):
+                return set(held["round_ids"])
+        except (ValueError, KeyError):
+            pass
+    return {r["round_id"] for r in load(path)}
 
 
 def ingest(result: Path, *, ledger: Path = LEDGER,
            players: dict[str, str] | None = None) -> tuple[list[dict], list[dict]]:
     """Add every round in a run record that is not in the ledger already."""
     record = json.loads(result.read_text())
-    have = {e["round_id"] for e in load(ledger)}
+    have = seen(ledger)
     added, skipped = [], []
     for rnd in record.get("rounds", []):
         try:
@@ -237,11 +360,13 @@ def ingest(result: Path, *, ledger: Path = LEDGER,
         with ledger.open("a") as fh:
             for row in added:
                 fh.write(json.dumps(row) + "\n")
+        write_boards(ledger)
     return added, skipped
 
 
 def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
     return {
+        "v": SCHEMA,
         "round_id": round_id(rnd.get("workspace", "?"), rnd.get("seed", -1),
                              rnd.get("trajectory") or []),
         "played_at": None,
@@ -260,8 +385,14 @@ def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
 def verify(ledger: Path = LEDGER) -> list[str]:
     """Recompute every row from its own seed and trajectory."""
     problems = []
+    stale = 0
     for row in load(ledger):
         if row["status"] == "unscored":
+            continue
+        if row.get("v") != SCHEMA:
+            # Not a disagreement about the round -- a row built by an older
+            # version of this file. Re-ingesting it is the fix.
+            stale += 1
             continue
         island = draw_island(row["island"]["agents"], row["island"]["goods"],
                              seed=row["island"]["seed"])
@@ -272,6 +403,9 @@ def verify(ledger: Path = LEDGER) -> list[str]:
         board = row["source"].get("board")
         if board and (d := digest(HERE.parent / board)) and d != row["source"]["board_sha256"]:
             problems.append(f"{row['round_id']}: the board it came from has changed")
+    if stale:
+        print(f"{stale} row(s) written by an older ledger version were not "
+              f"checked; re-ingest to bring them up to v{SCHEMA}", file=sys.stderr)
     return problems
 
 
@@ -388,6 +522,41 @@ def table(data: dict) -> str:
     return "\n".join(out)
 
 
+def pack(results: Path | None = None) -> int:
+    """Gzip saved boards in place.
+
+    A kept replay is one file per round, and a round's board compresses about
+    sevenfold -- it is mostly the manager saying similar things. `serve.py`
+    serves a `.json.gz` with `Content-Encoding: gzip`, so the page fetches it
+    without knowing anything changed.
+
+    The original is removed only after the compressed copy has been read back
+    and compared byte for byte. A replay that cannot be re-read is a replay
+    that is gone.
+    """
+    results = results or HERE.parent / "results"
+    before = after = 0
+    packed = 0
+    for path in sorted(results.rglob("board-*.json")):
+        raw = path.read_bytes()
+        target = path.with_suffix(".json.gz")
+        target.write_bytes(gzip.compress(raw, 6))
+        if gzip.decompress(target.read_bytes()) != raw:
+            target.unlink(missing_ok=True)
+            print(f"{path}: did not read back the same; left alone", file=sys.stderr)
+            continue
+        before += len(raw)
+        after += target.stat().st_size
+        path.unlink()
+        packed += 1
+    if packed:
+        print(f"packed {packed} board(s): {before / 1024:.0f} KiB → "
+              f"{after / 1024:.0f} KiB ({before / max(after, 1):.1f}x)")
+    else:
+        print("nothing to pack")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ingest", type=Path, nargs="*", metavar="RESULT",
@@ -398,6 +567,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--table", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--refresh", action="store_true",
+                    help="rebuild the derived boards and index from the record")
+    ap.add_argument("--results", type=Path, default=None,
+                    help="which results tree to pack (default: this experiment's)")
+    ap.add_argument("--pack", action="store_true",
+                    help="gzip the saved boards in results/ (about 7x), keeping "
+                         "them readable by the viewer; each is read back and "
+                         "compared before the original is removed")
     args = ap.parse_args(argv)
 
     players = dict(p.split("=", 1) for p in args.player)
@@ -416,7 +593,15 @@ def main(argv: list[str] | None = None) -> int:
         if problems:
             return 1
 
-    data = boards(load(args.ledger))
+    if args.pack:
+        return pack(args.results)
+
+    if args.refresh:
+        held = write_boards(args.ledger)
+        print(f"rebuilt from {len(load(args.ledger))} row(s) in "
+              f"{len(parts(args.ledger))} ledger part(s)")
+
+    data = read_boards(args.ledger)
     if args.json:
         print(json.dumps(data, default=list, indent=1))
     elif args.table or not (args.ingest or args.verify):

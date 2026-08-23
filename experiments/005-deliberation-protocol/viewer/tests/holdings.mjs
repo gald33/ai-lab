@@ -4,15 +4,15 @@
 // the manager's own scored trajectory. If the two disagree, the page is drawing
 // a different economy from the one that ran.
 
-import { readFileSync } from "node:fs";
 import { reduce } from "../web/reducer.js";
+import { readBoard } from "./board.mjs";
 
 const path = process.argv[2];
 if (!path) {
   console.error("usage: node holdings.mjs <board.json>");
   process.exit(2);
 }
-const board = JSON.parse(readFileSync(path, "utf8"));
+const board = readBoard(path);
 const t = reduce(board.messages);
 console.log(JSON.stringify({
   traders: t.traders,
