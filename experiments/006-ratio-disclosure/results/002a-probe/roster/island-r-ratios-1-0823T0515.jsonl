@@ -2,3 +2,5 @@
 {"t": 1787462151.6449804, "agent": "T3", "task": "starting round, checking initial state"}
 {"t": 1787462165.8742876, "agent": "T1", "task": "Beginning round as T1, checking initial state"}
 {"t": 1787462165.8743618, "agent": "T4", "task": "Starting round, reading initial state"}
+{"t": 1787462180.5952191, "agent": "T1", "task": "Waiting for episode 1 to open, planning initial production"}
+{"t": 1787462180.5952778, "agent": "T2", "task": "waiting for episode 1 to open, monitoring for other traders"}
