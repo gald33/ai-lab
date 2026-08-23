@@ -54,3 +54,5 @@
 {"t": 1787462671.1133142, "agent": "T4", "task": "Waiting for T3 response to p13"}
 {"t": 1787462685.7183468, "agent": "T1", "task": "Waiting for proposals to settle before Episode 3 bell"}
 {"t": 1787462685.7184114, "agent": "T2", "task": "waiting for episode 3 bell at 05:26:07Z, holding current allocation"}
+{"t": 1787462700.820802, "agent": "T1", "task": "Waiting for Episode 3 bell"}
+{"t": 1787462700.8208709, "agent": "T4", "task": "Monitoring Episode 3 approaching final seconds"}
