@@ -12,3 +12,7 @@ preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
   e-plan    seed 8  eff_round 0.858  floor 0.569  per-episode [0.00 1.00 1.00 0.00 0.00]  settled 80  refused 18  talk 0  ack 4/4  17m
   e-plan    seed 3  eff_round 0.396  floor 0.604  per-episode [1.00 0.00 0.00 0.00 0.00]  settled 87  refused 17  talk 0  ack 4/4  17m
   e-plan    seed 1  eff_round 0.854  floor 0.642  per-episode [0.00 0.00 1.00 1.00 1.00]  settled 70  refused 15  talk 0  ack 4/4  17m
+  e-plan    seed 11  eff_round 0.000  floor 0.672  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 80  refused 15  talk 1  ack 4/4  16m
+  e-plan    seed 12  eff_round 0.905  floor 0.537  per-episode [0.00 0.94 0.94 0.94 0.94]  settled 75  refused 3  talk 0  ack 4/4  16m
+
+wrote /home/user/ai-lab/experiments/007-execution-ceiling/results/003-stability-a/v3.json

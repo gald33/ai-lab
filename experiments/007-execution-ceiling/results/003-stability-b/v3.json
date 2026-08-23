@@ -1,0 +1,4064 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "e-plan"
+ ],
+ "no_control": true,
+ "agents": 4,
+ "goods": 4,
+ "episodes_per_round": 5,
+ "schedule": {
+  "ack_seconds": 45,
+  "episode_seconds": 180
+ },
+ "rounds": [
+  {
+   "arm": "e-plan",
+   "seed": 1,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.3437618808076223,
+     0.4337262312302985,
+     0.9901010310079537,
+     0.5175833570114936
+    ],
+    [
+     0.3437618808076223,
+     0.4337262312302986,
+     0.9901010310079537,
+     0.5175833570114936
+    ],
+    [
+     0.3437618808076223,
+     0.4337262312302986,
+     0.9901010310079537,
+     0.5175833570114936
+    ],
+    [
+     0.3437618808076223,
+     0.4337262312302986,
+     0.9901010310079537,
+     0.5175833570114936
+    ],
+    [
+     0.3437618808076223,
+     0.4337262312302985,
+     0.9901010310079537,
+     0.5175833570114936
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.343762,
+      "T2": 0.433726,
+      "T3": 0.990101,
+      "T4": 0.517583
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.041,
+       "cloth": 0.504384,
+       "iron": 0.3157,
+       "salt": 0.1279
+      },
+      "T2": {
+       "bread": 0.039742,
+       "cloth": 0.011132,
+       "iron": 0.5606,
+       "salt": 0.349364
+      },
+      "T3": {
+       "bread": 0.128409,
+       "cloth": 1.3565,
+       "iron": 0.881963,
+       "salt": 0.0235
+      },
+      "T4": {
+       "bread": 0.3387,
+       "cloth": 0.717961,
+       "iron": 0.0315,
+       "salt": 0.5313
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p1",
+      "p5"
+     ],
+     "settled": 16
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.343762,
+      "T2": 0.433726,
+      "T3": 0.990101,
+      "T4": 0.517583
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.041,
+       "cloth": 0.504384,
+       "iron": 0.3157,
+       "salt": 0.1279
+      },
+      "T2": {
+       "bread": 0.039742,
+       "cloth": 0.011132,
+       "iron": 0.5606,
+       "salt": 0.349364
+      },
+      "T3": {
+       "bread": 0.128409,
+       "cloth": 1.3565,
+       "iron": 0.881963,
+       "salt": 0.0235
+      },
+      "T4": {
+       "bread": 0.3387,
+       "cloth": 0.717961,
+       "iron": 0.0315,
+       "salt": 0.5313
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p8"
+     ],
+     "settled": 15
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.343762,
+      "T2": 0.433726,
+      "T3": 0.990101,
+      "T4": 0.517583
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.041,
+       "cloth": 0.504384,
+       "iron": 0.3157,
+       "salt": 0.1279
+      },
+      "T2": {
+       "bread": 0.039742,
+       "cloth": 0.011132,
+       "iron": 0.5606,
+       "salt": 0.349364
+      },
+      "T3": {
+       "bread": 0.128409,
+       "cloth": 1.3565,
+       "iron": 0.881963,
+       "salt": 0.0235
+      },
+      "T4": {
+       "bread": 0.3387,
+       "cloth": 0.717961,
+       "iron": 0.0315,
+       "salt": 0.5313
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p14"
+     ],
+     "settled": 15
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.343762,
+      "T2": 0.433726,
+      "T3": 0.990101,
+      "T4": 0.517583
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.041,
+       "cloth": 0.504384,
+       "iron": 0.3157,
+       "salt": 0.1279
+      },
+      "T2": {
+       "bread": 0.039742,
+       "cloth": 0.011132,
+       "iron": 0.5606,
+       "salt": 0.349364
+      },
+      "T3": {
+       "bread": 0.128409,
+       "cloth": 1.3565,
+       "iron": 0.881963,
+       "salt": 0.0235
+      },
+      "T4": {
+       "bread": 0.3387,
+       "cloth": 0.717961,
+       "iron": 0.0315,
+       "salt": 0.5313
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p23"
+     ],
+     "settled": 15
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.343762,
+      "T2": 0.433726,
+      "T3": 0.990101,
+      "T4": 0.517583
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.041,
+       "cloth": 0.504384,
+       "iron": 0.3157,
+       "salt": 0.1279
+      },
+      "T2": {
+       "bread": 0.039742,
+       "cloth": 0.011132,
+       "iron": 0.5606,
+       "salt": 0.349364
+      },
+      "T3": {
+       "bread": 0.128409,
+       "cloth": 1.3565,
+       "iron": 0.881963,
+       "salt": 0.0235
+      },
+      "T4": {
+       "bread": 0.3387,
+       "cloth": 0.717961,
+       "iron": 0.0315,
+       "salt": 0.5313
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p27"
+     ],
+     "settled": 15
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.1849 cloth=0.144 iron=0.0 salt=0.6711"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "malformed",
+     "reason": "want is empty",
+     "line": "PROPOSE to=T4 give=bread:0.1049,salt:0.5313 want="
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "malformed",
+     "reason": "want is empty",
+     "line": "PROPOSE to=T1 give=bread:0.041,salt:0.1279 want="
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=cloth:0.1258,salt:0.0235 want=iron:0.5606"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE cloth=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 cloth uncommitted, not 0.5209",
+     "line": "PROPOSE to=T3 give=cloth:0.5209 want=iron:0.3157"
+    },
+    {
+     "episode": 1,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "no such proposal 'p53'",
+     "line": "APPROVE p53"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 76,
+   "refused": 7,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-1-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 181,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 987.5,
+   "only": null,
+   "score": {
+    "eff_round": 0.998375,
+    "eff_round_upper": 1.0,
+    "eff_episode": [
+     0.998375,
+     0.998375,
+     0.998375,
+     0.998375,
+     0.998375
+    ],
+    "autarky_floor": 0.6425,
+    "gain_median": 1.511799,
+    "gain_worst": 1.402634,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 20,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 2,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.7976750104343947,
+     0.3757404645842394,
+     0.3406078492352259,
+     0.3747832534482754
+    ],
+    [
+     0.8565609731176459,
+     0.37574046458423943,
+     0.3406078492352259,
+     0.3589898212673588
+    ],
+    [
+     0.8565609731176459,
+     0.37574046458423943,
+     0.3406078492352259,
+     0.3589898212673588
+    ],
+    [
+     0.8565609731176459,
+     0.37574046458423943,
+     0.3406078492352259,
+     0.3589898212673588
+    ],
+    [
+     0.9281143263281072,
+     0.37574046458423943,
+     0.0,
+     0.2014775922207861
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.797675,
+      "T2": 0.37574,
+      "T3": 0.340608,
+      "T4": 0.374783
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.819365,
+       "cloth": 0.8999,
+       "iron": 0.0218,
+       "salt": 0.0594
+      },
+      "T2": {
+       "bread": 0.5149,
+       "cloth": 0.447793,
+       "iron": 0.2876,
+       "salt": 0.1022
+      },
+      "T3": {
+       "bread": 0.763646,
+       "cloth": 0.074442,
+       "iron": 0.09,
+       "salt": 0.0857
+      },
+      "T4": {
+       "bread": 0.3124,
+       "cloth": 0.630391,
+       "iron": 0.134805,
+       "salt": 0.258172
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p5"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.856561,
+      "T2": 0.37574,
+      "T3": 0.340608,
+      "T4": 0.35899
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.975565,
+       "cloth": 0.8999,
+       "iron": 0.0109,
+       "salt": 0.0297
+      },
+      "T2": {
+       "bread": 0.5149,
+       "cloth": 0.447793,
+       "iron": 0.2876,
+       "salt": 0.1022
+      },
+      "T3": {
+       "bread": 0.763646,
+       "cloth": 0.074442,
+       "iron": 0.09,
+       "salt": 0.0857
+      },
+      "T4": {
+       "bread": 0.1562,
+       "cloth": 0.630391,
+       "iron": 0.145705,
+       "salt": 0.287872
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p10",
+      "p12"
+     ],
+     "settled": 16
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.856561,
+      "T2": 0.37574,
+      "T3": 0.340608,
+      "T4": 0.35899
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.975565,
+       "cloth": 0.8999,
+       "iron": 0.0109,
+       "salt": 0.0297
+      },
+      "T2": {
+       "bread": 0.5149,
+       "cloth": 0.447793,
+       "iron": 0.2876,
+       "salt": 0.1022
+      },
+      "T3": {
+       "bread": 0.763646,
+       "cloth": 0.074442,
+       "iron": 0.09,
+       "salt": 0.0857
+      },
+      "T4": {
+       "bread": 0.1562,
+       "cloth": 0.630391,
+       "iron": 0.145705,
+       "salt": 0.287872
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p15",
+      "p19"
+     ],
+     "settled": 16
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.856561,
+      "T2": 0.37574,
+      "T3": 0.340608,
+      "T4": 0.35899
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.975565,
+       "cloth": 0.8999,
+       "iron": 0.0109,
+       "salt": 0.0297
+      },
+      "T2": {
+       "bread": 0.5149,
+       "cloth": 0.447793,
+       "iron": 0.2876,
+       "salt": 0.1022
+      },
+      "T3": {
+       "bread": 0.763646,
+       "cloth": 0.074442,
+       "iron": 0.09,
+       "salt": 0.0857
+      },
+      "T4": {
+       "bread": 0.1562,
+       "cloth": 0.630391,
+       "iron": 0.145705,
+       "salt": 0.287872
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p24",
+      "p26"
+     ],
+     "settled": 16
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.928114,
+      "T2": 0.37574,
+      "T3": 0.0,
+      "T4": 0.201478
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.279465,
+       "cloth": 0.7999,
+       "iron": 0.0109,
+       "salt": 0.0297
+      },
+      "T2": {
+       "bread": 0.5149,
+       "cloth": 0.447793,
+       "iron": 0.2876,
+       "salt": 0.1022
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.1562,
+       "cloth": 0.160691,
+       "iron": 0.235705,
+       "salt": 0.373572
+      }
+     },
+     "starved": {
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p31",
+      "p32",
+      "p33",
+      "p35"
+     ],
+     "settled": 13
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.4478 cloth uncommitted, not the 0.7999 it asks for",
+     "line": "APPROVE p5"
+    },
+    {
+     "episode": 3,
+     "trader": "T1",
+     "kind": "malformed",
+     "reason": "PROPOSE wants key=value, got 'PROPOSE'",
+     "line": "PROPOSE to=T2 give=bread:0.5149 want=cloth:0.7999\nPROPOSE to=T4 give=bread:0.1562 want=iron:0.0109,salt:0.0297\nPROPOSE to=T3 give=bread:0.3039 want=cloth:0.1"
+    },
+    {
+     "episode": 3,
+     "trader": "T3",
+     "kind": "produce",
+     "reason": "you have already produced this episode",
+     "line": "PRODUCE bread=0.3825 cloth=0.6175"
+    },
+    {
+     "episode": 4,
+     "trader": "T1",
+     "kind": "malformed",
+     "reason": "PRODUCE wants good=share pairs, got 'PROPOSE'",
+     "line": "PRODUCE bread=1.0\nPROPOSE to=T2 give=bread:0.5149 want=cloth:0.7999\nPROPOSE to=T4 give=bread:0.1562 want=iron:0.0109,salt:0.0297\nPROPOSE to=T3 give=bread:0.3039 want=cloth:0.1"
+    },
+    {
+     "episode": 4,
+     "trader": "T3",
+     "kind": "produce",
+     "reason": "you have already produced this episode",
+     "line": "PRODUCE bread=0.3825 cloth=0.6175"
+    },
+    {
+     "episode": 5,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.0000 cloth uncommitted, not the 0.4697 it asks for",
+     "line": "APPROVE p32"
+    },
+    {
+     "episode": 5,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.0000 cloth uncommitted, not the 0.1000 it asks for",
+     "line": "APPROVE p35"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 78,
+   "refused": 8,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T4"
+   ],
+   "workspace": "island-e-plan-2-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 186,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 996.2,
+   "only": null,
+   "score": {
+    "eff_round": 0.939135,
+    "eff_round_upper": 0.943501,
+    "eff_episode": [
+     0.976297,
+     0.990667,
+     0.990667,
+     0.990667,
+     0.0
+    ],
+    "autarky_floor": 0.67433,
+    "gain_median": 1.476782,
+    "gain_worst": 0.725499,
+    "below_autarky": 2,
+    "zero_agent_episodes": 1,
+    "agent_episodes": 20,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 3,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.0,
+     0.9539141291100776,
+     0.0,
+     0.0
+    ],
+    [
+     0.47596850131272983,
+     1.1920169522583206,
+     0.27228592726882966,
+     0.3331440634666394
+    ],
+    [
+     0.4759685013127299,
+     1.1920169522583206,
+     0.27228592726882966,
+     0.3331440634666394
+    ],
+    [
+     0.4759685013127299,
+     1.1920169522583206,
+     0.27228592726882966,
+     0.3331440634666394
+    ],
+    [
+     0.47596850131272983,
+     1.1920169522583206,
+     0.27228592726882966,
+     0.3331440634666394
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.953914,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2929,
+       "cloth": 0.0,
+       "iron": 1.269329,
+       "salt": 0.438541
+      },
+      "T2": {
+       "bread": 0.127687,
+       "cloth": 0.0329,
+       "iron": 2.3217,
+       "salt": 0.005029
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.741033,
+       "iron": 0.0,
+       "salt": 0.176
+      },
+      "T4": {
+       "bread": 0.322924,
+       "cloth": 0.0,
+       "iron": 0.7882,
+       "salt": 0.1248
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "iron"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p3",
+      "p6",
+      "p7",
+      "p8",
+      "p9"
+     ],
+     "settled": 19
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.475969,
+      "T2": 1.192017,
+      "T3": 0.272286,
+      "T4": 0.333144
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2929,
+       "cloth": 0.4317,
+       "iron": 0.881129,
+       "salt": 0.438541
+      },
+      "T2": {
+       "bread": 0.072487,
+       "cloth": 0.0329,
+       "iron": 2.3217,
+       "salt": 0.067429
+      },
+      "T3": {
+       "bread": 0.2985,
+       "cloth": 0.305733,
+       "iron": 0.3882,
+       "salt": 0.176
+      },
+      "T4": {
+       "bread": 0.079624,
+       "cloth": 0.0036,
+       "iron": 0.7882,
+       "salt": 0.0624
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.475969,
+      "T2": 1.192017,
+      "T3": 0.272286,
+      "T4": 0.333144
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2929,
+       "cloth": 0.4317,
+       "iron": 0.881129,
+       "salt": 0.438541
+      },
+      "T2": {
+       "bread": 0.072487,
+       "cloth": 0.0329,
+       "iron": 2.3217,
+       "salt": 0.067429
+      },
+      "T3": {
+       "bread": 0.2985,
+       "cloth": 0.305733,
+       "iron": 0.3882,
+       "salt": 0.176
+      },
+      "T4": {
+       "bread": 0.079624,
+       "cloth": 0.0036,
+       "iron": 0.7882,
+       "salt": 0.0624
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.475969,
+      "T2": 1.192017,
+      "T3": 0.272286,
+      "T4": 0.333144
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2929,
+       "cloth": 0.4317,
+       "iron": 0.881129,
+       "salt": 0.438541
+      },
+      "T2": {
+       "bread": 0.072487,
+       "cloth": 0.0329,
+       "iron": 2.3217,
+       "salt": 0.067429
+      },
+      "T3": {
+       "bread": 0.2985,
+       "cloth": 0.305733,
+       "iron": 0.3882,
+       "salt": 0.176
+      },
+      "T4": {
+       "bread": 0.079624,
+       "cloth": 0.0036,
+       "iron": 0.7882,
+       "salt": 0.0624
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.475969,
+      "T2": 1.192017,
+      "T3": 0.272286,
+      "T4": 0.333144
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2929,
+       "cloth": 0.4317,
+       "iron": 0.881129,
+       "salt": 0.438541
+      },
+      "T2": {
+       "bread": 0.072487,
+       "cloth": 0.0329,
+       "iron": 2.3217,
+       "salt": 0.067429
+      },
+      "T3": {
+       "bread": 0.2985,
+       "cloth": 0.305733,
+       "iron": 0.3882,
+       "salt": 0.176
+      },
+      "T4": {
+       "bread": 0.079624,
+       "cloth": 0.0036,
+       "iron": 0.7882,
+       "salt": 0.0624
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.0 cloth=0.0 iron=0.958 salt=0.042"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T2 give=iron:2.3217 want=salt:0.3909"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=iron:0.7882 want=bread:0.2929"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=iron:0.3882 want=cloth:0.4317"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.0674 salt uncommitted, not the 0.1760 it asks for",
+     "line": "APPROVE p7"
+    },
+    {
+     "episode": 1,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.3057 cloth uncommitted, not the 0.4317 it asks for",
+     "line": "APPROVE p3"
+    },
+    {
+     "episode": 1,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.0244 bread uncommitted, not the 0.2985 it asks for",
+     "line": "APPROVE p8"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 83,
+   "refused": 7,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-3-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 195,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 990.8,
+   "only": null,
+   "score": {
+    "eff_round": 0.840141,
+    "eff_round_upper": 0.841212,
+    "eff_episode": [
+     0.0,
+     0.999194,
+     0.999194,
+     0.999194,
+     0.999194
+    ],
+    "autarky_floor": 0.604341,
+    "gain_median": 1.263482,
+    "gain_worst": 1.08478,
+    "below_autarky": 0,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 20,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 4,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.545411,
+       "cloth": 0.0,
+       "iron": 2.043643,
+       "salt": 1.7064
+      },
+      "T2": {
+       "bread": 0.610751,
+       "cloth": 0.0,
+       "iron": 0.5392,
+       "salt": 0.821513
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.404896,
+       "cloth": 0.0,
+       "iron": 0.2109,
+       "salt": 0.7593
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T2": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p3",
+      "p4",
+      "p5",
+      "p7"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.545411,
+       "cloth": 0.0,
+       "iron": 2.043643,
+       "salt": 1.7064
+      },
+      "T2": {
+       "bread": 0.610751,
+       "cloth": 0.0,
+       "iron": 0.5392,
+       "salt": 0.821513
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.404896,
+       "cloth": 0.0,
+       "iron": 0.2109,
+       "salt": 0.7593
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T2": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p8",
+      "p9",
+      "p11",
+      "p14"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.545411,
+       "cloth": 0.0,
+       "iron": 2.043643,
+       "salt": 1.7064
+      },
+      "T2": {
+       "bread": 0.610751,
+       "cloth": 0.0,
+       "iron": 0.5392,
+       "salt": 0.821513
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.404896,
+       "cloth": 0.0,
+       "iron": 0.2109,
+       "salt": 0.7593
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T2": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p16",
+      "p18",
+      "p19",
+      "p21"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.545411,
+       "cloth": 0.0,
+       "iron": 2.043643,
+       "salt": 1.7064
+      },
+      "T2": {
+       "bread": 0.610751,
+       "cloth": 0.0,
+       "iron": 0.5392,
+       "salt": 0.821513
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.404896,
+       "cloth": 0.0,
+       "iron": 0.2109,
+       "salt": 0.7593
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T2": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p22",
+      "p23",
+      "p24",
+      "p28"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.545411,
+       "cloth": 0.0,
+       "iron": 2.043643,
+       "salt": 1.7064
+      },
+      "T2": {
+       "bread": 0.610751,
+       "cloth": 0.0,
+       "iron": 0.5392,
+       "salt": 0.821513
+      },
+      "T3": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.404896,
+       "cloth": 0.0,
+       "iron": 0.2109,
+       "salt": 0.7593
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth"
+      ],
+      "T2": [
+       "cloth"
+      ],
+      "T3": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "cloth"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T4"
+     ],
+     "lapsed": [
+      "p30",
+      "p32",
+      "p34",
+      "p35"
+     ],
+     "settled": 13
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.1993 iron=0.8007"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.4495 salt=0.5505"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T1 give=salt:1.7064 want=iron:0.5392"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T2 give=iron:0.5392 want=salt:1.7064"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=iron:0.3456 want=cloth:0.9467"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=iron:0.2109 want=bread:0.1273"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=salt:0.7593 want=bread:0.0742"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=salt:0.1387 want=cloth:0.4541"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.6828 salt uncommitted, not the 1.7064 it asks for",
+     "line": "APPROVE p4"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T4"
+   ],
+   "settled": 65,
+   "refused": 9,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T4"
+   ],
+   "workspace": "island-e-plan-4-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 162,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 981.9,
+   "only": null,
+   "score": {
+    "eff_round": 0.0,
+    "eff_round_upper": 0.0,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.653186,
+    "gain_median": 0.0,
+    "gain_worst": 0.0,
+    "below_autarky": 4,
+    "zero_agent_episodes": 20,
+    "agent_episodes": 20,
+    "first_above_floor": null
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 5,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.0,
+     0.5116763335119295,
+     0.5500487588538168,
+     0.5980110265928679
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.009020801574517321,
+     0.5116763335119295,
+     0.5500487588538168,
+     0.77663630434531
+    ],
+    [
+     0.0,
+     0.5116763335119295,
+     0.5500487588538168,
+     0.5980110265928679
+    ],
+    [
+     0.0,
+     0.5116763335119295,
+     0.02452072126004758,
+     0.5980110265928679
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.511676,
+      "T3": 0.550049,
+      "T4": 0.598011
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2087,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.499235
+      },
+      "T2": {
+       "bread": 0.4193,
+       "cloth": 0.1909,
+       "iron": 1.2334,
+       "salt": 0.01427
+      },
+      "T3": {
+       "bread": 0.004538,
+       "cloth": 0.104,
+       "iron": 0.4084,
+       "salt": 0.6915
+      },
+      "T4": {
+       "bread": 0.4151,
+       "cloth": 0.434794,
+       "iron": 1.242401,
+       "salt": 0.7242
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth",
+       "iron"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p5",
+      "p6"
+     ],
+     "settled": 14
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 1.176235
+      },
+      "T2": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.75297
+      },
+      "T3": {
+       "bread": 1.047638,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T4": {
+       "bread": 0.0,
+       "cloth": 0.729694,
+       "iron": 2.884201,
+       "salt": 0.0
+      }
+     },
+     "starved": {
+      "T1": [
+       "bread",
+       "cloth",
+       "iron"
+      ],
+      "T2": [
+       "bread",
+       "cloth",
+       "iron"
+      ],
+      "T3": [
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T4": [
+       "bread",
+       "salt"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p7",
+      "p8",
+      "p9",
+      "p10",
+      "p11",
+      "p12",
+      "p13",
+      "p14",
+      "p15",
+      "p16"
+     ],
+     "settled": 14
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.009021,
+      "T2": 0.511676,
+      "T3": 0.550049,
+      "T4": 0.776636
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2087,
+       "cloth": 0.3617,
+       "iron": 1.2395,
+       "salt": 3.5e-05
+      },
+      "T2": {
+       "bread": 0.4193,
+       "cloth": 0.1909,
+       "iron": 1.2334,
+       "salt": 0.01427
+      },
+      "T3": {
+       "bread": 0.004538,
+       "cloth": 0.104,
+       "iron": 0.4084,
+       "salt": 0.6915
+      },
+      "T4": {
+       "bread": 0.4151,
+       "cloth": 0.073094,
+       "iron": 0.002901,
+       "salt": 1.2234
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 14
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.511676,
+      "T3": 0.550049,
+      "T4": 0.598011
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.2087,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.499235
+      },
+      "T2": {
+       "bread": 0.4193,
+       "cloth": 0.1909,
+       "iron": 1.2334,
+       "salt": 0.01427
+      },
+      "T3": {
+       "bread": 0.004538,
+       "cloth": 0.104,
+       "iron": 0.4084,
+       "salt": 0.6915
+      },
+      "T4": {
+       "bread": 0.4151,
+       "cloth": 0.434794,
+       "iron": 1.242401,
+       "salt": 0.7242
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth",
+       "iron"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p26"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.511676,
+      "T3": 0.024521,
+      "T4": 0.598011
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T2": {
+       "bread": 0.4193,
+       "cloth": 0.1909,
+       "iron": 1.2334,
+       "salt": 0.01427
+      },
+      "T3": {
+       "bread": 0.213238,
+       "cloth": 0.104,
+       "iron": 0.4084,
+       "salt": 0.0145
+      },
+      "T4": {
+       "bread": 0.4151,
+       "cloth": 0.434794,
+       "iron": 1.242401,
+       "salt": 0.7242
+      }
+     },
+     "starved": {
+      "T1": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ]
+     },
+     "produced": [
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p29"
+     ],
+     "settled": 10
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE salt=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE salt=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=salt:0.0145 want=bread:0.4193"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=salt:0.7242 want=cloth:0.1909,iron:1.2334"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 salt uncommitted, not 0.6770",
+     "line": "PROPOSE to=T3 give=salt:0.677 want=bread:0.2087"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 salt uncommitted, not 0.5000",
+     "line": "PROPOSE to=T4 give=salt:0.5 want=cloth:0.3617,iron:1.2395"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "approve",
+     "reason": "p6 is already lapsed",
+     "line": "APPROVE p6"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.4992 salt uncommitted, not 0.5000",
+     "line": "PROPOSE to=T4 give=salt:0.5 want=cloth:0.3617,iron:1.2395"
+    },
+    {
+     "episode": 2,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.0731 cloth uncommitted, not the 0.1909 it asks for",
+     "line": "APPROVE p9"
+    },
+    {
+     "episode": 2,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.0731 cloth uncommitted, not the 0.1040 it asks for",
+     "line": "APPROVE p10"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.0143 salt uncommitted, not the 0.0145 it asks for",
+     "line": "APPROVE p8"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "approve",
+     "reason": "you have 0.4992 salt uncommitted, not the 0.6770 it asks for",
+     "line": "APPROVE p11"
+    },
+    {
+     "episode": 2,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.0045 bread uncommitted, not the 0.4151 it asks for",
+     "line": "APPROVE p12"
+    },
+    {
+     "episode": 2,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.0045 bread uncommitted, not the 0.2087 it asks for",
+     "line": "APPROVE p15"
+    },
+    {
+     "episode": 2,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.0731 cloth uncommitted, not the 0.3617 it asks for",
+     "line": "APPROVE p16"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.0143 salt uncommitted, not the 0.7242 it asks for",
+     "line": "APPROVE p13"
+    },
+    {
+     "episode": 4,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "you have already produced this episode",
+     "line": "PRODUCE salt=1.0"
+    },
+    {
+     "episode": 5,
+     "trader": "T1",
+     "kind": "approve",
+     "reason": "you have 0.0000 salt uncommitted, not the 0.6770 it asks for",
+     "line": "APPROVE p29"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 65,
+   "refused": 18,
+   "talk": 1,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-5-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 182,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 980.7,
+   "only": null,
+   "score": {
+    "eff_round": 0.559146,
+    "eff_round_upper": 0.560912,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.830185,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.590473,
+    "gain_median": 1.043906,
+    "gain_worst": 0.007374,
+    "below_autarky": 2,
+    "zero_agent_episodes": 7,
+    "agent_episodes": 20,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 6,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.5259375542300718,
+     0.19096443435097765,
+     0.5836921206397837,
+     0.4117416560103934
+    ],
+    [
+     0.49213385399772375,
+     0.19096443435097765,
+     0.5836921206397837,
+     0.44643581182169073
+    ],
+    [
+     0.49213385399772375,
+     0.19096443435097765,
+     0.5836921206397837,
+     0.44643581182169073
+    ],
+    [
+     0.49213385399772375,
+     0.19096443435097765,
+     0.5836921206397837,
+     0.44643581182169073
+    ],
+    [
+     0.49213385399772375,
+     0.19096443435097765,
+     0.5836921206397837,
+     0.44643581182169073
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.525938,
+      "T2": 0.190964,
+      "T3": 0.583692,
+      "T4": 0.411742
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.11072,
+       "cloth": 0.527287,
+       "iron": 0.14,
+       "salt": 0.192562
+      },
+      "T2": {
+       "bread": 0.2283,
+       "cloth": 0.2218,
+       "iron": 0.0425,
+       "salt": 0.212756
+      },
+      "T3": {
+       "bread": 0.3964,
+       "cloth": 0.4602,
+       "iron": 0.826175,
+       "salt": 0.2255
+      },
+      "T4": {
+       "bread": 0.2142,
+       "cloth": 0.428638,
+       "iron": 0.489,
+       "salt": 0.2552
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p2",
+      "p9"
+     ],
+     "settled": 20
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.492134,
+      "T2": 0.190964,
+      "T3": 0.583692,
+      "T4": 0.446436
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.21782,
+       "cloth": 0.411287,
+       "iron": 0.14,
+       "salt": 0.192562
+      },
+      "T2": {
+       "bread": 0.2283,
+       "cloth": 0.2218,
+       "iron": 0.0425,
+       "salt": 0.212756
+      },
+      "T3": {
+       "bread": 0.3964,
+       "cloth": 0.4602,
+       "iron": 0.826175,
+       "salt": 0.2255
+      },
+      "T4": {
+       "bread": 0.1071,
+       "cloth": 0.544638,
+       "iron": 0.489,
+       "salt": 0.2552
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p11"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.492134,
+      "T2": 0.190964,
+      "T3": 0.583692,
+      "T4": 0.446436
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.21782,
+       "cloth": 0.411287,
+       "iron": 0.14,
+       "salt": 0.192562
+      },
+      "T2": {
+       "bread": 0.2283,
+       "cloth": 0.2218,
+       "iron": 0.0425,
+       "salt": 0.212756
+      },
+      "T3": {
+       "bread": 0.3964,
+       "cloth": 0.4602,
+       "iron": 0.826175,
+       "salt": 0.2255
+      },
+      "T4": {
+       "bread": 0.1071,
+       "cloth": 0.544638,
+       "iron": 0.489,
+       "salt": 0.2552
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p17"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.492134,
+      "T2": 0.190964,
+      "T3": 0.583692,
+      "T4": 0.446436
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.21782,
+       "cloth": 0.411287,
+       "iron": 0.14,
+       "salt": 0.192562
+      },
+      "T2": {
+       "bread": 0.2283,
+       "cloth": 0.2218,
+       "iron": 0.0425,
+       "salt": 0.212756
+      },
+      "T3": {
+       "bread": 0.3964,
+       "cloth": 0.4602,
+       "iron": 0.826175,
+       "salt": 0.2255
+      },
+      "T4": {
+       "bread": 0.1071,
+       "cloth": 0.544638,
+       "iron": 0.489,
+       "salt": 0.2552
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p24"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.492134,
+      "T2": 0.190964,
+      "T3": 0.583692,
+      "T4": 0.446436
+     },
+     "holdings": {
+      "T1": {
+       "bread": 1.21782,
+       "cloth": 0.411287,
+       "iron": 0.14,
+       "salt": 0.192562
+      },
+      "T2": {
+       "bread": 0.2283,
+       "cloth": 0.2218,
+       "iron": 0.0425,
+       "salt": 0.212756
+      },
+      "T3": {
+       "bread": 0.3964,
+       "cloth": 0.4602,
+       "iron": 0.826175,
+       "salt": 0.2255
+      },
+      "T4": {
+       "bread": 0.1071,
+       "cloth": 0.544638,
+       "iron": 0.489,
+       "salt": 0.2552
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p31"
+     ],
+     "settled": 17
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.5993 cloth=0.2943 iron=0.0 salt=0.1064"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 88,
+   "refused": 1,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-6-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 193,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 985.3,
+   "only": null,
+   "score": {
+    "eff_round": 0.990855,
+    "eff_round_upper": 0.994874,
+    "eff_episode": [
+     0.984661,
+     0.991767,
+     0.991767,
+     0.991767,
+     0.991767
+    ],
+    "autarky_floor": 0.651838,
+    "gain_median": 1.406751,
+    "gain_worst": 1.081382,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 20,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 7,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.0,
+     0.7923264232725516,
+     0.3151725902761685,
+     0.8708389292953136
+    ],
+    [
+     0.862132219973944,
+     0.0,
+     0.40137828637987644,
+     0.0
+    ],
+    [
+     0.862132219973944,
+     0.7977018284583743,
+     0.40137828637987644,
+     0.8708389292953136
+    ],
+    [
+     0.862132219973944,
+     0.7977018284583743,
+     0.40137828637987644,
+     0.8708389292953136
+    ],
+    [
+     0.862132219973944,
+     0.7977018284583743,
+     0.40137828637987644,
+     0.8708389292953136
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.792326,
+      "T3": 0.315173,
+      "T4": 0.870839
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.0,
+       "cloth": 0.1961,
+       "iron": 1.685599,
+       "salt": 0.146857
+      },
+      "T2": {
+       "bread": 0.1064,
+       "cloth": 1.5587,
+       "iron": 0.078,
+       "salt": 0.181615
+      },
+      "T3": {
+       "bread": 0.718445,
+       "cloth": 0.7117,
+       "iron": 0.250597,
+       "salt": 0.0008
+      },
+      "T4": {
+       "bread": 0.1754,
+       "cloth": 0.138947,
+       "iron": 0.4938,
+       "salt": 1.308
+      }
+     },
+     "starved": {
+      "T1": [
+       "bread"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p1",
+      "p3",
+      "p7"
+     ],
+     "settled": 15
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.862132,
+      "T2": 0.0,
+      "T3": 0.401378,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.4765,
+       "cloth": 0.1961,
+       "iron": 1.523899,
+       "salt": 0.162757
+      },
+      "T2": {
+       "bread": 0.1064,
+       "cloth": 0.0,
+       "iron": 0.2397,
+       "salt": 1.389615
+      },
+      "T3": {
+       "bread": 0.241945,
+       "cloth": 0.7117,
+       "iron": 0.250597,
+       "salt": 0.0849
+      },
+      "T4": {
+       "bread": 0.1754,
+       "cloth": 1.697647,
+       "iron": 0.4938,
+       "salt": 0.0
+      }
+     },
+     "starved": {
+      "T2": [
+       "cloth"
+      ],
+      "T4": [
+       "salt"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p8",
+      "p12"
+     ],
+     "settled": 16
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.862132,
+      "T2": 0.797702,
+      "T3": 0.401378,
+      "T4": 0.870839
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.4765,
+       "cloth": 0.1961,
+       "iron": 1.523899,
+       "salt": 0.162757
+      },
+      "T2": {
+       "bread": 0.1064,
+       "cloth": 1.5587,
+       "iron": 0.2397,
+       "salt": 0.081615
+      },
+      "T3": {
+       "bread": 0.241945,
+       "cloth": 0.7117,
+       "iron": 0.250597,
+       "salt": 0.0849
+      },
+      "T4": {
+       "bread": 0.1754,
+       "cloth": 0.138947,
+       "iron": 0.4938,
+       "salt": 1.308
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.862132,
+      "T2": 0.797702,
+      "T3": 0.401378,
+      "T4": 0.870839
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.4765,
+       "cloth": 0.1961,
+       "iron": 1.523899,
+       "salt": 0.162757
+      },
+      "T2": {
+       "bread": 0.1064,
+       "cloth": 1.5587,
+       "iron": 0.2397,
+       "salt": 0.081615
+      },
+      "T3": {
+       "bread": 0.241945,
+       "cloth": 0.7117,
+       "iron": 0.250597,
+       "salt": 0.0849
+      },
+      "T4": {
+       "bread": 0.1754,
+       "cloth": 0.138947,
+       "iron": 0.4938,
+       "salt": 1.308
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.862132,
+      "T2": 0.797702,
+      "T3": 0.401378,
+      "T4": 0.870839
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.4765,
+       "cloth": 0.1961,
+       "iron": 1.523899,
+       "salt": 0.162757
+      },
+      "T2": {
+       "bread": 0.1064,
+       "cloth": 1.5587,
+       "iron": 0.2397,
+       "salt": 0.081615
+      },
+      "T3": {
+       "bread": 0.241945,
+       "cloth": 0.7117,
+       "iron": 0.250597,
+       "salt": 0.0849
+      },
+      "T4": {
+       "bread": 0.1754,
+       "cloth": 0.138947,
+       "iron": 0.4938,
+       "salt": 1.308
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 16
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE salt=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 salt uncommitted, not 1.3080",
+     "line": "PROPOSE to=T4 give=salt:1.308 want=cloth:1.5587"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 salt uncommitted, not 0.0008",
+     "line": "PROPOSE to=T3 give=salt:0.0008 want=bread:0.1064,iron:0.078"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "approve",
+     "reason": "you have 0.0628 salt uncommitted, not the 0.0841 it asks for",
+     "line": "APPROVE p3"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "malformed",
+     "reason": "want quantities must be positive, got 'bread:0.0'",
+     "line": "PROPOSE to=T2 give=iron:0.1617 want=bread:0.0"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1816 salt uncommitted, not the 1.3080 it asks for",
+     "line": "APPROVE p8"
+    },
+    {
+     "episode": 2,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.1389 cloth uncommitted, not the 1.5587 it asks for",
+     "line": "APPROVE p12"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.0816 salt uncommitted, not the 1.3080 it asks for",
+     "line": "APPROVE p8"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 79,
+   "refused": 8,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-7-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 189,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 994.1,
+   "only": null,
+   "score": {
+    "eff_round": 0.813627,
+    "eff_round_upper": 0.81485,
+    "eff_episode": [
+     0.0,
+     0.0,
+     0.98523,
+     0.98523,
+     0.98523
+    ],
+    "autarky_floor": 0.61551,
+    "gain_median": 1.224027,
+    "gain_worst": 0.887002,
+    "below_autarky": 1,
+    "zero_agent_episodes": 3,
+    "agent_episodes": 20,
+    "first_above_floor": 2
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 8,
+   "episodes": 5,
+   "trajectory": [
+    [
+     1.5936218461650675,
+     0.6485359345524636,
+     4.6497799156941335,
+     0.76264387340515
+    ],
+    [
+     0.6690173247631811,
+     0.0,
+     4.6497799156941335,
+     0.7626438734051502
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.7626438734051502
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 1.593622,
+      "T2": 0.648536,
+      "T3": 4.64978,
+      "T4": 0.762644
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.089045,
+       "cloth": 2.7202,
+       "iron": 0.04832,
+       "salt": 1.0246
+      },
+      "T2": {
+       "bread": 0.596715,
+       "cloth": 0.855246,
+       "iron": 0.3609,
+       "salt": 0.9618
+      },
+      "T3": {
+       "bread": 0.0311,
+       "cloth": 1.1409,
+       "iron": 0.8277,
+       "salt": 8.645013
+      },
+      "T4": {
+       "bread": 0.0297,
+       "cloth": 1.054474,
+       "iron": 0.2217,
+       "salt": 1.192
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p4",
+      "p6",
+      "p7"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.669017,
+      "T2": 0.0,
+      "T3": 4.64978,
+      "T4": 0.762644
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.203245,
+       "cloth": 0.6396,
+       "iron": 0.40922,
+       "salt": 1.0246
+      },
+      "T2": {
+       "bread": 0.482515,
+       "cloth": 2.935846,
+       "iron": 0.0,
+       "salt": 0.9618
+      },
+      "T3": {
+       "bread": 0.0311,
+       "cloth": 1.1409,
+       "iron": 0.8277,
+       "salt": 8.645013
+      },
+      "T4": {
+       "bread": 0.0297,
+       "cloth": 1.054474,
+       "iron": 0.2217,
+       "salt": 1.192
+      }
+     },
+     "starved": {
+      "T2": [
+       "iron"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p9",
+      "p11",
+      "p12",
+      "p13",
+      "p15"
+     ],
+     "settled": 17
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.263945,
+       "cloth": 0.0,
+       "iron": 1.45862,
+       "salt": 0.0
+      },
+      "T2": {
+       "bread": 0.482515,
+       "cloth": 2.935846,
+       "iron": 0.0,
+       "salt": 0.9618
+      },
+      "T3": {
+       "bread": 0.0001,
+       "cloth": 1.1409,
+       "iron": 0.0,
+       "salt": 9.669613
+      },
+      "T4": {
+       "bread": 0.0,
+       "cloth": 1.694074,
+       "iron": 0.0,
+       "salt": 1.192
+      }
+     },
+     "starved": {
+      "T1": [
+       "cloth",
+       "salt"
+      ],
+      "T2": [
+       "iron"
+      ],
+      "T3": [
+       "iron"
+      ],
+      "T4": [
+       "bread",
+       "iron"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p18",
+      "p20",
+      "p21",
+      "p23"
+     ],
+     "settled": 12
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.0
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.0,
+       "cloth": 0.0,
+       "iron": 0.0,
+       "salt": 0.0
+      },
+      "T2": {
+       "bread": 0.482515,
+       "cloth": 2.935846,
+       "iron": 0.0,
+       "salt": 0.9618
+      },
+      "T3": {
+       "bread": 0.0001,
+       "cloth": 1.1409,
+       "iron": 0.0,
+       "salt": 9.669613
+      },
+      "T4": {
+       "bread": 0.0,
+       "cloth": 1.694074,
+       "iron": 0.0,
+       "salt": 1.192
+      }
+     },
+     "starved": {
+      "T1": [
+       "bread",
+       "cloth",
+       "iron",
+       "salt"
+      ],
+      "T2": [
+       "iron"
+      ],
+      "T3": [
+       "iron"
+      ],
+      "T4": [
+       "bread",
+       "iron"
+      ]
+     },
+     "produced": [
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p24",
+      "p26",
+      "p28",
+      "p29"
+     ],
+     "settled": 11
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.0,
+      "T4": 0.762644
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.234245,
+       "cloth": 0.6396,
+       "iron": 1.23692,
+       "salt": 0.0
+      },
+      "T2": {
+       "bread": 0.482515,
+       "cloth": 2.935846,
+       "iron": 0.0,
+       "salt": 0.9618
+      },
+      "T3": {
+       "bread": 0.0001,
+       "cloth": 1.1409,
+       "iron": 0.0,
+       "salt": 9.669613
+      },
+      "T4": {
+       "bread": 0.0297,
+       "cloth": 1.054474,
+       "iron": 0.2217,
+       "salt": 1.192
+      }
+     },
+     "starved": {
+      "T1": [
+       "salt"
+      ],
+      "T2": [
+       "iron"
+      ],
+      "T3": [
+       "iron"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p30",
+      "p32",
+      "p34",
+      "p35",
+      "p37",
+      "p38"
+     ],
+     "settled": 16
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.2826 cloth=0.7174"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 cloth uncommitted, not 2.0806",
+     "line": "PROPOSE to=T1 give=cloth:2.0806 want=bread:0.1142,iron:0.3609"
+    },
+    {
+     "episode": 1,
+     "trader": "T3",
+     "kind": "malformed",
+     "reason": "want wants good:qty pairs, got 'nothing'",
+     "line": "PROPOSE to=T2 give=salt:0.9618 want=nothing"
+    },
+    {
+     "episode": 1,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 0.4149 cloth uncommitted, not the 1.1409 it asks for",
+     "line": "APPROVE p7"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.8552 cloth uncommitted, not the 2.0806 it asks for",
+     "line": "APPROVE p15"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "you have already produced this episode",
+     "line": "PRODUCE bread=0.1571 cloth=0.0 iron=0.8429 salt=0.0"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0890 bread uncommitted, not 0.1142",
+     "line": "PROPOSE to=T2 give=bread:0.1142,iron:0.3609 want=cloth:2.0806"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0483 iron uncommitted, not 0.8277",
+     "line": "PROPOSE to=T3 give=bread:0.031,iron:0.8277 want=salt:1.0246"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0483 iron uncommitted, not 0.2217",
+     "line": "PROPOSE to=T4 give=bread:0.0297,iron:0.2217 want=cloth:0.6396"
+    },
+    {
+     "episode": 3,
+     "trader": "T4",
+     "kind": "approve",
+     "reason": "you have 1.0545 cloth uncommitted, not the 1.1409 it asks for",
+     "line": "APPROVE p21"
+    },
+    {
+     "episode": 4,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 bread uncommitted, not 0.1142",
+     "line": "PROPOSE to=T2 give=bread:0.1142,iron:0.3609 want=cloth:2.0806"
+    },
+    {
+     "episode": 4,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 bread uncommitted, not 0.0310",
+     "line": "PROPOSE to=T3 give=bread:0.031,iron:0.8277 want=salt:1.0246"
+    },
+    {
+     "episode": 4,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 bread uncommitted, not 0.0297",
+     "line": "PROPOSE to=T4 give=bread:0.0297,iron:0.2217 want=cloth:0.6396"
+    },
+    {
+     "episode": 5,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "you have already produced this episode",
+     "line": "PRODUCE bread=0.1571 cloth=0.0 iron=0.8429 salt=0.0"
+    },
+    {
+     "episode": 5,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.7368 iron uncommitted, not 0.8277",
+     "line": "PROPOSE to=T3 give=bread:0.031,iron:0.8277 want=salt:1.0246"
+    },
+    {
+     "episode": 5,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.7368 iron uncommitted, not 0.8277",
+     "line": "PROPOSE to=T3 give=bread:0.031,iron:0.8277 want=salt:1.0246"
+    },
+    {
+     "episode": 5,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0058 bread uncommitted, not 0.0297",
+     "line": "PROPOSE to=T4 give=bread:0.0297,iron:0.2217 want=cloth:0.6396"
+    },
+    {
+     "episode": 5,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.8552 cloth uncommitted, not the 2.0806 it asks for",
+     "line": "APPROVE p34"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 73,
+   "refused": 18,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-8-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 197,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 992.5,
+   "only": null,
+   "score": {
+    "eff_round": 0.368674,
+    "eff_round_upper": 0.37107,
+    "eff_episode": [
+     0.996894,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "autarky_floor": 0.569087,
+    "gain_median": 0.754872,
+    "gain_worst": 0.261764,
+    "below_autarky": 3,
+    "zero_agent_episodes": 12,
+    "agent_episodes": 20,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 9,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.5967577676862738,
+     0.3693621862285605,
+     0.7167618876805001,
+     0.5210812714845289
+    ],
+    [
+     0.6081152041275589,
+     0.3533190864893246,
+     0.9699193309736128,
+     0.5210812714845289
+    ],
+    [
+     0.6081152041275589,
+     0.3533190864893246,
+     0.9699193309736129,
+     0.5210812714845289
+    ],
+    [
+     0.6081152041275589,
+     0.3533190864893246,
+     0.9699193309736129,
+     0.5210812714845289
+    ],
+    [
+     0.6081152041275589,
+     0.3533190864893246,
+     0.9699193309736129,
+     0.5210812714845289
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.596758,
+      "T2": 0.369362,
+      "T3": 0.716762,
+      "T4": 0.521081
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.48988,
+       "cloth": 0.148612,
+       "iron": 0.226093,
+       "salt": 0.9409
+      },
+      "T2": {
+       "bread": 0.6403,
+       "cloth": 0.3067,
+       "iron": 0.189808,
+       "salt": 0.2239
+      },
+      "T3": {
+       "bread": 0.3064,
+       "cloth": 0.0535,
+       "iron": 0.0627,
+       "salt": 1.721269
+      },
+      "T4": {
+       "bread": 0.1083,
+       "cloth": 0.140332,
+       "iron": 0.5731,
+       "salt": 0.774832
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p5"
+     ],
+     "settled": 13
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.608115,
+      "T2": 0.353319,
+      "T3": 0.969919,
+      "T4": 0.521081
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.48988,
+       "cloth": 0.148612,
+       "iron": 0.059393,
+       "salt": 1.0709
+      },
+      "T2": {
+       "bread": 0.6403,
+       "cloth": 0.3067,
+       "iron": 0.016708,
+       "salt": 0.2239
+      },
+      "T3": {
+       "bread": 0.3064,
+       "cloth": 0.0535,
+       "iron": 0.4025,
+       "salt": 1.591269
+      },
+      "T4": {
+       "bread": 0.1083,
+       "cloth": 0.140332,
+       "iron": 0.5731,
+       "salt": 0.774832
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 14
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.608115,
+      "T2": 0.353319,
+      "T3": 0.969919,
+      "T4": 0.521081
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.48988,
+       "cloth": 0.148612,
+       "iron": 0.059393,
+       "salt": 1.0709
+      },
+      "T2": {
+       "bread": 0.6403,
+       "cloth": 0.3067,
+       "iron": 0.016708,
+       "salt": 0.2239
+      },
+      "T3": {
+       "bread": 0.3064,
+       "cloth": 0.0535,
+       "iron": 0.4025,
+       "salt": 1.591269
+      },
+      "T4": {
+       "bread": 0.1083,
+       "cloth": 0.140332,
+       "iron": 0.5731,
+       "salt": 0.774832
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 14
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.608115,
+      "T2": 0.353319,
+      "T3": 0.969919,
+      "T4": 0.521081
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.48988,
+       "cloth": 0.148612,
+       "iron": 0.059393,
+       "salt": 1.0709
+      },
+      "T2": {
+       "bread": 0.6403,
+       "cloth": 0.3067,
+       "iron": 0.016708,
+       "salt": 0.2239
+      },
+      "T3": {
+       "bread": 0.3064,
+       "cloth": 0.0535,
+       "iron": 0.4025,
+       "salt": 1.591269
+      },
+      "T4": {
+       "bread": 0.1083,
+       "cloth": 0.140332,
+       "iron": 0.5731,
+       "salt": 0.774832
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 14
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.608115,
+      "T2": 0.353319,
+      "T3": 0.969919,
+      "T4": 0.521081
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.48988,
+       "cloth": 0.148612,
+       "iron": 0.059393,
+       "salt": 1.0709
+      },
+      "T2": {
+       "bread": 0.6403,
+       "cloth": 0.3067,
+       "iron": 0.016708,
+       "salt": 0.2239
+      },
+      "T3": {
+       "bread": 0.3064,
+       "cloth": 0.0535,
+       "iron": 0.4025,
+       "salt": 1.591269
+      },
+      "T4": {
+       "bread": 0.1083,
+       "cloth": 0.140332,
+       "iron": 0.5731,
+       "salt": 0.774832
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [],
+     "settled": 14
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=0.6005 cloth=0.3057 iron=0.0938 salt=0.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE iron=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=iron:0.5731 want=cloth:0.1912,salt:0.2239"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "you have 0.0000 bread uncommitted, not 0.3064",
+     "line": "PROPOSE to=T3 give=bread:0.3064,cloth:0.0535,iron:0.0627 want=salt:0.7"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1898 iron uncommitted, not the 0.3398 it asks for",
+     "line": "APPROVE p5"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 69,
+   "refused": 5,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "workspace": "island-e-plan-9-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 163,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 996.4,
+   "only": null,
+   "score": {
+    "eff_round": 0.977825,
+    "eff_round_upper": 0.982997,
+    "eff_episode": [
+     0.91121,
+     0.993172,
+     0.993172,
+     0.993172,
+     0.993172
+    ],
+    "autarky_floor": 0.645185,
+    "gain_median": 1.583218,
+    "gain_worst": 1.245786,
+    "below_autarky": 0,
+    "zero_agent_episodes": 0,
+    "agent_episodes": 20,
+    "first_above_floor": 0
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 10,
+   "episodes": 5,
+   "trajectory": [
+    [
+     0.0,
+     0.0,
+     0.45817077392155736,
+     0.48554551596294154
+    ],
+    [
+     0.49256260164988214,
+     0.746785761038326,
+     0.6418845852679113,
+     0.48554551596294154
+    ],
+    [
+     0.49256260164988214,
+     0.746785761038326,
+     0.6418845852679113,
+     0.48554551596294154
+    ],
+    [
+     0.49256260164988214,
+     0.746785761038326,
+     0.6418845852679113,
+     0.48554551596294154
+    ],
+    [
+     0.49256260164988214,
+     0.746785761038326,
+     0.6418845852679113,
+     0.48554551596294154
+    ]
+   ],
+   "episode_log": [
+    {
+     "episode": 1,
+     "utilities": {
+      "T1": 0.0,
+      "T2": 0.0,
+      "T3": 0.458171,
+      "T4": 0.485546
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.835056,
+       "cloth": 0.254,
+       "iron": 0.0,
+       "salt": 0.2308
+      },
+      "T2": {
+       "bread": 0.0,
+       "cloth": 0.089099,
+       "iron": 1.780761,
+       "salt": 0.0
+      },
+      "T3": {
+       "bread": 0.3741,
+       "cloth": 0.1707,
+       "iron": 0.285729,
+       "salt": 2.199342
+      },
+      "T4": {
+       "bread": 0.713018,
+       "cloth": 0.404583,
+       "iron": 0.221088,
+       "salt": 0.0116
+      }
+     },
+     "starved": {
+      "T1": [
+       "iron"
+      ],
+      "T2": [
+       "bread",
+       "salt"
+      ]
+     },
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p3",
+      "p4",
+      "p5",
+      "p7",
+      "p9",
+      "p10",
+      "p11"
+     ],
+     "settled": 19
+    },
+    {
+     "episode": 2,
+     "utilities": {
+      "T1": 0.492563,
+      "T2": 0.746786,
+      "T3": 0.641885,
+      "T4": 0.485546
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.584256,
+       "cloth": 0.254,
+       "iron": 0.7842,
+       "salt": 0.2308
+      },
+      "T2": {
+       "bread": 0.2508,
+       "cloth": 0.089099,
+       "iron": 0.129361,
+       "salt": 1.5105
+      },
+      "T3": {
+       "bread": 0.3741,
+       "cloth": 0.1707,
+       "iron": 1.152929,
+       "salt": 0.688842
+      },
+      "T4": {
+       "bread": 0.713018,
+       "cloth": 0.404583,
+       "iron": 0.221088,
+       "salt": 0.0116
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p12",
+      "p16"
+     ],
+     "settled": 18
+    },
+    {
+     "episode": 3,
+     "utilities": {
+      "T1": 0.492563,
+      "T2": 0.746786,
+      "T3": 0.641885,
+      "T4": 0.485546
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.584256,
+       "cloth": 0.254,
+       "iron": 0.7842,
+       "salt": 0.2308
+      },
+      "T2": {
+       "bread": 0.2508,
+       "cloth": 0.089099,
+       "iron": 0.129361,
+       "salt": 1.5105
+      },
+      "T3": {
+       "bread": 0.3741,
+       "cloth": 0.1707,
+       "iron": 1.152929,
+       "salt": 0.688842
+      },
+      "T4": {
+       "bread": 0.713018,
+       "cloth": 0.404583,
+       "iron": 0.221088,
+       "salt": 0.0116
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p20",
+      "p24"
+     ],
+     "settled": 18
+    },
+    {
+     "episode": 4,
+     "utilities": {
+      "T1": 0.492563,
+      "T2": 0.746786,
+      "T3": 0.641885,
+      "T4": 0.485546
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.584256,
+       "cloth": 0.254,
+       "iron": 0.7842,
+       "salt": 0.2308
+      },
+      "T2": {
+       "bread": 0.2508,
+       "cloth": 0.089099,
+       "iron": 0.129361,
+       "salt": 1.5105
+      },
+      "T3": {
+       "bread": 0.3741,
+       "cloth": 0.1707,
+       "iron": 1.152929,
+       "salt": 0.688842
+      },
+      "T4": {
+       "bread": 0.713018,
+       "cloth": 0.404583,
+       "iron": 0.221088,
+       "salt": 0.0116
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p28",
+      "p35"
+     ],
+     "settled": 18
+    },
+    {
+     "episode": 5,
+     "utilities": {
+      "T1": 0.492563,
+      "T2": 0.746786,
+      "T3": 0.641885,
+      "T4": 0.485546
+     },
+     "holdings": {
+      "T1": {
+       "bread": 0.584256,
+       "cloth": 0.254,
+       "iron": 0.7842,
+       "salt": 0.2308
+      },
+      "T2": {
+       "bread": 0.2508,
+       "cloth": 0.089099,
+       "iron": 0.129361,
+       "salt": 1.5105
+      },
+      "T3": {
+       "bread": 0.3741,
+       "cloth": 0.1707,
+       "iron": 1.152929,
+       "salt": 0.688842
+      },
+      "T4": {
+       "bread": 0.713018,
+       "cloth": 0.404583,
+       "iron": 0.221088,
+       "salt": 0.0116
+      }
+     },
+     "starved": {},
+     "produced": [
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+     ],
+     "lapsed": [
+      "p38",
+      "p42"
+     ],
+     "settled": 18
+    }
+   ],
+   "refusals": [
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE bread=1.0"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T4 give=bread:0.5722 want=cloth:0.254"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T3 give=bread:0.3741 want=salt:0.2308"
+    },
+    {
+     "episode": 1,
+     "trader": "T1",
+     "kind": "propose",
+     "reason": "this episode has closed",
+     "line": "PROPOSE to=T2 give=bread:0.2508 want=iron:0.7842"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "produce",
+     "reason": "this episode has closed",
+     "line": "PRODUCE cloth=0.0002 iron=0.9998"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 iron uncommitted, not 0.7842",
+     "line": "PROPOSE to=T1 give=iron:0.7842 want=bread:0.2508"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 iron uncommitted, not 0.8672",
+     "line": "PROPOSE to=T3 give=iron:0.8672 want=salt:1.5105"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "propose",
+     "reason": "you have 0.0000 iron uncommitted, not 0.2209",
+     "line": "PROPOSE to=T4 give=iron:0.2209 want=cloth:0.0889"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1294 iron uncommitted, not the 0.7842 it asks for",
+     "line": "APPROVE p3"
+    },
+    {
+     "episode": 1,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1294 iron uncommitted, not the 0.2209 it asks for",
+     "line": "APPROVE p7"
+    },
+    {
+     "episode": 1,
+     "trader": "T3",
+     "kind": "approve",
+     "reason": "you have 0.4580 salt uncommitted, not the 1.5105 it asks for",
+     "line": "APPROVE p5"
+    },
+    {
+     "episode": 2,
+     "trader": "T1",
+     "kind": "approve",
+     "reason": "p4 is already lapsed",
+     "line": "APPROVE p4"
+    },
+    {
+     "episode": 2,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1294 iron uncommitted, not the 0.7842 it asks for",
+     "line": "APPROVE p16"
+    },
+    {
+     "episode": 3,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1294 iron uncommitted, not the 0.7842 it asks for",
+     "line": "APPROVE p24"
+    },
+    {
+     "episode": 3,
+     "trader": "T2",
+     "kind": "approve",
+     "reason": "you have 0.1294 iron uncommitted, not the 0.2209 it asks for",
+     "line": "APPROVE p20"
+    }
+   ],
+   "relaunched": [],
+   "spoke": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "settled": 91,
+   "refused": 15,
+   "talk": 0,
+   "acknowledged": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "workspace": "island-e-plan-10-0823T1740",
+   "channel": "island",
+   "run_stamp": "0823T1740",
+   "channel_messages": 226,
+   "drain_saturated": false,
+   "drain_errors": 0,
+   "seconds": 995.4,
+   "only": null,
+   "score": {
+    "eff_round": 0.886104,
+    "eff_round_upper": 0.892228,
+    "eff_episode": [
+     0.0,
+     0.99816,
+     0.99816,
+     0.99816,
+     0.99816
+    ],
+    "autarky_floor": 0.600377,
+    "gain_median": 1.628872,
+    "gain_worst": 0.992298,
+    "below_autarky": 1,
+    "zero_agent_episodes": 2,
+    "agent_episodes": 20,
+    "first_above_floor": 1
+   }
+  },
+  {
+   "arm": "e-plan",
+   "seed": 11,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 12,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  }
+ ]
+}

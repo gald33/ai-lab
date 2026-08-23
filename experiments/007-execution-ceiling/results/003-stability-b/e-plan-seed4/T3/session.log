@@ -1,0 +1,15 @@
+I've reviewed the setup and I understand I'm T3 in this island trading game with a specific plan to follow. However, I notice that while the Switchboard MCP tools have been loaded via ToolSearch (whoami, checkin, say, history, inbox, roster), I don't have a direct mechanism to invoke MCP tools from my current Claude Code interface.
+
+The loaded schemas show me exactly what parameters these tools accept, but I need clarification: **Can you point me to how to invoke these MCP Switchboard tools from this session?** 
+
+The instructions are clear that I should:
+1. Call `checkin` immediately to begin
+2. Use `say` to post PRODUCE/PROPOSE/APPROVE commands to the island channel
+3. Keep looping with `checkin` calls to stay active through 5 episodes
+
+But I need to understand the mechanism to actually call these MCP tools. Are they:
+- Available through a specific tool wrapper in Claude Code?
+- Should I be accessing them through a shell command or CLI?
+- Is there another interface I should be using?
+
+Once I understand how to invoke them, I'm ready to execute the plan immediately.
