@@ -26,3 +26,4 @@
 {"t": 1787462405.4424477, "agent": "T1", "task": "Final moments of episode 1, waiting for T4 response or bell"}
 {"t": 1787462420.3671403, "agent": "T2", "task": "Waiting for Episode 1 bell and Episode 2 opening"}
 {"t": 1787462420.3671987, "agent": "T4", "task": "Check Episode 1 results and wait for Episode 2"}
+{"t": 1787462435.919456, "agent": "T1", "task": "Waiting for manager confirmation and other traders' productions in Episode 2"}

@@ -26,3 +26,9 @@
 {"t": 1787462386.9448607, "agent": "T3", "task": "Waiting for trade acceptances before episode 1 bell"}
 {"t": 1787462386.944924, "agent": "T4", "task": "episode 1 closing, waiting for bell"}
 {"t": 1787462416.7458017, "agent": "T3", "task": "Waiting for episode 1 results"}
+{"t": 1787462431.8561766, "agent": "T1", "task": "episode 2 starting, monitoring for trade opportunities"}
+{"t": 1787462431.8562427, "agent": "T2", "task": "Episode 2 production and trading"}
+{"t": 1787462431.8562684, "agent": "T3", "task": "Waiting for production confirmation in episode 2"}
+{"t": 1787462431.8562894, "agent": "T4", "task": "episode 2, checking production confirmation"}
+{"t": 1787462447.451791, "agent": "T2", "task": "Waiting for trade responses and monitoring proposals"}
+{"t": 1787462447.4518692, "agent": "T4", "task": "episode 2 trading, waiting for T2 response"}
