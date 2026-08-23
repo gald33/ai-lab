@@ -129,3 +129,5 @@
 {"t": 1787463076.4539769, "agent": "T4", "task": "Waiting for final bell"}
 {"t": 1787463091.473403, "agent": "T2", "task": "final bell coming, round conclusion"}
 {"t": 1787463091.473468, "agent": "T3", "task": "episode 5 final bell"}
+{"t": 1787463106.4315033, "agent": "T3", "task": "episode 5 bell ringing"}
+{"t": 1787463106.431566, "agent": "T4", "task": "Final wait"}
