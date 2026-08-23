@@ -2,3 +2,13 @@ model claude-haiku-4-5-20251001  arms ['e-plan']  rounds 12  episodes 5  agents 
 clock-bound: 15.8 min per round; 12 rounds at 10 at a time is 2 wave(s), so about 32 min of wall-clock and 48 agent sessions.
 
 preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  e-plan    seed 10  eff_round 0.998  floor 0.600  per-episode [1.00 1.00 1.00 1.00 1.00]  settled 82  refused 10  talk 0  ack 4/4  16m
+  e-plan    seed 2  eff_round 0.000  floor 0.674  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 56  refused 11  talk 2  ack 3/4  16m
+  e-plan    seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 82  refused 14  talk 0  ack 4/4  17m
+  e-plan    seed 5  eff_round 0.000  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 66  refused 10  talk 0  ack 4/4  17m
+  e-plan    seed 6  eff_round 0.000  floor 0.652  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 86  refused 11  talk 0  ack 4/4  17m
+  e-plan    seed 7  eff_round 0.000  floor 0.616  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 62  refused 15  talk 0  ack 2/4  17m
+  e-plan    seed 9  eff_round 0.790  floor 0.645  per-episode [0.00 0.00 0.88 0.88 0.88]  settled 73  refused 14  talk 0  ack 4/4  17m
+  e-plan    seed 8  eff_round 0.858  floor 0.569  per-episode [0.00 1.00 1.00 0.00 0.00]  settled 80  refused 18  talk 0  ack 4/4  17m
+  e-plan    seed 3  eff_round 0.396  floor 0.604  per-episode [1.00 0.00 0.00 0.00 0.00]  settled 87  refused 17  talk 0  ack 4/4  17m
+  e-plan    seed 1  eff_round 0.854  floor 0.642  per-episode [0.00 0.00 1.00 1.00 1.00]  settled 70  refused 15  talk 0  ack 4/4  17m

@@ -1,0 +1,25 @@
+I need to clarify the situation with you. I've been placed in the directory for experiment 007 (Execution Ceiling), and I've reviewed the detailed instructions in CLAUDE.md. However, I'm encountering a fundamental constraint:
+
+**The Problem:**
+The experiment is designed for an autonomous long-lived agent that continuously reads/writes to a Switchboard board through CLI commands or MCP tool calls. I'm Claude, a chat assistant, and while I have the Switchboard MCP tools loaded (`mcp__switchboard__checkin`, `mcp__switchboard__say`, etc.), I'm unable to execute them or bash commands in this environment due to permission restrictions.
+
+**What the experiment needs:**
+- T4 agent to call `checkin` to stay alive and receive messages
+- Make a `PRODUCE` command with labour shares: `bread=0.0 cloth=1.0 iron=0.0 salt=0.0`
+- Make three `PROPOSE` commands to T1, T2, T3 for the exact exchanges outlined
+- Call `APPROVE` on matching proposals coming back from other traders
+- Repeat this every episode for 5 episodes × 180 seconds each
+
+**What I can do:**
+1. Document the complete strategy and plan (which I started above)
+2. Monitor any existing board activity if files are written to disk
+3. Help debug or analyze the experiment if something goes wrong
+4. Answer questions about the experimental design
+
+**What needs to happen:**
+If you want T4 to actually participate in the running simulation, you need either:
+- A separate autonomous agent process running T4's logic
+- Permission for me to execute the switchboard commands directly
+- A different interface to interact with the experiment
+
+Can you clarify what you'd like me to do? Should I continue documenting the strategy, or is there a way to actually run the agent that I'm missing?
