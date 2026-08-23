@@ -15,6 +15,7 @@ out equal to the gains the manager recorded at the time.
 from __future__ import annotations
 
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -147,31 +148,9 @@ def test_denominators_keep_what_the_ranking_drops(tmp_path):
     island = next(i for i in data["islands"] if tuple(i["level"]) == key)
     assert island["attempts"] > island["ranked"]
     assert any(r["round_id"] == newest["round_id"] for r in data["recent"])
-    assert island["round_id"] != newest["round_id"]
-
-
-def test_a_player_is_ranked_on_their_best_round(tmp_path):
-    ledger = tmp_path / "ledger.jsonl"
-    for path in RECORDS:
-        scores.ingest(path, ledger=ledger)
-    rows = scores.load(ledger)
-    for row in rows:                      # one player per slot, whatever the table size
-        for p in row["players"]:
-            p["id"] = f"player-{p['slot']}"
-    data = scores.boards(rows)
-    slots = {p["slot"] for row in rows for p in row["players"]}
-    assert {t["id"] for t in data["traders"]} == {f"player-{s}" for s in slots}
-    for t in data["traders"]:
-        assert t["rounds"] == sum(1 for r in rows
-                                  if any(p["id"] == t["id"] for p in r["players"]))
-        assert t["worst"] <= t["median"] <= t["best"]
-        assert 0 <= t["below_autarky"] <= t["rounds"]
-    # Sorted by the best round -- luck counts -- with the median and the round
-    # count travelling beside it so a one-round top score is visible as one.
-    bests = [t["best"] for t in data["traders"]]
-    assert bests == sorted(bests, reverse=True)
-    for t in data["traders"]:
-        assert t["rounds"] >= 1 and t["median"] is not None
+    # Each of these rounds is its own game, so the unranked one cannot be
+    # holding the level.
+    assert island["game_id"] != newest["game"]["id"]
 
 
 # --- keeping many rounds affordable -----------------------------------------
@@ -292,3 +271,102 @@ def test_a_row_from_an_older_ledger_is_not_reported_as_tampering(tmp_path, capsy
 
     assert scores.verify(ledger) == []
     assert "older ledger version" in capsys.readouterr().err
+
+
+# --- a game is one attempt, and may be more than one round ------------------
+
+
+def _grouped(tmp_path, size, *, finished=True):
+    """A ledger whose rounds are declared as games of `size` rounds."""
+    ledger = tmp_path / "ledger.jsonl"
+    for path in RECORDS[:3]:
+        scores.ingest(path, ledger=ledger)
+    rows = scores.load(ledger)
+    for i, row in enumerate(rows):
+        row["game"] = {"id": f"g{i // size}", "rounds": size}
+    if not finished:
+        rows = rows[:-1]                     # last game is a round short
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return ledger, rows
+
+
+def test_a_round_that_nobody_grouped_is_a_game_of_one(tmp_path):
+    """The default is a format, not a placeholder for a missing answer."""
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    row = scores.load(ledger)[0]
+    assert row["game"] == {"id": row["round_id"], "rounds": 1}
+
+    played = scores.games(scores.load(ledger))
+    assert len(played) == 1
+    assert played[0]["rounds"] == 1 and played[0]["finished"]
+    # A game of one scores the round it is, untouched by any averaging.
+    assert played[0]["eff_round"] == row["eff_round"]
+    assert played[0]["ratios"] == row["ratios"]
+
+
+def test_a_game_of_several_rounds_scores_their_median(tmp_path):
+    ledger, rows = _grouped(tmp_path, 3)
+    played = {g["game_id"]: g for g in scores.games(scores.load(ledger))}
+    assert played, "no games were grouped"
+
+    for gid, game in played.items():
+        members = [r for r in rows if r["game"]["id"] == gid]
+        assert game["rounds"] == len(members)
+        assert game["eff_round"] == pytest.approx(
+            statistics.median([m["eff_round"] for m in members]))
+        for slot, value in game["ratios"].items():
+            assert value == pytest.approx(
+                statistics.median([m["ratios"][slot] for m in members]))
+
+
+def test_an_unfinished_game_is_kept_counted_and_not_ranked(tmp_path):
+    """Abandoning the rounds that went badly is the cheapest way to launder a
+    median, so a game short of what it declared cannot be ranked."""
+    ledger, rows = _grouped(tmp_path, 3, finished=False)
+    played = scores.games(scores.load(ledger))
+    short = [g for g in played if not g["finished"]]
+    assert len(short) == 1
+    assert short[0]["rounds"] < short[0]["declared"]
+
+    data = scores.boards(scores.load(ledger))
+    assert data["totals"]["unfinished_games"] == 1
+    assert data["totals"]["games"] == len(played)          # kept in the count
+    assert data["totals"]["ranked"] == len(played) - 1     # out of the ranking
+    ranked_ids = {i["game_id"] for i in data["islands"]}
+    assert short[0]["game_id"] not in ranked_ids
+
+
+def test_a_player_is_ranked_on_their_best_game(tmp_path):
+    ledger, rows = _grouped(tmp_path, 3)
+    rows = scores.load(ledger)
+    for row in rows:
+        for p in row["players"]:
+            p["id"] = f"player-{p['slot']}"
+    data = scores.boards(rows)
+    assert data["traders"], "no players ranked"
+    bests = [t["best"] for t in data["traders"]]
+    assert bests == sorted(bests, reverse=True)
+    for t in data["traders"]:
+        # A game count, not a round count: the row is about attempts.
+        assert t["games"] >= 1
+        assert t["rounds"] >= t["games"]
+        assert t["worst"] <= t["median"] <= t["best"]
+
+
+def test_a_game_spanning_levels_is_not_on_a_level_board(tmp_path):
+    """A median across different islands is not a score on either of them."""
+    ledger = tmp_path / "ledger.jsonl"
+    for path in RECORDS:
+        scores.ingest(path, ledger=ledger)
+    rows = scores.load(ledger)
+    mixed = [r for r in rows if scores.level(r) != scores.level(rows[0])][:1]
+    assert mixed, "no round on a different level to build a mixed game from"
+    for row in (rows[0], mixed[0]):
+        row["game"] = {"id": "mixed", "rounds": 2}
+
+    played = {g["game_id"]: g for g in scores.games(rows)}
+    assert played["mixed"]["level"] is None
+    assert played["mixed"]["eff_round"] is not None   # it still has a score
+    data = scores.boards(rows)
+    assert "mixed" not in {i["game_id"] for i in data["islands"]}

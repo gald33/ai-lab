@@ -3,6 +3,21 @@
 A game needs a number that survives the round it was won in. This is that
 number, and the whole file is about being able to defend it later.
 
+**A game is one attempt, and may be more than one round.** A round is what the
+manager runs -- `k` episodes on one island -- and that vocabulary does not move.
+A *game* is the unit somebody enters: one round, or several played as a single
+attempt. A one-round game is a legitimate format and its score is that round; a
+several-round game scores the **median** of its rounds, so within a declared
+format the luck evens out while a lucky game still tops the board.
+
+The rounds in a game have to be declared as one **before they are played**, or
+the median is worthless: ten rounds played and the best three called "a game"
+afterwards is cherry-picking with a statistic on top. The runner is what stamps
+that, at launch, next to where it binds identities -- nothing an agent says
+about which game it is in can be believed. Until joining exists nothing declares
+a game, so every recorded round is a one-round game, which is why the boards
+below read the same as they did before this existed.
+
 **Two scores, because there are two things being played.**
 
 *The island scored.* `eff_round` -- accumulated utility against the frontier of
@@ -81,7 +96,7 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 2
+BOARDS_V = 3
 
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
@@ -197,9 +212,15 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     kept = board is not None and (board.is_file()
                                   or board.with_suffix(".json.gz").is_file())
     who = players or {}
+    # Which attempt this round belongs to. Declared by whatever ran it; a round
+    # nobody grouped is a game of one, which is a real format and not a default
+    # standing in for a missing answer.
+    game = rnd.get("game") or record.get("game") or {}
+    rid = round_id(rnd["workspace"], seed, trajectory)
     return {
         "v": SCHEMA,
-        "round_id": round_id(rnd["workspace"], seed, trajectory),
+        "round_id": rid,
+        "game": {"id": game.get("id", rid), "rounds": int(game.get("rounds", 1))},
         "played_at": played_at(board),
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workspace": rnd["workspace"],
@@ -373,8 +394,9 @@ def ingest(result: Path, *, ledger: Path = LEDGER,
 def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
     return {
         "v": SCHEMA,
-        "round_id": round_id(rnd.get("workspace", "?"), rnd.get("seed", -1),
-                             rnd.get("trajectory") or []),
+        "round_id": (rid := round_id(rnd.get("workspace", "?"), rnd.get("seed", -1),
+                                     rnd.get("trajectory") or [])),
+        "game": {"id": rid, "rounds": 1},
         "played_at": None,
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workspace": rnd.get("workspace"), "arm": rnd.get("arm"),
@@ -415,32 +437,88 @@ def verify(ledger: Path = LEDGER) -> list[str]:
     return problems
 
 
+def games(rows: list[dict]) -> list[dict]:
+    """Group rounds into the attempts they were played as, and score each.
+
+    One round, one score. Several rounds declared as one game, the median of
+    them -- for the table's efficiency and for every trader's ratio alike, so
+    the two boards agree about what a game was worth.
+
+    A game short of the rounds it declared is **not finished**. It is kept, it
+    counts, and it is not ranked: abandoning the rounds that went badly is the
+    cheapest way to launder a median, and a board that ranks partial games
+    invites exactly that.
+    """
+    grouped: dict[str, list[dict]] = {}
+    for r in rows:
+        grouped.setdefault(r.get("game", {}).get("id", r["round_id"]), []).append(r)
+
+    out = []
+    for gid, members in grouped.items():
+        members.sort(key=lambda r: r.get("played_at") or r["recorded_at"])
+        declared = max(m.get("game", {}).get("rounds", 1) for m in members)
+        scored = [m for m in members if m["status"] == "complete"]
+        levels = {level(m) for m in members}
+        slots = sorted({p["slot"] for m in members for p in m["players"]})
+
+        ratios = {}
+        for slot in slots:
+            values = [m["ratios"][slot] for m in scored if slot in m["ratios"]]
+            if values:
+                ratios[slot] = statistics.median(values)
+
+        out.append({
+            "game_id": gid,
+            "rounds": len(members),
+            "declared": declared,
+            # Every reason a game is not ranked, kept apart from each other.
+            "finished": len(members) >= declared,
+            "all_scored": len(scored) == len(members),
+            "level": list(levels.pop()) if len(levels) == 1 else None,
+            "eff_round": (statistics.median([m["eff_round"] for m in scored])
+                          if scored else None),
+            "floor": scored[0]["autarky_floor"] if scored else None,
+            "ratios": ratios,
+            "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
+            "workspace": members[0]["workspace"],
+            "arm": members[0]["arm"],
+            "played_at": members[-1].get("played_at") or members[-1]["recorded_at"],
+            "round_ids": [m["round_id"] for m in members],
+        })
+    return out
+
+
 def boards(rows: list[dict]) -> dict:
     """The leaderboards, with their denominators attached to them.
 
-    Ranked rows are complete rounds only; the counts say how many were not, and
-    those rounds stay in the file. A board that quietly drops what went wrong is
-    reporting on a population it chose after seeing the results.
+    Ranked entries are finished games whose every round was scorable; the counts
+    say how many were not, and those games stay in the file. A board that
+    quietly drops what went wrong is reporting on a population it chose after
+    seeing the results.
     """
-    ranked = [r for r in rows if r["status"] == "complete"]
+    played = games(rows)
+    ranked = [g for g in played
+              if g["finished"] and g["all_scored"] and g["eff_round"] is not None]
 
-    islands: dict[tuple, list[dict]] = {}
-    for r in ranked:
-        islands.setdefault(level(r), []).append(r)
+    levels: dict[tuple, list[dict]] = {}
+    for g in ranked:
+        if g["level"]:
+            levels.setdefault(tuple(g["level"]), []).append(g)
     island_board = []
-    for key, entries in sorted(islands.items()):
+    for key, entries in sorted(levels.items()):
         best = max(entries, key=lambda e: e["eff_round"])
-        attempts = sum(1 for r in rows if level(r) == key)
+        attempts = sum(1 for g in played if g["level"] and tuple(g["level"]) == key)
         island_board.append({
             "level": list(key),
             "label": level_label(key),
             "seed": key[0], "agents": key[1], "goods": key[2], "episodes": key[3],
             "best": best["eff_round"],
-            "floor": best["autarky_floor"],
-            "by": [p["id"] for p in best["players"]],
+            "floor": best["floor"],
+            "by": [best["players"][s] for s in sorted(best["players"])],
             "workspace": best["workspace"],
             "arm": best["arm"],
-            "round_id": best["round_id"],
+            "game_id": best["game_id"],
+            "game_rounds": best["rounds"],
             "ranked": len(entries),
             "attempts": attempts,
             # The spread says whether the best is a result or a lucky draw.
@@ -450,83 +528,99 @@ def boards(rows: list[dict]) -> dict:
     island_board.sort(key=lambda x: (-x["best"], x["level"]))
 
     players: dict[str, dict] = {}
-    for r in ranked:
-        for p in r["players"]:
-            slot = p["slot"]
-            row = players.setdefault(p["id"], {
-                "id": p["id"], "ratios": [], "rounds": 0, "below": 0,
-                "zero_episodes": 0, "agent_episodes": 0, "best": None, "seeds": set(),
+    for g in ranked:
+        for slot, who in g["players"].items():
+            if slot not in g["ratios"]:
+                continue
+            row = players.setdefault(who, {
+                "id": who, "scores": [], "games": 0, "below": 0,
+                "zero_episodes": 0, "agent_episodes": 0, "rounds": 0, "levels": set(),
             })
-            ratio = r["ratios"][slot]
-            row["ratios"].append(ratio)
-            row["rounds"] += 1
+            ratio = g["ratios"][slot]
+            row["scores"].append(ratio)
+            row["games"] += 1
+            row["rounds"] += g["rounds"]
             row["below"] += 1 if ratio < 1.0 - 1e-9 else 0
-            row["zero_episodes"] += r["zero_episodes"][slot]
-            row["agent_episodes"] += r["island"]["episodes"]
-            row["seeds"].add(level(r))
-            if row["best"] is None or ratio > row["best"]:
-                row["best"] = ratio
+            if g["level"]:
+                row["levels"].add(tuple(g["level"]))
+    for g in ranked:
+        for rid in g["round_ids"]:
+            r = next(x for x in rows if x["round_id"] == rid)
+            for p in r["players"]:
+                if p["id"] in players:
+                    players[p["id"]]["zero_episodes"] += r["zero_episodes"].get(p["slot"], 0)
+                    players[p["id"]]["agent_episodes"] += r["island"]["episodes"]
 
     trader_board = []
     for row in players.values():
-        # The best round holds the place. A lucky island, a partner who happened
-        # to want what you could make -- that is what a high score is, and a
-        # board that averages it away is a statistics table wearing a trophy.
-        # The median and the round count sit beside it, so anybody can see
-        # whether a top score was one round or a habit.
+        # The best game holds the place. A lucky island, or a partner who
+        # happened to want what you could make, is what a high score is made of
+        # -- and inside a game of several rounds the median has already taken
+        # the luck out to whatever degree that format asked for. The rest of the
+        # row says whether a top score was one game or a habit.
         trader_board.append({
             "id": row["id"],
-            "median": round(statistics.median(row["ratios"]), 4),
-            "best": round(row["best"], 4),
-            "worst": round(min(row["ratios"]), 4),
+            "best": round(max(row["scores"]), 4),
+            "median": round(statistics.median(row["scores"]), 4),
+            "worst": round(min(row["scores"]), 4),
+            "games": row["games"],
             "rounds": row["rounds"],
             "below_autarky": row["below"],
             "zero_episodes": row["zero_episodes"],
             "agent_episodes": row["agent_episodes"],
-            "levels": len(row["seeds"]),
+            "levels": len(row["levels"]),
         })
-    trader_board.sort(key=lambda x: (-x["best"], -x["median"], -x["rounds"]))
+    trader_board.sort(key=lambda x: (-x["best"], -x["median"], -x["games"]))
 
+    unfinished = sum(1 for g in played if not g["finished"])
     return {
         "islands": island_board,
         "traders": trader_board,
-        # When it was played, falling back to when it was written down.
         "recent": sorted(rows, key=lambda r: r.get("played_at") or r["recorded_at"],
                          reverse=True)[:12],
         "totals": {
             "rounds": len(rows),
+            "games": len(played),
             "ranked": len(ranked),
+            "multi_round_games": sum(1 for g in played if g["declared"] > 1),
+            "unfinished_games": unfinished,
             "not_ranked": {s: sum(1 for r in rows if r["status"] == s)
                            for s in sorted({r["status"] for r in rows} - {"complete"})},
-            "levels": len(islands),
+            "levels": len(levels),
             "players": len(players),
-            "attendance_unrecorded": sum(1 for r in ranked
-                                         if r.get("attendance") == "unrecorded"),
+            "attendance_unrecorded": sum(1 for r in rows if r["status"] == "complete"
+                                         and r.get("attendance") == "unrecorded"),
         },
     }
 
 
 def table(data: dict) -> str:
     t = data["totals"]
-    out = [f"{t['ranked']} ranked of {t['rounds']} round(s) recorded · "
+    out = [f"{t['ranked']} ranked of {t['games']} game(s) over {t['rounds']} round(s) · "
            f"{t['levels']} level(s) · {t['players']} player(s)"]
+    if t["multi_round_games"]:
+        out.append(f"  {t['multi_round_games']} game(s) of more than one round, "
+                   f"scored on the median of their rounds")
+    if t["unfinished_games"]:
+        out.append(f"  {t['unfinished_games']} game(s) short of the rounds they "
+                   f"declared, kept and not ranked")
     if t["not_ranked"]:
         out.append("  not ranked: " + ", ".join(f"{k} {v}" for k, v in t["not_ranked"].items()))
     if t["attendance_unrecorded"]:
         out.append(f"  attendance not recorded on {t['attendance_unrecorded']} ranked round(s)")
 
-    out.append("\nLEVELS — best eff_round on each configuration")
+    out.append("\nLEVELS — best game on each configuration")
     out.append(f"  {'best':>6}  {'median':>6}  {'floor':>6}  {'played':>6}  level")
     for row in data["islands"]:
         out.append(f"  {row['best']:>6.3f}  {row['median']:>6.3f}  {row['floor']:>6.3f}  "
                    f"{row['ranked']:>3}/{row['attempts']:<3}  {row['label']}")
 
-    out.append("\nTRADERS — best round, as a multiple of playing alone")
-    out.append(f"  {'best':>7}  {'median':>6}  {'worst':>6}  {'rounds':>6}  "
+    out.append("\nTRADERS — best game, as a multiple of playing alone")
+    out.append(f"  {'best':>7}  {'median':>6}  {'worst':>6}  {'games':>6}  "
                f"{'<1.0x':>6}  {'zeros':>9}  id")
     for row in data["traders"]:
         out.append(f"  {row['best']:>7.3f}  {row['median']:>6.3f}  {row['worst']:>6.3f}  "
-                   f"{row['rounds']:>6}  {row['below_autarky']:>6}  "
+                   f"{row['games']:>6}  {row['below_autarky']:>6}  "
                    f"{row['zero_episodes']:>4}/{row['agent_episodes']:<4}  {row['id']}")
     return "\n".join(out)
 
