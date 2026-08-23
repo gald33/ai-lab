@@ -9,3 +9,9 @@
 {"t": 1787459190.3147144, "agent": "T1", "task": "Episode 7 startup"}
 {"t": 1787459190.3147802, "agent": "T2", "task": "Episode 5 bell should ring now"}
 {"t": 1787459190.3148077, "agent": "T3", "task": "episodes 6-10 - final 5 episodes production loop"}
+{"t": 1787459205.812501, "agent": "T2", "task": "Episodes 6-10: produce, trade with T4 and T1, continue"}
+{"t": 1787459205.8125668, "agent": "T4", "task": "episode 6 waiting for bell"}
+{"t": 1787459221.1983871, "agent": "T1", "task": "Episodes 8-10 final stretch"}
+{"t": 1787459221.1984491, "agent": "T3", "task": "episode 6 bell - moving to episode 7"}
+{"t": 1787459236.5450885, "agent": "T2", "task": "Completing episodes 7, 8, 9, 10 with minimal delays"}
+{"t": 1787459236.5452232, "agent": "T4", "task": "episode 6 to 7 transition"}

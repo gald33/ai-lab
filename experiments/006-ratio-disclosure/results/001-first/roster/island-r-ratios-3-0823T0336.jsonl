@@ -4,3 +4,6 @@
 {"t": 1787459159.935833, "agent": "T2", "task": "Episode 5 ending, episode 6 opening"}
 {"t": 1787459175.6243358, "agent": "T2", "task": "Episode 5 closing"}
 {"t": 1787459191.0502481, "agent": "T1", "task": "Continuing through remaining episodes toward round end"}
+{"t": 1787459206.1813061, "agent": "T2", "task": "Cycling episodes 6-10"}
+{"t": 1787459221.6093502, "agent": "T1", "task": "Fast-tracking through remaining episodes 6-10"}
+{"t": 1787459221.6094139, "agent": "T2", "task": "Moving through episodes 6-10"}

@@ -8,3 +8,9 @@
 {"t": 1787459176.2562068, "agent": "T4", "task": "final seconds of episode 5"}
 {"t": 1787459192.0742505, "agent": "T2", "task": "Bell"}
 {"t": 1787459192.0743265, "agent": "T3", "task": "Episode 5 bell - final outcome"}
+{"t": 1787459206.898465, "agent": "T1", "task": "Episodes 6-10 final sprint - producing each episode"}
+{"t": 1787459206.8985949, "agent": "T2", "task": "E6-7"}
+{"t": 1787459222.2545483, "agent": "T4", "task": "episode 6, will check at end"}
+{"t": 1787459237.5670147, "agent": "T1", "task": "Waiting for episode 6 bell and moving to episode 7"}
+{"t": 1787459237.5670862, "agent": "T2", "task": "E6 mid"}
+{"t": 1787459237.5671127, "agent": "T3", "task": "Confirming production - proposing immediately to T1"}
