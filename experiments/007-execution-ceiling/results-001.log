@@ -1,0 +1,4 @@
+model claude-haiku-4-5-20251001  arms ['e-bare', 'e-plan']  rounds 12  episodes 5  agents 4
+clock-bound: 15.8 min per round; 24 rounds at 10 at a time is 3 wave(s), so about 47 min of wall-clock and 96 agent sessions.
+
+preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
