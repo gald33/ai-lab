@@ -251,3 +251,11 @@ total in the rail, and `eff_round` against the autarky floor. Those are the
 manager's numbers, not the page's. `viewer/reveal.py --check` rebuilds every
 trader's holdings from the receipts and puts the resulting utilities against the
 recorded trajectory.
+
+It also keeps a scoreboard. [`viewer/scores.py`](viewer/scores.py) records every
+finished round in an append-only ledger and reads two boards out of it:
+`eff_round` per **level** — the same seed, traders, goods and episodes, because
+nothing else is comparable — and each trader's utility as a multiple of what they
+would have had alone. Every figure is recomputed from the run record and the
+round's seed, a row that disagrees with its seed is refused rather than written
+down, and a round nobody reached stays in the denominator.

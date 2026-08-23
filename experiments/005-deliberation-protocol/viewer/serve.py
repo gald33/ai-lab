@@ -31,12 +31,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import sys
+
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 WEB = HERE / "web"
 RESULTS = HERE.parent / "results"
 
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8"}
+
+SCORES = HERE / "scores" / "ledger.jsonl"
 
 
 def boards() -> list[dict]:
@@ -67,6 +72,14 @@ class Handler(BaseHTTPRequestHandler):
             payload = {"boards": boards(),
                        "live": "api/state" if self.server.upstream else None}
             return self._send(200, TYPES[".json"], json.dumps(payload).encode())
+        if path == "/api/scores":
+            # Computed on the way out rather than stored: the ledger is the
+            # record, and a leaderboard is a reading of it that must never be
+            # the thing anybody edits.
+            import scores  # noqa: PLC0415 - imported here so a replay-only run needs nothing
+            payload = scores.boards(scores.load(SCORES))
+            return self._send(200, TYPES[".json"],
+                              json.dumps(payload, default=list).encode())
         if path == "/api/state":
             return self._proxy()
         if path.startswith("/results/"):

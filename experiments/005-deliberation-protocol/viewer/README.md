@@ -98,6 +98,72 @@ In the rail:
   and worst trader, how many ended below autarky, how many trader-episodes were
   zero, and the first episode that beat the floor.
 
+## The scoreboard
+
+A round that is over should still be worth something, so every finished round is
+recorded and the boards are read back out of that record.
+
+```bash
+python viewer/scores.py --ingest results/*/v3.json    # add finished rounds
+python viewer/scores.py --table                       # the boards
+python viewer/scores.py --verify                      # recompute every row
+```
+
+![the scoreboard](docs/scoreboard.png)
+
+**Two scores, because two things are being played.**
+
+*The table's.* `eff_round` — how much of what this island could have produced
+actually got produced. It belongs to the table, not to any trader in it, and it
+is the cooperative high score.
+
+*A trader's.* `u_i / autarky_i` — what they ended with as a multiple of what they
+would have had **alone**. Raw Cobb-Douglas utilities are not comparable between
+traders, so "T1 got more than T2" means nothing; "T1 ended at 1.4× what it would
+have had alone" means something, and those ratios are comparable, being pure
+numbers against a per-trader baseline. That argument is
+`barter.economy.gains`'s, and this reuses it rather than restating it. **1.00× is
+the line**: below it, trading left them worse off than never trading.
+
+**The configuration is the level.** Two rounds are comparable only on the same
+seed, with the same number of traders, the same goods and the same number of
+episodes — four traders face a different frontier from two, and thirty episodes
+is more room to learn than three.
+
+**A player is ranked on the median of their rounds, not their best.** One lucky
+round is not a player, and a board topped by a single outlier rewards playing
+often.
+
+### What the ledger will not do
+
+- **Believe anybody.** Every figure is recomputed from the run record and the
+  round's seed: the island is redrawn, autarky is resolved, and a row whose
+  recorded `eff_round` disagrees with what its seed produces is refused rather
+  than written down. No agent's account of how it did is read anywhere.
+- **Lose a round.** `scores/ledger.jsonl` is append-only and a round's id is a
+  hash of its own content, so re-ingesting cannot duplicate it and re-running
+  cannot quietly replace it.
+- **Drop a failure from a denominator.** A round nobody reached is not a round
+  somebody lost: it is recorded, kept out of the ranking, and still counted in
+  every "of N". Rounds that ran before the manager kept a list of who reached
+  the board are marked as having unrecorded attendance rather than assumed fine.
+- **Need this file to be believed.** Each row carries its seed, its trajectory
+  and the digest of the board it came from, so anybody can re-derive it without
+  trusting the ledger.
+
+### Known, and open until joining exists
+
+A player is currently whatever the run record called the model. Real entrants
+need identities bound by the runner at launch — the same place `Manager.bind`
+binds a Switchboard peer to a trader name — never claimed on the board, because
+a name an agent types is a self-report.
+
+And the trader board is farmable by anyone running both seats: a partner who
+gives everything away goes to zero and inflates the other's ratio. The fix is a
+rule about who may sit at a ranked table, which belongs with the joining
+mechanics; until then the ledger records every player in a round so such a rule
+can be applied retrospectively.
+
 ## The sidecar
 
 ```bash
@@ -121,15 +187,22 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"
+node --test "viewer/tests/*.test.mjs"          # the page: 13
+python -m pytest viewer/tests/test_scores.py -q  # the ledger: 81
 ```
 
-Thirteen tests. The ones that matter: a self-report moves nothing, a line that is
+The ones that matter: a self-report moves nothing, a line that is
 nearly a receipt is not repaired into one, **every saved board parses with
 nothing left over** — which is what will fail if `island/manager.py` or
 `run_v3.py` is reworded, rather than the island quietly emptying — and **every
 board with a sidecar reproduces the manager's scored trajectory** through the
 page's own reducer and utility code.
+
+On the ledger side: every round in every run record is re-scored from its seed
+and has to come out equal to what the manager recorded — including the
+per-trader ratios, which are checked against the gains it wrote down at the
+time — plus the refusals: a record that disagrees with its seed, a re-ingest
+that would duplicate, an edited row, and a denominator that drops a failure.
 
 ## Files
 
@@ -140,7 +213,11 @@ page's own reducer and utility code.
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the two feeds, and the replay clock |
 | `web/index.html` | the page: HUD, ticker, transport, the hidden half |
-| `serve.py` | static files, the board list, and the `api/state` forward |
+| `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
+| `scores.py` | the ledger: recording finished rounds and reading the boards out |
+| `web/scores.html` | the scoreboard |
+| `web/tokens.css` | the palette, shared by both pages |
+| `scores/ledger.jsonl` | every recorded round, append-only |
 | `reveal.py` | the hidden half, after the fact, with `--check` |
 
 ## Notes on the drawing
