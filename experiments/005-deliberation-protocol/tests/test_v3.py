@@ -514,3 +514,85 @@ def test_the_manager_records_who_it_has_heard_from_at_all() -> None:
     m.hub.as_("T2", "PRODUCE bread")
     m.drain()
     assert m.spoke == {"T1", "T2"}
+
+
+def _lone_manager(seed=1):
+    """A manager with a stub client, for settlement rules that need no board."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                           / "002-barter-conventions" / "experiment"))
+    from barter.economy import draw_island
+    from island.manager import Manager
+
+    class _Stub:
+        def __init__(self): self.said = []
+        def post(self, channel, text): self.said.append(text)
+        def history(self, channel, limit=500): return []
+    mgr = Manager(island=draw_island(4, 4, seed=seed), client=_Stub())
+    mgr.open_episode()
+    return mgr
+
+
+def test_split_labour_off_refuses_a_second_production():
+    from island import manager as M
+    from island.protocol import Produce
+    mgr = _lone_manager()
+    assert M.SPLIT_LABOUR is False, "the default must stay off"
+    mgr._produce("T1", Produce(plan={"bread": 0.5}))
+    try:
+        mgr._produce("T1", Produce(plan={"cloth": 0.5}))
+    except M.Refused as exc:
+        assert "already produced" in str(exc)
+    else:
+        raise AssertionError("a second production should be refused by default")
+
+
+def test_split_labour_on_allows_pieces_that_sum_to_the_budget():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.5}))
+        mgr._produce("T1", Produce(plan={"cloth": 0.3}))
+        assert abs(mgr.holders["T1"].spent - 0.8) < 1e-9
+        # ...and refuses the piece that would take it over.
+        try:
+            mgr._produce("T1", Produce(plan={"iron": 0.3}))
+        except M.Refused as exc:
+            assert "already spent" in str(exc)
+        else:
+            raise AssertionError("over-budget across pieces should be refused")
+        assert abs(mgr.holders["T1"].spent - 0.8) < 1e-9
+    finally:
+        M.SPLIT_LABOUR = False
+
+
+def test_split_labour_leaves_one_full_production_behaving_as_before():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.6, "cloth": 0.4}))
+        assert abs(mgr.holders["T1"].spent - 1.0) < 1e-9
+        assert "0.0 labour unspent" in mgr.client.said[-1]
+    finally:
+        M.SPLIT_LABOUR = False
+
+
+def test_the_bell_returns_all_the_labour():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.5}))
+        mgr.close_episode()
+        assert mgr.holders["T1"].spent == 0.0
+        mgr.open_episode()
+        mgr._produce("T1", Produce(plan={"bread": 1.0}))  # a full budget again
+        assert abs(mgr.holders["T1"].spent - 1.0) < 1e-9
+    finally:
+        M.SPLIT_LABOUR = False

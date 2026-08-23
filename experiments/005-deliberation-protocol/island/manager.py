@@ -49,6 +49,12 @@ from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 
+#: Whether labour may be committed in several pieces within one episode.
+#: **Off by default**: every run before 007's run 002 settled one production per
+#: episode, and flipping this silently would change what those numbers mean.
+#: An experiment that wants it says so, and records it.
+SPLIT_LABOUR = False
+
 MANAGER = "manager"
 _EPS = 1e-9
 
@@ -248,27 +254,40 @@ class Manager:
         if not self.episode_open:
             raise Refused("this episode has closed")
         h = self.holders[author]
-        if h.produced:
-            raise Refused("you have already produced this episode")
         total = sum(action.plan.values())
-        if total > 1.0 + 1e-6:
-            # Enough precision to show the excess. A plan over budget by 1e-4
-            # rounds to "sums to 1.000; the budget is 1.0", which reads as the
-            # manager refusing a plan that obeys it, and the trader spends a
-            # message finding out otherwise.
-            raise Refused(f"shares sum to {total:.6g}, over the budget of 1.0 "
-                          f"by {total - 1.0:.6g}")
+        # Labour may be committed in as many pieces as a trader likes, so long
+        # as the pieces sum to the budget. One line spending all of it behaves
+        # exactly as before; what is new is that a trader may hold some back,
+        # see what its trades do, and spend the rest knowing. See 007's D4 --
+        # this is the manager settling a smaller commitment, not the manager
+        # deciding anything about what to make.
+        if SPLIT_LABOUR:
+            if h.spent + total > 1.0 + 1e-6:
+                raise Refused(
+                    f"shares sum to {total:.6g} and you have already spent "
+                    f"{h.spent:.6g}, over the budget of 1.0 by "
+                    f"{h.spent + total - 1.0:.6g}")
+        else:
+            if h.produced:
+                raise Refused("you have already produced this episode")
+            if total > 1.0 + 1e-6:
+                # Enough precision to show the excess. A plan over budget by
+                # 1e-4 rounds to "sums to 1.000; the budget is 1.0", which
+                # reads as the manager refusing a plan that obeys it, and the
+                # trader spends a message finding out otherwise.
+                raise Refused(f"shares sum to {total:.6g}, over the budget of "
+                              f"1.0 by {total - 1.0:.6g}")
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
             qty = share * self.island.capacity[h.index][g]
             h.holdings[g] += qty
             made[good] = round(qty, 4)
-        h.spent, h.produced = total, True
+        h.spent, h.produced = h.spent + total, True
         self.settled += 1
         self._settled_this_episode += 1
         self.say(f"@{author} produced {made}; "
-                                f"{round(1 - total, 4)} labour unspent")
+                                f"{round(1 - h.spent, 4)} labour unspent")
 
     def _propose(self, author: str, action: Propose) -> None:
         if not self.episode_open:

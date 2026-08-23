@@ -58,3 +58,31 @@ def test_the_hook_gives_nothing_to_the_control():
     island = draw_island(4, 4, seed=1)
     assert hook("e-bare", "T1", island, 0) == ""
     assert "Your plan" in hook("e-plan", "T1", island, 0)
+
+
+def test_the_tranche_cell_keeps_the_plan_and_adds_the_rule():
+    """t-tranche is t-plan plus the tranching advice, not a rewrite of it."""
+    import sys as _sys
+    _sys.argv = ["x"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("run007", HERE / "run.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    # Compare on collapsed whitespace: the stimuli are hard-wrapped, so a
+    # phrase that spans a line break is present in the prompt an agent reads
+    # and absent from a naive substring test.
+    flat = lambda s: " ".join(s.split())
+    plain = flat(mod.run_v3.instructions("t-plan", "PRIVATE", 5))
+    tranched = flat(mod.run_v3.instructions("t-tranche", "PRIVATE", 5))
+    # the economics survives verbatim into the tranche block
+    for claim in ("There is a set of prices at which every trader can afford",
+                  "Your plan is your part of that solution."):
+        assert claim in plain and claim in tranched
+    # ...and only the tranche cell is told it may split its labour
+    assert "produce more than once in an episode" in tranched
+    assert "produce more than once in an episode" not in plain
+
+
+def test_split_labour_is_off_unless_a_t_cell_is_asked_for():
+    from island import manager as M
+    assert M.SPLIT_LABOUR is False

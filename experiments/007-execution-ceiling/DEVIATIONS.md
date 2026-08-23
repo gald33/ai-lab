@@ -108,3 +108,57 @@ counting rule are all as pre-registered. Only the round length moves.
 
 The run also gets cheaper: 24 rounds at roughly 16 minutes each, three waves,
 about 50 minutes rather than 100.
+
+## D4 — Labour may be committed in pieces
+
+**Written before run 002. 2026-08-23.**
+
+Until now the manager settled **one** production per episode: a second was
+refused with *"you have already produced this episode"* (9 such refusals in run
+001). From run 002, in the `t-` cells only, a trader may send several `PRODUCE`
+lines in an episode; they accumulate and the total may not exceed the budget of
+1. The manager reports the remainder after each one.
+
+**Why.** Run 001 showed the plan is executed almost perfectly on the production
+side and 22% short on the exchange side, and that a plan with a hole in it
+collapses to zero rather than degrading. Committing all labour before knowing
+whether the exchanges will happen is what makes the shortfall fatal. Splitting
+it lets a trader keep something back and spend it on what it actually holds.
+
+**What kind of change this is.** It is a **settlement rule** — what the manager
+will accept — and therefore squarely inside what this lab's standing decisions
+allow it to enforce: timing, format, scoring. It is the manager being *less*
+restrictive, not more. It decides nothing about what a trader makes, in what
+proportion, or when; a trader may still spend the whole budget in one line and
+nothing changes for it. The budget itself is unchanged.
+
+**Guarded, and off by default.** `island.manager.SPLIT_LABOUR` is `False` and
+stays `False` for every existing experiment; three tests fix that, including one
+asserting the default. 007's `run.py` turns it on only when a `t-` arm is asked
+for, and turns it on for **both** `t-` cells — a rule only the treated cell
+could use would confound the rule with the advice.
+
+**What it costs.** Production counts are no longer comparable across the
+boundary: a round under this rule may contain more settled productions for the
+same labour. Run 002 therefore compares `t-tranche` against `t-plan`, both under
+the new rule, and treats run 001's `e-plan` as an across-run reference only.
+
+## D5 — No untreated control in run 002, and why
+
+**Written before run 002. 2026-08-23.**
+
+Run 002's cells are `t-plan` and `t-tranche`. Both carry the full plan; the
+difference is the tranching advice. There is no `bare` cell, and the runner's
+control guard is waived with `--no-control`.
+
+The question is not whether the plan beats nothing — run 001 answered that with
+12 paired seeds, +0.709 captured gain, 9 of 12. The question is whether
+*entering the plan gradually* beats entering it all at once, and both cells need
+the plan for that comparison to mean anything. A bare cell would spend a third
+of the run re-measuring a settled result.
+
+**The cost:** the absolute level in run 002 has no within-run floor to sit
+against. It is read against run 001's `e-bare`, across runs, and
+`FINDING-run-level-variance.md` in experiment 006 is the reason to distrust
+exactly that kind of comparison. So run 002 reports levels with that caveat and
+rests its claim on the **paired within-run difference**.
