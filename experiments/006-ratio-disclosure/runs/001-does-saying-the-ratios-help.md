@@ -1,6 +1,6 @@
 # Run 001 — Does telling them what to disclose help?
 
-**Opened:** 2026-08-22 · **Status:** specified
+**Opened:** 2026-08-22 · **Status:** running
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -31,7 +31,7 @@ someone else work out who should make what.
 | models | `claude-haiku-4-5-20251001` |
 | command | `python run.py --arms r-bare r-placebo r-ratios --rounds 5 --episodes 10 --episode-seconds 180 --agents 4 --out results/001-first` |
 | cost | **60 agent sessions**, 15 rounds at 10 concurrent = 2 waves of ~32 min, so **~64 min** of wall-clock |
-| go | *(not yet given — nothing runs until it is, and it is recorded here)* |
+| go | Given by the owner on 2026-08-23 ("go"), before launch. Expected spend: 60 agent sessions, ~64 min. |
 
 ## Assumptions
 
