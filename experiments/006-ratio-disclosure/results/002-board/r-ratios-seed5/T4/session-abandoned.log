@@ -1,0 +1,10 @@
+Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.
+I see you're set up in experiment 006 (ratio disclosure) from your ai-lab. The context shows you're T4 in a trading simulation on Switchboard, but I don't see an explicit request from you yet.
+
+What would you like me to help with? For example, are you:
+- Running the simulation now and need help with strategy/decisions?
+- Setting up code or infrastructure?
+- Analyzing results from a previous run?
+- Debugging something?
+
+Let me know what you need, and I'll get started.
