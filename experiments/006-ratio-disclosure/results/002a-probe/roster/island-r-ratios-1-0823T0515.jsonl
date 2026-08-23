@@ -79,3 +79,8 @@
 {"t": 1787462763.5012503, "agent": "T1", "task": "Episode 3 bell ringing"}
 {"t": 1787462763.5013425, "agent": "T2", "task": "waiting for bell, final episode check"}
 {"t": 1787462763.5013711, "agent": "T4", "task": "Episode 4 opening"}
+{"t": 1787462778.6622736, "agent": "T1", "task": "Episode 3 bell"}
+{"t": 1787462778.662348, "agent": "T3", "task": "episode 3 bell and episode 4 start"}
+{"t": 1787462792.7667696, "agent": "T1", "task": "Waiting for T3 to approve and episode 4 to close"}
+{"t": 1787462792.7668355, "agent": "T3", "task": "episode 4, waiting for T1 trade offer"}
+{"t": 1787462792.7668605, "agent": "T4", "task": "Episode 4, waiting for bell"}
