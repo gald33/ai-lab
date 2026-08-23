@@ -1,0 +1,8 @@
+I need to run the trading agent to complete episodes 3-10. This requires repeatedly calling mcp-client to interact with the Switchboard board. Let me request the necessary permissions to proceed with the trading simulation.
+
+The agent needs to:
+1. Check in periodically (checkin)
+2. Post production and trading actions (say)
+3. Monitor board messages (history, inbox)
+
+These are all read/write operations on a collaborative board system, not destructive or risky. Would you like me to proceed with running the T4 trading agent?

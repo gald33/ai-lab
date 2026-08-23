@@ -1,0 +1,42 @@
+[
+ {
+  "key": "cost/T1",
+  "revision": 1,
+  "value": "Capacity per labour: bread 1.95 cloth 0.33 iron 0.72 salt 0.55. Cost ratios (in terms of bread): cloth 6.0, iron 2.7, salt 3.6"
+ },
+ {
+  "key": "cost/T2",
+  "revision": 1,
+  "value": "Cost ratios (labour productivity): bread=0.4841, cloth=1.4016, iron=0.6453, salt=0.0774 per unit labour. Relative: cloth is 2.90\u00d7 bread, iron is 1.33\u00d7 bread, salt is 0.16\u00d7 bread."
+ },
+ {
+  "key": "cost/T3",
+  "revision": 1,
+  "value": "bread=1; iron=2.381; cloth=1.153; salt=1.031 (in bread units)"
+ },
+ {
+  "key": "cost/T4",
+  "revision": 1,
+  "value": "T4 production capacities (per unit labour): bread 1.0154, cloth 1.1914, iron 0.821, salt 1.4715. Cost ratios: iron/salt=0.558 cloth/salt=0.810 bread/salt=0.690 (what I give up to produce each good)"
+ },
+ {
+  "key": "worth/T1",
+  "revision": 2,
+  "value": "Episode 2: bread 0.975 cloth 0.098 iron 0.072 salt 0.055. Can trade iron/salt for cloth."
+ },
+ {
+  "key": "worth/T2",
+  "revision": 3,
+  "value": "Episode 3: Produced cloth=0.5603, bread=0.1452, iron=0.1291, salt=0.0077. Will trade cloth for salt+bread."
+ },
+ {
+  "key": "worth/T3",
+  "revision": 7,
+  "value": "autarky"
+ },
+ {
+  "key": "worth/T4",
+  "revision": 4,
+  "value": "T4 episode 4: bread 0.1015, cloth 0.5957, iron 0.1231, salt 0.3679. Trading salt-for-goods."
+ }
+]
