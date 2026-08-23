@@ -38,3 +38,5 @@
 {"t": 1787462506.7037303, "agent": "T3", "task": "Waiting for episode 2 bell"}
 {"t": 1787462521.4657092, "agent": "T1", "task": "Waiting for Episode 2 bell to ring"}
 {"t": 1787462521.4657786, "agent": "T2", "task": "waiting for iron proposals to settle, episode ending soon"}
+{"t": 1787462536.369353, "agent": "T1", "task": "Waiting for Episode 2 bell"}
+{"t": 1787462536.3694193, "agent": "T4", "task": "Waiting for proposal approvals in Episode 2"}

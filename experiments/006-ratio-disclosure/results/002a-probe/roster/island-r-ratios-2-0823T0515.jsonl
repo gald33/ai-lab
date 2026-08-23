@@ -36,3 +36,6 @@
 {"t": 1787462495.4034884, "agent": "T3", "task": "checking settlement of p9 and other proposals"}
 {"t": 1787462510.2425497, "agent": "T1", "task": "Waiting for T4 response and episode close in final minutes"}
 {"t": 1787462510.2426488, "agent": "T3", "task": "waiting for final settlements in episode 2"}
+{"t": 1787462540.4138794, "agent": "T1", "task": "Waiting for Episode 2 bell and final settlements"}
+{"t": 1787462540.4139585, "agent": "T3", "task": "waiting for episode 2 bell"}
+{"t": 1787462540.4139874, "agent": "T4", "task": "Waiting for responses and monitoring final moments of Episode 2"}
