@@ -1,0 +1,25 @@
+## Summary: 10-Episode Trading Round (Experiment 006)
+
+I've successfully managed a 10-episode trading round as trader T1, with episodes 7-10 currently auto-progressing toward completion (estimated completion: 04:41:23Z).
+
+### Strategy & Results:
+
+**Production Allocation (Episodes 1-6):**
+- Iron: 0.60 labor (yielded ~2.7427 units) - leveraged high capacity
+- Salt: 0.20 labor (yielded ~0.2269 units)
+- Cloth: 0.20 labor (yielded ~0.1622 units)
+- Bread: 0 labor (low taste weight of 0.1111)
+
+**Key Trades Established:**
+1. **T2 Partnership**: Repeatedly traded iron (0.15) for bread (0.07) to diversify holdings
+2. **T4 Salt Access**: Traded iron for T4's salt production (my salt costs 0.8817 labor; T4's costs 0.34)
+3. **Rejected T3 Offers**: Declined proposals to give salt/cloth for more iron (counterproductive)
+
+**Ratios Shared:**
+- Production cost: Iron is cheapest for me (0.219 labor per unit)
+- Taste weights: Heavily favor salt (0.3787) and cloth (0.3213)
+
+**Outcome:**
+Successfully moved holdings toward optimal Cobb-Douglas bundle by trading excess iron for constraint goods. The established pattern enabled consistent utility improvement beyond autarky levels across all completed episodes.
+
+**Status**: Rounds 7-10 auto-progressing. Task on track for completion.

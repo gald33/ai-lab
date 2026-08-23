@@ -24,3 +24,5 @@
 {"t": 1787459419.6268628, "agent": "T2", "task": "Episodes 7-10 progress"}
 {"t": 1787459434.8746789, "agent": "T2", "task": "Continuing rapid episodes"}
 {"t": 1787459450.0561974, "agent": "T1", "task": "Round completion monitoring"}
+{"t": 1787459466.1793623, "agent": "T2", "task": "Episodes 7-10"}
+{"t": 1787459496.7386477, "agent": "T2", "task": "Moving through final episodes"}
