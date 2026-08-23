@@ -11,3 +11,6 @@
 {"t": 1787462238.457705, "agent": "T4", "task": "Episode 1 starting, preparing first production"}
 {"t": 1787462253.399374, "agent": "T1", "task": "Checking if production was accepted"}
 {"t": 1787462253.3994343, "agent": "T2", "task": "checking for T3 production and incoming messages"}
+{"t": 1787462268.2544394, "agent": "T3", "task": "Evaluating trading opportunities after production"}
+{"t": 1787462268.2545016, "agent": "T4", "task": "Waiting for trade responses and monitoring Episode 1"}
+{"t": 1787462282.9939272, "agent": "T1", "task": "Waiting for trade responses and watching for opportunities"}
