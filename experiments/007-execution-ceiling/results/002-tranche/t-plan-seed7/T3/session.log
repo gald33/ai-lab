@@ -1,1 +1,11 @@
 Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.
+I see you're working on experiment 007, which tests whether agents can execute a given plan to reach competitive equilibrium on a simulated island economy. I've got the context about the experiment structure, the island economy mechanics, and the Switchboard tools available.
+
+However, I don't see a specific question or task in your message. What would you like me to help with? A few possibilities:
+
+1. **Analyze results** — examine how well the plan was followed or the gain that was captured across runs
+2. **Debug a run** — look at what happened on the board (board state, messages, trades) for a specific seed/trader
+3. **Set up or run a test** — prepare the next phase or validate some aspect of the simulation
+4. **Extract or compute metrics** — calculate compliance, efficiency, or other measures from run data
+
+What's the next step?
