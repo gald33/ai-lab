@@ -162,3 +162,32 @@ against. It is read against run 001's `e-bare`, across runs, and
 `FINDING-run-level-variance.md` in experiment 006 is the reason to distrust
 exactly that kind of comparison. So run 002 reports levels with that caveat and
 rests its claim on the **paired within-run difference**.
+
+## D6 — Replicate C died to a hub outage and is re-run
+
+**Written 2026-08-23, immediately after the failure and before the re-run.**
+
+Run 003's third replicate lost **all twelve rounds** to
+`ConnectError: [Errno 111] Connection refused` — the hub, or the proxy in front
+of it, stopped answering. The same outage took seeds 11 and 12 from replicate
+B. The hub answered 200 again a few minutes later.
+
+**Nothing was salvaged and nothing was lost beyond those rounds.** D16's round
+isolation held: 12 of 12 rounds in C and 2 of 12 in B are written into their
+result files as `failed`, with the error, and they stay in every denominator.
+Replicate A is untouched.
+
+**C is re-run**, on the same seeds and the same command, under the same go, to
+`results/003-stability-c2`. It replaces a replicate that produced no data
+rather than adding a fourth, and its stamp differs so the two cannot be
+confused.
+
+**What is reported.** Replicate B is analysed on the ten seeds it completed;
+the two it lost are named rather than averaged over. The failed C attempt
+contributes nothing to any number and appears only here and in its own result
+file.
+
+**A classification, not an excuse.** This is the fourth infrastructure failure
+this lab has recorded — the TLS trust failure, D13's 502, D16's dropped
+connection, and now this. None are agent behaviour and none are counted as
+such.
