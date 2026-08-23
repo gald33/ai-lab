@@ -14,3 +14,8 @@
 {"t": 1787459237.5670147, "agent": "T1", "task": "Waiting for episode 6 bell and moving to episode 7"}
 {"t": 1787459237.5670862, "agent": "T2", "task": "E6 mid"}
 {"t": 1787459237.5671127, "agent": "T3", "task": "Confirming production - proposing immediately to T1"}
+{"t": 1787459252.9678373, "agent": "T2", "task": "E6 wait"}
+{"t": 1787459252.9679136, "agent": "T3", "task": "Waiting for T1 approval on early proposal - episode 6"}
+{"t": 1787459252.9679408, "agent": "T4", "task": "episode 6 ongoing"}
+{"t": 1787459268.6494234, "agent": "T1", "task": "Episode 6 - waiting for bell to close and episode 7 to start"}
+{"t": 1787459268.6494944, "agent": "T4", "task": "approaching end of episode 6"}
