@@ -300,7 +300,15 @@ def instructions(arm: str, private: str, episodes: int) -> str:
         # A block naming a directory ("screen/s01-terse") is resolved against
         # the stimuli root, so the screen's un-frozen blocks never sit in the
         # frozen v3 directory.
-        path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
+        # An absolute path is another experiment's stimulus driving this
+        # runner as a shared instrument -- 006 does that. A bare name is one of
+        # this experiment's own frozen blocks; a name with a directory in it is
+        # resolved against the stimuli root, so the screen's un-frozen blocks
+        # never sit in the frozen v3 directory.
+        if os.path.isabs(block):
+            path = Path(f"{block}.md")
+        else:
+            path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
         parts.append(body(path.read_text()))
     if hint:
         parts.append(body((STIM / "hint.md").read_text()))
@@ -626,8 +634,11 @@ def main() -> None:
     # baseline cannot be borrowed from an earlier run, whose code, clock and
     # trust settings all differed. Refuse by default; allow it to be waived
     # out loud, in the command that runs it and in the record.
+    # An arm counts as a control by what it ends in, so an experiment driving
+    # this runner can name its cells `r-bare` and `r-placebo` without either
+    # colliding with this experiment's arms or losing the guard.
     CONTROLS = ("bare", "placebo")
-    if not any(a in CONTROLS for a in args.arms) and not args.no_control:
+    if not any(a.split("-")[-1] in CONTROLS for a in args.arms) and not args.no_control:
         raise SystemExit(
             f"no control arm: none of {', '.join(CONTROLS)} is in {args.arms}. "
             "Without one, 'no arm beat the floor' cannot be told from 'no arm "
