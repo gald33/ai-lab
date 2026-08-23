@@ -24,3 +24,4 @@
 {"t": 1787462357.260472, "agent": "T4", "task": "Waiting for T3 responses and monitoring Episode 1"}
 {"t": 1787462372.07497, "agent": "T1", "task": "Waiting for Episode 1 bell to ring"}
 {"t": 1787462372.0750332, "agent": "T2", "task": "waiting for episode 1 to end, hoping T3 accepts p3"}
+{"t": 1787462401.453186, "agent": "T1", "task": "Waiting for bell and episode 1 resolution"}
