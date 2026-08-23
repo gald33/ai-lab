@@ -35,3 +35,6 @@
 {"t": 1787459480.7011366, "agent": "T4", "task": "Complete episodes 7, 8, 9, 10 and finish round"}
 {"t": 1787459496.1434488, "agent": "T1", "task": "Round completion"}
 {"t": 1787459496.143518, "agent": "T2", "task": "Episode 7 \u2014 awaiting bell at 04:32:19Z"}
+{"t": 1787459511.3051019, "agent": "T4", "task": "Episodes 8, 9, 10 and round final completion"}
+{"t": 1787459526.901228, "agent": "T1", "task": "Completion"}
+{"t": 1787459526.9012961, "agent": "T2", "task": "Episode 7 ending \u2014 waiting for bell"}
