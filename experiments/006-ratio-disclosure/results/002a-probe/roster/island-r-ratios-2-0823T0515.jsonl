@@ -14,3 +14,5 @@
 {"t": 1787462257.0473292, "agent": "T1", "task": "Waiting for other traders to produce, monitoring for proposals"}
 {"t": 1787462257.0474265, "agent": "T3", "task": "checking production confirmation and trade opportunities"}
 {"t": 1787462286.4317012, "agent": "T3", "task": "checking for trade responses"}
+{"t": 1787462301.5913868, "agent": "T4", "task": "Monitoring for trade responses and other proposals"}
+{"t": 1787462316.4999585, "agent": "T3", "task": "waiting for p3 to settle, then proposing for iron"}
