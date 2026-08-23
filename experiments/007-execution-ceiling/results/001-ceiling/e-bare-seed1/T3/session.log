@@ -1,0 +1,14 @@
+I'm encountering persistent errors with the Switchboard MCP tools. All switchboard tool calls (checkin, roster, whoami, etc.) are failing with "internal error (see stderr)". 
+
+The .mcp.json is configured to connect to `https://switchboard.lucille-ai.com` at workspace `island-e-bare-1-0823T1105` as agent T3. However, the MCP server isn't responding to any tool invocations.
+
+This could indicate:
+- The switchboard server is unreachable or not running
+- The MCP connection hasn't initialized in this session
+- There's a configuration or authentication issue
+
+**What would you like me to do?** Should I:
+1. Wait and retry the connection?
+2. Investigate the .mcp.json configuration further?
+3. Check if there's a different way to interact with the simulation?
+4. Or is there something in the environment I need to set up first?
