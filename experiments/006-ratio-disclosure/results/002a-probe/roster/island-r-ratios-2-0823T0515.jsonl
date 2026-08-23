@@ -50,3 +50,7 @@
 {"t": 1787462615.030653, "agent": "T3", "task": "episode 3 production and trading opportunities"}
 {"t": 1787462615.030674, "agent": "T4", "task": "Monitoring other traders' production and market activity in Episode 3"}
 {"t": 1787462630.2163322, "agent": "T3", "task": "monitoring other traders' production and proposals"}
+{"t": 1787462644.729265, "agent": "T1", "task": "Waiting for T4 response and monitoring Episode 3 trading"}
+{"t": 1787462644.7293327, "agent": "T2", "task": "Waiting for Episode 3 approvals and T4 proposal"}
+{"t": 1787462644.7293599, "agent": "T3", "task": "waiting for T4 response and monitoring p13"}
+{"t": 1787462644.7293825, "agent": "T4", "task": "Monitoring T2's response and other trading activity in Episode 3"}
