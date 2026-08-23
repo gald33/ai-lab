@@ -64,11 +64,11 @@ tranche strategy that stalls.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke — this experiment and the instrument | `pytest tests -q` in both | | |
-| the rule — split labour on, off by default | `pytest tests/test_v3.py -k split` | | |
-| assembly | `python tools/show_prompt.py t-tranche` | | |
-| toolchain | `run_v3.preflight()` | | |
-| pilot | reused — run 001a/001b for the timing, run 001 for the instrument. **The split-labour rule has no live pilot**; it is covered by three unit tests and by the first round's boards being read before the wave completes. | | |
+| smoke — this experiment and the instrument | `pytest tests -q` in both | `8a60984` | **pass** — `7 passed`, `112 passed` |
+| the rule — split labour on, off by default | `pytest tests/test_v3.py -k split` | `8a60984` | **pass** — pieces summing to the budget settle, the piece that overruns is refused naming the excess, the default stays off, the bell returns the whole budget |
+| assembly | `python tools/show_prompt.py t-tranche` | `8a60984` | **pass** — the plan's economics verbatim, then the tranching advice, then the trader's own numbers |
+| toolchain | `run_v3.preflight()` | `8a60984` | **pass** |
+| pilot | reused — run 001a/001b for the timing, run 001 for the instrument. **The split-labour rule has no live pilot**; it is covered by three unit tests and by the first round's boards being read before the wave completes. | `8a60984` | recorded as a **gap**: no live pilot of D4 |
 
 ## Failure modes anticipated
 
