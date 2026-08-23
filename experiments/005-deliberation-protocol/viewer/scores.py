@@ -77,6 +77,12 @@ INDEX = "index.json"
 #: difference has to be visible.
 SCHEMA = 1
 
+#: How the boards are computed. The cache is keyed on the ledger *and* on this,
+#: because a ranking rule that changes while the record does not is exactly the
+#: case where a cache keyed only on the record serves the old order forever.
+#: Bump it when `boards` changes what it produces.
+BOARDS_V = 2
+
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
 #: and nothing else. A gap above this means the record and the seed disagree
@@ -304,7 +310,7 @@ def read_boards(path: Path = LEDGER) -> dict:
     if cache.is_file():
         try:
             held = json.loads(cache.read_text())
-            if held.get("stamp") == current:
+            if held.get("stamp") == current and held.get("boards_v") == BOARDS_V:
                 return held["boards"]
         except (ValueError, KeyError):
             pass                      # a damaged cache is rebuilt, not trusted
@@ -313,7 +319,7 @@ def read_boards(path: Path = LEDGER) -> dict:
 
 def write_boards(path: Path = LEDGER) -> dict:
     rows = load(path)
-    held = {"stamp": stamp(path),
+    held = {"stamp": stamp(path), "boards_v": BOARDS_V,
             "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "boards": boards(rows)}
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -463,8 +469,11 @@ def boards(rows: list[dict]) -> dict:
 
     trader_board = []
     for row in players.values():
-        # The median, not the best: one lucky round is not a player, and a board
-        # topped by a single outlier is a board that rewards playing often.
+        # The best round holds the place. A lucky island, a partner who happened
+        # to want what you could make -- that is what a high score is, and a
+        # board that averages it away is a statistics table wearing a trophy.
+        # The median and the round count sit beside it, so anybody can see
+        # whether a top score was one round or a habit.
         trader_board.append({
             "id": row["id"],
             "median": round(statistics.median(row["ratios"]), 4),
@@ -476,7 +485,7 @@ def boards(rows: list[dict]) -> dict:
             "agent_episodes": row["agent_episodes"],
             "levels": len(row["seeds"]),
         })
-    trader_board.sort(key=lambda x: (-x["median"], -x["rounds"]))
+    trader_board.sort(key=lambda x: (-x["best"], -x["median"], -x["rounds"]))
 
     return {
         "islands": island_board,
@@ -512,11 +521,11 @@ def table(data: dict) -> str:
         out.append(f"  {row['best']:>6.3f}  {row['median']:>6.3f}  {row['floor']:>6.3f}  "
                    f"{row['ranked']:>3}/{row['attempts']:<3}  {row['label']}")
 
-    out.append("\nTRADERS — utility as a multiple of playing alone (median across rounds)")
-    out.append(f"  {'median':>7}  {'best':>6}  {'worst':>6}  {'rounds':>6}  "
+    out.append("\nTRADERS — best round, as a multiple of playing alone")
+    out.append(f"  {'best':>7}  {'median':>6}  {'worst':>6}  {'rounds':>6}  "
                f"{'<1.0x':>6}  {'zeros':>9}  id")
     for row in data["traders"]:
-        out.append(f"  {row['median']:>7.3f}  {row['best']:>6.3f}  {row['worst']:>6.3f}  "
+        out.append(f"  {row['best']:>7.3f}  {row['median']:>6.3f}  {row['worst']:>6.3f}  "
                    f"{row['rounds']:>6}  {row['below_autarky']:>6}  "
                    f"{row['zero_episodes']:>4}/{row['agent_episodes']:<4}  {row['id']}")
     return "\n".join(out)

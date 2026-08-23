@@ -130,9 +130,11 @@ seed, with the same number of traders, the same goods and the same number of
 episodes — four traders face a different frontier from two, and thirty episodes
 is more room to learn than three.
 
-**A player is ranked on the median of their rounds, not their best.** One lucky
-round is not a player, and a board topped by a single outlier rewards playing
-often.
+**A player is ranked on their best round.** A lucky island, or a partner who
+happened to want what you could make, still counts — that is what a high score
+is, and a board that averages it away is a statistics table wearing a trophy.
+The median and the round count sit beside it, so a top score that was one round
+is visible as one.
 
 ### What the ledger will not do
 
@@ -155,6 +157,10 @@ often.
   contents, every stored digest became unreproducible at once, and an
   unversioned ledger reported that as ten boards having changed. A row built by
   an older version is re-ingestable, and `--verify` says so instead.
+- **Serve a ranking nobody asked for any more.** The derived boards are keyed on
+  the ledger *and* on the version of the rule that read it, because a ranking
+  that changes while the record does not is exactly when a cache keyed only on
+  the record keeps answering with the old order.
 
 ### Keeping many rounds
 
@@ -207,10 +213,11 @@ binds a Switchboard peer to a trader name — never claimed on the board, becaus
 a name an agent types is a self-report.
 
 And the trader board is farmable by anyone running both seats: a partner who
-gives everything away goes to zero and inflates the other's ratio. The fix is a
-rule about who may sit at a ranked table, which belongs with the joining
-mechanics; until then the ledger records every player in a round so such a rule
-can be applied retrospectively.
+gives everything away goes to zero and inflates the other's ratio. Ranking on
+the best round makes that cheaper — one arranged round is enough — so the rule
+about who may sit at a *ranked* table matters more, not less. It belongs with
+the joining mechanics; until then the ledger records every player in every round
+so such a rule can be applied to what is already there.
 
 ## The sidecar
 

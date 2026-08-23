@@ -66,13 +66,14 @@ td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   </div>
 
   <div class="card">
-    <h2>Traders — utility as a multiple of playing alone</h2>
+    <h2>Traders — best round, as a multiple of playing alone</h2>
     <div class="note" style="margin:0 0 8px">
       Each trader against <em>their own</em> autarky, because raw Cobb-Douglas
-      utilities are not comparable between traders. Ranked on the median across
-      a player's rounds, not their best: one lucky round is not a player.
-      <strong>1.00× is the line</strong> — below it, trade left them worse off than
-      never trading.
+      utilities are not comparable between traders. <strong>1.00× is the line</strong>
+      — below it, trade left them worse off than never trading. Ranked on the best
+      round: a lucky island or a partner who happened to want what you could make
+      still counts, which is what a high score is. The median and the round count
+      sit beside it, so you can see whether a top score was one round or a habit.
     </div>
     <table id="traders"></table>
   </div>
@@ -142,14 +143,14 @@ function draw(data) {
     </div>`).join("") : `<div class="empty">no ranked round yet</div>`;
 
   $("traders").innerHTML = `
-    <tr><th class="rank"></th><th class="left">player</th><th>median</th><th>best</th><th>worst</th>
+    <tr><th class="rank"></th><th class="left">player</th><th>best</th><th>median</th><th>worst</th>
       <th>rounds</th><th>below 1.0×</th><th>zero episodes</th><th>levels</th></tr>` +
     (data.traders.length ? data.traders.map((p, n) => `
       <tr>
         <td class="rank">${n + 1}</td>
         <td class="id">${p.id}</td>
-        <td class="${p.median >= 1 ? "good" : "bad"}">${p.median.toFixed(3)}×</td>
-        <td>${p.best.toFixed(3)}×</td>
+        <td class="${p.best >= 1 ? "good" : "bad"}">${p.best.toFixed(3)}×</td>
+        <td>${p.median.toFixed(3)}×</td>
         <td>${p.worst.toFixed(3)}×</td>
         <td>${p.rounds}</td>
         <td>${p.below_autarky} / ${p.rounds}</td>

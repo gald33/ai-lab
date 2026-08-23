@@ -150,7 +150,7 @@ def test_denominators_keep_what_the_ranking_drops(tmp_path):
     assert island["round_id"] != newest["round_id"]
 
 
-def test_a_player_is_ranked_on_the_median_not_the_best(tmp_path):
+def test_a_player_is_ranked_on_their_best_round(tmp_path):
     ledger = tmp_path / "ledger.jsonl"
     for path in RECORDS:
         scores.ingest(path, ledger=ledger)
@@ -166,9 +166,12 @@ def test_a_player_is_ranked_on_the_median_not_the_best(tmp_path):
                                   if any(p["id"] == t["id"] for p in r["players"]))
         assert t["worst"] <= t["median"] <= t["best"]
         assert 0 <= t["below_autarky"] <= t["rounds"]
-    # Sorted by median, and the denominator travels with the number.
-    medians = [t["median"] for t in data["traders"]]
-    assert medians == sorted(medians, reverse=True)
+    # Sorted by the best round -- luck counts -- with the median and the round
+    # count travelling beside it so a one-round top score is visible as one.
+    bests = [t["best"] for t in data["traders"]]
+    assert bests == sorted(bests, reverse=True)
+    for t in data["traders"]:
+        assert t["rounds"] >= 1 and t["median"] is not None
 
 
 # --- keeping many rounds affordable -----------------------------------------
@@ -192,6 +195,22 @@ def test_the_boards_are_read_from_a_cache_and_the_cache_follows_the_record(tmp_p
     # And the cache is derived, never authoritative: damaged, it is rebuilt.
     cache.write_text("{ not json")
     assert scores.read_boards(ledger)["totals"] == second["totals"]
+
+
+def test_a_cache_built_by_an_older_ranking_is_ignored(tmp_path):
+    """The record can be unchanged while the rule for reading it is not.
+
+    A cache keyed only on the ledger serves the old order forever after a
+    ranking change, which is the same trap the board digest fell into.
+    """
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(RECORDS[0], ledger=ledger)
+    cache = ledger.with_name(scores.CACHE)
+    held = json.loads(cache.read_text())
+    held["boards"]["totals"]["rounds"] = 9999
+    held["boards_v"] = scores.BOARDS_V - 1     # same ledger, older rule
+    cache.write_text(json.dumps(held))
+    assert scores.read_boards(ledger)["totals"]["rounds"] != 9999
 
 
 def test_a_stale_cache_is_ignored(tmp_path):
