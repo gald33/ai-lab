@@ -55,3 +55,6 @@
 {"t": 1787462626.636812, "agent": "T3", "task": "Waiting for production confirmation and monitoring trade opportunities in episode 3"}
 {"t": 1787462641.7194889, "agent": "T1", "task": "episode 3, confirming trade"}
 {"t": 1787462641.7195547, "agent": "T4", "task": "episode 3, waiting for bell"}
+{"t": 1787462656.4336066, "agent": "T1", "task": "episode 3 endgame, waiting for bell"}
+{"t": 1787462656.4336684, "agent": "T2", "task": "Monitoring end of episode 3"}
+{"t": 1787462656.4336927, "agent": "T3", "task": "Waiting for response to salt trade proposal to T4"}

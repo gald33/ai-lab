@@ -48,3 +48,5 @@
 {"t": 1787462626.3314145, "agent": "T2", "task": "episode 3, monitoring trades and production, have non-zero holdings now"}
 {"t": 1787462641.4879682, "agent": "T3", "task": "Waiting for episode 3 to close"}
 {"t": 1787462641.4880347, "agent": "T4", "task": "Monitoring Episode 3 proposals"}
+{"t": 1787462656.0701988, "agent": "T1", "task": "Waiting for proposal acceptances in Episode 3"}
+{"t": 1787462656.0702672, "agent": "T2", "task": "waiting for T3 iron trades, episode 3 mid-phase"}
