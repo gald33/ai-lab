@@ -1,6 +1,6 @@
 # Run 002 — Does giving disclosure a place and a time make it happen?
 
-**Opened:** 2026-08-23 · **Status:** specified
+**Opened:** 2026-08-23 · **Status:** running
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -32,7 +32,7 @@ production. Design frozen in [`PREREGISTRATION-v2.md`](../PREREGISTRATION-v2.md)
 | instrument change | `board_set`, `board_get`, `board_list` granted **to every cell** — D2 |
 | command | `python run.py --arms r-bare r-ratios r-ratios-board --rounds 5 --episodes 10 --episode-seconds 180 --agents 4 --out results/002-board` |
 | cost | **60 agent sessions**, 15 rounds at 10 concurrent = 2 waves, **~64 min** |
-| go | *(not yet given — nothing runs until it is, and it is recorded here)* |
+| go | Given by the owner on 2026-08-23 ("Go"), after run 002a cleared the manipulation gate. Expected spend: 60 agent sessions, ~64 min. |
 
 ## Assumptions
 
@@ -71,7 +71,7 @@ episodes, and whether board content is echoed in later proposals.
 | assembly | `python tools/show_prompt.py r-ratios-board` | `5fc17c2` | **pass** — base headings in order, then `## Two ratios, and where they go` naming `cost/<your name>` and `worth/<your name>`, then the private block |
 | toolchain | `run_v3.preflight()` | `5fc17c2` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | board grant | a one-shot `claude -p` calling `board_set` under the run's own tool list | `5fc17c2` | **pass** — wrote `cost/T1`, read it back at `revision: 1`; `tools/board_dump.py` then read the same key. The revision counter the "written once" check depends on is live. |
-| pilot | reused — run 001 of this experiment, and 005's runs 005–007 | reused | |
+| pilot | reused — run 001 of this experiment, and 005's runs 005–007 | reused | **plus run 002a**, this run's own probe: 8/8 cost keys written at revision 1, worth keys revised 2–6 times, and zero keys in either untreated cell |
 
 ## Failure modes anticipated
 
