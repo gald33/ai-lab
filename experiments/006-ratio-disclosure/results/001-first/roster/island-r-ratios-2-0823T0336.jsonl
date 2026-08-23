@@ -93,3 +93,6 @@
 {"t": 1787460018.8550668, "agent": "T3", "task": "round completion - final bell"}
 {"t": 1787460034.5052025, "agent": "T1", "task": "Round completion - final bell"}
 {"t": 1787460049.9685059, "agent": "T3", "task": "episode 10 bell imminent - round completion"}
+{"t": 1787460065.435974, "agent": "T1", "task": "Final bell and round completion"}
+{"t": 1787460065.4361267, "agent": "T3", "task": "round complete - episode 10 final seconds"}
+{"t": 1787460065.4361682, "agent": "T4", "task": "episode 10 final bell and round completion"}
