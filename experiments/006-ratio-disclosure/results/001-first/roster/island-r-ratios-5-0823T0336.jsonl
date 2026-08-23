@@ -1,0 +1,10 @@
+{"t": 1787459145.4462116, "agent": "T1", "task": "Episode 5-10 - speeding through remaining episodes"}
+{"t": 1787459145.4462883, "agent": "T2", "task": "Bell soon"}
+{"t": 1787459145.4463146, "agent": "T3", "task": "Final check - episode 5 approaching bell"}
+{"t": 1787459145.446336, "agent": "T4", "task": "waiting for episode 5 bell"}
+{"t": 1787459160.7432451, "agent": "T3", "task": "Waiting for episode 5 bell"}
+{"t": 1787459176.2560976, "agent": "T1", "task": "Waiting for episode 6 to open"}
+{"t": 1787459176.2561748, "agent": "T2", "task": "Waiting"}
+{"t": 1787459176.2562068, "agent": "T4", "task": "final seconds of episode 5"}
+{"t": 1787459192.0742505, "agent": "T2", "task": "Bell"}
+{"t": 1787459192.0743265, "agent": "T3", "task": "Episode 5 bell - final outcome"}
