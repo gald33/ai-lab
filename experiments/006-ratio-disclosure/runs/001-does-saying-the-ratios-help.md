@@ -70,9 +70,9 @@ stays in the denominator.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python tools/check_stimuli.py`; `python -m pytest tests -q` | | |
-| assembly | `python tools/show_prompt.py r-ratios` | | |
-| toolchain | `run_v3.preflight()` | | |
+| smoke | `python tools/check_stimuli.py`; `python -m pytest tests -q` | `4d9b066` | **pass** — `OK` (both hashes match the pre-registration, placebo 4.2% shorter, no domain word), `8 passed` |
+| assembly | `python tools/show_prompt.py r-ratios` | `4d9b066` | **pass** — base headings in order, then `## Two ratios` exactly once, then the private block |
+| toolchain | `run_v3.preflight()` | `4d9b066` | **pass** — an agent's `switchboard-mcp` reached the hub |
 | pilot | reused — 005's runs 005, 006 and 007 cover this instrument, clock, hub, model, population and episode length | reused | |
 
 ## Failure modes anticipated
