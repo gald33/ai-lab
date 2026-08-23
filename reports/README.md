@@ -37,3 +37,4 @@ ranked, with what evidence would settle each. Start there.
 | [2026-08-20 — 003 Tier 1](2026-08-20-003-promotion-rules.md) | promotion rules over strategies and protocols |
 | [2026-08-20 — 004](2026-08-20-004-stock-and-flow.md) | stock vs flow; whether ruin was ever about conventions |
 | [2026-08-20 — 005 pilot](2026-08-20-005-pilot.md) | whether an unguided market has coordination headroom at all |
+| [2026-08-23 — instruction and the cost of coordination](2026-08-23-instruction-and-the-cost-of-coordination.md) | 005 runs 005–007 and all of 006: four treatments, none helping; the empirical floor; why five seeds resolve nothing |
