@@ -32,7 +32,23 @@ run_v3.ARMS.update({
     "r-bare":    (None, False),
     "r-placebo": (str(HERE / "stimuli" / "placebo"), False),
     "r-ratios":  (str(HERE / "stimuli" / "ratios"), False),
+    "r-ratios-board": (str(HERE / "stimuli" / "ratios-board"), False),
 })
+
+#: Switchboard's keyed store, granted from run 002 onwards. The MCP server has
+#: always exposed it; the runner's `--allowedTools` refused it, and an agent
+#: that tried one got "you haven't granted it yet" back.
+#:
+#: **Granted to every cell, not only the treated one.** If only the cell told
+#: to use a board could reach one, the difference would be the tool and the
+#: text together and neither could be read alone. Held constant, an untreated
+#: cell is free to discover the board and does not; a treated one is told
+#: where to write. That difference is the treatment.
+BOARD_TOOLS = ["mcp__switchboard__board_set", "mcp__switchboard__board_get",
+               "mcp__switchboard__board_list"]
+for _tool in BOARD_TOOLS:
+    if _tool not in run_v3.TOOLS:
+        run_v3.TOOLS.append(_tool)
 
 if __name__ == "__main__":
     # `--out` is made absolute so results land in this experiment's tree and

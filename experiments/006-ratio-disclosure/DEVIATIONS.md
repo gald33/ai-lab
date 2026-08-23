@@ -63,3 +63,39 @@ run of experiment 005.
 
 Nothing was changed during run 001. The grant is identical across its three
 cells, so it cannot explain any difference between them.
+
+## D2 — The keyed store is granted, to every cell
+
+**Written before run 002. 2026-08-23.**
+
+Run 001's agents held seven Switchboard tools: `checkin`, `say`, `history`,
+`inbox`, `dm`, `roster`, `whoami`. The MCP server exposes fifteen. The rest
+were refused at the permission layer — verified directly, an agent asking for
+`board_set` gets back *"Claude requested permissions to use
+mcp__switchboard__board_set, but you haven't granted it yet"*. D1 recorded this
+and said that putting disclosure on a named key would need the grant widened
+and would be pre-registered as an instrument change. This is that change.
+
+**What is granted:** `board_set`, `board_get`, `board_list` — Switchboard's
+keyed store, with revisions. Not `claim`, `release`, `claims` or `keygen`.
+
+**Granted to every cell.** If only `r-ratios-board` could reach a board, its
+difference from `r-ratios` would be the tool and the instruction together and
+neither could be read alone. Held constant, the treatment is exactly the
+instruction; an untreated cell is free to find the board and, on the evidence
+of every run so far, will not. Whether an untreated cell uses it is itself
+measured.
+
+**Why this is not a second surface in the forbidden sense.** The keyed store is
+a Switchboard primitive, not something this experiment invented, and no agent
+calls anything the runner supplies. The manager still reads only the channel
+and still settles only formatted messages there: **nothing written to a board
+key is settled, scored, or read by the manager.** A board entry is a thing
+traders say to each other, in a place that happens to be addressable — and
+being addressable is what makes the manipulation check answerable without
+matching prose.
+
+**What it costs.** Run 002's cells are no longer comparable to run 001's on
+tool grant, so no cross-run comparison is drawn on that axis. Within run 002
+the grant is identical across all three cells and cannot explain any difference
+between them.

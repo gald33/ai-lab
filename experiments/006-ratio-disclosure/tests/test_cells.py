@@ -43,3 +43,27 @@ def test_every_cell_is_base_plus_its_block_and_nothing_else():
         for line in (ln for ln in base.splitlines() if ln.startswith("## ")):
             assert line in text
         assert text.count(heading) == 1
+
+
+def test_the_board_cell_carries_the_ratio_content_and_the_protocol():
+    """The board cell is the ratios content *plus* where and when, not instead."""
+    text = prompt("r-ratios-board")
+    assert "board_set" in text and "cost/" in text and "worth/" in text
+    # The economics of ratios.md survives verbatim into the board block, so the
+    # contrast between the two cells is the protocol and not a rewrite.
+    for claim in ("what a good costs you",
+                  "what a good is worth to you right now",
+                  "the gap is where an exchange is worth making"):
+        assert claim in text
+        assert claim in prompt("r-ratios")
+
+
+def test_no_untreated_cell_mentions_the_board():
+    for arm in ("r-bare", "r-ratios", "r-placebo"):
+        assert "board_set" not in prompt(arm)
+
+
+def test_the_board_tools_are_granted_to_every_cell():
+    """Held constant, so the treatment is the instruction and not the tool."""
+    for tool in ("board_set", "board_get", "board_list"):
+        assert f"mcp__switchboard__{tool}" in run_v3.TOOLS
