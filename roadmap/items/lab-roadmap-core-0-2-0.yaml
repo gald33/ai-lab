@@ -9,18 +9,26 @@ refs:
   - https://pypi.org/project/roadmap-core/
   - https://github.com/gald33/roadmap-core
 evidence: |
-  PyPI serves roadmap-core 0.1.0; the repository is at 0.2.0. The generated
-  headers this lab committed therefore carry two things from the repository the
-  package was extracted from and not from here: they name
+  PyPI served roadmap-core 0.1.0 when this was filed, and the generated headers
+  this lab committed therefore carried two things from the repository the
+  package was extracted from and not from here: they named
   `python scripts/roadmap.py sync` as the command to regenerate, which is a
-  file this checkout does not have, and ARCS.md opens with a paragraph about a
+  file this checkout does not have, and ARCS.md opened with a paragraph about a
   flag ledger, a substrate-quality trace and a hygiene backlog under
-  `docs/architecture/`, none of which exist here. 0.2.0 fixes both — `CLI =
+  `docs/architecture/`, none of which exist here. 0.2.0 fixed both — `CLI =
   "roadmap"` and the paragraph is gone.
 
   It lands in the one artifact written for a reader with nothing installed, so
   the wrong command is the worst place for it to be.
 
-  Done when the workflow installs a version that has the fix, `roadmap sync`
-  regenerates, and the committed markdown names a command this repo actually
-  has.
+  The regeneration half is settled: PyPI now serves 0.2.3, `roadmap sync` under
+  it reproduces the committed `roadmap/ROADMAP.md` and `ARCS.md` byte for byte,
+  and the workflow's install is pinned `>=0.2.0` so the fix is a requirement of
+  the job rather than whatever pip happens to resolve — 0.1.0 is still on PyPI
+  and would still render the wrong command.
+
+  What is left is not a regeneration. This stays open behind
+  `lab-roadmap-adoption` because that item is `verifying` on purpose: whether
+  sessions actually file their open tail as items is a claim about behaviour
+  that no commit settles, and retiring this one first would report the adoption
+  as finished on the strength of a version bump.
