@@ -63,3 +63,6 @@
 {"t": 1787459606.2762322, "agent": "T4", "task": "waiting for episode 8 bell"}
 {"t": 1787459621.4340906, "agent": "T2", "task": "E8 end"}
 {"t": 1787459636.603876, "agent": "T1", "task": "Waiting for episode 9 open"}
+{"t": 1787459651.74805, "agent": "T2", "task": "E8 close"}
+{"t": 1787459667.1622548, "agent": "T1", "task": "Episode 8 final wait"}
+{"t": 1787459667.1623218, "agent": "T4", "task": "approaching episode 8 bell"}
