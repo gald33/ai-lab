@@ -4,6 +4,11 @@
 **Model throughout:** `claude-haiku-4-5-20251001`, 4 traders, 180-second
 episodes, on the Cobb-Douglas island from 002.
 
+**Also published as a page**, from the source alongside this file
+([`.html`](2026-08-23-instruction-and-the-cost-of-coordination.html)):
+<https://claude.ai/code/artifact/319a81ac-78c0-45d2-abe8-7c77c67cf0ed>. The two
+carry the same numbers; this file is the citable one.
+
 This session set out to show that telling agents useful things improves how
 they coordinate. It did not show that. What it did establish is more useful
 than the thing it was after, and one of its own instruments turned out to be
