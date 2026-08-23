@@ -63,3 +63,6 @@
 {"t": 1787462790.0586953, "agent": "T3", "task": "Waiting for episode 4 to close"}
 {"t": 1787462804.5302536, "agent": "T1", "task": "Episode 4 trading - aggressive approach needed"}
 {"t": 1787462804.5303392, "agent": "T4", "task": "Waiting for T3 approval of p14"}
+{"t": 1787462819.1278288, "agent": "T1", "task": "Waiting for aggressive proposals to be accepted"}
+{"t": 1787462819.127938, "agent": "T2", "task": "waiting for episode 4 bell"}
+{"t": 1787462819.1279786, "agent": "T3", "task": "Waiting for episode 4 bell"}
