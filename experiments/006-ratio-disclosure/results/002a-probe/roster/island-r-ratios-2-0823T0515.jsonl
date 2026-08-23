@@ -1,0 +1,4 @@
+{"t": 1787462166.2130353, "agent": "T1", "task": "T1 starting, checking in"}
+{"t": 1787462166.2131882, "agent": "T2", "task": "Starting island trading game"}
+{"t": 1787462166.2132206, "agent": "T3", "task": "starting round, checking messages"}
+{"t": 1787462166.2132509, "agent": "T4", "task": "Starting round, assessing island state"}

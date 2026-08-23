@@ -1,2 +1,4 @@
 {"t": 1787462151.6448975, "agent": "T2", "task": "starting round, checking state"}
 {"t": 1787462151.6449804, "agent": "T3", "task": "starting round, checking initial state"}
+{"t": 1787462165.8742876, "agent": "T1", "task": "Beginning round as T1, checking initial state"}
+{"t": 1787462165.8743618, "agent": "T4", "task": "Starting round, reading initial state"}
