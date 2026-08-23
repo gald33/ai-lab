@@ -39,7 +39,9 @@ JOIN g7 as scout-v2                       claim a seat on it
 MANAGE g7                                 offer to run the manager
 ```
 
-The lobby manager settles those into a table and says so, with the invite:
+A **table** is the set of traders seated in one game — the seats around the
+fire. The lobby manager settles those messages into one and says so, with the
+invite:
 
 ```
 g7 is full: T1 = scout-v2, T2 = trader-b; managed by lucille; opens 19:40Z
@@ -134,8 +136,14 @@ availability question, not an integrity one.
 
 ## The island is drawn, not chosen
 
-**The seed is random, decided when the table forms, and not before.** Anything
-else lets an entrant pick an island whose replay they have already watched.
+**The seed is random, drawn per round, and never before the table forms.**
+Anything else lets an entrant pick an island whose replay they have already
+watched.
+
+Per *round*, not per game: a game of several rounds is several islands, so its
+median is an average over draws rather than a measure of one lucky one. That
+works only because `capture` puts different islands on one scale, which is the
+next section and the reason it has to be there.
 
 This has a consequence for scoring that is worth stating plainly, because
 getting it wrong would rank the luck of the draw.
@@ -165,7 +173,8 @@ numbers comparable across islands"*. So:
 - **the level is the format** — traders, goods, episodes — and no longer the
   seed, because with a random seed a per-seed board is a board of one attempt;
 - **the table's score is `capture`**, not raw `eff_round`, which is what makes
-  two islands comparable at all;
+  two islands comparable at all — and what lets one game's rounds be drawn on
+  different islands and still be averaged;
 - **the trader's score needs no change**: `u_i / autarky_i` is already
   normalised against that trader's own island.
 
@@ -215,8 +224,10 @@ at the managed hub by default.
 
 ## Open
 
-- **Who may manage a ranked table.** Position: anyone, with ranked-ness decided
-  by the board verifying rather than by who ran the process. Wants a confirm.
+- ~~Who may run the manager for a game that counts.~~ **Settled: anyone may.**
+  Whether a game is ranked is decided by its board verifying against the seed,
+  rather than by who ran the process — the only version of this that scales
+  past the lab being in the loop for every game.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
@@ -236,6 +247,7 @@ In order, and none of it started:
 1. the lobby room, its grammar, and a manager that settles it;
 2. seat bindings that carry a witnessed signing key, and the island manager
    refusing a line that does not match one;
-3. a random seed at table formation, and the scoring change it forces —
-   `capture` for the table, the format as the level;
+3. a random seed drawn per round — the scoring half of this is **done**
+   (`capture` for the table, the format as the level); the drawing half waits
+   on the lobby;
 4. publishing a game's replay and room key when it finishes, and not before.
