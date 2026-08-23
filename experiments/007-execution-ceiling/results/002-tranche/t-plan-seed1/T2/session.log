@@ -1,1 +1,12 @@
 Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.
+I'm set up to play T2 in this experiment, but I need to clarify a couple of things before I can begin:
+
+1. **Missing plan details**: The instructions say "It is in your private block below, in your own goods and quantities" but I don't see the specific plan (what to produce each episode, what exchanges to propose, to whom, and in what quantities). Without these details, I can't follow the core requirement of the experiment.
+
+2. **Switchboard tool invocation**: While I've loaded the Switchboard MCP tool schemas, I need to know how to actually invoke them in this environment. The .mcp.json is configured for `switchboard-mcp`, but I need the correct invocation method.
+
+Could you provide:
+- The complete plan for T2 (my production schedule and trading instructions for each episode)
+- Instructions on how to invoke the Switchboard MCP tools (or clarify if there's a different way I should interact with the island)
+
+Once I have these, I'm ready to start the round with `checkin` as instructed.
