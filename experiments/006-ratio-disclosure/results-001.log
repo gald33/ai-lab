@@ -15,3 +15,7 @@ preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
   r-ratios  seed 1  eff_round 0.266  floor 0.642  per-episode [0.00 0.00 0.58 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 112  refused 13  talk 0  ack 4/4  32m
   r-ratios  seed 2  eff_round 0.464  floor 0.674  per-episode [0.00 0.71 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 96  refused 14  talk 2  ack 4/4  32m
   r-ratios  seed 3  eff_round 0.198  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 57  refused 7  talk 3  ack 4/4  32m
+  r-ratios  seed 5  eff_round 0.000  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 67  refused 10  talk 2  ack 4/4  32m
+  r-ratios  seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 71  refused 4  talk 0  ack 4/4  32m
+
+wrote /home/user/ai-lab/experiments/006-ratio-disclosure/results/001-first/v3.json
