@@ -35,6 +35,12 @@
   --good-6: #008300;
   --good-7: #9085e9;
 
+  /* Metrics, not series: distinct from the four goods so a score can never be
+     mistaken for a stock. Validated all-pairs against --panel: CVD ΔE 16.0,
+     normal-vision ΔE 19.7, both ≥3:1 on the surface. */
+  --eff:      #9085e9;
+  --util:     #d55181;
+
   --good:     #0ca30c;
   --warning:  #fab219;
   --critical: #d03b3b;
@@ -180,7 +186,7 @@ svg.island { display: block; width: 100%; height: auto; }
   font-family: inherit; letter-spacing: .04em; text-transform: uppercase; }
 .meter { position: relative; height: 12px; background: #0e1519; border-radius: 6px;
   margin: 12px 0 6px; overflow: hidden; }
-.meter i { position: absolute; inset: 0 auto 0 0; background: var(--good-1);
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--eff);
   border-radius: 6px; }
 .meter u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink);
   text-decoration: none; }
@@ -189,9 +195,11 @@ svg.island { display: block; width: 100%; height: auto; }
 .spark { width: 100%; height: 74px; display: block; }
 .spark .axis { stroke: #2b353b; stroke-width: 1; }
 .spark .floor { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .75; }
-.spark .series { fill: none; stroke: var(--good-1); stroke-width: 2;
+.spark .series { fill: none; stroke: var(--eff); stroke-width: 2;
   stroke-linejoin: round; stroke-linecap: round; }
-.spark .dot { fill: var(--good-1); }
+.spark .dot { fill: var(--eff); }
+.spark.util .series { stroke: var(--util); }
+.spark.util .dot { fill: var(--util); }
 .spark .dot.zero { fill: var(--critical); }
 .spark text { fill: var(--muted); font-size: 9.5px; font-family: ui-monospace, monospace; }
 .rowbar { display: grid; grid-template-columns: 22px 1fr 46px; gap: 7px; align-items: center;
@@ -201,6 +209,13 @@ svg.island { display: block; width: 100%; height: auto; }
 .rowbar .num { text-align: right; color: var(--ink-2); font-family: ui-monospace, monospace; }
 .trader-block { margin-bottom: 12px; }
 .trader-block h3 { font-size: 13px; margin: 0 0 4px; font-family: ui-monospace, monospace; }
+.trader-block h3 .sub { font-family: inherit; }
+.rowbar.diag { grid-template-columns: 1fr auto; cursor: help; }
+.score-track { fill: #ffffff; opacity: .07; }
+.score-fill { fill: var(--util); transition: width .55s cubic-bezier(.22,1,.36,1); }
+.score-floor { fill: var(--ink); opacity: .8; }
+.score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
+.score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
 th, td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: right;
@@ -278,6 +293,7 @@ a { color: #9dc7f5; }
 import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText } from "./scene.js";
 import { loadBoard, liveFeed, replayPlayer } from "./feeds.js";
+import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -291,7 +307,7 @@ let mode = "replay";
 
 // --- chrome ----------------------------------------------------------------
 
-function legend(goods) {
+function legend(goods, scored) {
   $("legend").replaceChildren(...goods.map((g, i) => {
     const s = document.createElement("span");
     const swatch = document.createElement("i");
@@ -300,7 +316,10 @@ function legend(goods) {
     return s;
   }), Object.assign(document.createElement("span"), {
     className: "sub", textContent: "· the pale part of a bar is promised to an open offer",
-  }));
+  }), ...(scored ? [Object.assign(document.createElement("span"), {
+    className: "sub",
+    textContent: "· the pink bar is what the shelf is worth to its owner",
+  })] : []));
 }
 
 function ticker(frames, upto) {
@@ -384,6 +403,9 @@ function paint({ state, event, animate, quiet, index }) {
 function drawReveal(data) {
   const body = $("reveal-body");
   body.classList.remove("locked");
+  // The page's own reading of the board, put against the manager's score in the
+  // exact code path that draws the island.
+  data.audit = audit(timeline, data);
   const r = data.round || {};
   const s = r.score || {};
   const floor = data.autarky_floor ?? s.autarky_floor;
@@ -413,10 +435,12 @@ function drawReveal(data) {
     <div class="note">Accumulated utility against the frontier of the total. The
       number is the manager's, read from settled state — this page does not
       recompute it.</div>
-    <h2 style="margin-top:14px">Per episode</h2>
-    ${sparkline(s.eff_episode || [], floor)}
+    <h2 style="margin-top:14px">Efficiency per episode</h2>
+    ${sparkline(s.eff_episode || [], floor, "eff")}
     <div class="note">A coverage measure, not welfare: one trader at zero puts the
       whole vector maximally far from the frontier however well the others did.</div>
+    ${utilities(data)}
+    ${diagnostics(data)}
     <h2 style="margin-top:14px">Tastes (α)</h2>
     ${Object.entries(data.traders).map(([t, v]) => bars(t, v.taste, () => 1)).join("")}
     <h2>Capacity per unit of labour</h2>
@@ -424,26 +448,94 @@ function drawReveal(data) {
     <details><summary>as a table</summary>${table(data)}</details>`;
 }
 
-function sparkline(values, floor) {
+/**
+ * What each trader actually got, episode by episode, and summed.
+ *
+ * The sum is the object `eff_round` is scored on -- so it is the number to read
+ * next to it, and the per-episode line underneath is what a single ruined
+ * episode does to that sum. Both are the manager's, taken from the recorded
+ * trajectory; the page recomputes neither.
+ */
+function utilities(data) {
+  const trajectory = data.round?.trajectory;
+  if (!trajectory?.length) return "";
+  const names = Object.keys(data.traders);
+  const auto = data.autarky_utility || {};
+  const per = names.map((_, i) => trajectory.map((row) => row[i] ?? 0));
+  const top = Math.max(...per.flat(), ...Object.values(auto), 1e-9);
+  const check = data.audit;
+
+  return `<h2 style="margin-top:14px">Utility by trader</h2>` +
+    names.map((name, i) => {
+      const series = per[i];
+      const total = accumulate(trajectory, i);
+      const zeroes = series.filter((u) => u <= 1e-12).length;
+      return `<div class="trader-block">
+        <h3>${name} <span class="sub" style="float:right">Σ ${fmt(total, 3)}</span></h3>
+        ${sparkline(series, auto[name], "util", top)}
+        <div class="note" style="margin-top:2px">
+          ${zeroes ? `<span class="warn">${zeroes} episode${zeroes > 1 ? "s" : ""} at zero</span> · ` : ""}
+          alone they would have had ${fmt(auto[name], 3)} an episode</div>
+      </div>`;
+    }).join("") +
+    `<div class="note">Accumulated utility is what <code>eff_round</code> is scored
+      on. A trader ruined in one episode and fed in the rest still has a positive
+      total, which is why the round is the welfare measure and the episode is not.
+      ${check ? (check.disagreements.length
+        ? `<span class="warn">This page's own reading of the board disagrees with
+           the recorded score in ${check.disagreements.length} place(s) — treat the
+           drawing, not the score, as wrong.</span>`
+        : `Rebuilt from the receipts, this page agrees with the recorded score to
+           ${check.worst.toExponential(1)} across ${check.episodes} episodes.`) : ""}</div>`;
+}
+
+/** What a median cannot show: who was ruined, and how often. */
+function diagnostics(data) {
+  const s = data.round?.score;
+  if (!s) return "";
+  const rows = [
+    ["eff_round", `${fmt(s.eff_round)} – ${fmt(s.eff_round_upper)}`,
+     "lower and upper bracket the true efficiency; a wide one means the search did not converge"],
+    ["gain median", fmt(s.gain_median), "share of the gains from trade, at the median trader"],
+    ["gain worst", fmt(s.gain_worst), "and at the trader who did worst"],
+    ["below autarky", `${s.below_autarky} / ${Object.keys(data.traders).length}`,
+     "traders who ended the round worse than trading with nobody"],
+    ["zero episodes", `${s.zero_agent_episodes} / ${s.agent_episodes}`,
+     "trader-episodes holding none of some good, which is zero utility"],
+    ["first above floor",
+     s.first_above_floor === null ? "never" : `episode ${s.first_above_floor + 1}`,
+     "the first episode whose efficiency beat the autarky floor"],
+  ];
+  return `<h2 style="margin-top:14px">Diagnostics</h2>` + rows.map(([k, v, why]) =>
+    `<div class="rowbar diag" title="${esc(why)}">
+       <span class="sub">${k}</span>
+       <span class="num">${v}</span></div>`).join("");
+}
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function sparkline(values, floor, kind = "eff", ceiling = null) {
   if (!values.length) return `<div class="note">no per-episode record</div>`;
-  const w = 280, h = 74, pad = { l: 6, r: 6, t: 8, b: 16 };
-  const top = Math.max(1, ...values, floor ?? 0);
+  const w = 280, h = kind === "util" ? 54 : 74, pad = { l: 6, r: 6, t: 10, b: 16 };
+  const top = ceiling ?? Math.max(1, ...values, floor ?? 0);
   const x = (i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(1, values.length - 1);
   const y = (v) => pad.t + (1 - v / top) * (h - pad.t - pad.b);
   const path = values.map((v, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
   const dots = values.map((v, i) =>
     `<circle class="dot ${v <= 1e-9 ? "zero" : ""}" cx="${x(i).toFixed(1)}"
        cy="${y(v).toFixed(1)}" r="3"><title>episode ${i + 1}: ${fmt(v)}</title></circle>`).join("");
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img"
-      aria-label="efficiency by episode">
+  return `<svg class="spark ${kind}" viewBox="0 0 ${w} ${h}" role="img"
+      style="height:${h}px"
+      aria-label="${kind === "util" ? "utility" : "efficiency"} by episode">
     <line class="axis" x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}"/>
     ${floor !== undefined ? `<line class="floor" x1="${pad.l}" y1="${y(floor).toFixed(1)}"
-       x2="${w - pad.r}" y2="${y(floor).toFixed(1)}"><title>autarky floor</title></line>` : ""}
+       x2="${w - pad.r}" y2="${y(floor).toFixed(1)}"><title>autarky</title></line>` : ""}
     <path class="series" d="${path}"/>${dots}
     <text x="${pad.l}" y="${h - 4}">ep 1</text>
     <text x="${w - pad.r}" y="${h - 4}" text-anchor="end">ep ${values.length}</text>
-    ${floor !== undefined ? `<text x="${pad.l}" y="${(y(floor) - 4).toFixed(1)}"
-       text-anchor="start">autarky ${fmt(floor, 2)}</text>` : ""}
+    ${floor !== undefined && kind === "eff" ? `<text x="${pad.l}"
+       y="${(y(floor) - 4).toFixed(1)}" text-anchor="start">autarky ${fmt(floor, 2)}</text>` : ""}
     <text x="${w - pad.r}" y="${(y(values[values.length - 1]) + 13).toFixed(1)}"
        text-anchor="end">${fmt(values[values.length - 1], 2)}</text>
   </svg>`;
@@ -470,8 +562,10 @@ function lockReveal(why) {
 
 function mount(rows, { manager } = {}) {
   timeline = reduce(rows, manager ? { manager } : {});
-  scene = new Scene($("island"), timeline);
-  legend(timeline.goods);
+  // The scene is built knowing whether it has a hidden half, because a card
+  // with a score row is a different card, not the same one with a blank in it.
+  scene = new Scene($("island"), timeline, reveal);
+  legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
 
@@ -481,7 +575,24 @@ async function startReplay(boardUrl, revealUrl) {
   live?.stop();
   player?.stop();
   const board = await loadBoard(boardUrl);
+  reveal = null;
+  let missing = null;
+  if (revealUrl) {
+    try {
+      const answer = await fetch(revealUrl, { cache: "no-store" });
+      if (!answer.ok) throw new Error(String(answer.status));
+      reveal = await answer.json();
+    } catch {
+      missing = `No sidecar at <code>${revealUrl}</code>. Generate one with
+        <code class="mono">python viewer/reveal.py --seed … --check …</code>.`;
+    }
+  } else {
+    missing = `This board has no reveal sidecar, so it replays without utilities:
+      tastes and capacities are regenerated from the round's seed by
+      <code class="mono">viewer/reveal.py</code>.`;
+  }
   mount(board.messages);
+  if (reveal) drawReveal(reveal); else lockReveal(missing);
   $("where").textContent =
     `replay · ${board.workspace || boardUrl} · ${board.messages.length} messages`;
   player = replayPlayer(timeline, {
@@ -494,19 +605,6 @@ async function startReplay(boardUrl, revealUrl) {
     ...player.episodes().map((c) => new Option(`episode ${c.episode}`, String(c.index))));
   player.seek(0);
 
-  reveal = null;
-  if (revealUrl) {
-    try {
-      reveal = await (await fetch(revealUrl, { cache: "no-store" })).json();
-      drawReveal(reveal);
-    } catch {
-      lockReveal(`No sidecar at <code>${revealUrl}</code>. Generate one with
-        <code class="mono">python viewer/reveal.py --seed … --check …</code>.`);
-    }
-  } else {
-    lockReveal(`This board has no reveal sidecar. Tastes and capacities are
-      regenerated from the round's seed by <code class="mono">viewer/reveal.py</code>.`);
-  }
   $("status").textContent = "";
 }
 
@@ -514,9 +612,11 @@ function startLive(url, channel) {
   mode = "live";
   player?.stop();
   $("transport").style.display = "none";
+  reveal = null;
   lockReveal(`<b>Live.</b> Tastes and capacities are private to each trader and are
-    not on the board, so they are not on this page. Watch the replay afterwards to
-    see them.`);
+    not on the board, so they are not on this page — and utility needs a taste, so
+    there is no score here either. Nobody watching a round can see more of it than
+    the traders in it. Replay it afterwards for both.`);
   let count = 0;
   live = liveFeed({ url, channel }, {
     update: ({ rows, sealed, hub }) => {

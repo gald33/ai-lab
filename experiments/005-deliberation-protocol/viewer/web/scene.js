@@ -9,6 +9,8 @@
 // passes the adjacent-pair gates for four series; it does not pass all-pairs,
 // which is exactly why position and glyph do the identifying.
 
+import { utilityOf } from "./utility.js";
+
 const NS = "http://www.w3.org/2000/svg";
 
 export const GLYPH = {
@@ -38,7 +40,7 @@ const CX = W / 2, CY = H / 2 + 10;
 
 /** Where each hut stands. Two traders face each other; more ring the island. */
 function seats(n) {
-  if (n === 2) return [{ x: 210, y: CY }, { x: W - 210, y: CY }];
+  if (n === 2) return [{ x: 210, y: CY - 14 }, { x: W - 210, y: CY - 14 }];
   const r = n <= 4 ? 250 : 275;
   return Array.from({ length: n }, (_, i) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
@@ -46,15 +48,25 @@ function seats(n) {
   });
 }
 
-const CARD_W = 168, CARD_H = 116, BAR_W = 22, BAR_MAX = 46;
+const CARD_W = 168, BAR_W = 22, BAR_MAX = 40;
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
-const BASE = 100;
+const BASE = 92;
+//: Taller only where there is a utility to put in it. A live card must not
+//: carry an empty score row: a blank number reads as a number that failed,
+//: rather than as one nobody on this island is allowed to know.
+const CARD_H = 116, CARD_H_SCORED = 138;
 
 export class Scene {
-  constructor(root, timeline) {
+  constructor(root, timeline, reveal = null) {
     this.root = root;
+    this.timeline = timeline;
     this.traders = timeline.traders;
     this.goods = timeline.goods;
+    // Present only in a replay. Everything utility on this island hangs off it,
+    // and there is deliberately no path that fills it in live.
+    this.reveal = reveal;
+    this.cardH = reveal ? CARD_H_SCORED : CARD_H;
+    this.utilityTop = this.utilityScale();
     this.seats = {};
     this.bars = {};
     this.labels = {};
@@ -99,8 +111,8 @@ export class Scene {
           C ${CX - 392} ${CY - 96} ${CX - 250} ${CY - 142} ${CX - 118} ${CY - 128}
           C ${CX - 38} ${CY - 120} ${CX + 40} ${CY - 142} ${CX + 142} ${CY - 132}
           C ${CX + 282} ${CY - 120} ${CX + 392} ${CY - 70} ${CX + 392} ${CY + 12}
-          C ${CX + 392} ${CY + 98} ${CX + 250} ${CY + 152} ${CX} ${CY + 152}
-          C ${CX - 250} ${CY + 152} ${CX - 392} ${CY + 96} ${CX - 392} ${CY + 10} Z`,
+          C ${CX + 392} ${CY + 102} ${CX + 250} ${CY + 158} ${CX} ${CY + 158}
+          C ${CX - 250} ${CY + 158} ${CX - 392} ${CY + 100} ${CX - 392} ${CY + 10} Z`,
     }));
     svg.append(el("ellipse", {
       class: "square", cx: CX, cy: CY + 26, rx: 118, ry: 52,
@@ -172,7 +184,7 @@ export class Scene {
 
     const card = el("g", { class: "card" });
     card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: 14,
-                             width: CARD_W, height: CARD_H, rx: 11 }));
+                             width: CARD_W, height: this.cardH, rx: 11 }));
     card.append(el("text", { x: -CARD_W / 2 + 12, y: 36, class: "card-name" }, name));
 
     // Labour: filled by what this trader spent this episode, and empty until a
@@ -217,8 +229,53 @@ export class Scene {
     });
     card.append(el("line", { class: "plank", x1: -CARD_W / 2 + 8, y1: BASE + 1.5,
                              x2: CARD_W / 2 - 8, y2: BASE + 1.5 }));
+
+    if (this.reveal) {
+      // What this shelf is worth to the trader who owns it. Computed here from
+      // the revealed tastes and the receipts -- the manager's own scored
+      // trajectory is in the rail, and `audit()` holds the two together.
+      const row = el("g", { class: "score", transform: `translate(0 ${BASE + 44})` });
+      const w = CARD_W - 24;
+      row.append(el("text", { x: -CARD_W / 2 + 12, y: 0, class: "card-sub" }, "utility"));
+      row.append(el("text", { x: CARD_W / 2 - 12, y: 0, class: "score-value",
+                              "text-anchor": "end" }, "—"));
+      row.append(el("rect", { class: "score-track", x: -w / 2, y: 5, width: w,
+                              height: 6, rx: 3 }));
+      row.append(el("rect", { class: "score-fill", x: -w / 2, y: 5, width: w,
+                              height: 6, rx: 3 }));
+      // Where autarky would have put them: the line worth beating, and the one
+      // a round can finish below.
+      const auto = this.reveal.autarky_utility?.[name];
+      if (auto !== undefined && this.utilityTop > 0) {
+        row.append(el("rect", {
+          class: "score-floor", x: -w / 2 + w * Math.min(1, auto / this.utilityTop) - 1,
+          y: 2, width: 2, height: 12,
+        }, []));
+      }
+      card.append(row);
+      this.labels[name].score = row.querySelector(".score-fill");
+      this.labels[name].scoreText = row.querySelector(".score-value");
+    }
+
     g.append(card);
     return g;
+  }
+
+  /**
+   * One utility scale for the whole round, like the shelf's.
+   *
+   * Taken from the manager's recorded trajectory where there is one, so the bar
+   * is measured against what actually happened rather than against whatever the
+   * replay has reached so far.
+   */
+  utilityScale() {
+    if (!this.reveal) return 0;
+    let top = 0;
+    for (const row of this.reveal.round?.trajectory || []) {
+      for (const u of row) top = Math.max(top, u);
+    }
+    for (const u of Object.values(this.reveal.autarky_utility || {})) top = Math.max(top, u);
+    return top || 1;
   }
 
   /**
@@ -266,6 +323,21 @@ export class Scene {
       const used = spent === null ? 0 : Math.max(0, Math.min(1, 1 - spent));
       wheel.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
       wheel.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
+      if (this.reveal) {
+        // After the bell the shelf is empty and a live reading would say zero,
+        // which is true and useless: what the episode was worth is what it
+        // closed holding. Hold that until the next episode opens.
+        const closed = state.phase === "closed" || state.phase === "over";
+        const last = state.episodes_closed[state.episodes_closed.length - 1];
+        const held = closed && last ? last.holdings[name] : state.stocks[name];
+        const u = utilityOf(this.reveal, name, held);
+        const label = this.labels[name];
+        const w = CARD_W - 24;
+        label.score.setAttribute("width",
+          (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
+        label.scoreText.textContent = u === null ? "—" : u.toFixed(3);
+        label.scoreText.classList.toggle("zero", u !== null && u <= 1e-12);
+      }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));
       const held = this.goods.map((g) => state.stocks[name]?.[g] || 0);

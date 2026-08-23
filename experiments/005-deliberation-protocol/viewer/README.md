@@ -33,9 +33,17 @@ and shown as text, never repaired into a plausible receipt. If the manager's
 wording changes, the page goes quiet about that line and says so — the same rule
 the manager itself follows about malformed messages.
 
-**No number it computed itself.** `eff_round` and the per-episode series are the
-manager's, read from the recorded round. A page that recomputed the metric would
-be a second implementation of it, and the two would drift.
+**No metric it computed itself.** `eff_round`, the per-episode efficiencies and
+every trader's utility trajectory are the manager's, read from the recorded
+round. A page that recomputed the metric would be a second implementation of it,
+and the two would drift.
+
+The one number the page does derive is the **card's utility while an episode is
+running**, because no such number exists in the record — the manager scores at
+the bell, not continuously. It is Cobb-Douglas over the revealed tastes and the
+rebuilt shelf, and `audit()` puts it against the recorded trajectory at every
+bell in the exact code path that draws the island. Agreement is reported in the
+rail; disagreement says the *drawing* is wrong, not the score.
 
 | on screen | what it is |
 |---|---|
@@ -47,6 +55,8 @@ be a second implementation of it, and the two would drift.
 | goods in flight | a settled exchange, both directions at once |
 | a red card outline | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
+| the pink bar | replay only — what the shelf is worth to the trader who owns it |
+| the tick on it | what autarky would have given them: the line worth beating |
 
 ## The two feeds
 
@@ -61,6 +71,32 @@ served from anywhere else cannot read it at all.
 body}` — and its sidecar if one exists. Transport, scrubbing, episode chapters,
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
+
+## Utilities and efficiency
+
+Both need tastes, so both are replay-only, and the live page says so rather than
+showing an empty score.
+
+On the island, each card carries the trader's utility — rising as they produce
+and trade, held at the episode's closing value through the bell rather than
+dropping to zero with the emptied shelf, because what the episode was worth is
+what it closed holding.
+
+In the rail:
+
+- **`eff_round`** as the headline, with the autarky floor marked on its meter.
+  Accumulated utility against the frontier of the total — the primary.
+- **Efficiency per episode**, with the floor as a reference line, and the
+  standing warning that it is a coverage measure and not welfare: one trader at
+  zero puts the whole vector maximally far from the frontier however well the
+  others did.
+- **Utility by trader** — each trader's per-episode series with their autarky
+  level as the reference, and the accumulated total beside their name. That
+  total is the object `eff_round` is scored on, which is why a trader ruined in
+  one episode and fed in the rest still shows a positive round.
+- **Diagnostics** the medians hide: the `eff_round` bracket, gains at the median
+  and worst trader, how many ended below autarky, how many trader-episodes were
+  zero, and the first episode that beat the floor.
 
 ## The sidecar
 
@@ -88,10 +124,12 @@ the reason the replay shows the *recorded* score rather than its own.
 node --test "viewer/tests/*.test.mjs"
 ```
 
-Nine tests. The ones that matter: a self-report moves nothing, a line that is
-nearly a receipt is not repaired into one, and **every saved board parses with
+Thirteen tests. The ones that matter: a self-report moves nothing, a line that is
+nearly a receipt is not repaired into one, **every saved board parses with
 nothing left over** — which is what will fail if `island/manager.py` or
-`run_v3.py` is reworded, rather than the island quietly emptying.
+`run_v3.py` is reworded, rather than the island quietly emptying — and **every
+board with a sidecar reproduces the manager's scored trajectory** through the
+page's own reducer and utility code.
 
 ## Files
 
@@ -99,6 +137,7 @@ nothing left over** — which is what will fail if `island/manager.py` or
 |---|---|
 | `web/reducer.js` | board text → a scrubbable timeline. Pure, and the only place the manager's wording is known |
 | `web/scene.js` | the island, drawn from a state |
+| `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the two feeds, and the replay clock |
 | `web/index.html` | the page: HUD, ticker, transport, the hidden half |
 | `serve.py` | static files, the board list, and the `api/state` forward |
@@ -113,6 +152,11 @@ worst normal-vision ΔE 19.8, all ≥3:1 on the surface. Those gates pass for
 *adjacent* pairs, which is the pairlist a fixed-order shelf is read on; they do
 not pass all-pairs, which is exactly why position and glyph do the identifying
 and colour only reinforces it.
+
+Metrics wear two hues of their own — violet for efficiency, magenta for utility
+— kept off the goods palette so a score can never be mistaken for a stock. Both
+clear the all-pairs gates against the same surface (CVD ΔE 16.0, normal-vision
+19.7).
 
 One committed dark look: this is an island at dusk, and a light mode would be a
 different picture rather than the same one lit differently. Every animation is
