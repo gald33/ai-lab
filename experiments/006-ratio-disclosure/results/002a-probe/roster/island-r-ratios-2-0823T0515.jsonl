@@ -2,3 +2,6 @@
 {"t": 1787462166.2131882, "agent": "T2", "task": "Starting island trading game"}
 {"t": 1787462166.2132206, "agent": "T3", "task": "starting round, checking messages"}
 {"t": 1787462166.2132509, "agent": "T4", "task": "Starting round, assessing island state"}
+{"t": 1787462196.9693193, "agent": "T2", "task": "Waiting for Episode 1 to open"}
+{"t": 1787462196.9693816, "agent": "T3", "task": "waiting for episode 1 to start"}
+{"t": 1787462196.9694054, "agent": "T4", "task": "Waiting for Episode 1 to open, monitoring for any messages from other traders"}
