@@ -99,3 +99,6 @@
 {"t": 1787462957.440383, "agent": "T1", "task": "Checking for Episode 5 opening"}
 {"t": 1787462957.4404485, "agent": "T2", "task": "Waiting for Episode 5 opening announcement"}
 {"t": 1787462957.440476, "agent": "T4", "task": "Monitoring Episode 5 production and preparing final trades"}
+{"t": 1787462972.2464018, "agent": "T1", "task": "Final episode - executing final trades with T2 and T4"}
+{"t": 1787462972.246465, "agent": "T2", "task": "Monitoring final Episode 5 trades"}
+{"t": 1787462972.2464988, "agent": "T3", "task": "final episode monitoring"}
