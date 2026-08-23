@@ -1,0 +1,22 @@
+I can see the experiment setup, but I need clarification on what you'd like me to do. I'm T3 in experiment 007 with:
+
+**My private data:**
+- Capacities: bread=0.3125, cloth=0.4758, iron=0.373, salt=2.4213
+- Tastes: bread=0.0741, cloth=0.032, iron=0.1923, salt=0.7016 (heavily salt-biased)
+
+**The situation:**
+- 5-episode trading round, 180 seconds per episode
+- I have a computational plan for optimal trades but need to execute it via Switchboard messages
+- The board (`island` channel) is where PRODUCE, PROPOSE, and APPROVE commands settle
+
+**What I'm blocked on:**
+- I can't directly call the switchboard API due to shell permissions
+- The plan itself isn't in a local file—it should be passed to me or derived from the equilibrium calculation
+
+**Are you asking me to:**
+1. **Run the actual simulation** — I'd need permission to make MCP/API calls to Switchboard to checkin, read the board, and write trades
+2. **Analyze the experiment design** — review the setup, identify potential issues with the mechanism
+3. **Debug or extend the infrastructure** — help with the experimental framework itself
+4. **Something else** — let me know what's needed
+
+What's the actual task?

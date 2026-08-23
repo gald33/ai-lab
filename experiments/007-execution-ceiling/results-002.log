@@ -2,3 +2,29 @@ model claude-haiku-4-5-20251001  arms ['t-plan', 't-tranche']  rounds 12  episod
 clock-bound: 15.8 min per round; 24 rounds at 10 at a time is 3 wave(s), so about 47 min of wall-clock and 96 agent sessions.
 
 preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  t-plan    seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 56  refused 4  talk 0  ack 2/4  16m
+  t-plan    seed 3  eff_round 0.000  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 43  refused 0  talk 0  ack 3/4  16m
+  t-plan    seed 5  eff_round 0.000  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 59  refused 4  talk 0  ack 0/4  16m
+  t-plan    seed 8  eff_round 0.000  floor 0.569  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 10  refused 0  talk 0  ack 0/4  16m
+  t-plan    seed 9  eff_round 0.000  floor 0.645  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 38  refused 4  talk 0  ack 0/4  16m
+  t-plan    seed 1  eff_round 0.000  floor 0.642  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 32  refused 1  talk 4  ack 1/4  16m
+  t-plan    seed 7  eff_round 0.000  floor 0.616  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 41  refused 2  talk 0  ack 0/4  16m
+  t-plan    seed 6  eff_round 0.000  floor 0.652  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 52  refused 0  talk 1  ack 3/4  16m
+  t-plan    seed 10  eff_round 0.000  floor 0.600  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 59  refused 2  talk 1  ack 1/4  16m
+  t-plan    seed 2  eff_round 0.509  floor 0.674  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 58  refused 4  talk 0  ack 0/4  16m
+  t-plan    seed 12  eff_round 0.000  floor 0.537  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 68  refused 1  talk 0  ack 1/4  16m
+  t-plan    seed 11  eff_round 0.000  floor 0.672  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 48  refused 0  talk 0  ack 2/4  16m
+  t-tranche seed 1  eff_round 0.000  floor 0.642  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 100  refused 4  talk 0  ack 2/4  16m
+  t-tranche seed 6  eff_round 0.000  floor 0.652  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 76  refused 0  talk 0  ack 0/4  16m
+  t-tranche seed 3  eff_round 0.000  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 61  refused 0  talk 1  ack 1/4  16m
+  t-tranche seed 2  eff_round 0.401  floor 0.674  per-episode [0.00 0.00 0.00 0.60 0.60]  settled 69  refused 4  talk 1  ack 3/4  16m
+  t-tranche seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 55  refused 0  talk 1  ack 1/4  16m
+  t-tranche seed 5  eff_round 0.497  floor 0.590  per-episode [0.00 0.00 0.57 0.57 0.57]  settled 68  refused 3  talk 0  ack 1/4  16m
+  t-tranche seed 8  eff_round 0.000  floor 0.569  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 97  refused 5  talk 0  ack 1/4  16m
+  t-tranche seed 7  eff_round 0.458  floor 0.616  per-episode [0.00 0.51 0.51 0.51 0.51]  settled 86  refused 2  talk 0  ack 2/4  16m
+  t-tranche seed 9  eff_round 0.000  floor 0.645  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 66  refused 1  talk 0  ack 3/4  16m
+  t-tranche seed 11  eff_round 0.455  floor 0.672  per-episode [0.52 0.00 0.00 0.00 0.00]  settled 90  refused 0  talk 0  ack 4/4  16m
+  t-tranche seed 10  eff_round 0.450  floor 0.600  per-episode [0.00 0.56 0.56 0.56 0.56]  settled 73  refused 1  talk 0  ack 4/4  16m
+  t-tranche seed 12  eff_round 0.000  floor 0.537  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 65  refused 4  talk 0  ack 4/4  16m
+
+wrote /home/user/ai-lab/experiments/007-execution-ceiling/results/002-tranche/v3.json
