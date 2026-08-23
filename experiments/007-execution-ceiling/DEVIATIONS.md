@@ -81,3 +81,30 @@ is enough.
 Nothing is enforced by it: the bell rings on the clock and an agent that never
 acknowledges still plays. Acknowledgement counts remain **not comparable** with
 experiments that used 120s, and participation is still measured by production.
+
+## D3 — Five episodes, not ten
+
+**Written before run 001. 2026-08-23.**
+
+`PREREGISTRATION.md` fixed 10 episodes per round. Run 001 uses **5**, on the
+owner's instruction. The pre-registration is not revised in place; this is the
+record of the departure.
+
+**Why it is safe here.** The treated cell does not need episodes to learn: in
+both pilots `e-plan` was at 0.98 per-episode efficiency in **episode 1** and
+stayed there. The plan is fixed for the round, so a longer round mostly repeats
+what episode 1 establishes.
+
+**What it costs, stated rather than discovered.** Ten episodes gave the
+*control* room to improve across a round, and cutting to five removes that
+room. If `e-bare` would have climbed in episodes 6–10, this run understates it
+and therefore overstates the treatment difference. The pilots give no sign of
+such a climb — `e-bare` was at 0.000 in three of four pilot rounds — but no
+run has measured it at 5 episodes with this timing, so the caveat stands and
+is repeated in the run record's assumptions.
+
+**What does not change.** Cells, seeds, thresholds, the primary and its
+counting rule are all as pre-registered. Only the round length moves.
+
+The run also gets cheaper: 24 rounds at roughly 16 minutes each, three waves,
+about 50 minutes rather than 100.
