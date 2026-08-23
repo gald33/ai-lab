@@ -24,3 +24,6 @@
 {"t": 1787462345.6625106, "agent": "T4", "task": "Monitoring proposals and ready to trade"}
 {"t": 1787462360.3524997, "agent": "T2", "task": "T3 may accept p1, or I need to pivot strategy"}
 {"t": 1787462360.352563, "agent": "T3", "task": "waiting for episode 1 bell"}
+{"t": 1787462389.9613605, "agent": "T1", "task": "Episode 1 ending soon, waiting for bell"}
+{"t": 1787462389.9614239, "agent": "T3", "task": "waiting for episode end"}
+{"t": 1787462389.9614494, "agent": "T4", "task": "Waiting for episode 1 bell and proposal settlements"}
