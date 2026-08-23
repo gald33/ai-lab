@@ -224,3 +224,52 @@ would have been aimed at a competence that was not the binding constraint. It
 is high, so the binding constraint is in the trading, which is what ratio
 disclosure targets. The proposal is now worth running — as a new experiment,
 not under 005.
+
+---
+
+## Correction, 2026-08-23
+
+*Appended, not edited in. The numbers above stand; one sentence of the
+interpretation below them was too strong and is narrowed here.*
+
+The line **"the deficit in runs 003–006 is a trading failure"** claimed more
+than this run can support. Raised by the owner, and correct.
+
+**What run 007 established, exactly.** These agents solve the *solo* allocation
+at 0.972 of its closed-form optimum. That is solution quality on a strictly
+easier problem — one in which who to trade with, at what rate, and in what
+order do not exist. A solo agent has no access to half of the joint problem.
+
+**What follows from it, and what does not.**
+
+- **Still valid: the autarky utility as a participation constraint.** An agent
+  finishing below what it could have had alone would have preferred not to
+  trade. That is individual rationality and it needs no assumption about how
+  hard the joint problem is. `eff_round` below `autarky_floor` still means the
+  traders collectively did worse than each would have done separately.
+- **No longer claimed: that the joint shortfall is a failure.** A joint problem
+  being harder than a solo one is not a failure at it, and the solo score does
+  not set a fair expectation for the joint score. Calling the gap a "trading
+  failure" imported an assumption this run did not test.
+
+**The measure that avoids the question entirely.** Compare a trader's utility
+after exchanging with the utility of the bundle it produced itself, in the same
+episode. No floor, no cross-setting inference — the same agent, before and
+after. Computed on 006's run 002 (`006-ratio-disclosure/analysis/trade_gain.py`):
+
+| cell | u(after trade) ÷ u(own production) | share above 1 |
+|---|---|---|
+| `r-bare` | 1.04 | 68% |
+| `r-ratios` | 1.07 | 53% |
+| `r-ratios-board` | 1.06 | 59% |
+
+**Trade improves utility.** It is worth 4–7% on average and helps a majority of
+trader-episodes, and the ratio understates it, since it must drop every
+trader-episode whose own production scored zero — the corner bundles made
+deliberately worthless without trade. Of those, trade rescued 16 of 48, 4 of 5
+and 18 of 48 into positive utility across the three cells.
+
+**Where the loss actually sits.** In company, production quality falls to
+0.49–0.78 of each trader's own optimum, from 0.97 alone. Trade then recovers
++0.09 to +0.13. The expensive step is the specialisation bet placed before
+anyone knows whether the counterparties will be there — not the exchanging.
