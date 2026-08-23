@@ -100,3 +100,4 @@
 {"t": 1787462897.9366572, "agent": "T2", "task": "episode ending, checking final state"}
 {"t": 1787462897.936705, "agent": "T3", "task": "episode 4 bell"}
 {"t": 1787462897.9367561, "agent": "T4", "task": "Waiting for episode 5"}
+{"t": 1787462912.6767762, "agent": "T1", "task": "Bell ringing"}
