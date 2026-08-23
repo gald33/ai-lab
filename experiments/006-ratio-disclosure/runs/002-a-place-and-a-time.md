@@ -67,10 +67,10 @@ episodes, and whether board content is echoed in later proposals.
 
 | gate | command | commit | result |
 |---|---|---|---|
-| smoke | `python tools/check_stimuli.py`; `python -m pytest tests -q` | | |
-| assembly | `python tools/show_prompt.py r-ratios-board` | | |
-| toolchain | `run_v3.preflight()` | | |
-| board grant | a one-shot `claude -p` calling `board_set` under the run's own tool list | | |
+| smoke | `python tools/check_stimuli.py`; `python -m pytest tests -q` | `5fc17c2` | **pass** — `OK`, `11 passed` |
+| assembly | `python tools/show_prompt.py r-ratios-board` | `5fc17c2` | **pass** — base headings in order, then `## Two ratios, and where they go` naming `cost/<your name>` and `worth/<your name>`, then the private block |
+| toolchain | `run_v3.preflight()` | `5fc17c2` | **pass** — an agent's `switchboard-mcp` reached the hub |
+| board grant | a one-shot `claude -p` calling `board_set` under the run's own tool list | `5fc17c2` | **pass** — wrote `cost/T1`, read it back at `revision: 1`; `tools/board_dump.py` then read the same key. The revision counter the "written once" check depends on is live. |
 | pilot | reused — run 001 of this experiment, and 005's runs 005–007 | reused | |
 
 ## Failure modes anticipated
