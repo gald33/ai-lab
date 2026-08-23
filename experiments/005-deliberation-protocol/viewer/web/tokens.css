@@ -34,6 +34,13 @@
   --eff:      #9085e9;
   --util:     #d55181;
 
+  /* Capture diverges around autarky, so it wears the documented diverging pair
+     rather than a series colour: two poles that read as opposite, with a
+     neutral midpoint that reads as "nothing gained and nothing lost". */
+  --above:    #3987e5;
+  --below:    #e66767;
+  --neutral:  #383835;
+
   --good:     #0ca30c;
   --warning:  #fab219;
   --critical: #d03b3b;

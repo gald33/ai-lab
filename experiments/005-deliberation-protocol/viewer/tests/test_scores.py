@@ -315,6 +315,10 @@ def test_a_game_of_several_rounds_scores_their_median(tmp_path):
         assert game["rounds"] == len(members)
         assert game["eff_round"] == pytest.approx(
             statistics.median([m["eff_round"] for m in members]))
+        # Each round scored against its own island first, then the median --
+        # not the capture of an averaged island that nobody played.
+        assert game["capture"] == pytest.approx(statistics.median(
+            [scores.captured(m["eff_round"], m["autarky_floor"]) for m in members]))
         for slot, value in game["ratios"].items():
             assert value == pytest.approx(
                 statistics.median([m["ratios"][slot] for m in members]))
@@ -354,6 +358,44 @@ def test_a_player_is_ranked_on_their_best_game(tmp_path):
         assert t["worst"] <= t["median"] <= t["best"]
 
 
+def test_the_level_is_the_format_and_not_the_island(tmp_path):
+    """Two rounds on different seeds, same shape, are the same challenge.
+
+    The island is drawn per round, so a seed is a roll. What makes two rolls
+    comparable is `capture`, not sharing a seed.
+    """
+    a = {"island": {"seed": 1, "agents": 2, "goods": 4, "episodes": 3}}
+    b = {"island": {"seed": 9, "agents": 2, "goods": 4, "episodes": 3}}
+    c = {"island": {"seed": 1, "agents": 4, "goods": 4, "episodes": 3}}
+    assert scores.level(a) == scores.level(b)
+    assert scores.level(a) != scores.level(c)
+    assert "traders" in scores.level_label(scores.level(a))
+    assert "island" not in scores.level_label(scores.level(a))
+
+
+def test_capture_puts_two_islands_on_one_scale():
+    """Autarky is 0 and the frontier is 1, whatever the island had on offer."""
+    assert scores.captured(0.9, 0.8) == pytest.approx(0.5)
+    assert scores.captured(0.8, 0.8) == pytest.approx(0.0)
+    # Worse than not trading is a real outcome and is not clamped.
+    assert scores.captured(0.734, 0.823) == pytest.approx(-0.5028, abs=1e-4)
+    # An island with nothing on the table cannot be failed at.
+    assert scores.captured(1.0, 1.0) == 1.0
+    assert scores.captured(None, 0.5) is None
+
+
+def test_a_high_raw_efficiency_can_be_a_worse_game(tmp_path):
+    """The reason the board ranks on capture at all.
+
+    These are two real rows from the recorded rounds: the higher raw efficiency
+    is the one where the traders ended up worse off than never trading.
+    """
+    poor = scores.captured(0.734, 0.823)      # looked fourth-best on a raw board
+    good = scores.captured(0.657, 0.523)      # looked fifth
+    assert 0.734 > 0.657                       # raw efficiency says one thing
+    assert good > 0 > poor                     # what was on the table says another
+
+
 def test_a_game_spanning_levels_is_not_on_a_level_board(tmp_path):
     """A median across different islands is not a score on either of them."""
     ledger = tmp_path / "ledger.jsonl"
@@ -361,7 +403,7 @@ def test_a_game_spanning_levels_is_not_on_a_level_board(tmp_path):
         scores.ingest(path, ledger=ledger)
     rows = scores.load(ledger)
     mixed = [r for r in rows if scores.level(r) != scores.level(rows[0])][:1]
-    assert mixed, "no round on a different level to build a mixed game from"
+    assert mixed, "no round on a different format to build a mixed game from"
     for row in (rows[0], mixed[0]):
         row["game"] = {"id": "mixed", "rounds": 2}
 
