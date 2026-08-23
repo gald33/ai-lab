@@ -1,1 +1,18 @@
 Warning: no stdin data received in 3s, proceeding without it. If piping from a slow command, redirect stdin explicitly: < /dev/null to skip, or wait longer.
+I need to pause and report a critical issue: **The plan block was not included in your setup message.**
+
+You stated: "It is in your private block below, in your own goods and quantities" — but there is no private block with my production and exchange plan in the message you provided. You gave me:
+- My capacities: bread=0.4207, cloth=1.4279, iron=1.0634, salt=1.7796
+- My taste weights: bread=0.2276, cloth=0.5113, iron=0.0275, salt=0.2337
+- The general instructions about Switchboard and the experiment
+
+But no actual plan specifying what I should produce and which exchanges I should make.
+
+T1 is also reporting they didn't receive their plan details. Episode 1 is nearly over (bell at 15:27:20Z, ~46 seconds remaining), and without the plan, I'm making ad-hoc decisions rather than executing the predetermined equilibrium.
+
+**What I need:** The complete plan for T4 with:
+- Production shares for each good per episode
+- Named exchanges to propose (to=T#, give=good:amount, want=good:amount)
+- Which proposals to approve when they arrive
+
+Should I continue making decisions without the plan, or do you want to provide it now?
