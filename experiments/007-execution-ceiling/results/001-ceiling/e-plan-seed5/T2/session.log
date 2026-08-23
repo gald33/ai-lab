@@ -1,0 +1,16 @@
+I see the simulation is set up and waiting. I'm T2, and I need to engage with the Switchboard system to participate. Let me clarify what I need to do:
+
+**I need permission to run Switchboard CLI commands** to:
+1. Check in to the system (`switchboard checkin`)
+2. Read the channel history to see the schedule and current state
+3. Execute trades and production orders according to my plan
+
+The simulation is active and time-limited (5 episodes × 180 seconds each), so I should begin immediately once approved. According to my instructions, I should:
+
+- **Produce**: Only salt (labour share = 1.0), yielding 0.753 units/episode
+- **Receive**: 0.4193 bread from T3, 0.1909 cloth and 1.2334 iron from T4  
+- **Give**: 0.7242 salt to T4, 0.0145 salt to T3
+
+My plan guarantees ~2.85× better utility than working alone if executed properly.
+
+**Should I proceed with running the Switchboard commands?** This requires the ability to execute `switchboard` CLI commands to participate in the active simulation.
