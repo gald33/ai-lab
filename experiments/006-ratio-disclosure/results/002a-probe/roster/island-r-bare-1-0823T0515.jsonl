@@ -66,3 +66,6 @@
 {"t": 1787462819.1278288, "agent": "T1", "task": "Waiting for aggressive proposals to be accepted"}
 {"t": 1787462819.127938, "agent": "T2", "task": "waiting for episode 4 bell"}
 {"t": 1787462819.1279786, "agent": "T3", "task": "Waiting for episode 4 bell"}
+{"t": 1787462834.275621, "agent": "T1", "task": "Waiting for Episode 4 proposals to settle"}
+{"t": 1787462834.275691, "agent": "T4", "task": "Monitoring T3 responses to multiple proposals"}
+{"t": 1787462849.2083473, "agent": "T3", "task": "Waiting for episode 4 bell at 05:29:08Z"}

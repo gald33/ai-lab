@@ -88,3 +88,4 @@
 {"t": 1787462822.6409001, "agent": "T1", "task": "Waiting for T3 to approve proposal, then waiting for bell"}
 {"t": 1787462822.6409714, "agent": "T3", "task": "episode 4, waiting for bell"}
 {"t": 1787462822.6409974, "agent": "T4", "task": "Episode 4 - waiting through to bell"}
+{"t": 1787462837.76979, "agent": "T2", "task": "waiting for T3 response on cloth-for-iron"}
