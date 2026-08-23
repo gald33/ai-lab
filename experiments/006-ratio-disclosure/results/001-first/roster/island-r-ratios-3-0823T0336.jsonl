@@ -19,3 +19,6 @@
 {"t": 1787459374.6839218, "agent": "T1", "task": "Episodes 7-10 progressing toward round completion"}
 {"t": 1787459374.6839876, "agent": "T2", "task": "Episode 7 opening"}
 {"t": 1787459389.2543328, "agent": "T2", "task": "Cycling episodes 7-10 to completion"}
+{"t": 1787459404.2617176, "agent": "T1", "task": "Final confirmation of trading round completion"}
+{"t": 1787459419.6267874, "agent": "T1", "task": "Monitoring final episodes toward round end"}
+{"t": 1787459419.6268628, "agent": "T2", "task": "Episodes 7-10 progress"}
