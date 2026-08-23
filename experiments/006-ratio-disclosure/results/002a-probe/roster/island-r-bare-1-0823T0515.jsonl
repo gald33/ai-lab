@@ -17,3 +17,8 @@
 {"t": 1787462297.764192, "agent": "T2", "task": "waiting for T3 response to my iron proposal, monitoring open proposals"}
 {"t": 1787462297.7642756, "agent": "T3", "task": "Waiting for more proposals or deciding on counter-offer"}
 {"t": 1787462297.7643018, "agent": "T4", "task": "Monitoring proposals and ready to adjust trades"}
+{"t": 1787462327.7320576, "agent": "T2", "task": "waiting for T3 response to iron proposal, episode ending soon"}
+{"t": 1787462342.5976663, "agent": "T1", "task": "Waiting for proposals to settle before bell rings"}
+{"t": 1787462342.597735, "agent": "T3", "task": "Waiting for episode 1 to close"}
+{"t": 1787462357.2604141, "agent": "T3", "task": "Waiting for episode 1 bell"}
+{"t": 1787462357.260472, "agent": "T4", "task": "Waiting for T3 responses and monitoring Episode 1"}

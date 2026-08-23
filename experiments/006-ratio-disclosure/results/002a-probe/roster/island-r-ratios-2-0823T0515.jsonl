@@ -16,3 +16,8 @@
 {"t": 1787462286.4317012, "agent": "T3", "task": "checking for trade responses"}
 {"t": 1787462301.5913868, "agent": "T4", "task": "Monitoring for trade responses and other proposals"}
 {"t": 1787462316.4999585, "agent": "T3", "task": "waiting for p3 to settle, then proposing for iron"}
+{"t": 1787462331.6084566, "agent": "T1", "task": "Monitoring for responses to ratio disclosure and iron-for-cloth proposal"}
+{"t": 1787462331.6085563, "agent": "T3", "task": "waiting for T1 response on iron trade"}
+{"t": 1787462360.730425, "agent": "T1", "task": "Waiting for T4 to respond to p5, monitoring for end of episode 1"}
+{"t": 1787462360.7304876, "agent": "T2", "task": "Waiting for proposal responses in Episode 1"}
+{"t": 1787462360.7305126, "agent": "T3", "task": "waiting for T1 response before episode end"}

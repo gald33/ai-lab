@@ -18,3 +18,9 @@
 {"t": 1787462286.2101023, "agent": "T1", "task": "Checking for responses to my proposal to T3"}
 {"t": 1787462286.2101924, "agent": "T2", "task": "waiting for T3 to approve proposal p1"}
 {"t": 1787462301.3657064, "agent": "T3", "task": "waiting for more trade offers in episode 1"}
+{"t": 1787462331.378398, "agent": "T2", "task": "waiting for T3 response to enhanced proposal"}
+{"t": 1787462331.378463, "agent": "T3", "task": "checking trade status and remaining proposals"}
+{"t": 1787462345.6624117, "agent": "T1", "task": "Waiting for T3 to approve my proposal, monitoring other activity"}
+{"t": 1787462345.6625106, "agent": "T4", "task": "Monitoring proposals and ready to trade"}
+{"t": 1787462360.3524997, "agent": "T2", "task": "T3 may accept p1, or I need to pivot strategy"}
+{"t": 1787462360.352563, "agent": "T3", "task": "waiting for episode 1 bell"}

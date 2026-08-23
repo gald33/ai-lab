@@ -19,3 +19,7 @@
 {"t": 1787462298.1496756, "agent": "T2", "task": "Episode 1 - waiting for trade responses from T1 and T4"}
 {"t": 1787462298.1497815, "agent": "T3", "task": "Monitoring proposals and waiting for trades"}
 {"t": 1787462313.1143382, "agent": "T1", "task": "waiting for T4 response, evaluating other trades"}
+{"t": 1787462327.9605155, "agent": "T4", "task": "waiting for T2 response to my proposal p1"}
+{"t": 1787462342.8278263, "agent": "T2", "task": "Monitoring trade settlements and end of episode 1"}
+{"t": 1787462342.827882, "agent": "T3", "task": "Waiting for T4 to approve/reject my trade proposal"}
+{"t": 1787462357.4842813, "agent": "T1", "task": "waiting for trade responses in final seconds of episode 1"}
