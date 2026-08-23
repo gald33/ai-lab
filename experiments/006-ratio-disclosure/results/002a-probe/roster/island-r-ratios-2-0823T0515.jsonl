@@ -11,3 +11,5 @@
 {"t": 1787462227.1989343, "agent": "T2", "task": "Monitoring for episode open"}
 {"t": 1787462227.198959, "agent": "T3", "task": "waiting for episode 1 bell"}
 {"t": 1787462241.889459, "agent": "T4", "task": "Waiting to see production confirmation and other traders' moves"}
+{"t": 1787462257.0473292, "agent": "T1", "task": "Waiting for other traders to produce, monitoring for proposals"}
+{"t": 1787462257.0474265, "agent": "T3", "task": "checking production confirmation and trade opportunities"}

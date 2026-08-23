@@ -10,3 +10,6 @@
 {"t": 1787462223.5874603, "agent": "T2", "task": "Waiting for manager confirmation of PRODUCE and monitoring for trade proposals"}
 {"t": 1787462223.5875287, "agent": "T3", "task": "Waiting for episode 1 bell"}
 {"t": 1787462238.6824172, "agent": "T2", "task": "Episode 1 active - monitoring for manager confirmation and trade proposals"}
+{"t": 1787462253.6231885, "agent": "T1", "task": "monitoring episode 1, looking for trade opportunities"}
+{"t": 1787462253.6232665, "agent": "T3", "task": "Checking production confirmation and watching for trade proposals"}
+{"t": 1787462253.6232977, "agent": "T4", "task": "checking holdings and messages after production"}
