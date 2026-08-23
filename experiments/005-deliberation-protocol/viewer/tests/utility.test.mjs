@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { reduce } from "../web/reducer.js";
+import { readBoard } from "./board.mjs";
 import { utility, utilityOf, accumulate, audit, TOLERANCE } from "../web/utility.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -26,8 +27,9 @@ function pairs() {
   for (const dir of readdirSync(RESULTS, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;
     for (const f of readdirSync(join(RESULTS, dir.name))) {
-      if (!f.startsWith("board-") || !f.endsWith(".json")) continue;
-      const sidecar = join(RESULTS, dir.name, f.replace("board-", "reveal-"));
+      if (!f.startsWith("board-") || !(f.endsWith(".json") || f.endsWith(".json.gz"))) continue;
+      const stem = f.split(".")[0];
+      const sidecar = join(RESULTS, dir.name, `${stem.replace("board-", "reveal-")}.json`);
       if (existsSync(sidecar)) out.push({ board: join(RESULTS, dir.name, f), sidecar });
     }
   }
@@ -57,7 +59,7 @@ test("every board with a sidecar reproduces the manager's scored trajectory", ()
   const found = pairs();
   assert.ok(found.length >= 10, `only ${found.length} board/sidecar pairs`);
   for (const { board, sidecar } of found) {
-    const timeline = reduce(read(board).messages);
+    const timeline = reduce(readBoard(board).messages);
     const result = audit(timeline, read(sidecar));
     assert.ok(result, `${board}: no recorded trajectory to check against`);
     assert.equal(result.disagreements.length, 0,

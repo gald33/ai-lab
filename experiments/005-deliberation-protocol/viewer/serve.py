@@ -31,26 +31,54 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import sys
+import time
+
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 WEB = HERE / "web"
 RESULTS = HERE.parent / "results"
 
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
+SCORES = HERE / "scores" / "ledger.jsonl"
+
+
+#: Walking the results tree costs a stat per file, and the listing changes only
+#: when a round is saved -- so it is walked at most this often rather than once
+#: per page load. Short enough that a board saved during a run still turns up.
+LISTING_TTL = 5.0
+_listing: tuple[float, list[dict]] = (0.0, [])
+
 
 def boards() -> list[dict]:
-    """Every saved board under `results/`, with its sidecar if one exists."""
+    """Every saved board under `results/`, with its sidecar if one exists.
+
+    Newest first, because with many rounds kept the interesting one is the one
+    that just finished, and a dropdown sorted by filename buries it.
+    """
+    global _listing  # noqa: PLW0603 - one process, one cache
+    now = time.monotonic()
+    if _listing[1] and now - _listing[0] < LISTING_TTL:
+        return _listing[1]
+
     out = []
-    for path in sorted(RESULTS.rglob("board-*.json")):
+    for path in RESULTS.rglob("board-*.json*"):
+        if path.suffix not in (".json", ".gz"):
+            continue
         rel = path.relative_to(RESULTS).as_posix()
-        sidecar = path.with_name(path.name.replace("board-", "reveal-", 1))
+        stem = path.name.split(".")[0]
+        sidecar = path.with_name(stem.replace("board-", "reveal-", 1) + ".json")
         out.append({
-            "label": path.stem.replace("board-", ""),
+            "label": stem.replace("board-", ""),
             "board": f"results/{rel}",
             "reveal": (f"results/{sidecar.relative_to(RESULTS).as_posix()}"
                        if sidecar.exists() else None),
+            "at": path.stat().st_mtime,
         })
+    out.sort(key=lambda b: -b["at"])
+    _listing = (now, out)
     return out
 
 
@@ -67,24 +95,49 @@ class Handler(BaseHTTPRequestHandler):
             payload = {"boards": boards(),
                        "live": "api/state" if self.server.upstream else None}
             return self._send(200, TYPES[".json"], json.dumps(payload).encode())
+        if path == "/api/scores":
+            # Computed on the way out rather than stored: the ledger is the
+            # record, and a leaderboard is a reading of it that must never be
+            # the thing anybody edits.
+            import scores  # noqa: PLC0415 - imported here so a replay-only run needs nothing
+            # Read through the derived cache: recomputing the boards per request
+            # is a page that gets slower every time somebody plays.
+            payload = scores.read_boards(SCORES)
+            return self._send(200, TYPES[".json"],
+                              json.dumps(payload, default=list).encode())
         if path == "/api/state":
             return self._proxy()
         if path.startswith("/results/"):
             # Saved boards and their sidecars only. This process can read the
             # whole checkout and has no business turning that into an HTTP
             # surface, so the route is resolved and then checked for escape.
-            return self._file(self._under(RESULTS, path[len("/results/"):], ".json"))
+            return self._file(self._under(RESULTS, path[len("/results/"):],
+                                          ".json", ".gz"))
         return self._file(self._under(WEB, path.lstrip("/"), ".js", ".html", ".css"))
 
     def _under(self, root: Path, rel: str, *suffixes: str) -> Path | None:
+        """Resolve a request inside one directory, or refuse it.
+
+        Existence is deliberately *not* checked here: a board asked for by its
+        unpacked name may only exist packed, and `_file` is where that is
+        worked out. What is checked here is escape and file type, which is what
+        this is for.
+        """
         try:
             target = (root / rel).resolve()
             target.relative_to(root.resolve())
         except (ValueError, OSError):
             return None
-        return target if target.suffix in suffixes and target.is_file() else None
+        return target if target.suffix in suffixes else None
 
     def _file(self, path: Path | None) -> None:
+        if path is not None and not path.is_file():
+            # A board that has been packed is still the board that was asked
+            # for. The browser decompresses it; the page never learns.
+            packed = path.with_suffix(path.suffix + ".gz")
+            if packed.is_file():
+                return self._send(200, TYPES.get(path.suffix, "application/json"),
+                                  packed.read_bytes(), encoding="gzip")
         if path is None or not path.is_file():
             return self._send(404, "text/plain; charset=utf-8", b"not found\n")
         self._send(200, TYPES.get(path.suffix, "application/octet-stream"),
@@ -108,9 +161,12 @@ class Handler(BaseHTTPRequestHandler):
                               json.dumps({"error": f"{upstream} unreachable: {exc}"}).encode())
         self._send(200, TYPES[".json"], body)
 
-    def _send(self, status: int, content_type: str, body: bytes) -> None:
+    def _send(self, status: int, content_type: str, body: bytes,
+              encoding: str | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -134,8 +190,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--viewer", default="http://127.0.0.1:8799",
                     help="a running switchboard-viewer; '' to serve replays only")
+    ap.add_argument("--results", type=Path, default=None,
+                    help="which results tree to serve replays from "
+                         "(default: this experiment's)")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
+
+    if args.results:
+        # Rebinding the module global rather than threading it through every
+        # route: there is one results tree per process, chosen once at startup.
+        global RESULTS  # noqa: PLW0603
+        RESULTS = args.results.resolve()
 
     server = Server((args.host, args.port), Handler)
     server.upstream = args.viewer or None

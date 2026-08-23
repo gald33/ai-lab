@@ -1,0 +1,5 @@
+# Derived from ledger.jsonl and rebuilt whenever they fall behind it. The ledger
+# is the record and is kept; these are a reading of it, and a reading committed
+# to git is one that can be wrong in a way nobody notices.
+boards.json
+index.json

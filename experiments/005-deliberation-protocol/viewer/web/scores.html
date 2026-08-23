@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The island — scoreboard</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏆</text></svg>">
+
+<style>
+.page { max-width: 1080px; margin: 0 auto; padding: 16px; }
+.tabs { display: flex; gap: 8px; }
+.tabs a { text-decoration: none; padding: 6px 11px; border-radius: 8px;
+  border: 1px solid var(--line); color: var(--ink-2); font-size: 14px; }
+.tabs a.on { background: #2c3940; border-color: #4a5b63; color: var(--ink); }
+
+.levels { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.level { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 13px; }
+.level.top { border-color: var(--eff); }
+.level h3 { margin: 0; font-size: 15px; display: flex; justify-content: space-between;
+  align-items: baseline; gap: 8px; }
+.level h3 .seed { font-family: ui-monospace, monospace; color: var(--ink); }
+.level .best { font-size: 26px; font-weight: 650; font-family: ui-monospace, monospace;
+  color: var(--ink); }
+.level .who { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.holder { color: var(--eff); }
+
+.rank { width: 26px; color: var(--muted); }
+th.left, td.left { text-align: left; }
+td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere; text-align: left; }
+.good { color: var(--good); }
+.bad { color: var(--critical); }
+.badge { display: inline-block; font-size: 10px; letter-spacing: .07em; padding: 1px 6px;
+  border-radius: 9px; border: 1px solid var(--eff); color: var(--eff);
+  text-transform: uppercase; }
+.badge.fault { border-color: var(--warning); color: var(--warning); }
+.feed td { vertical-align: top; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.legendline { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+</style>
+
+<div class="page">
+  <div class="bar">
+    <h1>🏆 Scoreboard</h1>
+    <span class="sub" id="totals">—</span>
+    <span class="spacer"></span>
+    <nav class="tabs">
+      <a href="./">Island</a>
+      <a href="scores.html" class="on">Scoreboard</a>
+    </nav>
+  </div>
+
+  <div class="card">
+    <h2>Levels — best game on each configuration</h2>
+    <div class="note" style="margin:0 0 10px">
+      <code>eff_round</code>: accumulated utility against the frontier of the total.
+      It belongs to the table, not to any one trader — it says how much of what this
+      island could have produced actually got produced. The mark on each bar is
+      <strong>autarky</strong>: what the island scores if nobody trades at all, which
+      on some islands is a high bar. Two rounds are comparable only on the same
+      level — same seed, same traders, same goods, same episodes — because four
+      traders face a different frontier from two, and thirty episodes is more room
+      to learn than three.
+      <br><strong>A game is one attempt</strong>, and may be more than one round:
+      a one-round game scores that round, a several-round game scores the median
+      of its rounds. The rounds have to be declared as one game before they are
+      played — ten rounds played and the best three called a game afterwards is
+      cherry-picking with a statistic on top.
+    </div>
+    <div class="levels" id="levels"></div>
+  </div>
+
+  <div class="card">
+    <h2>Traders — best game, as a multiple of playing alone</h2>
+    <div class="note" style="margin:0 0 8px">
+      Each trader against <em>their own</em> autarky, because raw Cobb-Douglas
+      utilities are not comparable between traders. <strong>1.00× is the line</strong>
+      — below it, trade left them worse off than never trading. Ranked on the best
+      round: a lucky island or a partner who happened to want what you could make
+      still counts, which is what a high score is. The median and the round count
+      sit beside it, so you can see whether a top score was one round or a habit.
+    </div>
+    <table id="traders"></table>
+  </div>
+
+  <div class="card">
+    <h2>Recent rounds</h2>
+    <table id="recent" class="feed"></table>
+    <div class="note" id="denominators"></div>
+  </div>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
+// When it was played; a round whose board was not kept falls back to when it was
+// written down, and says so rather than passing one off as the other.
+// Four traders from one entrant is one name four times, which reads as four
+// entrants until you look. Say it once, with the count.
+const roster = (ids) => {
+  const seen = new Map();
+  for (const id of ids) seen.set(id, (seen.get(id) || 0) + 1);
+  return [...seen].map(([id, n]) => (n > 1 ? `${id} ×${n}` : id)).join(" + ");
+};
+const when = (r) => (r.played_at
+  ? r.played_at.slice(0, 16).replace("T", " ")
+  : `recorded ${r.recorded_at.slice(0, 16).replace("T", " ")}`);
+
+const state = await fetch("api/scores", { cache: "no-store" })
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+  .catch((err) => ({ error: err.message }));
+
+if (state.error) {
+  $("levels").innerHTML = `<div class="empty">no ledger yet — record a round with
+    <code class="mono">python viewer/scores.py --ingest results/…/v3.json</code></div>`;
+} else {
+  draw(state);
+}
+
+function draw(data) {
+  const t = data.totals;
+  const faults = Object.entries(t.not_ranked || {});
+  $("totals").textContent =
+    `${t.ranked} ranked of ${t.games} game${t.games === 1 ? "" : "s"} ` +
+    `over ${t.rounds} round${t.rounds === 1 ? "" : "s"} · ` +
+    `${t.levels} level${t.levels === 1 ? "" : "s"} · ${t.players} player${t.players === 1 ? "" : "s"}`;
+
+  // Which round currently holds each island, so the feed can say so.
+  // Which game holds each level, so the feed can say so. A game of one round
+  // is held by that round's own id.
+  const holder = new Map(data.islands.map((i) => [i.game_id, i.label]));
+
+  $("levels").innerHTML = data.islands.length ? data.islands.map((i, n) => `
+    <div class="level ${n === 0 ? "top" : ""}">
+      <h3><span class="seed">island ${i.seed}</span>
+        <span class="sub">${i.agents} traders · ${i.episodes} episodes</span></h3>
+      <div class="best">${fmt(i.best)}</div>
+      <div class="meter">
+        <i style="width:${(i.best * 100).toFixed(1)}%"></i>
+        <u style="left:${(i.floor * 100).toFixed(1)}%" title="autarky ${fmt(i.floor)}"></u>
+      </div>
+      <div class="meter-legend"><span>0</span>
+        <span>▏autarky ${fmt(i.floor, 2)}</span><span>1</span></div>
+      <div class="who">held by <span class="holder">${roster(i.by)}</span>
+        <span class="sub">· ${i.arm ?? "—"} · ${i.workspace}</span></div>
+      <div class="sub" style="margin-top:6px">
+        ${i.ranked} ranked of ${i.attempts} played${i.game_rounds > 1
+          ? ` · best is a ${i.game_rounds}-round game` : ""} · median ${fmt(i.median)} ·
+        worst ${fmt(i.worst)}${i.best >= i.floor
+          ? ` · <span class="good">beats autarky</span>`
+          : ` · <span class="bad">nobody has beaten autarky here</span>`}</div>
+    </div>`).join("") : `<div class="empty">no ranked round yet</div>`;
+
+  $("traders").innerHTML = `
+    <tr><th class="rank"></th><th class="left">player</th><th>best</th><th>median</th><th>worst</th>
+      <th>games</th><th>rounds</th><th>below 1.0×</th><th>zero episodes</th>
+      <th>levels</th></tr>` +
+    (data.traders.length ? data.traders.map((p, n) => `
+      <tr>
+        <td class="rank">${n + 1}</td>
+        <td class="id">${p.id}</td>
+        <td class="${p.best >= 1 ? "good" : "bad"}">${p.best.toFixed(3)}×</td>
+        <td>${p.median.toFixed(3)}×</td>
+        <td>${p.worst.toFixed(3)}×</td>
+        <td>${p.games}</td>
+        <td>${p.rounds}</td>
+        <td>${p.below_autarky} / ${p.games}</td>
+        <td>${p.zero_episodes} / ${p.agent_episodes}</td>
+        <td>${p.levels}</td>
+      </tr>`).join("") : `<tr><td colspan="9" class="empty">nobody has played yet</td></tr>`);
+
+  $("recent").innerHTML = `
+    <tr><th class="left">round</th><th class="left">level</th><th>eff_round</th>
+      <th class="left">traders</th><th></th></tr>` +
+    data.recent.map((r) => {
+      const ratios = Object.entries(r.ratios)
+        .map(([slot, v]) => `${slot} ${v.toFixed(2)}×`).join("  ");
+      const best = holder.get(r.game?.id ?? r.round_id) !== undefined;
+      return `<tr>
+        <td class="id">${r.workspace}<div class="sub">${r.arm ?? "—"} · ${when(r)}</div></td>
+        <td class="left sub">${r.island.seed} · ${r.island.agents}t · ${r.island.episodes}e</td>
+        <td>${fmt(r.eff_round)}<div class="sub">floor ${fmt(r.autarky_floor, 2)}</div></td>
+        <td class="id">${ratios || "—"}</td>
+        <td>${best ? `<span class="badge">level best</span>` : ""}
+            ${r.status !== "complete" ? `<span class="badge fault">${r.status}</span>` : ""}</td>
+      </tr>`;
+    }).join("");
+
+  $("denominators").innerHTML =
+    `Every recorded round is in these counts, including the ones that could not be
+     ranked${faults.length ? ` (${faults.map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}.
+     A round nobody reached is not a round somebody lost, and it is never dropped
+     from a denominator to make a board look better.` +
+    (t.unfinished_games
+      ? ` <span class="warn">${t.unfinished_games} game${t.unfinished_games === 1 ? "" : "s"}
+          short of the rounds it declared</span> — kept, counted, and not ranked:
+          abandoning the rounds that went badly is the cheapest way to launder a
+          median.`
+      : "") +
+    (t.attendance_unrecorded
+      ? ` <span class="warn">Attendance is unrecorded on ${t.attendance_unrecorded} ranked
+          round${t.attendance_unrecorded === 1 ? "" : "s"}</span> — those ran before the
+          manager kept a list of who reached the board, so a session that never
+          started cannot be told from a trader that chose to say nothing.`
+      : "");
+}
+</script>
