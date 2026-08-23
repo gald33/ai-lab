@@ -2,3 +2,9 @@ model claude-haiku-4-5-20251001  arms ['e-bare', 'e-plan']  rounds 2  episodes 3
 clock-bound: 9.5 min per round; 4 rounds at 10 at a time is 1 wave(s), so about 10 min of wall-clock and 16 agent sessions.
 
 preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  e-bare    seed 1  eff_round 0.000  floor 0.642  per-episode [0.00 0.00 0.00]  settled 41  refused 6  talk 0  ack 2/4  10m
+  e-plan    seed 1  eff_round 0.914  floor 0.642  per-episode [0.00 0.98 0.98]  settled 51  refused 4  talk 0  ack 1/4  10m
+  e-bare    seed 2  eff_round 0.587  floor 0.674  per-episode [0.65 0.66 0.00]  settled 30  refused 1  talk 3  ack 3/4  10m
+  e-plan    seed 2  eff_round 0.000  floor 0.674  per-episode [0.00 0.00 0.00]  settled 31  refused 3  talk 0  ack 1/4  10m
+
+wrote /home/user/ai-lab/experiments/007-execution-ceiling/results/001a-pilot/v3.json

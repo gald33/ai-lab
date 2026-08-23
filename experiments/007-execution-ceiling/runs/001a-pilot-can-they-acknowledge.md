@@ -1,6 +1,6 @@
 # Run 001a — Pilot: does a 30-second window survive?
 
-**Opened:** 2026-08-23 · **Status:** running
+**Opened:** 2026-08-23 · **Status:** reported
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards.
@@ -55,7 +55,34 @@ does **not** test the treatment and no efficiency claim may be drawn from it.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Deviations:**
+- **Records:** `results/001a-pilot/v3.json`, four rounds, 3 episodes each.
+- **Ran:** all four rounds, no failed rounds, no rescues.
+
+- **Numbers — the question this pilot asked.** Denominator 4 traders per round
+  for acknowledgement, 12 trader-episodes per round for production.
+
+  | cell | seed | acknowledged | produced |
+  |---|---|---|---|
+  | `e-bare` | 1 | 2/4 | **12/12** |
+  | `e-bare` | 2 | 3/4 | **11/12** |
+  | `e-plan` | 1 | 1/4 | **12/12** |
+  | `e-plan` | 2 | 1/4 | **9/12** |
+
+  Acknowledgement degraded as D2 said it would: 7 of 16 traders acknowledged
+  inside 20s. **Production did not**: 44 of 48 trader-episodes carried a
+  settled production, and every round had traders acting from episode 1.
+
+- **Numbers — not what this pilot was for, printed because they are stark.**
+  Captured gain, mean over acting trader-episodes: `e-bare` −0.36 and −0.29;
+  `e-plan` **+0.73** and −8.60. `e-plan` seed 1 scored **eff_round 0.914
+  against a floor of 0.642**, with per-episode efficiency **0.98** in episodes
+  2 and 3 — the first cell in this lab to finish above autarky. Two seeds, three
+  episodes: this is a pilot and none of it is a result.
+
+- **A measurement note for run 001.** Seed 2's −8.60 is one trader ending near
+  zero utility, which the ratio turns into a large negative. The measure is
+  correct but heavy-tailed, so run 001 reports **median alongside mean** and
+  states both. Written here rather than discovered later.
+
+- **Deviations:** D1 and D2 as written. D2 is **amended below**, before the run
+  it affects.

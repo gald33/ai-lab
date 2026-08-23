@@ -59,3 +59,25 @@ session that never joins has almost no time to fire. Acknowledgement counts are
 therefore **not comparable** with earlier experiments', and a low count here is
 a timing artefact rather than agent silence. Participation is measured by
 production, not by acknowledgement.
+
+
+## D2a — The window is widened to 45/30, before run 001
+
+**Written after the pilot, before run 001. 2026-08-23.**
+
+D2 named the risk and the pilot measured it: at a 30-second window with the
+acknowledgement asked by 20s, **7 of 16 traders acknowledged** — but **44 of 48
+trader-episodes carried a settled production**, and every round had traders
+acting from episode 1. The window degrades the acknowledgement and does not
+degrade participation.
+
+The owner's instruction for exactly this outcome was to extend it a little.
+Run 001 therefore uses a **45-second window with acknowledgement asked by 30
+seconds**, and is re-piloted at that timing before it runs — the same 16
+sessions, so the choice rests on measurement rather than on the guess that 45
+is enough.
+
+**What does not change.** The deadline stays absolute rather than a countdown.
+Nothing is enforced by it: the bell rings on the clock and an agent that never
+acknowledges still plays. Acknowledgement counts remain **not comparable** with
+experiments that used 120s, and participation is still measured by production.
