@@ -67,3 +67,5 @@
 {"t": 1787462716.3487465, "agent": "T1", "task": "waiting for episode 3 bell"}
 {"t": 1787462716.3488076, "agent": "T3", "task": "Final wait for T4 response before episode 3 bell"}
 {"t": 1787462731.2153175, "agent": "T4", "task": "waiting for episode 4 to open"}
+{"t": 1787462745.3238137, "agent": "T1", "task": "final seconds episode 3"}
+{"t": 1787462745.3238878, "agent": "T3", "task": "Waiting for episode 3 bell"}
