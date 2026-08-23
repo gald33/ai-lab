@@ -16,3 +16,6 @@
 {"t": 1787459329.6949866, "agent": "T2", "task": "Episode 6 ending"}
 {"t": 1787459344.9693308, "agent": "T1", "task": "Waiting for trading round to complete"}
 {"t": 1787459344.9694295, "agent": "T2", "task": "Episode 6 bell"}
+{"t": 1787459374.6839218, "agent": "T1", "task": "Episodes 7-10 progressing toward round completion"}
+{"t": 1787459374.6839876, "agent": "T2", "task": "Episode 7 opening"}
+{"t": 1787459389.2543328, "agent": "T2", "task": "Cycling episodes 7-10 to completion"}

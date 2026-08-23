@@ -30,3 +30,7 @@
 {"t": 1787459330.5021474, "agent": "T4", "task": "final wait for episode 6 bell"}
 {"t": 1787459345.4187472, "agent": "T1", "task": "Episode 7 opening"}
 {"t": 1787459345.418857, "agent": "T3", "task": "Episode 6 bell approaching"}
+{"t": 1787459360.3972275, "agent": "T4", "task": "episode 6 bell coming soon"}
+{"t": 1787459375.2963867, "agent": "T1", "task": "Waiting for episode 7 to open"}
+{"t": 1787459375.2964554, "agent": "T2", "task": "E7-8"}
+{"t": 1787459375.2964811, "agent": "T3", "task": "Episode 6 bell"}

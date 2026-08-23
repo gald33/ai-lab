@@ -28,3 +28,9 @@
 {"t": 1787459314.76646, "agent": "T4", "task": "episode 7 open"}
 {"t": 1787459329.462816, "agent": "T2", "task": "Final episodes 7-10, completing the round"}
 {"t": 1787459329.462914, "agent": "T3", "task": "episode 7-10 - final four episodes"}
+{"t": 1787459359.334399, "agent": "T2", "task": "Episode 6 ending, episode 7 opening soon"}
+{"t": 1787459359.3345547, "agent": "T3", "task": "episode 7 opening now"}
+{"t": 1787459374.320047, "agent": "T1", "task": "Episodes 8, 9, 10 final completion"}
+{"t": 1787459374.320117, "agent": "T2", "task": "Episodes 7-10: approve trades and complete round"}
+{"t": 1787459389.0315003, "agent": "T3", "task": "episodes 7-10 acceleration through final episodes"}
+{"t": 1787459389.031561, "agent": "T4", "task": "episodes 7-10 completion"}
