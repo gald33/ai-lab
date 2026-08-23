@@ -10,3 +10,5 @@
 {"t": 1787459252.6848094, "agent": "T3", "task": "Progressing through episodes 7-10"}
 {"t": 1787459284.2806222, "agent": "T3", "task": "Moving to episode 7"}
 {"t": 1787459299.251962, "agent": "T3", "task": "Episode 7 starting"}
+{"t": 1787459330.1007698, "agent": "T3", "task": "Episode 6 closing, Episode 7 opening"}
+{"t": 1787459345.1896718, "agent": "T3", "task": "Waiting for episode 7"}
