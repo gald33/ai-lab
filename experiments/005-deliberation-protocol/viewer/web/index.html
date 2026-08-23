@@ -1,0 +1,613 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The island — a spectator's view of 005</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏝</text></svg>">
+
+<style>
+/* One committed look: this is an island at dusk, and a light mode would be a
+   different picture rather than the same one lit differently. Every colour is
+   declared here; nothing borrows a host's theme. */
+:root {
+  color-scheme: dark;
+  --sea-near:   #1d3242;
+  --sea-far:    #0a1218;
+  --plane:      #0b1116;
+  --panel:      #171d21;   /* the surface every gate below was validated against */
+  --panel-2:    #1e262b;
+  --line:       #2b353b;
+  --ink:        #f2f4f4;
+  --ink-2:      #b6c0c4;
+  --muted:      #8b9599;
+  --sand:       #c9a86a;
+  --sand-dark:  #a4854c;
+  --fire:       #ffb648;
+
+  /* Categorical slots 1–4, dark steps. Validated against --panel on the
+     adjacent pairlist: worst CVD ΔE 8.4, worst normal-vision ΔE 19.8, all
+     ≥3:1 on the surface. They do NOT clear all-pairs (yellow beside orange),
+     which is why goods hold a fixed shelf position and always wear a glyph. */
+  --good-1: #3987e5;
+  --good-2: #d95926;
+  --good-3: #199e70;
+  --good-4: #c98500;
+  --good-5: #d55181;
+  --good-6: #008300;
+  --good-7: #9085e9;
+
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --critical: #d03b3b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--plane); color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
+  padding: 16px; max-width: 1500px; margin: 0 auto; align-items: start; }
+@media (max-width: 1080px) { .page { grid-template-columns: minmax(0, 1fr); } }
+
+h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.sub { color: var(--muted); font-size: 12.5px; }
+
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.bar .spacer { flex: 1; }
+
+button, select { font: inherit; color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; cursor: pointer; }
+button:hover, select:hover { border-color: #3c4950; }
+button[aria-pressed="true"] { background: #2c3940; border-color: #4a5b63; }
+button:disabled { opacity: .45; cursor: default; }
+
+.stage { position: relative; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden; }
+svg.island { display: block; width: 100%; height: auto; }
+
+/* --- the scene ---------------------------------------------------------- */
+.wave { fill: none; stroke: #ffffff; stroke-opacity: .045; stroke-width: 2;
+  animation: drift 15s linear infinite; }
+@keyframes drift { to { transform: translateX(240px); } }
+.land { fill: var(--sand); stroke: var(--sand-dark); stroke-width: 2; }
+.square { fill: #b8975c; opacity: .5; }
+.track { fill: none; stroke: #b08c50; stroke-width: 7; stroke-linecap: round;
+  stroke-dasharray: 2 17; opacity: .75; }
+.palm .trunk { fill: none; stroke: #7a5a34; stroke-width: 3.5; stroke-linecap: round; }
+.palm .frond { fill: #55803f; }
+.firelight { animation: flicker 3.4s ease-in-out infinite; }
+@keyframes flicker { 50% { opacity: .62; } }
+.fire .flame { fill: var(--fire); animation: flicker 1.7s ease-in-out infinite; }
+.fire .log { stroke: #6b4a2c; stroke-width: 5; stroke-linecap: round; }
+
+.hut .roof { fill: #7a4a34; }
+.hut .wall { fill: #e3d5b8; }
+.hut .door { fill: #5d4632; }
+.hut.quiet { opacity: .6; }
+.card-bg { fill: #0b1116; fill-opacity: .93; stroke: var(--line); }
+.hut.starved .card-bg { stroke: var(--critical); stroke-width: 1.8; }
+.card-name { fill: var(--ink); font-size: 14px; font-weight: 650;
+  font-family: ui-monospace, monospace; }
+.card-sub { fill: var(--muted); font-size: 9.5px; letter-spacing: .05em;
+  text-transform: uppercase; }
+.plank { stroke: #6b4a2c; stroke-width: 3; stroke-linecap: round; }
+
+.wheel-track { fill: none; stroke: #212a30; stroke-width: 4; }
+.wheel-fill { fill: none; stroke: var(--fire); stroke-width: 4; stroke-linecap: round;
+  transition: stroke-dasharray .5s ease; }
+.wheel-text { fill: var(--ink-2); font-size: 9px; text-anchor: middle;
+  font-family: ui-monospace, monospace; }
+
+.bar-track { fill: #ffffff; opacity: .05; }
+/* Two bars share a slot: everything held, and the part of it not already
+   promised to an open offer. The gap between them is the commitment. */
+.bar { fill: var(--c); opacity: .34; transform-box: fill-box; transform-origin: bottom;
+  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+.bar-held { fill: var(--c); transform-box: fill-box; transform-origin: bottom;
+  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+.glyph { font-size: 13px; text-anchor: middle; }
+.qty { fill: var(--ink-2); font-size: 10px; text-anchor: middle;
+  font-family: ui-monospace, monospace; }
+.qty.none { fill: var(--critical); }
+
+.rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .8;
+  stroke-dasharray: 7 6; animation: crawl 1.4s linear infinite; }
+@keyframes crawl { to { stroke-dashoffset: -26; } }
+.rope.settling .rope-line { stroke: var(--good); animation: none; stroke-dasharray: none; }
+.chip-bg { fill: #0e1519; stroke: var(--line); }
+.chip-text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
+.chip-pid { fill: var(--muted); font-size: 10px; text-anchor: middle;
+  font-family: ui-monospace, monospace; }
+
+.parcel-bg { fill: var(--c); }
+.parcel-glyph { font-size: 15px; text-anchor: middle; }
+.parcel-qty { fill: var(--ink); font-size: 10px; text-anchor: middle;
+  font-family: ui-monospace, monospace; }
+
+.pop-bg { fill: #0e1519; stroke: var(--line); }
+.pop .pop-text { fill: var(--ink); font-size: 12px; text-anchor: middle; }
+.pop.bad .pop-bg { stroke: var(--critical); }
+.pop.bad .pop-text { fill: #ffb3b3; }
+.pop.good .pop-bg { stroke: var(--good); }
+
+.night { fill: #04080b; pointer-events: none; }
+.banner-text { fill: var(--ink); font-size: 22px; text-anchor: middle; font-weight: 600; }
+
+/* --- the head-up display ------------------------------------------------ */
+.hud { position: absolute; inset: 12px 12px auto 12px; display: flex; gap: 8px;
+  align-items: flex-start; pointer-events: none; }
+.hud .pill { background: #0e1519cc; border: 1px solid var(--line); border-radius: 10px;
+  padding: 5px 10px; font-size: 13px; backdrop-filter: blur(3px); }
+.pill b { font-family: ui-monospace, monospace; }
+.pill.phase-market { border-color: var(--fire); color: var(--fire); }
+.pill.phase-production { border-color: var(--good-1); color: #9dc7f5; }
+.pill.phase-closed, .pill.phase-over { border-color: var(--line); color: var(--muted); }
+.hud .spacer { flex: 1; }
+.counts { display: flex; gap: 6px; }
+
+.legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 9px 12px;
+  border-top: 1px solid var(--line); background: var(--panel-2); font-size: 12.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* --- the ticker --------------------------------------------------------- */
+.ticker { margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 10px 12px; height: 178px; overflow-y: auto; }
+.line { display: grid; grid-template-columns: 62px 1fr; gap: 10px; padding: 3px 0;
+  font-size: 13px; border-bottom: 1px solid #1d2429; }
+.line:last-child { border-bottom: 0; }
+.line .who { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis; }
+.line.manager .who { color: var(--fire); }
+.line .what { color: var(--ink-2); overflow-wrap: anywhere; }
+.line.receipt .what { color: var(--ink); }
+.line.refused .what { color: #ffb3b3; }
+.line.attempt .what { color: #9dc7f5; font-family: ui-monospace, monospace; font-size: 12.5px; }
+.line.unknown .what { color: var(--warning); }
+.line.quiet-gap { color: var(--muted); font-style: italic; }
+
+/* --- the rail ----------------------------------------------------------- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 13px; margin-bottom: 12px; }
+.locked { border-style: dashed; color: var(--ink-2); font-size: 13px; }
+.locked b { color: var(--ink); }
+.hero { font-size: 34px; font-weight: 650; font-family: ui-monospace, monospace;
+  line-height: 1.1; }
+.hero small { display: block; font-size: 12px; color: var(--muted); font-weight: 400;
+  font-family: inherit; letter-spacing: .04em; text-transform: uppercase; }
+.meter { position: relative; height: 12px; background: #0e1519; border-radius: 6px;
+  margin: 12px 0 6px; overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--good-1);
+  border-radius: 6px; }
+.meter u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink);
+  text-decoration: none; }
+.meter-legend { display: flex; justify-content: space-between; font-size: 11.5px;
+  color: var(--muted); }
+.spark { width: 100%; height: 74px; display: block; }
+.spark .axis { stroke: #2b353b; stroke-width: 1; }
+.spark .floor { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .75; }
+.spark .series { fill: none; stroke: var(--good-1); stroke-width: 2;
+  stroke-linejoin: round; stroke-linecap: round; }
+.spark .dot { fill: var(--good-1); }
+.spark .dot.zero { fill: var(--critical); }
+.spark text { fill: var(--muted); font-size: 9.5px; font-family: ui-monospace, monospace; }
+.rowbar { display: grid; grid-template-columns: 22px 1fr 46px; gap: 7px; align-items: center;
+  font-size: 12px; margin: 3px 0; }
+.rowbar .track { height: 8px; background: #0e1519; border-radius: 4px; overflow: hidden; }
+.rowbar .track i { display: block; height: 100%; border-radius: 4px; }
+.rowbar .num { text-align: right; color: var(--ink-2); font-family: ui-monospace, monospace; }
+.trader-block { margin-bottom: 12px; }
+.trader-block h3 { font-size: 13px; margin: 0 0 4px; font-family: ui-monospace, monospace; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
+th, td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: right;
+  font-family: ui-monospace, monospace; }
+th:first-child, td:first-child { text-align: left; }
+.warn { color: var(--warning); }
+.note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+a { color: #9dc7f5; }
+</style>
+
+<div class="page">
+  <main>
+    <div class="bar">
+      <h1>🏝 The island</h1>
+      <span class="sub" id="where">—</span>
+      <span class="spacer"></span>
+      <label class="sub" for="source">source</label>
+      <select id="source"></select>
+      <button id="reload" title="Read the source again">↻</button>
+    </div>
+
+    <div class="stage">
+      <svg class="island" id="island" role="img" aria-labelledby="scene-title"></svg>
+      <title id="scene-title">The island: one hut per trader, their stocks on the shelf,
+        open proposals as ropes across the square.</title>
+      <div class="hud">
+        <div class="pill" id="ep">—</div>
+        <div class="pill" id="phase">—</div>
+        <div class="pill" id="clock" hidden></div>
+        <div class="spacer"></div>
+        <div class="counts">
+          <div class="pill" id="c-settled">settled <b>0</b></div>
+          <div class="pill" id="c-refused">refused <b>0</b></div>
+          <div class="pill" id="c-lapsed">lapsed <b>0</b></div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="bar" id="transport" style="margin-top:12px">
+      <button id="play">▶ play</button>
+      <button id="back" title="One message back">⏴</button>
+      <button id="fwd" title="One message on">⏵</button>
+      <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1; min-width:140px">
+      <span class="sub mono" id="pos">0 / 0</span>
+      <span class="sub">speed</span>
+      <button class="sp" data-x="1" aria-pressed="false">1×</button>
+      <button class="sp" data-x="4" aria-pressed="true">4×</button>
+      <button class="sp" data-x="16" aria-pressed="false">16×</button>
+      <select id="chapters" title="Jump to an episode"></select>
+    </div>
+
+    <div class="ticker" id="ticker"></div>
+    <div class="note" id="status"></div>
+  </main>
+
+  <aside>
+    <div class="card" id="reveal-card">
+      <h2>The hidden half</h2>
+      <div id="reveal-body" class="locked">
+        Tastes and capacities are <b>private to each trader</b> and never appear on
+        the board. Live, this page shows only what the manager said — stocks and
+        trades. The rest is regenerated from the round's seed afterwards, for a
+        replay.
+      </div>
+    </div>
+    <div class="card" id="talk-card">
+      <h2>Who has spoken</h2>
+      <div id="roster"></div>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+import { reduce } from "./reducer.js";
+import { Scene, GLYPH, bundleText } from "./scene.js";
+import { loadBoard, liveFeed, replayPlayer } from "./feeds.js";
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
+
+const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
+                   "--good-6", "--good-7"];
+
+let timeline = null, scene = null, player = null, live = null, reveal = null;
+let mode = "replay";
+
+// --- chrome ----------------------------------------------------------------
+
+function legend(goods) {
+  $("legend").replaceChildren(...goods.map((g, i) => {
+    const s = document.createElement("span");
+    const swatch = document.createElement("i");
+    swatch.style.background = `var(${GOOD_VARS[i % GOOD_VARS.length]})`;
+    s.append(swatch, document.createTextNode(`${GLYPH[g] || "▪"} ${g}`));
+    return s;
+  }), Object.assign(document.createElement("span"), {
+    className: "sub", textContent: "· the pale part of a bar is promised to an open offer",
+  }));
+}
+
+function ticker(frames, upto) {
+  const rows = [];
+  const from = Math.max(0, upto - 40);
+  for (let i = from; i <= upto; i++) {
+    const e = frames[i]?.event;
+    if (!e) continue;
+    const div = document.createElement("div");
+    div.className = "line " + lineClass(e);
+    const who = document.createElement("div");
+    who.className = "who";
+    who.textContent = e.author;
+    const what = document.createElement("div");
+    what.className = "what";
+    what.textContent = e.body;
+    div.append(who, what);
+    rows.push(div);
+  }
+  const pane = $("ticker");
+  pane.replaceChildren(...rows);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function lineClass(e) {
+  if (e.kind === "refused") return "manager refused";
+  if (e.kind === "unknown") return "manager unknown";
+  if (e.author === timeline.manager) return "manager receipt";
+  if (e.attempt) return "attempt";
+  return "";
+}
+
+function hud(state, quiet) {
+  $("ep").innerHTML = state.episode
+    ? `episode <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
+    : "before the first episode";
+  const phase = { before: "waiting", ack: "acknowledging", production: "production",
+                  market: "market open", closed: "bell", over: "round over" }[state.phase];
+  $("phase").textContent = phase;
+  $("phase").className = `pill phase-${state.phase}`;
+  $("c-settled").innerHTML = `settled <b>${state.counters.settled}</b>`;
+  $("c-refused").innerHTML = `refused <b>${state.counters.refused}</b>`;
+  $("c-lapsed").innerHTML = `lapsed <b>${state.counters.lapsed}</b>`;
+
+  const clock = $("clock");
+  if (mode === "live" && state.bell_at) {
+    const left = Math.round((Date.parse(state.bell_at) - Date.now()) / 1000);
+    clock.hidden = false;
+    clock.innerHTML = left > 0 ? `bell in <b>${left}s</b>` : "bell due";
+  } else if (quiet) {
+    clock.hidden = false;
+    clock.innerHTML = `<span class="sub">quiet ${quiet}s</span>`;
+  } else {
+    clock.hidden = true;
+  }
+
+  const roster = timeline.traders.map((t) => {
+    const said = state.spoke.includes(t), ack = state.acknowledged.includes(t);
+    return `<div class="rowbar"><span>${ack ? "✓" : said ? "·" : "—"}</span>
+      <span class="mono">${t}</span>
+      <span class="num sub">${ack ? "ack" : said ? "spoke" : "silent"}</span></div>`;
+  }).join("");
+  $("roster").innerHTML = roster +
+    (state.counters.unknown
+      ? `<div class="note warn">${state.counters.unknown} manager line(s) this page
+         does not recognise — it is showing them in the ticker and counting nothing
+         from them.</div>` : "");
+}
+
+function paint({ state, event, animate, quiet, index }) {
+  scene.draw(state, timeline);
+  if (animate && event) scene.play(event);
+  hud(state, quiet);
+  ticker(timeline.frames, index);
+  $("scrub").value = String(index);
+  $("pos").textContent = `${index + 1} / ${timeline.frames.length}`;
+}
+
+// --- the hidden half, after the fact --------------------------------------
+
+function drawReveal(data) {
+  const body = $("reveal-body");
+  body.classList.remove("locked");
+  const r = data.round || {};
+  const s = r.score || {};
+  const floor = data.autarky_floor ?? s.autarky_floor;
+
+  const bars = (label, obj, slotOf) => `
+    <div class="trader-block"><h3>${label}</h3>` +
+    Object.entries(obj).map(([g, v], i) => `
+      <div class="rowbar">
+        <span>${GLYPH[g] || "▪"}</span>
+        <span class="track"><i style="width:${Math.min(100, v * slotOf(g) * 100).toFixed(1)}%;
+          background: var(${GOOD_VARS[i % GOOD_VARS.length]})"></i></span>
+        <span class="num">${fmt(v, 2)}</span>
+      </div>`).join("") + `</div>`;
+
+  const capMax = Math.max(...Object.values(data.traders)
+    .flatMap((t) => Object.values(t.capacity)));
+
+  body.innerHTML = `
+    <div class="hero">${fmt(s.eff_round)}<small>eff_round · the primary</small></div>
+    <div class="meter">
+      <i style="width:${((s.eff_round || 0) * 100).toFixed(1)}%"></i>
+      ${floor !== undefined ? `<u style="left:${(floor * 100).toFixed(1)}%"
+         title="autarky floor ${fmt(floor)}"></u>` : ""}
+    </div>
+    <div class="meter-legend"><span>0</span>
+      <span>${floor !== undefined ? `▏autarky ${fmt(floor, 2)}` : ""}</span><span>1</span></div>
+    <div class="note">Accumulated utility against the frontier of the total. The
+      number is the manager's, read from settled state — this page does not
+      recompute it.</div>
+    <h2 style="margin-top:14px">Per episode</h2>
+    ${sparkline(s.eff_episode || [], floor)}
+    <div class="note">A coverage measure, not welfare: one trader at zero puts the
+      whole vector maximally far from the frontier however well the others did.</div>
+    <h2 style="margin-top:14px">Tastes (α)</h2>
+    ${Object.entries(data.traders).map(([t, v]) => bars(t, v.taste, () => 1)).join("")}
+    <h2>Capacity per unit of labour</h2>
+    ${Object.entries(data.traders).map(([t, v]) => bars(t, v.capacity, () => 1 / capMax)).join("")}
+    <details><summary>as a table</summary>${table(data)}</details>`;
+}
+
+function sparkline(values, floor) {
+  if (!values.length) return `<div class="note">no per-episode record</div>`;
+  const w = 280, h = 74, pad = { l: 6, r: 6, t: 8, b: 16 };
+  const top = Math.max(1, ...values, floor ?? 0);
+  const x = (i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(1, values.length - 1);
+  const y = (v) => pad.t + (1 - v / top) * (h - pad.t - pad.b);
+  const path = values.map((v, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const dots = values.map((v, i) =>
+    `<circle class="dot ${v <= 1e-9 ? "zero" : ""}" cx="${x(i).toFixed(1)}"
+       cy="${y(v).toFixed(1)}" r="3"><title>episode ${i + 1}: ${fmt(v)}</title></circle>`).join("");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img"
+      aria-label="efficiency by episode">
+    <line class="axis" x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}"/>
+    ${floor !== undefined ? `<line class="floor" x1="${pad.l}" y1="${y(floor).toFixed(1)}"
+       x2="${w - pad.r}" y2="${y(floor).toFixed(1)}"><title>autarky floor</title></line>` : ""}
+    <path class="series" d="${path}"/>${dots}
+    <text x="${pad.l}" y="${h - 4}">ep 1</text>
+    <text x="${w - pad.r}" y="${h - 4}" text-anchor="end">ep ${values.length}</text>
+    ${floor !== undefined ? `<text x="${pad.l}" y="${(y(floor) - 4).toFixed(1)}"
+       text-anchor="start">autarky ${fmt(floor, 2)}</text>` : ""}
+    <text x="${w - pad.r}" y="${(y(values[values.length - 1]) + 13).toFixed(1)}"
+       text-anchor="end">${fmt(values[values.length - 1], 2)}</text>
+  </svg>`;
+}
+
+function table(data) {
+  const goods = data.goods;
+  const head = `<tr><th></th>${goods.map((g) => `<th>${g}</th>`).join("")}</tr>`;
+  const rows = Object.entries(data.traders).map(([t, v]) => `
+    <tr><td>${t} α</td>${goods.map((g) => `<td>${fmt(v.taste[g], 3)}</td>`).join("")}</tr>
+    <tr><td>${t} cap</td>${goods.map((g) => `<td>${fmt(v.capacity[g], 3)}</td>`).join("")}</tr>`).join("");
+  const ep = (data.round?.score?.eff_episode || [])
+    .map((v, i) => `<tr><td>episode ${i + 1}</td><td colspan="${goods.length}">${fmt(v)}</td></tr>`).join("");
+  return `<table>${head}${rows}${ep}</table>`;
+}
+
+function lockReveal(why) {
+  const body = $("reveal-body");
+  body.classList.add("locked");
+  body.innerHTML = why;
+}
+
+// --- wiring ----------------------------------------------------------------
+
+function mount(rows, { manager } = {}) {
+  timeline = reduce(rows, manager ? { manager } : {});
+  scene = new Scene($("island"), timeline);
+  legend(timeline.goods);
+  $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
+}
+
+async function startReplay(boardUrl, revealUrl) {
+  mode = "replay";
+  $("transport").style.display = "";
+  live?.stop();
+  player?.stop();
+  const board = await loadBoard(boardUrl);
+  mount(board.messages);
+  $("where").textContent =
+    `replay · ${board.workspace || boardUrl} · ${board.messages.length} messages`;
+  player = replayPlayer(timeline, {
+    frame: paint,
+    ended: () => { $("play").textContent = "▶ replay"; },
+    state: () => { $("play").textContent = player.playing ? "⏸ pause" : "▶ play"; },
+  });
+  $("chapters").replaceChildren(
+    new Option("jump to an episode…", "-1"),
+    ...player.episodes().map((c) => new Option(`episode ${c.episode}`, String(c.index))));
+  player.seek(0);
+
+  reveal = null;
+  if (revealUrl) {
+    try {
+      reveal = await (await fetch(revealUrl, { cache: "no-store" })).json();
+      drawReveal(reveal);
+    } catch {
+      lockReveal(`No sidecar at <code>${revealUrl}</code>. Generate one with
+        <code class="mono">python viewer/reveal.py --seed … --check …</code>.`);
+    }
+  } else {
+    lockReveal(`This board has no reveal sidecar. Tastes and capacities are
+      regenerated from the round's seed by <code class="mono">viewer/reveal.py</code>.`);
+  }
+  $("status").textContent = "";
+}
+
+function startLive(url, channel) {
+  mode = "live";
+  player?.stop();
+  $("transport").style.display = "none";
+  lockReveal(`<b>Live.</b> Tastes and capacities are private to each trader and are
+    not on the board, so they are not on this page. Watch the replay afterwards to
+    see them.`);
+  let count = 0;
+  live = liveFeed({ url, channel }, {
+    update: ({ rows, sealed, hub }) => {
+      $("where").textContent =
+        `live · ${hub?.workspace || "?"} · ${rows.length} messages` +
+        (sealed.length ? ` · ${sealed.length} sealed` : "");
+      const first = !timeline;
+      const before = timeline ? timeline.frames.length : 0;
+      mount(rows);
+      const last = timeline.frames.length - 1;
+      if (last < 0) return;
+      // Everything that arrived since the last poll gets played, in order and
+      // quickly; the state itself is already current either way.
+      const fresh = first ? [] : timeline.frames.slice(before);
+      paint({ state: timeline.final, event: null, animate: false, quiet: 0, index: last });
+      fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
+      count = rows.length;
+      $("status").textContent = `polling ${url} every 3s · read-only`;
+    },
+    error: (err) => {
+      $("status").innerHTML = `<span class="warn">cannot read ${url}: ${err.message}.</span>
+        Start the Switchboard viewer, then serve this page with
+        <code class="mono">python viewer/serve.py</code> so the two share an origin.`;
+    },
+  });
+}
+
+$("play").onclick = () => player?.toggle();
+$("back").onclick = () => player?.step(-1);
+$("fwd").onclick = () => player?.step(1);
+$("scrub").oninput = (e) => player?.seek(+e.target.value);
+$("chapters").onchange = (e) => {
+  const i = +e.target.value;
+  if (i >= 0) player?.seek(i);
+};
+for (const b of document.querySelectorAll(".sp")) {
+  b.onclick = () => {
+    player?.setSpeed(+b.dataset.x);
+    for (const o of document.querySelectorAll(".sp")) {
+      o.setAttribute("aria-pressed", String(o === b));
+    }
+  };
+}
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, select")) return;
+  if (e.key === " ") { e.preventDefault(); player?.toggle(); }
+  if (e.key === "ArrowRight") player?.step(1);
+  if (e.key === "ArrowLeft") player?.step(-1);
+});
+
+// Which board, and where from. `?live=` points at a viewer's state endpoint;
+// anything else replays a saved board.
+async function boot() {
+  const select = $("source");
+  const options = [];
+  try {
+    const list = await (await fetch("api/boards", { cache: "no-store" })).json();
+    for (const b of list.boards || []) {
+      options.push(new Option(b.label, JSON.stringify({ board: b.board, reveal: b.reveal })));
+    }
+    if (list.live) options.unshift(new Option("live — the running round", JSON.stringify({ live: list.live })));
+  } catch {
+    // Opened without the little server: fall back to whatever the URL says.
+  }
+  const board = params.get("board");
+  if (board) {
+    options.unshift(new Option(board, JSON.stringify({ board, reveal: params.get("reveal") })));
+  }
+  if (params.get("live")) {
+    options.unshift(new Option("live", JSON.stringify({ live: params.get("live") })));
+  }
+  if (!options.length) {
+    $("status").innerHTML = `Nothing to show. Serve this page with
+      <code class="mono">python viewer/serve.py</code>, or pass
+      <code class="mono">?board=…</code>.`;
+    return;
+  }
+  select.replaceChildren(...options);
+  select.onchange = () => open(JSON.parse(select.value));
+  $("reload").onclick = () => open(JSON.parse(select.value));
+  open(JSON.parse(select.value));
+}
+
+async function open(what) {
+  try {
+    if (what.live) startLive(what.live, params.get("channel") || "island");
+    else await startReplay(what.board, what.reveal);
+  } catch (err) {
+    $("status").innerHTML = `<span class="warn">${err.message}</span>`;
+  }
+}
+
+boot();
+</script>
