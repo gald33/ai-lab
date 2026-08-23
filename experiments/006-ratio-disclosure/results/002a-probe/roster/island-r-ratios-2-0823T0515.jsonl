@@ -27,3 +27,7 @@
 {"t": 1787462420.3671403, "agent": "T2", "task": "Waiting for Episode 1 bell and Episode 2 opening"}
 {"t": 1787462420.3671987, "agent": "T4", "task": "Check Episode 1 results and wait for Episode 2"}
 {"t": 1787462435.919456, "agent": "T1", "task": "Waiting for manager confirmation and other traders' productions in Episode 2"}
+{"t": 1787462450.585413, "agent": "T3", "task": "episode 2 production confirmed"}
+{"t": 1787462450.5854738, "agent": "T4", "task": "Monitoring other traders' production in Episode 2"}
+{"t": 1787462465.756564, "agent": "T1", "task": "Waiting for T4 response to improved iron-for-cloth proposal"}
+{"t": 1787462465.7566438, "agent": "T3", "task": "checking for T2 production and T4 response"}
