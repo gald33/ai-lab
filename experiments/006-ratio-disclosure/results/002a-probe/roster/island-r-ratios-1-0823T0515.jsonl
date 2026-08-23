@@ -11,3 +11,4 @@
 {"t": 1787462211.7410028, "agent": "T4", "task": "Waiting for episode 1 to open"}
 {"t": 1787462226.8304732, "agent": "T1", "task": "Checking if episode 1 has opened"}
 {"t": 1787462226.830545, "agent": "T2", "task": "episode 1 opening, preparing to produce"}
+{"t": 1787462241.5465136, "agent": "T3", "task": "checking holdings after production and waiting for offers"}
