@@ -1,6 +1,6 @@
 # Run 002a — Probe: does disclosure actually happen?
 
-**Opened:** 2026-08-23 · **Status:** running
+**Opened:** 2026-08-23 · **Status:** reported
 
 Everything above the Outcome line is written **before** the run starts and is
 not edited afterwards. If it turns out wrong, record a deviation — do not
@@ -69,10 +69,76 @@ measurement depends on it.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/002a-probe/v3.json`, six rounds, run stamp `0823T0515`.
+  Boards under `results/002a-probe/boards/`, the keyed store under
+  `results/002a-probe/keys/`, roster captures under `.../roster/` for all three
+  cells from the first minute.
+
+- **Ran:** all six rounds, 5 episodes each, 4/4 traders acknowledged in every
+  round, no rescues, no failed rounds, `drain_errors` 0.
+
+- **Numbers — the manipulation check.** Denominator 4 traders × 2 rounds = 8
+  trader-rounds per cell.
+
+  | cell | cost keys written | cost-key revisions | worth-key revisions (per trader, over 5 episodes) |
+  |---|---|---|---|
+  | `r-bare` | **0 / 8** | — | — |
+  | `r-ratios` | **0 / 8** | — | — |
+  | `r-ratios-board` | **8 / 8** | **all exactly 1** | seed 1: 2, 2, 3, 5 · seed 2: 5, 6, 2, 6 |
+
+  Against the pre-registered threshold — 3 of 4 traders in at least 4 of 5
+  rounds, worth-key median ≥ 5 revisions over 10 episodes — the cost half is
+  met at 4 of 4 in 2 of 2, and the worth half comes in at a median of **4
+  revisions over 5 episodes**. The threshold was written for ten-episode
+  rounds and this run had five; the record said in advance that a shorter round
+  is a weaker test of the second half.
+
+  Key contents are economic, in the traders' own units: *"Cost ratios (bread
+  numeraire): cloth 5.99, iron 2.72, salt 3.56"*; *"bread:1.33_iron
+  cloth:0.46_iron salt:8.33_iron (iron as reference)"*; *"Episode 2: holding
+  salt=1.23, bread=0.20. Desperate for iron and cloth"*.
+
+- **Numbers — not evidence, printed because the scorer produces them.** Two
+  seeds, five episodes. Exchange: `r-bare` 0.93, `r-ratios` 0.60,
+  `r-ratios-board` 0.86. Presence 1.00 in all six rounds — no trader-episode
+  passed without production, which is the five-episode round and not a
+  treatment effect. Above own autarky: 15/40, 11/40, 16/40.
+
+  **Two rounds exceeded 1.0 on exchange** — `r-bare` seed 2 at 1.11 and
+  `r-ratios-board` seed 2 at 1.05. These are the first cells in this lab to
+  land above the point where trading beats staying home. At n=2 this is a thing
+  to check at full size, not a finding.
+
+- **Assumptions that did not hold:** none.
+
+  **A2 held, and informatively.** All three cells held `board_set`,
+  `board_get` and `board_list`. The two untreated cells wrote **zero** keys.
+  The grant alone changes nothing; the instruction is the treatment.
+
+  **A5 held** — keys persisted and were readable after the run, with revision
+  counters intact.
+
+  **A3 held by construction** — nothing on a key was settled or scored; the
+  manager read the channel only.
+
+- **Deviations:** none. Nothing departed from the record during the run.
 
 ## What this changed
+
+**The decision this probe was written to make: run 002 goes ahead as written.**
+The record named three outcomes in advance. This is the first — disclosure
+happens — with the caveat the third anticipated: the "once" half is followed
+exactly and the "every episode" half is partial, so it is reported as the weak
+half from the start rather than discovered later.
+
+**What run 001 could not distinguish, this separates.** Run 001's treated cell
+produced 7 free-text messages in five rounds and its exchange number was about
+traders who did not disclose. Here the same content, given a key and a moment,
+is disclosed by every trader in every round. Whether disclosure *helps* is
+still open and is what run 002 is for.
+
+**The strongest single result is A2.** Three cells, identical tool grants, and
+only the instructed cell wrote anything. An agent handed a shared keyed store
+and no reason to use it does not discover a use for it — which is worth
+remembering the next time a capability is added in the hope that agents will
+find it.
