@@ -107,6 +107,12 @@ WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
 # evidence.
 RUN_STAMP = time.strftime("%m%dT%H%M", time.gmtime())
 
+#: How long the announcement asks agents to acknowledge within. It is stated in
+#: the schedule and enforced by nothing: the bell rings on the clock and an
+#: agent that never acknowledges still plays. Defaults to the whole window, so
+#: a run that does not set it reads exactly as it always did.
+ACK_BY_SECONDS = 120
+
 def client_for(agent_id: str, workspace: str) -> Client:
     """A client pinned to one workspace.
 
@@ -293,6 +299,14 @@ def _horizon(arm: str, episodes: int) -> str:
             f"{EPISODE_SECONDS} seconds.")
 
 
+#: An experiment may append something to a trader's *private* block, computed
+#: per agent rather than per arm. Signature: (arm, name, island, index) -> str,
+#: returning "" for cells that get nothing. It is a stimulus, handed over in
+#: the prompt like any other -- the manager still settles only what an agent
+#: writes on the board, and still refuses what is malformed.
+PRIVATE_HOOK = None
+
+
 def instructions(arm: str, private: str, episodes: int) -> str:
     block, hint = ARMS[arm]
     parts = [body((STIM / "base.md").read_text())]
@@ -423,6 +437,10 @@ def preflight() -> None:
 
 def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
                   opens_at: float | None = None) -> str:
+    opens = opens_at if opens_at is not None else time.time() + ACK_SECONDS
+    # Stated absolutely, like every other deadline on this board: a countdown
+    # is what a trader misreads when it reads the message late.
+    ack_by = opens - (ACK_SECONDS - ACK_BY_SECONDS)
     span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
             f"as they come." if hide
             else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
@@ -431,11 +449,11 @@ def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
             f"Within an episode there are no stages: PRODUCE, PROPOSE and "
             f"APPROVE all settle for as long as the episode is open. At the "
             f"bell open proposals lapse and everything held is consumed. "
-            f"Acknowledge with a line beginning ACK. "
+            f"Acknowledge with a line beginning ACK, by {stamp(ack_by)}. "
             f"Every time on this board is absolute UTC, and every tool result "
             f"carries the current time as `now`: read the deadline against "
             f"that, not against when this message was written. "
-            f"Episode 1 opens at {stamp(opens_at if opens_at is not None else time.time() + ACK_SECONDS)} "
+            f"Episode 1 opens at {stamp(opens)} "
             f"whether or not everyone has.")
 
 
@@ -473,7 +491,14 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace,
+    def private_for(name: str) -> str:
+        text = mgr.private_state(name)
+        if PRIVATE_HOOK is None:
+            return text
+        extra = PRIVATE_HOOK(arm, name, island, mgr.names.index(name))
+        return f"{text}\n\n{extra}" if extra else text
+
+    procs = [launch(n, arm, private_for(n), episodes, workdir, workspace,
                     max_turns=max(400, 40 * episodes))
              for n in present]
 
@@ -518,7 +543,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                 if stale.exists():
                     stale.rename(workdir / name / "session-abandoned.log")
                 relaunched[name] = 1
-                procs[i] = launch(name, arm, mgr.private_state(name), episodes,
+                procs[i] = launch(name, arm, private_for(name), episodes,
                                   workdir, workspace,
                                   max_turns=max(400, 40 * episodes))
                 mgr.say(f"{name}'s session did not join and has been restarted "
@@ -607,6 +632,10 @@ def main() -> None:
     ap.add_argument("--out", default="results/v3")
     ap.add_argument("--episode-seconds", type=int, default=60)
     ap.add_argument("--ack-seconds", type=int, default=120)
+    ap.add_argument("--ack-by-seconds", type=int, default=None,
+                    help="what the announcement asks agents to acknowledge "
+                         "within. Defaults to the whole window. Stated, never "
+                         "enforced: the bell rings on the clock either way.")
     # Rounds are independent worlds and could all run at once, but the box and
     # the hub are not independent of each other. A cap trades wall-clock for
     # headroom; it changes nothing any agent sees, since each round's clock
@@ -626,6 +655,8 @@ def main() -> None:
             raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
 
     ACK_SECONDS = args.ack_seconds
+    global ACK_BY_SECONDS
+    ACK_BY_SECONDS = args.ack_by_seconds or args.ack_seconds
     EPISODE_SECONDS = args.episode_seconds
 
     # A run without a control measures its arms against the autarky floor and
