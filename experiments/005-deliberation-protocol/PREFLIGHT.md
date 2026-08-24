@@ -48,6 +48,17 @@ This is declared here as well as being called by `run_v3.py` at startup,
 because a gate that only runs inside the thing it guards cannot be recorded
 against a commit before the go.
 
+**It did not work until 2026-08-24, and the failure was the gate's own.** It
+called `whoami`, which answers out of local configuration and never touches
+the hub, and it searched the raw output for `"isError": true`. A tool that
+cannot reach the hub returns neither: it returns a JSON-RPC *error object*
+whose message is the phrase `internal error` — the very words this gate was
+written to catch, in a place it never looked. Pointed at a hub that was not
+there, it passed. It now calls `roster`, which cannot be answered without the
+hub, and reads the response as JSON; `island/toolchain.py` holds the check and
+`island/tests/test_toolchain.py` points it at each failure shape. A gate
+nobody aims at a broken thing is a reassurance rather than a check.
+
 Failure means a harness fault, never agent behaviour, and it is the one thing
 the pilot below is worst at telling you: a session that starts, finds its
 tools broken, and stops reads exactly like an agent that chose to stop.

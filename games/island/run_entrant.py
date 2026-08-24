@@ -64,7 +64,7 @@ from switchboard.invite import Invite
 _ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "005-deliberation-protocol"
 sys.path.insert(0, str(_ISLAND))
 
-from island import ca  # noqa: E402
+from island import ca, toolchain  # noqa: E402
 
 #: The rules of the island, which are the same rules a game plays by -- so the
 #: game reads 005's frozen base stimulus rather than paraphrasing it into a
@@ -144,15 +144,13 @@ nothing to do, call `checkin` with `wait` set to 25 and see what arrives. Keep
 going until the manager says the round is over. Only then stop."""
 
 
-def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
-           model: str, workdir: Path, max_turns: int) -> subprocess.Popen:
-    """One agent, one long-lived session, in the table's room.
+def _mcp_env(invite: Invite, *, agent_id: str, home: Path) -> dict[str, str]:
+    """The environment an agent's MCP server gets, and the only one it gets.
 
-    The MCP server is pointed at the *table's* workspace and key from the
-    invite, and given the same `agent_id` this process holds the signer for --
-    which is what makes its posts carry the key the lobby witnessed.
+    Built once and used by both `launch()` and `preflight()`, so the path the
+    gate proves is the path the session takes. Two copies of this that drifted
+    would make the gate a reassurance rather than a check.
     """
-    home = workdir / name
     home.mkdir(parents=True, exist_ok=True)
     bundle = ca.bundle(home / ".ca-bundle.pem")
     env_for_mcp = {
@@ -173,6 +171,20 @@ def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
         env_for_mcp["SWITCHBOARD_TOKEN"] = invite.token
     if invite.key:
         env_for_mcp["SWITCHBOARD_KEY"] = invite.key
+    return env_for_mcp
+
+
+def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
+           model: str, workdir: Path, max_turns: int) -> subprocess.Popen:
+    """One agent, one long-lived session, in the table's room.
+
+    The MCP server is pointed at the *table's* workspace and key from the
+    invite, and given the same `agent_id` this process holds the signer for --
+    which is what makes its posts carry the key the lobby witnessed.
+    """
+    home = workdir / name
+    env_for_mcp = _mcp_env(invite, agent_id=agent_id, home=home)
+    bundle = env_for_mcp["SSL_CERT_FILE"]
     (home / ".mcp.json").write_text(json.dumps(
         {"mcpServers": {"switchboard": {"command": "switchboard-mcp",
                                         "env": env_for_mcp}}}, indent=1))
@@ -187,6 +199,25 @@ def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
          "--allowedTools", *TOOLS],
         cwd=home, env=env,
         stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
+
+
+def preflight(invite: Invite, *, agent_id: str, workdir: Path) -> None:
+    """Prove this agent's toolchain reaches the table's room before spending.
+
+    Pointed at *this* module's config rather than `run_v3.py`'s: they are
+    different environments and a pass on one proves nothing about the other.
+    The check itself is shared, because it was wrong once and one copy of it
+    is one place to be wrong.
+    """
+    env = _mcp_env(invite, agent_id=agent_id,
+                   home=workdir / f"{agent_id}-preflight")
+    env["SWITCHBOARD_AGENT_ID"] = f"{agent_id}-preflight"
+    try:
+        toolchain.check(env, where=f"{invite.url}/{invite.workspace}")
+    except toolchain.Broken as exc:
+        raise SystemExit(f"preflight: {exc}") from None
+    print(f"preflight: an agent's switchboard-mcp reached {invite.workspace}",
+          flush=True)
 
 
 def claim(client: Client, channel: str, *, name: str, table: str | None,
@@ -296,6 +327,11 @@ def main(argv: list[str] | None = None) -> int:
                                  every=args.every, deadline=deadline)
         print(f"{args.name}: {table} settled, joining {invite.workspace}",
               flush=True)
+
+        # Before the one step that spends: prove this agent's own toolchain
+        # reaches the table's room, because the failure is indistinguishable
+        # from a trader that started and chose to stop.
+        preflight(invite, agent_id=agent_id, workdir=args.workdir)
 
         agent = launch(invite, name=args.name, agent_id=agent_id,
                        episodes=episodes, model=args.model,
