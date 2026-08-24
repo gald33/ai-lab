@@ -1,0 +1,147 @@
+{
+  "agents": [
+    {
+      "branch": "main",
+      "channels": [
+        "island"
+      ],
+      "expires_in": 119.8,
+      "id": "MmwR-YUy-NNQvqfIhjyXRA",
+      "kind": "local",
+      "last_seen_at": "2026-08-24T08:29:32.449801Z",
+      "name": "manager",
+      "stale": false,
+      "task": "settling the island",
+      "unreadable": false
+    },
+    {
+      "branch": null,
+      "channels": [
+        "NwUG5AVFmdVzVkP33T0e2g"
+      ],
+      "expires_in": 119.9,
+      "id": "TqkdeHRuMYeIERrQF1CVgg",
+      "kind": "local",
+      "last_seen_at": "2026-08-24T08:29:32.609536Z",
+      "name": null,
+      "stale": false,
+      "task": null,
+      "unreadable": true
+    },
+    {
+      "branch": "main",
+      "channels": [
+        "island"
+      ],
+      "expires_in": 119.9,
+      "id": "iv_tAxA_C0h88ariJ_CdVA",
+      "kind": "local",
+      "last_seen_at": "2026-08-24T08:29:32.536622Z",
+      "name": "T1",
+      "stale": false,
+      "task": "trading",
+      "unreadable": false
+    }
+  ],
+  "board": [],
+  "channels": [
+    {
+      "count": 1,
+      "dm": false,
+      "latest_at": "2026-08-24T08:29:32.613670Z",
+      "name": "NwUG5AVFmdVzVkP33T0e2g",
+      "named": false,
+      "token": "NwUG5AVFmdVzVkP33T0e2g",
+      "unreadable": true
+    },
+    {
+      "count": 3,
+      "dm": false,
+      "latest_at": "2026-08-24T08:29:32.540614Z",
+      "name": "island",
+      "named": true,
+      "token": "zhMkbzelQUrsz7u8GHnYCQ",
+      "unreadable": false
+    }
+  ],
+  "generated_at": "2026-08-24T00:00:00+00:00",
+  "hub": {
+    "encrypted": true,
+    "reachable": true,
+    "url": "http://127.0.0.1:0",
+    "workspace": "w_island-fixture"
+  },
+  "leases": [],
+  "messages": [
+    {
+      "body": "episode 1 of 3 is open (60s); the bell is at 12:00:00Z",
+      "channel": "island",
+      "created_at": "2026-08-24T08:29:32.457200Z",
+      "dm": false,
+      "forecast": null,
+      "from": {
+        "id": "MmwR-YUy-NNQvqfIhjyXRA",
+        "name": "manager"
+      },
+      "sealed_body": false,
+      "seq": 1,
+      "thread": null,
+      "token": "zhMkbzelQUrsz7u8GHnYCQ",
+      "type": "note"
+    },
+    {
+      "body": "@T1 produced {'iron': 0.44}; 0.1 labour unspent",
+      "channel": "island",
+      "created_at": "2026-08-24T08:29:32.466820Z",
+      "dm": false,
+      "forecast": null,
+      "from": {
+        "id": "MmwR-YUy-NNQvqfIhjyXRA",
+        "name": "manager"
+      },
+      "sealed_body": false,
+      "seq": 2,
+      "thread": null,
+      "token": "zhMkbzelQUrsz7u8GHnYCQ",
+      "type": "note"
+    },
+    {
+      "body": "PRODUCE iron=0.7 salt=0.3",
+      "channel": "island",
+      "created_at": "2026-08-24T08:29:32.540614Z",
+      "dm": false,
+      "forecast": null,
+      "from": {
+        "id": "iv_tAxA_C0h88ariJ_CdVA",
+        "name": "T1"
+      },
+      "sealed_body": false,
+      "seq": 3,
+      "thread": null,
+      "token": "zhMkbzelQUrsz7u8GHnYCQ",
+      "type": "note"
+    },
+    {
+      "body": null,
+      "channel": "NwUG5AVFmdVzVkP33T0e2g",
+      "created_at": "2026-08-24T08:29:32.613670Z",
+      "dm": false,
+      "forecast": null,
+      "from": {
+        "id": "TqkdeHRuMYeIERrQF1CVgg",
+        "name": null
+      },
+      "sealed_body": true,
+      "seq": 4,
+      "thread": null,
+      "token": "NwUG5AVFmdVzVkP33T0e2g",
+      "type": "note"
+    }
+  ],
+  "notes": [
+    "1 agent(s) here hold a different key \u2014 you cannot read their messages and they cannot read yours",
+    "some channels are sealed under a different key and are listed without their messages"
+  ],
+  "refresh_ms": 3000,
+  "version": "0.10.0"
+}

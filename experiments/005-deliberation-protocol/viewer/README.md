@@ -303,8 +303,8 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"          # the page: 13
-python -m pytest viewer/tests/test_scores.py -q  # the ledger: 81
+node --test "viewer/tests/*.test.mjs"          # the page: 17
+python -m pytest viewer/tests/test_scores.py -q  # the ledger: 95
 ```
 
 The ones that matter: a self-report moves nothing, a line that is
@@ -313,6 +313,13 @@ nothing left over** — which is what will fail if `island/manager.py` or
 `run_v3.py` is reworded, rather than the island quietly emptying — and **every
 board with a sidecar reproduces the manager's scored trajectory** through the
 page's own reducer and utility code.
+
+And on the live side: `rowsFromState` against `tests/fixtures/snapshot-sample.json`,
+a real snapshot from a real hub rather than a shape assumed by hand — this is
+what fails if either Switchboard viewer ever changed the fields it hands this
+page, instead of the live view quietly going blank. Regenerated the same way
+`switchboard`'s own `tests/test_web_snapshot.py` builds one, captured once
+rather than reimplemented here.
 
 On the ledger side: every round in every run record is re-scored from its seed
 and has to come out equal to what the manager recorded — including the
@@ -327,7 +334,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/reducer.js` | board text → a scrubbable timeline. Pure, and the only place the manager's wording is known |
 | `web/scene.js` | the island, drawn from a state |
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
-| `web/feeds.js` | the two feeds, and the replay clock |
+| `web/feeds.js` | the three feeds, and the replay clock |
 | `web/index.html` | the page: HUD, ticker, transport, the hidden half |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
 | `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
@@ -338,6 +345,8 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `scores/boards.json` | the leaderboards, derived; rebuilt whenever it falls behind the record |
 | `scores/index.json` | round ids, so ingest need not re-read every round |
 | `tests/board.mjs` | reading a saved board, packed or not |
+| `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |
+| `tests/fixtures/snapshot-sample.json` | that snapshot — a real hub, captured once |
 | `reveal.py` | the hidden half, after the fact, with `--check` |
 
 ## Notes on the drawing
