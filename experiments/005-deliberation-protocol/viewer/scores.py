@@ -20,14 +20,25 @@ below read the same as they did before this existed.
 
 **Two scores, because there are two things being played.**
 
-*The island scored.* `eff_round` -- accumulated utility against the frontier of
-the total. It belongs to the table, not to any trader in it: it says how much of
-what this island could have produced actually got produced. That is the
-cooperative high score, and what makes two of them comparable is playing the
-**same level**: the same seed, the same number of traders, the same goods and
-the same number of episodes. The seed alone is not enough -- four traders on
-seed 1 face a different frontier from two, and thirty episodes is more room to
-learn than three. **The configuration is the level.**
+*The island scored.* **`capture`** -- how much of the gains that were actually
+*on this island* got taken, with autarky at 0.0 and the frontier at 1.0. It
+belongs to the whole set of traders rather than to any one of them.
+
+Not raw `eff_round`, and the difference decides games. Two islands are not
+equally hard: one where autarky already scores 0.823 has almost nothing on the
+table, and one where it scores 0.599 has a great deal. Ranking on raw efficiency
+therefore ranks the draw. On the rounds recorded here it puts a disaster above
+several successes -- a 0.734 whose floor was 0.823 sits fourth on a raw board,
+while those traders ended up substantially worse off than if they had never
+traded. `barter.economy.capture` already exists and already makes this argument;
+this uses it rather than restating it. Negative is not clamped, because doing
+worse than not trading is a real outcome and one of the more interesting ones.
+
+What makes two scores comparable is playing the **same level**, and the level is
+the **format** -- the number of traders, the goods, the episodes. Not the seed:
+the island is drawn per round, so a seed is a roll rather than a level, and four
+traders face a different frontier from two while thirty episodes is more room to
+learn than three.
 
 *A trader scored.* `u_i / autarky_i` -- what they ended with as a multiple of
 what they would have had alone. Raw Cobb-Douglas utilities are not comparable
@@ -96,7 +107,7 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 3
+BOARDS_V = 4
 
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
@@ -275,14 +286,32 @@ def status(rnd: dict, names: list[str]) -> str:
 
 
 def level(row: dict) -> tuple:
-    """What has to match for two rounds to be the same challenge."""
+    """What has to match for two rounds to be the same challenge.
+
+    The format, not the island. The seed is drawn per round, so it is the roll
+    and not the level -- and `capture` is what makes two rolls comparable, by
+    scoring each against what its own island had on the table.
+    """
     i = row["island"]
-    return (i["seed"], i["agents"], i["goods"], i["episodes"])
+    return (i["agents"], i["goods"], i["episodes"])
 
 
 def level_label(key: tuple) -> str:
-    seed, agents, _goods, episodes = key
-    return f"island {seed} · {agents} traders · {episodes} episodes"
+    agents, goods, episodes = key
+    return f"{agents} traders · {goods} goods · {episodes} episodes"
+
+
+def captured(eff_round: float | None, floor: float | None) -> float | None:
+    """Gains taken as a fraction of gains available: autarky 0, frontier 1.
+
+    Derived rather than stored: both halves are already in the row, and a
+    number that can be recomputed from the record should be.
+    """
+    if eff_round is None or floor is None:
+        return None
+    if 1.0 - floor <= 1e-12:
+        return 1.0
+    return (eff_round - floor) / (1.0 - floor)
 
 
 def parts(path: Path = LEDGER) -> list[Path]:
@@ -461,6 +490,11 @@ def games(rows: list[dict]) -> list[dict]:
         levels = {level(m) for m in members}
         slots = sorted({p["slot"] for m in members for p in m["players"]})
 
+        # Each round scored against its own island first, then the median.
+        # Taking the median of raw efficiencies and capturing that would be
+        # scoring an average island that nobody played.
+        captures = [captured(m["eff_round"], m["autarky_floor"]) for m in scored]
+
         ratios = {}
         for slot in slots:
             values = [m["ratios"][slot] for m in scored if slot in m["ratios"]]
@@ -475,9 +509,16 @@ def games(rows: list[dict]) -> list[dict]:
             "finished": len(members) >= declared,
             "all_scored": len(scored) == len(members),
             "level": list(levels.pop()) if len(levels) == 1 else None,
+            # Which islands this game was rolled on -- one per round, since the
+            # island is drawn per round rather than once per game.
+            "seeds": sorted({m["island"]["seed"] for m in members}),
+            "capture": statistics.median(captures) if captures else None,
+            # Kept for the record and the feed. It is what was measured; it is
+            # just not what two islands can be compared on.
             "eff_round": (statistics.median([m["eff_round"] for m in scored])
                           if scored else None),
-            "floor": scored[0]["autarky_floor"] if scored else None,
+            "floor": (statistics.median([m["autarky_floor"] for m in scored])
+                      if scored else None),
             "ratios": ratios,
             "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
             "workspace": members[0]["workspace"],
@@ -498,7 +539,7 @@ def boards(rows: list[dict]) -> dict:
     """
     played = games(rows)
     ranked = [g for g in played
-              if g["finished"] and g["all_scored"] and g["eff_round"] is not None]
+              if g["finished"] and g["all_scored"] and g["capture"] is not None]
 
     levels: dict[tuple, list[dict]] = {}
     for g in ranked:
@@ -506,13 +547,17 @@ def boards(rows: list[dict]) -> dict:
             levels.setdefault(tuple(g["level"]), []).append(g)
     island_board = []
     for key, entries in sorted(levels.items()):
-        best = max(entries, key=lambda e: e["eff_round"])
+        best = max(entries, key=lambda e: e["capture"])
         attempts = sum(1 for g in played if g["level"] and tuple(g["level"]) == key)
         island_board.append({
             "level": list(key),
             "label": level_label(key),
-            "seed": key[0], "agents": key[1], "goods": key[2], "episodes": key[3],
-            "best": best["eff_round"],
+            "agents": key[0], "goods": key[1], "episodes": key[2],
+            # Which islands this level has actually been rolled on, so a level
+            # played once is not mistaken for a level played ten times.
+            "seeds": sorted({seed for e in entries for seed in e["seeds"]}),
+            "best": best["capture"],
+            "best_eff_round": best["eff_round"],
             "floor": best["floor"],
             "by": [best["players"][s] for s in sorted(best["players"])],
             "workspace": best["workspace"],
@@ -522,8 +567,10 @@ def boards(rows: list[dict]) -> dict:
             "ranked": len(entries),
             "attempts": attempts,
             # The spread says whether the best is a result or a lucky draw.
-            "median": round(statistics.median([e["eff_round"] for e in entries]), 6),
-            "worst": min(e["eff_round"] for e in entries),
+            "median": round(statistics.median([e["capture"] for e in entries]), 6),
+            "worst": min(e["capture"] for e in entries),
+            # How often anybody beat doing nothing at all on this format.
+            "above_autarky": sum(1 for e in entries if e["capture"] > 0),
         })
     island_board.sort(key=lambda x: (-x["best"], x["level"]))
 
@@ -609,10 +656,12 @@ def table(data: dict) -> str:
     if t["attendance_unrecorded"]:
         out.append(f"  attendance not recorded on {t['attendance_unrecorded']} ranked round(s)")
 
-    out.append("\nLEVELS — best game on each configuration")
-    out.append(f"  {'best':>6}  {'median':>6}  {'floor':>6}  {'played':>6}  level")
+    out.append("\nLEVELS — best game on each format, as gains captured "
+               "(autarky 0.0, frontier 1.0)")
+    out.append(f"  {'best':>7}  {'median':>7}  {'>0':>7}  {'played':>6}  level")
     for row in data["islands"]:
-        out.append(f"  {row['best']:>6.3f}  {row['median']:>6.3f}  {row['floor']:>6.3f}  "
+        out.append(f"  {row['best']:>7.3f}  {row['median']:>7.3f}  "
+                   f"{row['above_autarky']:>3}/{row['ranked']:<3}  "
                    f"{row['ranked']:>3}/{row['attempts']:<3}  {row['label']}")
 
     out.append("\nTRADERS — best game, as a multiple of playing alone")

@@ -131,9 +131,15 @@ one-round game and the boards read exactly as they did before this existed.
 
 **Two scores, because two things are being played.**
 
-*The table's.* `eff_round` — how much of what this island could have produced
-actually got produced. It belongs to the table, not to any trader in it, and it
-is the cooperative high score.
+*The table's.* **`capture`** — how much of the gains actually on this island got
+taken, with autarky at 0.0 and the frontier at 1.0. It belongs to the whole set
+of traders rather than to any one of them.
+
+Not raw `eff_round`: two islands are not equally hard, so ranking on raw
+efficiency ranks the draw. Among the rounds recorded here, a 0.734 against a
+floor of 0.823 sits fourth on a raw board while those traders ended up
+substantially worse off than never trading. `barter.economy.capture` already
+makes this argument and this uses it. Negative is not clamped.
 
 *A trader's.* `u_i / autarky_i` — what they ended with as a multiple of what they
 would have had **alone**. Raw Cobb-Douglas utilities are not comparable between
@@ -143,10 +149,10 @@ numbers against a per-trader baseline. That argument is
 `barter.economy.gains`'s, and this reuses it rather than restating it. **1.00× is
 the line**: below it, trading left them worse off than never trading.
 
-**The configuration is the level.** Two rounds are comparable only on the same
-seed, with the same number of traders, the same goods and the same number of
-episodes — four traders face a different frontier from two, and thirty episodes
-is more room to learn than three.
+**The format is the level** — traders, goods, episodes. Not the seed: the island
+is drawn per round, so a seed is a roll rather than a level, and `capture` is
+what puts two rolls on one scale. Four traders still face a different frontier
+from two, and thirty episodes is still more room to learn than three.
 
 **A player is ranked on their best game.** A lucky island, or a partner who
 happened to want what you could make, still counts — that is what a high score
