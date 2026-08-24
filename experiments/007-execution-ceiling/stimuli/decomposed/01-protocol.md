@@ -19,8 +19,8 @@ the other side moving first — and if they are waiting too, nobody moves.
 is aimed at nobody: each reader assumes another will answer it. Name who you
 are speaking to, and say exactly what you are asking of them.
 
-**Say the amount, and say it the same way twice.** An agreement is only as good
-as what both sides can act on. If your figure and theirs differ, neither side can
+**Say the amount, and say it the same way twice.** An agreement holds only as far
+as both sides can act on it. If your figure and theirs differ, neither side can
 complete, and the difference is usually a rounding nobody meant.
 
 **Do not leave commitments hanging.** Anything you have pledged and not yet
