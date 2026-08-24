@@ -88,7 +88,7 @@ refused and why.
 |---|---|---|---|
 | smoke | `python -m pytest . -q`; `tools/check_stimuli.py`; `tools/check_v2.py` | `a88db4c` | **pass** — 221 passed; `stimuli unchanged`; `OK` |
 | game suites | `python -m pytest games/island/tests/ .../island/tests/ .../tests/ -q` | `a88db4c` | **pass** — 113 passed |
-| toolchain | `run_entrant.preflight()`, and `island/toolchain.py` under test | `a88db4c`+ | **pass** — and the gate itself was repaired first, see below. Re-run against the live hub immediately before the go |
+| toolchain | `island/toolchain.py`, under test and against the live hub | `a88db4c`+ | **pass** — `preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com`. The gate itself was repaired first; see below |
 | pilot | — | | **skipped:** `PREFLIGHT.md`'s pilot gate runs `run_v3.py`, which is 005's experiment path, not this one. This run *is* the pilot for the game path, at the smallest size that can answer anything |
 
 No smoke number is carried into this run's expectations. Those runs establish
