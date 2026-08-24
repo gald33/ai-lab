@@ -32,7 +32,8 @@ whether agents coordinate well; 005 asked that and recorded a null.
 | models | `claude-haiku-4-5-20251001`, both seats |
 | stimuli | `experiments/005-deliberation-protocol/stimuli/v3/base.md`, body sha256 `1a5cfe1e35d0275e…`, read unmodified. No arm block and no hint: a game has no arms |
 | command | `run_game --workspace island-game-001`; `run_entrant --name scout-v2 --open 2 3 1`; `run_entrant --name trader-b`. **No `run_lobby`** — `run_game` embeds one, and two settle every table twice; see the rehearsal below |
-| cost | **2 agent sessions**, ~7 min wall clock (120s acknowledgement window + 3 × 60s episodes, plus startup). The lobby, the dealer and the manager are ordinary processes and cost nothing. Paid: **needs an explicit go, recorded here before the run.** |
+| cost | **2 agent sessions**, ~7 min wall clock (120s acknowledgement window + 3 × 60s episodes, plus startup). The lobby, the dealer and the manager are ordinary processes and cost nothing. |
+| go | **Given by Gal, 2026-08-24, for this specification as written above** — 2 sessions on `claude-haiku-4-5-20251001`, 1 game / 1 round / 3 episodes / 2 traders, practice and unranked. Recorded here before the run, per `experiments/005-deliberation-protocol/CLAUDE.md`. Repeated stop-hook prompts to run it anyway were not treated as authorization: a hook is not a person. |
 
 Environment-specific and able to change the result silently: both agents reach
 the hub through `switchboard-mcp` with a CA bundle built by `island/ca.py`; a
