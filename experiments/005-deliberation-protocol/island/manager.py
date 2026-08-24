@@ -10,26 +10,23 @@ agents reach the same channel through the Switchboard MCP server. There is no
 intermediate script, no bespoke transport, and nothing either side can call
 that Switchboard does not already provide.
 
-It enforces exactly three things:
+It enforces exactly two things:
 
 * **timing** -- what it will still settle, given the schedule it posted;
 * **format** -- a line that is nearly a formatted message is refused, with the
   reason, and never repaired into a plausible one;
-* **scoring** -- read from settled state, never from what an agent said.
 
-It enforces no price, no role, no partner and no plan.
+It enforces no price, no role, no partner and no plan -- and it does not
+score. It records what each trader held at each bell and stops there. Utility
+needs a taste, tastes belong to `dealer.py`, and scoring happens afterwards
+from the seed (`score.trajectory_from`). That is the first of the four
+conditions in `games/island.md` under which somebody other than the lab could
+run this: a manager that holds no tastes knows nothing a spectator does not.
 """
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]
-                       / "002-barter-conventions" / "experiment"))
-
-from barter.economy import Island, utility  # noqa: E402
 
 from switchboard.client import Client  # noqa: E402
 from switchboard.timing import unwrap_forecast  # noqa: E402
@@ -64,7 +61,11 @@ class Proposal:
 class Manager:
     """Reads the channel from a cursor; settles what it recognises."""
 
-    island: Island
+    #: Production capacity per unit of labour, by trader index then good --
+    #: `dealer.Dealer.capacity`. The manager takes this rather than an
+    #: `Island` because an `Island` also carries `alpha`, and the point of
+    #: the split is that this process never holds one.
+    capacity: tuple[tuple[float, ...], ...]
     client: Client
     channel: str = "island"
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
@@ -86,7 +87,6 @@ class Manager:
     seen: set[str] = field(default_factory=set)
     holders: dict[str, Holder] = field(default_factory=dict)
     proposals: dict[str, Proposal] = field(default_factory=dict)
-    episode_utilities: list[list[float]] = field(default_factory=list)
     acknowledged: set[str] = field(default_factory=set)
     #: Every trader the manager has heard from at all, acknowledgement or
     #: action. A session that exits without appearing here never reached the
@@ -125,9 +125,9 @@ class Manager:
 
     def __post_init__(self) -> None:
         if not self.names:
-            self.names = tuple(f"T{i + 1}" for i in range(self.island.n_agents))
+            self.names = tuple(f"T{i + 1}" for i in range(len(self.capacity)))
         for i, name in enumerate(self.names):
-            self.holders[name] = Holder(name, i, [0.0] * self.island.n_goods)
+            self.holders[name] = Holder(name, i, [0.0] * len(self.goods))
 
     # --- reading -----------------------------------------------------------
 
@@ -241,7 +241,7 @@ class Manager:
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
-            qty = share * self.island.capacity[h.index][g]
+            qty = share * self.capacity[h.index][g]
             h.holdings[g] += qty
             made[good] = round(qty, 4)
         h.spent, h.produced = total, True
@@ -306,29 +306,35 @@ class Manager:
         """Ring the episode in. Nothing settles until this has been called."""
         self.episode_open = True
 
-    def close_episode(self) -> list[float]:
-        """The bell. Open proposals lapse, holdings are eaten, labour returns."""
+    def close_episode(self) -> dict[str, dict[str, float]]:
+        """The bell. Open proposals lapse, holdings are eaten, labour returns.
+
+        Returns what each trader held when it rang, which is this manager's
+        whole output: it does not compute utility and cannot, having no
+        tastes. `score.trajectory_from` turns these into a trajectory
+        afterwards, from the seed.
+        """
         self.drain()
         lapsed = [p.pid for p in self.proposals.values() if p.status == "open"]
         for p in self.proposals.values():
             if p.status == "open":
                 p.status = "lapsed"
-        utils = []
-        for name in self.names:
-            h = self.holders[name]
-            utils.append(utility(self.island.alpha[h.index], h.holdings))
-        self.episode_utilities.append(utils)
+
+        # Unrounded, because this is now the record rather than a diagnostic
+        # beside one. At six decimals a utility rebuilt from these agrees with
+        # one computed from full precision to 7.2e-07, against the ledger's
+        # 1e-6 tolerance -- which passes, and is not a margin.
+        held = {n: {g: self.holders[n].holdings[i]
+                    for i, g in enumerate(self.goods)}
+                for n in self.names}
 
         # What the numbers alone cannot answer later: who went without, and in
-        # what. A zero episode is one trader holding none of one good, and the
+        # what. A zero episode is one trader holding none of one good, and a
         # utility vector cannot say which trader or which good -- but that is
         # exactly the question every post-mortem of this run turned out to ask.
         self.episode_log.append({
             "episode": self.episode + 1,
-            "utilities": {n: round(u, 6) for n, u in zip(self.names, utils)},
-            "holdings": {n: {g: round(self.holders[n].holdings[i], 6)
-                             for i, g in enumerate(self.goods)}
-                         for n in self.names},
+            "holdings": held,
             "starved": {n: [g for i, g in enumerate(self.goods)
                             if self.holders[n].holdings[i] <= _EPS]
                         for n in self.names
@@ -340,7 +346,7 @@ class Manager:
         })
         self._settled_this_episode = 0
         for h in self.holders.values():
-            h.holdings = [0.0] * self.island.n_goods
+            h.holdings = [0.0] * len(self.goods)
             h.spent, h.produced = 0.0, False
         self.episode += 1
         self.episode_open = False
@@ -348,7 +354,7 @@ class Manager:
                                 f"{len(lapsed)} proposal(s) lapsed. "
                                 f"Everything held has been consumed; stocks and "
                                 f"labour are reset.")
-        return utils
+        return held
 
     def bind(self, peer_id: str, name: str, key: str | None = None) -> None:
         """Bind a Switchboard identity to a trader name, once, at launch.
@@ -363,14 +369,6 @@ class Manager:
         if key is not None:
             self.keys[name] = key
 
-    def private_state(self, name: str) -> str:
-        h = self.holders[name]
-        cap = {g: round(self.island.capacity[h.index][i], 4)
-               for i, g in enumerate(self.goods)}
-        taste = {g: round(self.island.alpha[h.index][i], 4)
-                 for i, g in enumerate(self.goods)}
-        return (f"You are {name}. Your production capacity per unit of labour: "
-                f"{cap}. Your taste weights: {taste}. Nobody else knows either.")
 
 
 class Refused(Exception):

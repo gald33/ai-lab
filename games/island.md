@@ -136,18 +136,22 @@ the island:
 - **refusal** — the grammar is public and the state is reconstructable, so a
   well-formed line that should have settled and did not is visible.
 
-Two things that argument never reached.
+Two things that argument never reached. One of them has since been fixed; the
+other is why the lab still runs this.
 
-**The manager can choose the island.** It draws the seed. Verification confirms
-a board is consistent with *a* seed; it cannot tell whether that seed was drawn
-once or re-rolled until it suited somebody. Nothing on the board shows the
-difference.
+**The manager can choose the island** — still true, and still the blocker. It
+draws the seed, and verification confirms only that a board is consistent with
+*a* seed: it cannot tell whether that seed was drawn once or re-rolled until it
+suited somebody. Nothing on the board shows the difference.
 
-**The manager knows every trader's tastes.** It is the one party holding all of
-the hidden half, and it can hand a player another player's preferences without
-leaving a mark anywhere. No amount of arithmetic on the board catches an
-off-board conversation. That is not a liveness role. It is custody of everyone's
-secrets, and it is why the assignment carries reputation as well as uptime.
+**The manager knew every trader's tastes** — it was the one party holding all
+of the hidden half, and could hand a player another player's preferences
+without leaving a mark anywhere, since no arithmetic on a board catches an
+off-board conversation. **That one is now fixed**: the tastes moved to
+`island/dealer.py` and the manager settles without them (condition 1 below).
+The custody problem did not disappear, it moved — whoever runs the *dealer*
+holds everyone's secrets, and that is the party the assignment's reputation is
+really about.
 
 ### What is actually secret, which is less than this document assumed
 
@@ -167,12 +171,16 @@ manager's only real secret.
 Not built, and not needed while the lab runs the manager. But the bar is
 writable, and it is four things:
 
-1. **The manager holds no tastes.** It needs `alpha` for exactly one line of
-   `island/manager.py` — computing utility at the bell. Take scoring out of the
-   manager: it settles, records holdings at each bell, and stops. Scoring
-   happens afterwards from the published seed and board, by anybody, and
-   everybody gets the same answer — which `games/README.md` already demands of a
-   game here. Then the manager knows nothing a spectator does not.
+1. **The manager holds no tastes** — **done**. It used `alpha` for exactly one
+   line of `island/manager.py`, computing utility at the bell. Scoring is out
+   of the manager now: it settles, records what each trader held at each bell,
+   and stops — it does not receive an `Island` at all, only the `capacity` it
+   settles production against. The tastes live in `island/dealer.py`, which
+   draws the island and hands each trader its own half and nothing else, and
+   scoring happens afterwards from the seed (`score.trajectory_from`), by
+   anybody, with everybody getting the same answer — which `games/README.md`
+   already demands of a game here. The manager now knows nothing a spectator
+   does not.
 2. **The seed is drawn by commit–reveal.** Every entrant posts a nonce when it
    takes its seat; the manager commits to its own nonce before seeing them; the
    seed is the hash of all of them, revealed at the end. A manager that cannot
@@ -464,9 +472,21 @@ In order:
    consequence, not code, since game mode has no relaunch mechanism yet to
    hook it to) and publishing the room key with the replay when a game
    ends;
-2b. taking scoring out of the manager, so it stops being the one party holding
-   everybody's tastes — the smallest of the four conditions above and the one
-   worth doing whether or not a stranger ever runs a manager;
+2b. **taking scoring out of the manager** — built, and the first of the four
+   conditions above is now met. `island/dealer.py` draws the island, owns
+   `alpha`, and hands back each trader's private half without ever posting it
+   — distribution is the caller's policy, which is what lets the same dealer
+   serve a plaintext practice game now and a sealed one after 2c.
+   `island/manager.py` lost `utility()`, `episode_utilities` and
+   `private_state()`, and takes `capacity` rather than an `Island`.
+   `score.trajectory_from` rebuilds the trajectory from the seed and the
+   recorded holdings; `island/score.py`'s own `score()` and the whole ledger
+   were already post-hoc and needed no change. One thing had to change to make
+   it safe: holdings were rounded to six decimals as a diagnostic, and
+   rebuilding from those agreed with the recorded utilities only to 7.2e-07
+   against the ledger's 1e-6 tolerance — a 1.4× margin, which is not a margin.
+   They are recorded unrounded now, and a test holds that against all 488
+   trader-episodes on disk;
 2c. a seat key delivered sealed at join — the entrant's `JOIN` carries an
    ephemeral public key, the manager seals the seat key to it and signs the
    delivery — and then the two sealed message types: the private half, and

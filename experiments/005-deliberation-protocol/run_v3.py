@@ -37,7 +37,9 @@ from barter.economy import draw_island  # noqa: E402
 from switchboard.client import Client  # noqa: E402
 from switchboard.config import ClientConfig  # noqa: E402
 
+from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
+from island.score import trajectory_from  # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
 STIM = HERE / "stimuli" / "v3"
@@ -419,7 +421,7 @@ def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
               outdir: Path) -> dict:
-    island = draw_island(agents, goods, seed=seed)
+    dealer = Dealer.draw(seed, agents, GOODS[:goods])
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
     # The stamp is what keeps one run's board out of the next one's. Messages
@@ -430,7 +432,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
     channel = "island"
     client = client_for(MANAGER, workspace)
-    mgr = Manager(island=island, client=client, channel=channel)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel=channel,
+                  goods=dealer.goods)
     for n in mgr.names:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
@@ -441,7 +444,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace,
+    procs = [launch(n, arm, dealer.private_state(n), episodes, workdir, workspace,
                     max_turns=max(400, 40 * episodes))
              for n in mgr.names]
 
@@ -486,7 +489,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                 if stale.exists():
                     stale.rename(workdir / name / "session-abandoned.log")
                 relaunched[name] = 1
-                procs[i] = launch(name, arm, mgr.private_state(name), episodes,
+                procs[i] = launch(name, arm, dealer.private_state(name), episodes,
                                   workdir, workspace,
                                   max_turns=max(400, 40 * episodes))
                 mgr.say(f"{name}'s session did not join and has been restarted "
@@ -546,7 +549,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             p.kill()
 
     return {"arm": arm, "seed": seed, "episodes": episodes,
-            "trajectory": mgr.episode_utilities,
+            "trajectory": trajectory_from(dealer.island, mgr.episode_log,
+                                          list(mgr.names), list(mgr.goods)),
             # The screen had to be diagnosed by re-reading boards that expire
             # in an hour. What the metrics cannot say goes in the record.
             "episode_log": mgr.episode_log, "refusals": mgr.refusals,
