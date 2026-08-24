@@ -147,3 +147,21 @@ test("every saved board parses with nothing left over", () => {
 });
 
 const round = (x) => Math.round(x * 1e9) / 1e9;
+
+test("a sealed line is an action this page cannot read, not talk", () => {
+  // In a sealed round a trader's PRODUCE arrives as ciphertext under a
+  // marker. Counting it as talk would report a round in which nobody acted.
+  const rows = [
+    say(1, "manager", "episode 1 of 1 is open; the bell is at 12:00:00Z (60s)."),
+    say(2, "T1", "SEALED eyJlIjoiYWJjIn0"),
+    say(3, "T1", "good luck everyone"),
+    say(4, "manager", "@T1 produced {'bread': 0.5}; 0.5 labour unspent"),
+  ];
+  const { frames, final } = reduce(rows, { traders: ["T1", "T2"] });
+
+  assert.equal(frames[1].event.attempt, "SEALED");
+  assert.equal(final.counters.talk, 1, "the sealed line is not talk");
+  // And the receipt still moves the stock: sealing the plan hides the share,
+  // never the settlement.
+  assert.ok(final.stocks.T1.bread > 0);
+});

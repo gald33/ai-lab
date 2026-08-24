@@ -228,12 +228,17 @@ def test_the_manager_is_bound_to_the_keys_the_lobby_witnessed(settled, hub, tmp_
     assert not mgr.holders["T1"].produced
 
 
-def test_a_ranked_game_is_refused_while_the_private_half_is_public():
-    """Practice games run in plaintext and are not ranked -- and asking for a
-    ranked one says why rather than quietly producing an unranked row."""
-    with pytest.raises(SystemExit) as exc:
-        run_game.main(["--ranked", "--hub", "http://127.0.0.1:1"])
-    assert "item 2c" in str(exc.value)
+def test_a_table_nobody_offered_a_key_for_cannot_be_ranked(settled):
+    """A seat that gave the manager nothing to seal to can only play in the
+    clear -- so the table is not sealable, its record says practice, and
+    `--ranked` skips it rather than quietly producing a row that claims more
+    than it can."""
+    _lobby, table, _seated, _key = settled
+    assert not table.sealable(), "these seats joined without a box key"
+
+    lines = [m["body"] for m in _lobby.client.history("lobby")]
+    assert any("PRACTICE" in b and "not ranked" in b
+               for b in lines if b.startswith("g1 is full"))
 
 
 def test_dealing_says_out_loud_that_it_is_public(settled, hub, tmp_path):
@@ -283,3 +288,115 @@ def test_the_replay_and_the_room_key_are_published_only_at_the_end(settled, hub,
     assert payload["room_key"] == invite.key
     assert payload["players"] == {"T1": "scout-v2", "T2": "trader-b"}
     assert payload["round"]["seed"] == table.seed
+
+
+# --- the sealed round (item 2c) -------------------------------------------
+
+@pytest.fixture
+def sealed_table(hub, identities):
+    """A table where both seats offered a key to seal to."""
+    from island.sealed import BoxKey
+
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=1 rounds=1")
+    lobby.drain()
+
+    boxes = {}
+    for agent_id, name in (("t1", "scout-v2"), ("t2", "trader-b")):
+        box = BoxKey.generate()
+        boxes[name] = box
+        client = _client(hub, agent_id, key)
+        client.register(name=agent_id, kind="local", branch="main", task="")
+        client.post("lobby", f"JOIN g1 as {name} box={box.public}")
+    manager = _client(hub, "m", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.settled and table.sealable()
+    return lobby, table, boxes
+
+
+def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_path):
+    """The property the whole private channel exists for, end to end.
+
+    Nothing a spectator can read tells them a taste or a share -- and the
+    capacity leak closes with them, because capacity is the receipt's quantity
+    divided by the share and the share is now sealed.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, SEALED_CONTEXT, Manager
+    from island.sealed import BoxKey, seal_to
+
+    lobby, table, boxes = sealed_table
+    invite = run_game.pending_invite(lobby, table)
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="trading")
+
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity,
+                  client=Client.from_invite(invite, agent_id=MANAGER),
+                  channel="island", goods=dealer.goods, box=BoxKey.generate())
+    assert run_game.bind_seats(mgr, table) == {"T1", "T2"}
+
+    run_game.deal(mgr, dealer, table)
+
+    # Each seat opens its own half; the other seat cannot.
+    lines = [m["body"] for m in mgr.client.history("island")]
+    mine = next(b for b in lines if b.startswith("@T1 (scout-v2) SEALED"))
+    blob = mine.split(" ", 2)[2]
+    assert boxes["scout-v2"].open(blob, run_game.PRIVATE_CONTEXT).startswith("You are T1.")
+    with pytest.raises(Exception):
+        boxes["trader-b"].open(blob, run_game.PRIVATE_CONTEXT)
+
+    # A sealed PRODUCE settles, and the plan never reaches the board.
+    mgr.open_episode()
+    room["scout-v2"].post("island", seal_to(mgr.box.public,
+                                            "PRODUCE bread=0.5 iron=0.5",
+                                            SEALED_CONTEXT))
+    room["trader-b"].post("island", seal_to(mgr.box.public,
+                                            "PRODUCE cloth=1.0", SEALED_CONTEXT))
+    mgr.drain()
+
+    assert mgr.refused == 0
+    assert mgr.holders["T1"].produced and mgr.holders["T2"].produced
+
+    # Now the real assertion: read the whole board as a spectator would.
+    board = " ".join(b for b in
+                     [m["body"] for m in mgr.client.history("island")]
+                     if isinstance(b, str))
+    assert "taste weights" not in board, "a taste reached the board"
+    assert "bread=0.5" not in board and "cloth=1.0" not in board, \
+        "a production share reached the board"
+    # The receipts are still public -- that is what the viewer draws.
+    assert "produced" in board and "labour unspent" in board
+
+
+def test_a_sealed_produce_is_refused_when_the_round_has_no_channel(hub):
+    """A manager with no box refuses a sealed line rather than counting it as
+    talk -- silence and unreadability are different events."""
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+    from island.sealed import BoxKey, seal_to
+
+    key = generate_key()
+    mgr = Manager(capacity=Dealer.draw(1, 2, GOODS).capacity,
+                  client=_client(hub, MANAGER, key), channel="island",
+                  goods=GOODS, names=("T1", "T2"))
+    trader = _client(hub, "t1", key)
+    mgr.bind(trader.agent_id, "T1")
+    mgr.open_episode()
+
+    trader.post("island", seal_to(BoxKey.generate().public,
+                                  "PRODUCE bread=1.0", "island.produce"))
+    mgr.drain()
+
+    assert mgr.refused == 1
+    assert mgr.refusals[0]["kind"] == "sealed"
+    assert "no private channel" in mgr.refusals[0]["reason"]
+    # And the ciphertext is not copied into the record that gets published.
+    assert mgr.refusals[0]["line"] == "<sealed>"

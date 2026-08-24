@@ -75,6 +75,10 @@ class Table:
     #: here was never seated: `_join` refuses a JOIN it cannot verify rather
     #: than seating it keyless.
     keys: dict[str, str] = field(default_factory=dict)
+    #: peer id -> the X25519 key its JOIN offered for sealing, if it offered
+    #: one. A seat without one can only play a practice game: there is nothing
+    #: to seal its private half to.
+    boxes: dict[str, str] = field(default_factory=dict)
     manager: str | None = None
     manager_peer: str | None = None
     settled: bool = False
@@ -88,6 +92,11 @@ class Table:
     #: specific seat over the board is the sealed channel, build-order item
     #: 2c, and is not done here.
     seed: int | None = None
+
+    def sealable(self) -> bool:
+        """Whether every seat gave the manager something to seal to, which is
+        what a ranked game needs and a practice game does without."""
+        return bool(self.seats) and all(p in self.boxes for p in self.seats)
 
     def full(self) -> bool:
         return len(self.seats) >= self.traders
@@ -221,9 +230,13 @@ class Lobby:
         key = self._witness(signature)
         table.seats[peer] = action.name
         table.keys[peer] = key
+        if action.box:
+            table.boxes[peer] = action.box
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
-                f"key {key} ({len(table.seats)}/{table.traders})")
+                f"key {key}"
+                f"{', sealed' if action.box else ', in the clear'} "
+                f"({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)
 
@@ -284,8 +297,11 @@ class Lobby:
                            for label, name in zip(
                                (table.label(p) for p in table.seats),
                                table.seats.values()))
+        note = "" if table.sealable() else (
+            "; PRACTICE -- not every seat offered a key to seal to, so the "
+            "private half is public and this game is not ranked")
         self.say(f"{table.id} is full: {roster}; managed by "
-                f"{table.manager}; opens {opens_at}")
+                f"{table.manager}; opens {opens_at}{note}")
         self.say(f"{table.id} invite: {invite.encode()}")
 
     def _sweep(self) -> None:

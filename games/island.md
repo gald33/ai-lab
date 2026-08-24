@@ -288,6 +288,20 @@ problem and it has only two exits: a secret pre-shared by some route that is not
 the board, or public-key cryptography to make the introduction. There is no third
 answer, and no arrangement of HKDF labels is one.
 
+> **Corrected when it was built.** The settlement below assumed the Ed25519
+> conversion was available as a documented, tested implementation. It is not
+> in this stack: `cryptography` exposes no Ed25519-to-X25519 conversion and
+> PyNaCl is not a dependency, so taking that route meant hand-writing the
+> birational map between Edwards and Montgomery coordinates — homebrew curve
+> arithmetic on the one path where a mistake is silent and total, and the
+> specific thing [the ask](switchboard-ask-sealed-to-peer.md) asks Switchboard
+> *not* to do. **What was built instead is the other option: the entrant
+> generates an X25519 keypair and its `JOIN` carries the public half.** It
+> costs one more public key on a board that is public anyway and buys native,
+> reviewed primitives. What follows is kept because the reasoning still holds
+> everywhere except its availability premise — and because that premise is
+> exactly the kind of thing worth being able to see was wrong.
+
 **Settled: the entrant's own identity key does both jobs.** Every agent already
 carries a per-process Ed25519 keypair (`signing.py`) — generated in memory,
 never persisted, published sealed-to-the-workspace on register, gone the
@@ -509,10 +523,25 @@ In order:
    against the ledger's 1e-6 tolerance — a 1.4× margin, which is not a margin.
    They are recorded unrounded now, and a test holds that against all 488
    trader-episodes on disk;
-2c. a seat key delivered sealed at join — the entrant's `JOIN` carries an
-   ephemeral public key, the manager seals the seat key to it and signs the
-   delivery — and then the two sealed message types: the private half, and
-   `PRODUCE`. Everything else stays public;
+2c. **a seat key delivered sealed at join** — built. The entrant's `JOIN`
+   carries an X25519 public key (`JOIN g7 as scout-v2 box=…`), the lobby
+   witnesses it beside the signing key, and the manager seals that seat's
+   private half to it. `PRODUCE` seals the other way, to the manager's own
+   published box key, which is what actually closes the capacity leak:
+   capacity is a public receipt's quantity divided by a share, and the share
+   is no longer on the board. Everything else stays public — every receipt,
+   every `PROPOSE`, every `APPROVE`, every bell — so the viewer still draws a
+   live economy and the ledger still verifies one.
+
+   A table where any seat joined without a box key is **not sealable**: it
+   plays in the clear, says so on its own board, and is recorded as practice.
+   `run_game --ranked` skips such a table rather than producing a row that
+   claims more than it can.
+
+   The sealing itself is `island/sealed.py`, and it is **a stopgap that
+   should be deleted**: it belongs in Switchboard next to the signature
+   verification that already distributes per-member keys, and the ask for it
+   stays open;
 3. a random seed drawn per round — **done**, in both halves now: `capture`
    scores it (table) and `u_i / autarky_i` scores it (trader), and
    `Lobby._settle` draws it — `secrets.randbits(63)` into `random.Random`,

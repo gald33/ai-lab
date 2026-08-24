@@ -32,8 +32,12 @@ from switchboard.client import Client  # noqa: E402
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
+from .sealed import BoxKey, SealError, is_sealed  # noqa: E402
 
 MANAGER = "manager"
+#: What a trader seals a `PRODUCE` under. Bound into the key derivation and
+#: the AEAD, so a sealed private half cannot be replayed as a plan.
+SEALED_CONTEXT = "island.produce"
 _EPS = 1e-9
 
 
@@ -102,6 +106,13 @@ class Manager:
     #: one": the lobby is what witnesses this key today; nothing here draws
     #: it from anywhere but its caller.
     keys: dict[str, str] = field(default_factory=dict)
+    #: This manager's own sealing key, when a game gives it one. Traders seal
+    #: `PRODUCE` to its public half so that a plan's shares never reach the
+    #: board -- which is what closes the capacity leak, since capacity is
+    #: quantity divided by share and the quantity is in the public receipt.
+    #: Without one, a sealed line cannot be opened and is refused as such
+    #: rather than counted as talk.
+    box: BoxKey | None = None
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -180,6 +191,17 @@ class Manager:
                             f"this did not come from the key {author} took "
                             f"its seat with", text)
                 return
+        if is_sealed(text):
+            if self.box is None:
+                self._refuse(author, "sealed",
+                            "this round has no private channel, so a sealed "
+                            "line cannot be opened", text)
+                return
+            try:
+                text = self.box.open(text.strip(), SEALED_CONTEXT)
+            except SealError as exc:
+                self._refuse(author, "sealed", str(exc), text)
+                return
         upper = text.strip().upper()
         if upper.startswith("ACK"):
             self.acknowledged.add(author)
@@ -205,9 +227,13 @@ class Manager:
     def _refuse(self, author: str, kind: str, reason: str, text: str) -> None:
         """Say no, and keep why. The reason is the diagnostic, not the count."""
         self.refused += 1
+        # A sealed line is kept as the marker alone. Recording the ciphertext
+        # would put a plan the trader paid to hide into the run record, which
+        # is published; recording the plaintext would be worse.
+        kept = "<sealed>" if kind == "sealed" or is_sealed(text) else text.strip()[:200]
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
-                              "line": text.strip()[:200]})
+                              "line": kept})
         self.say(f"@{author} not settled: {reason}")
 
     # --- settling ----------------------------------------------------------

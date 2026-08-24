@@ -50,6 +50,8 @@ sys.path.insert(0, str(_ISLAND / "viewer"))
 from island import schedule  # noqa: E402
 from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
+from island.manager import SEALED_CONTEXT  # noqa: E402
+from island.sealed import BoxKey, seal_to  # noqa: E402
 from island.score import trajectory_from  # noqa: E402
 
 import reveal as _reveal  # noqa: E402
@@ -91,20 +93,43 @@ def players(table: Table) -> dict[str, str]:
     return {table.label(peer): name for peer, name in table.seats.items()}
 
 
-def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
-    """Tell each trader its own half, in the clear, and say that it is.
+#: What the manager seals a private half under. Distinct from the context a
+#: trader seals `PRODUCE` under, so neither can be replayed as the other.
+PRIVATE_CONTEXT = "island.private-half"
 
-    The one step that is honestly wrong until item 2c lands. `PRODUCE` shares
-    are public too, so a practice game hides nothing at all -- which is why it
-    is announced rather than glossed, and why the record it produces is not
-    ranked.
+
+def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
+    """Tell each trader its own half -- sealed to its seat, or in the clear.
+
+    Sealed when every seat offered a key at `JOIN`, which is what makes a game
+    rankable: the tastes never reach the board, and `PRODUCE` sealed the other
+    way keeps the shares off it too, which together close the capacity leak
+    (capacity is a public receipt's quantity divided by a share).
+
+    In the clear otherwise, and said out loud rather than glossed: a practice
+    game hides nothing at all, and the record it produces is not ranked.
     """
-    mgr.say("This is a PRACTICE game: each trader's capacities and tastes are "
-            "posted below in the clear, where every other trader can read "
-            "them. Nothing here is ranked.")
     seated = players(table)
+    by_slot = {table.label(peer): box for peer, box in table.boxes.items()}
+
+    if not table.sealable():
+        mgr.say("This is a PRACTICE game: each trader's capacities and tastes "
+                "are posted below in the clear, where every other trader can "
+                "read them. Nothing here is ranked.")
+        for name in mgr.names:
+            mgr.say(f"@{name} ({seated.get(name, '?')}) "
+                    f"{dealer.private_state(name)}")
+        return
+
+    mgr.say(f"Sealed round. Each trader's private half is sealed to the key it "
+            f"took its seat with and is readable by nobody else, including "
+            f"the other traders. Seal your PRODUCE back to the manager at "
+            f"box={mgr.box.public} -- a plan posted in the clear gives your "
+            f"capacity away, since the receipt states the quantity. PROPOSE "
+            f"and APPROVE stay public, and so does every receipt.")
     for name in mgr.names:
-        mgr.say(f"@{name} ({seated.get(name, '?')}) {dealer.private_state(name)}")
+        mgr.say(f"@{name} ({seated.get(name, '?')}) "
+                f"{seal_to(by_slot[name], dealer.private_state(name), PRIVATE_CONTEXT)}")
 
 
 def play(table: Table, invite: Invite, *, episode_seconds: int,
@@ -113,7 +138,11 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     client = Client.from_invite(invite, agent_id=MANAGER)
     dealer = Dealer.draw(table.seed, table.traders, GOODS)
     mgr = Manager(capacity=dealer.capacity, client=client,
-                  channel="island", goods=dealer.goods)
+                  channel="island", goods=dealer.goods,
+                  # Only when there is somebody to seal to. A manager with no
+                  # box refuses a sealed line rather than pretending to read
+                  # it, which is what a practice round wants.
+                  box=BoxKey.generate() if table.sealable() else None)
 
     # The seats the lobby witnessed, bound to the keys it witnessed them
     # under. This is the whole point of the lobby having done that: a line
@@ -212,12 +241,12 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "players": players(table),
         # A practice game is kept and counted and never ranked: the private
         # half was public, so what it measures is not what the board ranks.
-        "practice": True,
+        "practice": not table.sealable(),
         "rounds": [{
             "workspace": mgr.client.config.workspace,
             "seed": table.seed,
             "episodes": table.episodes,
-            "arm": "practice",
+            "arm": "practice" if not table.sealable() else "sealed",
             "game": {"id": table.id, "rounds": table.rounds},
             "trajectory": trajectory_from(dealer.island, mgr.episode_log,
                                           list(mgr.names), list(mgr.goods)),
@@ -259,7 +288,7 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
 
 
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
-          ack_seconds: int, out: Path) -> None:
+          ack_seconds: int, out: Path, ranked_only: bool = False) -> None:
     """Poll the lobby; play whatever settles. Never returns on its own."""
     played: set[str] = set()
     while True:
@@ -268,6 +297,10 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
             if not table.settled or table.id in played:
                 continue
             played.add(table.id)
+            if ranked_only and not table.sealable():
+                print(f"{table.id}: skipped -- not every seat offered a key to "
+                      f"seal to, so this table cannot be ranked", flush=True)
+                continue
             invite = pending_invite(lobby, table)
             if invite is None:
                 print(f"{table.id}: settled but no invite on the board", flush=True)
@@ -314,14 +347,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ack-seconds", type=int, default=schedule.ACK_SECONDS)
     ap.add_argument("--out", type=Path, default=Path("games/results"))
     ap.add_argument("--ranked", action="store_true",
-                    help="refused: there is no private channel yet")
+                    help="refuse to play a table that is not sealable")
     args = ap.parse_args(argv)
-
-    if args.ranked:
-        raise SystemExit(
-            "a ranked game needs the private half to stay private, and there "
-            "is no channel to send it down yet (games/island.md, item 2c). "
-            "Practice games run in plaintext and are not ranked.")
 
     client = Client(ClientConfig(url=args.hub, url_source="explicit", token=args.token,
                                  workspace=args.workspace, key=args.key),
@@ -330,7 +357,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"watching {args.hub}/{args.workspace}#{args.channel} for settled tables")
     try:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
-              ack_seconds=args.ack_seconds, out=args.out)
+              ack_seconds=args.ack_seconds, out=args.out,
+              ranked_only=args.ranked)
     except KeyboardInterrupt:
         print()
     return 0
