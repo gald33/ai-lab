@@ -14,6 +14,21 @@ their own sessions, reach the room with the invite, and this waits for them on
 a clock. Nothing here prompts anybody, and nothing here is a turn. The runner
 starts nothing, drives nobody, and only reads, settles and keeps time.
 
+**Run this or `run_lobby.py` against a workspace, never both.** This embeds a
+lobby of its own, and it has to: the seed is drawn at settlement and never
+posted, because posting it would hand every trader's tastes to everybody. So
+whoever settles a table is the only one who knows which island it is, and
+therefore the only one who can deal it. Two lobbies on one channel settle
+every table twice, mint two room keys for one workspace, and produce a game
+where the entrants and the manager cannot read each other -- which looks
+exactly like nobody turning up. `pending_invite` refuses rather than plays
+when it sees that, but the arrangement to avoid is running both at once.
+
+The honest name for this is a limitation, not a design: a manager that is not
+the lobby is what `games/island.md` wants, and it needs the lobby to be able
+to seal the seed to it. That is the same released-primitive wait as the
+private half.
+
 **Sealed or in the clear, and it says which.** A table whose every seat offered
 a key at `JOIN` plays sealed: the private half is sealed to each seat and
 `PRODUCE` is sealed back, so tastes and shares never reach the board. A table
@@ -312,7 +327,11 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 print(f"{table.id}: skipped -- not every seat offered a key to "
                       f"seal to, so this table cannot be ranked", flush=True)
                 continue
-            invite = pending_invite(lobby, table)
+            try:
+                invite = pending_invite(lobby, table)
+            except SettledTwice as exc:
+                print(f"{table.id}: refusing to play -- {exc}", flush=True)
+                continue
             if invite is None:
                 print(f"{table.id}: settled but no invite on the board", flush=True)
                 continue
@@ -330,19 +349,40 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
         time.sleep(every)
 
 
+class SettledTwice(Exception):
+    """Two lobbies settled one table, so its room has two keys and no game."""
+
+
 def pending_invite(lobby: Lobby, table: Table) -> Invite | None:
-    """The invite the lobby posted for this table, read back off the board.
+    """The invite this lobby posted for the table, read back off the board.
 
     Read rather than reconstructed: the lobby minted the room's key and this
     is the only place it exists. Rebuilding one here would produce a different
     key and a different, empty room.
+
+    **And refuse outright if two exist.** A second lobby draining the same
+    channel settles the same table again -- a second settlement line, a second
+    `generate_key()`, a second invite -- and the two rooms then share a
+    workspace and nothing else. Entrants join on the first key, this manager on
+    the second, and neither can read a word the other writes: the traders talk
+    to themselves, the manager settles nothing, and the record comes out
+    `absent` as though nobody turned up. It cost an afternoon to see, because
+    every part of it works and the failure is silence.
     """
     marker = f"{table.id} invite: "
-    for msg in reversed(sorted(lobby.client.history(lobby.channel, limit=500),
-                               key=lambda r: r.get("seq", 0))):
-        body = msg.get("body")
-        if isinstance(body, str) and body.startswith(marker):
-            return Invite.decode(body[len(marker):])
+    found = [body[len(marker):]
+             for msg in sorted(lobby.client.history(lobby.channel, limit=500),
+                               key=lambda r: r.get("seq", 0))
+             if isinstance(body := msg.get("body"), str) and body.startswith(marker)]
+    if len(found) > 1:
+        raise SettledTwice(
+            f"{table.id} has {len(found)} invites on the board, so more than "
+            f"one lobby settled it and its room has more than one key. "
+            f"Whoever plays a table must be whoever settled it: the seed is "
+            f"never on the board, so a second lobby draws its own and mints "
+            f"its own room. Run `run_game` *or* `run_lobby` against a "
+            f"workspace, not both.")
+    return Invite.decode(found[0]) if found else None
     return None
 
 

@@ -31,7 +31,7 @@ whether agents coordinate well; 005 asked that and recorded a null.
 | seeds | drawn by the lobby at settlement, not chosen. Recorded in the outcome |
 | models | `claude-haiku-4-5-20251001`, both seats |
 | stimuli | `experiments/005-deliberation-protocol/stimuli/v3/base.md`, body sha256 `1a5cfe1e35d0275e…`, read unmodified. No arm block and no hint: a game has no arms |
-| command | `run_lobby --workspace island-game-001`; `run_entrant --name scout-v2 --open 2 3 1`; `run_entrant --name trader-b`; `run_game --workspace island-game-001` |
+| command | `run_game --workspace island-game-001`; `run_entrant --name scout-v2 --open 2 3 1`; `run_entrant --name trader-b`. **No `run_lobby`** — `run_game` embeds one, and two settle every table twice; see the rehearsal below |
 | cost | **2 agent sessions**, ~7 min wall clock (120s acknowledgement window + 3 × 60s episodes, plus startup). The lobby, the dealer and the manager are ordinary processes and cost nothing. Paid: **needs an explicit go, recorded here before the run.** |
 
 Environment-specific and able to change the result silently: both agents reach
@@ -119,6 +119,35 @@ Told apart from agent behaviour, per the standing decisions:
   like two silent traders. Detected in the session log rather than the board.
 - **The table lapsing before both seats are claimed** — harness or operator
   error, not behaviour; the lobby says so on its own board.
+- **A table settled twice** — harness, and the reason this run is specified
+  without `run_lobby`. Found in rehearsal, below. `run_game` now refuses such a
+  table rather than playing an invisible round.
+
+## Rehearsal
+
+Run before the go, free, with scripted traders in place of agent sessions and
+`run_game` as a real subprocess against a local hub — because the in-process
+tests share one `Lobby` object and so cannot see anything that goes wrong
+*between* processes. Two things did.
+
+**A table settled twice, and the game was invisible.** Running `run_lobby`
+alongside `run_game` — which is how the commands read at first, and what this
+record originally specified — settles every table twice. The second settlement
+mints a second room key, so the entrants join on one key and the manager on
+the other: same workspace, nothing shared. The manager posted a whole round to
+a room nobody was in, settled nothing, and the ledger recorded `absent` as
+though neither trader had turned up. Every component was working. The seed is
+never posted, deliberately, so whoever settles a table is the only party who
+knows which island it is and the only one who can deal it. `run_game` now
+refuses a table carrying more than one invite, and this run uses `run_game`
+alone.
+
+**The toolchain gate was not a gate**, recorded above.
+
+With the fix, the rehearsal plays through: the manager announces the schedule,
+deals in the clear with the PRACTICE notice, opens each episode, issues
+receipts against the traders' `PRODUCE` lines, rings each bell, and the ledger
+records `complete`.
 
 ---
 

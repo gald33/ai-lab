@@ -400,3 +400,38 @@ def test_a_sealed_produce_is_refused_when_the_round_has_no_channel(hub):
     assert "no private channel" in mgr.refusals[0]["reason"]
     # And the ciphertext is not copied into the record that gets published.
     assert mgr.refusals[0]["line"] == "<sealed>"
+
+
+# --- two lobbies, one table (the failure that reads as nobody turning up) ---
+
+def test_a_table_settled_twice_is_refused_rather_than_played(settled, hub):
+    """The seed is never on the board, so whoever settles a table is the only
+    one who can deal it -- and a second lobby draining the same channel
+    settles it again, mints a second room key, and puts the entrants and the
+    manager in one workspace on two keys. Nobody can read anybody, the manager
+    settles nothing, and the record says `absent` as though the table were
+    empty. Every part works; the failure is silence. So it is refused.
+    """
+    lobby, table, _rooms, _key = settled
+
+    # A second lobby on the same channel: exactly what running `run_lobby`
+    # alongside `run_game` does.
+    other = Lobby(client=lobby.client)
+    other.drain()
+
+    invites = [b for m in other.client.history(other.channel, limit=500)
+               if isinstance(b := m.get("body"), str)
+               and b.startswith(f"{table.id} invite: ")]
+    assert len(invites) > 1, "the second lobby should have settled it again"
+
+    with pytest.raises(run_game.SettledTwice, match="more than one lobby"):
+        run_game.pending_invite(lobby, table)
+
+
+def test_one_lobby_still_yields_its_invite(settled):
+    """The guard must not fire on the ordinary case."""
+    lobby, table, _rooms, _key = settled
+
+    invite = run_game.pending_invite(lobby, table)
+
+    assert invite is not None and invite.workspace == table.workspace
