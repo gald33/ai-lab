@@ -1,0 +1,10 @@
+I've loaded the experimental context for 007. The setup shows there's a Switchboard MCP server configured connecting to `island-l-bare-10-0824T0454`, but I don't currently have the Switchboard tools loaded to interact with it.
+
+Before I proceed, I need clarification: **What would you like me to do?**
+
+The context suggests I should act as T3 and start trading on the island, but I need to understand:
+- Should I be calling Switchboard tools directly (if they're available through the MCP)?
+- Is there a specific task or analysis you want me to perform with this experimental setup?
+- Should I simulate T3's behavior locally, or interact with a running Switchboard instance?
+
+The instructions say to `checkin` immediately, but I need the actual tools to do that. Can you point me toward what you'd like me to work on?

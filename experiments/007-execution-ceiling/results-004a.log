@@ -2,3 +2,23 @@ model claude-haiku-4-5-20251001  arms ['l-bare', 'l-protocol', 'l-hint', 'l-both
 clock-bound: 15.8 min per round; 48 rounds at 10 at a time is 5 wave(s), so about 79 min of wall-clock and 192 agent sessions.
 
 preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  l-bare    seed 2  eff_round 0.529  floor 0.674  per-episode [0.00 0.00 0.66 0.66 0.00]  settled 66  refused 8  talk 0  ack 3/4  16m
+  l-bare    seed 7  eff_round 0.404  floor 0.616  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 47  refused 4  talk 0  ack 1/4  16m
+  l-bare    seed 5  eff_round 0.000  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 49  refused 3  talk 1  ack 2/4  16m
+  l-bare    seed 9  eff_round 0.000  floor 0.645  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 69  refused 6  talk 0  ack 4/4  16m
+  l-bare    seed 10  eff_round 0.000  floor 0.600  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 56  refused 9  talk 0  ack 0/4  16m
+  l-bare    seed 1  eff_round 0.637  floor 0.642  per-episode [0.00 0.67 0.72 0.00 0.00]  settled 83  refused 3  talk 0  ack 0/4  16m
+  l-bare    seed 3  eff_round 0.448  floor 0.604  per-episode [0.00 0.00 0.61 0.59 0.60]  settled 48  refused 5  talk 0  ack 3/4  16m
+  l-bare    seed 8  eff_round 0.555  floor 0.569  per-episode [0.00 0.00 0.61 0.62 0.62]  settled 78  refused 3  talk 0  ack 1/4  16m
+  l-bare    seed 6  eff_round 0.693  floor 0.652  per-episode [0.70 0.70 0.69 0.69 0.69]  settled 68  refused 4  talk 0  ack 0/4  16m
+  l-bare    seed 4  eff_round 0.505  floor 0.653  per-episode [0.00 0.53 0.53 0.53 0.00]  settled 72  refused 0  talk 0  ack 2/4  16m
+  l-bare    seed 12  eff_round 0.452  floor 0.537  per-episode [0.45 0.48 0.45 0.44 0.44]  settled 54  refused 0  talk 1  ack 3/4  16m
+  l-protocol seed 2  eff_round 0.000  floor 0.674  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 39  refused 1  talk 3  ack 1/4  16m
+  l-bare    seed 11  eff_round 0.000  floor 0.672  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 45  refused 4  talk 0  ack 1/4  16m
+  l-protocol seed 1  eff_round 0.422  floor 0.642  per-episode [0.00 0.00 0.00 0.52 0.52]  settled 68  refused 4  talk 4  ack 1/4  16m
+  l-protocol seed 5  eff_round 0.283  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 77  refused 3  talk 5  ack 2/4  16m
+  l-protocol seed 7  eff_round 0.000  floor 0.616  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 26  refused 0  talk 8  ack 3/4  16m
+  l-protocol seed 4  eff_round 0.783  floor 0.653  per-episode [0.76 0.78 0.78 0.79 0.79]  settled 68  refused 4  talk 0  ack 0/4  16m
+  l-protocol seed 6  eff_round 0.551  floor 0.652  per-episode [0.00 0.00 0.00 0.62 0.62]  settled 64  refused 5  talk 0  ack 1/4  16m
+  l-protocol seed 8  eff_round 0.331  floor 0.569  per-episode [0.00 0.00 0.00 0.57 0.00]  settled 74  refused 3  talk 13  ack 3/4  16m
+  l-protocol seed 3  eff_round 0.428  floor 0.604  per-episode [0.41 0.42 0.50 0.41 0.41]  settled 65  refused 6  talk 0  ack 2/4  16m

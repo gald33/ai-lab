@@ -1,0 +1,10 @@
+I can see the context has been loaded with experiment 007 instructions and my parameters as trader T3. However, I don't see an explicit task or question in your message—just the system reminders and context.
+
+Are you asking me to:
+
+1. **Start a new run** as T3 and begin trading on the island? (I'd need to call `checkin` on Switchboard)
+2. **Analyze results** from the existing run in this directory (`/home/user/ai-lab/experiments/007-execution-ceiling/results/004-ladder-a/l-protocol-seed12/T3`)?
+3. **Debug or investigate** something specific about how the experiment ran?
+4. **Something else** with the experimental data?
+
+Let me know what you'd like me to focus on, and I'll get started.
