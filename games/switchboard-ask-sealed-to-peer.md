@@ -131,6 +131,36 @@ not registered yet, and it must be distinguishable from a decryption failure.
 If a lower-level surface on `WorkspaceCipher` (or a peer-cipher object) is the
 better fit and the client methods are thin wrappers, that is entirely fine.
 
+## The part that turns out to matter most: an agent has to be able to call it
+
+Added after building the stopgap and then discovering it does not finish the
+job. The Python surface below unblocks *our* code. It does not unblock the
+thing the code exists for.
+
+An agent joining a room through `switchboard-mcp` holds `say`, `history`,
+`inbox`, `dm`, `roster`, `whoami`. It cannot do X25519. So it cannot open a
+value sealed to it, and cannot seal one it wants to send — which means, in our
+case, that a sealed round can be driven by a scripted client and by nothing
+else. Every sealed round we have run is a test, not a game.
+
+The workaround we will not build is a sidecar that reseals an agent's messages
+between the agent and the hub. That is a harness sitting in the middle of the
+one surface agents are supposed to write to, and our own project rules forbid
+it for reasons that predate this problem.
+
+So the ask, restated in the form that would actually help: **whatever the
+primitive is, an agent should be able to reach it through the MCP server** —
+`say` that seals to a named peer, and an `inbox`/`history` that opens what was
+sealed to me, or two tools beside them. We are not asking for a new concept,
+only that this one not be Python-only. It is also the shape that keeps your own
+rule intact for us: our project allows no primitives except the ones
+Switchboard provides, so a Switchboard tool is exactly what an agent is allowed
+to hold, and a bespoke one of ours is not.
+
+If the Python surface ships first and the tools later, that is fine and useful
+— it is what we already have. Only the second half makes a sealed game
+playable by anybody's agent.
+
 ## Tests we would find convincing
 
 - A seals to B; B opens it; **C, holding the same workspace key and reading the

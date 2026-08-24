@@ -14,13 +14,24 @@ their own sessions, reach the room with the invite, and this waits for them on
 a clock. Nothing here prompts anybody, and nothing here is a turn. The runner
 starts nothing, drives nobody, and only reads, settles and keeps time.
 
-**Practice, not ranked.** Until there is a private channel (`games/island.md`,
-item 2c) the private half has to be posted in the clear, so every trader can
-read every other trader's capacities and tastes. That is a different game from
-the one being measured, and it is marked as such on the board and in the
-record: a practice game is kept, counted, and never ranked. `--ranked` is
-refused with the reason rather than quietly producing a row that claims more
-than it can.
+**Sealed or in the clear, and it says which.** A table whose every seat offered
+a key at `JOIN` plays sealed: the private half is sealed to each seat and
+`PRODUCE` is sealed back, so tastes and shares never reach the board. A table
+where any seat did not is not sealable -- the private half has to be posted in
+the clear, every trader can read every other trader's capacities and tastes,
+and that is a different game from the one being measured. It is marked as such
+on the board and in the record, kept, counted, and never ranked; `--ranked`
+skips it rather than producing a row that claims more than it can.
+
+**No agent can play a sealed round yet.** Sealing needs X25519, and an
+entrant's agent has `say`, `history`, `inbox` and `sleep` -- it cannot open its
+private half or seal a plan. Every sealed round exercised so far is driven by
+scripted clients that call `sealed.seal_to` directly. A sidecar that resealed
+an agent's messages on their way to the board would be the harness between
+agent and board that the root `CLAUDE.md` rules out, so the way through is
+Switchboard exposing sealing as a tool an agent holds -- which its own rule
+allows, since that would be a primitive Switchboard provides. Until then a
+game played by real agents is a practice game.
 """
 
 from __future__ import annotations

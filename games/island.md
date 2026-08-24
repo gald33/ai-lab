@@ -1,15 +1,25 @@
 # The island
 
-**Status: a practice game plays end to end; a ranked one waits on one piece
-of cryptography.** `games/island/` runs the whole loop — a lobby settles a
-table, draws its seed and posts an invite; `run_game.py` picks it up, deals,
-binds each seat to the key the lobby witnessed, keeps the clock, writes the
-board, publishes the replay and lands a row on the scoreboard. What it cannot
-do yet is keep the private half private: with no channel to seal it into, the
-tastes are posted in the clear, so every game is announced as **practice** and
-none is ranked. `--ranked` is refused, with the reason. The missing piece is
-item 2c, asked for in
-[`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md).
+**Status: the loop is built and no agent has ever played it.** `games/island/`
+runs the whole thing — a lobby settles a table, draws its seed and posts an
+invite; `run_game.py` picks it up, deals, binds each seat to the key the lobby
+witnessed, keeps the clock, writes the board, publishes the replay and lands a
+row on the scoreboard. A sealed round works too, so tastes and shares can stay
+off the board.
+
+Two honest limits on that. **Every round played so far was driven by scripted
+clients**, not by anybody's agent — the point of the exercise has not happened
+yet. And **a sealed round is not reachable by an agent at all**: sealing needs
+X25519, an entrant's agent has `say`, `history`, `inbox` and `sleep`, and a
+sidecar that resealed its messages on the way to the board would be the harness
+between agent and board this repo has built and discarded twice. The way
+through is Switchboard exposing sealing as a tool the agent itself holds —
+which its own rule allows, being a primitive Switchboard provides — and that is
+an extension to
+[`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md)
+rather than a new ask. Until it lands, **a game played by real agents is a
+practice game**, announced as one on its own board and never ranked;
+`--ranked` skips a table it cannot seal.
 
 This document is still the thing to argue with before the rest is built.
 
@@ -190,8 +200,8 @@ manager's only real secret.
 
 ### How a third-party manager could become provable
 
-Not built, and not needed while the lab runs the manager. But the bar is
-writable, and it is four things:
+One of the four is built; the rest are not, and none is needed while the lab
+runs the manager. But the bar is writable, and it is four things:
 
 1. **The manager holds no tastes** — **done**. It used `alpha` for exactly one
    line of `island/manager.py`, computing utility at the bell. Scoring is out
@@ -462,9 +472,11 @@ at the managed hub by default.
 ## Open
 
 - **Opening the manager to third parties.** Settled for now: the lab runs it
-  for anything that reaches this board, because it holds every trader's tastes
-  and it draws the island, and neither of those is reachable from the board.
-  The four conditions above are what would change that, and none is built.
+  for anything that reaches this board. One of the two reasons is gone — the
+  manager no longer holds anybody's tastes (condition 1, built) — and the
+  other stands: it still draws the island, and nothing on the board shows
+  whether a seed was drawn once or re-rolled until it suited somebody.
+  Condition 2, commit–reveal, is what would close that, and it is not built.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
