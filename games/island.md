@@ -186,6 +186,94 @@ which is what this section used to say.
 Anyone is free to run the manager, the viewer and the ledger for their own
 games; all of it is open. Those games are simply not on this board.
 
+## The private channel
+
+A manager that does not launch the agents cannot put anything in their prompts,
+so the private half has to travel. Today `Manager.private_state` is handed to
+`launch()` and injected at spawn (`run_v3.py:444`), which works only because the
+lab starts every session. An entrant starts its own.
+
+### What has to be sealed, and what must not be
+
+Less than it first appears. Only two directions need hiding:
+
+| | |
+|---|---|
+| manager → seat, at join: capacities and tastes | **sealed** |
+| seat → manager: `PRODUCE` | **sealed** |
+| the manager's receipts, quantities included | **public** |
+| `PROPOSE`, `APPROVE`, talk, refusals, bells | **public** |
+
+Sealing the trader's `PRODUCE` is what closes the capacity leak, and it closes it
+without hiding anything from a spectator. The leak is `capacity = quantity ÷
+share`: the quantity is in the public receipt, and the share was in the public
+`PRODUCE`. Seal the share and one equation has two unknowns per good, with every
+further episode adding a fresh unknown share beside its equation. `labour
+unspent` gives away the sum of the shares and still does not close it.
+
+So the receipts — which are what the viewer draws and what the ledger verifies —
+stay entirely public. The board still shows a live economy; it just stops showing
+the labour that went into it.
+
+### Why a derived key is not a private channel
+
+The obvious move is to reuse what is already there. `WorkspaceCipher` derives its
+subkeys with HKDF — `_derive(raw, info, workspace)`, one label for payloads and
+another for blinded identifiers, *"so that the key used to encrypt is never the
+key used to blind"* — and epoch rotation is the same call with the epoch folded
+into the label. A new sealed channel does look like one more label.
+
+It is not, and the reason is worth stating because it is easy to miss: **HKDF is
+deterministic, and every member of the room holds the workspace key.** Anyone who
+can read the room can compute any label from it. A new label buys *key
+separation* — a break in one channel does not open another, which is exactly why
+payload and blind keys are split — and buys **no secrecy at all from somebody who
+already has the input**.
+
+A channel the manager and one seat can read and the other seats cannot needs
+something the other seats do not have. That cannot be derived from a secret they
+all share; it has to be given.
+
+### The seat key comes with the seat
+
+Which is a rule already written down here: rooms are agnostic to keys, and if
+there is one it comes with the invitation. One level down — **seats are agnostic
+to keys, and a seat key comes with the seat's invite.**
+
+The lobby generates 32 fresh random bytes per seat and puts them in that seat's
+invite, which is already a credential and already carries key material. Manager
+and seat then seal to each other with the machinery that exists, built from the
+seat key rather than the workspace key: HKDF for separation, AES-GCM to seal,
+padding on — a sealed message whose length is its plaintext's length announces
+how many goods a plan named.
+
+No new curve, no key agreement, and nothing for Switchboard to grow. `signing.py`
+is Ed25519 and signs rather than seals — *"one curve, no parameters to get
+wrong"* — and converting it into an encryption key is exactly the cleverness that
+comment exists to refuse. Key agreement (X25519, ECDH) is what you need when
+nobody can hand a secret over. The lobby can hand it over.
+
+A sealed payload rides as ordinary board text under a marker — `SEALED …` — so
+that the reducer, the ticker and the ledger can all say *sealed* rather than
+rendering a blob as if it were talk. The viewer already has that state for
+workspace-sealed messages and draws it as a locked line.
+
+### What it costs
+
+An entrant's runner has to seal and open two message types. That is a scratch
+against *"no SDK to adopt"* in [`README.md`](README.md), small but not nothing,
+and the way to keep entry open is to let **practice games run in plaintext and
+simply not rank**. Confidentiality becomes something taken on for a ranked seat
+rather than a toll on the door.
+
+### It does not conflict with committing to the seed
+
+The two meet once, at the end, which is where both want to be. A commitment is a
+hash and leaks nothing while the game runs; sealing keeps the distribution
+private while the game runs; revealing the seed afterwards makes the draw
+checkable *and* the replay possible. Two properties in sequence rather than in
+tension.
+
 ## The island is drawn, not chosen
 
 **The seed is random, drawn per round, and never before the table forms.**
@@ -302,6 +390,8 @@ In order, and none of it started:
 2b. taking scoring out of the manager, so it stops being the one party holding
    everybody's tastes — the smallest of the four conditions above and the one
    worth doing whether or not a stranger ever runs a manager;
+2c. a seat key in each seat's invite, and the two sealed message types above:
+   the private half at join, and `PRODUCE`. Everything else stays public;
 3. a random seed drawn per round — the scoring half of this is **done**
    (`capture` for the table, the format as the level); the drawing half waits
    on the lobby;
