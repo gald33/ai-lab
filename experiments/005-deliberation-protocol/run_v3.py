@@ -37,8 +37,10 @@ from barter.economy import draw_island  # noqa: E402
 from switchboard.client import Client  # noqa: E402
 from switchboard.config import ClientConfig  # noqa: E402
 
+from island import schedule  # noqa: E402
 from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
+from island.schedule import stamp  # noqa: E402
 from island.score import trajectory_from  # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -246,21 +248,6 @@ EPISODE_SECONDS = 60
 DRAIN_EVERY = 1.5
 
 
-def stamp(ts: float) -> str:
-    """A deadline as an absolute UTC clock time.
-
-    A deadline stated as "in 120s" is only true at the instant it is posted.
-    An agent that reads the schedule ninety seconds after the manager wrote it
-    -- which is ordinary, since nobody is prompted and a session may spend its
-    first turns starting up -- reads "in 120s" and plans against a window that
-    has already mostly gone. Run 005 has a trader acknowledging with "Episode 1
-    in 120s" when episode 1 was about thirty seconds away.
-
-    So every deadline the manager posts is an absolute time. Every Switchboard
-    tool result carries the current time as `now` in the same form, so a
-    reader can tell how long it has left however late it arrives.
-    """
-    return time.strftime("%H:%M:%SZ", time.gmtime(ts))
 
 
 def body(text: str) -> str:
@@ -403,20 +390,17 @@ def preflight() -> None:
 
 def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
                   opens_at: float | None = None) -> str:
-    span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
-            f"as they come." if hide
-            else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
-    return (f"Schedule for this round. {len(names)} traders: "
-            f"{', '.join(names)}. {span} "
-            f"Within an episode there are no stages: PRODUCE, PROPOSE and "
-            f"APPROVE all settle for as long as the episode is open. At the "
-            f"bell open proposals lapse and everything held is consumed. "
-            f"Acknowledge with a line beginning ACK. "
-            f"Every time on this board is absolute UTC, and every tool result "
-            f"carries the current time as `now`: read the deadline against "
-            f"that, not against when this message was written. "
-            f"Episode 1 opens at {stamp(opens_at if opens_at is not None else time.time() + ACK_SECONDS)} "
-            f"whether or not everyone has.")
+    """This run's schedule, in the shared wording.
+
+    A thin adapter over `island.schedule`, which is where the text lives so
+    that the game's runner posts the same one. It exists because the two
+    durations below are rebound by `main()` from the command line, and the
+    shared version takes them as arguments rather than reading globals it
+    does not own.
+    """
+    return schedule.schedule_text(
+        episodes, names, hide=hide, opens_at=opens_at,
+        episode_seconds=EPISODE_SECONDS, ack_seconds=ACK_SECONDS)
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,

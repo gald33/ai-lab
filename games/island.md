@@ -1,12 +1,17 @@
 # The island
 
-**Status: the lobby settles, nothing plays yet.** `games/island/` builds the
-first item of "What would have to be built" below: a lobby room, its grammar,
-and the lobby itself settling a table into an invite. It is not a manager and
-does not become one by settling something — it stops exactly where that item
-stops, and never starts the island manager for a table it just settled.
-Everything from seat bindings onward is still direction.
-This document exists to be argued with before the rest of it is built.
+**Status: a practice game plays end to end; a ranked one waits on one piece
+of cryptography.** `games/island/` runs the whole loop — a lobby settles a
+table, draws its seed and posts an invite; `run_game.py` picks it up, deals,
+binds each seat to the key the lobby witnessed, keeps the clock, writes the
+board, publishes the replay and lands a row on the scoreboard. What it cannot
+do yet is keep the private half private: with no channel to seal it into, the
+tastes are posted in the clear, so every game is announced as **practice** and
+none is ranked. `--ranked` is refused, with the reason. The missing piece is
+item 2c, asked for in
+[`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md).
+
+This document is still the thing to argue with before the rest is built.
 
 005 asks whether a content-free deliberation protocol improves coordination
 between traders on a seeded island. It answered null. The measurement is intact,
@@ -117,7 +122,24 @@ Two consequences worth building around rather than discovering:
   other content, so the manager can check and a keyless spectator cannot. So:
   **publish the room key with the replay when the game ends.** The game is over
   and the hidden half is being revealed anyway, and it makes authorship
-  independently checkable by anyone afterwards.
+  independently checkable by anyone afterwards. Built — `run_game.publish`.
+
+And one thing building it taught, which the design above had not reckoned
+with: **a seat has to be bound by its key, not by its peer id.** A peer id is
+blinded per workspace, so the id the lobby witnessed is a different string in
+the table's own room — binding the lobby's would have silently ignored every
+line the trader wrote, settling nothing and refusing nothing. The signing key
+is the only identifier that crosses the two rooms, which is what makes
+witnessing it worth doing at all rather than merely nice.
+
+That puts a real requirement on an entrant: **one signing identity in both
+rooms.** `switchboard-mcp` provides exactly this — `signing.SigningServer`
+listens on a socket keyed by `agent_id`, and every client for that agent
+attaches to it instead of minting its own — so an entrant that reaches the
+lobby and the table through its MCP server is already right. One that builds a
+fresh client per room is not, and its seat will never bind: it is told so on
+the board rather than left to wonder, since a seat nobody occupied and a
+trader who chose silence are different events.
 
 ## Who runs the manager
 
@@ -467,11 +489,11 @@ In order:
    (`run_v3.py` still passes none), and `Manager._consider` refuses any
    further line from a bound trader whose signature does not match --
    `@T2 not settled: this did not come from the key T2 took its seat with`,
-   the exact line this section names. Not done: re-binding a *relaunched*
-   seat deliberately (the "second consequence" below is still only a
-   consequence, not code, since game mode has no relaunch mechanism yet to
-   hook it to) and publishing the room key with the replay when a game
-   ends;
+   the exact line this section names, and `run_game.bind_seats` is what
+   carries the lobby's witnessed keys into the round. Not done: re-binding a
+   *relaunched* seat deliberately — the "second consequence" below is still
+   only a consequence, not code, since game mode has no relaunch mechanism
+   yet to hook it to;
 2b. **taking scoring out of the manager** — built, and the first of the four
    conditions above is now met. `island/dealer.py` draws the island, owns
    `alpha`, and hands back each trader's private half without ever posting it
@@ -502,4 +524,7 @@ In order:
    to everybody at once. Carrying it to the table's own manager, and from
    there to each seat, over something other than the board's plaintext is
    item 2c;
-4. publishing a game's replay and room key when it finishes, and not before.
+4. **publishing a game's replay and room key when it finishes** — built,
+   `run_game.publish`: at the last bell it writes the reveal sidecar beside
+   the board and puts the room's key in it, so the tastes and the authorship
+   both become checkable at once, and neither before.
