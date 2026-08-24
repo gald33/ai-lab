@@ -1,0 +1,31 @@
+id: 007-replicate-the-control
+title: Replicate the bare control so the lab's best difference rests on more than one draw
+arc: execution-ceiling
+priority: next
+status: ready
+refs:
+  - reports/2026-08-24-hypothesis-ledger.md
+  - experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md
+evidence: |
+  Row 14 of the hypothesis ledger is the strongest difference this lab has:
+  handed the full plan, four independent replicates of the plan cell all beat
+  the control — rounds above their own floor 5, 4, 7 and 5 against 1, mean
+  `eff_round` 0.390–0.737 against 0.192, median captured gain +0.68 to +1.00
+  against −0.11. Not one replicate overlaps.
+
+  It rests on **one** control draw. Run 003 measured a control-type cell moving
+  by 1.03 sd on captured gain and 0.073–0.114 on the bounded shares, so a single
+  draw of `e-bare` carries exactly the uncertainty that retired every other
+  difference in the ledger. Four-against-one is not a comparison; it is four
+  measurements against a number of unknown position.
+
+  Two more `e-bare` replicates on seeds 1–12, 5 episodes, 45/30 timing — the
+  same command run 001 used — would make it four against three, and would be
+  the first fully replicated difference in this repo.
+
+  Done when both replicates are recorded, the control's own between-run spread
+  is reported beside the plan cell's, and the ledger's row 14 is regraded from
+  "probably yes" to a strength the evidence actually supports — in either
+  direction.
+
+  Cost: 96 agent sessions, about 65 minutes.

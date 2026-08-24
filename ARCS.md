@@ -42,6 +42,35 @@ five rounds of Haiku.
 | `005-transport-retry-audit` | done | next |
 | `005-paired-statistic-choice` | ready | later |
 
+### 🟠 007 — if the answer is handed over, do they take it, and what survives when it is taken away?
+
+`execution-ceiling` · 2 item(s), 2 startable
+
+`experiments/007-execution-ceiling/README.md` · `reports/2026-08-24-hypothesis-ledger.md`
+
+Opened to answer a feasibility question the earlier nulls could not: is a
+good outcome reachable on this island at all? Handed the competitive
+equilibrium, traders produced it 214/214 and four independent replicates all
+beat the control — so yes, and the earlier nulls were not measuring an
+impossible task.
+
+It then turned into a measuring instrument's own post-mortem. Replicating one
+cell four times with nothing varied gave a between-run sd of 1.03 on captured
+gain, against pre-registered thresholds of 0.10–0.15. Every paired difference
+this lab had reported was inside its own noise.
+
+The arc's tail is what survives that. Two things do: counts of whether agents
+did a thing at all, which are lopsided enough that noise cannot turn them
+over, and the plan-versus-control difference, which is the only one replicated
+four times. The open work is finishing that comparison honestly and deciding
+whether the ruin reduction from the decomposed blocks is real or is the
+control moving under it.
+
+| item | status | priority |
+|---|---|---|
+| `007-replicate-the-control` | ready | next |
+| `007-third-pass-on-ruin` | ready | next |
+
 ### 🟠 How the lab itself is run — process, records, and the tools that hold them
 
 `lab-practice` · 2 item(s), 0 startable
