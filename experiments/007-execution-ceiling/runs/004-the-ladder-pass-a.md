@@ -60,12 +60,12 @@ numbers with denominators. It may not report a finding.
 
 | gate | commit | result |
 |---|---|---|
-| smoke — this experiment and the instrument | `(below)` | |
-| `both` is its two parts, unmodified | | |
-| protocol names nothing about the island | | |
-| no ladder cell carries the cheat | | |
-| toolchain | | |
-| pilot | reused — runs 001a/001b for the timing, 001–003 for the instrument | |
+| smoke — this experiment and the instrument | `7df45cc` | **pass** — `10 passed`, `112 passed` |
+| `both` is its two parts, unmodified | `7df45cc` | **pass** — protocol then hint, zero extra words |
+| protocol names nothing about the island | `7df45cc` | **pass** — none of 35 domain words |
+| no ladder cell carries the cheat | `7df45cc` | **pass** — no plan text, no prices, and `PRIVATE_HOOK` returns empty for all four arms |
+| toolchain | `7df45cc` | **pass** |
+| pilot | reused — runs 001a/001b for the timing, 001–003 for the instrument | `7df45cc` | reused |
 
 ---
 
