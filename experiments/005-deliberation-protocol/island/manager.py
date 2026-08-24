@@ -95,6 +95,13 @@ class Manager:
     #: Switchboard peer id -> trader name. Filled in as agents register, so
     #: the manager scores the trader rather than the transport's identity.
     alias: dict[str, str] = field(default_factory=dict)
+    #: trader name -> the signing key its seat was bound to, when `bind()`
+    #: was given one. A trader with no entry here is not key-checked at all
+    #: -- every existing caller of `bind()` omits it, so this is inert until
+    #: something passes a key. See `games/island.md`, "Seats, and who is in
+    #: one": the lobby is what witnesses this key today; nothing here draws
+    #: it from anywhere but its caller.
+    keys: dict[str, str] = field(default_factory=dict)
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -129,6 +136,14 @@ class Manager:
 
     def drain(self) -> None:
         """Read whatever has appeared since last time. Never blocks anyone."""
+        if self.keys:
+            # A roster read is what teaches Switchboard's own verifier a
+            # peer's published key -- signing.py, "the public key is sealed
+            # like any other content" -- so a signature cannot be checked
+            # without one. Gated on self.keys so the existing, keyless path
+            # every current caller takes never pays for a call it has no use
+            # for.
+            self.client.agents()
         rows = sorted(self.client.history(self.channel, limit=500),
                       key=lambda r: r.get("seq", 0))
         if len(rows) >= 500:
@@ -149,12 +164,22 @@ class Manager:
             # acknowledged. Unwrap with Switchboard's own inverse rather than
             # guessing at the shape.
             body, _forecast = unwrap_forecast(msg.get("body"))
-            self._consider(author, body if isinstance(body, str) else "")
+            self._consider(author, body if isinstance(body, str) else "",
+                           msg.get("signature"))
 
-    def _consider(self, author: str, text: str) -> None:
+    def _consider(self, author: str, text: str,
+                 signature: dict | None = None) -> None:
         if author not in self.holders:
             return
         self.spoke.add(author)
+        bound = self.keys.get(author)
+        if bound is not None:
+            verdict = signature or {}
+            if verdict.get("status") != "verified" or verdict.get("key") != bound:
+                self._refuse(author, "imposture",
+                            f"this did not come from the key {author} took "
+                            f"its seat with", text)
+                return
         upper = text.strip().upper()
         if upper.startswith("ACK"):
             self.acknowledged.add(author)
@@ -325,9 +350,18 @@ class Manager:
                                 f"labour are reset.")
         return utils
 
-    def bind(self, peer_id: str, name: str) -> None:
-        """Bind a Switchboard identity to a trader name, once, at launch."""
+    def bind(self, peer_id: str, name: str, key: str | None = None) -> None:
+        """Bind a Switchboard identity to a trader name, once, at launch.
+
+        `key` is optional and unused by every caller here today -- 005 binds
+        by launch order, not by a witnessed key, so imposture-checking stays
+        off for it. It exists for a caller that *did* witness one, such as a
+        lobby that bound this seat before the round opened: pass it and every
+        further message from `name` has to verify against it or be refused.
+        """
         self.alias[peer_id] = name
+        if key is not None:
+            self.keys[name] = key
 
     def private_state(self, name: str) -> str:
         h = self.holders[name]
