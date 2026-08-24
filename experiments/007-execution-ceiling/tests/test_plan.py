@@ -86,3 +86,52 @@ def test_the_tranche_cell_keeps_the_plan_and_adds_the_rule():
 def test_split_labour_is_off_unless_a_t_cell_is_asked_for():
     from island import manager as M
     assert M.SPLIT_LABOUR is False
+
+
+def test_both_is_exactly_its_two_parts():
+    """The 2x2's interaction cell must be the concatenation, not a rewrite."""
+    import sys as _sys
+    _sys.path.insert(0, str(HERE.parent / "005-deliberation-protocol"))
+    from run_v3 import body
+    stim = HERE / "stimuli" / "decomposed"
+    protocol = body((stim / "01-protocol.md").read_text())
+    hint = body((stim / "02-hint.md").read_text())
+    both = body((stim / "both.md").read_text())
+    assert protocol in both and hint in both
+    assert both.index(protocol) < both.index(hint)
+    # nothing else of substance rides along: the only addition is the heading
+    # `body()` anchors on, which is one line of two words.
+    extra = len(both.split()) - len(protocol.split()) - len(hint.split())
+    assert extra == 0, f"both.md carries {extra} words that are in neither part"
+
+
+def test_the_protocol_block_names_nothing_about_the_island():
+    import sys as _sys
+    _sys.path.insert(0, str(HERE.parent / "005-deliberation-protocol"))
+    from run_v3 import body
+    DOMAIN = ("good", "goods", "cost", "costs", "worth", "price", "prices",
+              "trade", "trades", "exchange", "exchanges", "labour", "produce",
+              "production", "capacity", "capacities", "taste", "tastes",
+              "salt", "iron", "bread", "cloth", "ratio", "ratios", "holding",
+              "holdings", "utility", "bundle", "offer", "offered", "propose",
+              "proposal", "island", "trader", "traders")
+    text = body((HERE / "stimuli" / "decomposed" / "01-protocol.md").read_text())
+    words = {w.strip(".,;:*`—()").lower() for w in text.split()}
+    assert not words & set(DOMAIN), sorted(words & set(DOMAIN))
+
+
+def test_no_ladder_cell_carries_the_cheat():
+    """Nothing from walras(), no counterparty, no quantity, no price."""
+    import sys as _sys
+    _sys.argv = ["x"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("run007b", HERE / "run.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    for arm in ("l-bare", "l-protocol", "l-hint", "l-both"):
+        text = mod.run_v3.instructions(arm, "PRIVATE", 5)
+        assert "Your plan" not in text
+        assert "prices that support it" not in text.lower()
+        assert mod.run_v3.PRIVATE_HOOK(arm, "T1",
+                                       __import__("barter.economy", fromlist=["x"])
+                                       .draw_island(4, 4, seed=1), 0) == ""

@@ -28,6 +28,14 @@ run_v3.ARMS.update({
     #: advice, and the rule below lets it be followed.
     "t-plan": (str(HERE / "stimuli" / "plan"), False),
     "t-tranche": (str(HERE / "stimuli" / "tranche"), False),
+    #: Run 004, the ladder. The winning block decomposed: what a trader could
+    #: derive alone (hint), how to act with others (protocol, domain-free), and
+    #: both. The cheat -- anything needing another trader's private data -- is
+    #: gone from all four; see stimuli/decomposed/00-CHEAT-removed.md.
+    "l-bare":     (None, False),
+    "l-protocol": (str(HERE / "stimuli" / "decomposed" / "01-protocol"), False),
+    "l-hint":     (str(HERE / "stimuli" / "decomposed" / "02-hint"), False),
+    "l-both":     (str(HERE / "stimuli" / "decomposed" / "both"), False),
 })
 run_v3.PRIVATE_HOOK = plan.hook
 
