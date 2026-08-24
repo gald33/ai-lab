@@ -24,6 +24,7 @@ and the arithmetic mean merely down -- the two together say whether a cell is
 lifted by everyone or by a couple of winners carrying corpses.
 
 Usage: python analysis/utility_gain.py results/001-ceiling/v3.json [...]
+       python analysis/utility_gain.py --paired results/001-ceiling/v3.json
 """
 from __future__ import annotations
 
@@ -82,6 +83,40 @@ def summarise(label: str, gains: list[float], totals: list[float]) -> str:
             f"total {statistics.fmean(totals):.2f}")
 
 
+def paired(path: str) -> None:
+    """Per-seed total welfare for every arm in one run, paired on the island.
+
+    Only meaningful for a run whose arms share seeds -- the seed *is* the
+    island, so pairing on it removes the draw from the comparison. A seed an
+    arm failed on is printed as a gap rather than dropped: the denominator is
+    seeds attempted, always.
+    """
+    doc = json.load(open(path))
+    agents, goods = doc.get("agents", 4), doc.get("goods", 4)
+    grid: dict[int, dict[str, float]] = {}
+    for rnd in doc["rounds"]:
+        _, totals = round_rows(rnd, agents, goods)
+        if totals:
+            grid.setdefault(rnd["seed"], {})[rnd["arm"]] = statistics.fmean(totals)
+    arms = sorted({a for row in grid.values() for a in row})
+    print("seed  " + "  ".join(f"{a:>10}" for a in arms))
+    for seed in sorted(grid):
+        cells = "  ".join(f"{grid[seed][a]:>10.2f}" if a in grid[seed] else f"{'--':>10}"
+                          for a in arms)
+        print(f"{seed:4}  {cells}")
+    print(f"\nseeds {len(grid)}")
+    for a in arms:
+        vals = [grid[s][a] for s in grid if a in grid[s]]
+        print(f"  {a:12} above 1.0 on {sum(1 for v in vals if v > 1)}/{len(vals)} seeds")
+    if len(arms) == 2:
+        both = [s for s in grid if all(a in grid[s] for a in arms)]
+        diffs = [grid[s][arms[1]] - grid[s][arms[0]] for s in both]
+        if len(diffs) > 1:
+            print(f"  {arms[1]} - {arms[0]}: n={len(diffs)} "
+                  f"mean {statistics.fmean(diffs):+.3f} sd {statistics.stdev(diffs):.3f} "
+                  f"wins {sum(1 for d in diffs if d > 0)}/{len(diffs)}")
+
+
 def main(paths: list[str]) -> None:
     for path in paths:
         doc = json.load(open(path))
@@ -102,4 +137,9 @@ def main(paths: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or ["results/001-ceiling/v3.json"])
+    args = sys.argv[1:]
+    if args and args[0] == "--paired":
+        for path in args[1:]:
+            paired(path)
+    else:
+        main(args or ["results/001-ceiling/v3.json"])
