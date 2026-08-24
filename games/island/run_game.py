@@ -313,13 +313,42 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     return path
 
 
+def claim(manager: Client, lobby: Lobby, channel: str,
+          claimed: set[str]) -> None:
+    """Offer to run any table that is forming and has nobody to run it.
+
+    A table settles when it is full **and** managed, and `MANAGE` is the line
+    that says "I will run this one". This process is the thing that would run
+    it, so this is it saying so -- on the board, in the grammar, where the
+    lobby settles it like anybody else's claim.
+
+    It comes from a second client with its own identity, because the lobby
+    skips messages from its own `agent_id`: a lobby that settled its own
+    claims would be choosing the manager rather than witnessing a choice, and
+    would not see the line at all.
+    """
+    for table in lobby.tables.values():
+        if table.settled or table.lapsed or table.manager or table.id in claimed:
+            continue
+        claimed.add(table.id)
+        manager.post(channel, f"MANAGE {table.id}")
+        print(f"{table.id}: offering to manage it", flush=True)
+
+
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
-          ledger: Path | None = None) -> None:
-    """Poll the lobby; play whatever settles. Never returns on its own."""
+          ledger: Path | None = None, manager: Client | None = None,
+          channel: str = "lobby") -> None:
+    """Poll the lobby; claim what nobody is running; play whatever settles.
+
+    Never returns on its own.
+    """
     played: set[str] = set()
+    claimed: set[str] = set()
     while True:
         lobby.drain()
+        if manager is not None:
+            claim(manager, lobby, channel, claimed)
         for table in list(lobby.tables.values()):
             if not table.settled or table.id in played:
                 continue
@@ -407,17 +436,29 @@ def main(argv: list[str] | None = None) -> int:
                          "into it by a test does not come back out")
     ap.add_argument("--ranked", action="store_true",
                     help="refuse to play a table that is not sealable")
+    ap.add_argument("--managed-by", default="lucille",
+                    help="the name this runner offers to manage under, and "
+                         "the one the settlement line records")
     args = ap.parse_args(argv)
 
-    client = Client(ClientConfig(url=args.hub, url_source="explicit", token=args.token,
-                                 workspace=args.workspace, key=args.key),
-                    agent_id="lobby")
-    lobby = Lobby(client=client, channel=args.channel)
-    print(f"watching {args.hub}/{args.workspace}#{args.channel} for settled tables")
+    def _client(agent_id: str) -> Client:
+        return Client(ClientConfig(url=args.hub, url_source="explicit",
+                                   token=args.token, workspace=args.workspace,
+                                   key=args.key), agent_id=agent_id)
+
+    lobby = Lobby(client=_client("lobby"), channel=args.channel)
+    # The claimant, separate from the lobby that witnesses it -- see `claim`.
+    # Registered so the settlement line names it rather than a blinded id.
+    manager = _client(MANAGER)
+    manager.register(name=args.managed_by, kind="local", branch="main",
+                     task=f"running tables in {args.workspace}")
+    print(f"watching {args.hub}/{args.workspace}#{args.channel}, "
+          f"offering to manage as {args.managed_by}")
     try:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
               ack_seconds=args.ack_seconds, out=args.out,
-              ranked_only=args.ranked, ledger=args.ledger)
+              ranked_only=args.ranked, ledger=args.ledger,
+              manager=manager, channel=args.channel)
     except KeyboardInterrupt:
         print()
     return 0
