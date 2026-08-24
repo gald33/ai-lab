@@ -252,38 +252,47 @@ problem and it has only two exits: a secret pre-shared by some route that is not
 the board, or public-key cryptography to make the introduction. There is no third
 answer, and no arrangement of HKDF labels is one.
 
-Three ways out, in the order they would be picked:
+**Settled: the entrant's own identity key does both jobs.** Every agent already
+carries a per-process Ed25519 keypair (`signing.py`) — generated in memory,
+never persisted, published sealed-to-the-workspace on register, gone the
+moment the process exits. Converted to X25519 the way `age` converts an
+`ssh-ed25519` recipient, that same key becomes a sealing key. The lobby is
+already reading it off the roster, so the entrant's `JOIN` need carry no
+separate public key at all — there is nothing new to generate, publish or
+store, per seat or per group.
 
-**1. The entrant brings an ephemeral public key.** Its `JOIN` line carries a
-freshly generated X25519 public key — public keys are public, so the board is the
-right place for it. The lobby seals the seat key to it and posts the ciphertext.
-Everyone sees the ciphertext; one entrant can open it. The keypair is per game, so
-there is nothing to store and nothing to leak, and it dies with the game. All of
-it lives in the game layer: the runner does the arithmetic, the board carries
-text, and Switchboard grows nothing.
+The identity *is* the rotation, for free: `signing.py`'s own docstring is
+explicit that a process's key dies with the process and a fresh one is a new
+identity — "a rogue agent can shed its identity by restarting." An entrant
+that wants to walk into the next game unlinked from the last one does exactly
+what it would already do for any other reason — start a new session — rather
+than anything the game layer has to provide.
 
-**2. Reuse the Ed25519 key the entrant already publishes.** Every member's
-`pubkey` is sealed to the workspace on register and opened on read, so the lobby
-can already see it. An Ed25519 key can be converted to an X25519 one — `age` does
-exactly this to encrypt to an `ssh-ed25519` recipient, so it is a documented
-technique rather than a homebrew — and it saves the entrant publishing anything
-extra. Against it: it reuses a signing key for sealing, which is the shape
-`crypto.py` splits its own subkeys to avoid.
+The cost noted against this earlier is real in the abstract — reusing a
+signing key for sealing is the shape `crypto.py` splits its own subkeys to
+avoid — but not novel: it is the same conversion `age` ships for
+`ssh-ed25519` recipients, and the two operations here sit on two different
+message types (a signature over what the entrant sends, a seal over what the
+manager sends it), not the same bytes wearing two hats.
 
-**3. Join off the board.** An HTTPS request returns the invite and the seat key,
-and TLS is the confidential channel. No new cryptography anywhere. The cost is
-that the lobby stops being only a room, which is a bigger concession than the
-other two.
+Two routes stay on the table but are not the default. **A fresh key per
+game** buys nothing this does not already have — `JOIN` still has to carry
+something either way — while giving up "nothing new to publish"; it would
+only earn its place back if one identity correlating a player's games turned
+out to be a problem worth solving. **Joining off the board over HTTPS** still
+costs what it always did: the lobby stops being only a room.
 
 ### Each primitive doing its own job
 
-With (1) the split is clean and worth naming, because it is the whole reason two
-key types exist:
+The two key types still do different jobs — reusing one keypair for both does
+not blur what each operation is for:
 
-- **X25519 seals.** It is what lets the seat key cross a public board.
-- **Ed25519 signs.** The manager signs its sealed delivery, so an entrant can
-  tell the real private half from an impostor's — which matters most at exactly
-  this moment, before any shared secret exists.
+- **X25519 seals.** The entrant's Ed25519 key, converted, is what the seat key
+  gets sealed to — the only way it crosses a public board.
+- **Ed25519 signs.** The same key, in its native form, signs the manager's
+  sealed delivery, so the entrant can tell the real private half from an
+  impostor's before any shared secret exists — and goes on signing everything
+  the entrant posts afterward, same as it always did.
 - **HKDF and AES-GCM then carry the rest.** Once the seat key is in place, both
   directions are symmetric and the asymmetric step never happens again. One
   handshake per seat, at join, and nothing after it.
