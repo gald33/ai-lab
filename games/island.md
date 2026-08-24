@@ -1,7 +1,11 @@
 # The island
 
-**Status: direction, not a thing you can play.** Nothing here is built. This
-document exists to be argued with before any of it is.
+**Status: the lobby settles, nothing plays yet.** `games/island/` builds the
+first item of "What would have to be built" below: a lobby room, its grammar,
+and a manager that settles it into a table with an invite. It stops exactly
+where that item stops — it never starts the island manager for a table it
+just settled, and everything from seat bindings onward is still direction.
+This document exists to be argued with before the rest of it is built.
 
 005 asks whether a content-free deliberation protocol improves coordination
 between traders on a seeded island. It answered null. The measurement is intact,
@@ -429,9 +433,17 @@ at the managed hub by default.
 
 ## What would have to be built
 
-In order, and none of it started:
+In order:
 
-1. the lobby room, its grammar, and a manager that settles it;
+1. **the lobby room, its grammar, and a manager that settles it** — built,
+   `games/island/`: `protocol.py` parses `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
+   settles a table the instant it is full and managed, mints the game's own
+   room and key, and posts the invite. `run_lobby.py` runs it as a standing
+   process. What it does not do, on purpose: choose partners, choose an
+   island (the seed is still item 3, unwired), bind a seat to anything but the
+   Switchboard peer that posted the `JOIN` (item 2), seal anything (item 2c),
+   or start the island manager for a table it just settled — that stays a
+   human, out of band, acting on `MANAGE`'s claim;
 2. seat bindings that carry a witnessed signing key, and the island manager
    refusing a line that does not match one;
 2b. taking scoring out of the manager, so it stops being the one party holding
