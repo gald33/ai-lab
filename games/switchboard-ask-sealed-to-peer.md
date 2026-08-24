@@ -41,6 +41,37 @@ So the room already distributes exactly one piece of per-member asymmetric
 material to exactly the right audience, on a path that has already been thought
 about. What is missing is the sealing counterpart to the verifying one.
 
+## What we learned by building a stopgap
+
+Since writing this we built a minimal version downstream --
+`experiments/005-deliberation-protocol/island/sealed.py` -- because a ranked
+game could not exist without one. It is marked as a stopgap and we would
+still rather delete it than keep it. Two findings, offered as data rather
+than as a recommendation:
+
+**Option 1 was not available to us.** `cryptography` exposes no
+Ed25519-to-X25519 conversion and PyNaCl is not one of our dependencies, so
+that route would have meant hand-writing the birational map between Edwards
+and Montgomery coordinates. We were not willing to, for exactly the reason we
+would not want you to. If you have a reviewed conversion to hand, or are
+willing to depend on one, option 1 is still the nicer interface -- the
+objection is only ever about who writes the curve arithmetic.
+
+**So we built option 2, and it cost less than expected.** The recipient
+generates an X25519 keypair and publishes the public half. In our case it
+travels on the board rather than in the roster, because our joining message
+already exists and public keys are public -- which sidesteps `_SEAL_BODY` and
+`_OPEN_RESPONSE` entirely and asks nothing of the hub. **If that shape suits
+you, a primitive taking a raw recipient public key and returning an envelope
+would serve us completely**, and the roster field is optional on top of it.
+
+One implementation note worth passing on, since it cost us a debugging cycle:
+we framed the padding the way `crypto._pad` does only *after* getting it
+wrong. The first version appended a marker byte and scanned back for it --
+but the marker and the filler are the same byte, so the boundary could never
+be found. Your four-byte length prefix is the reason that is not a bug you
+have; it is worth keeping in any new padded envelope.
+
 ## The design call we are not making for you
 
 Ed25519 is a signing curve and cannot do key agreement directly. Two ways:
