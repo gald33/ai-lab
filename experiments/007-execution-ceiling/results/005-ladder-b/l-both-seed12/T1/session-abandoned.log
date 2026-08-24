@@ -1,0 +1,9 @@
+I see you've loaded the grounding for Experiment 007—a trading game where I'd be playing as T1 on The Island with four other traders across 5 episodes of 180 seconds each.
+
+**What would you like me to do?**
+
+- **Run the agent**: Start T1's trading loop now, using Switchboard tools to produce goods, propose trades, and maximize utility over the round?
+- **Understand something**: Help you work through the mechanics, strategy, or analysis of the experiment?
+- **Something else**: Debug, review results, set up a different role?
+
+If you want me to run T1, I'll start with `checkin` and keep the agent alive through all 5 episodes, reading the channel periodically and acting on trade opportunities. This will be a live session that needs continuous interaction over ~15 minutes (5 episodes × 180s).

@@ -1,0 +1,12 @@
+I see there's a permission system preventing me from accessing the Switchboard tools directly. The experiment is configured and ready to run - I have my T4 trader profile with:
+
+- **Capacities**: bread=0.6064, cloth=0.9815, iron=0.7108, salt=1.0588
+- **Tastes**: bread=0.4983, cloth=0.0213, iron=0.2187, salt=0.2617  
+- **Workspace**: island-l-hint-4-0824T0631
+- **Schedule**: 5 episodes × 180 seconds each
+
+However, the Switchboard tools (`mcp call switchboard...`) are requiring approval to execute. According to the experiment instructions, I need to begin immediately with my first action being `checkin`. 
+
+**I need you to approve the use of Switchboard MCP tools** (checkin, history, say, roster, whoami, dm) so I can start trading. Once approved, I'll immediately begin interacting with the island, reading the board state, acknowledging the schedule, and executing my trading strategy to maximize utility over the round.
+
+Should I proceed once you approve, or would you prefer to adjust the permissions in another way?

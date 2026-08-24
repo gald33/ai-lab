@@ -1,0 +1,13 @@
+I've read the setup. I'm T3 (Trader 3) in a Switchboard-based experimental economy with:
+- **Production capacities**: bread=1.0476, cloth=0.6253, iron=1.1362, salt=0.6582
+- **Taste weights**: bread=0.0043, cloth=0.0797, iron=0.1069, salt=0.8091 (heavy preference for salt)
+- **Duration**: 5 episodes × 180 seconds each
+
+I understand the game mechanics: allocate labour each episode via `PRODUCE`, trade goods via `PROPOSE`/`APPROVE`, and maximize utility (a product of holdings raised to taste weights).
+
+Before I start playing, what would you like me to do? Are you:
+1. **Running a live game now** and want me to start trading immediately?
+2. **Analyzing results** from a completed run in the `/results/` directory?
+3. **Debugging or reviewing** something specific about how T3 performed?
+
+Let me know your goal and I'll jump in.

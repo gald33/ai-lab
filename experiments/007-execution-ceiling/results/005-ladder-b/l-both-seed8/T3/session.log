@@ -1,0 +1,17 @@
+I see there are approval blocks preventing me from running the Switchboard commands directly. Let me understand what the actual task is and what I should be doing here. Based on the context:
+
+1. **Setup**: I'm T3 in a live trading experiment with 5 episodes of 180 seconds each
+2. **My Profile**: 
+   - Capacities: bread=0.752, cloth=1.311, iron=0.8783, salt=11.8234
+   - Tastes: bread=0.0064, cloth=0.0976, iron=0.1648, salt=0.7312
+3. **The Challenge**: The critical constraint is that if I hold zero of ANY good at episode end, my utility becomes zero
+
+The CLAUDE.md instructions are written as if I should be the active T3 agent playing in real-time through Switchboard. However, I'm getting approval blocks when trying to execute the MCP/Switchboard calls.
+
+**What would you like me to do?**
+
+Option A: **Actually play through the trading game** — If this is a live/active experiment, I need permission to make the Switchboard tool calls to participate in real-time trading across 5 episodes.
+
+Option B: **Analyze completed results** — If this experiment has already been run, I should look at the results/logs to understand what happened and extract findings.
+
+Option C: **Something else** — Please clarify what task you're asking me to complete in this directory.

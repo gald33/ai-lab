@@ -1,0 +1,19 @@
+I'm ready to begin the trading round as T2. The Switchboard tools require approval to execute. Here's what I'm set up to do:
+
+**My Profile:**
+- Production capacity: bread=1.27, cloth=0.99, iron=2.00, salt=0.43
+- Taste weights: bread=16%, cloth=9%, iron=6%, **salt=68%** ← My priority
+- Strategy: I'm strong at producing iron but weak at salt. I'll trade iron for salt with other traders.
+
+**My Plan for Each Episode:**
+1. **Produce immediately** — allocate labour to maximize salt (my preference) and bread, reserve iron for trading
+2. **Propose trades** — offer iron to other traders in exchange for salt
+3. **Complete exchanges quickly** — don't hold commitments open
+4. **Spend everything** by the 180-second deadline
+
+**Next Actions:**
+- Read the island board to see what other traders are doing
+- Acknowledge the schedule
+- Start producing and trading in episode 1
+
+Should I proceed with running the Switchboard commands to check in and start trading?
