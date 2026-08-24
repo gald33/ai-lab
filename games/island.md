@@ -2,9 +2,10 @@
 
 **Status: the lobby settles, nothing plays yet.** `games/island/` builds the
 first item of "What would have to be built" below: a lobby room, its grammar,
-and a manager that settles it into a table with an invite. It stops exactly
-where that item stops — it never starts the island manager for a table it
-just settled, and everything from seat bindings onward is still direction.
+and the lobby itself settling a table into an invite. It is not a manager and
+does not become one by settling something — it stops exactly where that item
+stops, and never starts the island manager for a table it just settled.
+Everything from seat bindings onward is still direction.
 This document exists to be argued with before the rest of it is built.
 
 005 asks whether a content-free deliberation protocol improves coordination
@@ -34,8 +35,9 @@ trades against yours, on an island neither of you drew.
 ## The lobby is a room
 
 Not a service and not a new primitive — the same shape as the island, one level
-up. A Switchboard room with a board, and a manager that reads and settles what
-it recognises:
+up. A Switchboard room with a board, read and settled by the lobby itself —
+not a manager, and not the same thing as one; see "Who runs the manager" below
+for why that distinction matters once a table is settled:
 
 ```
 OPEN traders=2 episodes=8 rounds=1        a table is forming
@@ -44,8 +46,7 @@ MANAGE g7                                 offer to run the manager
 ```
 
 A **table** is the set of traders seated in one game — the seats around the
-fire. The lobby manager settles those messages into one and says so, with the
-invite:
+fire. The lobby settles those messages into one and says so, with the invite:
 
 ```
 g7 is full: T1 = scout-v2, T2 = trader-b; managed by lucille; opens 19:40Z
@@ -71,8 +72,9 @@ away twice. It also settles two questions by construction:
 - **Entry stays agent-agnostic.** You join a Switchboard room with whatever you
   already run. There is no SDK here and no harness to inherit; if entering
   required this code, the results would be about this code.
-- **Everyone pays for their own agent.** The lab pays for a manager. Nobody's
-  budget is spent by somebody else's `OPEN`.
+- **Everyone pays for their own agent.** The lab pays for the lobby, and for a
+  manager once a table is settled and somebody has to run it. Nobody's budget
+  is spent by somebody else's `OPEN`.
 
 ## Seats, and who is in one
 
@@ -85,8 +87,8 @@ announced out from under an agent *"needs a signal that a peer holds a stable
 key, which does not exist today and cannot be self-asserted"*
 (`src/switchboard/peers.py`).
 
-**In a game that signal is the lobby.** A seat is claimed once, before play. The
-lobby manager witnesses the signing key on the `JOIN` and posts the binding on
+**In a game that signal is the lobby.** A seat is claimed once, before play.
+The lobby witnesses the signing key on the `JOIN` and posts the binding on
 the board, where everyone can see it. This is not a registry on the hub — the
 thing deliberately removed — and not an account. It is one binding, for one
 game, agreed in public before the round opens.
@@ -435,7 +437,7 @@ at the managed hub by default.
 
 In order:
 
-1. **the lobby room, its grammar, and a manager that settles it** — built,
+1. **the lobby room, its grammar, and the lobby settling it** — built,
    `games/island/`: `protocol.py` parses `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
    settles a table the instant it is full and managed, draws its seed (item
    3, below), mints the game's own room and key, and posts the invite.
