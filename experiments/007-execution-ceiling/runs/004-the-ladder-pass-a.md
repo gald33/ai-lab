@@ -1,6 +1,6 @@
 # Run 004 — The ladder, pass A
 
-**Opened:** 2026-08-24 · **Status:** running
+**Opened:** 2026-08-24 · **Status:** reported (pass A)
 
 Everything above the Outcome line is written **before** the run starts.
 
@@ -72,11 +72,76 @@ numbers with denominators. It may not report a finding.
 ## Outcome
 
 *Written after. Numbers with denominators; no interpretation here.*
+**Pass A of two. Descriptive only — the pre-registration forbids a finding
+from one pass.**
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `results/004-ladder-a/v3.json`, 48 rounds, stamp `0824T0454`.
+  All 48 boards saved before the TTL.
+- **Ran:** all 48 rounds, 5 episodes each, no failed rounds.
+
+- **Numbers — cell means.** Denominator 12 seeds per cell.
+
+  | cell | above own autarky | ruined | presence | `eff_round` | rounds above floor |
+  |---|---|---|---|---|---|
+  | `l-bare` | 0.314 | **0.298** | 0.93 | 0.352 | 1/12 |
+  | `l-protocol` | 0.358 | 0.147 | 0.93 | 0.363 | 2/12 |
+  | `l-hint` | 0.445 | 0.139 | 0.95 | 0.465 | 2/12 |
+  | `l-both` | **0.449** | **0.075** | 0.88 | 0.306 | **4/12** |
+
+- **Numbers — primary, paired against `l-bare`.**
+
+  | cell | mean | median | favouring | **seeds at ≥ +0.15** |
+  |---|---|---|---|---|
+  | `l-protocol` | +0.044 | +0.050 | 7/12 | **5/12** |
+  | `l-hint` | +0.130 | +0.186 | 8/12 | **7/12** |
+  | `l-both` | +0.134 | +0.225 | 9/12 | **7/12** |
+
+  **The pre-registered rule — "≥ +0.15 on at least 8 of 12 seeds" — is met by
+  no cell.** All three are nulls by the rule as written. Seeds at ≤ −0.15:
+  3, 3 and 2 respectively, so none is harmful either.
+
+- **Numbers — co-primary, share ruined (lower is better).**
+
+  | cell | mean | median | lower on |
+  |---|---|---|---|
+  | `l-protocol` | **−0.151** | −0.059 | 7/12 |
+  | `l-hint` | **−0.159** | −0.125 | 8/12 |
+  | `l-both` | **−0.223** | −0.100 | 7/12 |
+
+  Every treated cell more than halves the ruin rate: 0.298 in the control
+  against 0.147, 0.139 and **0.075**.
+
+- **Assumptions that did not hold:** none. **A2** and **A3** held by test —
+  `both` is exactly its two parts, and no ladder cell carries any of the cheat.
+  **A4** did not fire: the treated cells do not sit on the control. **A5**
+  stands as written and is untested: `l-both` is the longest block and also the
+  best on both endpoints, so length is not ruled out.
+
+- **Deviations:** none.
 
 ## What this changed
+
+**Read the two endpoints together, because they say different things.**
+
+On the primary, no cell clears the pre-registered bar. On the co-primary, every
+cell more than halves the ruin rate, and `l-both` cuts it by three quarters —
+0.298 to 0.075.
+
+That combination is the opposite of run 001's. The full plan **raised** ruin
+(23–41% against an 18% control) while raising the average: it bought a better
+mean by making the outcome more violent. These blocks, with the cheat removed,
+do the reverse — they take the zeros out. `l-both` is the only cell in this
+experiment's history to be better than its control on *both* endpoints at once.
+
+**And rounds above their own floor go 1, 2, 2, 4.** Small numbers, and exactly
+the kind of ordering run 003 warned cannot be trusted from one pass — but it
+runs the same way as everything else here.
+
+**What pass A does not license.** Any claim about which block carries it. The
+protocol's +0.044 and the hint's +0.130 differ by less than this instrument
+resolves, and `l-both` is within 0.004 of `l-hint` on the primary while being
+412 words longer, which is what A5 anticipated and cannot separate.
+
+**Pass B is the run that decides.** Same command, same seeds. A cell that holds
+its sign on both endpoints across both passes is a result; one that flips is
+unresolved. Nothing here should be quoted until then.
