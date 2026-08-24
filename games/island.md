@@ -438,7 +438,11 @@ at the managed hub by default.
 In order:
 
 1. **the lobby room, its grammar, and the lobby settling it** — built,
-   `games/island/`: `protocol.py` parses `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
+   `games/island/` — imported as **`games.island`**, qualified by its own
+   package so that the game layer and the island economy it runs
+   (`island`, rooted at `experiments/005-deliberation-protocol/`) are two
+   names rather than one name for two things. In it: `protocol.py` parses
+   `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
    settles a table the instant it is full and managed, draws its seed (item
    3, below), mints the game's own room and key, and posts the invite.
    `run_lobby.py` runs it as a standing process. What it does not do, on

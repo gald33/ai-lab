@@ -7,7 +7,7 @@ from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 from switchboard.invite import Invite
 
-from island.lobby import Lobby
+from games.island.lobby import Lobby
 
 WORKSPACE = "w_lobby-test"
 
