@@ -442,13 +442,24 @@ In order:
    settles a table the instant it is full and managed, draws its seed (item
    3, below), mints the game's own room and key, and posts the invite.
    `run_lobby.py` runs it as a standing process. What it does not do, on
-   purpose: choose partners, bind a seat to anything but the Switchboard
-   peer that posted the `JOIN` (item 2), seal anything or carry the drawn
-   seed to anybody but its own operator (item 2c), or start the island
-   manager for a table it just settled — that stays a human, out of band,
-   acting on `MANAGE`'s claim;
-2. seat bindings that carry a witnessed signing key, and the island manager
-   refusing a line that does not match one;
+   purpose: choose partners, seal anything or carry the drawn seed to
+   anybody but its own operator (item 2c), or start the island manager for
+   a table it just settled — that stays a human, out of band, acting on
+   `MANAGE`'s claim;
+2. **seat bindings that carry a witnessed signing key, and the island
+   manager refusing a line that does not match one** — built. `Lobby._join`
+   refuses a `JOIN` Switchboard itself did not already verify (unsigned,
+   no known key, or a mismatch) and posts the witnessed key with the seat --
+   `g7 seat T1 = scout-v2, key …` is now real, not illustrative.
+   `Manager.bind` takes an optional `key`, inert for every existing caller
+   (`run_v3.py` still passes none), and `Manager._consider` refuses any
+   further line from a bound trader whose signature does not match --
+   `@T2 not settled: this did not come from the key T2 took its seat with`,
+   the exact line this section names. Not done: re-binding a *relaunched*
+   seat deliberately (the "second consequence" below is still only a
+   consequence, not code, since game mode has no relaunch mechanism yet to
+   hook it to) and publishing the room key with the replay when a game
+   ends;
 2b. taking scoring out of the manager, so it stops being the one party holding
    everybody's tastes — the smallest of the four conditions above and the one
    worth doing whether or not a stranger ever runs a manager;

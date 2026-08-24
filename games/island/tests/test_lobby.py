@@ -17,6 +17,15 @@ def _client(hub, agent_id, key=None, workspace=WORKSPACE):
                                workspace=workspace, key=key), agent_id=agent_id)
 
 
+def _entrant(hub, agent_id, key=None, workspace=WORKSPACE):
+    """A client whose signing key is witnessable -- registered, the way a
+    real entrant would be before it could ever JOIN. `_client` stays bare for
+    the tests that specifically want an unregistered peer."""
+    client = _client(hub, agent_id, key, workspace)
+    client.register(name=agent_id, kind="local", branch="main", task="")
+    return client
+
+
 def test_open_announces_a_forming_table(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
@@ -37,8 +46,8 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     opener = _client(hub, "opener", key)
-    t1 = _client(hub, "t1", key)
-    t2 = _client(hub, "t2", key)
+    t1 = _entrant(hub, "t1", key)
+    t2 = _entrant(hub, "t2", key)
     manager = _client(hub, "manager-claim", key)
     manager.register(name="lucille", kind="local", branch="main", task="running g1")
 
@@ -49,6 +58,7 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     lobby.drain()
     table = lobby.tables["g1"]
     assert table.seats == {t1.agent_id: "scout-v2", t2.agent_id: "trader-b"}
+    assert table.keys == {t1.agent_id: t1.public_key, t2.agent_id: t2.public_key}
     assert not table.settled
 
     manager.post("lobby", "MANAGE g1")
@@ -63,6 +73,11 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     settlement = next(b for b in lines if b.startswith("g1 is full"))
     assert "T1 = scout-v2" in settlement and "T2 = trader-b" in settlement
     assert "managed by lucille" in settlement
+
+    # The witnessed key is meant to be public -- "posts the binding on the
+    # board, where everyone can see it" -- unlike the seed below.
+    assert any(b.startswith("g1 seat T1 = scout-v2, key ") and t1.public_key in b
+              for b in lines)
 
     invite_line = next(b for b in lines if b.startswith("g1 invite: "))
     invite = Invite.decode(invite_line.removeprefix("g1 invite: "))
@@ -82,8 +97,8 @@ def test_settling_on_manage_before_the_table_is_full(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     opener = _client(hub, "opener", key)
-    t1 = _client(hub, "t1", key)
-    t2 = _client(hub, "t2", key)
+    t1 = _entrant(hub, "t1", key)
+    t2 = _entrant(hub, "t2", key)
     manager = _client(hub, "m", key)
     manager.register(name="gal", kind="local", branch="main", task="")
 
@@ -103,7 +118,7 @@ def test_a_peer_cannot_hold_two_seats_at_one_table(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     opener = _client(hub, "opener", key)
-    t1 = _client(hub, "t1", key)
+    t1 = _entrant(hub, "t1", key)
 
     opener.post("lobby", "OPEN traders=3 episodes=3 rounds=1")
     lobby.drain()
@@ -120,7 +135,7 @@ def test_a_name_cannot_be_reused_at_one_table(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     opener = _client(hub, "opener", key)
-    t1, t2 = _client(hub, "t1", key), _client(hub, "t2", key)
+    t1, t2 = _entrant(hub, "t1", key), _entrant(hub, "t2", key)
 
     opener.post("lobby", "OPEN traders=3 episodes=3 rounds=1")
     lobby.drain()
@@ -130,6 +145,30 @@ def test_a_name_cannot_be_reused_at_one_table(hub):
 
     assert len(lobby.tables["g1"].seats) == 1
     assert "already seated" in lobby.refusals[0]["reason"]
+
+
+def test_a_join_from_an_unregistered_peer_is_refused(hub):
+    """A name typed on a board proves nothing -- so does a JOIN from a peer
+    this lobby has never seen a key for. Register and it goes through."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    opener = _client(hub, "opener", key)
+    t1 = _client(hub, "t1", key)   # bare: never registered
+
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    t1.post("lobby", "JOIN g1 as scout-v2")
+    lobby.drain()
+
+    assert lobby.tables["g1"].seats == {}
+    assert "no signing key known" in lobby.refusals[0]["reason"]
+
+    t1.register(name="t1", kind="local", branch="main", task="")
+    t1.post("lobby", "JOIN g1 as scout-v2")
+    lobby.drain()
+
+    assert lobby.tables["g1"].seats == {t1.agent_id: "scout-v2"}
+    assert lobby.tables["g1"].keys[t1.agent_id] == t1.public_key
 
 
 def test_a_second_manage_claim_is_refused(hub):
@@ -196,7 +235,7 @@ def test_a_table_lapses_if_it_does_not_fill_in_time(hub):
     lobby = Lobby(client=_client(hub, "lobby", key), table_ttl=60.0,
                  clock=lambda: now[0])
     opener = _client(hub, "opener", key)
-    t1 = _client(hub, "t1", key)
+    t1 = _entrant(hub, "t1", key)
 
     opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
     lobby.drain()
@@ -223,7 +262,7 @@ def test_a_settled_table_never_lapses(hub):
     lobby = Lobby(client=_client(hub, "lobby", key), table_ttl=10.0,
                  clock=lambda: now[0])
     opener = _client(hub, "opener", key)
-    t1, t2 = _client(hub, "t1", key), _client(hub, "t2", key)
+    t1, t2 = _entrant(hub, "t1", key), _entrant(hub, "t2", key)
     manager = _client(hub, "m", key)
     manager.register(name="lucille", kind="local", branch="main", task="")
 
@@ -246,7 +285,7 @@ def test_a_seed_is_not_drawn_before_the_table_settles(hub):
     drawn = []
     lobby = Lobby(client=_client(hub, "lobby", key), draw_seed=lambda: drawn.append(1) or 42)
     opener = _client(hub, "opener", key)
-    t1 = _client(hub, "t1", key)
+    t1 = _entrant(hub, "t1", key)
 
     opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
     lobby.drain()
@@ -261,7 +300,7 @@ def test_the_seed_is_injectable_and_settlement_uses_it(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key), draw_seed=lambda: 20260824)
     opener = _client(hub, "opener", key)
-    t1, t2 = _client(hub, "t1", key), _client(hub, "t2", key)
+    t1, t2 = _entrant(hub, "t1", key), _entrant(hub, "t2", key)
     manager = _client(hub, "m", key)
     manager.register(name="lucille", kind="local", branch="main", task="")
 
@@ -279,8 +318,8 @@ def test_two_tables_draw_different_seeds(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     opener = _client(hub, "opener", key)
-    a1, a2 = _client(hub, "a1", key), _client(hub, "a2", key)
-    b1, b2 = _client(hub, "b1", key), _client(hub, "b2", key)
+    a1, a2 = _entrant(hub, "a1", key), _entrant(hub, "a2", key)
+    b1, b2 = _entrant(hub, "b1", key), _entrant(hub, "b2", key)
     ma, mb = _client(hub, "ma", key), _client(hub, "mb", key)
     ma.register(name="ma", kind="local", branch="main", task="")
     mb.register(name="mb", kind="local", branch="main", task="")

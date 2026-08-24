@@ -70,6 +70,11 @@ class Table:
     #: labelling `island/manager.py` defaults to, so a settled table's seats
     #: are already the names the island manager will use.
     seats: dict[str, str] = field(default_factory=dict)
+    #: peer id -> the signing key its JOIN was verified under -- witnessed
+    #: once, in public, per "Seats, and who is in one". A seat with no entry
+    #: here was never seated: `_join` refuses a JOIN it cannot verify rather
+    #: than seating it keyless.
+    keys: dict[str, str] = field(default_factory=dict)
     manager: str | None = None
     manager_peer: str | None = None
     settled: bool = False
@@ -145,10 +150,11 @@ class Lobby:
             if not peer or peer == self.client.agent_id:
                 continue
             body, _forecast = unwrap_forecast(msg.get("body"))
-            self._consider(peer, body if isinstance(body, str) else "")
+            self._consider(peer, body if isinstance(body, str) else "",
+                           msg.get("signature"))
         self._sweep()
 
-    def _consider(self, peer: str, text: str) -> None:
+    def _consider(self, peer: str, text: str, signature: dict | None = None) -> None:
         try:
             action = parse(text)
         except Malformed as exc:
@@ -161,7 +167,7 @@ class Lobby:
             if isinstance(action, Open):
                 self._open(peer, action)
             elif isinstance(action, Join):
-                self._join(peer, action)
+                self._join(peer, action, signature)
             elif isinstance(action, Manage):
                 self._manage(peer, action)
         except Refused as exc:
@@ -197,7 +203,13 @@ class Lobby:
             raise Refused(f"{table_id} is already settled")
         return table
 
-    def _join(self, peer: str, action: Join) -> None:
+    def _join(self, peer: str, action: Join, signature: dict | None) -> None:
+        """A name typed on a board proves nothing -- see `games/island.md`,
+        "Seats, and who is in one". So a `JOIN` is refused unless Switchboard
+        itself already verified it against a key this peer announced; a seat
+        is bound to that key, witnessed once here, in public, before the
+        table can ever be full.
+        """
         table = self._table(action.table)
         if peer in table.seats:
             raise Refused(f"you already hold seat "
@@ -206,12 +218,35 @@ class Lobby:
             raise Refused(f"{action.name!r} is already seated at {action.table}")
         if table.full():
             raise Refused(f"{action.table} is full")
+        key = self._witness(signature)
         table.seats[peer] = action.name
+        table.keys[peer] = key
         self.settled += 1
-        self.say(f"{action.table} seat {table.label(peer)} = {action.name} "
-                f"({len(table.seats)}/{table.traders})")
+        self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
+                f"key {key} ({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)
+
+    @staticmethod
+    def _witness(signature: dict | None) -> str:
+        """The key a message was verified under, or a refusal naming why not.
+
+        Distinct reasons for distinct causes, the same discipline the rest of
+        this module keeps: unsigned is not the same fact as unknown, and
+        unknown is not the same fact as forged, however alike all three look
+        from "the seat did not get bound".
+        """
+        status = (signature or {}).get("status")
+        if status is None or status == "unsigned":
+            raise Refused("JOIN must be signed -- this message carried no "
+                          "signature to witness")
+        if status == "unknown":
+            raise Refused("no signing key known for you yet -- register on "
+                          "this room before JOIN")
+        if status != "verified":
+            raise Refused("the signature on this JOIN does not match any "
+                          "key you have announced")
+        return signature["key"]
 
     def _manage(self, peer: str, action: Manage) -> None:
         table = self._table(action.table)
