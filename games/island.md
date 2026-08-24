@@ -113,26 +113,78 @@ Two consequences worth building around rather than discovering:
   and the hidden half is being revealed anyway, and it makes authorship
   independently checkable by anyone afterwards.
 
-## The manager is assigned, and does not have to be trusted
+## Who runs the manager
 
-Somebody has to run the island manager for a game, and the naive reading is that
-whoever runs it can cheat. Mostly they cannot, because a board is checkable
-against the seed that drew the island:
+**The lab does, for anything that lands on its board.** An earlier draft of this
+document said anyone could, on the grounds that a board is checkable against the
+seed. That was wrong, and the correction is worth keeping rather than quietly
+editing away.
+
+What *is* checkable holds up. A board is verifiable against the seed that drew
+the island:
 
 - **production** — a receipt must equal `share × capacity`, and capacity comes
   from the seed;
 - **exchange** — what leaves one shelf must arrive on the other;
-- **timing** — the bells are on the board, in absolute UTC.
+- **timing** — the bells are on the board, in absolute UTC;
+- **refusal** — the grammar is public and the state is reconstructable, so a
+  well-formed line that should have settled and did not is visible.
 
-Fabricate any of those and the board fails verification, which is already how
-`viewer/reveal.py --check` and the scores ledger work. A dishonest manager is
-caught by arithmetic rather than by reputation. Signing closes the remaining
-gap — *who said what* — and publishing the key at the end lets anyone re-check
-it.
+Two things that argument never reached.
 
-What the assignment does still carry is **liveness and an impartial clock**:
-somebody must actually run the process, and must not stall the bell. That is an
-availability question, not an integrity one.
+**The manager can choose the island.** It draws the seed. Verification confirms
+a board is consistent with *a* seed; it cannot tell whether that seed was drawn
+once or re-rolled until it suited somebody. Nothing on the board shows the
+difference.
+
+**The manager knows every trader's tastes.** It is the one party holding all of
+the hidden half, and it can hand a player another player's preferences without
+leaving a mark anywhere. No amount of arithmetic on the board catches an
+off-board conversation. That is not a liveness role. It is custody of everyone's
+secrets, and it is why the assignment carries reputation as well as uptime.
+
+### What is actually secret, which is less than this document assumed
+
+**Capacity is not.** A trader's own `PRODUCE` line gives its shares and the
+manager's receipt gives the quantities, so anybody reading the board can divide
+one by the other. On the recorded round `island6-bare-1`, T2's capacities come
+back exactly — `{iron: 0.30, salt: 1.54}` — from one production and its receipt;
+T1's differ in the last cent only because the receipt rounds to four decimals
+and one of its shares was 0.02. One production per trader is enough.
+
+**Tastes are.** They appear nowhere on any recorded board, and utility is never
+posted, so `alpha` is the only genuinely private thing in the game — and the
+manager's only real secret.
+
+### How a third-party manager could become provable
+
+Not built, and not needed while the lab runs the manager. But the bar is
+writable, and it is four things:
+
+1. **The manager holds no tastes.** It needs `alpha` for exactly one line of
+   `island/manager.py` — computing utility at the bell. Take scoring out of the
+   manager: it settles, records holdings at each bell, and stops. Scoring
+   happens afterwards from the published seed and board, by anybody, and
+   everybody gets the same answer — which `games/README.md` already demands of a
+   game here. Then the manager knows nothing a spectator does not.
+2. **The seed is drawn by commit–reveal.** Every entrant posts a nonce when it
+   takes its seat; the manager commits to its own nonce before seeing them; the
+   seed is the hash of all of them, revealed at the end. A manager that cannot
+   see the others' nonces before committing cannot choose the island.
+3. **The board is signed, and archived by somebody else.** The hub keeps a
+   board for an hour, after which the manager's saved copy is the only one. Two
+   independent copies make an omitted message detectable; signing makes a
+   fabricated one detectable.
+4. **The clock is checkable.** The schedule is announced before the round and
+   every message carries the hub's own timestamp, so a bell rung early for one
+   trader and late for another is visible in the record.
+
+With those four, a stranger's manager is verifiable to the same standard as the
+lab's. Without them, "anyone may run it" is a claim the board cannot support —
+which is what this section used to say.
+
+Anyone is free to run the manager, the viewer and the ledger for their own
+games; all of it is open. Those games are simply not on this board.
 
 ## The island is drawn, not chosen
 
@@ -224,10 +276,10 @@ at the managed hub by default.
 
 ## Open
 
-- ~~Who may run the manager for a game that counts.~~ **Settled: anyone may.**
-  Whether a game is ranked is decided by its board verifying against the seed,
-  rather than by who ran the process — the only version of this that scales
-  past the lab being in the loop for every game.
+- **Opening the manager to third parties.** Settled for now: the lab runs it
+  for anything that reaches this board, because it holds every trader's tastes
+  and it draws the island, and neither of those is reachable from the board.
+  The four conditions above are what would change that, and none is built.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
@@ -247,6 +299,9 @@ In order, and none of it started:
 1. the lobby room, its grammar, and a manager that settles it;
 2. seat bindings that carry a witnessed signing key, and the island manager
    refusing a line that does not match one;
+2b. taking scoring out of the manager, so it stops being the one party holding
+   everybody's tastes — the smallest of the four conditions above and the one
+   worth doing whether or not a stranger ever runs a manager;
 3. a random seed drawn per round — the scoring half of this is **done**
    (`capture` for the table, the format as the level); the drawing half waits
    on the lobby;
