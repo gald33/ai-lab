@@ -102,6 +102,11 @@ function attempt(text) {
   const head = (text.trim().split(/\s+/)[0] || "").toUpperCase();
   if (head === "PRODUCE" || head === "PROPOSE" || head === "APPROVE") return head;
   if (head.startsWith("ACK")) return "ACK";
+  // A sealed line is an action this page cannot read, which is different from
+  // talk and must not be counted as it. In a sealed round a trader's PRODUCE
+  // arrives like this -- the manager opens it and the receipt is still public,
+  // so the island is drawn from the receipt exactly as before.
+  if (head === "SEALED") return "SEALED";
   return null;
 }
 

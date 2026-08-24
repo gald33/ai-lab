@@ -41,3 +41,4 @@ experiments/005-deliberation-protocol/.ca-bundle.pem
 # Roadmap store — derived, rebuilt by `roadmap push` from roadmap/items/*.yaml.
 # A binary file in git conflicts on every claim.
 roadmap/roadmap.db
+games/results/

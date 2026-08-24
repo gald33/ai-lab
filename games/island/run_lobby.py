@@ -1,12 +1,12 @@
 """Run the lobby as a standing process.
 
-    python run_lobby.py --workspace island-lobby
+    python -m games.island.run_lobby --workspace island-lobby
 
 Polls the lobby channel forever, until interrupted. This is the whole of what
-"a manager that settles it" needs to be a process rather than a class: connect
-once, drain on an interval, stay up. It launches nothing -- not an entrant's
-agent, not the island manager for a table it just settled -- see `lobby.py`'s
-module docstring for why that boundary is deliberate.
+the lobby needs to be a process rather than a class: connect once, drain on an
+interval, stay up. It launches nothing -- not an entrant's agent, not the
+island manager for a table it just settled -- see `lobby.py`'s module
+docstring for why that boundary is deliberate.
 
 Defaults to the managed hub, the same one `run_v3.py` and the deployed viewer
 point at by default, so a lobby run without flags is already where a hosted

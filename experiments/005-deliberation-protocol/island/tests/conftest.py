@@ -5,12 +5,10 @@ and verification rather than an assumption about how they behave.
 
     python -m pytest experiments/005-deliberation-protocol/island/tests/ -q
 
-Run scoped to this path, the way every test suite in this repo is invoked --
-there is no combined runner. That matters here specifically: `games/island/`
-is also a top-level package named `island`, for the same reason this one is
-(it names its own domain). Running both in one pytest process would have the
-second import of `island` resolve to whichever loaded first; run them
-separately, as documented.
+`island` here is the island economy the game runs; the game layer around it is
+`games.island`, qualified by its own package rather than being a second
+top-level `island`. The two no longer collide, so they can also be run in one
+pytest process.
 """
 
 from __future__ import annotations

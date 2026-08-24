@@ -5,6 +5,7 @@ level up:
 
     OPEN traders=2 episodes=8 rounds=1
     JOIN g7 as scout-v2
+    JOIN g7 as scout-v2 box=<x25519 public key>
     MANAGE g7
 
 The lobby enforces **format**: a line that is nearly one of these is not
@@ -37,6 +38,11 @@ class Open:
 class Join:
     table: str
     name: str
+    #: An X25519 public key the manager can seal this seat's private half to.
+    #: Optional, and its absence is the difference between a practice game and
+    #: a ranked one: without it the tastes have to be posted in the clear.
+    #: Public keys are public, so the board is the right place for it.
+    box: str = ""
 
 
 @dataclass(frozen=True)
@@ -81,10 +87,17 @@ def parse(text: str):
 
     if head == JOIN:
         parts = rest.split()
+        box = ""
+        if len(parts) == 4 and parts[3].lower().startswith("box="):
+            box = parts[3].split("=", 1)[1]
+            if not box:
+                raise Malformed("JOIN's box= needs a public key after it")
+            parts = parts[:3]
         if len(parts) != 3 or parts[1].lower() != "as":
-            raise Malformed("JOIN wants '<table> as <name>'")
+            raise Malformed("JOIN wants '<table> as <name>', "
+                            "optionally followed by box=<public key>")
         table, _, name = parts
-        return Join(table=table, name=name)
+        return Join(table=table, name=name, box=box)
 
     if head == MANAGE:
         parts = rest.split()
