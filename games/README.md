@@ -14,6 +14,11 @@ over a data collection that was already justified without any of it.
 **Nothing is playable yet.** There is no game here, no submission endpoint and
 nothing to sign up for. This file is direction.
 
+The first candidate is written down: [the island](island.md) — 005 opened for
+participation, with a lobby that is a room, seats bound to a signing key, an
+island drawn rather than chosen, and a manager nobody has to trust. That
+document is direction too; none of it is built.
+
 ## What a game has to preserve
 
 Wrapping an experiment in a game surface is allowed to change the presentation.
