@@ -156,10 +156,83 @@ records `complete`.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
-- **Records:**
-- **Ran:**
-- **Numbers:**
-- **Assumptions that did not hold:**
-- **Deviations:**
+- **Records:** `games/results/g1.json`,
+  `board-island-game-001d-g1.json`, `reveal-island-game-001d-g1.json`;
+  ledger row `island-game-001d-g1`, status **`complete`**, arm **`practice`**.
+- **Ran:** 2026-08-24, managed hub, workspace `island-game-001d`, table `g1`,
+  seed **541382116092809723** (drawn at settlement, not chosen). 3 episodes,
+  2 traders. Both seats `claude-haiku-4-5-20251001`, run by `run_entrant`;
+  the record's `model` field reads `entrants` because a runner cannot know
+  what model an entrant brought — for this game the lab brought both.
+- **Ran, in denominators:** sessions started **2/2**; sessions that reached
+  the board **2/2**; seats bound **2/2**; acknowledged **2/2** (`T1`, `T2`);
+  lines settled **8**; lines refused **4**; talk **0**; relaunched **0**.
+- **Numbers:** `eff_round` **0.2986** against an autarky floor of **0.7103**,
+  so `capture` = **−1.42**. Per-trader `u_i / autarky_i`: T1 **0.259**,
+  T2 **0.827** — both below 1.00×. Zero episodes: T1 **2 of 3**, T2 **0 of 3**.
+  Per-episode utilities `[[0, 0.185], [0, 0.176], [0.324, 0.114]]`. One
+  exchange settled, in episode 3 (`APPROVE p2`).
+- **The four refusals, each distinct:** T2 offered bread it had already
+  promised (ep1, and again ep3 with none uncommitted at all); T1 wrote a
+  multi-good `want` space-separated rather than comma-separated —
+  `want=bread:0.06 salt:0.14 iron:0.01` — and was told it did not parse (ep2);
+  T1 tried to produce twice in one episode (ep3).
+- **Assumptions that did not hold:** the hypothesis said *"a practice game
+  with both hands visible should beat autarky"*. It did not, by a wide
+  margin: both traders ended far worse off than never trading. T1 twice spent
+  its whole labour on one good (`PRODUCE cloth=1`), which is zero utility
+  under Cobb-Douglas unless it trades for the other three, and the trade it
+  needed did not settle until episode 3.
+- **Deviations:** three attempts were needed, and the first two spent money
+  without producing a game. Each was a harness fault in this repo's own code,
+  found only by running it, and each is fixed with a test that fails without
+  the fix — commits `958bc84` (nothing claimed `MANAGE`, so the table never
+  settled), the relative `--mcp-config` (both sessions exited 1 in the first
+  second), and the signer deadlock (both agents played the whole round unable
+  to write a line). The third attempt is the one recorded above; the first
+  two are named here rather than dropped, because a run that spent and
+  produced nothing is still a run.
 
 ## What this changed
+
+**An agent plays.** That was the question, and the answer is yes: both read a
+board they had never seen, worked out what they were good at, produced against
+it, negotiated in the grammar, and settled an exchange. Nothing here had ever
+been demonstrated by anything but a scripted client.
+
+**Three harness faults, none of which any test caught.** Every one was found by
+running it for real, and each had been hidden the same way — the tests set up
+the state the code was about to read, so the code was never asked to reach it.
+The fixtures posted `MANAGE` themselves, so `run_game` had never met a forming
+table. The suite never launched a session, so a relative `--mcp-config` was
+never resolved from a session's own working directory. And nothing exercised
+two processes sharing one signing identity, which is the arrangement the whole
+cross-room seat binding rests on.
+
+**Two of the three are indistinguishable from silence on the board**, which is
+exactly the distinction `PREFLIGHT.md` insists a run must be able to draw. A
+session that exits in the first second and an agent that decides to say nothing
+both leave an empty channel. The session logs were the only place the
+difference appeared, and the second fault — the signer deadlock — was worse
+still: the agents were awake and reasoning the whole time, and said so in their
+own summaries.
+
+**An upstream bug, reported.** `switchboard-mcp` attaches to a signer already
+listening for its `agent_id`, then binds a server of its own over the same
+socket and proxies to itself, so every signature times out. Written up with a
+hub-free reproduction and a one-line fix in
+[`switchboard-bug-signer-serves-itself.md`](../switchboard-bug-signer-serves-itself.md).
+`run_entrant.hold_signer` works around it and should be deleted when the fix
+lands.
+
+**A practice game did not beat autarky.** Both hands were face up and both
+traders still ended below where they would have been alone — `capture` −1.42.
+One trader spent its entire labour on a single good twice, which is zero under
+Cobb-Douglas without a trade, and the trade it needed did not settle until the
+last episode. Whether that is the agents, the sixty-second episode, or the
+model is not answerable from one game and this run does not try to answer it.
+
+**What it says about ranked play:** nothing yet. This game was practice because
+no released `agent-switchboard` carries sealed-to-peer messaging. The
+[ask was answered](../switchboard-ask-sealed-to-peer.md) and is on their `main`,
+so the next game of this kind is a release away from being the sealed one.
