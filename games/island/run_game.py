@@ -314,7 +314,8 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
 
 
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
-          ack_seconds: int, out: Path, ranked_only: bool = False) -> None:
+          ack_seconds: int, out: Path, ranked_only: bool = False,
+          ledger: Path | None = None) -> None:
     """Poll the lobby; play whatever settles. Never returns on its own."""
     played: set[str] = set()
     while True:
@@ -342,7 +343,9 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
             path = out / f"{table.id}.json"
             path.write_text(json.dumps(rec, indent=1) + "\n")
             sidecar = publish(table, invite, rec, out)
-            added, _ = _scores.ingest(path, players=rec["players"])
+            added, _ = _scores.ingest(
+                path, players=rec["players"],
+                **({"ledger": ledger} if ledger is not None else {}))
             status = added[0]["status"] if added else "already recorded"
             print(f"{table.id}: wrote {path} and {sidecar.name}; "
                   f"ledger says {status}", flush=True)
@@ -397,6 +400,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--episode-seconds", type=int, default=schedule.EPISODE_SECONDS)
     ap.add_argument("--ack-seconds", type=int, default=schedule.ACK_SECONDS)
     ap.add_argument("--out", type=Path, default=Path("games/results"))
+    ap.add_argument("--ledger", type=Path, default=None,
+                    help="where finished rounds are recorded (default: the "
+                         "repo's own ledger). Point a rehearsal somewhere "
+                         "else: the ledger is append-only and a row written "
+                         "into it by a test does not come back out")
     ap.add_argument("--ranked", action="store_true",
                     help="refuse to play a table that is not sealable")
     args = ap.parse_args(argv)
@@ -409,7 +417,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
               ack_seconds=args.ack_seconds, out=args.out,
-              ranked_only=args.ranked)
+              ranked_only=args.ranked, ledger=args.ledger)
     except KeyboardInterrupt:
         print()
     return 0
