@@ -52,6 +52,7 @@ import json
 import os
 import re
 import subprocess
+import threading
 import sys
 import time
 from pathlib import Path
@@ -207,6 +208,43 @@ def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
         stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
 
 
+def hold_signer(server: signing.SigningServer, *, every: float = 1.0,
+                stop: threading.Event | None = None) -> threading.Thread:
+    """Keep this process's signer answering on its own socket.
+
+    Working around an upstream bug, reported in
+    `games/switchboard-bug-signer-serves-itself.md`. `switchboard-mcp`
+    attaches to whatever signer is already listening for its `agent_id` --
+    which is the whole mechanism this entrant relies on -- and then starts a
+    `SigningServer` of its own on the same path. `SigningServer.start()`
+    unlinks the existing socket first, so the agent's server replaces ours
+    while proxying to a `RemoteSigningIdentity` that points back at that same
+    path: it asks itself, its single-threaded accept loop is already busy
+    answering, and every signature times out as *"the session's signer did
+    not answer"*. Reads need no signature, so a session in this state looks
+    exactly like a trader that joined and then chose silence.
+
+    Taking the path back breaks the loop: the agent's `RemoteSigningIdentity`
+    then reaches us, and we hold the only real key. Checked rather than
+    re-bound blindly, so an untouched socket is left alone.
+    """
+    stop = stop or threading.Event()
+
+    def _held() -> bool:
+        reply = signing._ask(server.path, {"op": "pubkey"})
+        return bool(reply) and reply.get("pubkey") == server.identity.public_key
+
+    def _hold() -> None:
+        while not stop.is_set():
+            if not _held():
+                server.start()
+            stop.wait(every)
+
+    thread = threading.Thread(target=_hold, daemon=True)
+    thread.start()
+    return thread
+
+
 def preflight(invite: Invite, *, agent_id: str, workdir: Path) -> None:
     """Prove this agent's toolchain reaches the table's room before spending.
 
@@ -344,6 +382,9 @@ def main(argv: list[str] | None = None) -> int:
                        workdir=args.workdir,
                        max_turns=max(400, 40 * episodes))
         print(f"{args.name}: session {agent.pid} is on the island", flush=True)
+        # Only now: the agent's MCP server takes this socket as it starts,
+        # and holding it from here keeps its signatures reaching a real key.
+        hold_signer(server)
         agent.wait()
         print(f"{args.name}: session ended ({agent.returncode})", flush=True)
     finally:

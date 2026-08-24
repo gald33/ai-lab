@@ -241,3 +241,56 @@ def test_the_session_is_pointed_at_an_absolute_mcp_config(tmp_path, monkeypatch)
     # The specific failure: resolved from the session's own cwd, it must be
     # the same file rather than one nested inside it.
     assert (Path(seen["cwd"]) / config).resolve() == config.resolve()
+
+
+# --- holding the signer against the MCP server's own ------------------------
+
+def test_the_entrant_takes_its_signing_socket_back(tmp_path, monkeypatch):
+    """Reproduces the upstream bug that made the first real game unplayable.
+
+    `switchboard-mcp` attaches to a signer already listening for its agent_id
+    and then starts a `SigningServer` of its own on the same path, whose
+    `start()` unlinks ours first. Its server then proxies to a
+    `RemoteSigningIdentity` pointing back at that same path -- it asks itself,
+    and every signature times out as "the session's signer did not answer".
+    Both seats of game 001 failed exactly this way, on every `say`, while
+    reads kept working.
+
+    Here the agent's server is stood up the same way, and the entrant has to
+    end up owning the socket again.
+    """
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+
+    mine = signing.SigningServer(signing.SigningIdentity.generate(), "t1")
+    if not mine.start():                                  # pragma: no cover
+        pytest.skip("no AF_UNIX signer available on this platform")
+
+    stop = threading.Event()
+    try:
+        remote = signing.attach("t1")
+        assert remote is not None and remote.public_key == mine.identity.public_key
+
+        # What the MCP server does: serve the identity it just attached to,
+        # on the very path it attached through.
+        theirs = signing.SigningServer(remote, "t1")
+        assert theirs.start()
+        assert theirs.path == mine.path, "the same socket, which is the bug"
+
+        # Signing now loops back into itself and times out -- the symptom.
+        with pytest.raises(OSError):
+            remote.sign(b"anything")
+
+        run_entrant.hold_signer(mine, every=0.05, stop=stop)
+        for _ in range(100):
+            if signing._ask(mine.path, {"op": "pubkey"}) \
+                    == {"pubkey": mine.identity.public_key}:
+                break
+            time.sleep(0.05)
+
+        # Recovered: the socket answers for the key this process actually
+        # holds, so a signature completes instead of timing out.
+        assert remote.sign(b"anything"), "signing has to work again"
+        theirs.close()
+    finally:
+        stop.set()
+        mine.close()
