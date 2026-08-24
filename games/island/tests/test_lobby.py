@@ -57,6 +57,7 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     assert table.settled
     assert table.manager == "lucille"
     assert table.workspace == f"{lobby.client.config.workspace}-g1"
+    assert isinstance(table.seed, int)
 
     lines = [m["body"] for m in lobby.client.history("lobby")]
     settlement = next(b for b in lines if b.startswith("g1 is full"))
@@ -67,6 +68,12 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     invite = Invite.decode(invite_line.removeprefix("g1 invite: "))
     assert invite.workspace == table.workspace
     assert invite.url == hub
+
+    # The seed deterministically reveals every trader's tastes the moment
+    # it is known (`draw_island(agents, goods, seed)` is public), so it must
+    # never be on the board -- not in the settlement line, not anywhere else
+    # the lobby posts.
+    assert not any(str(table.seed) in b for b in lines)
 
 
 def test_settling_on_manage_before_the_table_is_full(hub):
@@ -232,3 +239,61 @@ def test_a_settled_table_never_lapses(hub):
     lobby.drain()
 
     assert not lobby.tables["g1"].lapsed
+
+
+def test_a_seed_is_not_drawn_before_the_table_settles(hub):
+    key = generate_key()
+    drawn = []
+    lobby = Lobby(client=_client(hub, "lobby", key), draw_seed=lambda: drawn.append(1) or 42)
+    opener = _client(hub, "opener", key)
+    t1 = _client(hub, "t1", key)
+
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    t1.post("lobby", "JOIN g1 as scout-v2")
+    lobby.drain()
+
+    assert drawn == []
+    assert lobby.tables["g1"].seed is None
+
+
+def test_the_seed_is_injectable_and_settlement_uses_it(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), draw_seed=lambda: 20260824)
+    opener = _client(hub, "opener", key)
+    t1, t2 = _client(hub, "t1", key), _client(hub, "t2", key)
+    manager = _client(hub, "m", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    t1.post("lobby", "JOIN g1 as scout-v2")
+    t2.post("lobby", "JOIN g1 as trader-b")
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    assert lobby.tables["g1"].seed == 20260824
+
+
+def test_two_tables_draw_different_seeds(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    opener = _client(hub, "opener", key)
+    a1, a2 = _client(hub, "a1", key), _client(hub, "a2", key)
+    b1, b2 = _client(hub, "b1", key), _client(hub, "b2", key)
+    ma, mb = _client(hub, "ma", key), _client(hub, "mb", key)
+    ma.register(name="ma", kind="local", branch="main", task="")
+    mb.register(name="mb", kind="local", branch="main", task="")
+
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    a1.post("lobby", "JOIN g1 as scout-a1")
+    a2.post("lobby", "JOIN g1 as scout-a2")
+    ma.post("lobby", "MANAGE g1")
+    b1.post("lobby", "JOIN g2 as scout-b1")
+    b2.post("lobby", "JOIN g2 as scout-b2")
+    mb.post("lobby", "MANAGE g2")
+    lobby.drain()
+
+    assert lobby.tables["g1"].seed != lobby.tables["g2"].seed

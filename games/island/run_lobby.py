@@ -11,6 +11,13 @@ module docstring for why that boundary is deliberate.
 Defaults to the managed hub, the same one `run_v3.py` and the deployed viewer
 point at by default, so a lobby run without flags is already where a hosted
 game would look for one.
+
+A settled table's seed is never posted to the board -- see `lobby.py`'s
+`Table.seed` docstring for why -- so this prints it here instead, to this
+process's own stdout, the moment a table settles. That is the whole of how
+the seed reaches anybody right now: whoever is running this, reading its own
+log, and about to go start the round by hand. Carrying it to a seat over the
+board instead is build-order item 2c, unbuilt.
 """
 
 from __future__ import annotations
@@ -41,9 +48,15 @@ def main(argv: list[str] | None = None) -> int:
     lobby = Lobby(client=client, channel=args.channel)
     print(f"lobby on {args.hub}/{args.workspace}#{args.channel}"
          f"{' (encrypted)' if client.encrypted else ''}")
+    reported: set[str] = set()
     try:
         while True:
             lobby.drain()
+            for table in lobby.tables.values():
+                if table.settled and table.id not in reported:
+                    reported.add(table.id)
+                    print(f"{table.id} settled: seed={table.seed} "
+                         f"workspace={table.workspace} managed by {table.manager}")
             time.sleep(args.every)
     except KeyboardInterrupt:
         print()

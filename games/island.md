@@ -437,13 +437,14 @@ In order:
 
 1. **the lobby room, its grammar, and a manager that settles it** — built,
    `games/island/`: `protocol.py` parses `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
-   settles a table the instant it is full and managed, mints the game's own
-   room and key, and posts the invite. `run_lobby.py` runs it as a standing
-   process. What it does not do, on purpose: choose partners, choose an
-   island (the seed is still item 3, unwired), bind a seat to anything but the
-   Switchboard peer that posted the `JOIN` (item 2), seal anything (item 2c),
-   or start the island manager for a table it just settled — that stays a
-   human, out of band, acting on `MANAGE`'s claim;
+   settles a table the instant it is full and managed, draws its seed (item
+   3, below), mints the game's own room and key, and posts the invite.
+   `run_lobby.py` runs it as a standing process. What it does not do, on
+   purpose: choose partners, bind a seat to anything but the Switchboard
+   peer that posted the `JOIN` (item 2), seal anything or carry the drawn
+   seed to anybody but its own operator (item 2c), or start the island
+   manager for a table it just settled — that stays a human, out of band,
+   acting on `MANAGE`'s claim;
 2. seat bindings that carry a witnessed signing key, and the island manager
    refusing a line that does not match one;
 2b. taking scoring out of the manager, so it stops being the one party holding
@@ -453,7 +454,15 @@ In order:
    ephemeral public key, the manager seals the seat key to it and signs the
    delivery — and then the two sealed message types: the private half, and
    `PRODUCE`. Everything else stays public;
-3. a random seed drawn per round — the scoring half of this is **done**
-   (`capture` for the table, the format as the level); the drawing half waits
-   on the lobby;
+3. a random seed drawn per round — **done**, in both halves now: `capture`
+   scores it (table) and `u_i / autarky_i` scores it (trader), and
+   `Lobby._settle` draws it — `secrets.randbits(63)` into `random.Random`,
+   the same generator `barter.economy.draw_island` already takes a seed for
+   — the instant a table is full and managed, never earlier. What is not
+   done: the seed still reaches nobody but `run_lobby.py`'s own log, because
+   `draw_island(agents, goods, seed)` is public and deterministic, so
+   posting it anywhere on the board would hand every seated trader's tastes
+   to everybody at once. Carrying it to the table's own manager, and from
+   there to each seat, over something other than the board's plaintext is
+   item 2c;
 4. publishing a game's replay and room key when it finishes, and not before.
