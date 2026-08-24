@@ -30,6 +30,14 @@ where an exchange is worth making.
 cost ratio comes from your capacities and does not change all round. Your worth
 ratio moves every time your holdings move.
 
+**What to do with labour you held back.** If an exchange you were counting on
+has not happened, the good you were going to receive is a good you now hold
+none of — and none of anything makes the whole product zero. So spend the
+remaining labour on whatever you are shortest of relative to how much you want
+it, even if you are bad at making it. Making a little of a good badly is worth
+far more than not having it at all. This is not the best you could have done;
+it is the best still available, and it is very much better than nothing.
+
 **Where the gain lives.** If a good costs you less than it costs someone else,
 you should be the one making it and they should be getting it from you. The
 whole gain from having anyone else here is the difference between what things

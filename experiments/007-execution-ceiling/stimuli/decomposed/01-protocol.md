@@ -31,7 +31,15 @@ complete all of them at once.
 **Answer promptly what you already agree with.** A request that matches what
 you wanted takes nothing to accept, and it expires if you wait.
 
-**Commit in pieces when you are unsure.** Do part of what you intend, see
-whether the others move as you expected, and then do the rest. If the deadline
-comes and they have not moved, spend what you held back on whatever is best for
-you alone. Some of a thing beats none of it.
+**Commit in pieces when you are unsure.** You do not have to spend everything
+you have in one act. Spend about half of it on what you intend, early, and keep
+the rest back.
+
+**Then check before you spend the rest.** Look at what has actually completed,
+not at what was agreed. If the others have moved as you expected, spend the
+remainder the same way. If they have not, spend it differently — but spend it.
+
+**Never let the deadline arrive with anything still held back.** Whatever you
+were saving for a counterpart who never answered counts for nothing once the
+deadline passes. Decide early enough that you can still act on the decision:
+watch the clock, not the conversation.
