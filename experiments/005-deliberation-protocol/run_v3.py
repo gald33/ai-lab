@@ -38,6 +38,7 @@ from switchboard.client import Client  # noqa: E402
 from switchboard.config import ClientConfig  # noqa: E402
 
 from island import schedule  # noqa: E402
+from island import ca  # noqa: E402
 from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
 from island.schedule import stamp  # noqa: E402
@@ -70,30 +71,9 @@ os.environ.pop("SWITCHBOARD_KEY", None)
 # roots, it never disables a check -- and the file is exported so that the
 # agents' MCP subprocesses, which get an explicit env and would otherwise
 # inherit nothing, trust exactly what the manager trusts.
-def _ca_bundle() -> str:
-    import glob
-    import re
-
-    out: list[str] = []
-    for f in [*sorted(glob.glob("/etc/ssl/certs/*.pem")),
-              os.environ.get("SSL_CERT_FILE", ""),
-              "/root/.ccr/ca-bundle.crt"]:
-        if not f:
-            continue
-        try:
-            text = pathlib.Path(f).read_text()
-        except OSError:
-            continue
-        out += re.findall(
-            r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", text, re.S)
-    seen: set[str] = set()
-    keep = [c for c in out if not (c in seen or seen.add(c))]
-    path = HERE / ".ca-bundle.pem"
-    path.write_text("\n".join(keep) + "\n")
-    return str(path)
-
-
-CA_BUNDLE = _ca_bundle()
+# Shared with the game layer's entrant, which needs the identical
+# bundle for the identical reason -- see island/ca.py.
+CA_BUNDLE = ca.bundle(HERE / ".ca-bundle.pem")
 for _var in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
     os.environ[_var] = CA_BUNDLE
 
