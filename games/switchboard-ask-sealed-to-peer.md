@@ -4,6 +4,45 @@
 request, not a specification — if the design below is wrong for Switchboard,
 the need is what matters and the shape is yours to choose.*
 
+## Resolved: shipped as `ask`
+
+Switchboard built this —
+[gald33/switchboard#161](https://github.com/gald33/switchboard/pull/161),
+documented in
+[`docs/encryption.md`](https://github.com/gald33/switchboard/blob/main/docs/encryption.md#sealed-to-one-peer-ask)
+— and it lines up closely with what this ask described, including the part
+we most wanted checked: a third room member holding the same workspace key
+gets back an unopenable body, which is exactly the property this whole
+document exists for, and it's asserted directly in their test suite.
+
+What shipped is option 2 from "the design call we are not making for you"
+below: a second, native X25519 keypair per identity (`exchange_key`),
+published in the roster alongside `pubkey` through the same `_SEAL_BODY`/
+`_OPEN_RESPONSE` path `pubkey` already uses — not the Ed25519 conversion we
+leaned toward, for the reason we ourselves ran into building the stopgap:
+`cryptography` has no Ed25519→X25519 conversion, and they weren't willing to
+hand-write the birational map either.
+
+The surface differs a little from what we sketched. Rather than a standalone
+`seal_to`/`open_from` pair returning a raw envelope, it's `Client.ask()`,
+which seals and sends through the ordinary `post()`/`send()` path in one
+call (`type="ask"`), and `inbox()` auto-opens a received `ask` when the
+sender's exchange key is already cached — mirroring the existing "mark
+`unreadable` rather than raise" convention this doc asked to keep
+distinguishable from a decryption failure. Context binding, the four-byte
+length-prefixed padding (the exact bug noted below, avoided), and "fails
+usefully when the peer's key hasn't been seen yet" (`UnknownPeerExchangeKey`)
+are all there.
+
+**Follow-up, not yet done:** `experiments/005-deliberation-protocol/island/sealed.py`
+is still the stopgap this doc said we'd rather delete than keep. Migrating
+the island manager and `run_v3.py` onto the real `ask()` — the private
+manager↔seat handoff `island.md`'s item 2c calls for — is open work; see
+`island.md`'s "What would have to be built" list for what's left. It's now a
+wiring task against a real upstream primitive rather than a design question.
+
+The rest of this document is kept as the original request, for the record.
+
 ## The need, stated without our use case
 
 **A member of an encrypted workspace can seal a value that only one other named
