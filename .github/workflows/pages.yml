@@ -1,0 +1,71 @@
+name: Deploy the island viewer (GitHub Pages)
+
+# Publishes experiments/005-deliberation-protocol/viewer -- the spectator
+# page, its saved replays, and its scoreboard -- to
+# https://gald33.github.io/ai-lab/.
+#
+# Same origin switchboard's own published viewer uses (gald33.github.io),
+# just a different path, which is why the managed hub's existing
+# SWITCHBOARD_CORS_ORIGINS (https://gald33.github.io in switchboard's
+# docker-compose.yml) already covers this page for the live-against-the-hub
+# feed: no change needed on that side. See
+# experiments/005-deliberation-protocol/viewer/web/feeds.js and
+# games/island.md ("the wrapper stays a separate project that plugs into the
+# published viewer for its data stream").
+#
+# `web/` fetches "api/boards" and "api/scores" as relative paths; serve.py
+# answers those from a running process, and there is none here, so
+# freeze_static.py runs the same two computations once and writes their
+# answers to disk under the same relative paths. Nothing in web/ changes.
+#
+# One manual step, once per repo, same as switchboard's pages.yml notes:
+#   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
+# The workflow's token cannot flip this (it needs admin), so this job fails
+# at `configure-pages` with a bare `Not Found` until it is set by hand -- an
+# unset setting, not a broken workflow. Re-run after flipping it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - experiments/005-deliberation-protocol/viewer/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: experiments/005-deliberation-protocol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Stage the site
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          cp -r viewer/web/. "$RUNNER_TEMP/site/"
+          cp -r results "$RUNNER_TEMP/site/results"
+          python viewer/freeze_static.py "$RUNNER_TEMP/site/api"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - id: deployment
+        uses: actions/deploy-pages@v4

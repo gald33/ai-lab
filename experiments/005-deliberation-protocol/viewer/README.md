@@ -58,14 +58,27 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | the pink bar | replay only — what the shelf is worth to the trader who owns it |
 | the tick on it | what autarky would have given them: the line worth beating |
 
-## The two feeds
+## The three feeds
 
-**Live** reads the Switchboard viewer's `api/state`, never the hub. That is the
-whole architecture: the viewer holds the token, the key and the read cursors, so
-this page inherits its safety properties — it cannot post, cannot register, and
-cannot advance any agent's cursor. `serve.py` forwards `api/state` so the two
-share an origin, which they must: `api/state` sends no CORS headers, so a page
-served from anywhere else cannot read it at all.
+**Live via a local viewer** reads the Switchboard viewer's `api/state`, never
+the hub. The viewer holds the token, the key and the read cursors, so this page
+inherits its safety properties — it cannot post, cannot register, and cannot
+advance any agent's cursor. `serve.py` forwards `api/state` so the two share an
+origin, which they must: `api/state` sends no CORS headers, so a page served
+from anywhere else cannot read it at all.
+
+**Live from the hub** reads a room the same way the *published* Switchboard
+viewer does — sealed content opened in the browser, nothing trusted with a
+key but the tab it was typed into. `feeds.js` imports `snapshot()` straight
+from `https://gald33.github.io/switchboard/switchboard-room.js` rather than
+reimplementing it, which is also why it works cross-origin: that file is
+published with `Access-Control-Allow-Origin: *`. Point it at a room with
+`?workspace=…&key=…` (defaulting `hub` to the managed hub) or one string —
+`?invite=swb1_…` — the way an invite is meant to arrive. Neither is ever put
+in a link this page hands out itself: a workspace and key are read-write
+credentials, and advertising them in a spectator link would be handing out
+write access along with the view (see `games/island.md`, "An invite is a
+read-write credential" — open, not yet closed).
 
 **Replay** reads a saved board — `results/**/board-*.json`, `{seq, at, author,
 body}` — and its sidecar if one exists. Transport, scrubbing, episode chapters,
@@ -97,6 +110,27 @@ In the rail:
 - **Diagnostics** the medians hide: the `eff_round` bracket, gains at the median
   and worst trader, how many ended below autarky, how many trader-episodes were
   zero, and the first episode that beat the floor.
+
+## Deploying
+
+`.github/workflows/pages.yml`, at the repo root, publishes `web/` and
+`results/` to `https://gald33.github.io/ai-lab/` on every push to `main` that
+touches this directory. Same origin switchboard's own published viewer uses
+— a different path under `gald33.github.io`, not a different origin — so the
+managed hub's existing `SWITCHBOARD_CORS_ORIGINS` already covers this page
+for the hub-direct live feed with no change on that side.
+
+`web/` fetches `api/boards` and `api/scores` as relative paths, which
+`serve.py` answers from a running process; a static host has none, so the
+workflow runs `freeze_static.py` to compute the same two answers once and
+write them to disk under those paths before publishing. Nothing in `web/`
+changes because of it — replay and the scoreboard read exactly what they
+always did.
+
+One manual step, once per repo, unavoidably: *Settings → Pages → Build and
+deployment → Source: GitHub Actions*. The workflow's own token cannot flip it
+— that needs admin — so the first run fails at `configure-pages` with a bare
+`Not Found` until it is set by hand. Re-run afterwards.
 
 ## The scoreboard
 
@@ -296,6 +330,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/feeds.js` | the two feeds, and the replay clock |
 | `web/index.html` | the page: HUD, ticker, transport, the hidden half |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
+| `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
 | `web/scores.html` | the scoreboard |
 | `web/tokens.css` | the palette, shared by both pages |
