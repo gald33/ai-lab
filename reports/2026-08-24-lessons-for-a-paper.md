@@ -158,7 +158,7 @@ is protocol (content-free coordination convention), and what is hint (domain
 guidance with no private data). With the cheat removed, **every legitimate
 treatment lands inside the noise.**
 
-**(i) Utility magnitude, not just efficiency.** Scoring the same runs by
+**(i) Welfare rises: the group makes more than the sum of its hermits.** `solid` as a level. Scoring the same runs by
 `u_i / u_i^autarky` — is a trader better off in company than alone? — separates
 cells that the efficiency framing had merged:
 
@@ -172,13 +172,18 @@ cells that the efficiency framing had merged:
 | equilibrium ceiling | — | — | — | — | — | — | 1.58–1.89 |
 
 Three of four plan replicates make **more total utility than the same four
-traders would alone**, and the median trader in every plan cell is better off
-than alone. The bare cell is below 1.0 on the mean, the median and the total.
-The efficiency measures never said this, because a group can be far from the
-Walrasian frontier and still be well worth joining. See
-`reports/2026-08-24-a-second-benchmark.md` for why this belongs alongside
-efficiency rather than replacing it — and note that the plan cells' spread
-(0.85 → 1.24) is the same instrument noise as everywhere else.
+traders would alone** (1.04, 1.24, 1.09 against Σ autarky); the bare cell never
+clears 1.0. Summing utilities is legitimate in this economy specifically:
+Cobb-Douglas with Σα = 1 is homogeneous of degree 1, so utility is in
+bundle-scale units and the same units for every trader. Paired on the one run
+carrying both arms, the plan cell reaches super-autarkic welfare on **6 of 12
+islands against 1 of 12** — but the mean difference is +0.104 against a spread
+of 0.640, so the count is reportable and the size is not. Three plan seeds read
+exactly 0.00: one missing good zeroes a trader under Cobb-Douglas, so welfare
+is dominated by ruin and the ruin count must travel with it. The efficiency
+measures never said any of this, because a group can be far from the Walrasian
+frontier and still be well worth joining. Full argument, tables and caveats:
+`reports/2026-08-24-a-second-benchmark.md`.
 
 ## 4. What cannot be claimed
 
@@ -224,7 +229,7 @@ ratio, and the noise swamps them. An instrument with a run-to-run movement of
    required information no participant could have. What survives when you take
    it away is the real question, and the honest answer today is "not enough
    signal to say".
-5. **A second benchmark.** (i): coordination benchmarks that score only against
+5. **Welfare as the benchmark.** (i): coordination benchmarks that score only against
    a frontier cannot distinguish a group worth joining from one that is not.
 
 ## 6. Where the material lives
