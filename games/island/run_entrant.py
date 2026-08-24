@@ -182,7 +182,13 @@ def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
     invite, and given the same `agent_id` this process holds the signer for --
     which is what makes its posts carry the key the lobby witnessed.
     """
-    home = workdir / name
+    # Absolute, because the session runs with `cwd=home`: a relative
+    # --mcp-config would resolve inside the directory it already names, and
+    # `claude` exits 1 with "MCP config file not found" pointing at the
+    # doubled path. Which is what a real run did, on both seats, in the first
+    # second -- a harness failure that reads exactly like two silent traders
+    # if you only look at the board.
+    home = (workdir / name).resolve()
     env_for_mcp = _mcp_env(invite, agent_id=agent_id, home=home)
     bundle = env_for_mcp["SSL_CERT_FILE"]
     (home / ".mcp.json").write_text(json.dumps(

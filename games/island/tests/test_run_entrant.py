@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import threading
 import time
+from pathlib import Path
 
 import pytest
 from switchboard import signing
@@ -206,3 +207,37 @@ def test_the_prompt_carries_the_island_s_actual_rules(hub):
     assert "APPROVE p3" in text
     # ...and not the file's repo-facing heading.
     assert "FROZEN" not in text
+
+
+# --- what a relative workdir does to a launched session --------------------
+
+def test_the_session_is_pointed_at_an_absolute_mcp_config(tmp_path, monkeypatch):
+    """The bug a real run found, on both seats, in the first second.
+
+    The session runs with `cwd=home`. A relative `--mcp-config` therefore
+    resolves *inside* the directory it already names, and `claude` exits 1
+    with "MCP config file not found" at the doubled path -- which on the
+    board looks exactly like two traders who joined and then said nothing.
+    `--workdir` defaults to a relative `games/entrants`, so this was the
+    ordinary case rather than an edge one.
+    """
+    seen = {}
+
+    class _Popen:
+        def __init__(self, argv, **kw):
+            seen["argv"], seen["cwd"] = argv, kw.get("cwd")
+
+    monkeypatch.setattr(run_entrant.subprocess, "Popen", _Popen)
+    monkeypatch.chdir(tmp_path)
+
+    invite = Invite(url="http://127.0.0.1:1", workspace="w_table",
+                    token="t", key=generate_key())
+    run_entrant.launch(invite, name="scout-v2", agent_id="t1", episodes=1,
+                       model="m", workdir=Path("games/entrants"), max_turns=5)
+
+    config = Path(seen["argv"][seen["argv"].index("--mcp-config") + 1])
+    assert config.is_absolute(), f"relative config path: {config}"
+    assert config.is_file(), "the config has to exist where the session looks"
+    # The specific failure: resolved from the session's own cwd, it must be
+    # the same file rather than one nested inside it.
+    assert (Path(seen["cwd"]) / config).resolve() == config.resolve()
