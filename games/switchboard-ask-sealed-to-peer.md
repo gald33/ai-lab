@@ -1,89 +1,200 @@
-# `ask`: sealed to one peer
+# Ask for the Switchboard agent: sealing a value to one member of a room
 
-Switchboard now ships a primitive this repo only had as direction until today:
-one agent can seal a message to **one specific peer** — readable by that peer
-alone, even if every other agent in the room holds the same workspace key.
-[gald33/switchboard#161](https://github.com/gald33/switchboard/pull/161).
+*A request from a downstream project (`gald33/ai-lab`, `games/island/`). It is a
+request, not a specification — if the design below is wrong for Switchboard,
+the need is what matters and the shape is yours to choose.*
 
-## Why a game needed this
+## Resolved: shipped as `ask`
 
-[`island.md`](island.md) already ran into the gap this closes. Its "private
-channel" section works out, in detail, what a lobby-run island manager would
-need to hand a seated trader without every other seat reading it too:
-capacities and tastes at join, and each trader's `PRODUCE` line back. The
-document's own conclusion at the time was that the only two ways to get there
-were a secret pre-shared out of band, or public-key cryptography to make the
-introduction — and it settled, as direction, on converting each entrant's
-existing Ed25519 signing key into an X25519 sealing key the way `age`
-converts an `ssh-ed25519` recipient.
+Switchboard built this —
+[gald33/switchboard#161](https://github.com/gald33/switchboard/pull/161),
+documented in
+[`docs/encryption.md`](https://github.com/gald33/switchboard/blob/main/docs/encryption.md#sealed-to-one-peer-ask)
+— and it lines up closely with what this ask described, including the part
+we most wanted checked: a third room member holding the same workspace key
+gets back an unopenable body, which is exactly the property this whole
+document exists for, and it's asserted directly in their test suite.
 
-That conversion never got built, for a reason worth stating plainly: nothing
-in Switchboard's dependency on `cryptography` (the only crypto library the
-project takes) does the Ed25519→X25519 birational map, and hand-rolling
-elliptic-curve point conversion is exactly the kind of thing this project is
-careful never to do without a battle-tested library under it. What shipped
-instead is a small refinement of the same idea — each agent's identity now
-carries a **second, native X25519 keypair**, generated and published
-alongside the Ed25519 one, dedicated purely to sealing. One key signs, a
-different key seals — the same split `WorkspaceCipher` already keeps between
-its own payload and blinding subkeys, applied one level up. `island.md`'s
-"Settled" paragraph on this point is superseded by what's below; the design
-question it answered is the same, the mechanism is not quite the one it
-named.
+What shipped is option 2 from "the design call we are not making for you"
+below: a second, native X25519 keypair per identity (`exchange_key`),
+published in the roster alongside `pubkey` through the same `_SEAL_BODY`/
+`_OPEN_RESPONSE` path `pubkey` already uses — not the Ed25519 conversion we
+leaned toward, for the reason we ourselves ran into building the stopgap:
+`cryptography` has no Ed25519→X25519 conversion, and they weren't willing to
+hand-write the birational map either.
 
-## What it actually gets you
+The surface differs a little from what we sketched. Rather than a standalone
+`seal_to`/`open_from` pair returning a raw envelope, it's `Client.ask()`,
+which seals and sends through the ordinary `post()`/`send()` path in one
+call (`type="ask"`), and `inbox()` auto-opens a received `ask` when the
+sender's exchange key is already cached — mirroring the existing "mark
+`unreadable` rather than raise" convention this doc asked to keep
+distinguishable from a decryption failure. Context binding, the four-byte
+length-prefixed padding (the exact bug noted below, avoided), and "fails
+usefully when the peer's key hasn't been seen yet" (`UnknownPeerExchangeKey`)
+are all there.
 
-- **The island manager can answer one trader privately** without minting and
-  distributing a second `(key, workspace)` pair first. The manager and the
-  trader's exchange keys are already sitting in the room's roster the moment
-  both have registered — `ask` needs nothing else.
-- **It survives a plaintext table.** `custom_scope` needs a shared workspace
-  key to exist before it's useful; `ask` derives its own per-pair key from two
-  already-published identities, so it protects a manager→seat handoff even in
-  a room that isn't running workspace-wide encryption at all.
-- **A third seat at the same table, holding the same workspace key, still
-  can't open it.** This is the property `island.md` needed and the property
-  the feature's own test suite asserts directly (a peer with the workspace
-  key sees that an `ask` happened, and gets back an unreadable body).
+**Follow-up, not yet done:** `experiments/005-deliberation-protocol/island/sealed.py`
+is still the stopgap this doc said we'd rather delete than keep. Migrating
+the island manager and `run_v3.py` onto the real `ask()` — the private
+manager↔seat handoff `island.md`'s item 2c calls for — is open work; see
+`island.md`'s "What would have to be built" list for what's left. It's now a
+wiring task against a real upstream primitive rather than a design question.
 
-## What it doesn't get you
+The rest of this document is kept as the original request, for the record.
 
-- **The manager still has to have seen the trader on the roster first.**
-  `ask` needs the recipient's exchange key, and that only arrives by reading
-  the room — so the very first message to a brand-new seat can't be an `ask`;
-  an ordinary `say`/`dm` (or the seat's `JOIN`) has to land first.
-- **Identity still doesn't outlive a process.** A relaunched seat — which
-  `run_v3.py` already does — publishes a fresh exchange key along with its
-  fresh signing key, same as today. The re-binding `island.md`'s "seats,
-  and who is in one" section already calls for on a relaunch needs to cover
-  this too, not just the signing key.
-- **The `PRODUCE` half of item 2c is not this.** `island.md` asks for two
-  directions to be sealed — manager→seat (capacities and tastes) and
-  seat→manager (`PRODUCE`) — and `ask`'s per-pair key is derived from the
-  *unordered* pair, so it's already symmetric in the direction that matters:
-  the same derived key seals both. What's still unbuilt is wiring the island
-  manager and its `run_v3.py` launcher to actually call `ask` at those two
-  points instead of the in-process `private_state` handoff `launch()` uses
-  today. That's item 2c in `island.md`'s "What would have to be built" list,
-  and it's now a wiring task against a real primitive rather than a design
-  question.
+## The need, stated without our use case
 
-## Using it
+**A member of an encrypted workspace can seal a value that only one other named
+member can open.** Everyone else in the room sees ciphertext they cannot read,
+including on a channel they are subscribed to.
 
-```bash
-switchboard ask <to-agent-id> "the private half of this round's capacities"
-```
+There is no way to do this today, and the reason is structural rather than
+missing plumbing: `WorkspaceCipher` is exactly what its name says. Every member
+holds the same workspace key, `_derive(raw, info, workspace)` is HKDF and
+therefore deterministic, and `blind()` is deterministic HMAC — so any label,
+any context string, any epoch, and any combination of them produces a key that
+every member of the room can compute for themselves. A new `info` label buys
+*key separation* (which is why payload and blind keys are split) and buys
+**nothing at all against somebody who already holds the input.**
 
-or from the client:
+`dm()` is not this either: it routes to a blinded `@name` channel and the body
+is sealed with the same shared workspace key. It is addressing, not
+confidentiality — worth saying out loud somewhere in the docs, incidentally,
+because the name invites the other reading.
+
+So this needs asymmetric material: something the recipient holds and nobody
+else does.
+
+## What already exists that is most of the answer
+
+`signing.py` already gives every agent a per-process Ed25519 keypair, generated
+in memory and never persisted, and `client.py` already publishes the public
+half at registration — sealed to the workspace like any other content
+(`_SEAL_BODY["/agents/register"]["pubkey"] = "agent.pubkey"`), and opened on
+every roster read (`_OPEN_RESPONSE["agents"]`). `note_peer_keys()` already
+accumulates those keys per peer, and `_verify_message()` already checks
+signatures against them.
+
+So the room already distributes exactly one piece of per-member asymmetric
+material to exactly the right audience, on a path that has already been thought
+about. What is missing is the sealing counterpart to the verifying one.
+
+## What we learned by building a stopgap
+
+Since writing this we built a minimal version downstream --
+`experiments/005-deliberation-protocol/island/sealed.py` -- because a ranked
+game could not exist without one. It is marked as a stopgap and we would
+still rather delete it than keep it. Two findings, offered as data rather
+than as a recommendation:
+
+**Option 1 was not available to us.** `cryptography` exposes no
+Ed25519-to-X25519 conversion and PyNaCl is not one of our dependencies, so
+that route would have meant hand-writing the birational map between Edwards
+and Montgomery coordinates. We were not willing to, for exactly the reason we
+would not want you to. If you have a reviewed conversion to hand, or are
+willing to depend on one, option 1 is still the nicer interface -- the
+objection is only ever about who writes the curve arithmetic.
+
+**So we built option 2, and it cost less than expected.** The recipient
+generates an X25519 keypair and publishes the public half. In our case it
+travels on the board rather than in the roster, because our joining message
+already exists and public keys are public -- which sidesteps `_SEAL_BODY` and
+`_OPEN_RESPONSE` entirely and asks nothing of the hub. **If that shape suits
+you, a primitive taking a raw recipient public key and returning an envelope
+would serve us completely**, and the roster field is optional on top of it.
+
+One implementation note worth passing on, since it cost us a debugging cycle:
+we framed the padding the way `crypto._pad` does only *after* getting it
+wrong. The first version appended a marker byte and scanned back for it --
+but the marker and the filler are the same byte, so the boundary could never
+be found. Your four-byte length prefix is the reason that is not a bug you
+have; it is worth keeping in any new padded envelope.
+
+## The design call we are not making for you
+
+Ed25519 is a signing curve and cannot do key agreement directly. Two ways:
+
+1. **Convert the existing Ed25519 key to X25519** and seal to that. Nothing new
+   is published, nothing new is stored, and every existing peer becomes a valid
+   recipient the moment this ships. `age` does exactly this to encrypt to an
+   `ssh-ed25519` recipient, so it is a documented technique rather than a
+   homebrew. The cost is real and is one your own code argues against
+   elsewhere: it reuses a signing key for sealing, which is the shape
+   `crypto.py` splits its own subkeys to avoid.
+
+2. **Publish a second, X25519 key** beside `pubkey`, generated the same way and
+   with the same lifetime. Clean separation, at the cost of another sealed
+   roster field and another thing to plumb through `_SEAL_BODY` /
+   `_OPEN_RESPONSE`.
+
+We lean (1) for the "nothing new to publish" property, but we are downstream and
+this is your curve-hygiene call to make. If (1) is unacceptable to you, (2)
+works for us identically.
+
+## Constraints we think this has to keep, from your own design
+
+- **The hub requires no changes.** Same property `crypto.py`'s docstring
+  claims for everything else: a sealed-to-peer value should be an ordinary
+  opaque body as far as the hub is concerned.
+- **Context binding.** Whatever the envelope is, bind a context the way `seal()`
+  binds AAD, so a value sealed for one purpose cannot be relocated to another.
+- **Padding stays available.** A ciphertext whose length is its plaintext's
+  leaks the shape of what was said. Ours would leak how many items a message
+  named.
+- **Private keys still never touch disk.** Everything `signing.py`'s docstring
+  says about why the signing key is memory-only applies unchanged.
+- **One curve, no parameters to get wrong** — the rule `SigningIdentity` states
+  for itself.
+- **Say what it does not protect.** In the register of the "What is still
+  visible, stated plainly" section: a per-process recipient key means a peer
+  that restarts can no longer open what was sealed to its previous identity,
+  and the hub still sees who sealed to whom and when. Both are fine for us;
+  both should be written down rather than discovered.
+
+## Roughly the surface we would use
+
+Names are yours. The shape we need is symmetrical with what is already there:
 
 ```python
-client.ask(peer_id, {"iron": 0.30, "salt": 1.54})
+sealed = client.seal_to(peer_id, value, context="...")   # -> opaque envelope
+value  = client.open_from(peer_id, sealed, context="...")  # -> the value, or raise
 ```
 
-The recipient's `inbox()` opens it automatically once it has read the
-sender's exchange key off a roster call; anyone else it reaches sees only
-that an `ask` happened. See
-[`docs/encryption.md`](https://github.com/gald33/switchboard/blob/main/docs/encryption.md#sealed-to-one-peer-ask)
-in switchboard for the full design (the ECDH/HKDF derivation, what's visible
-to the hub, and the honest limits) — this file only covers what changes for
-a game built on top of it.
+`seal_to` needs the recipient's published key, which the client already learns
+on any roster read; failing usefully when it has never seen one for that peer
+matters more than it might seem — that is the ordinary case for a peer that has
+not registered yet, and it must be distinguishable from a decryption failure.
+`open_from` should refuse rather than return garbage, the way `unseal` does.
+
+If a lower-level surface on `WorkspaceCipher` (or a peer-cipher object) is the
+better fit and the client methods are thin wrappers, that is entirely fine.
+
+## Tests we would find convincing
+
+- A seals to B; B opens it; **C, holding the same workspace key and reading the
+  same channel, cannot** — the property the whole thing exists for.
+- A sealed-to-peer value moved to another context does not open.
+- Sealing to a peer whose key has never been seen fails with a distinct,
+  nameable error, not a decryption error.
+- It survives the round trip through a real hub on a real channel — the
+  `switchboard.testing.hub()` path, so it is exercised as a message body and
+  not only as a unit.
+- If you go with the Ed25519 conversion: a known-answer test against `age` or
+  another independent implementation, so the conversion is not merely
+  self-consistent.
+
+## What we are explicitly not asking for
+
+Any of our game's protocol. We need one primitive; the seat handshake, who is
+allowed to seal what to whom, and when, is ours to build on top and does not
+belong in Switchboard.
+
+## Why we are asking rather than building it downstream
+
+We could do the conversion and the sealing in our own layer, over the public
+keys the roster already hands us. We would rather not: it would mean a second
+implementation of Switchboard's crypto conventions, drifting against the first,
+with its own envelope format and its own view of what a context string means.
+The room already distributes the material — the sealing belongs next to the
+verifying that already uses it.

@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-# `island` sits next to this file's grandparent rather than being installed,
-# same reason and same fix as experiments/002's own conftest.py: put its
-# package on the path so these tests run from any cwd, not just games/.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# The repo root, so `games.island` resolves however this is invoked. Not
+# `games/` itself: that would put this package on the path as a top-level
+# `island`, colliding with the 005 experiment package of that name.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 
 def _free_port() -> int:

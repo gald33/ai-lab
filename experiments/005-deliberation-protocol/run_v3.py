@@ -37,7 +37,11 @@ from barter.economy import draw_island  # noqa: E402
 from switchboard.client import Client  # noqa: E402
 from switchboard.config import ClientConfig  # noqa: E402
 
+from island import schedule  # noqa: E402
+from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
+from island.schedule import stamp  # noqa: E402
+from island.score import trajectory_from  # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
 STIM = HERE / "stimuli" / "v3"
@@ -244,21 +248,6 @@ EPISODE_SECONDS = 60
 DRAIN_EVERY = 1.5
 
 
-def stamp(ts: float) -> str:
-    """A deadline as an absolute UTC clock time.
-
-    A deadline stated as "in 120s" is only true at the instant it is posted.
-    An agent that reads the schedule ninety seconds after the manager wrote it
-    -- which is ordinary, since nobody is prompted and a session may spend its
-    first turns starting up -- reads "in 120s" and plans against a window that
-    has already mostly gone. Run 005 has a trader acknowledging with "Episode 1
-    in 120s" when episode 1 was about thirty seconds away.
-
-    So every deadline the manager posts is an absolute time. Every Switchboard
-    tool result carries the current time as `now` in the same form, so a
-    reader can tell how long it has left however late it arrives.
-    """
-    return time.strftime("%H:%M:%SZ", time.gmtime(ts))
 
 
 def body(text: str) -> str:
@@ -401,25 +390,22 @@ def preflight() -> None:
 
 def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
                   opens_at: float | None = None) -> str:
-    span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
-            f"as they come." if hide
-            else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
-    return (f"Schedule for this round. {len(names)} traders: "
-            f"{', '.join(names)}. {span} "
-            f"Within an episode there are no stages: PRODUCE, PROPOSE and "
-            f"APPROVE all settle for as long as the episode is open. At the "
-            f"bell open proposals lapse and everything held is consumed. "
-            f"Acknowledge with a line beginning ACK. "
-            f"Every time on this board is absolute UTC, and every tool result "
-            f"carries the current time as `now`: read the deadline against "
-            f"that, not against when this message was written. "
-            f"Episode 1 opens at {stamp(opens_at if opens_at is not None else time.time() + ACK_SECONDS)} "
-            f"whether or not everyone has.")
+    """This run's schedule, in the shared wording.
+
+    A thin adapter over `island.schedule`, which is where the text lives so
+    that the game's runner posts the same one. It exists because the two
+    durations below are rebound by `main()` from the command line, and the
+    shared version takes them as arguments rather than reading globals it
+    does not own.
+    """
+    return schedule.schedule_text(
+        episodes, names, hide=hide, opens_at=opens_at,
+        episode_seconds=EPISODE_SECONDS, ack_seconds=ACK_SECONDS)
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
               outdir: Path) -> dict:
-    island = draw_island(agents, goods, seed=seed)
+    dealer = Dealer.draw(seed, agents, GOODS[:goods])
     workdir = outdir / f"{arm}-seed{seed}"
     workdir.mkdir(parents=True, exist_ok=True)
     # The stamp is what keeps one run's board out of the next one's. Messages
@@ -430,7 +416,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
     channel = "island"
     client = client_for(MANAGER, workspace)
-    mgr = Manager(island=island, client=client, channel=channel)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel=channel,
+                  goods=dealer.goods)
     for n in mgr.names:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
@@ -441,7 +428,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
-    procs = [launch(n, arm, mgr.private_state(n), episodes, workdir, workspace,
+    procs = [launch(n, arm, dealer.private_state(n), episodes, workdir, workspace,
                     max_turns=max(400, 40 * episodes))
              for n in mgr.names]
 
@@ -486,7 +473,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
                 if stale.exists():
                     stale.rename(workdir / name / "session-abandoned.log")
                 relaunched[name] = 1
-                procs[i] = launch(name, arm, mgr.private_state(name), episodes,
+                procs[i] = launch(name, arm, dealer.private_state(name), episodes,
                                   workdir, workspace,
                                   max_turns=max(400, 40 * episodes))
                 mgr.say(f"{name}'s session did not join and has been restarted "
@@ -546,7 +533,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             p.kill()
 
     return {"arm": arm, "seed": seed, "episodes": episodes,
-            "trajectory": mgr.episode_utilities,
+            "trajectory": trajectory_from(dealer.island, mgr.episode_log,
+                                          list(mgr.names), list(mgr.goods)),
             # The screen had to be diagnosed by re-reading boards that expire
             # in an hour. What the metrics cannot say goes in the record.
             "episode_log": mgr.episode_log, "refusals": mgr.refusals,

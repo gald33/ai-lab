@@ -32,7 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]
                        / "002-barter-conventions" / "experiment"))
 
-from barter.economy import Island, autarky, efficiency, gains  # noqa: E402
+from barter.economy import Island, autarky, efficiency, gains, utility  # noqa: E402
 
 _ZERO = 1e-12
 
@@ -66,6 +66,25 @@ class Score:
                 "zero_agent_episodes": self.zero_agent_episodes,
                 "agent_episodes": self.agent_episodes,
                 "first_above_floor": self.first_above_floor}
+
+
+def trajectory_from(island: Island, episode_log: list[dict],
+                    names: list[str], goods: list[str]) -> list[list[float]]:
+    """The utility vectors, rebuilt from the holdings the manager recorded.
+
+    The manager holds no tastes and so cannot produce this itself -- see
+    `dealer.py`. Everything needed is the seed (which draws `island`, and with
+    it `alpha`) plus what was held at each bell, so this is computable by
+    anybody afterwards and by nobody during, which is the point.
+
+    Order matters and is taken from `names`/`goods` rather than from the
+    recorded dicts: a trajectory is positional, and reading it back in
+    whatever order a JSON object happened to serialise would silently score
+    the wrong trader.
+    """
+    return [[utility(island.alpha[i], [entry["holdings"][n][g] for g in goods])
+             for i, n in enumerate(names)]
+            for entry in episode_log]
 
 
 def accumulate(trajectory: list[list[float]]) -> list[float]:

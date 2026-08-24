@@ -14,20 +14,14 @@ exactly as it was.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]
-                       / "002-barter-conventions" / "experiment"))
-from barter.economy import draw_island  # noqa: E402
 
 from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 
+from island.dealer import GOODS, Dealer
 from island.manager import Manager
 
-GOODS = ("bread", "cloth", "iron", "salt")
 WORKSPACE = "w_manager-keys"
 
 
@@ -37,8 +31,8 @@ def _client(hub, agent_id, key):
 
 
 def _manager(hub, key):
-    island = draw_island(n_agents=2, n_goods=4, seed=1)
-    return Manager(island=island, client=_client(hub, "manager", key),
+    dealer = Dealer.draw(seed=1, agents=2, names=("T1", "T2"))
+    return Manager(capacity=dealer.capacity, client=_client(hub, "manager", key),
                    channel="island", goods=GOODS, names=("T1", "T2"))
 
 

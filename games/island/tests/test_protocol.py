@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from island.protocol import Join, Malformed, Manage, Open, parse
+from games.island.protocol import Join, Malformed, Manage, Open, parse
 
 
 def test_open_parses_traders_episodes_rounds():
