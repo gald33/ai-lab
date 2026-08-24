@@ -75,6 +75,14 @@ class Table:
     settled: bool = False
     lapsed: bool = False
     workspace: str | None = None
+    #: Drawn at settlement, never before -- see `Lobby._settle`. Not on the
+    #: board: `barter.economy.draw_island(agents, goods, seed)` is public and
+    #: deterministic, so a seed posted where entrants can read it hands them
+    #: everybody's tastes before the round starts. It reaches the table's
+    #: manager over `run_lobby.py`'s own log for now -- carrying it to a
+    #: specific seat over the board is the sealed channel, build-order item
+    #: 2c, and is not done here.
+    seed: int | None = None
 
     def full(self) -> bool:
         return len(self.seats) >= self.traders
@@ -96,6 +104,9 @@ class Lobby:
     open_lead: float = OPEN_LEAD
     #: Injectable so a test can settle a table's lapse without sleeping 900s.
     clock: Callable[[], float] = time.time
+    #: Injectable so a test can pin the seed a settlement draws rather than
+    #: asserting against whatever `secrets` happened to produce.
+    draw_seed: Callable[[], int] = lambda: secrets.randbits(63)
     seen: set[str] = field(default_factory=set)
     tables: dict[str, Table] = field(default_factory=dict)
     settled: int = 0
@@ -214,13 +225,19 @@ class Lobby:
             self._settle(table)
 
     def _settle(self, table: Table) -> None:
-        """A table with every seat filled and a manager claimed: mint the
-        game's own room and hand it out. This is the whole of the lobby's
-        job -- see the module docstring for what it deliberately does not do
-        next.
+        """A table with every seat filled and a manager claimed: draw its
+        island, mint the game's own room, and hand out the invite. This is
+        the whole of the lobby's job -- see the module docstring for what it
+        deliberately does not do next.
+
+        The seed is drawn here and nowhere earlier -- "never before the
+        table forms" (`games/island.md`, "The island is drawn, not chosen")
+        -- so nothing about who ended up seated, or who claimed to manage,
+        could have been chosen knowing it in advance.
         """
         table.settled = True
         self.settled += 1
+        table.seed = self.draw_seed()
         table.workspace = f"{self.client.config.workspace}-{table.id}"
         key = generate_key() if self.client.encrypted else None
         invite = Invite(url=self.client.config.url, workspace=table.workspace,
