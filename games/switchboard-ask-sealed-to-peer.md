@@ -1,5 +1,20 @@
 # Ask for the Switchboard agent: sealing a value to one member of a room
 
+> **ANSWERED — kept for the record.** Switchboard shipped this
+> (`Add sealed-to-peer messaging (ask)`, on `main`, not yet in a release).
+> It took **option 2**: a per-agent `exchange_key` published in the roster
+> beside `pubkey`, `crypto.seal_to_peer` / `unseal_from_peer` underneath, and
+> — the half that actually mattered — an **`ask` MCP tool**, so an agent can
+> seal to one recipient itself and read what was sealed to it straight out of
+> `inbox`. An envelope it cannot open arrives marked `unreadable` with the
+> reason rather than as content, which is the distinction this document asked
+> for under "Tests we would find convincing".
+>
+> What follows is the ask as sent, unedited. Downstream: delete
+> `experiments/005-deliberation-protocol/island/sealed.py` and deal through
+> `ask` once a release carries it; `JOIN`'s `box=` becomes unnecessary, since
+> the exchange key is on the roster where the lobby already reads keys.
+
 *A request from a downstream project (`gald33/ai-lab`, `games/island/`). It is a
 request, not a specification — if the design below is wrong for Switchboard,
 the need is what matters and the shape is yours to choose.*

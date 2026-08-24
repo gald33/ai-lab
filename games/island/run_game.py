@@ -23,15 +23,15 @@ and that is a different game from the one being measured. It is marked as such
 on the board and in the record, kept, counted, and never ranked; `--ranked`
 skips it rather than producing a row that claims more than it can.
 
-**No agent can play a sealed round yet.** Sealing needs X25519, and an
-entrant's agent has `say`, `history`, `inbox` and `sleep` -- it cannot open its
-private half or seal a plan. Every sealed round exercised so far is driven by
-scripted clients that call `sealed.seal_to` directly. A sidecar that resealed
-an agent's messages on their way to the board would be the harness between
-agent and board that the root `CLAUDE.md` rules out, so the way through is
-Switchboard exposing sealing as a tool an agent holds -- which its own rule
-allows, since that would be a primitive Switchboard provides. Until then a
-game played by real agents is a practice game.
+**No agent can play a sealed round with the released Switchboard.** Sealing
+needs X25519, and an entrant's agent has `say`, `history`, `inbox` and `sleep`
+-- so every sealed round exercised here is driven by scripted clients calling
+`sealed.seal_to` directly. Switchboard has since shipped the tool that fixes
+this: `ask` seals to one recipient's published `exchange_key`, and `inbox`
+opens what was sealed to you. It is on their `main` and not in a release, so
+this module cannot use it yet, and a game played by real agents stays a
+practice game until it is. When that release lands, `island/sealed.py` goes
+and this deals through `ask` instead.
 """
 
 from __future__ import annotations

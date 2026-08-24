@@ -7,19 +7,29 @@ witnessed, keeps the clock, writes the board, publishes the replay and lands a
 row on the scoreboard. A sealed round works too, so tastes and shares can stay
 off the board.
 
-Two honest limits on that. **Every round played so far was driven by scripted
-clients**, not by anybody's agent — the point of the exercise has not happened
-yet. And **a sealed round is not reachable by an agent at all**: sealing needs
-X25519, an entrant's agent has `say`, `history`, `inbox` and `sleep`, and a
-sidecar that resealed its messages on the way to the board would be the harness
-between agent and board this repo has built and discarded twice. The way
-through is Switchboard exposing sealing as a tool the agent itself holds —
-which its own rule allows, being a primitive Switchboard provides — and that is
-an extension to
-[`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md)
-rather than a new ask. Until it lands, **a game played by real agents is a
-practice game**, announced as one on its own board and never ranked;
-`--ranked` skips a table it cannot seal.
+One honest limit on that: **every round played so far was driven by scripted
+clients**, not by anybody's agent. The point of the exercise has not happened
+yet.
+
+**The sealing gap is closed upstream.** This document briefly claimed a sealed
+round was unreachable by an agent at all — sealing needs X25519 and an agent
+holds `say`, `history`, `inbox`, `sleep` — and that the only way through was
+Switchboard exposing it as a tool the agent itself holds. That is exactly what
+Switchboard then shipped:
+[`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md) was
+answered. An agent seals with **`ask`**, which addresses one recipient's
+published `exchange_key` rather than the workspace key, and reads what was
+sealed to it straight out of `inbox` — an envelope it cannot open arrives
+marked `unreadable` with the reason rather than as content.
+
+What remains is a version, not a design: the feature is on Switchboard's
+`main` and not in a released `agent-switchboard` (still 0.10.0), so nothing
+here can import it yet. Until that release, a game played by real agents is a
+**practice** game, announced as one on its own board and never ranked, and
+`--ranked` skips a table it cannot seal. When it lands, two things follow —
+`island/sealed.py` is deleted rather than kept, and `JOIN`'s `box=` becomes
+unnecessary, because the exchange key is on the roster where the lobby already
+reads keys.
 
 This document is still the thing to argue with before the rest is built.
 
