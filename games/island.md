@@ -234,24 +234,62 @@ A channel the manager and one seat can read and the other seats cannot needs
 something the other seats do not have. That cannot be derived from a secret they
 all share; it has to be given.
 
-### The seat key comes with the seat
+### The seat key comes with the seat — but it cannot be posted
 
 Which is a rule already written down here: rooms are agnostic to keys, and if
 there is one it comes with the invitation. One level down — **seats are agnostic
 to keys, and a seat key comes with the seat's invite.**
 
-The lobby generates 32 fresh random bytes per seat and puts them in that seat's
-invite, which is already a credential and already carries key material. Manager
-and seat then seal to each other with the machinery that exists, built from the
-seat key rather than the workspace key: HKDF for separation, AES-GCM to seal,
-padding on — a sealed message whose length is its plaintext's length announces
-how many goods a plan named.
+That much holds. What does not hold is the obvious next step, and an earlier
+draft of this section got it wrong: *"the lobby can hand it over"*. If the lobby
+is a room, then handing something over **is publishing it**. Every entrant in the
+lobby holds the lobby's workspace key, so a seat secret written on the lobby
+board is a seat secret every rival can read.
 
-No new curve, no key agreement, and nothing for Switchboard to grow. `signing.py`
-is Ed25519 and signs rather than seals — *"one curve, no parameters to get
-wrong"* — and converting it into an encryption key is exactly the cleverness that
-comment exists to refuse. Key agreement (X25519, ECDH) is what you need when
-nobody can hand a secret over. The lobby can hand it over.
+So the seat key has to arrive **sealed to something only that entrant holds**,
+and a secret everybody shares cannot seal it. This is the ordinary bootstrap
+problem and it has only two exits: a secret pre-shared by some route that is not
+the board, or public-key cryptography to make the introduction. There is no third
+answer, and no arrangement of HKDF labels is one.
+
+Three ways out, in the order they would be picked:
+
+**1. The entrant brings an ephemeral public key.** Its `JOIN` line carries a
+freshly generated X25519 public key — public keys are public, so the board is the
+right place for it. The lobby seals the seat key to it and posts the ciphertext.
+Everyone sees the ciphertext; one entrant can open it. The keypair is per game, so
+there is nothing to store and nothing to leak, and it dies with the game. All of
+it lives in the game layer: the runner does the arithmetic, the board carries
+text, and Switchboard grows nothing.
+
+**2. Reuse the Ed25519 key the entrant already publishes.** Every member's
+`pubkey` is sealed to the workspace on register and opened on read, so the lobby
+can already see it. An Ed25519 key can be converted to an X25519 one — `age` does
+exactly this to encrypt to an `ssh-ed25519` recipient, so it is a documented
+technique rather than a homebrew — and it saves the entrant publishing anything
+extra. Against it: it reuses a signing key for sealing, which is the shape
+`crypto.py` splits its own subkeys to avoid.
+
+**3. Join off the board.** An HTTPS request returns the invite and the seat key,
+and TLS is the confidential channel. No new cryptography anywhere. The cost is
+that the lobby stops being only a room, which is a bigger concession than the
+other two.
+
+### Each primitive doing its own job
+
+With (1) the split is clean and worth naming, because it is the whole reason two
+key types exist:
+
+- **X25519 seals.** It is what lets the seat key cross a public board.
+- **Ed25519 signs.** The manager signs its sealed delivery, so an entrant can
+  tell the real private half from an impostor's — which matters most at exactly
+  this moment, before any shared secret exists.
+- **HKDF and AES-GCM then carry the rest.** Once the seat key is in place, both
+  directions are symmetric and the asymmetric step never happens again. One
+  handshake per seat, at join, and nothing after it.
+
+Padding stays on: a ciphertext whose length is its plaintext's announces how many
+goods a plan named.
 
 A sealed payload rides as ordinary board text under a marker — `SEALED …` — so
 that the reducer, the ticker and the ledger can all say *sealed* rather than
@@ -390,8 +428,10 @@ In order, and none of it started:
 2b. taking scoring out of the manager, so it stops being the one party holding
    everybody's tastes — the smallest of the four conditions above and the one
    worth doing whether or not a stranger ever runs a manager;
-2c. a seat key in each seat's invite, and the two sealed message types above:
-   the private half at join, and `PRODUCE`. Everything else stays public;
+2c. a seat key delivered sealed at join — the entrant's `JOIN` carries an
+   ephemeral public key, the manager seals the seat key to it and signs the
+   delivery — and then the two sealed message types: the private half, and
+   `PRODUCE`. Everything else stays public;
 3. a random seed drawn per round — the scoring half of this is **done**
    (`capture` for the table, the format as the level); the drawing half waits
    on the lobby;
