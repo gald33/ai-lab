@@ -227,7 +227,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 <script type="module">
 import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText } from "./scene.js";
-import { loadBoard, liveFeed, replayPlayer } from "./feeds.js";
+import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
@@ -552,9 +552,36 @@ function startLive(url, channel) {
     not on the board, so they are not on this page — and utility needs a taste, so
     there is no score here either. Nobody watching a round can see more of it than
     the traders in it. Replay it afterwards for both.`);
-  let count = 0;
-  live = liveFeed({ url, channel }, {
-    update: ({ rows, sealed, hub }) => {
+  live = liveFeed({ url, channel }, liveHandlers(() => `polling ${url} every 3s · read-only`,
+    (err) => `<span class="warn">cannot read ${url}: ${err.message}.</span>
+      Start the Switchboard viewer, then serve this page with
+      <code class="mono">python viewer/serve.py</code> so the two share an origin.`));
+}
+
+// A room read straight from a hub, in the browser -- the third source
+// alongside a local viewer's `api/state` and a saved board. `config` is
+// `{url, workspace, key, token}`, from either `?invite=` or the discrete
+// `?hub=&workspace=&key=&token=` params `boot()` reads below.
+function startHub(config, channel) {
+  mode = "live";
+  player?.stop();
+  $("transport").style.display = "none";
+  reveal = null;
+  lockReveal(`<b>Live, from ${config.url}.</b> Read the same way the published
+    Switchboard viewer reads a room — sealed content opened in this browser,
+    never by anything that runs it. Tastes and capacities still never reach
+    the board, so there is still no score here; replay afterwards for both.`);
+  live = hubFeed(config, { channel }, liveHandlers(
+    () => `reading ${config.url}/${config.workspace} every 3s · read-only`,
+    (err) => `<span class="warn">cannot read the room: ${err.message}</span>`));
+}
+
+// What starting a live poll always does with what comes back: mount the
+// frames, animate whatever is new since the last tick, and report status —
+// shared so `startLive` and `startHub` differ only in which feed they poll.
+function liveHandlers(statusWhenOk, statusOnError) {
+  return {
+    update: ({ rows, sealed, hub, notes }) => {
       $("where").textContent =
         `live · ${hub?.workspace || "?"} · ${rows.length} messages` +
         (sealed.length ? ` · ${sealed.length} sealed` : "");
@@ -562,21 +589,17 @@ function startLive(url, channel) {
       const before = timeline ? timeline.frames.length : 0;
       mount(rows);
       const last = timeline.frames.length - 1;
+      $("status").innerHTML = notes?.length
+        ? `<span class="warn">${notes.join(" · ")}</span>` : statusWhenOk();
       if (last < 0) return;
       // Everything that arrived since the last poll gets played, in order and
       // quickly; the state itself is already current either way.
       const fresh = first ? [] : timeline.frames.slice(before);
       paint({ state: timeline.final, event: null, animate: false, quiet: 0, index: last });
       fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
-      count = rows.length;
-      $("status").textContent = `polling ${url} every 3s · read-only`;
     },
-    error: (err) => {
-      $("status").innerHTML = `<span class="warn">cannot read ${url}: ${err.message}.</span>
-        Start the Switchboard viewer, then serve this page with
-        <code class="mono">python viewer/serve.py</code> so the two share an origin.`;
-    },
-  });
+    error: (err) => { $("status").innerHTML = statusOnError(err); },
+  };
 }
 
 $("play").onclick = () => player?.toggle();
@@ -623,6 +646,10 @@ async function boot() {
   if (params.get("live")) {
     options.unshift(new Option("live", JSON.stringify({ live: params.get("live") })));
   }
+  const hub = await hubConfigFromParams();
+  if (hub) {
+    options.unshift(new Option(`live · ${hub.workspace}`, JSON.stringify({ hub })));
+  }
   if (!options.length) {
     $("status").innerHTML = `Nothing to show. Serve this page with
       <code class="mono">python viewer/serve.py</code>, or pass
@@ -635,9 +662,35 @@ async function boot() {
   open(JSON.parse(select.value));
 }
 
+// A room to read straight from a hub, from whatever the URL named. `?invite=`
+// carries all of it in one string, the way a seat's invite is meant to
+// arrive; the discrete params are for pasting fields by hand. Neither is
+// baked into a link this page hands out itself — a workspace and key are
+// read-write credentials, and a page that put them in a link it advertised
+// would be handing out write access along with the view. See games/island.md
+// ("An invite is a read-write credential").
+async function hubConfigFromParams() {
+  const invite = params.get("invite");
+  if (invite) {
+    try {
+      return await decodeInvite(invite);
+    } catch (err) {
+      $("status").innerHTML = `<span class="warn">${err.message}</span>`;
+      return null;
+    }
+  }
+  const workspace = params.get("workspace");
+  if (!workspace) return null;
+  return {
+    url: params.get("hub") || MANAGED_HUB, workspace,
+    key: params.get("key") || null, token: params.get("token") || null,
+  };
+}
+
 async function open(what) {
   try {
-    if (what.live) startLive(what.live, params.get("channel") || "island");
+    if (what.hub) startHub(what.hub, params.get("channel") || "island");
+    else if (what.live) startLive(what.live, params.get("channel") || "island");
     else await startReplay(what.board, what.reveal);
   } catch (err) {
     $("status").innerHTML = `<span class="warn">${err.message}</span>`;

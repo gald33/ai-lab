@@ -42,6 +42,51 @@ export function rowsFromState(state, { channel = null } = {}) {
  * good state during an outage is a lie with a clock on it.
  */
 export function liveFeed({ url = "api/state", channel = "island", every = 3000 } = {}, on = {}) {
+  return pollFeed(async () => {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${response.status} from ${url}`);
+    return response.json();
+  }, { channel, every }, on);
+}
+
+// The managed hub this wrapper points a hosted game at by default -- see
+// games/island.md ("a hosted game points at the managed hub by default").
+export const MANAGED_HUB = "https://switchboard.lucille-ai.com";
+
+// Where Switchboard publishes the browser-side room reader. Reused rather
+// than reimplemented: it is what already turns a hub's raw, sealed messages
+// into readable rows in a browser, and `rowsFromState` below already reads
+// the exact shape it returns (`{hub, agents, messages: [...]}`) -- both were
+// written to the same contract on purpose. Importing it cross-origin works
+// because it is published as a static file with no build step, on a host
+// (GitHub Pages) that serves everything with permissive CORS.
+const ROOM_READER_URL = "https://gald33.github.io/switchboard/switchboard-room.js";
+
+let _room = null;
+function loadRoomReader() {
+  return (_room ??= import(ROOM_READER_URL));
+}
+
+/**
+ * Read a room straight from a hub, in the browser -- no local viewer process
+ * in between. `config` is `{url, workspace, key, token, probe}`, the exact
+ * shape `decodeInvite()` below returns, so an invite can be handed to this
+ * directly.
+ */
+export function hubFeed(config, { channel = "island", every = 3000 } = {}, on = {}) {
+  return pollFeed(async () => {
+    const { snapshot } = await loadRoomReader();
+    return snapshot(config, { limit: 200, refresh: every / 1000 });
+  }, { channel, every }, on);
+}
+
+/** An invite string, decoded -- re-exported so a page need import one module. */
+export async function decodeInvite(text) {
+  const { decodeInvite: decode } = await loadRoomReader();
+  return decode(text);
+}
+
+function pollFeed(fetchState, { channel, every }, on) {
   let stop = false;
   let inflight = false;
 
@@ -49,11 +94,15 @@ export function liveFeed({ url = "api/state", channel = "island", every = 3000 }
     if (stop || inflight) return;
     inflight = true;
     try {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error(`${response.status} from ${url}`);
-      const state = await response.json();
+      const state = await fetchState();
       const { rows, sealed } = rowsFromState(state, { channel });
-      on.update?.({ rows, sealed, hub: state.hub, agents: state.agents || [], raw: state });
+      on.update?.({
+        rows, sealed, hub: state.hub, agents: state.agents || [], raw: state,
+        // Only `hubFeed`'s snapshot carries these -- a hub it could not reach,
+        // a room it could not open. `liveFeed`'s state has none, so this is
+        // always [] there rather than undefined.
+        notes: state.notes || [],
+      });
     } catch (err) {
       on.error?.(err);
     } finally {
