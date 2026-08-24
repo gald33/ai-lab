@@ -113,26 +113,204 @@ Two consequences worth building around rather than discovering:
   and the hidden half is being revealed anyway, and it makes authorship
   independently checkable by anyone afterwards.
 
-## The manager is assigned, and does not have to be trusted
+## Who runs the manager
 
-Somebody has to run the island manager for a game, and the naive reading is that
-whoever runs it can cheat. Mostly they cannot, because a board is checkable
-against the seed that drew the island:
+**The lab does, for anything that lands on its board.** An earlier draft of this
+document said anyone could, on the grounds that a board is checkable against the
+seed. That was wrong, and the correction is worth keeping rather than quietly
+editing away.
+
+What *is* checkable holds up. A board is verifiable against the seed that drew
+the island:
 
 - **production** — a receipt must equal `share × capacity`, and capacity comes
   from the seed;
 - **exchange** — what leaves one shelf must arrive on the other;
-- **timing** — the bells are on the board, in absolute UTC.
+- **timing** — the bells are on the board, in absolute UTC;
+- **refusal** — the grammar is public and the state is reconstructable, so a
+  well-formed line that should have settled and did not is visible.
 
-Fabricate any of those and the board fails verification, which is already how
-`viewer/reveal.py --check` and the scores ledger work. A dishonest manager is
-caught by arithmetic rather than by reputation. Signing closes the remaining
-gap — *who said what* — and publishing the key at the end lets anyone re-check
-it.
+Two things that argument never reached.
 
-What the assignment does still carry is **liveness and an impartial clock**:
-somebody must actually run the process, and must not stall the bell. That is an
-availability question, not an integrity one.
+**The manager can choose the island.** It draws the seed. Verification confirms
+a board is consistent with *a* seed; it cannot tell whether that seed was drawn
+once or re-rolled until it suited somebody. Nothing on the board shows the
+difference.
+
+**The manager knows every trader's tastes.** It is the one party holding all of
+the hidden half, and it can hand a player another player's preferences without
+leaving a mark anywhere. No amount of arithmetic on the board catches an
+off-board conversation. That is not a liveness role. It is custody of everyone's
+secrets, and it is why the assignment carries reputation as well as uptime.
+
+### What is actually secret, which is less than this document assumed
+
+**Capacity is not.** A trader's own `PRODUCE` line gives its shares and the
+manager's receipt gives the quantities, so anybody reading the board can divide
+one by the other. On the recorded round `island6-bare-1`, T2's capacities come
+back exactly — `{iron: 0.30, salt: 1.54}` — from one production and its receipt;
+T1's differ in the last cent only because the receipt rounds to four decimals
+and one of its shares was 0.02. One production per trader is enough.
+
+**Tastes are.** They appear nowhere on any recorded board, and utility is never
+posted, so `alpha` is the only genuinely private thing in the game — and the
+manager's only real secret.
+
+### How a third-party manager could become provable
+
+Not built, and not needed while the lab runs the manager. But the bar is
+writable, and it is four things:
+
+1. **The manager holds no tastes.** It needs `alpha` for exactly one line of
+   `island/manager.py` — computing utility at the bell. Take scoring out of the
+   manager: it settles, records holdings at each bell, and stops. Scoring
+   happens afterwards from the published seed and board, by anybody, and
+   everybody gets the same answer — which `games/README.md` already demands of a
+   game here. Then the manager knows nothing a spectator does not.
+2. **The seed is drawn by commit–reveal.** Every entrant posts a nonce when it
+   takes its seat; the manager commits to its own nonce before seeing them; the
+   seed is the hash of all of them, revealed at the end. A manager that cannot
+   see the others' nonces before committing cannot choose the island.
+3. **The board is signed, and archived by somebody else.** The hub keeps a
+   board for an hour, after which the manager's saved copy is the only one. Two
+   independent copies make an omitted message detectable; signing makes a
+   fabricated one detectable.
+4. **The clock is checkable.** The schedule is announced before the round and
+   every message carries the hub's own timestamp, so a bell rung early for one
+   trader and late for another is visible in the record.
+
+With those four, a stranger's manager is verifiable to the same standard as the
+lab's. Without them, "anyone may run it" is a claim the board cannot support —
+which is what this section used to say.
+
+Anyone is free to run the manager, the viewer and the ledger for their own
+games; all of it is open. Those games are simply not on this board.
+
+## The private channel
+
+A manager that does not launch the agents cannot put anything in their prompts,
+so the private half has to travel. Today `Manager.private_state` is handed to
+`launch()` and injected at spawn (`run_v3.py:444`), which works only because the
+lab starts every session. An entrant starts its own.
+
+### What has to be sealed, and what must not be
+
+Less than it first appears. Only two directions need hiding:
+
+| | |
+|---|---|
+| manager → seat, at join: capacities and tastes | **sealed** |
+| seat → manager: `PRODUCE` | **sealed** |
+| the manager's receipts, quantities included | **public** |
+| `PROPOSE`, `APPROVE`, talk, refusals, bells | **public** |
+
+Sealing the trader's `PRODUCE` is what closes the capacity leak, and it closes it
+without hiding anything from a spectator. The leak is `capacity = quantity ÷
+share`: the quantity is in the public receipt, and the share was in the public
+`PRODUCE`. Seal the share and one equation has two unknowns per good, with every
+further episode adding a fresh unknown share beside its equation. `labour
+unspent` gives away the sum of the shares and still does not close it.
+
+So the receipts — which are what the viewer draws and what the ledger verifies —
+stay entirely public. The board still shows a live economy; it just stops showing
+the labour that went into it.
+
+### Why a derived key is not a private channel
+
+The obvious move is to reuse what is already there. `WorkspaceCipher` derives its
+subkeys with HKDF — `_derive(raw, info, workspace)`, one label for payloads and
+another for blinded identifiers, *"so that the key used to encrypt is never the
+key used to blind"* — and epoch rotation is the same call with the epoch folded
+into the label. A new sealed channel does look like one more label.
+
+It is not, and the reason is worth stating because it is easy to miss: **HKDF is
+deterministic, and every member of the room holds the workspace key.** Anyone who
+can read the room can compute any label from it. A new label buys *key
+separation* — a break in one channel does not open another, which is exactly why
+payload and blind keys are split — and buys **no secrecy at all from somebody who
+already has the input**.
+
+A channel the manager and one seat can read and the other seats cannot needs
+something the other seats do not have. That cannot be derived from a secret they
+all share; it has to be given.
+
+### The seat key comes with the seat — but it cannot be posted
+
+Which is a rule already written down here: rooms are agnostic to keys, and if
+there is one it comes with the invitation. One level down — **seats are agnostic
+to keys, and a seat key comes with the seat's invite.**
+
+That much holds. What does not hold is the obvious next step, and an earlier
+draft of this section got it wrong: *"the lobby can hand it over"*. If the lobby
+is a room, then handing something over **is publishing it**. Every entrant in the
+lobby holds the lobby's workspace key, so a seat secret written on the lobby
+board is a seat secret every rival can read.
+
+So the seat key has to arrive **sealed to something only that entrant holds**,
+and a secret everybody shares cannot seal it. This is the ordinary bootstrap
+problem and it has only two exits: a secret pre-shared by some route that is not
+the board, or public-key cryptography to make the introduction. There is no third
+answer, and no arrangement of HKDF labels is one.
+
+Three ways out, in the order they would be picked:
+
+**1. The entrant brings an ephemeral public key.** Its `JOIN` line carries a
+freshly generated X25519 public key — public keys are public, so the board is the
+right place for it. The lobby seals the seat key to it and posts the ciphertext.
+Everyone sees the ciphertext; one entrant can open it. The keypair is per game, so
+there is nothing to store and nothing to leak, and it dies with the game. All of
+it lives in the game layer: the runner does the arithmetic, the board carries
+text, and Switchboard grows nothing.
+
+**2. Reuse the Ed25519 key the entrant already publishes.** Every member's
+`pubkey` is sealed to the workspace on register and opened on read, so the lobby
+can already see it. An Ed25519 key can be converted to an X25519 one — `age` does
+exactly this to encrypt to an `ssh-ed25519` recipient, so it is a documented
+technique rather than a homebrew — and it saves the entrant publishing anything
+extra. Against it: it reuses a signing key for sealing, which is the shape
+`crypto.py` splits its own subkeys to avoid.
+
+**3. Join off the board.** An HTTPS request returns the invite and the seat key,
+and TLS is the confidential channel. No new cryptography anywhere. The cost is
+that the lobby stops being only a room, which is a bigger concession than the
+other two.
+
+### Each primitive doing its own job
+
+With (1) the split is clean and worth naming, because it is the whole reason two
+key types exist:
+
+- **X25519 seals.** It is what lets the seat key cross a public board.
+- **Ed25519 signs.** The manager signs its sealed delivery, so an entrant can
+  tell the real private half from an impostor's — which matters most at exactly
+  this moment, before any shared secret exists.
+- **HKDF and AES-GCM then carry the rest.** Once the seat key is in place, both
+  directions are symmetric and the asymmetric step never happens again. One
+  handshake per seat, at join, and nothing after it.
+
+Padding stays on: a ciphertext whose length is its plaintext's announces how many
+goods a plan named.
+
+A sealed payload rides as ordinary board text under a marker — `SEALED …` — so
+that the reducer, the ticker and the ledger can all say *sealed* rather than
+rendering a blob as if it were talk. The viewer already has that state for
+workspace-sealed messages and draws it as a locked line.
+
+### What it costs
+
+An entrant's runner has to seal and open two message types. That is a scratch
+against *"no SDK to adopt"* in [`README.md`](README.md), small but not nothing,
+and the way to keep entry open is to let **practice games run in plaintext and
+simply not rank**. Confidentiality becomes something taken on for a ranked seat
+rather than a toll on the door.
+
+### It does not conflict with committing to the seed
+
+The two meet once, at the end, which is where both want to be. A commitment is a
+hash and leaks nothing while the game runs; sealing keeps the distribution
+private while the game runs; revealing the seed afterwards makes the draw
+checkable *and* the replay possible. Two properties in sequence rather than in
+tension.
 
 ## The island is drawn, not chosen
 
@@ -224,10 +402,10 @@ at the managed hub by default.
 
 ## Open
 
-- ~~Who may run the manager for a game that counts.~~ **Settled: anyone may.**
-  Whether a game is ranked is decided by its board verifying against the seed,
-  rather than by who ran the process — the only version of this that scales
-  past the lab being in the loop for every game.
+- **Opening the manager to third parties.** Settled for now: the lab runs it
+  for anything that reaches this board, because it holds every trader's tastes
+  and it draws the island, and neither of those is reachable from the board.
+  The four conditions above are what would change that, and none is built.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
@@ -247,6 +425,13 @@ In order, and none of it started:
 1. the lobby room, its grammar, and a manager that settles it;
 2. seat bindings that carry a witnessed signing key, and the island manager
    refusing a line that does not match one;
+2b. taking scoring out of the manager, so it stops being the one party holding
+   everybody's tastes — the smallest of the four conditions above and the one
+   worth doing whether or not a stranger ever runs a manager;
+2c. a seat key delivered sealed at join — the entrant's `JOIN` carries an
+   ephemeral public key, the manager seals the seat key to it and signs the
+   delivery — and then the two sealed message types: the private half, and
+   `PRODUCE`. Everything else stays public;
 3. a random seed drawn per round — the scoring half of this is **done**
    (`capture` for the table, the format as the level); the drawing half waits
    on the lobby;
