@@ -476,11 +476,10 @@ BLAME = {
 def blame(browser, base: str, board: Path, out: Path) -> list[str]:
     """A refusal points at what caused it.
 
-    Four of the eight refusals across games 001 and 002 are one trader
-    approving goods its own open offer already holds. The page drew a bare ✗
-    for all of them while the cause -- a rope -- was on the square the whole
-    time. This drives the real refusal from game 002's board and checks that
-    the offer lit is the trader's own, and not the one it failed to take.
+    The page drew a bare ✗ for every refusal, including the ones whose cause
+    -- a rope -- was on the square the whole time. This drives the two real
+    refusals from game 002's board and checks that the offer lit is the
+    trader's own, and not the one it failed to take.
     """
     stem = board.name[len("board-"):-len(".json")]
     where = f"{stem} blame"

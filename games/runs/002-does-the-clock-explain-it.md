@@ -174,22 +174,21 @@ the run.
 | T1 zero episodes | 2 of 3 | 1 of 3 |
 | T1 · T2 vs playing alone | 0.26× · 0.83× | 0.69× · 0.93× |
 
-- **The four refusals.** One timing error: T2 wrote `PRODUCE` at 12:39:45,
-  before the acknowledgement window closed and the episode opened, and was told
-  the episode had closed. One addressing error: T1 wrote `APPROVE p3` on its
-  own proposal. **Two are the same error, and it is new** — a trader approving
-  an exchange whose goods it had already committed to its own open proposal:
-  T2 offered 0.1 bread in `p4` and then tried to approve `p3`, which asked for
-  0.1 bread, holding 0.0413 uncommitted; T1 offered 0.5 cloth in `p7` and then
-  tried to approve `p6`, which asked for 0.4 cloth, holding 0.3868.
-- **Where the round was lost.** Episode 2 is the only zero, and it is T1's:
-  T1 produced no iron and never got any. `p3` (T1 wants iron, bread, salt for
-  cloth) and `p4` (T2 wants cloth for bread, salt) were both open and
-  compatible in one direction — **T1 could have approved `p4`**, holding 0.5368
-  cloth uncommitted against the 0.4 it asked. Instead T1 approved its own `p3`,
-  T2's approval of `p3` was refused for committed bread, and T1's replacement
-  `p5` went up 30s before the bell and was never answered. Three proposals
-  lapsed.
+- **The four refusals, as the manager stated them.** No two share a reason.
+
+  | line | manager's reason | state at that moment |
+  |---|---|---|
+  | T2 `PRODUCE`, 12:39:45 | *this episode has closed* | written before the acknowledgement window closed and episode 1 opened |
+  | T1 `APPROVE p3` | *p3 was not addressed to you* | `p3` is T1's own proposal |
+  | T2 `APPROVE p3` | *you have 0.0413 bread uncommitted, not the 0.1000 it asks for* | T2 held 0.1413 bread, 0.1 of it committed to its own **still-open** `p4` |
+  | T1 `APPROVE p6` | *you have 0.3868 cloth uncommitted, not the 0.4000 it asks for* | T1 held 0.8868 cloth and had given 0.5 in `p7`, which **settled** 8s earlier |
+
+- **Episode 2, the round's only zero.** T1 produced no iron and ended holding
+  none. `p3` (T1 offering cloth for iron, bread, salt) and `p4` (T2 offering
+  bread, salt for cloth) were both open; T1 held 0.5368 cloth uncommitted
+  against the 0.4 `p4` asked. T1 wrote `APPROVE p3`, T2's `APPROVE p3` was
+  refused, T1's replacement `p5` went up 30s before the bell and drew no reply.
+  Three proposals lapsed.
 - **How much of the clock was used.** The last agent line of each episode
   landed **56s, 31s and 49s** before its bell — **136s of 453s, 30% of the
   round's episode time, after both traders had stopped acting.** Median gap
@@ -200,43 +199,9 @@ the run.
   `PRODUCE cloth=0.6 bread=0.2 salt=0.2` in all three; T2 wrote the same bundle
   in episodes 2 and 3. Every produce line landed within 7–22s of the episode
   opening. No labour went unspent in any episode by either trader.
-- **The failure mode 001 was named for did not recur.** In 001, T1 wrote
-  `PRODUCE cloth=1` twice — all labour on one good, zero under Cobb-Douglas
-  without a trade. In 002 the same entrant, on a different island, spread
-  across three goods every episode.
-
-### Assumptions
-
-| # | assumption | held? |
-|---|---|---|
-| 1 | 150s is long enough to matter and short enough to stay affordable | **affordable yes; "long enough to matter" is not shown.** Capture moved, but 30% of the episode time went unused after the last agent action |
-| 2 | `capture` makes two seeds comparable at one level | **held, and it mattered** — the two floors are 0.7103 and 0.7115, near enough that raw `eff_round` would have told the same story here. It will not always |
-| 3 | the four-good brief is what 001's agents read | **held** — `test_brief.py` asserts byte-identity with `stimuli/v3/base.md`'s body, and it passes |
-| 4 | both sessions start and reach the board | **held on attempt 2, failed on attempt 1**, and the two are counted apart below |
-
-### The hypothesis
-
-**The prediction held and the stated reason did not.**
-
-The hypothesis said capture would rise above −1.42 *because* a trader had spent
-all its labour on one good and needed time to notice. Capture did rise, to
-**−0.4127**. But no trader went all-in on one good in this game, so the
-mechanism the hypothesis named was never in play; and both traders stopped
-acting well before every bell, so the extra 4½ minutes were not consumed.
-**A game in which 30% of the added time went unused is not evidence that time
-was the binding constraint.** What separates 002 from 001 on the board is a
-different island and a different production shape, and one game against one
-game cannot say which of the three did the work.
-
-The falsifier written before the run — "capture at or below −1.4 with the same
-shape of play" — did not fire. Neither half of it: the number moved and the
-shape of play changed too, which is a confound rather than a confirmation.
-
-**The talk count is unchanged: 0.** The possibility flagged before the run —
-that more time would go into conversation — did not happen. All 54 channel
-messages were schedule, protocol lines and manager rulings. These agents do not
-talk to each other when given more room; they post another proposal, or
-nothing.
+- **Production plans, against 001's.** In 001 T1 wrote `PRODUCE cloth=1` in two
+  of three episodes — all labour on one good. In 002 the same entrant, on a
+  different island, spread across three goods in all three.
 
 ### Deviations
 
@@ -263,76 +228,15 @@ neither held. Fixed in [#46](https://github.com/gald33/ai-lab/pull/46). It is
 recorded here because *watching the game is what found it*, which is the first
 concrete argument for the viewer existing.
 
-## What this changed
+## The reading
 
-**A game beat its own previous game by a wide margin and still lost to
-autarky.** `capture` −0.41: both traders ended below where they would have been
-never trading, T1 at 0.69× and T2 at 0.93× of playing alone. Two games have
-now been played through by agents, on two different islands, and **neither
-finished above the floor**. The below-autarky finding from 001 is not a fluke
-of one draw.
+**Not written here.** What this result means — whether the hypothesis held, what
+it says about the clock, and what should follow from it — belongs to the
+experiment, not to the game layer that ran it. This record carries what
+happened: the numbers, the denominators, the boards they came from, and the
+deviations. `games/runs/README.md` already says a game is not an experimental
+cell; that cuts both ways, and interpreting one here would be this layer
+answering a question it did not ask.
 
-**The clock is not exonerated, and it is no longer the leading suspect.** The
-number moved in the direction the hypothesis predicted, but the traders left
-30% of the added time unused and revised nothing across episodes — the same
-production bundle three times, posted within twenty seconds of each opening.
-Whatever these traders are short of, it is not seconds. A paired design over
-several seeds could still separate the clock from the draw; it is no longer the
-cheapest question to ask.
-
-**A failure mode that is not new, and that is the point.** The four refusals
-have four distinct causes, and **two of them are the same mistake**: a trader
-promising the same stock to two exchanges at once.
-
-| # | refused | cause |
-|---|---|---|
-| 1 | T2's `PRODUCE` | written before the episode opened — timing |
-| 2 | T1's `APPROVE p3` | its own proposal — addressing |
-| 3 | T2's `APPROVE p3` | held 0.1413 bread, had promised 0.1 of it to its **own still-open `p4`**, and `p3` asked for 0.1 |
-| 4 | T1's `APPROVE p6` | held 0.8868 cloth, put 0.5 into `p7` and wanted 0.4 for `p6` — **0.9 of stock it did not have**. By the time it approved, `p7` had settled, so the cloth was spent rather than committed |
-
-3 and 4 are one error in two states, and the difference is only whether the
-first exchange had settled yet. Episode 2 was lost with a settleable exchange
-sitting open the whole time: **T1 could have approved `p4`, holding 0.5368 cloth
-against the 0.4 it asked, and did not.**
-
-**Corrections, both written after this record was first filled in.**
-
-**Two.** The first is the one that matters; the second is mine twice over.
-
-**One — the brief.** It said here that
-"nothing in the brief says so in those words", and that the fix was therefore a
-paragraph of text rather than a spend. **Both halves were wrong**, and the
-correction matters more than the error. The frozen brief says it outright —
-*"The goods you offer are **committed** the moment the proposal is open: they
-cannot back a second proposal, and they cannot pay for a proposal you want to
-approve. If you are short when you try to approve, an offer of your own is
-probably holding what you need"*, and separately *"You cannot approve your own
-proposal"*. Both paragraphs were added in `709dfa3`, **"005 v3: say the two
-things the protocol board showed agents did not know"**, in direct response to
-the same two errors on 005's board.
-
-So this run is the behavioural test of that instruction fix, and the fix did not
-take. Writing the rule more plainly is the one intervention already known to
-fail. **The rules are the experiment's to set, not this game's to edit** — what
-belongs here is the observation that a trader reading an explicit prohibition
-still walked into it twice in three episodes.
-
-**Two — the count, and the mechanism.** This section twice said "half the
-refusals were a trader approving an exchange whose goods it had already promised
-to its own open proposal". The arithmetic was right by accident and the
-mechanism was wrong: only **one** of the four is a still-open offer holding the
-goods. In the other, `p7` had already **settled** eight seconds earlier, so the
-cloth was gone rather than committed. Both are the same underlying mistake and
-the table above now says so exactly, rather than describing one of them twice.
-
-Found by building the viewer's refusal display against this board and asserting
-that the rope it lights is the one that caused the refusal: `p7` is not open at
-that frame, so the check refused to pass. **A claim in a record that no test
-touches is a claim nobody has checked** — this one survived a merge and a
-correction before anything looked at it.
-
-**What it says about ranked play: still nothing.** Both seats were the lab's
-own agents, both hands were face up, and `agent-switchboard` is still at 0.10.0
-with no sealed-to-peer messaging. This is practice, unranked, and n=1 against
-n=1 — a probe, which is what the record said before the numbers existed.
+The replay is in [`games/replays/`](../replays/) and the row is in the ledger,
+so the reading can be done from settled state by whoever owns it.

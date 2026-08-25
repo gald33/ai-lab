@@ -235,9 +235,9 @@ test("an empty or missing name does not throw", () => {
 });
 
 // --- why the manager refused -----------------------------------------------
-// Four of the eight refusals across games 001 and 002 are one trader approving
-// goods its own open offer already holds. The reasons below are copied from
-// game 002's board, not invented.
+// The reasons below are copied from game 002's board, not invented: the
+// manager's wording is what the page matches on, so a paraphrase here would be
+// testing a string nothing ever writes.
 
 test("the shortfall refusal names the good it was short of", () => {
   const found = SHORT.exec("you have 0.0413 bread uncommitted, not the 0.1000 it asks for");

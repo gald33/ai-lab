@@ -12,12 +12,13 @@ clients — [`001`](runs/001-the-first-game-anybody-played.md) and
 [`002`](runs/002-does-the-clock-explain-it.md), both watchable in
 [`replays/`](replays/). **Both finished below the autarky floor**, `capture`
 −1.42 and −0.41: on each island the traders ended worse off than if they had
-never traded. 002 lengthened the episode from 60s to 150s to test whether the
-clock explained it and found that it does not obviously — the traders left
-**30% of each episode unused after their last action** and produced the same
-bundle every episode. What 002 did surface is a protocol confusion worth
-fixing: half its refusals were a trader approving an exchange whose goods it
-had already committed to its own open proposal.
+never traded. 002 held everything from 001 fixed and lengthened the episode
+from 60s to 150s.
+
+What either of those means is in neither of those records and not in this
+document. **The reading of a result belongs to the experiment**, not to the
+layer that ran the game; what is kept here is that the games were played, by
+whom, and what settled.
 
 Two honest limits on all of that: both seats were the lab's own agents, so the
 farming caveat below applies and the per-trader ratios are not a competitive

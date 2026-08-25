@@ -867,10 +867,9 @@ export class Scene {
    *
    * The refusal text is already in the ticker and on the badge's tooltip. What
    * it cannot do there is say *which* rope on the square is the problem, and
-   * that is the whole content of the commonest refusal in the game: a trader
-   * approving goods its own open offer has already promised away. So light the
-   * slot it came up short in and the offer that is holding it, together, for
-   * as long as the badge is up.
+   * that is the whole content of a refusal for goods an offer of the trader's
+   * own has already promised away. So light the slot it came up short in and
+   * the offer that is holding it, together, for as long as the badge is up.
    *
    * Marked, not moved: the highlight stays under `prefers-reduced-motion`
    * because it carries information. Reduced motion means less movement, not
@@ -1161,11 +1160,10 @@ const trim = (q) => String(Math.round(q * 1000) / 1000);
 /**
  * The manager's two refusals that have a picture, and the shapes it says them in.
  *
- * Across games 001 and 002, four of the eight refusals are one trader approving
- * an exchange whose goods its **own open offer** is already holding, and one
- * more is a trader approving an offer addressed to somebody else. Both drew a
- * bare ✗: the page said that a refusal happened and never what caused it, while
- * the cause was sitting on screen the whole time as a rope.
+ * Both drew a bare ✗: the page said that a refusal happened and never what
+ * caused it, while for one of them the cause was sitting on screen the whole
+ * time as a rope. Which refusals matter and what they say about how these
+ * agents play is not this file's to decide -- it draws what the manager said.
  *
  * Matched against the manager's wording rather than re-derived, because the
  * manager's arithmetic is the authority on why it refused. A reason that does
