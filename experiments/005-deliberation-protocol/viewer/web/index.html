@@ -43,6 +43,12 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .at-bottom .speeds { display: flex; gap: 4px; }
 .chrome button, .chrome select, .chrome .tab { background: #0e1519cc; backdrop-filter: blur(6px); }
 .at-top-right select { max-width: 230px; }
+/* Narrow by default: the list is the control, and this only earns its width
+   when somebody is actually typing in it. */
+.at-top-right #find { width: 96px; transition: width .15s ease; }
+.at-top-right #find:focus, .at-top-right #find:not(:placeholder-shown) { width: 168px; }
+.at-top-right #find[data-empty="true"] { border-color: var(--warn, #c86a4a); }
+@media (prefers-reduced-motion: reduce) { .at-top-right #find { transition: none; } }
 .at-bottom button, .at-bottom select { background: var(--panel-2); backdrop-filter: none; }
 .chrome .tab { text-decoration: none; border: 1px solid var(--line); border-radius: 8px;
   padding: 6px 11px; color: var(--ink-2); font-size: 14px; line-height: 1.3; }
@@ -533,6 +539,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <div class="chrome at-top-right">
+    <input id="find" type="search" placeholder="find a board" spellcheck="false"
+           title="Narrow the list: words in any order, e.g. &quot;007 plan 12&quot;"
+           aria-label="Narrow the list of boards">
     <select id="source" title="Which board" aria-label="Which board"></select>
     <button id="reload" title="Read the source again">↻</button>
     <button id="t-rail" aria-pressed="false" aria-controls="rail"
@@ -601,6 +610,7 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
+import { organise, countOf } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
@@ -1264,13 +1274,18 @@ document.addEventListener("keydown", (e) => {
 // anything else replays a saved board.
 async function boot() {
   const select = $("source");
-  const options = [];
+  const find = $("find");
+  const entries = [];
   try {
     const list = await (await fetch("api/boards", { cache: "no-store" })).json();
     for (const b of list.boards || []) {
-      options.push(new Option(b.label, JSON.stringify({ board: b.board, reveal: b.reveal })));
+      entries.push({ label: b.label, board: b.board,
+                     value: JSON.stringify({ board: b.board, reveal: b.reveal }) });
     }
-    if (list.live) options.unshift(new Option("live — the running round", JSON.stringify({ live: list.live })));
+    if (list.live) {
+      entries.unshift({ label: "live — the running round", pinned: true,
+                        value: JSON.stringify({ live: list.live }) });
+    }
   } catch {
     // Opened without the little server: fall back to whatever the URL says.
   }
@@ -1279,23 +1294,63 @@ async function boot() {
     // Labelled the way the listing labels one. The path is what was asked for,
     // not what to call it, and it is long enough to swallow the control.
     const named = board.split("/").pop().replace(/^board-/, "").replace(/\.json(\.gz)?$/, "");
-    options.unshift(new Option(named || board,
-                               JSON.stringify({ board, reveal: params.get("reveal") })));
+    entries.unshift({ label: named || board, pinned: true,
+                      value: JSON.stringify({ board, reveal: params.get("reveal") }) });
   }
   if (params.get("live")) {
-    options.unshift(new Option("live", JSON.stringify({ live: params.get("live") })));
+    entries.unshift({ label: "live", pinned: true,
+                      value: JSON.stringify({ live: params.get("live") }) });
   }
   const hub = await hubConfigFromParams();
   if (hub) {
-    options.unshift(new Option(`live · ${hub.workspace}`, JSON.stringify({ hub })));
+    entries.unshift({ label: `live · ${hub.workspace}`, pinned: true,
+                      value: JSON.stringify({ hub }) });
   }
-  if (!options.length) {
+  if (!entries.length) {
     $("status").innerHTML = `Nothing to show. Serve this page with
       <code class="mono">python viewer/serve.py</code>, or pass
       <code class="mono">?board=…</code>.`;
     return;
   }
-  select.replaceChildren(...options);
+
+  // Re-listing on every keystroke replaces the options under the selection, so
+  // what is being watched is remembered and put back when it survives the
+  // filter. A filter that silently swapped the board out from under a playing
+  // round would be the control doing something nobody asked it to.
+  function relist({ keep = true } = {}) {
+    const chosen = keep ? select.value : null;
+    const groups = organise(entries, find.value);
+    const nodes = [];
+    for (const { group, items } of groups) {
+      const options = items.map((e) => new Option(e.label, e.value));
+      if (!group) { nodes.push(...options); continue; }
+      const box = document.createElement("optgroup");
+      box.label = group;
+      box.append(...options);
+      nodes.push(box);
+    }
+    select.replaceChildren(...nodes);
+    const shown = countOf(groups);
+    // A filter matching nothing keeps the last board on screen rather than
+    // blanking the page: the list is empty, the round is not.
+    find.dataset.empty = String(shown === 0);
+    select.title = shown === entries.length
+      ? "Which board" : `Which board — ${shown} of ${entries.length}`;
+    if (chosen && [...select.options].some((o) => o.value === chosen)) {
+      select.value = chosen;
+      return false;
+    }
+    return shown > 0;
+  }
+
+  find.oninput = () => { relist(); };
+  // Escape clears the filter rather than leaving the page filtered by
+  // something typed and forgotten.
+  find.onkeydown = (e) => {
+    if (e.key === "Escape") { find.value = ""; relist(); }
+    e.stopPropagation();
+  };
+  relist({ keep: false });
   select.onchange = () => open(JSON.parse(select.value));
   $("reload").onclick = () => open(JSON.parse(select.value));
   open(JSON.parse(select.value));
