@@ -401,6 +401,8 @@ def run(out: Path, headed: bool = False) -> int:
             # got past this harness and were found by eye instead.
             for board in boards:
                 problems += replay(browser, base, board, out)
+            for board in boards:
+                problems += blame(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
             problems += ring(browser, base, out)
             browser.close()
@@ -439,10 +441,111 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
             bad += check(page, traders, goods, f"{stem} @{name}{' still' if motion else ''}")
             if name == "end":
                 bad += ending(page, reveal, f"{stem}{' still' if motion else ''}")
+
             suffix = f"-{label}" if label else ""
             page.screenshot(path=str(out / f"{stem}-{name}{suffix}.png"))
         bad += [f"{stem}{' still' if motion else ''}: {e}" for e in errs]
         page.close()
+    return bad
+
+
+#: The two refusals in game 002 that are the same mistake -- a trader promising
+#: the same stock to two exchanges at once -- caught in the two different states
+#: that mistake can be in when the manager refuses.
+#:
+#: Episode 2: T2 held 0.1413 bread, offered 0.1 of it in `p4`, then tried to
+#: approve `p3`, which asks for 0.1. `p4` is still **open**, so the rope holding
+#: the bread is on the square and is the thing to point at.
+#:
+#: Episode 3: T1 held 0.8868 cloth, offered 0.5 in `p7` and wanted 0.4 for `p6`
+#: -- 0.9 of stock it did not have. By the time it approved `p6`, `p7` had
+#: **settled**: the cloth is gone rather than committed, there is no rope to
+#: blame, and the page must mark the slot and stop there rather than invent a
+#: culprit. That distinction is why this case is here at all.
+BLAME = {
+    "island-game-002b-g1": [
+        {"reason": "you have 0.0413 bread uncommitted, not the 0.1000 it asks for",
+         "trader": "T2", "good": "bread", "rope": "p4", "innocent": "p3"},
+        {"reason": "you have 0.3868 cloth uncommitted, not the 0.4000 it asks for",
+         "trader": "T1", "good": "cloth", "rope": None, "innocent": "p6"},
+    ],
+}
+
+
+def blame(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A refusal points at what caused it.
+
+    Four of the eight refusals across games 001 and 002 are one trader
+    approving goods its own open offer already holds. The page drew a bare ✗
+    for all of them while the cause -- a rope -- was on the square the whole
+    time. This drives the real refusal from game 002's board and checks that
+    the offer lit is the trader's own, and not the one it failed to take.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    where = f"{stem} blame"
+    cases = BLAME.get(stem)
+    if not cases:
+        return []
+    page = browser.new_page(viewport={"width": 1500, "height": 1000})
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(500)
+    bad: list[str] = []
+    for want in cases:
+        # The real board, reduced by the real reducer, drawn by the real scene.
+        # The refusal is found among the frames by its text rather than handed
+        # in, so this cannot pass against a board that stopped containing it.
+        lit = page.evaluate("""async ({want, url}) => {
+          const { reduce } = await import('./reducer.js');
+          const { Scene } = await import('./scene.js');
+          const nap = (ms) => new Promise(r => setTimeout(r, ms));
+          const board = await (await fetch(url)).json();
+          const t = reduce(board.messages, {});
+          const at = t.frames.findIndex(
+            (f) => f.event?.kind === 'refused' && f.event.reason === want.reason);
+          if (at < 0) return { error: 'that refusal is not on this board any more' };
+          document.getElementById('island').replaceChildren();
+          const scene = new Scene(document.getElementById('island'), t, null);
+          scene.draw(t.frames[at].state, t);
+          scene.play(t.frames[at].event);
+          await nap(120);
+          const on = (sel) => [...document.querySelectorAll(sel)]
+            .map(n => n.dataset.pid || n.dataset.good);
+          return { ropes: on('.rope.blamed'), cells: on('.cell.blamed'),
+                   ropesAll: on('.rope'),
+                   badge: document.querySelectorAll('.pop.bad').length };
+        }""", {"want": want, "url": f"replays/{board.name}"})
+        tag = f"{where} {want['good']}"
+        if lit.get("error"):
+            bad.append(f"{tag}: {lit['error']}")
+            continue
+        page.screenshot(path=str(out / f"{stem}-blame-{want['good']}.png"))
+        if want["rope"]:
+            if want["rope"] not in lit["ropesAll"]:
+                bad.append(f"{tag}: {want['rope']} is not open at that refusal "
+                           f"({lit['ropesAll']}), so this case proved nothing")
+            elif want["rope"] not in lit["ropes"]:
+                bad.append(f"{tag}: the refusal did not light {want['rope']}, the "
+                           f"offer holding it (lit {lit['ropes']})")
+        elif lit["ropes"]:
+            # Nothing on the square caused this one -- the goods were spent, not
+            # committed -- and a page that lights a rope anyway is telling the
+            # reader something untrue about a real board.
+            bad.append(f"{tag}: the goods were already spent, not committed, and "
+                       f"the page blamed {lit['ropes']} anyway")
+        if want["innocent"] in lit["ropes"]:
+            bad.append(f"{tag}: lit {want['innocent']}, which is the offer it could "
+                       f"not take rather than the reason it could not")
+        if want["good"] not in lit["cells"]:
+            bad.append(f"{tag}: the {want['good']} slot it came up short in is not "
+                       f"marked (marked {lit['cells']})")
+        if not lit["badge"]:
+            bad.append(f"{tag}: the refusal badge itself stopped being drawn")
+    bad += [f"{where}: {e}" for e in errs]
+    page.close()
     return bad
 
 

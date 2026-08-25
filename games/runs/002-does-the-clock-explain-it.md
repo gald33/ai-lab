@@ -280,14 +280,27 @@ Whatever these traders are short of, it is not seconds. A paired design over
 several seeds could still separate the clock from the draw; it is no longer the
 cheapest question to ask.
 
-**A failure mode that is not new, and that is the point.** Half the refusals
-were a trader approving an exchange whose goods it had already promised to its
-own open proposal; the other two were a trader approving its own proposal and a
-`PRODUCE` written before the episode opened. Episode 2 was lost to exactly this,
-with a settleable exchange sitting open the whole time: **T1 could have approved
-`p4`, holding 0.5368 cloth against the 0.4 it asked, and did not.**
+**A failure mode that is not new, and that is the point.** The four refusals
+have four distinct causes, and **two of them are the same mistake**: a trader
+promising the same stock to two exchanges at once.
 
-**Correction, written after this record was first filled in.** It said here that
+| # | refused | cause |
+|---|---|---|
+| 1 | T2's `PRODUCE` | written before the episode opened — timing |
+| 2 | T1's `APPROVE p3` | its own proposal — addressing |
+| 3 | T2's `APPROVE p3` | held 0.1413 bread, had promised 0.1 of it to its **own still-open `p4`**, and `p3` asked for 0.1 |
+| 4 | T1's `APPROVE p6` | held 0.8868 cloth, put 0.5 into `p7` and wanted 0.4 for `p6` — **0.9 of stock it did not have**. By the time it approved, `p7` had settled, so the cloth was spent rather than committed |
+
+3 and 4 are one error in two states, and the difference is only whether the
+first exchange had settled yet. Episode 2 was lost with a settleable exchange
+sitting open the whole time: **T1 could have approved `p4`, holding 0.5368 cloth
+against the 0.4 it asked, and did not.**
+
+**Corrections, both written after this record was first filled in.**
+
+**Two.** The first is the one that matters; the second is mine twice over.
+
+**One — the brief.** It said here that
 "nothing in the brief says so in those words", and that the fix was therefore a
 paragraph of text rather than a spend. **Both halves were wrong**, and the
 correction matters more than the error. The frozen brief says it outright —
@@ -304,6 +317,20 @@ take. Writing the rule more plainly is the one intervention already known to
 fail. **The rules are the experiment's to set, not this game's to edit** — what
 belongs here is the observation that a trader reading an explicit prohibition
 still walked into it twice in three episodes.
+
+**Two — the count, and the mechanism.** This section twice said "half the
+refusals were a trader approving an exchange whose goods it had already promised
+to its own open proposal". The arithmetic was right by accident and the
+mechanism was wrong: only **one** of the four is a still-open offer holding the
+goods. In the other, `p7` had already **settled** eight seconds earlier, so the
+cloth was gone rather than committed. Both are the same underlying mistake and
+the table above now says so exactly, rather than describing one of them twice.
+
+Found by building the viewer's refusal display against this board and asserting
+that the rope it lights is the one that caused the refusal: `p7` is not open at
+that frame, so the check refused to pass. **A claim in a record that no test
+touches is a claim nobody has checked** — this one survived a merge and a
+correction before anything looked at it.
 
 **What it says about ranked play: still nothing.** Both seats were the lab's
 own agents, both hands were face up, and `agent-switchboard` is still at 0.10.0

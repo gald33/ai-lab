@@ -17,7 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         DWELL, dwellFor, shortName, NAME_MAX } from "../web/scene.js";
+         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -232,4 +232,45 @@ test("an empty or missing name does not throw", () => {
   assert.equal(shortName(""), "");
   assert.equal(shortName(undefined), "");
   assert.equal(shortName(null), "");
+});
+
+// --- why the manager refused -----------------------------------------------
+// Four of the eight refusals across games 001 and 002 are one trader approving
+// goods its own open offer already holds. The reasons below are copied from
+// game 002's board, not invented.
+
+test("the shortfall refusal names the good it was short of", () => {
+  const found = SHORT.exec("you have 0.0413 bread uncommitted, not the 0.1000 it asks for");
+  assert.ok(found);
+  assert.equal(found[2], "bread");
+  assert.equal(found[1], "0.0413");
+  assert.equal(found[3], "0.1000");
+});
+
+test("a refusal with no picture matches neither shape", () => {
+  // Timing. There is nothing on the square to point at, so the badge and its
+  // tooltip are the whole of what the page can honestly say.
+  assert.equal(SHORT.exec("this episode has closed"), null);
+  assert.equal(NOT_YOURS.exec("this episode has closed"), null);
+});
+
+test("approving somebody else's offer names the offer", () => {
+  assert.equal(NOT_YOURS.exec("p3 was not addressed to you")[1], "p3");
+  // Must not fire on a shortfall that happens to mention a proposal id.
+  assert.equal(NOT_YOURS.exec("you have 0.3868 cloth uncommitted, not the 0.4000 it asks for"), null);
+});
+
+test("the culprit is the trader's own open offer holding that good", () => {
+  // Game 002 episode 3, exactly: T1 offered 0.5 cloth in p7, then tried to
+  // approve p6, which asked for 0.4 cloth, holding 0.3868 uncommitted.
+  const proposals = [
+    { pid: "p6", maker: "T2", taker: "T1", give: { iron: 0.25, salt: 0.05 }, status: "open" },
+    { pid: "p7", maker: "T1", taker: "T2", give: { cloth: 0.5 }, status: "open" },
+    { pid: "p2", maker: "T1", taker: "T2", give: { cloth: 0.35 }, status: "settled" },
+  ];
+  assert.deepEqual(culprits(proposals, "T1", "cloth").map((p) => p.pid), ["p7"]);
+  // Not somebody else's offer, not a settled one, not a different good.
+  assert.deepEqual(culprits(proposals, "T2", "cloth"), []);
+  assert.deepEqual(culprits(proposals, "T1", "iron"), []);
+  assert.deepEqual(culprits(undefined, "T1", "cloth"), []);
 });

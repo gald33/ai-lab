@@ -742,6 +742,9 @@ export class Scene {
       this.fray(p, was.get(p.pid));
     }
     this.shown = placed;
+    // Kept so a refusal played straight after this paint can find what was
+    // open at the moment it happened.
+    this.state = state;
     this.root.classList.toggle("closed", state.phase === "closed" || state.phase === "over");
   }
 
@@ -785,7 +788,9 @@ export class Scene {
       // A symbol, and the reason kept as the badge's title rather than printed
       // over the sand. What the manager wrote is in the ticker; the island says
       // *that* it refused, and whose.
-      case "refused": return this.mark(event.trader, "bad", event.reason);
+      case "refused":
+        this.blame(event.trader, event.reason);
+        return this.mark(event.trader, "bad", event.reason);
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
       case "said": return event.attempt ? undefined : this.mark(event.author, "talk");
@@ -795,6 +800,49 @@ export class Scene {
       case "fault": return this.banner_("harness fault");
       default: return undefined;
     }
+  }
+
+  /**
+   * Why the manager refused, pointed at rather than described.
+   *
+   * The refusal text is already in the ticker and on the badge's tooltip. What
+   * it cannot do there is say *which* rope on the square is the problem, and
+   * that is the whole content of the commonest refusal in the game: a trader
+   * approving goods its own open offer has already promised away. So light the
+   * slot it came up short in and the offer that is holding it, together, for
+   * as long as the badge is up.
+   *
+   * Marked, not moved: the highlight stays under `prefers-reduced-motion`
+   * because it carries information. Reduced motion means less movement, not
+   * less to read.
+   */
+  blame(who, reason = "") {
+    const held = [];
+    const short = SHORT.exec(reason);
+    if (short) {
+      const good = short[2];
+      const cell = this.bars[who]?.[good]?.cell;
+      if (cell) held.push(cell);
+      for (const p of culprits(this.state?.proposals, who, good)) {
+        const rope = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
+        if (rope) held.push(rope);
+      }
+    }
+    const theirs = NOT_YOURS.exec(reason);
+    if (theirs) {
+      // Not the trader's own slot at fault -- the offer simply belongs to
+      // somebody else, so the only thing worth pointing at is the rope.
+      const rope = this.ropes.querySelector(`.rope[data-pid="${theirs[1]}"]`);
+      if (rope) held.push(rope);
+    }
+    if (!held.length) return;
+    for (const node of held) node.classList.add("blamed");
+    // Cleared on a timer rather than on the badge's animation, because the
+    // badge is gone in 1ms under reduced motion and the reader still needs it.
+    clearTimeout(this.blameTimer);
+    this.blameTimer = setTimeout(() => {
+      for (const node of held) node.classList.remove("blamed");
+    }, DWELL.refused);
   }
 
   /**
@@ -1050,6 +1098,29 @@ const trim = (q) => String(Math.round(q * 1000) / 1000);
 //: wheel, at `.card-name`'s size. Measured against the drawing rather than
 //: guessed: `CARD_W` less the padding and the wheel, over the width of a
 //: monospace digit at 15px.
+/**
+ * The manager's two refusals that have a picture, and the shapes it says them in.
+ *
+ * Across games 001 and 002, four of the eight refusals are one trader approving
+ * an exchange whose goods its **own open offer** is already holding, and one
+ * more is a trader approving an offer addressed to somebody else. Both drew a
+ * bare ✗: the page said that a refusal happened and never what caused it, while
+ * the cause was sitting on screen the whole time as a rope.
+ *
+ * Matched against the manager's wording rather than re-derived, because the
+ * manager's arithmetic is the authority on why it refused. A reason that does
+ * not match either shape still gets its badge and its tooltip; nothing is
+ * guessed at.
+ */
+export const SHORT = /you have ([\d.]+) (\w+) uncommitted, not the ([\d.]+)/;
+export const NOT_YOURS = /^(p\d+) was not addressed to you/;
+
+/** Which of a trader's own open offers is holding the good it came up short on. */
+export function culprits(proposals, who, good) {
+  return (proposals || []).filter(
+    (p) => p.status === "open" && p.maker === who && (p.give?.[good] || 0) > 0);
+}
+
 export const NAME_MAX = 14;
 
 /** A name the card can hold. The full one goes in a `<title>`. */
