@@ -184,6 +184,54 @@ svg.island { display: block; width: 100%; height: 100%; }
   font-family: ui-monospace, monospace; }
 .qty.none { fill: var(--critical); }
 
+/* The closing card. Over the island, dismissable, and gone the moment you
+   scrub back into the round -- it reports an ending, so it must not be on
+   screen while there is still play to watch. */
+.curtain { position: fixed; inset: 0; display: grid; place-items: center;
+  pointer-events: none; z-index: 6; padding-bottom: 90px; }
+.curtain[hidden] { display: none; }
+.curtain .card { pointer-events: auto; position: relative; min-width: 320px;
+  max-width: min(440px, 92vw); animation: rise .5s cubic-bezier(.22,1,.36,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) { .curtain .card { animation: none; } }
+.curtain .shut { position: absolute; top: 8px; right: 8px; }
+.curtain h2 { margin: 0 0 2px; }
+.verdict { margin: 0 0 12px; font-size: 14px; line-height: 1.45; }
+.verdict b { color: var(--critical); }
+.verdict.good b { color: var(--good); }
+/* One row per trader: what they ended with as a multiple of playing alone.
+   Raw utilities are not comparable between traders -- each is defined only up
+   to its own monotone transformation -- so the multiple is the only honest
+   number to put side by side, and it is what the ledger scores a trader on. */
+.ratio { display: grid; grid-template-columns: 7.5em 1fr 4.2em; gap: 8px;
+  align-items: center; margin: 5px 0; }
+.ratio .seat { font-size: 12px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.ratio .track { position: relative; height: 9px; border-radius: 5px;
+  background: #ffffff14; overflow: hidden; }
+.ratio .track i { display: block; height: 100%; background: var(--util); }
+.ratio.under .track i { background: var(--critical); }
+/* Where playing alone would have put them: 1.00x, the line worth beating. */
+.ratio .track u { position: absolute; top: -3px; width: 2px; height: 15px;
+  background: var(--ink); opacity: .85; }
+.ratio .num { text-align: right; font-family: ui-monospace, monospace;
+  font-size: 12.5px; }
+.ratio.under .num { color: var(--critical); }
+/* The cause of a refusal, held on screen for as long as the badge is. The slot
+   the trader came up short in, and the offer of its own that is holding what it
+   needed -- the commonest refusal in the game, and one the page used to report
+   as a bare ✗ while its cause sat on the square as a rope. */
+.cell.blamed .bar-track { fill: var(--critical); opacity: .22; }
+.cell.blamed .bar { opacity: .6; }
+.cell.blamed .qty { fill: var(--critical); }
+.rope.blamed .rope-line { stroke: var(--critical); stroke-opacity: 1; }
+.rope.blamed .rope-chip { filter: brightness(1.25); }
+.cell.blamed, .rope.blamed { animation: blame .5s ease-out 3; }
+@keyframes blame { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  /* The colour stays; only the pulse goes. It is information, not decoration. */
+  .cell.blamed, .rope.blamed { animation: none; }
+}
 .rope-shadow { fill: none; stroke: #000; stroke-opacity: .35; stroke-width: 5;
   transform: translateY(2px); }
 .rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .85;
@@ -363,6 +411,78 @@ svg.island { display: block; width: 100%; height: 100%; }
 .score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
 .score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+/* --- a narrow window ------------------------------------------------------
+   The chrome is laid out for a desk: a title row across the top with the
+   counters beside it, a 760px transport centred at the bottom, and a legend in
+   the corner clear of both. On a phone all three land on each other -- the
+   title wraps under the counters, the board select runs off the left edge, and
+   the transport's speeds and chapter menu run off the right.
+
+   Nothing is dropped for being small; it is re-stacked. The one thing that does
+   go is the pair of explanatory notes under the legend, which are a caption for
+   a picture there is barely room to draw. */
+@media (max-width: 700px) {
+  /* A picker, four buttons and a title do not fit across 390px, and of those
+     the title is the only thing that is not a control. It goes: the page is
+     named in the browser tab, and the board in the picker. What is left of the
+     top-left column is the round's state, which drops below the control row
+     rather than sharing 44 vertical pixels with it. */
+  .at-top-left { top: 62px; left: 10px; right: auto; gap: 6px; }
+  .at-top-left .titles { display: none; }
+  .at-top-left .hud { flex-wrap: wrap; }
+  /* Under the title rather than beside it, and left-aligned with everything
+     else instead of hanging off a right edge the controls also want. */
+  .counts { top: 96px; left: 10px; right: auto; }
+  .at-top-right { top: 10px; right: 10px; left: auto; gap: 6px; }
+  /* The picker is the widest thing in the row and the only one that can give:
+     the buttons are touch targets and must not shrink. */
+  .at-top-right select { max-width: 34vw; }
+  .app.rail-open .at-top-right, .app.rail-open .counts { right: 10px; }
+
+  #status { top: 168px; left: 10px; right: 10px; max-width: none; }
+
+  /* Full width, and wrapping: the scrub gets a row of its own so it is long
+     enough to drag, and the buttons fall underneath rather than off the side. */
+  .at-bottom { left: 10px; right: 10px; transform: none; width: auto;
+    flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 8px; }
+  .at-bottom #scrub { order: -1; flex: 1 0 100%; min-width: 0; }
+  .at-bottom select { max-width: 40vw; }
+
+  /* Above the transport, not behind it, and only the goods -- the two notes
+     are the first thing to go when there is no room for both a caption and
+     the thing it captions. */
+  .legend { left: 10px; right: 10px; bottom: auto; top: 132px; max-width: none;
+    min-width: 0; gap: 6px 10px; }
+  .legend span.sub { display: none; }
+
+  /* A drawer is the whole screen at this width; half of one is neither. */
+  .drawer.side { width: 100%; border-width: 0; }
+  .drawer.foot { height: min(52vh, 420px); }
+
+  .curtain { padding-bottom: 130px; padding-left: 10px; padding-right: 10px; }
+}
+
+/* A fingertip is about 9mm and these are the only controls on the page. Keyed
+   to the pointer rather than the width, because a tablet is neither narrow nor
+   short and is still touched. Found by measuring: the scoreboard tab was 32px. */
+@media (pointer: coarse) {
+  .chrome button, .chrome select, .chrome .tab, .curtain .shut {
+    min-height: 40px; display: inline-flex; align-items: center; }
+}
+
+/* Landscape on a phone: almost no height, so the bottom bar and the top row
+   are competing for the same few hundred pixels. Everything gets tighter
+   rather than re-stacked -- the island is wide here and wants the middle. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .at-top-left { top: 8px; }
+  .at-top-left .sub { display: none; }
+  .at-top-right { top: 8px; }
+  .counts { top: 52px; right: 16px; left: auto; }
+  .at-bottom { bottom: 8px; padding: 5px 10px; }
+  .legend { display: none; }
+  .drawer.foot { height: 70vh; }
+}
+
 </style>
 
 <div class="app">
@@ -375,7 +495,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
        the page and the controls are on top of it. -->
   <div class="chrome at-top-left">
     <div class="titles">
-      <h1>🏝 The island</h1>
+      <h1>🏝 <span class="name">The island</span></h1>
       <span class="sub" id="where">—</span>
     </div>
     <div class="hud">
@@ -439,6 +559,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <h2>The board</h2>
     <div class="ticker" id="ticker"></div>
   </section>
+
+  <!-- The round had no ending. It played three episodes, the sun went down and
+       it stopped; what any of it came to was behind a drawer. This is the
+       ending: it says what each trader ended up with against never having
+       traded at all, which is the one comparison the island is scored on. -->
+  <div class="curtain" id="closing" hidden>
+    <div class="card" role="status">
+      <button class="shut" id="closing-shut" title="Watch the island">×</button>
+      <h2 id="closing-head">round over</h2>
+      <p class="verdict" id="closing-verdict"></p>
+      <div id="closing-traders"></div>
+      <p class="note" id="closing-traffic"></p>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -448,6 +582,15 @@ import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer }
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
+/**
+ * Which way up the island should be drawn.
+ *
+ * The scene's viewBox is wide, so on a phone held upright it fitted to width
+ * and left the trader cards -- the only part of the picture carrying anything
+ * -- at about a third of a readable size. Taller than it is wide means the
+ * huts stack instead of standing in a row.
+ */
+const isPortrait = () => innerHeight > innerWidth;
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 
@@ -455,6 +598,9 @@ const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
 
 let timeline = null, scene = null, player = null, live = null, reveal = null;
+//: Shut by hand, and only until the round is left behind: scrubbing back
+//: into play clears it, so the card returns when the ending does.
+let dismissed = false;
 let mode = "replay";
 
 // --- chrome ----------------------------------------------------------------
@@ -546,10 +692,91 @@ function hud(state, quiet) {
          from them.</div>` : "");
 }
 
+/**
+ * What the round came to, once there is no more of it.
+ *
+ * Every number here is derived from what the page already holds -- the
+ * trajectory in the sidecar and the autarky utilities beside it -- and each
+ * one reproduces the ledger's own figure exactly. Nothing is invented and
+ * nothing is asked of the manager.
+ *
+ * `capture` and `eff_round` are deliberately **not** here. Both are measured
+ * against the frontier of the island, the page has no frontier and cannot
+ * derive one from a trajectory, and a results screen guessing at the headline
+ * number is worse than one that leaves it out. The scoreboard has them.
+ *
+ * The comparison that IS available is the one a trader is scored on: what they
+ * ended with as a multiple of what they would have had never trading. Autarky
+ * is a per-episode utility and utility here is homogeneous of degree 1, so the
+ * total worth beating is `k x autarky_i`.
+ */
+function closing(state) {
+  const box = $("closing");
+  const over = state.phase === "over";
+  if (!over) dismissed = false;
+  if (!over || dismissed) { box.hidden = true; return; }
+
+  const traj = reveal?.round?.trajectory;
+  const alone = reveal?.autarky_utility;
+  const k = traj?.length || 0;
+  const rows = (traj && alone && k)
+    ? timeline.traders.map((name, i) => {
+      const total = accumulate(traj, i);
+      const floor = k * (alone[name] ?? 0);
+      return { name, total, floor, ratio: floor > 0 ? total / floor : null,
+               zeros: traj.filter((r) => (r[i] || 0) <= 1e-12).length };
+    })
+    : [];
+
+  const scored = rows.filter((r) => r.ratio !== null);
+  const beat = scored.filter((r) => r.ratio >= 1);
+  $("closing-verdict").className = `verdict${beat.length === scored.length ? " good" : ""}`;
+  $("closing-verdict").innerHTML = !scored.length
+    ? `This board has no sidecar, so the page knows what was traded and not what
+       any of it was worth. The counts below are everything it can say.`
+    : beat.length === 0
+      ? `<b>Nobody beat playing alone.</b> Every trader here ended the round worse
+         off than if they had never traded at all.`
+      : beat.length === scored.length
+        ? `<b>Everybody beat playing alone.</b> Trading left every trader better
+           off than working the island on their own.`
+        : `<b>${beat.map((r) => r.name).join(", ")}</b> beat playing alone;
+           ${scored.filter((r) => r.ratio < 1).map((r) => r.name).join(", ")} did not.`;
+
+  // Scaled so 1.00x -- playing alone -- always sits at the same place on every
+  // row, whatever the best ratio is. A bar that rescaled to its own winner
+  // would move the only line that means anything.
+  const span = Math.max(1.25, ...scored.map((r) => r.ratio));
+  $("closing-traders").innerHTML = rows.map((r) => {
+      const who = reveal?.players?.[r.name] ? `${r.name} · ${reveal.players[r.name]}` : r.name;
+    if (r.ratio === null) return `<div class="ratio"><span class="mono">${who}</span></div>`;
+    return `<div class="ratio${r.ratio < 1 ? " under" : ""}">
+      <span class="mono seat" title="${who}">${who}</span>
+      <span class="track"><i style="width:${(100 * Math.min(1, r.ratio / span)).toFixed(1)}%"></i>
+        <u style="left:${(100 / span).toFixed(1)}%" title="playing alone"></u></span>
+      <span class="num">${r.ratio.toFixed(2)}\u00d7</span></div>`;
+  }).join("");
+
+  const zeros = rows.reduce((n, r) => n + r.zeros, 0);
+  const c = state.counters;
+  $("closing-traffic").innerHTML =
+    `${k || state.episodes || 0} episodes · ${c.settled} settled ·
+     ${c.refused} refused · ${c.lapsed} lapsed` +
+    (zeros ? ` · <b>${zeros}</b> episode(s) ended holding none of some good,
+       which is zero utility however much of the rest they had.` : "") +
+    `<br>The full reveal — tastes, capacities, efficiency per episode — is under
+     <b>▤</b>, and the scored board is under <b>🏆</b>.`;
+  box.hidden = false;
+}
+
+let lastPaint = null;
+
 function paint({ state, event, animate, quiet, index }) {
+  lastPaint = { state, event, animate: false, quiet, index };
   scene.draw(state, timeline);
   if (animate && event) scene.play(event);
   hud(state, quiet);
+  closing(state);
   ticker(timeline.frames, index);
   $("scrub").value = String(index);
   $("pos").textContent = `${index + 1} / ${timeline.frames.length}`;
@@ -721,7 +948,7 @@ function mount(rows, { manager } = {}) {
   timeline = reduce(rows, manager ? { manager } : {});
   // The scene is built knowing whether it has a hidden half, because a card
   // with a score row is a different card, not the same one with a blank in it.
-  scene = new Scene($("island"), timeline, reveal);
+  scene = new Scene($("island"), timeline, reveal, isPortrait());
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -845,8 +1072,31 @@ function drawer(button, panel, cls) {
 const rail = drawer("t-rail", "rail", "rail-open");
 const log = drawer("t-log", "log", "log-open");
 
+// Shutting the ending is the same gesture as shutting a drawer, and puts the
+// island back without moving the playhead.
+function shutClosing() {
+  dismissed = true;
+  $("closing").hidden = true;
+}
+$("closing-shut").addEventListener("click", shutClosing);
+
+// Rotating the phone rebuilds the island the other way up. Debounced, and a
+// no-op unless the boundary was actually crossed: mobile browsers fire `resize`
+// on every scroll and on every address-bar nudge, and rebuilding the scene on
+// each one would throw away every animation in flight.
+let reflowing = null;
+addEventListener("resize", () => {
+  clearTimeout(reflowing);
+  reflowing = setTimeout(() => {
+    // Repainted from the last frame rather than through the player, because
+    // live has no player at all and a rebuilt island would otherwise stay empty
+    // until the next line arrived on the board.
+    if (scene?.reflow(isPortrait()) && lastPaint) paint({ ...lastPaint, animate: false });
+  }, 180);
+});
+
 addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { rail.set(false); log.set(false); }
+  if (e.key === "Escape") { rail.set(false); log.set(false); shutClosing(); }
   // Space is what a transport is played with everywhere else, but not while
   // somebody is using a control that has its own idea about it.
   if (e.key === " " && !/^(BUTTON|SELECT|INPUT)$/.test(document.activeElement?.tagName)) {

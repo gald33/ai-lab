@@ -401,6 +401,10 @@ def run(out: Path, headed: bool = False) -> int:
             # got past this harness and were found by eye instead.
             for board in boards:
                 problems += replay(browser, base, board, out)
+            for board in boards:
+                problems += blame(browser, base, board, out)
+            problems += bare(browser, base, boards[0], out)
+            problems += mobile(browser, base, boards[0], out)
             problems += ring(browser, base, out)
             browser.close()
     finally:
@@ -436,10 +440,307 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
                 round(total * at))
             page.wait_for_timeout(900)
             bad += check(page, traders, goods, f"{stem} @{name}{' still' if motion else ''}")
+            if name == "end":
+                bad += ending(page, reveal, f"{stem}{' still' if motion else ''}")
+
             suffix = f"-{label}" if label else ""
             page.screenshot(path=str(out / f"{stem}-{name}{suffix}.png"))
         bad += [f"{stem}{' still' if motion else ''}: {e}" for e in errs]
         page.close()
+    return bad
+
+
+#: The two refusals in game 002 that are the same mistake -- a trader promising
+#: the same stock to two exchanges at once -- caught in the two different states
+#: that mistake can be in when the manager refuses.
+#:
+#: Episode 2: T2 held 0.1413 bread, offered 0.1 of it in `p4`, then tried to
+#: approve `p3`, which asks for 0.1. `p4` is still **open**, so the rope holding
+#: the bread is on the square and is the thing to point at.
+#:
+#: Episode 3: T1 held 0.8868 cloth, offered 0.5 in `p7` and wanted 0.4 for `p6`
+#: -- 0.9 of stock it did not have. By the time it approved `p6`, `p7` had
+#: **settled**: the cloth is gone rather than committed, there is no rope to
+#: blame, and the page must mark the slot and stop there rather than invent a
+#: culprit. That distinction is why this case is here at all.
+BLAME = {
+    "island-game-002b-g1": [
+        {"reason": "you have 0.0413 bread uncommitted, not the 0.1000 it asks for",
+         "trader": "T2", "good": "bread", "rope": "p4", "innocent": "p3"},
+        {"reason": "you have 0.3868 cloth uncommitted, not the 0.4000 it asks for",
+         "trader": "T1", "good": "cloth", "rope": None, "innocent": "p6"},
+    ],
+}
+
+
+def blame(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A refusal points at what caused it.
+
+    Four of the eight refusals across games 001 and 002 are one trader
+    approving goods its own open offer already holds. The page drew a bare ✗
+    for all of them while the cause -- a rope -- was on the square the whole
+    time. This drives the real refusal from game 002's board and checks that
+    the offer lit is the trader's own, and not the one it failed to take.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    where = f"{stem} blame"
+    cases = BLAME.get(stem)
+    if not cases:
+        return []
+    page = browser.new_page(viewport={"width": 1500, "height": 1000})
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(500)
+    bad: list[str] = []
+    for want in cases:
+        # The real board, reduced by the real reducer, drawn by the real scene.
+        # The refusal is found among the frames by its text rather than handed
+        # in, so this cannot pass against a board that stopped containing it.
+        lit = page.evaluate("""async ({want, url}) => {
+          const { reduce } = await import('./reducer.js');
+          const { Scene } = await import('./scene.js');
+          const nap = (ms) => new Promise(r => setTimeout(r, ms));
+          const board = await (await fetch(url)).json();
+          const t = reduce(board.messages, {});
+          const at = t.frames.findIndex(
+            (f) => f.event?.kind === 'refused' && f.event.reason === want.reason);
+          if (at < 0) return { error: 'that refusal is not on this board any more' };
+          document.getElementById('island').replaceChildren();
+          const scene = new Scene(document.getElementById('island'), t, null);
+          scene.draw(t.frames[at].state, t);
+          scene.play(t.frames[at].event);
+          await nap(120);
+          const on = (sel) => [...document.querySelectorAll(sel)]
+            .map(n => n.dataset.pid || n.dataset.good);
+          return { ropes: on('.rope.blamed'), cells: on('.cell.blamed'),
+                   ropesAll: on('.rope'),
+                   badge: document.querySelectorAll('.pop.bad').length };
+        }""", {"want": want, "url": f"replays/{board.name}"})
+        tag = f"{where} {want['good']}"
+        if lit.get("error"):
+            bad.append(f"{tag}: {lit['error']}")
+            continue
+        page.screenshot(path=str(out / f"{stem}-blame-{want['good']}.png"))
+        if want["rope"]:
+            if want["rope"] not in lit["ropesAll"]:
+                bad.append(f"{tag}: {want['rope']} is not open at that refusal "
+                           f"({lit['ropesAll']}), so this case proved nothing")
+            elif want["rope"] not in lit["ropes"]:
+                bad.append(f"{tag}: the refusal did not light {want['rope']}, the "
+                           f"offer holding it (lit {lit['ropes']})")
+        elif lit["ropes"]:
+            # Nothing on the square caused this one -- the goods were spent, not
+            # committed -- and a page that lights a rope anyway is telling the
+            # reader something untrue about a real board.
+            bad.append(f"{tag}: the goods were already spent, not committed, and "
+                       f"the page blamed {lit['ropes']} anyway")
+        if want["innocent"] in lit["ropes"]:
+            bad.append(f"{tag}: lit {want['innocent']}, which is the offer it could "
+                       f"not take rather than the reason it could not")
+        if want["good"] not in lit["cells"]:
+            bad.append(f"{tag}: the {want['good']} slot it came up short in is not "
+                       f"marked (marked {lit['cells']})")
+        if not lit["badge"]:
+            bad.append(f"{tag}: the refusal badge itself stopped being drawn")
+    bad += [f"{where}: {e}" for e in errs]
+    page.close()
+    return bad
+
+
+#: Phone viewports the page has to work at: a common portrait, a small one,
+#: and the same phone turned on its side.
+PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390)]
+
+#: The chrome that floats over the island. Any two of these overlapping is the
+#: bug this exists to hold shut -- it happened twice while the breakpoints were
+#: being written, once because a media block was authored above the rules it
+#: meant to override and lost on source order, which no amount of reading the
+#: CSS made obvious.
+CHROME = ["#transport", ".counts", ".legend", ".at-top-left", ".at-top-right"]
+
+
+def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
+    """That the page works on a phone, which is where a shared link gets opened.
+
+    Three things, none of which a desktop screenshot can show:
+
+    * nothing scrolls sideways;
+    * no two pieces of floating chrome sit on top of each other;
+    * in portrait the island is not a thin band. The scene's viewBox is wide,
+      so it used to fit to width and leave the trader cards -- the only part
+      carrying information -- at about a third of a readable size, with dead
+      sky above and dead sea below.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    for tag, w, h in PHONES:
+        page = browser.new_page(viewport={"width": w, "height": h}, is_mobile=True,
+                                has_touch=True, reduced_motion="reduce")
+        errs: list[str] = []
+        page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+                if m.type == "error" else None)
+        page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(1400)
+        seen = page.evaluate("""(chrome) => {
+          const box = (s) => { const n = document.querySelector(s);
+            if (!n || n.hidden) return null;
+            const r = n.getBoundingClientRect();
+            return r.width && r.height ? { s, x: r.x, y: r.y, w: r.width, h: r.height } : null; };
+          const land = document.querySelector('.land');
+          const lb = land && land.getBoundingClientRect();
+          return {
+            scrollW: document.documentElement.scrollWidth, winW: innerWidth,
+            winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
+            land: lb ? { w: lb.width, h: lb.height } : null,
+            taps: [...document.querySelectorAll('button, select, .tab')]
+              .filter(n => n.offsetParent !== null)
+              .map(n => { const r = n.getBoundingClientRect();
+                          return [n.id || n.textContent.trim().slice(0, 8), r.height]; })
+              .filter(([, hh]) => hh < 34),
+          };
+        }""", CHROME)
+        page.screenshot(path=str(out / f"{stem}-{tag}.png"), full_page=False)
+        where = f"{stem} @{tag} {w}x{h}"
+
+        if seen["scrollW"] > seen["winW"] + 1:
+            bad.append(f"{where}: the page scrolls sideways "
+                       f"({seen['scrollW']}px of content in {seen['winW']}px)")
+        boxes = seen["boxes"]
+        for i, a in enumerate(boxes):
+            for b in boxes[i + 1:]:
+                if (a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"]
+                        and a["y"] < b["y"] + b["h"] and a["y"] + a["h"] > b["y"]):
+                    bad.append(f"{where}: {a['s']} and {b['s']} overlap")
+        if seen["land"]:
+            # Fitted to width in a tall window, the island covered about a
+            # sixth of the screen. Half is not a design target so much as the
+            # line below which the cards stop being readable at all.
+            share = (seen["land"]["w"] * seen["land"]["h"]) / (seen["winW"] * seen["winH"])
+            if share < 0.30:
+                bad.append(f"{where}: the island covers {share:.0%} of the screen; "
+                           f"the picture is the page and this is a band in it")
+        for name, height in seen["taps"]:
+            bad.append(f"{where}: {name!r} is {height:.0f}px tall, under a fingertip")
+        if tag == "portrait":
+            # Turning the phone rebuilds the island the other way up. Untested,
+            # this is the kind of thing that silently keeps the tall viewBox in
+            # landscape and looks fine in every screenshot taken upright.
+            before = page.get_attribute("#island", "viewBox")
+            page.set_viewport_size({"width": h, "height": w})
+            page.wait_for_timeout(700)
+            after = page.get_attribute("#island", "viewBox")
+            tall = lambda v: (lambda a: a[2] < a[3])([float(x) for x in v.split()])
+            if before == after:
+                bad.append(f"{where}: rotating the phone left the viewBox at "
+                           f"{after!r} -- the island did not turn with it")
+            elif not (tall(before) and not tall(after)):
+                bad.append(f"{where}: rotated from {before!r} to {after!r}, which is "
+                           f"not tall-then-wide")
+            elif not page.query_selector(".hut .cell"):
+                bad.append(f"{where}: the island came back from a rotation empty")
+        bad += [f"{where}: {e}" for e in errs]
+        page.close()
+    return bad
+
+
+def bare(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A board opened with no reveal sidecar still reaches its ending.
+
+    Live, there is no sidecar at all -- tastes are private and the seed is not
+    posted -- so every utility on the closing card is unavailable. The card has
+    to say that rather than throw, print `NaN`, or claim nobody beat autarky on
+    the strength of numbers it does not have.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1500, "height": 1000},
+                            reduced_motion="reduce")
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/?board=replays/board-{stem}.json")   # no &reveal=
+    page.wait_for_selector(".hut", timeout=10_000)
+    total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
+    page.evaluate("i => { const s = document.getElementById('scrub');"
+                  " s.value = String(i); s.dispatchEvent(new Event('input')); }", total)
+    page.wait_for_timeout(1200)
+    shown = page.evaluate("""() => {
+      const box = document.getElementById('closing');
+      if (!box || box.hidden) return null;
+      return { verdict: box.querySelector('.verdict').textContent,
+               rows: box.querySelectorAll('.ratio').length,
+               body: box.textContent };
+    }""")
+    page.screenshot(path=str(out / f"{stem}-end-no-sidecar.png"))
+    bad = [f"{stem} bare: {e}" for e in errs]
+    if shown is None:
+        bad.append(f"{stem} bare: no ending shown on a board without a sidecar")
+    else:
+        if "sidecar" not in shown["verdict"]:
+            bad.append(f"{stem} bare: the card does not say why it has no numbers: "
+                       f"{shown['verdict'].strip()!r}")
+        if shown["rows"]:
+            bad.append(f"{stem} bare: {shown['rows']} scored row(s) with no sidecar "
+                       f"to score from")
+        for junk in ("NaN", "undefined", "Infinity"):
+            if junk in shown["body"]:
+                bad.append(f"{stem} bare: the card prints {junk}")
+    page.close()
+    return bad
+
+
+def ending(page, reveal, where: str) -> list[str]:
+    """The round has an ending, and it says the right thing.
+
+    A replay used to stop rather than finish: three episodes played, the sun
+    went down, and what any of it came to sat behind a drawer. The numbers on
+    the card are the ledger's own -- what each trader ended with as a multiple
+    of never having traded -- so they are checkable here against the sidecar
+    rather than taken on the page's word.
+    """
+    bad: list[str] = []
+    shown = page.evaluate("""() => {
+      const box = document.getElementById('closing');
+      if (!box || box.hidden) return null;
+      return { verdict: box.querySelector('.verdict').textContent.trim(),
+               traffic: box.querySelector('#closing-traffic').textContent.trim(),
+               rows: [...box.querySelectorAll('.ratio')].map(r => ({
+                 text: (r.querySelector('.num') || {}).textContent || '',
+                 under: r.classList.contains('under') })) };
+    }""")
+    if shown is None:
+        return [f"{where}: the round ended and nothing said what it came to"]
+
+    traj = reveal.get("round", {}).get("trajectory") or []
+    alone = reveal.get("autarky_utility") or {}
+    want = []
+    for i, name in enumerate(sorted(alone)):
+        total = sum(row[i] for row in traj)
+        floor = len(traj) * alone[name]
+        want.append(total / floor if floor else None)
+    if len(shown["rows"]) != len(want):
+        bad.append(f"{where}: {len(shown['rows'])} traders on the closing card, "
+                   f"expected {len(want)}")
+    for row, ratio in zip(shown["rows"], want):
+        if ratio is None:
+            continue
+        # The number the ledger scores a trader on, to the digits shown.
+        if f"{ratio:.2f}" not in row["text"]:
+            bad.append(f"{where}: closing card shows {row['text']!r}, "
+                       f"expected {ratio:.2f}x")
+        # Below 1.00x is worse than never trading, and must read as such.
+        if (ratio < 1) != row["under"]:
+            bad.append(f"{where}: {ratio:.2f}x is marked "
+                       f"{'under' if row['under'] else 'fine'}, which is backwards")
+    if want and all(r is not None and r < 1 for r in want) \
+            and "beat playing alone" not in shown["verdict"]:
+        bad.append(f"{where}: every trader finished below autarky and the card "
+                   f"does not say so: {shown['verdict']!r}")
     return bad
 
 

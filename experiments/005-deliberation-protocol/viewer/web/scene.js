@@ -136,7 +136,36 @@ export function closedPath(pts, tension = 0.5) {
  * the canvas and a seat at the top puts it over the fire. It had simply never
  * been rendered -- every replay is two traders.
  */
-export function layout(n) {
+/**
+ * Where everything stands, for however many traders and whichever way up.
+ *
+ * A phone in portrait is about 0.46 wide-to-tall and the island's viewBox was
+ * 1.79, so the whole scene fitted to width and sat as a thin band with dead sky
+ * above and dead sea below -- the trader cards, which are the only part
+ * carrying information, rendered at about a third of a readable size.
+ *
+ * A row of huts is what will not fit. So in portrait they go in a **column**
+ * instead, and the viewBox goes tall with them; nothing else about the scene
+ * changes, because everything is positioned from `seats`, `ly`, `rx`, `ry` and
+ * `fire`. `fits()` is what holds the geometry honest either way.
+ */
+export function layout(n, portrait = false) {
+  if (portrait) {
+    // One seat above another, far enough apart for a hut above each card. The
+    // pitch is the seat's own extent -- hut, card and a gap -- rather than a
+    // number chosen to look right at one count of traders.
+    const pitch = 84 + CARD_TOP + CARD_H_SCORED + 54;
+    const top = 130;
+    const h = Math.max(940, top + pitch * n + 90);
+    const w = 520;
+    const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: top + i * pitch }));
+    return {
+      w, h, cx: w / 2, ly: h / 2, rx: w / 2 - 34, ry: h / 2 - 40, seats,
+      // Beside the column rather than in it: a fire between two stacked huts
+      // would sit underneath a card.
+      fire: { x: w / 2, y: h - 62 },
+    };
+  }
   if (n <= 2) {
     const g = { w: BASE_W, h: BASE_H, cx: BASE_W / 2, ly: 298, rx: 452, ry: 188 };
     const seats = n === 2
@@ -217,7 +246,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 }
 
 export class Scene {
-  constructor(root, timeline, reveal = null) {
+  constructor(root, timeline, reveal = null, portrait = false) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -226,12 +255,37 @@ export class Scene {
     // and there is deliberately no path that fills it in live.
     this.reveal = reveal;
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
-    this.geo = layout(this.traders.length);
+    this.portrait = portrait;
+    this.geo = layout(this.traders.length, portrait);
     this.utilityTop = this.utilityScale();
     this.seats = {};
     this.bars = {};
     this.labels = {};
     this.build();
+  }
+
+  /**
+   * Turn the island the other way up, when the window did.
+   *
+   * `build()` already replaces everything it drew, so this is a rebuild rather
+   * than a second code path -- there is one way the scene is constructed, and a
+   * rotated phone goes through it again. Returns whether anything changed, so
+   * the page can skip a repaint on a resize that did not cross the boundary
+   * (every scroll on mobile Safari fires one).
+   */
+  reflow(portrait) {
+    if (portrait === this.portrait) return false;
+    this.portrait = portrait;
+    this.geo = layout(this.traders.length, portrait);
+    // Rebuilt from the new geometry rather than carried over: every one of
+    // these is keyed to nodes `build()` is about to throw away.
+    this.seats = {};
+    this.bars = {};
+    this.labels = {};
+    this.top = undefined;
+    this.shown = new Map();
+    this.build();
+    return true;
   }
 
   build() {
@@ -667,6 +721,11 @@ export class Scene {
     // until the next episode opens.
     const closed = state.phase === "closed" || state.phase === "over";
     const last = state.episodes_closed[state.episodes_closed.length - 1];
+    // Before the round starts nobody has produced, so every slot is empty and
+    // none of it means anything yet. The zero mark is a finding about play, and
+    // there has not been any -- eight red troughs on the opening frame say the
+    // island is on fire when it has not been lit.
+    const started = state.phase !== "before" && state.phase !== "ack";
     for (const name of this.traders) {
       const promised = (good) => timeline.committed(state, name, good);
       const shelf = closed && last ? last.holdings[name] : state.stocks[name];
@@ -690,8 +749,9 @@ export class Scene {
         // the same "0.00" as an actual zero.
         b.qty.textContent = qty <= 1e-9 ? "0.00"
           : qty < 0.005 ? "<0.01" : qty.toFixed(2);
-        b.qty.classList.toggle("none", qty <= 1e-9);
-        b.cell.classList.toggle("empty", qty <= 1e-9);
+        const none = started && qty <= 1e-9;
+        b.qty.classList.toggle("none", none);
+        b.cell.classList.toggle("empty", none);
       }
       const spent = state.labour[name];
       const wheel = this.labels[name];
@@ -742,6 +802,9 @@ export class Scene {
       this.fray(p, was.get(p.pid));
     }
     this.shown = placed;
+    // Kept so a refusal played straight after this paint can find what was
+    // open at the moment it happened.
+    this.state = state;
     this.root.classList.toggle("closed", state.phase === "closed" || state.phase === "over");
   }
 
@@ -785,7 +848,9 @@ export class Scene {
       // A symbol, and the reason kept as the badge's title rather than printed
       // over the sand. What the manager wrote is in the ticker; the island says
       // *that* it refused, and whose.
-      case "refused": return this.mark(event.trader, "bad", event.reason);
+      case "refused":
+        this.blame(event.trader, event.reason);
+        return this.mark(event.trader, "bad", event.reason);
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
       case "said": return event.attempt ? undefined : this.mark(event.author, "talk");
@@ -795,6 +860,49 @@ export class Scene {
       case "fault": return this.banner_("harness fault");
       default: return undefined;
     }
+  }
+
+  /**
+   * Why the manager refused, pointed at rather than described.
+   *
+   * The refusal text is already in the ticker and on the badge's tooltip. What
+   * it cannot do there is say *which* rope on the square is the problem, and
+   * that is the whole content of the commonest refusal in the game: a trader
+   * approving goods its own open offer has already promised away. So light the
+   * slot it came up short in and the offer that is holding it, together, for
+   * as long as the badge is up.
+   *
+   * Marked, not moved: the highlight stays under `prefers-reduced-motion`
+   * because it carries information. Reduced motion means less movement, not
+   * less to read.
+   */
+  blame(who, reason = "") {
+    const held = [];
+    const short = SHORT.exec(reason);
+    if (short) {
+      const good = short[2];
+      const cell = this.bars[who]?.[good]?.cell;
+      if (cell) held.push(cell);
+      for (const p of culprits(this.state?.proposals, who, good)) {
+        const rope = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
+        if (rope) held.push(rope);
+      }
+    }
+    const theirs = NOT_YOURS.exec(reason);
+    if (theirs) {
+      // Not the trader's own slot at fault -- the offer simply belongs to
+      // somebody else, so the only thing worth pointing at is the rope.
+      const rope = this.ropes.querySelector(`.rope[data-pid="${theirs[1]}"]`);
+      if (rope) held.push(rope);
+    }
+    if (!held.length) return;
+    for (const node of held) node.classList.add("blamed");
+    // Cleared on a timer rather than on the badge's animation, because the
+    // badge is gone in 1ms under reduced motion and the reader still needs it.
+    clearTimeout(this.blameTimer);
+    this.blameTimer = setTimeout(() => {
+      for (const node of held) node.classList.remove("blamed");
+    }, DWELL.refused);
   }
 
   /**
@@ -1050,6 +1158,29 @@ const trim = (q) => String(Math.round(q * 1000) / 1000);
 //: wheel, at `.card-name`'s size. Measured against the drawing rather than
 //: guessed: `CARD_W` less the padding and the wheel, over the width of a
 //: monospace digit at 15px.
+/**
+ * The manager's two refusals that have a picture, and the shapes it says them in.
+ *
+ * Across games 001 and 002, four of the eight refusals are one trader approving
+ * an exchange whose goods its **own open offer** is already holding, and one
+ * more is a trader approving an offer addressed to somebody else. Both drew a
+ * bare ✗: the page said that a refusal happened and never what caused it, while
+ * the cause was sitting on screen the whole time as a rope.
+ *
+ * Matched against the manager's wording rather than re-derived, because the
+ * manager's arithmetic is the authority on why it refused. A reason that does
+ * not match either shape still gets its badge and its tooltip; nothing is
+ * guessed at.
+ */
+export const SHORT = /you have ([\d.]+) (\w+) uncommitted, not the ([\d.]+)/;
+export const NOT_YOURS = /^(p\d+) was not addressed to you/;
+
+/** Which of a trader's own open offers is holding the good it came up short on. */
+export function culprits(proposals, who, good) {
+  return (proposals || []).filter(
+    (p) => p.status === "open" && p.maker === who && (p.give?.[good] || 0) > 0);
+}
+
 export const NAME_MAX = 14;
 
 /** A name the card can hold. The full one goes in a `<title>`. */

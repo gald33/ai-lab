@@ -89,6 +89,32 @@ never learns which tree a board came from. Transport, scrubbing, episode chapter
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
 
+## On a phone
+
+The page is a link you hand somebody, and most people open a link on a phone.
+
+The island's viewBox is wide, so upright it used to fit to width and sit as a
+thin band — **16% of the screen** — with dead sky above and dead sea below,
+and the trader cards at about a third of a readable size. In portrait the huts
+**stack in a column** and the viewBox goes tall with them; nothing else about
+the scene changes, because everything is positioned from `seats`, `ly`, `rx`,
+`ry` and `fire`, and `fits()` holds the geometry honest either way. Rotating
+rebuilds it through the same `build()` — one construction path, run again.
+
+The floating chrome re-stacks rather than being dropped: the title gives way to
+the picker and the tab, the counters and the legend take rows of their own, and
+the transport gives the scrub a full-width row so it is long enough to drag.
+Controls get a 40px minimum under `pointer: coarse` — a tablet is neither
+narrow nor short and is still touched.
+
+`tests/render.py` drives three viewports and checks what a screenshot cannot:
+that nothing scrolls sideways, that **no two pieces of chrome overlap**, that
+the island covers at least 30% of the screen, that every control is a fingertip
+tall, and that rotating actually turns the island. The overlap check exists
+because that bug happened twice while these breakpoints were written — once
+because a media block was authored above the rules it meant to override and
+lost on source order, which no amount of reading the CSS made obvious.
+
 ## Utilities and efficiency
 
 Both need tastes, so both are replay-only, and the live page says so rather than
@@ -98,6 +124,18 @@ On the island, each card carries the trader's utility — rising as they produce
 and trade, held at the episode's closing value through the bell rather than
 dropping to zero with the emptied shelf, because what the episode was worth is
 what it closed holding.
+
+When the round is over, a **closing card** says what it came to, over the
+island rather than behind a drawer: whether anybody beat playing alone, and
+each trader's total as a multiple of what they would have had never trading —
+the number the ledger scores a trader on. Its figures are derived from the
+sidecar's trajectory and autarky utilities, and reproduce the ledger's own
+exactly; a board with no sidecar gets the card saying so instead of numbers.
+
+**`capture` and `eff_round` are deliberately not on it.** Both are measured
+against the island's frontier, the page has no frontier and cannot derive one
+from a trajectory, and a results screen guessing at the headline number is
+worse than one that leaves it out. They are in the rail and on the scoreboard.
 
 In the rail (the ▤ drawer, shut until asked for):
 
