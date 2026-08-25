@@ -28,6 +28,47 @@ const SLOT = ["--good-1", "--good-2", "--good-3", "--good-4",
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/**
+ * How long each event needs on screen, in ms.
+ *
+ * It lives here because it mirrors the durations in `play()` below, and a copy
+ * of it anywhere else would drift the first time one of those changed.
+ * `feeds.js` reads it to decide how long to hold a frame: an animation that
+ * takes a second is worth nothing if the next six events start during it, and
+ * at the default 4x the player was stepping every 35ms.
+ *
+ * A kind that is not here is a frame with nothing to watch, and is not held.
+ */
+export const DWELL = {
+  settled: 2100,   // parcels cross, stagger, and land
+  produced: 1800,  // a sheaf per good, lifted onto the shelf
+  refused: 1500,   // one badge, rising
+  said: 1300,      // one bubble, rising
+  bell: 3600,      // the sun goes down. Not a thing to hurry
+  open: 2400,      // and comes back up
+  over: 2400,
+  fault: 2400,
+};
+
+/**
+ * The floor for one event, honouring a viewer who asked for less motion.
+ *
+ * Nothing moves for them, so holding the frame would be making them wait for a
+ * still picture -- `play()` collapses every animation to 1ms for the same
+ * reason.
+ *
+ * Takes the event rather than its kind because one kind draws two things. A
+ * `said` that is an **attempt** -- `PROPOSE to=T1 give=...` -- gets no bubble:
+ * what it attempted shows as the receipt or the refusal that follows, and
+ * drawing both would say it twice. So it gets no dwell either; holding a frame
+ * that draws nothing is just waiting.
+ */
+export function dwellFor(event, isStill = false) {
+  if (isStill || !event) return 0;
+  if (event.kind === "said" && event.attempt) return 0;
+  return DWELL[event.kind] || 0;
+}
+
 function el(name, attrs = {}, children = []) {
   const node = document.createElementNS(NS, name);
   for (const [k, v] of Object.entries(attrs)) {
@@ -115,6 +156,12 @@ export function layout(n) {
   };
 }
 
+//: How high the sun rides while an episode is open. The sky is contested --
+//: pills top-left, the banner top-centre, the counters top-right -- so it sits
+//: out over open water to the right, just below the pill row rather than
+//: behind it. A glow behind a number is a number nobody can read.
+const SUN_HIGH = 122;
+
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
@@ -137,19 +184,36 @@ export function fits(g, cardH = CARD_H_SCORED) {
 }
 
 /**
+ * What a palm actually covers, relative to where it is planted.
+ *
+ * Its anchor is the foot of the trunk, but it spreads up and to the right --
+ * fronds to about x+38, crown to y-50 -- and the sway swings that a couple of
+ * units further. Written down because the placement test needs the footprint,
+ * not the anchor.
+ */
+export const PALM_BOX = { dx: -20, dy: -60, w: 68, h: 74 };
+
+const boxesOverlap = (a, b) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/**
  * Scenery that does not land on the data.
  *
- * The old test was `hypot(seat - point) > 170` -- a circle around the seat --
- * while a card is a tall box hanging *below* it. A circle cannot describe that
- * box, so palms were passing the test and then rendering on top of a shelf.
- * Test the box, with a margin for the frond spread.
+ * Twice wrong before. First it tested `hypot(seat - point) > 170` -- a circle
+ * around the seat -- while a card is a tall box hanging *below* it, so palms
+ * rendered on top of the shelves. Then it tested the palm's **anchor** against
+ * a padded card box, which is the same mistake from the other side: a palm
+ * planted just clear of the card still reaches 38 units to the right, so it
+ * landed on the shelf anyway.
+ *
+ * Both things have extent. Test box against box.
  */
-export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 46,
-                             keepOff = []) {
-  const boxes = seatList.map((s) => cardBox(s, cardH)).concat(keepOff);
-  const hits = (x, y) => boxes.some((b) =>
-    x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad - 40 && y < b.y + b.h + pad);
-  return candidates.filter(([x, y]) => !hits(x, y));
+export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 10,
+                             keepOff = [], foot = PALM_BOX) {
+  const boxes = seatList.map((s) => cardBox(s, cardH)).concat(keepOff)
+    .map((b) => ({ x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 }));
+  return candidates.filter(([x, y]) => !boxes.some((b) =>
+    boxesOverlap({ x: x + foot.dx, y: y + foot.dy, w: foot.w, h: foot.h }, b)));
 }
 
 export class Scene {
@@ -178,6 +242,8 @@ export class Scene {
     svg.append(this.defs());
 
     svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, fill: "url(#sea)" }));
+    // Behind the water, so it sets *into* the sea rather than on top of it.
+    svg.append(this.sun());
     svg.append(this.water());
     svg.append(this.land());
 
@@ -197,10 +263,13 @@ export class Scene {
 
     // Dusk rather than a black rectangle: the bell is the most dramatic thing
     // that happens in an episode and it was being drawn as a power cut.
-    this.night = el("rect", {
-      x: 0, y: 0, width: g.w, height: g.h, class: "night", fill: "url(#dusk)", opacity: 0,
-    });
-    svg.append(this.night);
+    // The colour the light turns as the sun goes, then the dark it leaves.
+    // Both opacities are CSS, keyed off `.closed`: a state, not a pulse, so
+    // scrubbing to a closed frame lands in the dark with no event played.
+    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "sky-burn" }));
+    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "night",
+                            fill: "url(#dusk)" }));
+    svg.append(this.campfire());
     svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "vignette",
                             fill: "url(#vignette)" }));
 
@@ -230,6 +299,11 @@ export class Scene {
       el("stop", { offset: "55%", "stop-color": "var(--fire)", "stop-opacity": "0.14" }),
       el("stop", { offset: "100%", "stop-color": "var(--fire)", "stop-opacity": "0" }),
     ]));
+    defs.append(el("radialGradient", { id: "sun", cx: "50%", cy: "50%", r: "50%" }, [
+      el("stop", { offset: "0%", "stop-color": "var(--sun-core)" }),
+      el("stop", { offset: "55%", "stop-color": "var(--sun)" }),
+      el("stop", { offset: "100%", "stop-color": "var(--sun)", "stop-opacity": "0" }),
+    ]));
     defs.append(el("radialGradient", { id: "vignette", cx: "50%", cy: "48%", r: "72%" }, [
       el("stop", { offset: "55%", "stop-color": "#000", "stop-opacity": "0" }),
       el("stop", { offset: "100%", "stop-color": "#000", "stop-opacity": "0.5" }),
@@ -254,6 +328,34 @@ export class Scene {
     thatch.append(el("path", { d: "M 0 6 q 4 -6 8 0", class: "thatch-line" }));
     defs.append(thatch);
     return defs;
+  }
+
+  /** Where the sun rides: out over the water, clear of the corner counters. */
+  sunX() {
+    return this.geo.cx + this.geo.rx * 0.86;
+  }
+
+  /**
+   * The sun, which the island did not have.
+   *
+   * Without one the bell had nothing to set: it was an overlay pulsing and
+   * going back to full daylight, which reads as a flicker rather than as the
+   * end of a day. An episode *is* a day here -- it opens, it runs, a bell
+   * closes it and everything held is consumed -- so it should look like one.
+   *
+   * High in the band the huts face, which is the only part of this stylised
+   * view that reads as distance. It travels down and out of it at the bell.
+   */
+  sun() {
+    const g = this.geo;
+    const wrap = el("g", { class: "sun-wrap", "aria-hidden": "true" });
+    const sun = el("g", { class: "sun",
+                          transform: `translate(${this.sunX()} ${SUN_HIGH})` });
+    sun.append(el("circle", { class: "sun-halo", r: 74, fill: "url(#sun)" }));
+    sun.append(el("circle", { class: "sun-disc", r: 21 }));
+    wrap.append(sun);
+    this.sunNode = sun;
+    return wrap;
   }
 
   /**
@@ -304,6 +406,20 @@ export class Scene {
     const { x: fx, y: fy } = this.geo.fire;
     const g = el("g", { class: "square-group" });
     g.append(el("ellipse", { class: "square", cx: fx, cy: fy, rx: 132, ry: 54 }));
+    return g;
+  }
+
+  /**
+   * The fire, drawn **above** the night overlay.
+   *
+   * Where it used to sit, dusk fell on it like everything else and the
+   * campfire got *dimmer* as the day ended -- which is backwards. It is the
+   * one thing that should be brighter once the sun has gone, so it is the one
+   * thing the dark is not allowed to cover.
+   */
+  campfire() {
+    const { x: fx, y: fy } = this.geo.fire;
+    const g = el("g", { class: "fire-layer" });
     g.append(el("circle", { cx: fx, cy: fy - 8, r: 132, fill: "url(#glow)",
                             class: "firelight" }));
     const fire = el("g", { class: "fire", transform: `translate(${fx} ${fy})` });
@@ -343,27 +459,33 @@ export class Scene {
     }));
     // Along the shore, where nothing informative goes. Kept as fractions of the
     // island so a wider canvas plants more of it rather than stretching six.
-    const ring = [[-.86, -.30], [.87, -.26], [-.72, .52], [.74, .55],
-                  [-.30, -.72], [.32, -.70], [-.14, .82], [.18, .84],
-                  [-.55, .74], [.58, .72], [-.95, .18], [.96, .14]];
-    const candidates = ring.map(([u, v]) => [geo.cx + u * geo.rx * .93,
-                                             geo.ly + v * geo.ry * .93]);
+    const ring = [[-.90, -.34], [.91, -.30], [-.74, .56], [.76, .58],
+                  [-.30, -.76], [.32, -.74], [-.14, .84], [.18, .86],
+                  [-.55, .78], [.58, .76], [-.96, .16], [.97, .12],
+                  [-.44, -.68], [.46, -.66], [-.02, -.80], [.04, .88]];
+    const candidates = ring.map(([u, v]) => [geo.cx + u * geo.rx * .84,
+                                             geo.ly + v * geo.ry * .84]);
     // The square is where everybody meets and the fire is in it. A palm growing
     // out of the fire is the same class of mistake as one growing out of a card.
     const square = { x: geo.fire.x - 148, y: geo.fire.y - 74, w: 296, h: 128 };
-    placeScenery(seatList, candidates, this.cardH, 46, [square]).forEach(([x, y], i) => {
-      const k = 0.74 + ((i * 7) % 5) * 0.09;
+    placeScenery(seatList, candidates, this.cardH, 10, [square]).forEach(([x, y], i) => {
+      const k = 0.98 + ((i * 7) % 4) * 0.13;
       const palm = el("g", { class: "palm", transform: `translate(${x} ${y}) scale(${k})`,
                              style: `animation-delay: ${-i * 1.3}s` });
       palm.append(el("ellipse", { class: "palm-shadow", cx: 3, cy: 3, rx: 15, ry: 4 }));
       palm.append(el("path", { class: "trunk", d: "M 0 0 q -7 -22 3 -42" }));
-      for (const [a, sc] of [[-72, .9], [-38, 1], [-4, .95], [30, 1], [64, .88]]) {
-        palm.append(el("path", {
+      // Its own group, turning about the top of the trunk. The sway used to be
+      // on the whole palm, so the trunk and its shadow slid about with it --
+      // which is a tree walking, not a tree in wind.
+      const crown = el("g", { class: "crown" });
+      [[-72, .9], [-38, 1], [-4, .95], [30, 1], [64, .88]].forEach(([a, sc], j) => {
+        crown.append(el("path", {
           class: "frond", transform: `rotate(${a} 3 -42) scale(${sc})`,
           d: "M 3 -42 q 20 -11 32 -3 q -12 5 -19 6 q -8 1 -13 -3 z",
         }));
-      }
-      palm.append(el("circle", { class: "coconut", cx: 4, cy: -40, r: 2.6 }));
+      });
+      crown.append(el("circle", { class: "coconut", cx: 4, cy: -40, r: 2.6 }));
+      palm.append(crown);
       g.append(palm);
     });
     return g;
@@ -624,13 +746,58 @@ export class Scene {
     switch (event.kind) {
       case "settled": return this.flight(event);
       case "produced": return this.produce(event);
-      case "refused": return this.pop(event.trader, `✗ ${short(event.reason)}`, "bad");
+      // A symbol, and the reason kept as the badge's title rather than printed
+      // over the sand. What the manager wrote is in the ticker; the island says
+      // *that* it refused, and whose.
+      case "refused": return this.mark(event.trader, "bad", event.reason);
+      // An attempt draws nothing: what it attempted arrives as the receipt or
+      // the refusal, and drawing both says it twice.
+      case "said": return event.attempt ? undefined : this.mark(event.author, "talk");
       case "bell": return this.bell(event);
-      case "open": return this.banner_(`episode ${event.episode}${event.of ? ` of ${event.of}` : ""}`);
+      case "open": return this.dawn(event);
       case "over": return this.banner_("the round is over");
       case "fault": return this.banner_("harness fault");
       default: return undefined;
     }
+  }
+
+  /**
+   * Somebody did something, said as a shape.
+   *
+   * The island used to print the manager's refusal text across the sand, which
+   * is unreadable at that size and is already in the ticker underneath. And it
+   * drew nothing at all when a trader merely spoke -- so a board where two
+   * agents talked and settled nothing looked identical to one where nobody
+   * turned up.
+   */
+  mark(who, kind, title = "") {
+    const seat = this.seats[who];
+    if (!seat) return;
+    const g = el("g", { class: `pop ${kind}` });
+    if (title) g.append(el("title", {}, title));
+    g.append(el("path", { class: "pop-bubble",
+                          d: "M -21 -17 h 42 a 9 9 0 0 1 9 9 v 15 a 9 9 0 0 1 -9 9 " +
+                             "h -14 l -7 8 l -7 -8 h -14 a 9 9 0 0 1 -9 -9 v -15 " +
+                             "a 9 9 0 0 1 9 -9 z" }));
+    if (kind === "bad") {
+      g.append(el("path", { class: "pop-cross", d: "M -7 -7 L 7 7 M 7 -7 L -7 7" }));
+    } else {
+      [-9, 0, 9].forEach((dx, i) => g.append(el("circle", {
+        class: "pop-dot", cx: dx, cy: 0, r: 2.6,
+        style: `animation-delay: ${i * 0.16}s`,
+      })));
+    }
+    this.flights.append(g);
+    const anim = g.animate([
+      { transform: `translate(${seat.x}px, ${seat.y - 100}px) scale(.6)`, opacity: 0 },
+      { transform: `translate(${seat.x}px, ${seat.y - 126}px) scale(1)`, opacity: 1,
+        offset: 0.18 },
+      { transform: `translate(${seat.x}px, ${seat.y - 134}px) scale(1)`, opacity: 1,
+        offset: 0.72 },
+      { transform: `translate(${seat.x}px, ${seat.y - 162}px) scale(.9)`, opacity: 0 },
+    ], { duration: still() ? 1 : DWELL[kind === "bad" ? "refused" : "said"],
+         easing: "ease-out" });
+    anim.finished.then(() => g.remove(), () => g.remove());
   }
 
   /**
@@ -643,7 +810,6 @@ export class Scene {
   produce(e) {
     const seat = this.seats[e.trader];
     if (!seat) return;
-    this.pop(e.trader, "produced", "good");
     const made = Object.entries(e.made || {}).filter(([, q]) => q > 1e-9);
     made.forEach(([good, qty], i) => {
       const slot = this.bars[e.trader]?.[good];
@@ -660,7 +826,7 @@ export class Scene {
         { transform: `translate(${(seat.x + x) / 2}px, ${seat.y + 4}px) scale(1)`,
           opacity: 1, offset: .45 },
         { transform: `translate(${x}px, ${to}px) scale(.8)`, opacity: 0 },
-      ], { duration: still() ? 1 : 1000, delay: still() ? 0 : i * 130,
+      ], { duration: still() ? 1 : 1500, delay: still() ? 0 : i * 210,
            easing: "cubic-bezier(.32,.9,.4,1)", fill: "backwards" });
       anim.finished.then(() => sheaf.remove(), () => sheaf.remove());
     });
@@ -695,7 +861,7 @@ export class Scene {
             opacity: 0 },
         ];
         const anim = parcel.animate(frames, {
-          duration: still() ? 1 : 1000, delay: still() ? 0 : i * 150,
+          duration: still() ? 1 : 1700, delay: still() ? 0 : i * 230,
           easing: "cubic-bezier(.4,0,.2,1)", fill: "backwards",
         });
         anim.finished.then(() => parcel.remove(), () => parcel.remove());
@@ -707,38 +873,66 @@ export class Scene {
     if (rope) rope.classList.add("settling");
   }
 
-  pop(trader, text, kind) {
-    const seat = this.seats[trader];
-    if (!seat) return;
-    const g = el("g", { class: `pop ${kind}` });
-    const width = Math.max(90, String(text).length * 7.6);
-    g.append(el("rect", { x: -width / 2, y: -15, width, height: 28, rx: 14, class: "pop-bg" }));
-    g.append(el("text", { y: 4, class: "pop-text" }, String(text)));
-    this.flights.append(g);
-    const anim = g.animate([
-      { transform: `translate(${seat.x}px, ${seat.y - 104}px) scale(.8)`, opacity: 0 },
-      { transform: `translate(${seat.x}px, ${seat.y - 132}px) scale(1)`, opacity: 1,
-        offset: 0.22 },
-      { transform: `translate(${seat.x}px, ${seat.y - 168}px) scale(1)`, opacity: 0 },
-    ], { duration: still() ? 1 : 1900, easing: "ease-out" });
-    anim.finished.then(() => g.remove(), () => g.remove());
-  }
-
   /**
-   * The bell: dusk falls, and everything on every shelf is consumed.
+   * The bell: the sun goes down, the fire comes up, and it stays dark.
    *
-   * It was a black rectangle flashed over the whole picture, which read as the
-   * page breaking rather than as the day ending.
+   * It was a black rectangle flashed over the picture and then full daylight
+   * again. Two things were wrong with that. It read as the page breaking
+   * rather than as the day ending -- and it was a *pulse*, so a spectator who
+   * scrubbed to a closed frame saw noon.
+   *
+   * Night is a state now: `draw()` puts `.closed` on the root and the CSS holds
+   * dusk there, so scrubbing lands in the dark without any event being played.
+   * This method only plays the passage.
    */
   bell(e) {
     this.banner_(`bell — episode ${e.episode} closed` +
                  (e.lapsed ? ` · ${e.lapsed} lapsed` : ""));
-    this.root.classList.add("dusk");
-    setTimeout(() => this.root.classList.remove("dusk"), still() ? 1 : 2000);
-    const anim = this.night.animate(
-      [{ opacity: 0 }, { opacity: 0.55, offset: .35 }, { opacity: 0.5, offset: .6 },
-       { opacity: 0 }],
-      { duration: still() ? 1 : 2000, easing: "ease-in-out" });
+    this.sundown(true);
+  }
+
+  /** A new episode is a new day, so the sun comes back up. */
+  dawn(e) {
+    this.banner_(`episode ${e.episode}${e.of ? ` of ${e.of}` : ""}`);
+    this.sundown(false);
+  }
+
+  /**
+   * The sun's travel. Down and out at the bell, back up when an episode opens.
+   *
+   * The light itself is CSS, keyed off `.closed`, because it is a state. This
+   * is only the disc moving, which is the part that has to be a path rather
+   * than a value.
+   */
+  sundown(setting) {
+    const sun = this.sunNode;
+    if (!sun) return;
+    const x = this.sunX();
+    // It goes down *behind the island*, which works because the sun is drawn
+    // before the water and the land. The first version sent it to the island's
+    // top edge minus a margin -- four pixels below where it started, which is
+    // not a sunset, and which the test could only tell had moved at all.
+    const up = `translate(${x}px, ${SUN_HIGH}px) scale(1)`;
+    const down = `translate(${x + 34}px, ${this.geo.ly - 24}px) scale(.7)`;
+    if (still()) {
+      // No journey for somebody who asked for less motion -- but the sun still
+      // has to be in the right place, or it hangs in a night sky.
+      sun.style.transform = setting ? down : up;
+      sun.style.opacity = setting ? "0" : "1";
+      return;
+    }
+    const frames = setting
+      ? [{ transform: up, opacity: 1 },
+         { transform: `translate(${x + 22}px, ${this.geo.ly - this.geo.ry + 22}px) ` +
+                      "scale(.85)", opacity: 1, offset: .62 },
+         { transform: down, opacity: 0 }]
+      : [{ transform: down, opacity: 0 },
+         { transform: up, opacity: 1 }];
+    const anim = sun.animate(frames, {
+      duration: setting ? DWELL.bell - 400 : DWELL.open - 400,
+      easing: setting ? "cubic-bezier(.4,0,.7,1)" : "cubic-bezier(.2,.6,.3,1)",
+      fill: "forwards",
+    });
     anim.finished.catch(() => {});
   }
 
@@ -750,7 +944,7 @@ export class Scene {
       { opacity: 1, transform: "translateY(0)", offset: 0.18 },
       { opacity: 1, transform: "translateY(0)", offset: 0.74 },
       { opacity: 0, transform: "translateY(-8px)" },
-    ], { duration: still() ? 1 : 2300, easing: "cubic-bezier(.2,.9,.3,1)" });
+    ], { duration: still() ? 1 : 2600, easing: "cubic-bezier(.2,.9,.3,1)" });
     anim.finished.catch(() => {});
   }
 }
@@ -763,4 +957,3 @@ export function bundleText(bundle) {
 
 const trim = (q) => String(Math.round(q * 1000) / 1000);
 
-const short = (s) => (s.length > 34 ? s.slice(0, 32) + "…" : s);

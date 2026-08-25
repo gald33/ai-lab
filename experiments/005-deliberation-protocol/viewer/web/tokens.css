@@ -30,6 +30,9 @@
   --frond-dark: #3f6330;
   --trunk:      #7a5a34;
   --glass:      #ffd79a;
+  --sun:        #ffb45e;
+  --sun-core:   #fff2cf;
+  --sky-set:    #d9603a;   /* the sky at the moment the sun goes */
 
   /* Categorical slots 1–4, dark steps. Validated against --panel on the
      adjacent pairlist: worst CVD ΔE 8.4, worst normal-vision ΔE 19.8, all

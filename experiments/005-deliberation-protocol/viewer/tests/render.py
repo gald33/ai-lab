@@ -41,7 +41,7 @@ REPLAYS = REPO / "games" / "replays"
 #: Where the replay is stepped to. Chosen for what is on screen, not evenly:
 #: the open shows an empty island, the middle shows production and an open
 #: offer, and the end shows the bell's aftermath.
-STOPS = [("open", 0.0), ("mid", 0.55), ("late", 0.78), ("end", 1.0)]
+STOPS = [("open", 0.0), ("mid", 0.55), ("late", 0.78), ("dusk", 0.92), ("end", 1.0)]
 
 
 def serve(replays: Path) -> tuple[str, http.server.ThreadingHTTPServer]:
@@ -128,39 +128,129 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
     return bad
 
 
-def motion(page, where: str) -> list[str]:
-    """That the event animations actually run, which a screenshot cannot say.
+#: A refusal reason from a real board. The island must not print it.
+REASON = "you have 0.0000 bread uncommitted, not 0.1500"
 
-    Production had no picture at all before this -- `state.made` sat in the
-    reducer and nothing drew it -- so "the parcels still fly" is not enough to
-    check. Play the events directly and watch for the nodes they create.
+
+def motion(page, where: str) -> list[str]:
+    """That the event animations run, and that they say the right things.
+
+    A screenshot cannot see any of this. Production had no picture at all
+    before -- `state.made` sat in the reducer and nothing drew it -- and the
+    island used to print the manager's refusal text across the sand, which is
+    the regression the `no reason text` assertion holds shut.
+
+    Driven the way `index.html:paint` drives it: `draw()` then `play()`, in that
+    order, because night is a state `draw()` sets and only the passage is played.
     """
     bad = []
-    seen = page.evaluate("""async () => {
-      const scene = window.__probe;
-      const found = {};
+    seen = page.evaluate("""async (reason) => {
+      const scene = window.__probe, t = window.__timeline;
+      const nap = (ms) => new Promise(r => setTimeout(r, ms));
+      const island = document.getElementById('island');
       const watch = (cls) => document.querySelectorAll('.flights ' + cls).length;
+      const found = {};
+
       scene.play({ kind: 'produced', trader: scene.traders[0],
                    made: { [scene.goods[0]]: 1.25 }, unspent: 0 });
-      await new Promise(r => setTimeout(r, 120));
+      await nap(150);
       found.sheaf = watch('.sheaf');
-      found.pop = watch('.pop');
+      found.popOnProduce = watch('.pop');
+
+      scene.play({ kind: 'refused', trader: scene.traders[0], reason });
+      await nap(150);
+      found.bad = watch('.pop.bad');
+      found.cross = watch('.pop-cross');
+      found.svgText = [...island.querySelectorAll('text')].map(n => n.textContent).join(' ');
+      found.titled = [...island.querySelectorAll('.pop.bad title')]
+        .some(n => n.textContent === reason);
+
+      scene.play({ kind: 'said', author: scene.traders[0], attempt: false });
+      await nap(150);
+      found.talk = watch('.pop.talk');
+      scene.play({ kind: 'said', author: scene.traders[0], attempt: true });
+      await nap(150);
+      found.talkAfterAttempt = watch('.pop.talk');
+
       scene.play({ kind: 'settled', pid: 'p1', maker: scene.traders[0],
                    taker: scene.traders[1] || scene.traders[0],
                    give: { [scene.goods[0]]: .5 }, want: { [scene.goods[1]]: .25 } });
-      await new Promise(r => setTimeout(r, 260));
+      await nap(300);
       found.parcel = watch('.parcel');
+
+      // The day ends. `draw()` carries the state; `play()` carries the passage.
+      const sunAt = () => scene.sunNode.getBoundingClientRect().top;
+      found.sunBefore = sunAt();
+      scene.draw({ ...t.final, phase: 'closed' }, t);
       scene.play({ kind: 'bell', episode: 1, lapsed: 0 });
-      await new Promise(r => setTimeout(r, 120));
-      found.dusk = document.getElementById('island').classList.contains('dusk');
-      found.night = Number(document.querySelector('.night').getAnimations().length);
+      await nap(900);
+      found.closed = island.classList.contains('closed');
+      found.sunSetting = sunAt() > found.sunBefore;
+      found.nightOpacity = Number(getComputedStyle(
+        document.querySelector('.night')).opacity);
+
+      // And a new episode is a new day.
+      scene.draw({ ...t.final, phase: 'market' }, t);
+      scene.play({ kind: 'open', episode: 2, of: 3 });
+      await nap(300);
+      found.reopened = !island.classList.contains('closed');
       return found;
-    }""")
-    for key, want in (("sheaf", 1), ("pop", 1), ("parcel", 2)):
+    }""", REASON)
+
+    for key, want in (("sheaf", 1), ("parcel", 2), ("bad", 1), ("cross", 1), ("talk", 1)):
         if seen[key] < want:
             bad.append(f"{where}: {seen[key]} .{key} node(s) during play, expected >= {want}")
-    if not seen["dusk"] or not seen["night"]:
-        bad.append(f"{where}: the bell did not bring dusk ({seen})")
+    # The whole point of the symbols: the island shows *that* it refused, not
+    # the sentence the manager wrote.
+    for fragment in ("uncommitted", "0.1500", "you have"):
+        if fragment in seen["svgText"]:
+            bad.append(f"{where}: the refusal reason is printed on the island "
+                       f"({fragment!r} found in its text)")
+    if not seen["titled"]:
+        bad.append(f"{where}: the refusal badge lost the reason as its title")
+    if seen["popOnProduce"]:
+        bad.append(f"{where}: production still captions itself "
+                   f"({seen['popOnProduce']} bubble(s)); the rising goods say it")
+    if seen["talkAfterAttempt"] != seen["talk"]:
+        bad.append(f"{where}: an attempt drew a bubble; its receipt is the tell")
+    if not seen["closed"] or seen["nightOpacity"] <= 0.05:
+        bad.append(f"{where}: the bell did not bring night ({seen})")
+    if not seen["sunSetting"]:
+        bad.append(f"{where}: the sun did not go down at the bell ({seen})")
+    if not seen["reopened"]:
+        bad.append(f"{where}: a new episode did not bring the day back")
+    return bad
+
+
+def palms(page, where: str) -> list[str]:
+    """The trunk stands still while the crown moves.
+
+    The sway used to be on the whole palm group, so the trunk and its shadow
+    slid about with the fronds -- a tree walking rather than a tree in wind.
+    Sampled over a second of animation, because at any one instant both are
+    simply somewhere.
+    """
+    spread = page.evaluate("""async () => {
+      const nap = (ms) => new Promise(r => setTimeout(r, ms));
+      const of = (sel) => [...document.querySelectorAll(sel)]
+        .map(n => n.getBoundingClientRect().left);
+      const trunks = [], crowns = [];
+      for (let i = 0; i < 12; i++) {
+        trunks.push(of('.palm .trunk')); crowns.push(of('.palm .crown'));
+        await nap(90);
+      }
+      const range = (rows) => rows[0].map((_, c) => {
+        const col = rows.map(r => r[c]);
+        return Math.max(...col) - Math.min(...col);
+      });
+      return { trunk: Math.max(...range(trunks)), crown: Math.max(...range(crowns)) };
+    }""")
+    bad = []
+    if spread["trunk"] > 0.6:
+        bad.append(f"{where}: the trunk moves with the fronds "
+                   f"(drifts {spread['trunk']:.2f}px); only the leaves should")
+    if spread["crown"] < 0.6:
+        bad.append(f"{where}: the crown does not stir ({spread['crown']:.2f}px)")
     return bad
 
 
@@ -248,14 +338,15 @@ def ring(browser, base: str, out: Path) -> list[str]:
     page.evaluate("""async ({rows}) => {
       const { reduce } = await import('./reducer.js');
       const { Scene } = await import('./scene.js');
-      window.__probe = new Scene(document.getElementById('island'),
-                                 reduce(rows, { manager: 'manager' }), null);
       const t = reduce(rows, { manager: 'manager' });
+      window.__timeline = t;
+      window.__probe = new Scene(document.getElementById('island'), t, null);
       window.__probe.draw(t.final, t);
     }""", {"rows": synthetic(4, goods)})
     page.wait_for_timeout(700)
     bad = check(page, 4, len(goods), "ring/4")
     page.locator(".stage").screenshot(path=str(out / "ring-4.png"))
+    bad += palms(page, "ring/4")
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]
     page.close()

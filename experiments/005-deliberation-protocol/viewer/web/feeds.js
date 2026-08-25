@@ -9,6 +9,13 @@
 //
 // Both hand `reducer.js` the same rows: `{seq, at, author, body}`.
 
+// The one thing this file borrows from the drawing: how long an event needs to
+// be watched. It is defined beside the animations it mirrors so the two cannot
+// drift -- see `scene.js:DWELL`.
+import { dwellFor } from "./scene.js";
+
+const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 /** A board saved to disk: `{workspace, channel, messages: [...]}`. */
 export async function loadBoard(url) {
   const response = await fetch(url, { cache: "no-store" });
@@ -120,7 +127,25 @@ function pollFeed(fetchState, { channel, every }, on) {
 //: it at wall speed is minutes of a still picture. Gaps are clamped, and the
 //: clamp is reported so the page can say a pause happened rather than pretend
 //: the board was busy.
-const MIN_STEP = 140, MAX_STEP = 2600, QUIET = 4000;
+export const MIN_STEP = 140, MAX_STEP = 2600, QUIET = 4000;
+
+/**
+ * How long to hold one frame: the compressed gap, or the time its animation
+ * needs -- whichever is longer.
+ *
+ * The floor is deliberately **not** divided by speed. Speed compresses the
+ * waiting between events; it has no business compressing the events. Before
+ * this, `4x` -- the default -- stepped every `MIN_STEP / 4` = 35ms while a
+ * parcel took a second to cross the square, so a busy stretch played six
+ * animations on top of each other and read as a flicker.
+ *
+ * So `16x` is no longer sixteen times faster on a busy board. That is the
+ * point of it: it is the clock that is compressed, not the picture.
+ */
+export function stepDelay(gap, speed, event, isStill = false) {
+  const clamped = Math.min(MAX_STEP, Math.max(MIN_STEP, gap));
+  return Math.max(clamped / speed, dwellFor(event, isStill));
+}
 
 export function replayPlayer(timeline, on = {}) {
   let index = -1;
@@ -136,11 +161,10 @@ export function replayPlayer(timeline, on = {}) {
     return a && b ? Math.max(0, b - a) : 0;
   }
 
-  function stepDelay(i) {
-    const gap = gapBefore(i);
-    const clamped = Math.min(MAX_STEP, Math.max(MIN_STEP, gap));
-    return clamped / speed;
-  }
+  //: The frame being *stepped to* is the one about to be animated, so it is
+  //: that frame's event that decides how long the step takes.
+  const delayTo = (i) =>
+    stepDelay(gapBefore(i), speed, timeline.frames[i]?.event, still());
 
   function emit(animate) {
     const frame = timeline.frames[index];
@@ -160,7 +184,7 @@ export function replayPlayer(timeline, on = {}) {
       index += 1;
       emit(true);
       schedule();
-    }, stepDelay(index + 1));
+    }, delayTo(index + 1));
   }
 
   return {
