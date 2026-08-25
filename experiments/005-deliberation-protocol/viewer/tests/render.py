@@ -44,6 +44,16 @@ REPLAYS = REPO / "games" / "replays"
 STOPS = [("open", 0.0), ("mid", 0.55), ("late", 0.78), ("dusk", 0.92), ("end", 1.0)]
 
 
+#: The server `serve()` last started, so a check can point it at a fake
+#: upstream. Kept here rather than threaded through every call, because only
+#: the live check has ever needed it.
+_SERVERS: dict[str, object] = {}
+
+
+def server_for(base: str):
+    return _SERVERS[base]
+
+
 def serve(replays: Path) -> tuple[str, http.server.ThreadingHTTPServer]:
     """The viewer's own server, on a port the OS picks.
 
@@ -62,7 +72,9 @@ def serve(replays: Path) -> tuple[str, http.server.ThreadingHTTPServer]:
     server = viewer_serve.Server(("127.0.0.1", port), viewer_serve.Handler)
     server.upstream = None
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    return f"http://127.0.0.1:{port}", server
+    base = f"http://127.0.0.1:{port}"
+    _SERVERS[base] = server
+    return base, server
 
 
 def board_url(base: str, stem: str) -> str:
@@ -454,6 +466,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += bare(browser, base, boards[0], out)
             problems += mobile(browser, base, boards[0], out)
             problems += fallback(browser, base, boards[0], out)
+            problems += living(browser, base, boards[0], out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
             problems += vocabulary(browser, base, boards[0])
@@ -735,6 +748,81 @@ def vocabulary(browser, base: str, board: Path) -> list[str]:
     if said["ticker"] and "episode" not in said["ticker"].lower():
         bad.append(f"{stem} vocabulary: the transcript stopped quoting the "
                    f"manager's own word for an episode")
+    return bad
+
+
+def living(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The live path, driven.
+
+    Everything else here replays a saved board. **Live is a different code
+    path** -- rows arrive from a poll, there is no sidecar, no transport and no
+    player -- and until now nothing exercised it: the island was rebuilt
+    underneath it and the only thing that would have caught a break was
+    somebody opening a game while it ran.
+
+    A fake upstream stands in for the hub, because a real room lives about an
+    hour and a test cannot have one.
+    """
+    rows = json.loads(board.read_text())["messages"][:34]   # mid-round
+    state = {"hub": {"url": "test://hub", "workspace": "island-live-test"},
+             "agents": [], "messages": [dict(m, channel="island") for m in rows]}
+
+    class Upstream(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = json.dumps(state).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    up = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+    threading.Thread(target=up.serve_forever, daemon=True).start()
+    was, server_for(base).upstream = server_for(base).upstream, \
+        f"http://127.0.0.1:{up.server_address[1]}"
+    page = browser.new_page(viewport={"width": 1400, "height": 900},
+                            reduced_motion="reduce")
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    try:
+        page.goto(f"{base}/?live=api/state")
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(2200)
+        seen = page.evaluate("""() => ({
+          huts: document.querySelectorAll('.hut').length,
+          cells: document.querySelectorAll('.hut .cell').length,
+          modelled: document.querySelector('.app').classList.contains('has-3d'),
+          where: (document.getElementById('where') || {}).textContent || '',
+          // Live has no sidecar, so there is no score and the rail says why
+          // rather than showing a blank one.
+          locked: !!document.querySelector('#reveal-body.locked'),
+          transport: getComputedStyle(document.getElementById('transport')).display,
+        })""")
+        page.screenshot(path=str(out / "live.png"))
+    finally:
+        page.close()
+        server_for(base).upstream = was
+        up.shutdown()
+
+    where = "live"
+    bad = [f"{where}: {e}" for e in errs]
+    if seen["huts"] != 2 or not seen["cells"]:
+        bad.append(f"{where}: {seen['huts']} huts and {seen['cells']} shelf cells "
+                   f"from a poll; the board arrived and nothing drew it")
+    if not seen["modelled"]:
+        bad.append(f"{where}: no island under a live board")
+    if "live" not in seen["where"]:
+        bad.append(f"{where}: the page does not say it is live: {seen['where']!r}")
+    if not seen["locked"]:
+        bad.append(f"{where}: the hidden half is not locked; live has no sidecar "
+                   f"and must not imply a score")
+    if seen["transport"] != "none":
+        bad.append(f"{where}: the replay transport is showing on a live board")
     return bad
 
 

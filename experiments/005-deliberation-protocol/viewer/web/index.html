@@ -1116,7 +1116,15 @@ function startHub(config, channel) {
     the board, so there is still no score here; replay afterwards for both.`);
   live = hubFeed(config, { channel }, liveHandlers(
     () => `reading ${config.url}/${config.workspace} every 3s · read-only`,
-    (err) => `<span class="warn">cannot read the room: ${err.message}</span>`));
+    // A room is the commonest thing to fail here and the least obvious: an
+    // invite reads a *live* room, the managed hub keeps a board about an hour,
+    // and a link handed out during a game is dead long before anybody opens it
+    // again. The raw error says "404" and leaves the reader to guess.
+    (err) => `<span class="warn">cannot read the room: ${err.message}</span>
+      <br>A room is live for about an hour after its game. If this invite is
+      older than that it has closed, and the game is watchable as a replay
+      instead — pick one from the list above, or see
+      <a href="https://github.com/gald33/ai-lab/tree/main/games/replays">games/replays</a>.`));
 }
 
 // What starting a live poll always does with what comes back: mount the
