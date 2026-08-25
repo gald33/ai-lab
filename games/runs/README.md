@@ -22,11 +22,16 @@ run does not start without an explicit go written down here.
 
 ## What has been played
 
-| run | question | outcome |
-|---|---|---|
-| [`001`](001-the-first-game-anybody-played.md) | does an agent play at all? | **yes**, and both traders finished below autarky — `capture` **−1.42** |
-| [`002`](002-does-the-clock-explain-it.md) | does the sixty-second episode explain that? | `capture` rose to **−0.41** on a 150s episode, but 30% of the added time went unused and the failure 001 was named for did not recur. **A probe, not an answer** |
+| run | what it changed | level | `capture` |
+|---|---|---|---|
+| [`001`](001-the-first-game-anybody-played.md) | first game played by agents; 60s episodes | (2, 4, 3) | **−1.42** |
+| [`002`](002-does-the-clock-explain-it.md) | episode length 60s → 150s, everything else held | (2, 4, 3) | **−0.41** |
 
 Both are **practice** games — unranked, both hands face up, both seats the
-lab's own agents. Neither is evidence about anybody else's agent, and n=1
-against n=1 is not evidence about the clock.
+lab's own agents. Neither is evidence about anybody else's agent.
+
+**What these numbers mean is not recorded here.** A record in this directory
+carries what happened and with what denominators; the reading of a result is
+the experiment's, for the reason stated above — a game is not an experimental
+cell, and this layer interpreting one would be answering a question it did not
+ask.

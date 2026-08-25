@@ -170,9 +170,13 @@ export function replayPlayer(timeline, on = {}) {
     const frame = timeline.frames[index];
     if (!frame) return;
     on.frame?.({
-      index, frame, state: frame.state, event: frame.event,
-      quiet: gapBefore(index) >= QUIET ? Math.round(gapBefore(index) / 1000) : 0,
-      animate,
+      index, frame, state: frame.state, event: frame.event, animate,
+      // When the next line lands on the board, and how long this frame is on
+      // screen before it. Together they let the sun cross the whole of the
+      // time nobody acted, over the moment the replay holds here -- which is
+      // what makes a silence look long instead of being counted out in a pill.
+      until: timeline.frames[index + 1]?.event?.at ?? null,
+      hold: animate ? delayTo(index + 1) : 0,
     });
   }
 

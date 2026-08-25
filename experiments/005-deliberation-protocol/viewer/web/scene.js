@@ -154,16 +154,22 @@ export function layout(n, portrait = false) {
     // One seat above another, far enough apart for a hut above each card. The
     // pitch is the seat's own extent -- hut, card and a gap -- rather than a
     // number chosen to look right at one count of traders.
-    const pitch = 84 + CARD_TOP + CARD_H_SCORED + 54;
-    const top = 130;
-    const h = Math.max(940, top + pitch * n + 90);
     const w = 520;
-    const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: top + i * pitch }));
+    const pitch = 84 + CARD_TOP + CARD_H_SCORED + 54;
+    // Sky, and enough of it for a sun to cross. The island used to run from 40
+    // to 900 of a 940 viewBox, which left the sun a strip to sit in and nowhere
+    // to travel; the huts start far enough down that the island's top edge is
+    // above them and there is still weather over it.
+    const sky = 150;
+    const first = sky + 104;
+    const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: first + i * pitch }));
+    const bottom = first + pitch * (n - 1) + CARD_TOP + CARD_H_SCORED + 60;
+    const ly = (sky + bottom) / 2;
     return {
-      w, h, cx: w / 2, ly: h / 2, rx: w / 2 - 34, ry: h / 2 - 40, seats,
+      w, h: bottom + 120, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
       // Beside the column rather than in it: a fire between two stacked huts
       // would sit underneath a card.
-      fire: { x: w / 2, y: h - 62 },
+      fire: { x: w / 2, y: bottom + 46 },
     };
   }
   if (n <= 2) {
@@ -185,11 +191,33 @@ export function layout(n, portrait = false) {
   };
 }
 
-//: How high the sun rides while an episode is open. The sky is contested --
-//: pills top-left, the banner top-centre, the counters top-right -- so it sits
-//: out over open water to the right, just below the pill row rather than
-//: behind it. A glow behind a number is a number nobody can read.
-const SUN_HIGH = 122;
+/**
+ * Where the sun stands at a given point in the episode, 0 at the open and 1 at
+ * the bell.
+ *
+ * **An episode is a day, so the day should be readable from the sky.** The page
+ * used to say how long it had been quiet in a pill -- "quiet 41s" -- which is a
+ * number about the replay rather than about the island, and it left the sun
+ * parked in one spot for the whole episode with nothing marking the hours.
+ *
+ * The arc is bounded by the island rather than by a constant. It rises and sets
+ * beyond the island's width, where there is only water, and its apex clears the
+ * island's topmost point -- the sun is drawn *behind* the land so that it can
+ * set behind it, which also means an arc that dipped below that edge would take
+ * the sun through the island at noon.
+ */
+export function sunAt(g, p) {
+  const at = Math.max(0, Math.min(1, p));
+  const top = g.ly - g.ry;
+  // Just clear of the island at noon, and low but still over water at either
+  // end, where the island is not wide enough to be in the way.
+  const apex = top * 0.34;
+  const rest = top * 0.9;
+  return {
+    x: g.cx + g.rx * 1.02 * (2 * at - 1),
+    y: rest - (rest - apex) * Math.sin(Math.PI * at),
+  };
+}
 
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
@@ -384,9 +412,58 @@ export class Scene {
     return defs;
   }
 
-  /** Where the sun rides: out over the water, clear of the corner counters. */
-  sunX() {
-    return this.geo.cx + this.geo.rx * 0.86;
+  /** Where the sun stands, this far through the episode. */
+  sunPoint(p) {
+    return sunAt(this.geo, p);
+  }
+
+  /**
+   * How far through its episode this frame is, by the board's own clock.
+   *
+   * `null` when the board has not said -- before the first episode, after the
+   * round, or on a board whose schedule line this page could not read. The
+   * caller leaves the sun where it is rather than putting it at dawn, because
+   * "we do not know the time" is not the same as "it is morning".
+   */
+  dayProgress(state) {
+    if (!state?.bell_at || !state.seconds || !state.at) return null;
+    const bell = Date.parse(state.bell_at);
+    const span = state.seconds * 1000;
+    const now = Date.parse(state.at);
+    if (!Number.isFinite(bell) || !Number.isFinite(now) || span <= 0) return null;
+    return Math.max(0, Math.min(1, (now - (bell - span)) / span));
+  }
+
+  /** Put the sun at a point in the day, with no journey. */
+  placeSun(p) {
+    if (!this.sunNode) return;
+    const { x, y } = this.sunPoint(p);
+    this.sunNode.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+    this.sunNode.style.opacity = "1";
+    this.sunP = p;
+  }
+
+  /**
+   * The sun's travel between one frame and the next.
+   *
+   * This is where the replay's compression becomes visible. A quiet stretch on
+   * the board is held on screen for a moment, and over that moment the sun
+   * covers the whole of the time nobody acted -- so a long silence *looks*
+   * long, in the one place on the page that is about the island rather than
+   * about the player.
+   */
+  sky(state, until = null, ms = 0) {
+    const from = this.dayProgress(state);
+    if (from === null || !this.sunNode) return;
+    const to = until === null ? from
+      : Math.max(from, this.dayProgress({ ...state, at: until }) ?? from);
+    if (!(ms > 0) || to <= from || still()) { this.placeSun(to || from); return; }
+    const a = this.sunPoint(from), b = this.sunPoint(to);
+    this.sunP = to;
+    this.sunNode.animate([
+      { transform: `translate(${a.x}px, ${a.y}px) scale(1)`, opacity: 1 },
+      { transform: `translate(${b.x}px, ${b.y}px) scale(1)`, opacity: 1 },
+    ], { duration: ms, easing: "linear", fill: "forwards" });
   }
 
   /**
@@ -403,8 +480,9 @@ export class Scene {
   sun() {
     const g = this.geo;
     const wrap = el("g", { class: "sun-wrap", "aria-hidden": "true" });
+    const dawn = sunAt(g, 0);
     const sun = el("g", { class: "sun",
-                          transform: `translate(${this.sunX()} ${SUN_HIGH})` });
+                          transform: `translate(${dawn.x} ${dawn.y})` });
     sun.append(el("circle", { class: "sun-halo", r: 74, fill: "url(#sun)" }));
     sun.append(el("circle", { class: "sun-disc", r: 21 }));
     wrap.append(sun);
@@ -729,6 +807,12 @@ export class Scene {
     for (const name of this.traders) {
       const promised = (good) => timeline.committed(state, name, good);
       const shelf = closed && last ? last.holdings[name] : state.stocks[name];
+      // A trader that has not produced yet holds none of everything, which is
+      // trivially true and says nothing. The zero mark is for a trader that
+      // spent its labour and still ended up with none of something -- the
+      // Cobb-Douglas hazard -- so it waits for the labour to be spent, or for
+      // the bell, which is when a zero is final whatever was spent.
+      const spentLabour = closed || state.labour[name] !== null;
       for (const good of this.goods) {
         const qty = shelf?.[good] || 0;
         const b = this.bars[name][good];
@@ -749,7 +833,7 @@ export class Scene {
         // the same "0.00" as an actual zero.
         b.qty.textContent = qty <= 1e-9 ? "0.00"
           : qty < 0.005 ? "<0.01" : qty.toFixed(2);
-        const none = started && qty <= 1e-9;
+        const none = started && spentLabour && qty <= 1e-9;
         b.qty.classList.toggle("none", none);
         b.cell.classList.toggle("empty", none);
       }
@@ -769,7 +853,11 @@ export class Scene {
         label.score.setAttribute("width",
           (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
         label.scoreText.textContent = u === null ? "—" : u.toFixed(3);
-        label.scoreText.classList.toggle("zero", u !== null && u <= 1e-12);
+        // Zero before anybody has produced is not a failed episode, for the
+        // same reason an empty shelf is not a starved one: there has been no
+        // play yet. The critical colour waits for there to be some.
+        label.scoreText.classList.toggle("zero",
+          started && spentLabour && u !== null && u <= 1e-12);
       }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));
@@ -805,7 +893,20 @@ export class Scene {
     // Kept so a refusal played straight after this paint can find what was
     // open at the moment it happened.
     this.state = state;
-    this.root.classList.toggle("closed", state.phase === "closed" || state.phase === "over");
+    this.root.classList.toggle("closed", closed);
+    // The time of day, set from the frame rather than from an animation, so
+    // that scrubbing lands the sun where that moment actually was. `bell()`
+    // and `dawn()` only play the passage between two of these.
+    if (closed) {
+      const dusk = this.sunPoint(1);
+      this.sunNode.style.transform =
+        `translate(${dusk.x + 20}px, ${this.geo.ly - 24}px) scale(.7)`;
+      this.sunNode.style.opacity = "0";
+      this.sunP = 1;
+    } else {
+      const p = this.dayProgress(state);
+      if (p !== null) this.placeSun(p);
+    }
   }
 
   /** One rope, going slack and fading, after the bell took the offer with it. */
@@ -867,10 +968,9 @@ export class Scene {
    *
    * The refusal text is already in the ticker and on the badge's tooltip. What
    * it cannot do there is say *which* rope on the square is the problem, and
-   * that is the whole content of the commonest refusal in the game: a trader
-   * approving goods its own open offer has already promised away. So light the
-   * slot it came up short in and the offer that is holding it, together, for
-   * as long as the badge is up.
+   * that is the whole content of a refusal for goods an offer of the trader's
+   * own has already promised away. So light the slot it came up short in and
+   * the offer that is holding it, together, for as long as the badge is up.
    *
    * Marked, not moved: the highlight stays under `prefers-reduced-motion`
    * because it carries information. Reduced motion means less movement, not
@@ -1083,7 +1183,7 @@ export class Scene {
    * This method only plays the passage.
    */
   bell(e) {
-    this.banner_(`bell — episode ${e.episode} closed` +
+    this.banner_(`sundown — day ${e.episode} closed` +
                  (e.lapsed ? ` · ${e.lapsed} lapsed` : ""));
     this.sundown(true);
   }
@@ -1104,33 +1204,39 @@ export class Scene {
   sundown(setting) {
     const sun = this.sunNode;
     if (!sun) return;
-    const x = this.sunX();
+    // Wherever the day left it. The sun crosses the sky through the episode
+    // now, so the bell has to continue that journey rather than restart it
+    // from a fixed spot -- a sun that jumped back to noon to begin setting
+    // would undo the hour it had just spent travelling.
+    const dusk = this.sunPoint(setting ? 1 : 0);
+    const from = this.sunPoint(setting ? (this.sunP ?? 1) : 0);
     // It goes down *behind the island*, which works because the sun is drawn
     // before the water and the land. The first version sent it to the island's
     // top edge minus a margin -- four pixels below where it started, which is
     // not a sunset, and which the test could only tell had moved at all.
-    const up = `translate(${x}px, ${SUN_HIGH}px) scale(1)`;
-    const down = `translate(${x + 34}px, ${this.geo.ly - 24}px) scale(.7)`;
+    const up = `translate(${from.x}px, ${from.y}px) scale(1)`;
+    const down = `translate(${dusk.x + 20}px, ${this.geo.ly - 24}px) scale(.7)`;
     if (still()) {
       // No journey for somebody who asked for less motion -- but the sun still
       // has to be in the right place, or it hangs in a night sky.
       sun.style.transform = setting ? down : up;
       sun.style.opacity = setting ? "0" : "1";
+      this.sunP = setting ? 1 : 0;
       return;
     }
     const frames = setting
       ? [{ transform: up, opacity: 1 },
-         { transform: `translate(${x + 22}px, ${this.geo.ly - this.geo.ry + 22}px) ` +
+         { transform: `translate(${dusk.x}px, ${this.geo.ly - this.geo.ry + 22}px) ` +
                       "scale(.85)", opacity: 1, offset: .62 },
          { transform: down, opacity: 0 }]
       : [{ transform: down, opacity: 0 },
          { transform: up, opacity: 1 }];
+    this.sunP = setting ? 1 : 0;
     const anim = sun.animate(frames, {
       duration: setting ? DWELL.bell - 400 : DWELL.open - 400,
       easing: setting ? "cubic-bezier(.4,0,.7,1)" : "cubic-bezier(.2,.6,.3,1)",
       fill: "forwards",
     });
-    anim.finished.catch(() => {});
   }
 
   banner_(text) {
@@ -1161,11 +1267,10 @@ const trim = (q) => String(Math.round(q * 1000) / 1000);
 /**
  * The manager's two refusals that have a picture, and the shapes it says them in.
  *
- * Across games 001 and 002, four of the eight refusals are one trader approving
- * an exchange whose goods its **own open offer** is already holding, and one
- * more is a trader approving an offer addressed to somebody else. Both drew a
- * bare ✗: the page said that a refusal happened and never what caused it, while
- * the cause was sitting on screen the whole time as a rope.
+ * Both drew a bare ✗: the page said that a refusal happened and never what
+ * caused it, while for one of them the cause was sitting on screen the whole
+ * time as a rope. Which refusals matter and what they say about how these
+ * agents play is not this file's to decide -- it draws what the manager said.
  *
  * Matched against the manager's wording rather than re-derived, because the
  * manager's arithmetic is the authority on why it refused. A reason that does

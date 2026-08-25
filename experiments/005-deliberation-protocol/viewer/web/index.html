@@ -219,8 +219,8 @@ svg.island { display: block; width: 100%; height: 100%; }
 .ratio.under .num { color: var(--critical); }
 /* The cause of a refusal, held on screen for as long as the badge is. The slot
    the trader came up short in, and the offer of its own that is holding what it
-   needed -- the commonest refusal in the game, and one the page used to report
-   as a bare ✗ while its cause sat on the square as a rope. */
+   needed -- which the page used to report as a bare ✗ while the cause sat on
+   the square as a rope. */
 .cell.blamed .bar-track { fill: var(--critical); opacity: .22; }
 .cell.blamed .bar { opacity: .6; }
 .cell.blamed .qty { fill: var(--critical); }
@@ -535,7 +535,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
       <button class="sp" data-x="4" aria-pressed="true">4×</button>
       <button class="sp" data-x="16" aria-pressed="false">16×</button>
     </span>
-    <select id="chapters" title="Jump to an episode"></select>
+    <select id="chapters" title="Jump to a day"></select>
   </div>
 
   <!-- Both shut until asked for. -->
@@ -655,26 +655,28 @@ function lineClass(e) {
   return "";
 }
 
-function hud(state, quiet) {
+function hud(state) {
   $("ep").innerHTML = state.episode
-    ? `episode <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
-    : "before the first episode";
+    ? `day <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
+    : "before the first day";
   const phase = { before: "waiting", ack: "acknowledging", production: "production",
-                  market: "market open", closed: "bell", over: "round over" }[state.phase];
+                  market: "market open", closed: "sundown", over: "round over" }[state.phase];
   $("phase").textContent = phase;
   $("phase").className = `pill phase-${state.phase}`;
   $("c-settled").innerHTML = `settled <b>${state.counters.settled}</b>`;
   $("c-refused").innerHTML = `refused <b>${state.counters.refused}</b>`;
   $("c-lapsed").innerHTML = `lapsed <b>${state.counters.lapsed}</b>`;
 
+  // How long the board has been quiet is not said in a pill any more. It was a
+  // number about the replay rather than about the island, and the island has a
+  // sun that can carry it: it crosses the sky as the episode runs, so a long
+  // silence is a long stretch of afternoon. Live keeps its countdown, which is
+  // a deadline rather than a description.
   const clock = $("clock");
   if (mode === "live" && state.bell_at) {
     const left = Math.round((Date.parse(state.bell_at) - Date.now()) / 1000);
     clock.hidden = false;
     clock.innerHTML = left > 0 ? `bell in <b>${left}s</b>` : "bell due";
-  } else if (quiet) {
-    clock.hidden = false;
-    clock.innerHTML = `<span class="sub">quiet ${quiet}s</span>`;
   } else {
     clock.hidden = true;
   }
@@ -760,22 +762,25 @@ function closing(state) {
   const zeros = rows.reduce((n, r) => n + r.zeros, 0);
   const c = state.counters;
   $("closing-traffic").innerHTML =
-    `${k || state.episodes || 0} episodes · ${c.settled} settled ·
+    `${k || state.episodes || 0} days · ${c.settled} settled ·
      ${c.refused} refused · ${c.lapsed} lapsed` +
-    (zeros ? ` · <b>${zeros}</b> episode(s) ended holding none of some good,
+    (zeros ? ` · <b>${zeros}</b> day${zeros > 1 ? "s" : ""} ended holding none of some good,
        which is zero utility however much of the rest they had.` : "") +
-    `<br>The full reveal — tastes, capacities, efficiency per episode — is under
+    `<br>The full reveal — tastes, capacities, efficiency per day — is under
      <b>▤</b>, and the scored board is under <b>🏆</b>.`;
   box.hidden = false;
 }
 
 let lastPaint = null;
 
-function paint({ state, event, animate, quiet, index }) {
-  lastPaint = { state, event, animate: false, quiet, index };
+function paint({ state, event, animate, index, until = null, hold = 0 }) {
+  lastPaint = { state, event, animate: false, index };
   scene.draw(state, timeline);
+  // The day's own clock, before the event: `play()` may take the sun down at a
+  // bell or bring it up at an open, and that has to win over the glide.
+  scene.sky(state, until, hold);
   if (animate && event) scene.play(event);
-  hud(state, quiet);
+  hud(state);
   closing(state);
   ticker(timeline.frames, index);
   $("scrub").value = String(index);
@@ -819,7 +824,7 @@ function drawReveal(data) {
     <div class="note">Accumulated utility against the frontier of the total. The
       number is the manager's, read from settled state — this page does not
       recompute it.</div>
-    <h2 style="margin-top:14px">Efficiency per episode</h2>
+    <h2 style="margin-top:14px">Efficiency per day <span class="sub">eff_episode</span></h2>
     ${sparkline(s.eff_episode || [], floor, "eff")}
     <div class="note">A coverage measure, not welfare: one trader at zero puts the
       whole vector maximally far from the frontier however well the others did.</div>
@@ -858,19 +863,19 @@ function utilities(data) {
         <h3>${name} <span class="sub" style="float:right">Σ ${fmt(total, 3)}</span></h3>
         ${sparkline(series, auto[name], "util", top)}
         <div class="note" style="margin-top:2px">
-          ${zeroes ? `<span class="warn">${zeroes} episode${zeroes > 1 ? "s" : ""} at zero</span> · ` : ""}
-          alone they would have had ${fmt(auto[name], 3)} an episode</div>
+          ${zeroes ? `<span class="warn">${zeroes} day${zeroes > 1 ? "s" : ""} at zero</span> · ` : ""}
+          alone they would have had ${fmt(auto[name], 3)} a day</div>
       </div>`;
     }).join("") +
     `<div class="note">Accumulated utility is what <code>eff_round</code> is scored
-      on. A trader ruined in one episode and fed in the rest still has a positive
-      total, which is why the round is the welfare measure and the episode is not.
+      on. A trader ruined in one day and fed in the rest still has a positive
+      total, which is why the round is the welfare measure and the day is not.
       ${check ? (check.disagreements.length
         ? `<span class="warn">This page's own reading of the board disagrees with
            the recorded score in ${check.disagreements.length} place(s) — treat the
            drawing, not the score, as wrong.</span>`
         : `Rebuilt from the receipts, this page agrees with the recorded score to
-           ${check.worst.toExponential(1)} across ${check.episodes} episodes.`) : ""}</div>`;
+           ${check.worst.toExponential(1)} across ${check.episodes} days.`) : ""}</div>`;
 }
 
 /** What a median cannot show: who was ruined, and how often. */
@@ -884,11 +889,11 @@ function diagnostics(data) {
     ["gain worst", fmt(s.gain_worst), "and at the trader who did worst"],
     ["below autarky", `${s.below_autarky} / ${Object.keys(data.traders).length}`,
      "traders who ended the round worse than trading with nobody"],
-    ["zero episodes", `${s.zero_agent_episodes} / ${s.agent_episodes}`,
-     "trader-episodes holding none of some good, which is zero utility"],
+    ["zero days", `${s.zero_agent_episodes} / ${s.agent_episodes}`,
+     "trader-days holding none of some good, which is zero utility"],
     ["first above floor",
-     s.first_above_floor === null ? "never" : `episode ${s.first_above_floor + 1}`,
-     "the first episode whose efficiency beat the autarky floor"],
+     s.first_above_floor === null ? "never" : `day ${s.first_above_floor + 1}`,
+     "the first day whose efficiency beat the autarky floor"],
   ];
   return `<h2 style="margin-top:14px">Diagnostics</h2>` + rows.map(([k, v, why]) =>
     `<div class="rowbar diag" title="${esc(why)}">
@@ -900,7 +905,7 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function sparkline(values, floor, kind = "eff", ceiling = null) {
-  if (!values.length) return `<div class="note">no per-episode record</div>`;
+  if (!values.length) return `<div class="note">no per-day record</div>`;
   const w = 280, h = kind === "util" ? 54 : 74, pad = { l: 6, r: 6, t: 10, b: 16 };
   const top = ceiling ?? Math.max(1, ...values, floor ?? 0);
   const x = (i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(1, values.length - 1);
@@ -908,10 +913,10 @@ function sparkline(values, floor, kind = "eff", ceiling = null) {
   const path = values.map((v, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
   const dots = values.map((v, i) =>
     `<circle class="dot ${v <= 1e-9 ? "zero" : ""}" cx="${x(i).toFixed(1)}"
-       cy="${y(v).toFixed(1)}" r="3"><title>episode ${i + 1}: ${fmt(v)}</title></circle>`).join("");
+       cy="${y(v).toFixed(1)}" r="3"><title>day ${i + 1}: ${fmt(v)}</title></circle>`).join("");
   return `<svg class="spark ${kind}" viewBox="0 0 ${w} ${h}" role="img"
       style="height:${h}px"
-      aria-label="${kind === "util" ? "utility" : "efficiency"} by episode">
+      aria-label="${kind === "util" ? "utility" : "efficiency"} by day">
     <line class="axis" x1="${pad.l}" y1="${h - pad.b}" x2="${w - pad.r}" y2="${h - pad.b}"/>
     ${floor !== undefined ? `<line class="floor" x1="${pad.l}" y1="${y(floor).toFixed(1)}"
        x2="${w - pad.r}" y2="${y(floor).toFixed(1)}"><title>autarky</title></line>` : ""}
@@ -932,7 +937,7 @@ function table(data) {
     <tr><td>${t} α</td>${goods.map((g) => `<td>${fmt(v.taste[g], 3)}</td>`).join("")}</tr>
     <tr><td>${t} cap</td>${goods.map((g) => `<td>${fmt(v.capacity[g], 3)}</td>`).join("")}</tr>`).join("");
   const ep = (data.round?.score?.eff_episode || [])
-    .map((v, i) => `<tr><td>episode ${i + 1}</td><td colspan="${goods.length}">${fmt(v)}</td></tr>`).join("");
+    .map((v, i) => `<tr><td>day ${i + 1}</td><td colspan="${goods.length}">${fmt(v)}</td></tr>`).join("");
   return `<table>${head}${rows}${ep}</table>`;
 }
 
@@ -985,8 +990,8 @@ async function startReplay(boardUrl, revealUrl) {
     state: () => { $("play").textContent = player.playing ? "⏸ pause" : "▶ play"; },
   });
   $("chapters").replaceChildren(
-    new Option("jump to an episode…", "-1"),
-    ...player.episodes().map((c) => new Option(`episode ${c.episode}`, String(c.index))));
+    new Option("jump to a day…", "-1"),
+    ...player.episodes().map((c) => new Option(`day ${c.episode}`, String(c.index))));
   player.seek(0);
 
   $("status").textContent = "";
@@ -1044,7 +1049,15 @@ function liveHandlers(statusWhenOk, statusOnError) {
       // Everything that arrived since the last poll gets played, in order and
       // quickly; the state itself is already current either way.
       const fresh = first ? [] : timeline.frames.slice(before);
-      paint({ state: timeline.final, event: null, animate: false, quiet: 0, index: last });
+      // Live, the next line has not happened yet, so the sun is aimed at the
+      // bell over however long is actually left of the episode. Between polls
+      // it keeps going -- which is the point: on a live board the stretch where
+      // nothing is said is exactly when there is nothing else to look at.
+      const bell = timeline.final.bell_at ? Date.parse(timeline.final.bell_at) : NaN;
+      const left = Number.isFinite(bell) ? bell - Date.now() : 0;
+      paint({ state: timeline.final, event: null, animate: false, index: last,
+              until: left > 0 ? timeline.final.bell_at : null,
+              hold: left > 0 ? left : 0 });
       fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },

@@ -67,10 +67,10 @@ td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       great deal, so ranking on raw efficiency ranks the draw. Below zero means the
       traders ended up worse off than if they had never traded, which is a real
       outcome and is not clamped.
-      <br>The level is the <strong>format</strong> — traders, goods, episodes — and
+      <br>The level is the <strong>format</strong> — traders, goods, days — and
       not the island: the island is drawn per round, so a seed is a roll rather than
       a level, while four traders face a different frontier from two and thirty
-      episodes is more room to learn than three.
+      days is more room to learn than three.
       <br><strong>A game is one attempt</strong>, and may be more than one round:
       a one-round game scores that round, a several-round game scores the median
       of its rounds. The rounds have to be declared as one game before they are
@@ -160,7 +160,7 @@ function draw(data) {
   $("levels").innerHTML = data.islands.length ? data.islands.map((i, n) => `
     <div class="level ${n === 0 ? "top" : ""}">
       <h3><span class="seed">${i.agents} traders</span>
-        <span class="sub">${i.goods} goods · ${i.episodes} episodes</span></h3>
+        <span class="sub">${i.goods} goods · ${i.episodes} days</span></h3>
       <div class="best ${i.best >= 0 ? "up" : "down"}">${i.best >= 0 ? "+" : ""}${fmt(i.best)}</div>
       ${diverging(i.best)}
       <div class="meter-legend"><span>−1</span>
@@ -180,7 +180,7 @@ function draw(data) {
 
   $("traders").innerHTML = `
     <tr><th class="rank"></th><th class="left">player</th><th>best</th><th>median</th><th>worst</th>
-      <th>games</th><th>rounds</th><th>below 1.0×</th><th>zero episodes</th>
+      <th>games</th><th>rounds</th><th>below 1.0×</th><th>zero days</th>
       <th>levels</th></tr>` +
     (data.traders.length ? data.traders.map((p, n) => `
       <tr>
@@ -205,7 +205,7 @@ function draw(data) {
       const best = holder.get(r.game?.id ?? r.round_id) !== undefined;
       return `<tr>
         <td class="id">${r.workspace}<div class="sub">${r.arm ?? "—"} · ${when(r)}</div></td>
-        <td class="left sub">${r.island.seed} · ${r.island.agents}t · ${r.island.episodes}e</td>
+        <td class="left sub">${r.island.seed} · ${r.island.agents}t · ${r.island.episodes}d</td>
         <td class="${capture(r) >= 0 ? "good" : "bad"}">${capture(r) >= 0 ? "+" : ""}${fmt(capture(r))}
           <div class="sub">eff ${fmt(r.eff_round, 2)} · floor ${fmt(r.autarky_floor, 2)}</div></td>
         <td class="id">${ratios || "—"}</td>
