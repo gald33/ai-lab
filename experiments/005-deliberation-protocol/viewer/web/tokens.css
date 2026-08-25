@@ -4,7 +4,8 @@
 :root {
   color-scheme: dark;
   --sea-near:   #1d3242;
-  --sea-far:    #0a1218;
+  --sea-mid:    #132532;
+  --sea-far:    #070d12;
   --plane:      #0b1116;
   --panel:      #171d21;   /* the surface every gate below was validated against */
   --panel-2:    #1e262b;
@@ -12,9 +13,23 @@
   --ink:        #f2f4f4;
   --ink-2:      #b6c0c4;
   --muted:      #8b9599;
-  --sand:       #c9a86a;
-  --sand-dark:  #a4854c;
   --fire:       #ffb648;
+
+  /* Scenery. Deliberately outside the categorical slots below: nothing here
+     ever encodes a good, a trader or a metric, so none of it is held to the
+     contrast gates -- and none of it may drift into a hue that would make a
+     reader look for meaning in the landscape. */
+  --sand:       #c9a86a;
+  --sand-lit:   #ddbe83;
+  --sand-dark:  #96793f;
+  --sand-wet:   #6f5729;
+  --surf:       #cfe6ef;
+  --thatch:     #7a4a34;
+  --thatch-lit: #96654a;
+  --frond:      #55803f;
+  --frond-dark: #3f6330;
+  --trunk:      #7a5a34;
+  --glass:      #ffd79a;
 
   /* Categorical slots 1–4, dark steps. Validated against --panel on the
      adjacent pairlist: worst CVD ΔE 8.4, worst normal-vision ΔE 19.8, all

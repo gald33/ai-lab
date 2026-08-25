@@ -8,6 +8,11 @@
 // shelf, and a parcel in flight wears its glyph and its quantity. The palette
 // passes the adjacent-pair gates for four series; it does not pass all-pairs,
 // which is exactly why position and glyph do the identifying.
+//
+// The scenery is generated rather than hand-drawn: one wobbled ellipse gives
+// the coast, and the surf and the wet sand are the same ring at other scales.
+// Three hand-written paths would have to be kept in sync by eye, and would
+// drift the first time the island changed size.
 
 import { utilityOf } from "./utility.js";
 
@@ -35,26 +40,117 @@ function el(name, attrs = {}, children = []) {
   return node;
 }
 
-const W = 1000, H = 560;
-const CX = W / 2, CY = H / 2 + 10;
+//: Two traders is the shape every board on disk has, and the one the canvas is
+//: proportioned for. More is allowed by the rules and has never been drawn.
+const BASE_W = 1000, BASE_H = 560;
 
-/** Where each hut stands. Two traders face each other; more ring the island. */
-function seats(n) {
-  if (n === 2) return [{ x: 210, y: CY - 14 }, { x: W - 210, y: CY - 14 }];
-  const r = n <= 4 ? 250 : 275;
+/**
+ * A coast that does not read as a logo.
+ *
+ * Fixed wobble rather than random: the same board must draw the same island
+ * on every reload, and a shape that shifts under a scrub bar is a distraction
+ * dressed up as texture.
+ */
+const WOBBLE = [1.000, 0.988, 1.012, 0.994, 1.018, 0.986, 1.008, 0.978, 1.014,
+                0.992, 1.020, 0.984, 1.006, 0.990, 1.016, 0.982, 1.010, 0.996,
+                1.018, 0.988, 1.004, 0.980, 1.014, 0.994];
+
+export function coast(g, k = 1) {
+  const n = WOBBLE.length;
   return Array.from({ length: n }, (_, i) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-    return { x: CX + r * Math.cos(a) * 1.35, y: CY + r * Math.sin(a) * 0.78 };
+    const a = (i / n) * 2 * Math.PI;
+    return [g.cx + g.rx * k * WOBBLE[i] * Math.cos(a),
+            g.ly + g.ry * k * WOBBLE[i] * Math.sin(a)];
   });
 }
 
-const CARD_W = 168, BAR_W = 22, BAR_MAX = 40;
+/** A closed Catmull-Rom through the points, as cubics. Smooth, and it loops. */
+export function closedPath(pts, tension = 0.5) {
+  const n = pts.length;
+  const at = (i) => pts[(i % n + n) % n];
+  let d = `M ${at(0)[0].toFixed(1)} ${at(0)[1].toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) * tension / 3,
+                p1[1] + (p2[1] - p0[1]) * tension / 3];
+    const c2 = [p2[0] - (p3[0] - p1[0]) * tension / 3,
+                p2[1] - (p3[1] - p1[1]) * tension / 3];
+    d += ` C ${c1[0].toFixed(1)} ${c1[1].toFixed(1)}` +
+         ` ${c2[0].toFixed(1)} ${c2[1].toFixed(1)}` +
+         ` ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return `${d} Z`;
+}
+
+/**
+ * The whole scene's geometry, from one number: how many traders.
+ *
+ * Two face each other across the fire, which is what every board on disk is.
+ * More stand in a line along the shore with the square in front of them, and
+ * the canvas gets wider rather than more crowded -- the page scales the SVG to
+ * its column, so a wide viewBox is a smaller picture and not a broken one.
+ *
+ * They used to ring the island. A ring cannot work here and never did: a card
+ * hangs below its hut, so a seat at the bottom of the ring puts its card off
+ * the canvas and a seat at the top puts it over the fire. It had simply never
+ * been rendered -- every replay is two traders.
+ */
+export function layout(n) {
+  if (n <= 2) {
+    const g = { w: BASE_W, h: BASE_H, cx: BASE_W / 2, ly: 298, rx: 452, ry: 188 };
+    const seats = n === 2
+      ? [{ x: 250, y: 238 }, { x: BASE_W - 250, y: 238 }]
+      : [{ x: g.cx, y: 238 }];
+    return { ...g, seats, fire: { x: g.cx, y: g.ly + 52 } };
+  }
+  const w = 268 * n + 300;
+  const g = { w, h: 620, cx: w / 2, ly: 320, rx: w / 2 - 44, ry: 200 };
+  const step = (w - 420) / (n - 1);
+  return {
+    ...g,
+    seats: Array.from({ length: n }, (_, i) => ({ x: 210 + i * step, y: 232 })),
+    // In front of the huts rather than between them: with a line of traders
+    // there is no between.
+    fire: { x: g.cx, y: g.ly + 150 },
+  };
+}
+
+const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
-const BASE = 92;
+const BASE = 104;
 //: Taller only where there is a utility to put in it. A live card must not
 //: carry an empty score row: a blank number reads as a number that failed,
 //: rather than as one nobody on this island is allowed to know.
-const CARD_H = 116, CARD_H_SCORED = 138;
+const CARD_H = 140, CARD_H_SCORED = 186;
+//: The card hangs below the seat, clear of the hut rather than pasted onto it.
+const CARD_TOP = 22;
+
+/** The box a trader's card occupies, in scene coordinates. */
+export function cardBox(seat, cardH = CARD_H_SCORED) {
+  return { x: seat.x - CARD_W / 2, y: seat.y + CARD_TOP, w: CARD_W, h: cardH };
+}
+
+/** Room for a card, and for the hut above it, at every seat. */
+export function fits(g, cardH = CARD_H_SCORED) {
+  return g.seats.every((s) => s.y - 84 > 0 && s.y + CARD_TOP + cardH < g.h
+                              && s.x - CARD_W / 2 > 0 && s.x + CARD_W / 2 < g.w);
+}
+
+/**
+ * Scenery that does not land on the data.
+ *
+ * The old test was `hypot(seat - point) > 170` -- a circle around the seat --
+ * while a card is a tall box hanging *below* it. A circle cannot describe that
+ * box, so palms were passing the test and then rendering on top of a shelf.
+ * Test the box, with a margin for the frond spread.
+ */
+export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 46,
+                             keepOff = []) {
+  const boxes = seatList.map((s) => cardBox(s, cardH)).concat(keepOff);
+  const hits = (x, y) => boxes.some((b) =>
+    x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad - 40 && y < b.y + b.h + pad);
+  return candidates.filter(([x, y]) => !hits(x, y));
+}
 
 export class Scene {
   constructor(root, timeline, reveal = null) {
@@ -66,6 +162,7 @@ export class Scene {
     // and there is deliberately no path that fills it in live.
     this.reveal = reveal;
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
+    this.geo = layout(this.traders.length);
     this.utilityTop = this.utilityScale();
     this.seats = {};
     this.bars = {};
@@ -75,82 +172,18 @@ export class Scene {
 
   build() {
     const svg = this.root;
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const g = this.geo;
+    svg.setAttribute("viewBox", `0 0 ${g.w} ${g.h}`);
     svg.replaceChildren();
+    svg.append(this.defs());
 
-    const defs = el("defs");
-    defs.append(el("radialGradient", { id: "sea", cx: "50%", cy: "45%", r: "75%" }, [
-      el("stop", { offset: "0%", "stop-color": "var(--sea-near)" }),
-      el("stop", { offset: "100%", "stop-color": "var(--sea-far)" }),
-    ]));
-    defs.append(el("radialGradient", { id: "glow", cx: "50%", cy: "50%", r: "50%" }, [
-      el("stop", { offset: "0%", "stop-color": "var(--fire)", "stop-opacity": "0.55" }),
-      el("stop", { offset: "100%", "stop-color": "var(--fire)", "stop-opacity": "0" }),
-    ]));
-    svg.append(defs);
+    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, fill: "url(#sea)" }));
+    svg.append(this.water());
+    svg.append(this.land());
 
-    svg.append(el("rect", { x: 0, y: 0, width: W, height: H, fill: "url(#sea)" }));
-
-    // Water, moving slowly enough to be scenery rather than information.
-    const water = el("g", { class: "water", "aria-hidden": "true" });
-    for (let i = 0; i < 7; i++) {
-      const y = 70 + i * 78;
-      water.append(el("path", {
-        d: `M -60 ${y} q 60 -12 120 0 t 120 0 t 120 0 t 120 0 t 120 0 t 120 0 t 120 0 t 120 0 t 120 0`,
-        class: "wave", style: `animation-delay: ${-i * 1.7}s`,
-      }));
-    }
-    svg.append(water);
-
-    // The island itself. One hand-written blob: a circle reads as a logo.
-    // Sized so the trader cards sit on sand with a little shore to spare: the
-    // island is the frame for the information, not a landscape in its own right.
-    svg.append(el("path", {
-      class: "land",
-      d: `M ${CX - 392} ${CY + 10}
-          C ${CX - 392} ${CY - 96} ${CX - 250} ${CY - 142} ${CX - 118} ${CY - 128}
-          C ${CX - 38} ${CY - 120} ${CX + 40} ${CY - 142} ${CX + 142} ${CY - 132}
-          C ${CX + 282} ${CY - 120} ${CX + 392} ${CY - 70} ${CX + 392} ${CY + 12}
-          C ${CX + 392} ${CY + 102} ${CX + 250} ${CY + 158} ${CX} ${CY + 158}
-          C ${CX - 250} ${CY + 158} ${CX - 392} ${CY + 100} ${CX - 392} ${CY + 10} Z`,
-    }));
-    svg.append(el("ellipse", {
-      class: "square", cx: CX, cy: CY + 26, rx: 118, ry: 52,
-    }));
-
-    // The fire in the middle of the square: the only thing on screen that is
-    // pure decoration, and the thing that makes an idle board look inhabited.
-    svg.append(el("circle", { cx: CX, cy: CY + 18, r: 90, fill: "url(#glow)", class: "firelight" }));
-    const fire = el("g", { class: "fire", transform: `translate(${CX} ${CY + 26})` });
-    fire.append(el("path", { class: "log", d: "M -22 6 L 22 -2" }));
-    fire.append(el("path", { class: "log", d: "M -22 -2 L 22 6" }));
-    fire.append(el("path", { class: "flame", d: "M 0 -30 c 12 12 16 22 0 30 c -16 -8 -12 -18 0 -30 z" }));
-    svg.append(fire);
-
-    // A place rather than a blank: a worn path between the huts, and planting
-    // where nothing informative goes.
-    seats(this.traders.length).forEach((seat, i) => { this.seats[this.traders[i]] = seat; });
-    const scenery = el("g", { class: "scenery", "aria-hidden": "true" });
-    scenery.append(el("path", {
-      class: "track", d: `M 150 ${CY + 14} Q ${CX} ${CY + 104} ${W - 150} ${CY + 14}`,
-    }));
-    const clear = (x, y) => Object.values(this.seats)
-      .every((s) => Math.hypot(s.x - x, s.y - y) > 170);
-    for (const [x, y, k] of [[CX - 148, CY + 132, 1], [CX + 162, CY + 134, .92],
-                             [CX - 26, CY - 104, .8], [CX + 134, CY - 98, .7],
-                             [CX - 268, CY + 108, .8], [CX + 272, CY + 104, .86]]
-                             .filter(([x, y]) => clear(x, y))) {
-      const palm = el("g", { class: "palm", transform: `translate(${x} ${y}) scale(${k})` });
-      palm.append(el("path", { class: "trunk", d: "M 0 0 q -5 -18 2 -34" }));
-      for (const a of [-54, -18, 18, 54]) {
-        palm.append(el("path", {
-          class: "frond", transform: `rotate(${a} 2 -34)`,
-          d: "M 2 -34 q 17 -9 27 -2 q -15 7 -27 2 z",
-        }));
-      }
-      scenery.append(palm);
-    }
-    svg.append(scenery);
+    g.seats.forEach((seat, i) => { this.seats[this.traders[i]] = seat; });
+    svg.append(this.square());
+    svg.append(this.scenery());
 
     this.ropes = el("g", { class: "ropes" });
     svg.append(this.ropes);
@@ -162,14 +195,178 @@ export class Scene {
     this.flights = el("g", { class: "flights" });
     svg.append(this.flights);
 
+    // Dusk rather than a black rectangle: the bell is the most dramatic thing
+    // that happens in an episode and it was being drawn as a power cut.
     this.night = el("rect", {
-      x: 0, y: 0, width: W, height: H, class: "night", opacity: 0,
+      x: 0, y: 0, width: g.w, height: g.h, class: "night", fill: "url(#dusk)", opacity: 0,
     });
     svg.append(this.night);
+    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "vignette",
+                            fill: "url(#vignette)" }));
 
     this.banner = el("g", { class: "banner", opacity: 0 });
-    this.banner.append(el("text", { x: CX, y: 84, class: "banner-text" }, ""));
+    this.banner.append(el("rect", { class: "banner-bg", x: g.cx - 200, y: 42,
+                                    width: 400, height: 46, rx: 23 }));
+    this.banner.append(el("text", { x: g.cx, y: 72, class: "banner-text" }, ""));
     svg.append(this.banner);
+  }
+
+  defs() {
+    const defs = el("defs");
+    defs.append(el("radialGradient", { id: "sea", cx: "50%", cy: "42%", r: "78%" }, [
+      el("stop", { offset: "0%", "stop-color": "var(--sea-near)" }),
+      el("stop", { offset: "60%", "stop-color": "var(--sea-mid)" }),
+      el("stop", { offset: "100%", "stop-color": "var(--sea-far)" }),
+    ]));
+    // The sand is lit from the square, so the gradient's bright end sits where
+    // the fire is rather than at the top of the shape.
+    defs.append(el("radialGradient", { id: "sand", cx: "50%", cy: "58%", r: "68%" }, [
+      el("stop", { offset: "0%", "stop-color": "var(--sand-lit)" }),
+      el("stop", { offset: "65%", "stop-color": "var(--sand)" }),
+      el("stop", { offset: "100%", "stop-color": "var(--sand-dark)" }),
+    ]));
+    defs.append(el("radialGradient", { id: "glow", cx: "50%", cy: "50%", r: "50%" }, [
+      el("stop", { offset: "0%", "stop-color": "var(--fire)", "stop-opacity": "0.5" }),
+      el("stop", { offset: "55%", "stop-color": "var(--fire)", "stop-opacity": "0.14" }),
+      el("stop", { offset: "100%", "stop-color": "var(--fire)", "stop-opacity": "0" }),
+    ]));
+    defs.append(el("radialGradient", { id: "vignette", cx: "50%", cy: "48%", r: "72%" }, [
+      el("stop", { offset: "55%", "stop-color": "#000", "stop-opacity": "0" }),
+      el("stop", { offset: "100%", "stop-color": "#000", "stop-opacity": "0.5" }),
+    ]));
+    defs.append(el("linearGradient", { id: "dusk", x1: "0", y1: "0", x2: "0", y2: "1" }, [
+      el("stop", { offset: "0%", "stop-color": "#05202f" }),
+      el("stop", { offset: "100%", "stop-color": "#020a10" }),
+    ]));
+    // Sand grain. Sparse on purpose: texture that competes with a bar chart is
+    // not texture, it is noise on top of the only information here.
+    const grain = el("pattern", { id: "grain", width: 38, height: 38,
+                                  patternUnits: "userSpaceOnUse" });
+    for (const [x, y, r] of [[5, 9, .9], [21, 3, .6], [13, 21, .8], [30, 16, .55],
+                             [2, 27, .7], [25, 30, .85], [34, 6, .6], [9, 33, .5],
+                             [18, 12, .45], [31, 25, .7]]) {
+      grain.append(el("circle", { cx: x, cy: y, r, class: "grain-dot" }));
+    }
+    defs.append(grain);
+    // Thatch, for the roofs. Same argument as the grain: barely there.
+    const thatch = el("pattern", { id: "thatch", width: 8, height: 6,
+                                   patternUnits: "userSpaceOnUse" });
+    thatch.append(el("path", { d: "M 0 6 q 4 -6 8 0", class: "thatch-line" }));
+    defs.append(thatch);
+    return defs;
+  }
+
+  /**
+   * Three bands, three speeds. One band reads as wallpaper; the parallax is
+   * what makes it water. Each translates by exactly one wavelength, so the
+   * loop has no seam to catch the eye.
+   */
+  water() {
+    const g = this.geo;
+    const w = el("g", { class: "water", "aria-hidden": "true" });
+    const reps = Math.ceil((g.w + 480) / 240) + 1;
+    const band = (cls, ys, dy) => {
+      const layer = el("g", { class: `wave-band ${cls}` });
+      ys.forEach((y, i) => {
+        layer.append(el("path", {
+          class: "wave",
+          d: `M -240 ${y} ` + `q 60 ${-dy} 120 0 t 120 0 `.repeat(reps),
+          style: `animation-delay: ${-i * 2.3}s`,
+        }));
+      });
+      return layer;
+    };
+    const near = g.ly + g.ry;
+    w.append(band("far", [26, 58, 90, 122], 7));
+    w.append(band("mid", [g.ly - g.ry - 40, near + 34, near + 66], 10));
+    w.append(band("near", [g.h - 26, g.h + 6], 13));
+    return w;
+  }
+
+  land() {
+    const geo = this.geo;
+    const g = el("g", { class: "island-body" });
+    // Surf first, so the shore sits on top of it and the foam reads as being
+    // *under* the beach rather than drawn over it.
+    g.append(el("path", { class: "shallows", d: closedPath(coast(geo, 1.04)) }));
+    g.append(el("path", { class: "surf surf-2", d: closedPath(coast(geo, 1.014)) }));
+    g.append(el("path", { class: "surf surf-1", d: closedPath(coast(geo, 1.004)) }));
+    g.append(el("path", { class: "land", d: closedPath(coast(geo, 1)) }));
+    g.append(el("path", { class: "grain-fill", d: closedPath(coast(geo, 0.997)) }));
+    // Stroked, not filled. Filled, it is a pale disc over the whole island and
+    // the sand gradient underneath stops existing.
+    g.append(el("path", { class: "wet", d: closedPath(coast(geo, 0.978)) }));
+    return g;
+  }
+
+  /** The square, the fire, and the light it throws. */
+  square() {
+    const { x: fx, y: fy } = this.geo.fire;
+    const g = el("g", { class: "square-group" });
+    g.append(el("ellipse", { class: "square", cx: fx, cy: fy, rx: 132, ry: 54 }));
+    g.append(el("circle", { cx: fx, cy: fy - 8, r: 132, fill: "url(#glow)",
+                            class: "firelight" }));
+    const fire = el("g", { class: "fire", transform: `translate(${fx} ${fy})` });
+    fire.append(el("path", { class: "log", d: "M -26 7 L 26 -2" }));
+    fire.append(el("path", { class: "log", d: "M -26 -2 L 26 7" }));
+    fire.append(el("ellipse", { class: "embers", cx: 0, cy: 4, rx: 20, ry: 6 }));
+    // Three flames on their own clocks. One flame that changes opacity reads as
+    // a light bulb with a fault; three that move against each other read as
+    // burning.
+    [[0, -36, 1, 0], [-11, -26, .72, -.55], [12, -28, .78, -1.1]].forEach(
+      ([dx, top, k, delay]) => {
+        fire.append(el("path", {
+          class: "flame",
+          d: `M ${dx} ${top} c ${12 * k} ${12 * k} ${16 * k} ${22 * k} 0 ${30 * k}` +
+             ` c ${-16 * k} ${-8 * k} ${-12 * k} ${-18 * k} 0 ${-30 * k} z`,
+          style: `animation-delay: ${delay}s`,
+        }));
+      });
+    for (const [dx, delay] of [[-6, 0], [7, -1.9], [1, -3.4]]) {
+      fire.append(el("circle", { class: "ember", cx: dx, cy: -34, r: 1.8,
+                                 style: `animation-delay: ${delay}s` }));
+    }
+    g.append(fire);
+    return g;
+  }
+
+  /** A place rather than a blank: a worn path between the huts, and planting. */
+  scenery() {
+    const geo = this.geo;
+    const g = el("g", { class: "scenery", "aria-hidden": "true" });
+    const seatList = Object.values(this.seats);
+    const first = seatList[0], last = seatList[seatList.length - 1];
+    g.append(el("path", {
+      class: "track",
+      d: `M ${first.x} ${geo.fire.y - 34} Q ${geo.cx} ${geo.fire.y + 74} ` +
+         `${last.x} ${geo.fire.y - 34}`,
+    }));
+    // Along the shore, where nothing informative goes. Kept as fractions of the
+    // island so a wider canvas plants more of it rather than stretching six.
+    const ring = [[-.86, -.30], [.87, -.26], [-.72, .52], [.74, .55],
+                  [-.30, -.72], [.32, -.70], [-.14, .82], [.18, .84],
+                  [-.55, .74], [.58, .72], [-.95, .18], [.96, .14]];
+    const candidates = ring.map(([u, v]) => [geo.cx + u * geo.rx * .93,
+                                             geo.ly + v * geo.ry * .93]);
+    // The square is where everybody meets and the fire is in it. A palm growing
+    // out of the fire is the same class of mistake as one growing out of a card.
+    const square = { x: geo.fire.x - 148, y: geo.fire.y - 74, w: 296, h: 128 };
+    placeScenery(seatList, candidates, this.cardH, 46, [square]).forEach(([x, y], i) => {
+      const k = 0.74 + ((i * 7) % 5) * 0.09;
+      const palm = el("g", { class: "palm", transform: `translate(${x} ${y}) scale(${k})`,
+                             style: `animation-delay: ${-i * 1.3}s` });
+      palm.append(el("ellipse", { class: "palm-shadow", cx: 3, cy: 3, rx: 15, ry: 4 }));
+      palm.append(el("path", { class: "trunk", d: "M 0 0 q -7 -22 3 -42" }));
+      for (const [a, sc] of [[-72, .9], [-38, 1], [-4, .95], [30, 1], [64, .88]]) {
+        palm.append(el("path", {
+          class: "frond", transform: `rotate(${a} 3 -42) scale(${sc})`,
+          d: "M 3 -42 q 20 -11 32 -3 q -12 5 -19 6 q -8 1 -13 -3 z",
+        }));
+      }
+      palm.append(el("circle", { class: "coconut", cx: 4, cy: -40, r: 2.6 }));
+      g.append(palm);
+    });
+    return g;
   }
 
   hut(name, seat) {
@@ -178,25 +375,35 @@ export class Scene {
     // The dwelling, then the card. The hut says whose this is; the card is the
     // only part carrying information, and it gets a dark ground of its own --
     // a number written straight onto sand cannot be read at any size.
-    g.append(el("path", { class: "roof", d: "M -46 -34 L 0 -76 L 46 -34 Z" }));
-    g.append(el("rect", { class: "wall", x: -36, y: -34, width: 72, height: 44, rx: 3 }));
-    g.append(el("rect", { class: "door", x: -10, y: -14, width: 20, height: 24, rx: 2 }));
+    g.append(el("ellipse", { class: "hut-shadow", cx: 6, cy: 12, rx: 52, ry: 10 }));
+    g.append(el("path", { class: "roof", d: "M -50 -34 L 0 -80 L 50 -34 Z" }));
+    g.append(el("path", { class: "roof-thatch", d: "M -50 -34 L 0 -80 L 50 -34 Z" }));
+    g.append(el("rect", { class: "wall", x: -38, y: -34, width: 76, height: 46, rx: 3 }));
+    // Lit while this trader has spoken, dark while they have not: the building
+    // carries "nobody is home", so the state is not only a whole-hut fade.
+    g.append(el("rect", { class: "window", x: -30, y: -26, width: 15, height: 13, rx: 2 }));
+    g.append(el("rect", { class: "door", x: -8, y: -14, width: 20, height: 26, rx: 2 }));
+    g.append(el("path", { class: "hut-rim", d: "M -50 -34 L 0 -80 L 50 -34" }));
 
     const card = el("g", { class: "card" });
-    card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: 14,
-                             width: CARD_W, height: this.cardH, rx: 11 }));
-    card.append(el("text", { x: -CARD_W / 2 + 12, y: 36, class: "card-name" }, name));
+    card.append(el("rect", { class: "card-shadow", x: -CARD_W / 2 + 3, y: CARD_TOP + 5,
+                             width: CARD_W, height: this.cardH, rx: 13 }));
+    card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: CARD_TOP,
+                             width: CARD_W, height: this.cardH, rx: 13 }));
+    card.append(el("text", { x: -CARD_W / 2 + 13, y: CARD_TOP + 25, class: "card-name" },
+                    name));
 
     // Labour: filled by what this trader spent this episode, and empty until a
     // production receipt says otherwise -- nobody has told this page anything
     // about their labour before then.
-    const wheel = el("g", { class: "wheel", transform: `translate(${CARD_W / 2 - 22} 30)` });
-    wheel.append(el("circle", { r: 11, class: "wheel-track" }));
-    wheel.append(el("circle", { r: 11, class: "wheel-fill",
-                                "stroke-dasharray": "0 70", transform: "rotate(-90)" }));
+    const wheel = el("g", { class: "wheel",
+                            transform: `translate(${CARD_W / 2 - 24} ${CARD_TOP + 19})` });
+    wheel.append(el("circle", { r: 12, class: "wheel-track" }));
+    wheel.append(el("circle", { r: 12, class: "wheel-fill",
+                                "stroke-dasharray": "0 76", transform: "rotate(-90)" }));
     wheel.append(el("text", { y: 3.5, class: "wheel-text" }, "—"));
     card.append(wheel);
-    card.append(el("text", { x: CARD_W / 2 - 40, y: 34, class: "card-sub",
+    card.append(el("text", { x: CARD_W / 2 - 43, y: CARD_TOP + 23, class: "card-sub",
                              "text-anchor": "end" }, "labour"));
     this.labels[name] = { wheel: wheel.querySelector(".wheel-fill"),
                           wheelText: wheel.querySelector(".wheel-text"),
@@ -205,52 +412,59 @@ export class Scene {
     // The shelf: goods in the manager's own order, always, so the position is
     // learned once and no legend has to be consulted again.
     this.bars[name] = {};
-    const inner = CARD_W - 24;
+    const inner = CARD_W - 26;
     const step = inner / this.goods.length;
     this.goods.forEach((good, i) => {
-      const cx = -CARD_W / 2 + 12 + i * step + step / 2;
+      const cx = -CARD_W / 2 + 13 + i * step + step / 2;
       const x = cx - BAR_W / 2;
       const cell = el("g", { class: "cell", "data-good": good,
                              style: `--c: var(${SLOT[i % SLOT.length]})` });
       cell.append(el("rect", { class: "bar-track", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 3 }));
+                               width: BAR_W, height: BAR_MAX, rx: 4 }));
       const bar = el("rect", { class: "bar", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 3 });
+                               width: BAR_W, height: BAR_MAX, rx: 4 });
       // Promised, not gone: the manager will not settle a second offer over the
       // same goods, so a shelf that hides commitment shows stock that cannot
       // actually be offered.
       const held = el("rect", { class: "bar-held", x, y: BASE - BAR_MAX,
-                                width: BAR_W, height: BAR_MAX, rx: 3 });
+                                width: BAR_W, height: BAR_MAX, rx: 4 });
       cell.append(bar, held);
-      cell.append(el("text", { x: cx, y: BASE + 16, class: "glyph" }, GLYPH[good] || "▪"));
-      cell.append(el("text", { x: cx, y: BASE + 29, class: "qty" }, ""));
+      // An empty slot has to say empty. A dark trough reads as "small", and the
+      // difference between small and none is the whole of Cobb-Douglas.
+      cell.append(el("line", { class: "bar-zero", x1: x + 4, y1: BASE - 1.5,
+                               x2: x + BAR_W - 4, y2: BASE - 1.5 }));
+      cell.append(el("text", { x: cx, y: BASE + 17, class: "glyph" }, GLYPH[good] || "▪"));
+      cell.append(el("text", { x: cx, y: BASE + 31, class: "qty" }, ""));
       card.append(cell);
-      this.bars[name][good] = { bar, held, qty: cell.querySelector(".qty"), x: cx };
+      this.bars[name][good] = { cell, bar, held, qty: cell.querySelector(".qty"), x: cx };
     });
-    card.append(el("line", { class: "plank", x1: -CARD_W / 2 + 8, y1: BASE + 1.5,
-                             x2: CARD_W / 2 - 8, y2: BASE + 1.5 }));
+    card.append(el("line", { class: "plank", x1: -CARD_W / 2 + 9, y1: BASE + 2,
+                             x2: CARD_W / 2 - 9, y2: BASE + 2 }));
 
     if (this.reveal) {
       // What this shelf is worth to the trader who owns it. Computed here from
       // the revealed tastes and the receipts -- the manager's own scored
       // trajectory is in the rail, and `audit()` holds the two together.
-      const row = el("g", { class: "score", transform: `translate(0 ${BASE + 44})` });
-      const w = CARD_W - 24;
-      row.append(el("text", { x: -CARD_W / 2 + 12, y: 0, class: "card-sub" }, "utility"));
-      row.append(el("text", { x: CARD_W / 2 - 12, y: 0, class: "score-value",
+      const row = el("g", { class: "score", transform: `translate(0 ${BASE + 52})` });
+      const w = CARD_W - 26;
+      row.append(el("text", { x: -CARD_W / 2 + 13, y: 0, class: "card-sub" }, "utility"));
+      row.append(el("text", { x: CARD_W / 2 - 13, y: 0, class: "score-value",
                               "text-anchor": "end" }, "—"));
-      row.append(el("rect", { class: "score-track", x: -w / 2, y: 5, width: w,
-                              height: 6, rx: 3 }));
-      row.append(el("rect", { class: "score-fill", x: -w / 2, y: 5, width: w,
-                              height: 6, rx: 3 }));
+      row.append(el("rect", { class: "score-track", x: -w / 2, y: 6, width: w,
+                              height: 7, rx: 3.5 }));
+      row.append(el("rect", { class: "score-fill", x: -w / 2, y: 6, width: w,
+                              height: 7, rx: 3.5 }));
       // Where autarky would have put them: the line worth beating, and the one
       // a round can finish below.
       const auto = this.reveal.autarky_utility?.[name];
       if (auto !== undefined && this.utilityTop > 0) {
-        row.append(el("rect", {
-          class: "score-floor", x: -w / 2 + w * Math.min(1, auto / this.utilityTop) - 1,
-          y: 2, width: 2, height: 12,
-        }, []));
+        const at = -w / 2 + w * Math.min(1, auto / this.utilityTop);
+        row.append(el("rect", { class: "score-floor", x: at - 1, y: 2, width: 2, height: 15 }));
+        // Clamped: autarky can be the top of the scale (it was, for T1 in game
+        // 001), which puts the tick hard against the card's right edge and the
+        // label half outside it.
+        row.append(el("text", { x: Math.max(-w / 2 + 16, Math.min(w / 2 - 16, at)), y: 27,
+                                class: "score-floor-tag" }, "alone"));
       }
       card.append(row);
       this.labels[name].score = row.querySelector(".score-fill");
@@ -316,10 +530,11 @@ export class Scene {
         // the page must not imply more precision than they do.
         b.qty.textContent = qty > 1e-9 ? qty.toFixed(2) : "";
         b.qty.classList.toggle("none", qty <= 1e-9);
+        b.cell.classList.toggle("empty", qty <= 1e-9);
       }
       const spent = state.labour[name];
       const wheel = this.labels[name];
-      const arc = 2 * Math.PI * 11;
+      const arc = 2 * Math.PI * 12;
       const used = spent === null ? 0 : Math.max(0, Math.min(1, 1 - spent));
       wheel.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
       wheel.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
@@ -332,7 +547,7 @@ export class Scene {
         const held = closed && last ? last.holdings[name] : state.stocks[name];
         const u = utilityOf(this.reveal, name, held);
         const label = this.labels[name];
-        const w = CARD_W - 24;
+        const w = CARD_W - 26;
         label.score.setAttribute("width",
           (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
         label.scoreText.textContent = u === null ? "—" : u.toFixed(3);
@@ -351,27 +566,54 @@ export class Scene {
     // reading the square for. Fan them by pair.
     const open = state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
+    const placed = new Map();
     this.ropes.replaceChildren(...open.map((p) => {
       const pair = [p.maker, p.taker].sort().join("~");
       const i = rank.get(pair) || 0;
       rank.set(pair, i + 1);
+      placed.set(p.pid, i);
       return this.rope(p, i);
     }));
+    // A rope that lapsed used to vanish between two paints, and how many offers
+    // died unanswered is exactly what a spectator is counting. Fray it on the
+    // way out instead -- but only when it was on screen a moment ago, so
+    // scrubbing backwards over an old bell does not replay somebody else's.
+    const was = this.shown || new Map();
+    for (const p of state.proposals) {
+      if (p.status !== "lapsed" || !was.has(p.pid)) continue;
+      this.fray(p, was.get(p.pid));
+    }
+    this.shown = placed;
     this.root.classList.toggle("closed", state.phase === "closed" || state.phase === "over");
+  }
+
+  /** One rope, going slack and fading, after the bell took the offer with it. */
+  fray(p, fan) {
+    const node = this.rope(p, fan);
+    node.classList.add("lapsing");
+    this.flights.append(node);
+    const anim = node.animate(
+      [{ opacity: 1 }, { opacity: 0.55, offset: .3 }, { opacity: 0 }],
+      { duration: still() ? 1 : 1100, easing: "ease-in" });
+    anim.finished.then(() => node.remove(), () => node.remove());
   }
 
   rope(p, fan = 0) {
     const a = this.seats[p.maker], b = this.seats[p.taker];
     if (!a || !b) return el("g");
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 78 - fan * 56;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 118 - fan * 44;
     const g = el("g", { class: "rope", "data-pid": p.pid });
-    g.append(el("path", { class: "rope-line", d: `M ${a.x} ${a.y - 40} Q ${mx} ${my} ${b.x} ${b.y - 40}` }));
-    const chip = el("g", { class: "rope-chip", transform: `translate(${mx} ${my + 18})` });
+    g.append(el("path", { class: "rope-shadow",
+                          d: `M ${a.x} ${a.y - 84} Q ${mx} ${my} ${b.x} ${b.y - 84}` }));
+    g.append(el("path", { class: "rope-line",
+                          d: `M ${a.x} ${a.y - 84} Q ${mx} ${my} ${b.x} ${b.y - 84}` }));
+    const chip = el("g", { class: "rope-chip", transform: `translate(${mx} ${my + 20})` });
     const text = `${bundleText(p.give)} → ${bundleText(p.want)}`;
-    const width = Math.max(96, text.length * 8.2);
-    chip.append(el("rect", { x: -width / 2, y: -15, width, height: 30, rx: 15, class: "chip-bg" }));
+    const width = Math.max(104, text.length * 8.4);
+    chip.append(el("rect", { x: -width / 2, y: -16, width, height: 32, rx: 16,
+                             class: "chip-bg" }));
     chip.append(el("text", { x: 0, y: 5, class: "chip-text" }, text));
-    chip.append(el("text", { x: 0, y: 26, class: "chip-pid" }, `${p.pid} · ${p.maker}→${p.taker}`));
+    chip.append(el("text", { x: 0, y: 28, class: "chip-pid" }, `${p.pid} · ${p.maker}→${p.taker}`));
     g.append(chip);
     return g;
   }
@@ -381,7 +623,7 @@ export class Scene {
   play(event) {
     switch (event.kind) {
       case "settled": return this.flight(event);
-      case "produced": return this.pop(event.trader, "produced", "good");
+      case "produced": return this.produce(event);
       case "refused": return this.pop(event.trader, `✗ ${short(event.reason)}`, "bad");
       case "bell": return this.bell(event);
       case "open": return this.banner_(`episode ${event.episode}${event.of ? ` of ${event.of}` : ""}`);
@@ -391,29 +633,73 @@ export class Scene {
     }
   }
 
+  /**
+   * Production, which used to have no picture at all.
+   *
+   * `state.made` has been in the reducer since it was written and nothing drew
+   * it, so the one thing a trader does entirely on its own was a text bubble
+   * reading "produced". Lift what was made out of the hut and onto its slot.
+   */
+  produce(e) {
+    const seat = this.seats[e.trader];
+    if (!seat) return;
+    this.pop(e.trader, "produced", "good");
+    const made = Object.entries(e.made || {}).filter(([, q]) => q > 1e-9);
+    made.forEach(([good, qty], i) => {
+      const slot = this.bars[e.trader]?.[good];
+      if (!slot) return;
+      slot.cell.classList.add("grew");
+      setTimeout(() => slot.cell.classList.remove("grew"), 900);
+      const sheaf = el("g", { class: "sheaf" });
+      sheaf.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
+      sheaf.append(el("text", { y: 15, class: "sheaf-qty" }, qty.toFixed(2)));
+      this.flights.append(sheaf);
+      const x = seat.x + slot.x, to = seat.y + CARD_TOP + BASE - 12;
+      const anim = sheaf.animate([
+        { transform: `translate(${seat.x}px, ${seat.y - 16}px) scale(.5)`, opacity: 0 },
+        { transform: `translate(${(seat.x + x) / 2}px, ${seat.y + 4}px) scale(1)`,
+          opacity: 1, offset: .45 },
+        { transform: `translate(${x}px, ${to}px) scale(.8)`, opacity: 0 },
+      ], { duration: still() ? 1 : 1000, delay: still() ? 0 : i * 130,
+           easing: "cubic-bezier(.32,.9,.4,1)", fill: "backwards" });
+      anim.finished.then(() => sheaf.remove(), () => sheaf.remove());
+    });
+  }
+
   /** Goods crossing the square. The only moment a trade is visible as motion. */
   flight(e) {
     const a = this.seats[e.maker], b = this.seats[e.taker];
     if (!a || !b) return;
     const send = (from, to, bundle, cls) => {
-      for (const [good, qty] of Object.entries(bundle)) {
+      // Staggered: a three-good bundle sent all at once is one blur, and how
+      // much crossed the square is the thing a spectator is here for.
+      Object.entries(bundle).forEach(([good, qty], i) => {
         const parcel = el("g", { class: `parcel ${cls}` });
-        parcel.append(el("circle", { r: 16, class: "parcel-bg",
+        parcel.append(el("circle", { r: 3, class: "parcel-trail" }));
+        parcel.append(el("circle", { r: 17, class: "parcel-bg",
                                      style: `--c: var(${SLOT[this.goods.indexOf(good) % SLOT.length]})` }));
         parcel.append(el("text", { y: 5, class: "parcel-glyph" }, GLYPH[good] || "▪"));
-        parcel.append(el("text", { y: 30, class: "parcel-qty" }, qty.toFixed(2)));
+        parcel.append(el("text", { y: 32, class: "parcel-qty" }, qty.toFixed(2)));
         this.flights.append(parcel);
-        const lift = -70;
+        const lift = -96;
         const frames = [
-          { transform: `translate(${from.x}px, ${from.y - 40}px)`, opacity: 0 },
-          { transform: `translate(${(from.x + to.x) / 2}px, ${(from.y + to.y) / 2 + lift}px)`, opacity: 1 },
-          { transform: `translate(${to.x}px, ${to.y - 40}px)`, opacity: 0 },
+          { transform: `translate(${from.x}px, ${from.y - 42}px) scale(.55) rotate(0deg)`,
+            opacity: 0 },
+          { transform: `translate(${from.x * .72 + to.x * .28}px, ` +
+                       `${(from.y + to.y) / 2 + lift * .8}px) scale(1) rotate(-7deg)`,
+            opacity: 1, offset: .28 },
+          { transform: `translate(${(from.x + to.x) / 2}px, ` +
+                       `${(from.y + to.y) / 2 + lift}px) scale(1.05) rotate(0deg)`,
+            opacity: 1, offset: .55 },
+          { transform: `translate(${to.x}px, ${to.y - 42}px) scale(.62) rotate(8deg)`,
+            opacity: 0 },
         ];
         const anim = parcel.animate(frames, {
-          duration: still() ? 1 : 900, easing: "cubic-bezier(.4,0,.2,1)",
+          duration: still() ? 1 : 1000, delay: still() ? 0 : i * 150,
+          easing: "cubic-bezier(.4,0,.2,1)", fill: "backwards",
         });
         anim.finished.then(() => parcel.remove(), () => parcel.remove());
-      }
+      });
     };
     send(a, b, e.give, "out");
     send(b, a, e.want, "back");
@@ -425,33 +711,46 @@ export class Scene {
     const seat = this.seats[trader];
     if (!seat) return;
     const g = el("g", { class: `pop ${kind}` });
-    const width = Math.max(84, String(text).length * 7.4);
-    g.append(el("rect", { x: -width / 2, y: -14, width, height: 26, rx: 13, class: "pop-bg" }));
+    const width = Math.max(90, String(text).length * 7.6);
+    g.append(el("rect", { x: -width / 2, y: -15, width, height: 28, rx: 14, class: "pop-bg" }));
     g.append(el("text", { y: 4, class: "pop-text" }, String(text)));
     this.flights.append(g);
     const anim = g.animate([
-      { transform: `translate(${seat.x}px, ${seat.y - 100}px)`, opacity: 0 },
-      { transform: `translate(${seat.x}px, ${seat.y - 128}px)`, opacity: 1, offset: 0.25 },
-      { transform: `translate(${seat.x}px, ${seat.y - 150}px)`, opacity: 0 },
-    ], { duration: still() ? 1 : 1800, easing: "ease-out" });
+      { transform: `translate(${seat.x}px, ${seat.y - 104}px) scale(.8)`, opacity: 0 },
+      { transform: `translate(${seat.x}px, ${seat.y - 132}px) scale(1)`, opacity: 1,
+        offset: 0.22 },
+      { transform: `translate(${seat.x}px, ${seat.y - 168}px) scale(1)`, opacity: 0 },
+    ], { duration: still() ? 1 : 1900, easing: "ease-out" });
     anim.finished.then(() => g.remove(), () => g.remove());
   }
 
+  /**
+   * The bell: dusk falls, and everything on every shelf is consumed.
+   *
+   * It was a black rectangle flashed over the whole picture, which read as the
+   * page breaking rather than as the day ending.
+   */
   bell(e) {
     this.banner_(`bell — episode ${e.episode} closed` +
                  (e.lapsed ? ` · ${e.lapsed} lapsed` : ""));
+    this.root.classList.add("dusk");
+    setTimeout(() => this.root.classList.remove("dusk"), still() ? 1 : 2000);
     const anim = this.night.animate(
-      [{ opacity: 0 }, { opacity: 0.62 }, { opacity: 0 }],
-      { duration: still() ? 1 : 1600, easing: "ease-in-out" });
+      [{ opacity: 0 }, { opacity: 0.55, offset: .35 }, { opacity: 0.5, offset: .6 },
+       { opacity: 0 }],
+      { duration: still() ? 1 : 2000, easing: "ease-in-out" });
     anim.finished.catch(() => {});
   }
 
   banner_(text) {
     const node = this.banner.querySelector(".banner-text");
     node.textContent = text;
-    const anim = this.banner.animate(
-      [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.75 }, { opacity: 0 }],
-      { duration: still() ? 1 : 2200 });
+    const anim = this.banner.animate([
+      { opacity: 0, transform: "translateY(-14px)" },
+      { opacity: 1, transform: "translateY(0)", offset: 0.18 },
+      { opacity: 1, transform: "translateY(0)", offset: 0.74 },
+      { opacity: 0, transform: "translateY(-8px)" },
+    ], { duration: still() ? 1 : 2300, easing: "cubic-bezier(.2,.9,.3,1)" });
     anim.finished.catch(() => {});
   }
 }

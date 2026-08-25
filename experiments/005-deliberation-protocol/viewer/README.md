@@ -309,8 +309,9 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"          # the page: 17
-python -m pytest viewer/tests/test_scores.py -q  # the ledger: 95
+node --test "viewer/tests/*.test.mjs"            # the page: 40
+python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
+python viewer/tests/render.py                    # the drawing, in a real browser
 ```
 
 The ones that matter: a self-report moves nothing, a line that is
@@ -319,6 +320,18 @@ nothing left over** — which is what will fail if `island/manager.py` or
 `run_v3.py` is reworded, rather than the island quietly emptying — and **every
 board with a sidecar reproduces the manager's scored trajectory** through the
 page's own reducer and utility code.
+
+On the drawing: the geometry is pure arithmetic and is checked as such --
+every card and hut **fits on the canvas** and **no two cards overlap** at one
+through eight traders, and **scenery lands on neither a card nor the fire**.
+That last one is a bug that shipped: placement used to test a circle around the
+seat while a card is a tall box hanging *below* it, so palms rendered on top of
+the shelves. `render.py` covers what arithmetic cannot -- it loads a replay in
+Chromium, asserts the page raises nothing and has one hut per trader and one
+shelf cell per good, plays a receipt at the scene to confirm the **event
+animations actually run**, and renders a four-trader board, which no saved
+replay is. It **skips** when Playwright or Chromium is absent, so a checkout
+never has to install a browser to run the free suites.
 
 And on the live side: `rowsFromState` against `tests/fixtures/snapshot-sample.json`,
 a real snapshot from a real hub rather than a shape assumed by hand — this is
@@ -351,6 +364,8 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `scores/boards.json` | the leaderboards, derived; rebuilt whenever it falls behind the record |
 | `scores/index.json` | round ids, so ingest need not re-read every round |
 | `tests/board.mjs` | reading a saved board, packed or not |
+| `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
+| `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |
 | `tests/fixtures/snapshot-sample.json` | that snapshot — a real hub, captured once |
 | `reveal.py` | the hidden half, after the fact, with `--check` |
