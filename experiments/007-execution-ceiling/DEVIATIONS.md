@@ -1,0 +1,193 @@
+# 007 — Deviations
+
+Every departure, dated, written **before** the run it affects.
+
+## D1 — The system computes a plan and hands it to the agents
+
+**Written before run 001. 2026-08-23.**
+
+The root standing decisions say the system must not enforce prices, roles,
+trades or production decisions, and that *"a production plan the system invents
+is the system making a production decision."* This experiment computes the
+island's competitive equilibrium and gives each trader its part. The tension is
+real and is recorded here rather than glossed.
+
+**The reading this experiment is built on.** That rule governs the **manager**:
+what it settles, what it refuses, what it may repair. It is the reason the
+manager never fixes a malformed message into a plausible one and never invents
+a production plan *on a trader's behalf at settlement*. A stimulus is different
+in kind: it is text in a prompt, like every other block this lab has tested,
+and it changes nothing about what the manager will accept.
+
+Concretely, in this experiment as in every other:
+
+- every message on the board is written by an agent, not by the runner;
+- the manager settles only what an agent actually writes;
+- malformed messages are refused with a reason, never repaired;
+- a trader that ignores its plan is not corrected, and its round is scored
+  exactly as it played;
+- **scoring reads settled state only**, so a plan that is never enacted earns
+  nothing.
+
+**What would make this reading wrong.** If the runner posted the plan on the
+board itself, or the manager settled a production a trader had not written, or
+a refusal were softened for a trader following the plan. None of those happen,
+and the compliance measure exists precisely to detect a plan that was handed
+over and not followed.
+
+**If the owner reads the rule the other way, this experiment should not run.**
+It is written down here so that choice is made in the open rather than
+discovered in a diff.
+
+## D2 — A tighter acknowledgement window, stated and not enforced
+
+**Written before run 001. 2026-08-23.**
+
+The announcement window drops from 120s to **30s**, and the schedule asks for
+an acknowledgement by an absolute time **20s** in. Both are the owner's
+instruction.
+
+**Nothing is enforced by it.** The bell rings on the clock, an agent that never
+acknowledges still plays, and the manager still opens episode 1 on time. The
+deadline is stated absolutely — `by 10:08:02Z` — not as a countdown, because a
+countdown is what a trader misreads when it reads the message late (PR #23).
+
+**The cost, named in advance.** A session takes roughly twenty seconds to boot
+its MCP server and make a first call, so a 30-second window leaves very little
+margin: the acknowledged count will fall, and D10's one-shot rescue of a
+session that never joins has almost no time to fire. Acknowledgement counts are
+therefore **not comparable** with earlier experiments', and a low count here is
+a timing artefact rather than agent silence. Participation is measured by
+production, not by acknowledgement.
+
+
+## D2a — The window is widened to 45/30, before run 001
+
+**Written after the pilot, before run 001. 2026-08-23.**
+
+D2 named the risk and the pilot measured it: at a 30-second window with the
+acknowledgement asked by 20s, **7 of 16 traders acknowledged** — but **44 of 48
+trader-episodes carried a settled production**, and every round had traders
+acting from episode 1. The window degrades the acknowledgement and does not
+degrade participation.
+
+The owner's instruction for exactly this outcome was to extend it a little.
+Run 001 therefore uses a **45-second window with acknowledgement asked by 30
+seconds**, and is re-piloted at that timing before it runs — the same 16
+sessions, so the choice rests on measurement rather than on the guess that 45
+is enough.
+
+**What does not change.** The deadline stays absolute rather than a countdown.
+Nothing is enforced by it: the bell rings on the clock and an agent that never
+acknowledges still plays. Acknowledgement counts remain **not comparable** with
+experiments that used 120s, and participation is still measured by production.
+
+## D3 — Five episodes, not ten
+
+**Written before run 001. 2026-08-23.**
+
+`PREREGISTRATION.md` fixed 10 episodes per round. Run 001 uses **5**, on the
+owner's instruction. The pre-registration is not revised in place; this is the
+record of the departure.
+
+**Why it is safe here.** The treated cell does not need episodes to learn: in
+both pilots `e-plan` was at 0.98 per-episode efficiency in **episode 1** and
+stayed there. The plan is fixed for the round, so a longer round mostly repeats
+what episode 1 establishes.
+
+**What it costs, stated rather than discovered.** Ten episodes gave the
+*control* room to improve across a round, and cutting to five removes that
+room. If `e-bare` would have climbed in episodes 6–10, this run understates it
+and therefore overstates the treatment difference. The pilots give no sign of
+such a climb — `e-bare` was at 0.000 in three of four pilot rounds — but no
+run has measured it at 5 episodes with this timing, so the caveat stands and
+is repeated in the run record's assumptions.
+
+**What does not change.** Cells, seeds, thresholds, the primary and its
+counting rule are all as pre-registered. Only the round length moves.
+
+The run also gets cheaper: 24 rounds at roughly 16 minutes each, three waves,
+about 50 minutes rather than 100.
+
+## D4 — Labour may be committed in pieces
+
+**Written before run 002. 2026-08-23.**
+
+Until now the manager settled **one** production per episode: a second was
+refused with *"you have already produced this episode"* (9 such refusals in run
+001). From run 002, in the `t-` cells only, a trader may send several `PRODUCE`
+lines in an episode; they accumulate and the total may not exceed the budget of
+1. The manager reports the remainder after each one.
+
+**Why.** Run 001 showed the plan is executed almost perfectly on the production
+side and 22% short on the exchange side, and that a plan with a hole in it
+collapses to zero rather than degrading. Committing all labour before knowing
+whether the exchanges will happen is what makes the shortfall fatal. Splitting
+it lets a trader keep something back and spend it on what it actually holds.
+
+**What kind of change this is.** It is a **settlement rule** — what the manager
+will accept — and therefore squarely inside what this lab's standing decisions
+allow it to enforce: timing, format, scoring. It is the manager being *less*
+restrictive, not more. It decides nothing about what a trader makes, in what
+proportion, or when; a trader may still spend the whole budget in one line and
+nothing changes for it. The budget itself is unchanged.
+
+**Guarded, and off by default.** `island.manager.SPLIT_LABOUR` is `False` and
+stays `False` for every existing experiment; three tests fix that, including one
+asserting the default. 007's `run.py` turns it on only when a `t-` arm is asked
+for, and turns it on for **both** `t-` cells — a rule only the treated cell
+could use would confound the rule with the advice.
+
+**What it costs.** Production counts are no longer comparable across the
+boundary: a round under this rule may contain more settled productions for the
+same labour. Run 002 therefore compares `t-tranche` against `t-plan`, both under
+the new rule, and treats run 001's `e-plan` as an across-run reference only.
+
+## D5 — No untreated control in run 002, and why
+
+**Written before run 002. 2026-08-23.**
+
+Run 002's cells are `t-plan` and `t-tranche`. Both carry the full plan; the
+difference is the tranching advice. There is no `bare` cell, and the runner's
+control guard is waived with `--no-control`.
+
+The question is not whether the plan beats nothing — run 001 answered that with
+12 paired seeds, +0.709 captured gain, 9 of 12. The question is whether
+*entering the plan gradually* beats entering it all at once, and both cells need
+the plan for that comparison to mean anything. A bare cell would spend a third
+of the run re-measuring a settled result.
+
+**The cost:** the absolute level in run 002 has no within-run floor to sit
+against. It is read against run 001's `e-bare`, across runs, and
+`FINDING-run-level-variance.md` in experiment 006 is the reason to distrust
+exactly that kind of comparison. So run 002 reports levels with that caveat and
+rests its claim on the **paired within-run difference**.
+
+## D6 — Replicate C died to a hub outage and is re-run
+
+**Written 2026-08-23, immediately after the failure and before the re-run.**
+
+Run 003's third replicate lost **all twelve rounds** to
+`ConnectError: [Errno 111] Connection refused` — the hub, or the proxy in front
+of it, stopped answering. The same outage took seeds 11 and 12 from replicate
+B. The hub answered 200 again a few minutes later.
+
+**Nothing was salvaged and nothing was lost beyond those rounds.** D16's round
+isolation held: 12 of 12 rounds in C and 2 of 12 in B are written into their
+result files as `failed`, with the error, and they stay in every denominator.
+Replicate A is untouched.
+
+**C is re-run**, on the same seeds and the same command, under the same go, to
+`results/003-stability-c2`. It replaces a replicate that produced no data
+rather than adding a fourth, and its stamp differs so the two cannot be
+confused.
+
+**What is reported.** Replicate B is analysed on the ten seeds it completed;
+the two it lost are named rather than averaged over. The failed C attempt
+contributes nothing to any number and appears only here and in its own result
+file.
+
+**A classification, not an excuse.** This is the fourth infrastructure failure
+this lab has recorded — the TLS trust failure, D13's 502, D16's dropped
+connection, and now this. None are agent behaviour and none are counted as
+such.

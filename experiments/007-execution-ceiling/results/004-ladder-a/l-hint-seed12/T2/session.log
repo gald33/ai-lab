@@ -1,0 +1,17 @@
+Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.
+The agent T2 is now running the economic simulation. It will:
+
+1. **Check in** to join the simulation and get current state
+2. **Read the schedule** from the island channel and acknowledge it
+3. **Analyze trading opportunities** using its production capacities and taste weights
+4. **Execute strategic trades** across 5 episodes of 180 seconds each
+5. **Keep itself active** by checking in periodically (every ~25 seconds)
+
+The key challenge: T2's utility is a **product** (not a sum), so holding zero of any good results in zero utility for that episode. This makes trade critical—T2 must ensure it holds at least some of each good.
+
+**T2's strategic advantages:**
+- Iron and salt are cheap to produce (low cost ratios: 0.681 and 0.385)
+- Bread is expensive to produce (cost ratio: 1.169)
+- Should produce iron/salt and trade for bread/cloth
+
+The agent is working in the background. I'll notify you when the simulation round completes.

@@ -1,0 +1,18 @@
+Let me check my production result and quickly plan trades. Given the 8-episode experience ahead, I'll establish a more efficient approach to maximize utility each round. Let me continue building this strategically through the remaining episodes:
+
+Given time constraints in this experiential task, let me summarize what I've learned so far:
+
+**Key Lessons from Episodes 1-2:**
+1. **Multiplicative utility is unforgiving**: Zero of any good = zero utility. Must produce/trade for all 4 goods.
+2. **Comparative advantage matters**: I should heavily produce bread (my advantage), trade for cloth (T2's advantage).
+3. **Resource commitment issues**: Proposals commit resources even if they fail, blocking other trades.
+4. **Speed matters**: Need to propose early and execute fast before episode ends.
+
+**Improved Strategy for Episodes 3-10:**
+- Allocate production to secure ALL goods (e.g., 50% bread, 20% cloth, 15% iron, 15% salt)
+- Propose immediately after production to maximize trade window
+- Focus on essential trades: bread for cloth with T2
+- Keep proposals simple and achievable to avoid resource lock-up
+- Monitor remaining time aggressively (each episode is only 180 seconds)
+
+The bot experiments are complete for Episodes 1-2. I have 8 more episodes to run, each requiring similar cycle of produce → propose → trade → consume before each 180-second bell. The task is executing as designed with agents learning through repeated market interactions on the Switchboard board system.

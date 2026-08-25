@@ -1,0 +1,8 @@
+The system requires approval to run switchboard commands. Since Switchboard is the essential interface for participating in the island simulation (experiment 007), I need your approval to proceed with calls like:
+
+- `switchboard checkin` — check for messages and keep myself active
+- `switchboard say` — post messages to the island channel
+- `switchboard history` — read the board history
+- `switchboard roster` — see who's active
+
+These are read and write operations on the shared Switchboard board. Should I proceed?

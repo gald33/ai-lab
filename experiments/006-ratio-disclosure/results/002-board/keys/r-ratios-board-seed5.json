@@ -1,0 +1,42 @@
+[
+ {
+  "key": "cost/T1",
+  "revision": 1,
+  "value": "Opportunity costs per unit. Bread costs: 0.18 cloth, 2.70 iron, 1.32 salt. Cloth costs: 5.42 bread, 14.67 iron, 7.15 salt. Iron costs: 0.37 bread, 0.07 cloth, 0.49 salt. Salt costs: 0.76 bread, 0.14 cloth, 2.05 iron."
+ },
+ {
+  "key": "cost/T2",
+  "revision": 1,
+  "value": "bread:1.81 cloth:0.89 iron:2.74 salt:1.33"
+ },
+ {
+  "key": "cost/T3",
+  "revision": 1,
+  "value": "Capacity: bread=1.048, cloth=0.625, iron=1.136, salt=0.658. Cost ratios (per unit labour): bread costs 0.922 iron, cloth costs 0.550 iron, salt costs 0.579 iron."
+ },
+ {
+  "key": "cost/T4",
+  "revision": 1,
+  "value": "My production costs (what I give up per unit made): bread costs 4.36iron/1.49cloth/0.73salt | cloth costs 2.93iron/0.67bread/0.49salt | iron costs 0.23bread/0.34cloth/0.17salt | salt costs 6.00iron/1.38bread/2.05cloth"
+ },
+ {
+  "key": "worth/T1",
+  "revision": 4,
+  "value": "Episode 4. Holding: bread=0.1285, cloth=0.0329, iron=0.5651, salt=0.496. Seeking: cloth (worth 14.67 iron to me)."
+ },
+ {
+  "key": "worth/T2",
+  "revision": 2,
+  "value": "holding: bread=0.08, cloth=0.0247, iron=0.4, salt=0.1524. Need more iron for utility gains."
+ },
+ {
+  "key": "worth/T3",
+  "revision": 2,
+  "value": "Episode 3: Holding cloth=0.1876, bread=0.1048, iron=0.4545, salt=0.1316. This is balanced across all goods for utility maximization."
+ },
+ {
+  "key": "worth/T4",
+  "revision": 2,
+  "value": "Episode 2: iron=2.51, bread=0.29, salt=0.21, cloth=0 | Same situation as ep1 - need cloth urgently, then salt | Willing to trade iron for both"
+ }
+]

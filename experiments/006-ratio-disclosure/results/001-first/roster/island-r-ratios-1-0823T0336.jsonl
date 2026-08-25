@@ -1,0 +1,65 @@
+{"t": 1787459144.082737, "agent": "T1", "task": "Episode 6 bell"}
+{"t": 1787459144.0828433, "agent": "T2", "task": "Waiting for episode 5 bell"}
+{"t": 1787459144.0828762, "agent": "T4", "task": "Rapid completion of episodes 6-10"}
+{"t": 1787459159.1917453, "agent": "T4", "task": "Completing episodes 6-10 rapidly - final episodes of round"}
+{"t": 1787459174.8646708, "agent": "T1", "task": "Episode 6 opening"}
+{"t": 1787459174.8647382, "agent": "T2", "task": "Waiting for episode 6 to open"}
+{"t": 1787459189.9140193, "agent": "T1", "task": "Episode 6-10 rapid cycle"}
+{"t": 1787459205.5274937, "agent": "T2", "task": "Monitoring for cloth and iron trades in episode 6"}
+{"t": 1787459205.5275571, "agent": "T4", "task": "Episode 6 closing and 7 opening"}
+{"t": 1787459220.8109972, "agent": "T1", "task": "Episode 6 completing"}
+{"t": 1787459220.8110726, "agent": "T4", "task": "Episodes 6-8 completion cycle"}
+{"t": 1787459236.2613952, "agent": "T2", "task": "Waiting for T1 cloth proposal and trade settlements"}
+{"t": 1787459251.7426453, "agent": "T1", "task": "Episode 7"}
+{"t": 1787459251.7427156, "agent": "T2", "task": "Final minute of episode 6, waiting for settlements"}
+{"t": 1787459251.742742, "agent": "T4", "task": "Final completion of episodes 6-10"}
+{"t": 1787459283.3602915, "agent": "T1", "task": "Episodes 7-10 cycling"}
+{"t": 1787459283.36038, "agent": "T2", "task": "Final seconds of episode 6"}
+{"t": 1787459283.3604164, "agent": "T4", "task": "Waiting for round completion - episodes 6-10"}
+{"t": 1787459314.3072424, "agent": "T1", "task": "Episodes 8-10 cycle"}
+{"t": 1787459314.3073149, "agent": "T2", "task": "Waiting for episode 7 opening"}
+{"t": 1787459314.3073409, "agent": "T4", "task": "Final wait for round 10-episode completion"}
+{"t": 1787459344.172764, "agent": "T1", "task": "Waiting for episodes 9-10"}
+{"t": 1787459344.172869, "agent": "T2", "task": "Final 30 seconds of episode 6, confirming p46 settlement"}
+{"t": 1787459344.172916, "agent": "T4", "task": "Episode 6 bell and episode 7 opening"}
+{"t": 1787459374.0927913, "agent": "T1", "task": "Episode 10 final"}
+{"t": 1787459374.0928688, "agent": "T2", "task": "Episode 6 bell ringing"}
+{"t": 1787459374.0928943, "agent": "T4", "task": "Episodes 7-10 final completion - waiting for round end"}
+{"t": 1787459403.4331582, "agent": "T1", "task": "Final episode 10 completion"}
+{"t": 1787459403.433283, "agent": "T4", "task": "Waiting for episodes 8-10 and round completion"}
+{"t": 1787459434.247267, "agent": "T1", "task": "Episode 10 bell"}
+{"t": 1787459434.2473397, "agent": "T4", "task": "Waiting for episodes 8, 9, 10 and round completion"}
+{"t": 1787459465.5011125, "agent": "T1", "task": "Waiting for round end"}
+{"t": 1787459465.5011876, "agent": "T4", "task": "Final wait for round 10 episode completion"}
+{"t": 1787459480.7010698, "agent": "T2", "task": "Episode 7 trading \u2014 waiting for iron approvals and T1 cloth proposal"}
+{"t": 1787459480.7011366, "agent": "T4", "task": "Complete episodes 7, 8, 9, 10 and finish round"}
+{"t": 1787459496.1434488, "agent": "T1", "task": "Round completion"}
+{"t": 1787459496.143518, "agent": "T2", "task": "Episode 7 \u2014 awaiting bell at 04:32:19Z"}
+{"t": 1787459511.3051019, "agent": "T4", "task": "Episodes 8, 9, 10 and round final completion"}
+{"t": 1787459526.901228, "agent": "T1", "task": "Completion"}
+{"t": 1787459526.9012961, "agent": "T2", "task": "Episode 7 ending \u2014 waiting for bell"}
+{"t": 1787459542.5032578, "agent": "T4", "task": "Episode 7 bell, episode 8 opening"}
+{"t": 1787459558.1316104, "agent": "T1", "task": "Final round"}
+{"t": 1787459573.553711, "agent": "T1", "task": "Waiting for end"}
+{"t": 1787459573.5537913, "agent": "T2", "task": "Episode 8 \u2014 waiting for T1 cloth and iron approvals"}
+{"t": 1787459588.9667115, "agent": "T4", "task": "Episodes 8-10 completion - final stretch"}
+{"t": 1787459604.5543573, "agent": "T2", "task": "Episode 8 \u2014 monitoring for proposals"}
+{"t": 1787459604.5544634, "agent": "T4", "task": "Final episodes 9-10 and round completion"}
+{"t": 1787459635.1137457, "agent": "T4", "task": "Waiting for episodes 9-10 and round end"}
+{"t": 1787459650.420151, "agent": "T2", "task": "Episode 8 \u2014 monitoring final 90 seconds for approvals"}
+{"t": 1787459665.8408427, "agent": "T2", "task": "Episode 8 ending \u2014 awaiting bell"}
+{"t": 1787459665.8409154, "agent": "T4", "task": "Round completion - episodes 8, 9, 10 final wait"}
+{"t": 1787459696.0890944, "agent": "T2", "task": "Episode 8 final \u2014 awaiting bell at 04:35:21Z"}
+{"t": 1787459696.0891695, "agent": "T4", "task": "Episode 8-9-10 final completion wait"}
+{"t": 1787459726.1980894, "agent": "T2", "task": "Episode 8 \u2014 bell should ring now"}
+{"t": 1787459756.4176736, "agent": "T2", "task": "Episode 9 \u2014 waiting for cloth and iron approvals"}
+{"t": 1787459802.8162715, "agent": "T2", "task": "Episode 9 \u2014 secured iron, waiting for cloth approval (p57)"}
+{"t": 1787459833.5439253, "agent": "T2", "task": "Episode 9 final push \u2014 waiting for T4 cloth approval"}
+{"t": 1787459864.3272517, "agent": "T2", "task": "Episode 9 \u2014 final 50 seconds, waiting for cloth"}
+{"t": 1787459894.620808, "agent": "T2", "task": "Episode 9 final \u2014 awaiting bell"}
+{"t": 1787459940.5343325, "agent": "T2", "task": "Episode 10 final \u2014 waiting for cloth and iron approvals"}
+{"t": 1787459956.1516979, "agent": "T2", "task": "Episode 10 \u2014 monitoring for responses"}
+{"t": 1787459986.9214196, "agent": "T2", "task": "Episode 10 \u2014 100 seconds to bell"}
+{"t": 1787460018.4318545, "agent": "T2", "task": "Episode 10 final \u2014 awaiting bell at 04:41:23Z"}
+{"t": 1787460049.6784286, "agent": "T2", "task": "Episode 10 \u2014 final seconds before bell"}
+{"t": 1787460065.0480735, "agent": "T2", "task": "Episode 10 \u2014 bell imminent"}

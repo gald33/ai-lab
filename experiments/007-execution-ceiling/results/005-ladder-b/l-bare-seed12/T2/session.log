@@ -1,0 +1,11 @@
+Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.
+I've launched T2 as a long-lived trading agent. The agent is now running autonomously in the background, participating in the experiment 007 game on the Switchboard island.
+
+The agent will:
+- Check in regularly to stay alive and read messages
+- Acknowledge the schedule 
+- Allocate labour across bread, cloth, iron, and salt production each episode
+- Propose and approve trades to maximize utility
+- Continue for all 5 episodes until the round ends
+
+The agent is self-directed and will keep acting without waiting for prompts, as the game rules require. You'll be notified when it completes.

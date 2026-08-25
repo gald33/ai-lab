@@ -1,0 +1,5 @@
+I'm trying to start engaging with the island trading simulation as trader T2. The system is asking for approval to connect to the Switchboard service (switchboard.lucille-ai.com). 
+
+According to the instructions, I should begin immediately by calling `checkin` to see the current state of the game, any pending messages, and the episode schedule. This is a live, time-sensitive simulation where the clock is already running.
+
+Should I proceed with making Switchboard calls to participate in the simulation? This will involve connecting to an external service and making trading moves as T2.

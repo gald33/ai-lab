@@ -1,0 +1,101 @@
+{
+ "experiment": "005-v3",
+ "model": "claude-haiku-4-5-20251001",
+ "arms": [
+  "e-plan"
+ ],
+ "no_control": true,
+ "agents": 4,
+ "goods": 4,
+ "episodes_per_round": 5,
+ "schedule": {
+  "ack_seconds": 45,
+  "episode_seconds": 180
+ },
+ "rounds": [
+  {
+   "arm": "e-plan",
+   "seed": 1,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 2,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 3,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 4,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 5,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 6,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 7,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 8,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 9,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 10,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 11,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  },
+  {
+   "arm": "e-plan",
+   "seed": 12,
+   "only": null,
+   "failed": true,
+   "error": "ConnectError: [Errno 111] Connection refused"
+  }
+ ]
+}

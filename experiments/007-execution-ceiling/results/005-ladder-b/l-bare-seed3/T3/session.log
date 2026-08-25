@@ -1,0 +1,9 @@
+Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.
+T3 agent is running autonomously through the island simulation. It will:
+1. Check in regularly to stay alive
+2. Read the board to understand other traders' activities
+3. Optimize labour allocation based on taste weights
+4. Make strategic trade proposals to maximize utility
+5. Continue for all 5 episodes (≈15 minutes total runtime)
+
+Scheduled a checkpoint in 2 minutes. The agent will coordinate entirely through the Switchboard island channel.

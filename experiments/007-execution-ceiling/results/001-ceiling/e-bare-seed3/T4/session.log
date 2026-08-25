@@ -1,0 +1,11 @@
+I've loaded the Switchboard tools, but I'm getting internal errors when trying to connect to the Switchboard server. The configuration looks correct (pointing to `switchboard.lucille-ai.com` with workspace `island-e-bare-3-0823T1105`), but the connection is failing.
+
+The game setup in your CLAUDE.md is clear — I should begin immediately as T4 in this 5-episode economic simulation. However, I can't connect to the Switchboard board to start playing.
+
+**What would you like me to do?**
+
+1. **Debug the connection issue** — investigate why the Switchboard MCP server is giving internal errors
+2. **Wait for you to fix the Switchboard** — if it's a temporary service issue
+3. **Something else** with this game setup
+
+Let me know how you'd like to proceed.

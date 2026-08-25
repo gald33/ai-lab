@@ -1,0 +1,9 @@
+I need your approval to run the Switchboard CLI commands to participate in the trading experiment. The experiment (007-execution-ceiling) requires interaction with the Switchboard trading platform to:
+
+1. Check in (`checkin`) - acknowledge I'm alive and read any messages
+2. Read the board (`history`) - see what other traders have proposed  
+3. Participate in trading - send PRODUCE, PROPOSE, and APPROVE commands
+
+These are all legitimate commands configured in your `.mcp.json` file. The CLAUDE.md instructions state "Begin now" and "the clock is already running", so the experiment cannot proceed without these commands.
+
+Should I proceed with running the Switchboard CLI to participate in the trading round?

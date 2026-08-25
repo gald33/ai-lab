@@ -1,0 +1,42 @@
+[
+ {
+  "key": "cost/T1",
+  "revision": 1,
+  "value": "bread:2.0979 cloth:1.3896 iron:3.4891 salt:0.4926 \u2014 production capacity per unit labour"
+ },
+ {
+  "key": "cost/T2",
+  "revision": 1,
+  "value": "T2 costs per unit of iron: bread=1.26, cloth=1.07, iron=1.0, salt=0.25"
+ },
+ {
+  "key": "cost/T3",
+  "revision": 1,
+  "value": "bread:0.6619 cloth:2.8433 iron:0.8366 salt:0.2099 \u2014 production capacity per unit labour"
+ },
+ {
+  "key": "cost/T4",
+  "revision": 1,
+  "value": "Production capacity per labour: bread=0.6064, cloth=0.9815, iron=0.7108, salt=1.0588. Cost ratios (what I give up to get 1 unit): bread costs 1.62 cloth, 1.17 iron, or 1.75 salt. I am cheapest at salt, most expensive at bread."
+ },
+ {
+  "key": "worth/T1",
+  "revision": 3,
+  "value": "Episode 3: after production: bread=0.7343 cloth=0.2084 iron=1.3957 salt=0.0493. Seeking salt trades."
+ },
+ {
+  "key": "worth/T2",
+  "revision": 3,
+  "value": "T2 episode 3: holding salt=3.88 iron=0.53 (no bread/cloth yet, seeking bread/cloth trades)"
+ },
+ {
+  "key": "worth/T3",
+  "revision": 4,
+  "value": "Episode 4: cloth=1.5638 iron=0.251 bread=0.0993 salt=0. Seeking: bread and salt. Offering: cloth"
+ },
+ {
+  "key": "worth/T4",
+  "revision": 4,
+  "value": "Episode 5: better production mix! Hold: bread=0.364, salt=0.191, iron=0.121, cloth=0.049. Close to autarky optimum. Rate improved from Ep4 strategy."
+ }
+]

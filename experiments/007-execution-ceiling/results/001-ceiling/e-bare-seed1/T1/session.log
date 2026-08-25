@@ -1,0 +1,22 @@
+I'm encountering persistent internal errors when trying to connect to the Switchboard MCP server. All switchboard tools (`checkin`, `history`, `whoami`, etc.) are returning "internal error" responses.
+
+**What I've verified:**
+- The `.mcp.json` configuration exists and appears properly configured with:
+  - SWITCHBOARD_URL: `https://switchboard.lucille-ai.com`
+  - SWITCHBOARD_WORKSPACE: `island-e-bare-1-0823T1105`
+  - SWITCHBOARD_AGENT_ID: `T1`
+  - The switchboard-mcp binary exists at `/usr/local/bin/switchboard-mcp`
+
+**The issue:**
+The MCP server connection is failing with internal errors, preventing me from:
+1. Checking in with `checkin`
+2. Reading the board with `history`
+3. Posting production/trading actions with `say`
+4. Interacting with any switchboard trading mechanisms
+
+This appears to be a server-side or connection issue with the MCP bridge to `switchboard.lucille-ai.com`. The configuration is in place, but the connection cannot be established.
+
+Should I:
+1. Wait and retry (in case this is a temporary server issue)?
+2. Check if there's a different setup or initialization needed?
+3. Review logs or diagnostics for the MCP server?

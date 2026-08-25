@@ -1,0 +1,233 @@
+<header>
+  <h1 class="ui">The Island Replay</h1>
+  <div class="sub">Every message four traders wrote to the board, in the time they wrote it. Nothing is reordered or summarised — this is the surface they actually had. Holdings settle at the bell.</div>
+  <div class="spacer"></div>
+  <button class="ghost ui" id="theme" type="button">Theme</button>
+</header>
+
+<main>
+  <nav class="rail" aria-label="Recordings">
+    <div class="lbl">Run</div>
+    <select id="run" aria-label="Run"></select>
+    <div class="lbl">Island — welfare at the end</div>
+    <div class="takes" id="takes"></div>
+  </nav>
+
+  <section class="board" id="board" aria-live="polite" aria-label="Board"></section>
+
+  <aside class="state" aria-label="Settled state">
+    <div class="lbl">Welfare</div>
+    <div class="welfare">
+      <div class="big num" id="welfare">—</div>
+      <div class="note" id="welfareNote">against the four of them alone</div>
+    </div>
+    <div class="lbl">Traders — holdings, and utility against alone</div>
+    <div id="cards"></div>
+  </aside>
+</main>
+
+<footer>
+  <div class="scrub" id="scrub" role="slider" tabindex="0" aria-label="Position in the round" aria-valuemin="0" aria-valuenow="0" aria-valuemax="100">
+    <div class="track"></div><div class="done" id="done"></div>
+    <div id="marks"></div><div class="head" id="head"></div>
+  </div>
+  <div class="transport">
+    <button class="play" id="play" type="button" aria-label="Play">▶</button>
+    <div class="clock num" id="clock">0:00</div>
+    <div class="speeds ui" id="speeds"></div>
+    <div class="spacer" style="flex:1"></div>
+    <div class="lbl" id="episode">episode —</div>
+  </div>
+</footer>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const GOODS = ['bread','cloth','iron','salt'];
+const NAMES = ['T1','T2','T3','T4'];
+const SPEEDS = [1, 8, 30, 120];
+
+let take = null, t = 0, playing = false, speed = 30, shown = 0, last = 0;
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dur = () => take ? Math.max(1, take.messages[take.messages.length - 1].t) : 1;
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+/* Which episode has closed by time t. Episode boundaries are the manager's
+   own bell messages -- the only authority on when an episode ended. */
+const RANG = /bell\s*[—-]\s*episode \d+ closed/i;
+function bells(tk){
+  return tk.messages.filter(m => m.who === 'manager' && RANG.test(m.body)).map(m => m.t);
+}
+/* How many episodes have actually closed by `at`. State is only ever read from
+   a closed episode: before the first bell nothing has settled, and showing the
+   episode's end-state early would show the viewer a future the board had not
+   reached. */
+function closedBy(tk, at){
+  const b = bells(tk);
+  let i = 0; while (i < b.length && at >= b[i]) i++;
+  return i;
+}
+
+function welfareOf(tk, epi){
+  const ep = tk.episodes[epi];
+  if (!ep) return null;
+  const solo = tk.island.autarky.reduce((a, b) => a + b, 0);
+  const got = NAMES.reduce((a, n) => a + (ep.utilities[n] || 0), 0);
+  return solo ? got / solo : null;
+}
+
+function renderRuns(){
+  const sel = $('run');
+  sel.innerHTML = Object.keys(DATA).map(k => `<option value="${k}">${k}</option>`).join('');
+  sel.onchange = () => renderTakes(sel.value);
+  renderTakes(sel.value);
+}
+
+function renderTakes(run){
+  const doc = DATA[run];
+  $('takes').innerHTML = doc.takes.map((tk, i) => {
+    const w = welfareOf(tk, tk.episodes.length - 1);
+    const cls = w === null ? '' : (w > 1 ? 'up' : 'dn');
+    return `<button class="take" data-i="${i}" type="button">
+      <span>${tk.arm} · seed ${tk.seed}</span>
+      <span class="w ${cls}">${w === null ? '—' : w.toFixed(2)}</span></button>`;
+  }).join('');
+  [...$('takes').children].forEach(b => b.onclick = () => load(doc.takes[+b.dataset.i], b));
+  const first = $('takes').firstElementChild;
+  if (first) load(doc.takes[0], first);
+}
+
+function load(tk, btn){
+  take = tk; t = 0; shown = 0; playing = false;
+  [...$('takes').children].forEach(b => b.setAttribute('aria-current', String(b === btn)));
+  $('play').textContent = '▶'; $('play').setAttribute('aria-label', 'Play');
+  $('board').innerHTML = '<div class="empty">The board opens when the clock starts.</div>';
+  const total = dur();
+  $('marks').innerHTML = bells(tk).map(b =>
+    `<div class="mark" style="left:${(b / total * 100).toFixed(2)}%"></div>`).join('');
+  draw();
+}
+
+function classOf(who){
+  if (who === 'manager') return 'manager';
+  const i = NAMES.indexOf(who);
+  return i < 0 ? '' : 't' + (i + 1);
+}
+
+function draw(){
+  const total = dur();
+  /* Append only what has newly arrived, so a long round does not re-render. */
+  if (shown === 0) $('board').innerHTML = '';
+  while (shown < take.messages.length && take.messages[shown].t <= t){
+    const m = take.messages[shown];
+    const isBell = m.who === 'manager' && RANG.test(m.body);
+    const el = document.createElement('div');
+    el.className = `msg ${classOf(m.who)}${isBell ? ' bell' : ''}`;
+    el.innerHTML = `<span class="t num"></span><span class="who"></span><span class="body"></span>`;
+    el.children[0].textContent = mmss(m.t);
+    el.children[1].textContent = m.who;
+    el.children[2].textContent = m.body;
+    $('board').appendChild(el);
+    shown++;
+  }
+  if (!$('board').children.length)
+    $('board').innerHTML = '<div class="empty">The board opens when the clock starts.</div>';
+  else $('board').scrollTop = $('board').scrollHeight;
+
+  const pct = clamp(t / total * 100, 0, 100);
+  $('done').style.width = pct + '%';
+  $('head').style.left = pct + '%';
+  $('scrub').setAttribute('aria-valuenow', Math.round(pct));
+  $('clock').textContent = mmss(t);
+
+  const closed = closedBy(take, t);
+  const total_eps = take.episodes.length;
+  $('episode').textContent = closed >= total_eps
+    ? `${total_eps} of ${total_eps} episodes closed`
+    : `episode ${closed + 1} of ${total_eps || '—'} open`;
+  drawState(closed - 1);
+}
+
+function drawState(epi){
+  const ep = epi >= 0 ? take.episodes[epi] : null;
+  const w = epi >= 0 ? welfareOf(take, epi) : null;
+  $('welfare').textContent = w === null ? '—' : w.toFixed(2) + '×';
+  $('welfare').className = 'big num ' + (w === null ? '' : w > 1 ? 'up' : 'dn');
+  $('welfareNote').textContent = w === null ? 'nothing settled yet'
+    : w > 1 ? 'more than the four of them alone' : 'less than the four of them alone';
+
+  $('cards').innerHTML = NAMES.map((n, i) => {
+    const u = ep ? (ep.utilities[n] || 0) : 0;
+    const solo = take.island.autarky[i];
+    const gain = ep && solo ? u / solo : null;
+    const h = ep ? (ep.holdings[n] || {}) : {};
+    const max = Math.max(0.001, ...GOODS.map(g => h[g] || 0));
+    const cls = gain === null ? 'dn' : gain === 0 ? 'zero' : gain > 1 ? 'up' : 'dn';
+    const bars = GOODS.map(g => {
+      const v = h[g] || 0;
+      return `<div class="bar${v === 0 ? ' out' : ''}"><span>${g}</span>
+        <span class="track"><span class="fill" style="width:${v === 0 ? 100 : (v / max * 100).toFixed(1)}%"></span></span>
+        <span class="v num">${v.toFixed(2)}</span></div>`;
+    }).join('');
+    return `<div class="card"><div class="top"><span class="nm">${n}</span>
+      <span class="g num ${cls}">${gain === null ? '—' : gain === 0 ? 'ruined' : gain.toFixed(2) + '×'}</span></div>
+      <div class="bars">${bars}</div></div>`;
+  }).join('');
+}
+
+/* A good that is held at zero shows a full red bar rather than an empty one:
+   under Cobb-Douglas a single missing good zeroes the trader, so absence is
+   the loudest state there is and an empty track would read as nothing. */
+
+function tick(now){
+  if (playing && take){
+    const dt = (now - last) / 1000;
+    t = clamp(t + dt * speed, 0, dur());
+    draw();
+    if (t >= dur()) toggle(false);
+  }
+  last = now;
+  requestAnimationFrame(tick);
+}
+
+function toggle(on){
+  playing = on === undefined ? !playing : on;
+  if (playing && t >= dur()){ t = 0; shown = 0; }
+  $('play').textContent = playing ? '❚❚' : '▶';
+  $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+}
+
+function seek(x){
+  const r = $('scrub').getBoundingClientRect();
+  const to = clamp((x - r.left) / r.width, 0, 1) * dur();
+  if (to < t){ shown = 0; }
+  t = to; draw();
+}
+
+$('play').onclick = () => toggle();
+$('scrub').onmousedown = e => { seek(e.clientX); const mv = m => seek(m.clientX);
+  document.addEventListener('mousemove', mv);
+  document.addEventListener('mouseup', () => document.removeEventListener('mousemove', mv), {once:true}); };
+$('scrub').onkeydown = e => {
+  const step = dur() / 40;
+  if (e.key === 'ArrowRight'){ t = clamp(t + step, 0, dur()); draw(); e.preventDefault(); }
+  if (e.key === 'ArrowLeft'){ t = clamp(t - step, 0, dur()); shown = 0; draw(); e.preventDefault(); }
+  if (e.key === ' '){ toggle(); e.preventDefault(); }
+};
+$('speeds').innerHTML = SPEEDS.map(s => `<button type="button" data-s="${s}">${s}×</button>`).join('');
+[...$('speeds').children].forEach(b => {
+  b.onclick = () => { speed = +b.dataset.s; [...$('speeds').children].forEach(x =>
+    x.setAttribute('aria-pressed', String(+x.dataset.s === speed))); };
+  b.setAttribute('aria-pressed', String(+b.dataset.s === speed));
+});
+$('theme').onclick = () => {
+  const now = document.documentElement.getAttribute('data-theme');
+  const dark = now ? now === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+};
+
+renderRuns();
+requestAnimationFrame(tick);
+</script>

@@ -1,0 +1,32 @@
+I need to act immediately as the trading simulation is time-sensitive. The user has instructed me to "Begin now" without waiting. The system permission dialogs are expected - the user will approve or deny them as needed. Let me proceed with the trading simulation by accessing Switchboard.
+
+Since I need Switchboard access to proceed and the user has set this experiment up, I'm going to continue with the core trading logic. Based on my parameters:
+
+**T2 Trader Parameters:**
+- Production capacity: bread=0.2637, cloth=1.9822, iron=1.4995, salt=1.4904
+- Taste weights: bread=0.0494, cloth=0.7343, iron=0.0935, salt=0.1228
+- Key insight: Very strong preference for cloth (73.43%), very weak for bread (4.94%)
+
+**Strategy:**
+1. At solo optimum: allocate labour proportional to taste weights
+2. Cloth is my strength (capacity 1.98) and my preference (weight 0.73)
+3. Bread is my weakness (capacity 0.26) but I don't strongly want it anyway
+
+Let me calculate the solo optimum allocation and note the key insight for negotiating with other traders.
+
+**Solo optimum allocation:**
+- Total taste weight: 0.0494 + 0.7343 + 0.0935 + 0.1228 = 1.0
+- Bread: allocate 4.94% of labour → produce 0.0494 × 0.2637 = 0.013 units  
+- Cloth: allocate 73.43% of labour → produce 0.7343 × 1.9822 = 1.455 units
+- Iron: allocate 9.35% of labour → produce 0.0935 × 1.4995 = 0.140 units
+- Salt: allocate 12.28% of labour → produce 0.1228 × 1.4904 = 0.183 units
+
+The board is running and I need to join immediately. Given the permission constraints, I should proceed with my understanding of the situation and be ready to execute trades. The other traders are already on the board and time is passing.
+
+**Ready for trading.** I understand the island, my parameters, and the trading mechanics. I'm prepared to:
+1. Acknowledge the schedule when posted
+2. Produce according to negotiated plans or the solo optimum
+3. Propose and approve exchanges to optimize my utility
+4. Respond to other traders' proposals
+
+What's the current state of the board? Are there messages waiting for me?

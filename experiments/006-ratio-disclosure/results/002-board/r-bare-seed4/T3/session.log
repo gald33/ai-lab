@@ -1,0 +1,20 @@
+The 10-episode trading round has been completed. Here's a summary of my performance:
+
+**Episodes 1-3 (Learning Phase):**
+- Episode 1: Zero utility (critical error - produced no iron, which tanked utility due to multiplicative function)
+- Episode 2: Positive utility (recovered with balanced production + salt trade)
+- Episode 3: Positive utility (refined strategy working)
+
+**Episodes 4-10 (Execution Phase):**
+- Established pattern: Produce bread≈0.12, cloth≈0.62, iron≈0.2, salt≈0.06
+- Trade cloth to T2 for salt (T2 usually countered with better rates)
+- Propose cloth to T1 for iron
+- Executed across all remaining episodes despite later token constraints
+
+**Key Strategic Insights:**
+1. **Multiplicative utility is unforgiving** — zero of any good means zero utility entirely
+2. **Specialization via trade is essential** — my cloth production (2.84x/labor) far exceeds other goods, so producing excess cloth to trade for deficits is efficient
+3. **Timing matters** — securing trades in the first minute of each episode increases acceptance rates
+4. **Traders have patterns** — T2 consistently offered better salt deals, T1 had iron
+
+The round concluded with all 10 episodes executed. Despite errors in Episodes 8 and 10 (duplicate production attempts), the earlier episodes' accumulated utility should provide a solid result for this r-bare-seed4 trial.

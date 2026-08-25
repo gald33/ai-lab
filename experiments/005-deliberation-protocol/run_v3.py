@@ -91,6 +91,12 @@ WORKSPACE = os.environ.get("SWITCHBOARD_WORKSPACE", "island")
 # evidence.
 RUN_STAMP = time.strftime("%m%dT%H%M", time.gmtime())
 
+#: How long the announcement asks agents to acknowledge within. It is stated in
+#: the schedule and enforced by nothing: the bell rings on the clock and an
+#: agent that never acknowledges still plays. Defaults to the whole window, so
+#: a run that does not set it reads exactly as it always did.
+ACK_BY_SECONDS = 120
+
 def client_for(agent_id: str, workspace: str) -> Client:
     """A client pinned to one workspace.
 
@@ -212,6 +218,20 @@ ARMS.update({
     "max-talk": ("max/talk", False),
 })
 
+#: The constancy probe (run 006). Two arms, both carrying the absolute-UTC
+#: deadline fix from PR #23, so that fix is held constant between them and the
+#: instruction is the only difference. `probe-bare` also re-measures run 005's
+#: control under the fix, which is the only way to see what the fix itself did.
+ARMS.update({
+    "probe-bare":     (None, False),
+    #: Run 007. Base instructions, one trader, nobody else on the island. The
+    #: text is deliberately unchanged -- it still speaks of other traders, and
+    #: the roster is what tells the trader otherwise -- so that population is
+    #: the only difference from `probe-bare`. Recorded as D14.
+    "solo":           (None, False),
+    "probe-constant": ("probe/constant", False),
+})
+
 #: The schedule, in seconds. Announced on the board and acknowledged before
 #: every round, because context resets at the round boundary and an
 #: acknowledgement carried over is consent from agents who no longer remember
@@ -248,6 +268,14 @@ def _horizon(arm: str, episodes: int) -> str:
             f"{EPISODE_SECONDS} seconds.")
 
 
+#: An experiment may append something to a trader's *private* block, computed
+#: per agent rather than per arm. Signature: (arm, name, island, index) -> str,
+#: returning "" for cells that get nothing. It is a stimulus, handed over in
+#: the prompt like any other -- the manager still settles only what an agent
+#: writes on the board, and still refuses what is malformed.
+PRIVATE_HOOK = None
+
+
 def instructions(arm: str, private: str, episodes: int) -> str:
     block, hint = ARMS[arm]
     parts = [body((STIM / "base.md").read_text())]
@@ -255,7 +283,15 @@ def instructions(arm: str, private: str, episodes: int) -> str:
         # A block naming a directory ("screen/s01-terse") is resolved against
         # the stimuli root, so the screen's un-frozen blocks never sit in the
         # frozen v3 directory.
-        path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
+        # An absolute path is another experiment's stimulus driving this
+        # runner as a shared instrument -- 006 does that. A bare name is one of
+        # this experiment's own frozen blocks; a name with a directory in it is
+        # resolved against the stimuli root, so the screen's un-frozen blocks
+        # never sit in the frozen v3 directory.
+        if os.path.isabs(block):
+            path = Path(f"{block}.md")
+        else:
+            path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
         parts.append(body(path.read_text()))
     if hint:
         parts.append(body((STIM / "hint.md").read_text()))
@@ -428,44 +464,69 @@ def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
     """This run's schedule, in the shared wording.
 
     A thin adapter over `island.schedule`, which is where the text lives so
-    that the game's runner posts the same one. It exists because the two
+    that the game's runner posts the same one. It exists because the three
     durations below are rebound by `main()` from the command line, and the
     shared version takes them as arguments rather than reading globals it
     does not own.
     """
     return schedule.schedule_text(
         episodes, names, hide=hide, opens_at=opens_at,
-        episode_seconds=EPISODE_SECONDS, ack_seconds=ACK_SECONDS)
+        episode_seconds=EPISODE_SECONDS, ack_seconds=ACK_SECONDS,
+        ack_by_seconds=ACK_BY_SECONDS)
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
-              outdir: Path) -> dict:
+              outdir: Path, only: str | None = None) -> dict:
+    """One round. With `only`, one trader is launched and nobody else exists.
+
+    The island is still drawn at `agents`, so the trader keeps exactly the
+    capacities and tastes it had in a peopled run and its autarky optimum is
+    the same number -- which is the whole point of a solo round: it measures
+    what an agent alone actually reaches against the optimum the floor assumes
+    it reaches. The absent traders are not simulated, replaced or stood in for.
+    Nobody is there.
+    """
     dealer = Dealer.draw(seed, agents, GOODS[:goods])
-    workdir = outdir / f"{arm}-seed{seed}"
+    island = dealer.island
+    workdir = outdir / (f"{arm}-seed{seed}" + (f"-{only}" if only else ""))
     workdir.mkdir(parents=True, exist_ok=True)
     # The stamp is what keeps one run's board out of the next one's. Messages
     # live an hour on the hub, so a workspace named only for its arm and seed
     # still holds the last run's schedule, bells and episode openings -- and a
     # trader calling history reads a bell that belongs to a round that no
     # longer exists. That is contamination of the stimulus, not untidiness.
-    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}"
+    workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}" + (f"-{only}" if only else "")
     channel = "island"
     client = client_for(MANAGER, workspace)
     mgr = Manager(capacity=dealer.capacity, client=client, channel=channel,
                   goods=dealer.goods)
-    for n in mgr.names:
+    present = (only,) if only else mgr.names
+    for n in present:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
     started = time.time()
     ack_deadline = started + ACK_SECONDS
 
     hide = arm in HIDE_HORIZON
-    mgr.say(schedule_text(episodes, mgr.names, hide=hide, opens_at=ack_deadline))
+    mgr.say(schedule_text(episodes, present, hide=hide, opens_at=ack_deadline))
     # A turn cap that never bound at three episodes will bind at thirty, and an
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
-    procs = [launch(n, arm, dealer.private_state(n), episodes, workdir, workspace,
+    def private_for(name: str) -> str:
+        """The trader's own half of the island, plus whatever a run appends.
+
+        The hook is how a stimulus reaches one trader rather than the board --
+        the plan in 007, for instance. It never reaches the manager and never
+        reaches another trader.
+        """
+        text = dealer.private_state(name)
+        if PRIVATE_HOOK is None:
+            return text
+        extra = PRIVATE_HOOK(arm, name, island, mgr.names.index(name))
+        return f"{text}\n\n{extra}" if extra else text
+
+    procs = [launch(n, arm, private_for(n), episodes, workdir, workspace,
                     max_turns=max(400, 40 * episodes))
-             for n in mgr.names]
+             for n in present]
 
 
     # A session that cannot start -- unreachable API, bad MCP config -- is a
@@ -476,7 +537,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # of exiting.
     time.sleep(20)
     broken = {}
-    for name, proc in zip(mgr.names, procs):
+    for name, proc in zip(present, procs):
         if proc.poll() is None:
             continue
         log = (workdir / name / "session.log").read_text()
@@ -501,14 +562,14 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     relaunched: dict[str, int] = {}
 
     def rescue() -> None:
-        for i, name in enumerate(mgr.names):
+        for i, name in enumerate(present):
             if (procs[i].poll() is not None and name not in mgr.spoke
                     and relaunched.get(name, 0) < 1):
                 stale = workdir / name / "session.log"
                 if stale.exists():
                     stale.rename(workdir / name / "session-abandoned.log")
                 relaunched[name] = 1
-                procs[i] = launch(name, arm, dealer.private_state(name), episodes,
+                procs[i] = launch(name, arm, private_for(name), episodes,
                                   workdir, workspace,
                                   max_turns=max(400, 40 * episodes))
                 mgr.say(f"{name}'s session did not join and has been restarted "
@@ -532,7 +593,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
         rescue()
         time.sleep(DRAIN_EVERY)
     mgr.drain()
-    mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
+    mgr.say(f"{len(mgr.acknowledged)}/{len(present)} acknowledged "
                        f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
                        f"Episode 1 opens now.")
 
@@ -583,6 +644,7 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             # complete record of itself. The per-episode ledger is.
             "channel_messages": len(mgr.seen),
             "drain_saturated": mgr.saturated,
+            "drain_errors": mgr.drain_errors,
             "seconds": round(time.time() - started, 1)}
 
 
@@ -597,10 +659,19 @@ def main() -> None:
     ap.add_argument("--out", default="results/v3")
     ap.add_argument("--episode-seconds", type=int, default=60)
     ap.add_argument("--ack-seconds", type=int, default=120)
+    ap.add_argument("--ack-by-seconds", type=int, default=None,
+                    help="what the announcement asks agents to acknowledge "
+                         "within. Defaults to the whole window. Stated, never "
+                         "enforced: the bell rings on the clock either way.")
     # Rounds are independent worlds and could all run at once, but the box and
     # the hub are not independent of each other. A cap trades wall-clock for
     # headroom; it changes nothing any agent sees, since each round's clock
     # starts when that round starts.
+    ap.add_argument("--solo", action="store_true",
+                    help="one trader per board, nobody else present. Each "
+                         "seed becomes `agents` rounds. The island is still "
+                         "drawn at `agents`, so capacities and the autarky "
+                         "optimum are unchanged.")
     ap.add_argument("--max-concurrent", type=int, default=10)
     ap.add_argument("--no-control", action="store_true",
                     help="run without a control arm, and record that choice")
@@ -611,6 +682,8 @@ def main() -> None:
             raise SystemExit(f"unknown arm {arm!r}; have {', '.join(ARMS)}")
 
     ACK_SECONDS = args.ack_seconds
+    global ACK_BY_SECONDS
+    ACK_BY_SECONDS = args.ack_by_seconds or args.ack_seconds
     EPISODE_SECONDS = args.episode_seconds
 
     # A run without a control measures its arms against the autarky floor and
@@ -619,8 +692,11 @@ def main() -> None:
     # baseline cannot be borrowed from an earlier run, whose code, clock and
     # trust settings all differed. Refuse by default; allow it to be waived
     # out loud, in the command that runs it and in the record.
+    # An arm counts as a control by what it ends in, so an experiment driving
+    # this runner can name its cells `r-bare` and `r-placebo` without either
+    # colliding with this experiment's arms or losing the guard.
     CONTROLS = ("bare", "placebo")
-    if not any(a in CONTROLS for a in args.arms) and not args.no_control:
+    if not any(a.split("-")[-1] in CONTROLS for a in args.arms) and not args.no_control:
         raise SystemExit(
             f"no control arm: none of {', '.join(CONTROLS)} is in {args.arms}. "
             "Without one, 'no arm beat the floor' cannot be told from 'no arm "
@@ -632,31 +708,53 @@ def main() -> None:
     wall = (ACK_SECONDS + args.episodes * EPISODE_SECONDS) / 60
     print(f"model {MODEL}  arms {args.arms}  rounds {args.rounds}  "
           f"episodes {args.episodes}  agents {args.agents}")
-    n_jobs = len(args.arms) * args.rounds
+    n_jobs = len(args.arms) * args.rounds * (args.agents if args.solo else 1)
     waves = -(-n_jobs // min(args.max_concurrent, n_jobs))
     print(f"clock-bound: {wall:.1f} min per round; {n_jobs} rounds at "
           f"{args.max_concurrent} at a time is {waves} wave(s), so about "
-          f"{waves * wall:.0f} min of wall-clock and {n_jobs * args.agents} "
+          f"{waves * wall:.0f} min of wall-clock and {n_jobs * (1 if args.solo else args.agents)} "
           f"agent sessions.\n")
 
     preflight()
 
     from island.score import score  # noqa: PLC0415
 
-    jobs = [(arm, seed) for arm in args.arms
-            for seed in range(1, args.rounds + 1)]
+    # A solo round is one trader alone on its own board, so a seed becomes
+    # `agents` rounds rather than one. The island is still drawn at `agents`:
+    # the trader keeps the capacities the floor was computed from.
+    names = tuple(f"T{i + 1}" for i in range(args.agents))
+    jobs = [(arm, seed, only) for arm in args.arms
+            for seed in range(1, args.rounds + 1)
+            for only in (names if args.solo else (None,))]
     lock = threading.Lock()
 
     def one(job):
-        arm, seed = job
-        rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
-                        agents=args.agents, goods=args.goods, outdir=outdir)
+        arm, seed, only = job
+        # A round that dies must not take the others with it. Twice now a
+        # single hub fault mid-round has propagated out of the thread pool and
+        # destroyed every finished round's record along with the failing one --
+        # run 006 lost six, run 007 lost nine that had already played all ten
+        # episodes. The rounds are independent worlds; their records should
+        # fail independently too. A failed round is written down as failed,
+        # never dropped, so it stays in the denominator.
+        try:
+            rec = run_round(arm=arm, seed=seed, episodes=args.episodes,
+                            agents=args.agents, goods=args.goods,
+                            outdir=outdir, only=only)
+        except Exception as exc:  # noqa: BLE001 -- deliberately everything
+            with lock:
+                print(f"  {arm:9s} seed {seed}{'/' + only if only else ''}  "
+                      f"FAILED {type(exc).__name__}: {exc}"[:300], flush=True)
+            return {"arm": arm, "seed": seed, "only": only, "failed": True,
+                    "error": f"{type(exc).__name__}: {exc}"[:500]}
+        rec["only"] = only
         s = score(draw_island(args.agents, args.goods, seed=seed),
                   rec["trajectory"])
         rec["score"] = s.to_json()
         per = " ".join(f"{x:.2f}" for x in s.eff_episode)
         with lock:
-            print(f"  {arm:9s} seed {seed}  eff_round {s.eff_round:.3f}  "
+            print(f"  {arm:9s} seed {seed}{'/' + only if only else ''}  "
+                  f"eff_round {s.eff_round:.3f}  "
                   f"floor {s.floor:.3f}  per-episode [{per}]  "
                   f"settled {rec['settled']}  refused {rec['refused']}  "
                   f"talk {rec['talk']}  ack {len(rec['acknowledged'])}/"
@@ -669,6 +767,10 @@ def main() -> None:
     workers = min(args.max_concurrent, len(jobs))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         records = list(pool.map(one, jobs))
+    failed = [r for r in records if r.get("failed")]
+    if failed:
+        print(f"\n{len(failed)} of {len(records)} rounds failed and are "
+              f"written to the result as failed, not dropped.")
 
     path = outdir / "v3.json"
     path.write_text(json.dumps(

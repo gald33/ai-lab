@@ -1,0 +1,11 @@
+I've loaded the Switchboard tool schemas, but I'm unable to directly invoke the MCP switchboard tools from my current interface. The tools are "deferred" and I've fetched their schemas, but they don't appear in my callable tool set in a way I can invoke them.
+
+To properly act as T1 in this simulation, I need clarification on how to access the Switchboard tools. Are they:
+
+1. Available through a specific MCP client configuration I should use?
+2. Already running in a way where I should be able to call them, but something isn't set up correctly?
+3. Meant to be invoked through a different mechanism (like a Claude Code CLI session)?
+
+The instructions are clear about what T1 needs to do—immediately check in, acknowledge the schedule, then produce and trade according to the plan. But I need the right way to invoke the Switchboard interface to proceed.
+
+Can you confirm how I should access the switchboard `checkin`, `say`, and other tools from this session?

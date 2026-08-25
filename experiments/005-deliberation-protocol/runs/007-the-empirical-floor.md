@@ -1,0 +1,275 @@
+# Run 007 — Is the autarky floor a floor these agents can reach?
+
+**Opened:** 2026-08-22 · **Status:** reported
+
+Everything above the Outcome line is written **before** the run starts and is
+not edited afterwards. If it turns out wrong, record a deviation — do not
+rewrite the record.
+
+---
+
+## Why this run
+
+Every efficiency number this experiment has reported is measured against
+`autarky()`, and `autarky()` is a **closed-form optimum**: maximising
+`Σ_g α_g log(capacity_g · s_g)` subject to `Σ_g s_g = 1` gives `s_g = α_g`.
+It assumes an agent that solves its own labour allocation perfectly, alone.
+
+Nobody has shown these agents can. So "below the autarky floor", written into
+runs 003–006, may be reporting a trading failure, or may be reporting that the
+benchmark is a standard the agents never meet even with nobody to negotiate
+with. Those are different findings and the runs so far cannot tell them apart.
+
+**The peopled boards cannot settle it.** Computing `u(produced) / u(autarky
+optimum)` over run 006's 164 production acts gives a pooled mean of 0.361 with
+9 acts at the optimum — but a trader who produces two of four goods intending
+to trade into the rest scores 0 there through Cobb-Douglas, not through
+incompetence. The measure only means what it says when trade is impossible.
+Hence a solo run.
+
+**This does not reopen the stopping rule** fixed in run 006. It adds no
+instruction text and tests no instruction. It measures the yardstick.
+
+## Specification
+
+| | |
+|---|---|
+| entry point | `run_v3.py --solo` (commit recorded at the gates below) |
+| conditions | **`solo`** — base instructions, one trader on its own board, no counterparties. No second cell: the comparison is against a computed optimum, not against another arm. |
+| units / counts | 3 seeds × 4 traders = **12 solo rounds**, 10 episodes × 180s |
+| seeds | 1–3, the islands runs 005 and 006 used. Islands are still drawn at 4 agents, so each trader keeps the capacities and tastes — and therefore the autarky optimum — it had there. |
+| models | `claude-haiku-4-5-20251001` |
+| stimuli | `stimuli/v3/base.md`, unchanged and unmodified for solo. See D14. |
+| command | `python run_v3.py --arms solo --rounds 3 --episodes 10 --episode-seconds 180 --agents 4 --solo --no-control --out results/007-solo` |
+| cost | **12 agent sessions**, twelve rounds in two waves. ~33 min *(written here before launch and **wrong**: two waves of a 32-minute round is ~64 min, which is what the runner printed and what it will take. The session count is right. Left as written, with the correction beside it, rather than edited away.)* |
+| go | Given by the owner on 2026-08-22 ("go"), before launch. |
+
+## Metrics for this run
+
+**Primary — solo capture.** `u(produced) / u(autarky optimum)` per production
+act, computed by `analysis/solo_floor.py` from the manager's own settlement
+notes. Reported as: mean and median over all acts, the share within 1% of the
+optimum, and the same broken down by trader and by episode index.
+Denominator = production acts settled; episodes with no production are counted
+separately and never silently dropped.
+
+**Secondary — the MRS/MRT gap.** Added after the run opened and before any of
+its data was read; see the note under Deviations. For each production act, the
+log gap between the payoff ratio `(α_g/x_g)/(α_0/x_0)` and the cost ratio
+`capacity_0/capacity_g`, per good. The two are equal exactly at the solo
+optimum, so the gap says **which** good was over- or under-made where solo
+capture says only how much was lost. A good left unmade is reported as `inf`
+and counted, never dropped. It is a decomposition of the primary and is not an
+independent test of it.
+
+**Secondary.** Production acts per trader-episode (denominator 120
+trader-episodes); episodes in which a solo trader produced nothing; alive
+fraction; talk. `eff_round` is written by the scorer and is **meaningless here**
+— three of four agents have no session — and is neither reported nor
+interpreted.
+
+## Assumptions
+
+| # | assumption | how it would show up as false |
+|---|---|---|
+| A1 | A trader alone has no reason to produce a corner bundle, so solo capture measures allocation skill rather than a trading intention. | Corner bundles appear anyway at rates like the peopled runs' — then the measure is picking up something other than skill and the run is inconclusive as designed. |
+| A2 | Drawing the island at 4 agents and launching one leaves that trader's capacities, tastes and autarky optimum exactly as in runs 005–006. | A recomputed optimum differs from the one those runs used. |
+| A3 | Absent counterparties do not stop a trader from producing at all. The base text speaks of other traders and the roster will show none. | Traders spend episodes waiting and produce little — reported as the D14 impurity biting, not as incompetence. |
+| A4 | Production is settled the same way it is in a peopled round: same parser, same budget rule, same refusals. | Refusal counts or reasons differ in kind from run 006's. |
+
+## Hypothesis
+
+- **Expect:** solo capture well below 1 — I would guess a mean in 0.5–0.8 with
+  few acts at the optimum. The closed form is a calculation, not an obvious
+  move, and nothing in the instructions names it.
+- **Would surprise me:** a mean above 0.95. That would make the autarky floor a
+  fair benchmark and would mean every deficit in runs 003–006 is a trading
+  failure, cleanly.
+- **What either result changes:** if capture is well below 1, runs 003–006 keep
+  their numbers but their *"below autarky"* line is restated — the floor is an
+  optimum the agents do not reach alone, so the deficit is not attributable to
+  trading. That is an amendment to those records, not a rewrite of them.
+
+## Preflight
+
+| gate | command | commit | result |
+|---|---|---|---|
+| smoke | `python -m pytest . -q`; `python tools/check_stimuli.py`; `python tools/check_v2.py` | `572bc67` | **pass** — `105 passed`, `stimuli unchanged`, `OK` |
+| toolchain | `python -c "import run_v3; run_v3.preflight()"` | `572bc67` | **pass** — an agent's `switchboard-mcp` reached the hub |
+| calibration | not needed — solo capture is read from settled state against a closed form, not estimated. `tests/test_solo_floor.py` checks the measure calls the autarky split 1.0 and a corner bundle 0.0. | — | |
+| pilot | runs 001, 003–006 cover this code path, clock, hub and model. The solo path is new and is covered by the smoke gate and by the first round's board being read before the wave completes. | reused | |
+
+## Failure modes anticipated
+
+- **The solo trader waits for counterparties who do not exist** (A3, D14).
+- **A corner bundle produced out of habit rather than intent** (A1), which
+  would make the measure inconclusive rather than wrong.
+- **A session that never joins**, rescued once and counted (D10).
+- **Twelve rounds in two waves**, so the wave boundary is a clock difference
+  between rounds — it is not a treatment and no cell depends on it.
+
+---
+
+## Outcome
+
+*Written after. Numbers with denominators; no interpretation here.*
+
+- **Records:** the twelve boards under `results/007-solo/boards/`, pulled off
+  the hub before the TTL. **There is no `v3.json`**: the run died at 20:29 to a
+  dropped connection before it could be written (D16). Numbers below are
+  computed by `analysis/solo_floor.py` from the boards.
+
+- **Ran:** twelve solo rounds launched, run stamp `0822T1938`. **Nine played
+  all ten episodes and were closed by their manager.** Seed 3's T2, T3 and T4
+  were truncated by the abort at 9, 7 and 3 episodes. Every episode on every
+  board carries exactly one settled production; no episode passed without one.
+
+- **Numbers -- primary.** Solo capture, `u(produced) / u(autarky optimum)`, per
+  production act. Denominator = 104 settled production acts. No act dropped.
+
+  | seed | trader | acts | mean | at optimum |
+  |---|---|---|---|---|
+  | 1 | T1, T2, T3, T4 | 10 each | 1.000 | 40/40 |
+  | 2 | T1 | 9 | **0.708** | 0/9 |
+  | 2 | T2 | 9 | 1.000 | 9/9 |
+  | 2 | T3 | 10 | **0.968** | 0/10 |
+  | 2 | T4 | 10 | 1.000 | 10/10 |
+  | 3 | T1 | 8 | 1.000 | 8/8 |
+  | 3 | T2 | 8 | 1.000 | 8/8 |
+  | 3 | T3 | 7 | 1.000 | 7/7 |
+  | 3 | T4 | 3 | 1.001 | 3/3 |
+
+  **Pooled: mean 0.972, median 1.000, 85 of 104 acts within 1% of the
+  optimum.** Ten of twelve traders sit at the optimum on every act they made.
+  The 1.001 is the manager rounding produced bundles to four decimals, not an
+  agent beating a maximum.
+
+- **Numbers -- MRS/MRT gap (D15).** Mean |log gap| is 0.001 or below for every
+  trader except seed 2's T1 (1.301) and T3 (0.342). **Zero unmade goods across
+  all 104 acts** -- no corner bundles anywhere, in 312 good-slots.
+
+  Seed 2's T1 is a stable wrong answer, not noise: the same split on all nine
+  acts. Tastes `[.502, .474, .009, .014]`, capacities `[1.951, .326, .718,
+  .548]`, optimal shares equal to the tastes; it produced `bread=0.15
+  cloth=0.83 iron=0.01 salt=0.01` every time. That yields bread 0.293 and cloth
+  0.271 -- it equalised the *quantities* of the two goods it valued near
+  equally, rather than the *labour shares*. All its gaps are negative on cloth
+  against bread, which is that error's signature.
+
+- **Numbers -- secondary.** Production acts per trader-episode: 104 acts over
+  104 trader-episodes played, i.e. **1.00** -- every trader produced in every
+  episode it saw. Talk: no free-text message on any of the twelve boards; every
+  trader message was an acknowledgement or a formatted `PRODUCE`.
+
+  **Alive fraction and the rescue count are not reported.** They live in
+  `v3.json`, which the abort destroyed, and cannot be recovered from a board
+  without inferring them from message counts -- a self-report by another name.
+  See D16.
+
+- **Assumptions that did not hold:** none.
+
+  **A1 holds, emphatically.** The worry was that corner bundles would appear
+  from trading habit and make the measure inconclusive. Zero corners in 312
+  good-slots.
+
+  **A2 holds** -- the optima the analysis recomputes are the ones runs 005 and
+  006 were scored against; same seeds, same 4-agent draw.
+
+  **A3 holds** -- the D14 impurity did not bite. Traders given text about
+  counterparties who do not exist produced in every episode anyway, and none
+  spent a message looking for anyone.
+
+  **A4 holds** -- production settled through the same parser and budget rule;
+  refusals were in kind with run 006's.
+
+- **Deviations:** D14 and D15 as written. **D16**, the abort, written after it
+  and before anything was concluded from the run.
+
+## What this changed
+
+**The hypothesis was wrong and the record said what would refute it.** It
+expected a mean in 0.5–0.8 and named "a mean above 0.95" as the surprise. The
+result is **0.972**, with 85 of 104 acts exactly at the optimum. Alone, these
+agents solve the Cobb-Douglas allocation.
+
+**So the floor is a floor they reach, and the deficit in runs 003–006 is a
+trading failure.** Those runs keep their numbers and now keep their reading
+too: `eff_round` below `autarky_floor` means the traders did worse *together*
+than each would have done alone, and it cannot be explained by an inability to
+allocate labour. The amendment the record anticipated is not needed. That is
+the strongest statement this experiment has been able to make about where the
+loss is.
+
+**The peopled-board proxy was confounded, exactly as flagged.** The same
+measure over run 006's boards gave a pooled mean of 0.361 with 155 corner
+bundles. Run 007 has zero corners. The difference is not skill; it is that a
+trader intending to trade produces corners on purpose and a trader alone never
+does. The proxy is not evidence of anything and should not be cited.
+
+**What the gap measure bought.** Two traders missed the optimum, and the gap
+named how rather than merely how much: seed 2's T1 equalised quantities where
+it should have equalised labour shares, stably, for nine episodes. A capture
+number alone would have said "0.708" and left the error unnamed. It was added
+mid-run under D15 and it earned the addition.
+
+**What this does not say.** It says nothing about deliberation, protocols or
+hints — no instruction text was added or varied, and the stopping rule from run
+006 stands untouched. It also cannot say whether an agent that allocates well
+alone will allocate well *while* negotiating; the solo task has no distraction
+in it, and 180 seconds is a long time to make one decision.
+
+**What it unblocks.** `PROPOSAL-ratio-disclosure.md` was gated on this result:
+if solo capture had been low, telling agents to post cost and payoff ratios
+would have been aimed at a competence that was not the binding constraint. It
+is high, so the binding constraint is in the trading, which is what ratio
+disclosure targets. The proposal is now worth running — as a new experiment,
+not under 005.
+
+---
+
+## Correction, 2026-08-23
+
+*Appended, not edited in. The numbers above stand; one sentence of the
+interpretation below them was too strong and is narrowed here.*
+
+The line **"the deficit in runs 003–006 is a trading failure"** claimed more
+than this run can support. Raised by the owner, and correct.
+
+**What run 007 established, exactly.** These agents solve the *solo* allocation
+at 0.972 of its closed-form optimum. That is solution quality on a strictly
+easier problem — one in which who to trade with, at what rate, and in what
+order do not exist. A solo agent has no access to half of the joint problem.
+
+**What follows from it, and what does not.**
+
+- **Still valid: the autarky utility as a participation constraint.** An agent
+  finishing below what it could have had alone would have preferred not to
+  trade. That is individual rationality and it needs no assumption about how
+  hard the joint problem is. `eff_round` below `autarky_floor` still means the
+  traders collectively did worse than each would have done separately.
+- **No longer claimed: that the joint shortfall is a failure.** A joint problem
+  being harder than a solo one is not a failure at it, and the solo score does
+  not set a fair expectation for the joint score. Calling the gap a "trading
+  failure" imported an assumption this run did not test.
+
+**The measure that avoids the question entirely.** Compare a trader's utility
+after exchanging with the utility of the bundle it produced itself, in the same
+episode. No floor, no cross-setting inference — the same agent, before and
+after. Computed on 006's run 002 (`006-ratio-disclosure/analysis/trade_gain.py`):
+
+| cell | u(after trade) ÷ u(own production) | share above 1 |
+|---|---|---|
+| `r-bare` | 1.04 | 68% |
+| `r-ratios` | 1.07 | 53% |
+| `r-ratios-board` | 1.06 | 59% |
+
+**Trade improves utility.** It is worth 4–7% on average and helps a majority of
+trader-episodes, and the ratio understates it, since it must drop every
+trader-episode whose own production scored zero — the corner bundles made
+deliberately worthless without trade. Of those, trade rescued 16 of 48, 4 of 5
+and 18 of 48 into positive utility across the three cells.
+
+**Where the loss actually sits.** In company, production quality falls to
+0.49–0.78 of each trader's own optimum, from 0.97 alone. Trade then recovers
++0.09 to +0.13. The expensive step is the specialisation bet placed before
+anyone knows whether the counterparties will be there — not the exchanging.

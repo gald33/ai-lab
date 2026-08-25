@@ -1,0 +1,42 @@
+[
+ {
+  "key": "cost/T1",
+  "revision": 1,
+  "value": "Production costs (opportunity costs based on capacity): bread: 2.46 cloth, 1.06 iron, 0.76 salt | cloth: 0.41 bread, 0.43 iron, 0.31 salt | iron: 0.95 bread, 2.32 cloth, 0.72 salt | salt: 1.32 bread, 3.24 cloth, 1.39 iron"
+ },
+ {
+  "key": "cost/T2",
+  "revision": 1,
+  "value": "Labor cost per unit: bread=1.0, cloth=1.05, iron=3.34, salt=0.65"
+ },
+ {
+  "key": "cost/T3",
+  "revision": 1,
+  "value": "bread=0.373 cloth=0.853 iron=0.483 salt=1.340"
+ },
+ {
+  "key": "cost/T4",
+  "revision": 1,
+  "value": "T4 production capacity: bread 0.4207, cloth 1.4279, iron 1.0634, salt 1.7796. Cost ratios (opportunity cost per unit): bread costs 3.39 cloth, 2.53 iron, 4.23 salt. Cloth costs 0.29 bread, 0.74 iron, 1.25 salt. Iron costs 0.40 bread, 1.34 cloth, 1.67 salt. Salt costs 0.24 bread, 0.80 cloth, 0.60 iron."
+ },
+ {
+  "key": "worth/T1",
+  "revision": 2,
+  "value": "Episode 2 holdings: bread=0.0209, cloth=0.3589, iron=0.1766, salt=0.0634"
+ },
+ {
+  "key": "worth/T2",
+  "revision": 2,
+  "value": "Episode 2: holding salt=1.23, bread=0.20. Desperate for iron and cloth (holding 0 of each). Will trade salt for either."
+ },
+ {
+  "key": "worth/T3",
+  "revision": 3,
+  "value": "Ep3 start: adjusting for cloth scarcity, prioritizing trades"
+ },
+ {
+  "key": "worth/T4",
+  "revision": 5,
+  "value": "Episode 4: Ready to trade. Seeking bread/iron. Offering salt."
+ }
+]

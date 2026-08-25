@@ -1,0 +1,11 @@
+I see the context here: experiment 007 is set up, and the working directory is positioned in the results from a completed run (seed 10, e-bare treatment, trader T2). The CLAUDE.md files establish the experimental design and standing decisions.
+
+However, you haven't given me an explicit task yet. What would you like me to do? Some possibilities:
+
+- **Analyze the results** from this run (T2's outcomes, compliance with the plan, utility captured, etc.)
+- **Review what happened** in the board history during the episodes
+- **Compare results** across seeds or treatments
+- **Debug compliance** — check whether T2 followed the provided plan and if not, where it diverged
+- **Something else** specific to your analysis
+
+What's your focus for this session?
