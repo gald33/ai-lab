@@ -262,7 +262,10 @@ def motion(page, where: str) -> list[str]:
       scene.sky({ ...t.final, phase: 'closed' }, null, 0);
       // The night overlay is a CSS transition on `.closed`, which is applied
       // here rather than by the bell -- so it needs its own time to land.
-      await nap(1000);
+      // Past the end of the 2.4s transition, not part-way into it: a sample
+      // taken mid-glide measures how busy the machine is as much as it
+      // measures the page, and it is the landed value that is the assertion.
+      await nap(2900);
       found.closed = island.classList.contains('closed');
       found.sunSetting = sunY() > found.sunBefore;
       found.nightOpacity = Number(getComputedStyle(
@@ -467,6 +470,8 @@ def run(out: Path, headed: bool = False) -> int:
             problems += mobile(browser, base, boards[0], out)
             problems += fallback(browser, base, boards[0], out)
             problems += living(browser, base, boards[0], out)
+            problems += alive(browser, base, boards[0], out)
+            problems += turning(browser, base, boards[0], out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
             problems += vocabulary(browser, base, boards[0])
@@ -748,6 +753,194 @@ def vocabulary(browser, base: str, board: Path) -> list[str]:
     if said["ticker"] and "episode" not in said["ticker"].lower():
         bad.append(f"{stem} vocabulary: the transcript stopped quoting the "
                    f"manager's own word for an episode")
+    return bad
+
+
+#: Reading the model's own pixels. Everything the life layer does is in the
+#: canvas and none of it is in the DOM, so the alternative was a test handle on
+#: the shipped page -- and a check that measures what a viewer sees is better
+#: than one that measures what the page exposes to be measured.
+SAMPLE = """() => {
+  const cv = document.getElementById('stage');
+  const s = document.createElement('canvas');
+  s.width = 96; s.height = Math.max(1, Math.round(96 * cv.height / cv.width));
+  const g = s.getContext('2d');
+  g.drawImage(cv, 0, 0, s.width, s.height);
+  const px = g.getImageData(0, 0, s.width, s.height).data;
+  let lum = 0, warm = 0, lit = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 24) continue;
+    lit++;
+    lum += (px[i] + px[i + 1] + px[i + 2]) / 3;
+    warm += px[i] - px[i + 2];          // red over blue: how warm the light is
+  }
+  return { lum: lit ? lum / lit : 0, warm: lit ? warm / lit : 0, lit,
+           px: [...px.slice(0, 4096)].join(',') };
+}"""
+
+
+def alive(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The island moves, holds still when asked to, and keeps the day's time.
+
+    Three things, none of which a single screenshot can show, and all of them
+    measured off the canvas rather than through a handle on the page.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+
+    def at(page, frac):
+        total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
+        page.evaluate("i => { const s = document.getElementById('scrub');"
+                      " s.value = String(i); s.dispatchEvent(new Event('input')); }",
+                      round(total * frac))
+        # Past the sun's glide and the overlays' 2.4s
+        # transitions, so what is sampled is where the page settles
+        # rather than how fast this machine happens to be.
+        page.wait_for_timeout(2600)
+
+    for still in (False, True):
+        page = browser.new_page(viewport={"width": 1200, "height": 800},
+                                reduced_motion="reduce" if still else "no-preference")
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(1800)
+        at(page, 0.55)
+        first = page.evaluate(SAMPLE)
+        page.wait_for_timeout(700)
+        second = page.evaluate(SAMPLE)
+        where = f"{stem} alive{' still' if still else ''}"
+        if not first["lit"]:
+            bad.append(f"{where}: nothing on the canvas to measure")
+        elif still and first["px"] != second["px"]:
+            bad.append(f"{where}: the island kept moving for somebody who asked "
+                       f"for less motion")
+        elif not still and first["px"] == second["px"]:
+            bad.append(f"{where}: the island did not move between two frames; "
+                       f"the life layer is not running")
+        if not still:
+            # The light against **the page's own sun**, not against a position
+            # in the replay. A scrub fraction is not a time of day: a board's
+            # events do not fall evenly across its days, so "half way through
+            # the messages" can land at dusk on one board and at dawn on the
+            # next, and comparing two of them says nothing. The drawn sun is
+            # already on the clock, so its height on screen is the reference --
+            # and what is asserted is that the model agrees with it: the island
+            # is warmer and darker when the sun is low than when it is high.
+            #
+            # Held loosely. This is a threshold on a rendered picture.
+            read = []
+            for frac in (0.15, 0.3, 0.45, 0.6, 0.8, 1.0):
+                at(page, frac)
+                shot = page.evaluate(SAMPLE)
+                shot["sun"] = page.evaluate(
+                    "() => document.querySelector('.sun').getBoundingClientRect().top")
+                read.append(shot)
+            page.screenshot(path=str(out / f"{stem}-dusk3d.png"))
+            # Warmth *relative to brightness*. Red-minus-blue on its own falls
+            # with the light, so a genuinely orange evening scores lower than a
+            # bright blue midday simply for being dark -- which measures the
+            # dimmer, not the colour. Divided through, it is the tint.
+            for r in read:
+                r["tint"] = r["warm"] / max(1.0, r["lum"])
+            high = min(read, key=lambda r: r["sun"])   # smallest top: sun highest
+            low = max(read, key=lambda r: r["sun"])    # largest top: sun lowest
+            if high["sun"] == low["sun"]:
+                bad.append(f"{where}: the sun never moved across the replay, so "
+                           f"nothing checked the light against it")
+            elif low["tint"] <= high["tint"] + 0.08:
+                bad.append(f"{where}: the island is no warmer with the sun down "
+                           f"than with it up (tint {high['tint']:.2f} -> "
+                           f"{low['tint']:.2f}); the light is not on the day's clock")
+            elif low["lum"] >= high["lum"]:
+                bad.append(f"{where}: the island is no darker with the sun down "
+                           f"than with it up ({high['lum']:.0f} -> {low['lum']:.0f})")
+        page.close()
+    return bad
+
+
+def turning(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The camera goes round the island, and the page goes round with it.
+
+    The model turns; the cards, which are SVG and know nothing about the model,
+    are moved every frame to stay over the settlements they belong to. Nothing
+    else on the page can tell you whether that is happening -- a screenshot
+    shows one instant, and both a page that follows and a page that does not
+    look correct in it. So: two instants, and what moved between them.
+
+    The rope is the second half of it. It is drawn *between seats*, so a page
+    that moved the huts and left the ropes would put every open offer's line
+    somewhere the huts no longer are, and it would take a spectator a full turn
+    of the island to notice.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    read = """() => {
+      const at = (n) => {
+        const m = /translate\\(([-\\d.]+)[ ,]+([-\\d.]+)\\)/.exec(n.getAttribute('transform') || '');
+        return m ? [Number(m[1]), Number(m[2])] : null;
+      };
+      const ends = [...document.querySelectorAll('.rope .rope-line')].map(p => {
+        const d = p.getAttribute('d');
+        const m = /^M ([-\\d.]+) ([-\\d.]+) Q [-\\d.]+ [-\\d.]+ ([-\\d.]+) ([-\\d.]+)$/.exec(d);
+        return m ? [[Number(m[1]), Number(m[2])], [Number(m[3]), Number(m[4])]] : null;
+      });
+      return { huts: [...document.querySelectorAll('.hut')].map(at), ropes: ends };
+    }"""
+
+    for still in (False, True):
+        page = browser.new_page(viewport={"width": 1200, "height": 800},
+                                reduced_motion="reduce" if still else "no-preference")
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=15_000)
+        if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
+            page.close()
+            return bad          # no model, nothing to turn
+        total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
+        # Stopped somewhere with an offer standing, because a rope left behind
+        # is half of what this checks and a frame with no rope cannot show it.
+        for frac in (0.5, 0.78, 0.3, 0.85, 0.55):
+            page.evaluate("i => { const s = document.getElementById('scrub');"
+                          " s.value = String(i); s.dispatchEvent(new Event('input')); }",
+                          round(total * frac))
+            page.wait_for_timeout(1200)
+            if page.evaluate("() => document.querySelectorAll('.rope .rope-line').length"):
+                break
+        where = f"{stem} turning{' still' if still else ''}"
+        first = page.evaluate(read)
+        page.wait_for_timeout(4000)
+        second = page.evaluate(read)
+        page.screenshot(path=str(out / f"{stem}-turned.png"))
+
+        if None in first["huts"] or not first["huts"]:
+            bad.append(f"{where}: a hut has no placement to read")
+            page.close()
+            continue
+        moved = max(abs(a[0] - b[0]) + abs(a[1] - b[1])
+                    for a, b in zip(first["huts"], second["huts"]))
+        if still and moved > 0.5:
+            bad.append(f"{where}: the island turned under somebody who asked for "
+                       f"less motion (a hut moved {moved:.1f})")
+        if not still:
+            #: In viewBox units, over four seconds of a 150-second revolution.
+            #: Small on purpose -- this asks whether the cards are being moved
+            #: at all, not how fast.
+            if moved < 2:
+                bad.append(f"{where}: the camera turned and the cards did not "
+                           f"follow (the furthest hut moved {moved:.1f})")
+            if not second["ropes"]:
+                bad.append(f"{where}: no offer stood at any stop, so nothing "
+                           f"checked that the ropes are re-laid")
+            for ends in second["ropes"]:
+                if ends is None:
+                    bad.append(f"{where}: a rope is not a plain arc between two seats")
+                    continue
+                for end in ends:
+                    near = min(abs(end[0] - h[0]) + abs(end[1] - (h[1] - 84))
+                               for h in second["huts"])
+                    if near > 1:
+                        bad.append(f"{where}: a rope ends {near:.0f} from any hut; "
+                                   f"it was left where the huts used to be")
+        page.close()
     return bad
 
 
