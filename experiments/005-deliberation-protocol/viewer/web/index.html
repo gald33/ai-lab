@@ -18,36 +18,93 @@
 svg.island { display: block; width: 100%; height: auto; }
 
 /* --- the scene ---------------------------------------------------------- */
-.wave { fill: none; stroke: #ffffff; stroke-opacity: .045; stroke-width: 2;
-  animation: drift 15s linear infinite; }
+/* Water: three bands, three speeds. Each path is drawn one wavelength wider
+   than the canvas and translated by exactly one wavelength, so the loop has no
+   seam. The parallax is what makes it read as water rather than wallpaper. */
+.wave { fill: none; stroke: var(--surf); stroke-width: 2; stroke-linecap: round; }
+.wave-band.far .wave  { stroke-opacity: .07; animation: drift 34s linear infinite; }
+.wave-band.mid .wave  { stroke-opacity: .10; animation: drift 24s linear infinite;
+  stroke-width: 2.4; }
+.wave-band.near .wave { stroke-opacity: .14; animation: drift 16s linear infinite;
+  stroke-width: 3; }
 @keyframes drift { to { transform: translateX(240px); } }
-.land { fill: var(--sand); stroke: var(--sand-dark); stroke-width: 2; }
-.square { fill: #b8975c; opacity: .5; }
-.track { fill: none; stroke: #b08c50; stroke-width: 7; stroke-linecap: round;
-  stroke-dasharray: 2 17; opacity: .75; }
-.palm .trunk { fill: none; stroke: #7a5a34; stroke-width: 3.5; stroke-linecap: round; }
-.palm .frond { fill: #55803f; }
-.firelight { animation: flicker 3.4s ease-in-out infinite; }
-@keyframes flicker { 50% { opacity: .62; } }
-.fire .flame { fill: var(--fire); animation: flicker 1.7s ease-in-out infinite; }
-.fire .log { stroke: #6b4a2c; stroke-width: 5; stroke-linecap: round; }
 
-.hut .roof { fill: #7a4a34; }
+/* The shore. Two offset rings of the same coast, breathing against each other:
+   this is the whole difference between an island and a beige shape. */
+/* Foam sits *on* the shoreline. Offset out into the sea it is a dashed ring
+   around a shape, which reads as a selection outline, not as water. The wide
+   soft ring outside it is light scattering in the shallows -- no dashes, so
+   there is no second outline. */
+.shallows { fill: none; stroke: var(--surf); stroke-opacity: .045; stroke-width: 26;
+  animation: swell 9s ease-in-out infinite; }
+.surf { fill: none; stroke: var(--surf); stroke-linecap: round; }
+.surf-1 { stroke-width: 2.2; stroke-opacity: .34; stroke-dasharray: 4 13;
+  animation: lap 17s linear infinite, swell 6s ease-in-out infinite; }
+.surf-2 { stroke-width: 5; stroke-opacity: .1; stroke-dasharray: 9 21;
+  animation: lap 26s linear infinite reverse, swell 8.5s ease-in-out infinite; }
+@keyframes lap   { to { stroke-dashoffset: -80; } }
+@keyframes swell { 50% { stroke-opacity: .04; } }
+
+.land { fill: url(#sand); stroke: var(--sand-dark); stroke-width: 2.5;
+  stroke-opacity: .55; }
+/* A band along the shore, not a tint over the island -- and darker than the
+   dry sand it sits inside, which is what makes it read as a shore rather than
+   as a rim light around a shape. */
+.wet { fill: none; stroke: var(--sand-wet); stroke-width: 11; stroke-opacity: .22; }
+.grain-fill { fill: url(#grain); opacity: .38; }
+.grain-dot { fill: #6b5220; opacity: .45; }
+
+.square { fill: var(--sand-dark); opacity: .42; }
+.track { fill: none; stroke: var(--sand-dark); stroke-width: 8; stroke-linecap: round;
+  stroke-dasharray: 2 19; opacity: .5; }
+
+.palm { animation: sway 7s ease-in-out infinite; transform-box: fill-box;
+  transform-origin: bottom center; }
+.palm .palm-shadow { fill: #000; opacity: .18; }
+.palm .trunk { fill: none; stroke: var(--trunk); stroke-width: 4; stroke-linecap: round; }
+.palm .frond { fill: var(--frond); stroke: var(--frond-dark); stroke-width: .6; }
+.palm .coconut { fill: #4b3520; }
+@keyframes sway { 0%, 100% { rotate: -1.6deg; } 50% { rotate: 1.6deg; } }
+
+.firelight { animation: flicker 3.4s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes flicker { 50% { opacity: .6; } }
+.fire .flame { fill: var(--fire); transform-box: fill-box; transform-origin: bottom center;
+  animation: burn 1.5s ease-in-out infinite; }
+.fire .flame:nth-of-type(3) { fill: #ffd88a; }
+@keyframes burn { 0%, 100% { scale: 1 1; opacity: .95; }
+                  50% { scale: .9 1.12; opacity: .72; } }
+.fire .log { stroke: #6b4a2c; stroke-width: 5.5; stroke-linecap: round; }
+.fire .embers { fill: #ff7a2f; opacity: .55; animation: flicker 2.1s ease-in-out infinite; }
+.fire .ember { fill: var(--fire); opacity: 0; animation: rise 3.6s linear infinite; }
+@keyframes rise { 0% { opacity: 0; translate: 0 0; }
+                  18% { opacity: .9; } 100% { opacity: 0; translate: -7px -46px; } }
+
+.hut-shadow { fill: #000; opacity: .22; }
+.hut .roof { fill: var(--thatch); }
+.hut .roof-thatch { fill: url(#thatch); opacity: .5; }
+.thatch-line { fill: none; stroke: #4d2c1c; stroke-width: 1; stroke-opacity: .55; }
+.hut .hut-rim { fill: none; stroke: var(--thatch-lit); stroke-width: 1.6; stroke-opacity: .8; }
 .hut .wall { fill: #e3d5b8; }
 .hut .door { fill: #5d4632; }
-.hut.quiet { opacity: .6; }
-.card-bg { fill: #0b1116; fill-opacity: .93; stroke: var(--line); }
+/* Lit while they have spoken. "Nobody is home" is carried by the building, not
+   only by fading the whole hut out. */
+.hut .window { fill: var(--glass); opacity: .85; }
+.hut.quiet { opacity: .68; }
+.hut.quiet .window { fill: #2a2118; opacity: 1; }
+
+.card-shadow { fill: #000; opacity: .3; }
+.card-bg { fill: #0b1116; fill-opacity: .95; stroke: var(--line); }
 .hut.starved .card-bg { stroke: var(--critical); stroke-width: 1.8; }
-.card-name { fill: var(--ink); font-size: 14px; font-weight: 650;
+.card-name { fill: var(--ink); font-size: 15px; font-weight: 650;
   font-family: ui-monospace, monospace; }
 .card-sub { fill: var(--muted); font-size: 9.5px; letter-spacing: .05em;
   text-transform: uppercase; }
 .plank { stroke: #6b4a2c; stroke-width: 3; stroke-linecap: round; }
 
-.wheel-track { fill: none; stroke: #212a30; stroke-width: 4; }
-.wheel-fill { fill: none; stroke: var(--fire); stroke-width: 4; stroke-linecap: round;
+.wheel-track { fill: none; stroke: #212a30; stroke-width: 4.5; }
+.wheel-fill { fill: none; stroke: var(--fire); stroke-width: 4.5; stroke-linecap: round;
   transition: stroke-dasharray .5s ease; }
-.wheel-text { fill: var(--ink-2); font-size: 9px; text-anchor: middle;
+.wheel-text { fill: var(--ink-2); font-size: 9.5px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
 
 .bar-track { fill: #ffffff; opacity: .05; }
@@ -57,33 +114,69 @@ svg.island { display: block; width: 100%; height: auto; }
   transition: transform .55s cubic-bezier(.22,1,.36,1); }
 .bar-held { fill: var(--c); transform-box: fill-box; transform-origin: bottom;
   transition: transform .55s cubic-bezier(.22,1,.36,1); }
-.glyph { font-size: 13px; text-anchor: middle; }
-.qty { fill: var(--ink-2); font-size: 10px; text-anchor: middle;
+/* Nothing at all, said out loud. A dark trough reads as "a little"; the
+   difference between a little and none is the whole of Cobb-Douglas. */
+.bar-zero { stroke: var(--critical); stroke-width: 2; stroke-linecap: round;
+  opacity: 0; transition: opacity .3s ease; }
+.cell.empty .bar-zero { opacity: .85; }
+.cell.grew .bar-held { animation: grew .9s cubic-bezier(.2,.9,.3,1); }
+@keyframes grew { 0% { filter: brightness(2.2); } 100% { filter: none; } }
+.glyph { font-size: 14px; text-anchor: middle; }
+.qty { fill: var(--ink-2); font-size: 11px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
 .qty.none { fill: var(--critical); }
 
-.rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .8;
+.rope-shadow { fill: none; stroke: #000; stroke-opacity: .35; stroke-width: 5;
+  transform: translateY(2px); }
+.rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .85;
   stroke-dasharray: 7 6; animation: crawl 1.4s linear infinite; }
 @keyframes crawl { to { stroke-dashoffset: -26; } }
-.rope.settling .rope-line { stroke: var(--good); animation: none; stroke-dasharray: none; }
-.chip-bg { fill: #0e1519; stroke: var(--line); }
+.rope.settling .rope-line { stroke: var(--good); animation: snap .5s ease-out;
+  stroke-dasharray: none; }
+@keyframes snap { 0% { stroke-width: 6; filter: brightness(1.9); } 100% { stroke-width: 2.5; } }
+.rope.lapsing .rope-line { stroke: var(--muted); animation: none; }
+.rope.lapsing .chip-bg { stroke: var(--muted); }
+.chip-bg { fill: #0e1519; fill-opacity: .96; stroke: var(--line); }
 .chip-text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
 .chip-pid { fill: var(--muted); font-size: 10px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
 
 .parcel-bg { fill: var(--c); }
-.parcel-glyph { font-size: 15px; text-anchor: middle; }
-.parcel-qty { fill: var(--ink); font-size: 10px; text-anchor: middle;
+.parcel-trail { fill: var(--c); opacity: .5; }
+.parcel-glyph { font-size: 16px; text-anchor: middle; }
+.parcel-qty { fill: var(--ink); font-size: 11px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
 
-.pop-bg { fill: #0e1519; stroke: var(--line); }
+.sheaf-glyph { font-size: 17px; text-anchor: middle; }
+.sheaf-qty { fill: var(--ink); font-size: 10px; text-anchor: middle;
+  font-family: ui-monospace, monospace; }
+
+.pop-bg { fill: #0e1519; fill-opacity: .96; stroke: var(--line); }
 .pop .pop-text { fill: var(--ink); font-size: 12px; text-anchor: middle; }
 .pop.bad .pop-bg { stroke: var(--critical); }
 .pop.bad .pop-text { fill: #ffb3b3; }
 .pop.good .pop-bg { stroke: var(--good); }
 
-.night { fill: #04080b; pointer-events: none; }
-.banner-text { fill: var(--ink); font-size: 22px; text-anchor: middle; font-weight: 600; }
+.night { pointer-events: none; }
+.vignette { pointer-events: none; }
+/* The bell: dusk falls and the fire is what is left. Not a black rectangle --
+   that read as the page breaking rather than as the day ending. */
+.island.dusk .firelight { animation: flicker 1.1s ease-in-out infinite; opacity: 1; }
+.island.dusk .water { opacity: .55; transition: opacity .8s ease; }
+.banner-bg { fill: #0b1116; fill-opacity: .82; stroke: var(--line); }
+.banner-text { fill: var(--ink); font-size: 21px; text-anchor: middle; font-weight: 600; }
+
+/* Every animation above is decoration. Somebody who has asked for less motion
+   is asking about all of it, not only the ones JavaScript starts -- which is
+   what `still()` in scene.js already honours for the event animations. */
+@media (prefers-reduced-motion: reduce) {
+  .wave, .surf, .shallows, .palm, .firelight, .fire .flame, .fire .embers, .fire .ember,
+  .rope-line, .cell.grew .bar-held, .island.dusk .firelight {
+    animation: none !important;
+  }
+  .bar, .bar-held, .score-fill, .wheel-fill, .bar-zero { transition: none; }
+  .fire .ember { opacity: 0; }
+}
 
 /* --- the head-up display ------------------------------------------------ */
 .hud { position: absolute; inset: 12px 12px auto 12px; display: flex; gap: 8px;
@@ -152,6 +245,10 @@ svg.island { display: block; width: 100%; height: auto; }
 .score-track { fill: #ffffff; opacity: .07; }
 .score-fill { fill: var(--util); transition: width .55s cubic-bezier(.22,1,.36,1); }
 .score-floor { fill: var(--ink); opacity: .8; }
+/* The line worth beating, named on the card rather than left as a tick nobody
+   can interpret. A round that finishes left of it did worse than not trading. */
+.score-floor-tag { fill: var(--muted); font-size: 8.5px; text-anchor: middle;
+  letter-spacing: .04em; text-transform: uppercase; }
 .score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
 .score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
