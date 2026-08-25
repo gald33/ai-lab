@@ -127,3 +127,72 @@ def test_only_replay_file_types_are_served(roots):
     assert serve.Handler._under(None, replays, "notes.md", ".json", ".gz") is None
     assert serve.Handler._under(None, replays, "b.json", ".json", ".gz") is not None
     assert serve.Handler._under(None, replays, "b.json.gz", ".json", ".gz") is not None
+
+
+def test_a_listing_carries_what_each_round_was(tmp_path, monkeypatch):
+    """Facets come off the sidecar, so the page can filter by what happened.
+
+    Read, never recomputed -- except welfare, which is the round's utility
+    against the sum of its traders' solo optima and needs the trajectory and
+    the optima together. Both are in the same file.
+    """
+    root = tmp_path / "results"
+    root.mkdir()
+    (root / "board-x.json").write_text(json.dumps({"messages": []}))
+    (root / "reveal-x.json").write_text(json.dumps({
+        "seed": 4, "agents": 2, "goods": ["bread", "cloth"],
+        "autarky_utility": {"T1": 1.0, "T2": 1.0},
+        "round": {"arm": "e-plan", "episodes": 2,
+                  "trajectory": [[1.0, 1.0], [2.0, 2.0]],
+                  "score": {"eff_round": 0.9, "zero_agent_episodes": 1,
+                            "agent_episodes": 4}},
+    }))
+    monkeypatch.setattr(serve, "ROOTS", {"results": root})
+    serve._listing = (0.0, [])
+    try:
+        [entry] = serve.boards()
+    finally:
+        serve._listing = (0.0, [])
+
+    got = entry["facets"]
+    assert got["seed"] == 4 and got["agents"] == 2 and got["goods"] == 2
+    assert got["arm"] == "e-plan" and got["episodes"] == 2
+    assert got["eff_round"] == 0.9
+    assert got["zero_agent_episodes"] == 1 and got["agent_episodes"] == 4
+    # (2 + 4) / (2 solo * 2 episodes) = 1.5, the mean over episodes.
+    assert got["welfare"] == 1.5
+
+
+def test_a_round_with_no_sidecar_still_lists(tmp_path, monkeypatch):
+    """A board with nothing to say about itself is listed, not hidden.
+
+    It simply answers no filter. Dropping it would make the picker the arbiter
+    of what exists, which is the listing's job and not the filter's.
+    """
+    root = tmp_path / "results"
+    root.mkdir()
+    (root / "board-y.json").write_text(json.dumps({"messages": []}))
+    monkeypatch.setattr(serve, "ROOTS", {"results": root})
+    serve._listing = (0.0, [])
+    try:
+        [entry] = serve.boards()
+    finally:
+        serve._listing = (0.0, [])
+    assert entry["reveal"] is None
+    assert entry["facets"] == {}
+
+
+def test_a_damaged_sidecar_costs_its_facets_and_nothing_else(tmp_path, monkeypatch):
+    """Half-written JSON is a thing that happens to a file being copied."""
+    root = tmp_path / "results"
+    root.mkdir()
+    (root / "board-z.json").write_text(json.dumps({"messages": []}))
+    (root / "reveal-z.json").write_text("{ not json")
+    monkeypatch.setattr(serve, "ROOTS", {"results": root})
+    serve._listing = (0.0, [])
+    try:
+        [entry] = serve.boards()
+    finally:
+        serve._listing = (0.0, [])
+    assert entry["facets"] == {}
+    assert entry["board"].endswith("board-z.json")

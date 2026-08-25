@@ -68,6 +68,57 @@ LISTING_TTL = 5.0
 _listing: tuple[float, list[dict]] = (0.0, [])
 
 
+def facets(sidecar: Path) -> dict:
+    """What a round *was*, for filtering by, read from its reveal sidecar.
+
+    A listing of 157 boards is not searched by name -- nobody remembers which
+    seed was the interesting one -- it is searched by what happened: which
+    condition, how many traders, did anyone end up better off than alone, was
+    anybody ruined. All of that is already recorded; it was simply never
+    carried in the listing.
+
+    Everything here is read, never recomputed. `score` is the manager's, and
+    `welfare` is the one derived number: the round's utility against the sum
+    of its traders' solo optima, episode by episode, which is the reading
+    `reports/2026-08-24-a-second-benchmark.md` argues for. A sidecar that
+    predates any of these fields yields the keys it can and omits the rest --
+    a board with no facets still lists, it just does not answer a filter.
+    """
+    try:
+        doc = json.loads(sidecar.read_text())
+    except (OSError, ValueError):
+        return {}
+
+    out = {}
+    for key in ("seed", "agents"):
+        if isinstance(doc.get(key), int):
+            out[key] = doc[key]
+    if isinstance(doc.get("goods"), list):
+        out["goods"] = len(doc["goods"])
+
+    rnd = doc.get("round") or {}
+    if rnd.get("arm"):
+        out["arm"] = rnd["arm"]
+    if isinstance(rnd.get("episodes"), int):
+        out["episodes"] = rnd["episodes"]
+
+    score = rnd.get("score") or {}
+    for key in ("eff_round", "gain_median", "below_autarky",
+                "zero_agent_episodes", "agent_episodes"):
+        if isinstance(score.get(key), (int, float)):
+            out[key] = score[key]
+
+    # Welfare needs the trajectory and the solo optima together, and both are
+    # in this file. Mean over episodes rather than the last one: an episode is
+    # a day and the round is all of them, which is how every table in the
+    # reports reads it.
+    solo = sum((doc.get("autarky_utility") or {}).values())
+    steps = [row for row in (rnd.get("trajectory") or []) if isinstance(row, list)]
+    if solo and steps:
+        out["welfare"] = round(sum(sum(row) for row in steps) / (solo * len(steps)), 4)
+    return out
+
+
 def boards() -> list[dict]:
     """Every saved board under any of `ROOTS`, with its sidecar if one exists.
 
@@ -97,6 +148,10 @@ def boards() -> list[dict]:
                 "reveal": (f"{prefix}/{sidecar.relative_to(root).as_posix()}"
                            if sidecar.exists() else None),
                 "at": path.stat().st_mtime,
+                # Read once per listing rather than per page load: the sidecars
+                # are small and the listing is already cached behind
+                # `LISTING_TTL`.
+                "facets": facets(sidecar) if sidecar.exists() else {},
             })
     out.sort(key=lambda b: -b["at"])
     _listing = (now, out)
