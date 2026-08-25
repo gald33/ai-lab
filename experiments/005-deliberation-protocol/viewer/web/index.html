@@ -655,7 +655,7 @@ function lineClass(e) {
   return "";
 }
 
-function hud(state, quiet) {
+function hud(state) {
   $("ep").innerHTML = state.episode
     ? `episode <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
     : "before the first episode";
@@ -667,14 +667,16 @@ function hud(state, quiet) {
   $("c-refused").innerHTML = `refused <b>${state.counters.refused}</b>`;
   $("c-lapsed").innerHTML = `lapsed <b>${state.counters.lapsed}</b>`;
 
+  // How long the board has been quiet is not said in a pill any more. It was a
+  // number about the replay rather than about the island, and the island has a
+  // sun that can carry it: it crosses the sky as the episode runs, so a long
+  // silence is a long stretch of afternoon. Live keeps its countdown, which is
+  // a deadline rather than a description.
   const clock = $("clock");
   if (mode === "live" && state.bell_at) {
     const left = Math.round((Date.parse(state.bell_at) - Date.now()) / 1000);
     clock.hidden = false;
     clock.innerHTML = left > 0 ? `bell in <b>${left}s</b>` : "bell due";
-  } else if (quiet) {
-    clock.hidden = false;
-    clock.innerHTML = `<span class="sub">quiet ${quiet}s</span>`;
   } else {
     clock.hidden = true;
   }
@@ -771,11 +773,14 @@ function closing(state) {
 
 let lastPaint = null;
 
-function paint({ state, event, animate, quiet, index }) {
-  lastPaint = { state, event, animate: false, quiet, index };
+function paint({ state, event, animate, index, until = null, hold = 0 }) {
+  lastPaint = { state, event, animate: false, index };
   scene.draw(state, timeline);
+  // The day's own clock, before the event: `play()` may take the sun down at a
+  // bell or bring it up at an open, and that has to win over the glide.
+  scene.sky(state, until, hold);
   if (animate && event) scene.play(event);
-  hud(state, quiet);
+  hud(state);
   closing(state);
   ticker(timeline.frames, index);
   $("scrub").value = String(index);
@@ -1044,7 +1049,15 @@ function liveHandlers(statusWhenOk, statusOnError) {
       // Everything that arrived since the last poll gets played, in order and
       // quickly; the state itself is already current either way.
       const fresh = first ? [] : timeline.frames.slice(before);
-      paint({ state: timeline.final, event: null, animate: false, quiet: 0, index: last });
+      // Live, the next line has not happened yet, so the sun is aimed at the
+      // bell over however long is actually left of the episode. Between polls
+      // it keeps going -- which is the point: on a live board the stretch where
+      // nothing is said is exactly when there is nothing else to look at.
+      const bell = timeline.final.bell_at ? Date.parse(timeline.final.bell_at) : NaN;
+      const left = Number.isFinite(bell) ? bell - Date.now() : 0;
+      paint({ state: timeline.final, event: null, animate: false, index: last,
+              until: left > 0 ? timeline.final.bell_at : null,
+              hold: left > 0 ? left : 0 });
       fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },

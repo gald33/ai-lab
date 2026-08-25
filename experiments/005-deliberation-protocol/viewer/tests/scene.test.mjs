@@ -17,7 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits } from "../web/scene.js";
+         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -273,4 +273,47 @@ test("the culprit is the trader's own open offer holding that good", () => {
   assert.deepEqual(culprits(proposals, "T2", "cloth"), []);
   assert.deepEqual(culprits(proposals, "T1", "iron"), []);
   assert.deepEqual(culprits(undefined, "T1", "cloth"), []);
+});
+
+
+// --- the sun marks the day -------------------------------------------------
+// An episode is a day. The page used to say how long the board had been quiet
+// in a pill -- a number about the replay, not about the island -- while the sun
+// sat in one place for the whole episode.
+
+test("the sun crosses the sky from one side to the other", () => {
+  for (const g of [layout(2), layout(2, true), layout(4)]) {
+    const dawn = sunAt(g, 0), noon = sunAt(g, 0.5), dusk = sunAt(g, 1);
+    assert.ok(dawn.x < noon.x && noon.x < dusk.x, "it should travel east to west");
+    assert.ok(noon.y < dawn.y && noon.y < dusk.y, "and be highest in the middle");
+    // Symmetric about the island, so noon is overhead rather than off to a side.
+    assert.ok(Math.abs((dawn.x + dusk.x) / 2 - g.cx) < 1);
+  }
+});
+
+test("it clears the island at noon, and never sets behind the wrong edge", () => {
+  // The sun is drawn *behind* the land so that it can set behind it. An arc
+  // that dipped under the island's top edge would take the sun through the
+  // island at midday and simply vanish.
+  for (const g of [layout(1), layout(2), layout(4), layout(2, true), layout(4, true)]) {
+    const top = g.ly - g.ry;
+    for (let p = 0; p <= 1.0001; p += 0.05) {
+      assert.ok(sunAt(g, p).y < top,
+                `at p=${p.toFixed(2)} the sun is at ${sunAt(g, p).y}, below the island top ${top}`);
+    }
+  }
+});
+
+test("portrait has a sky for it to cross", () => {
+  // It did not: the island ran from 40 to 900 of a 940 viewBox, which left the
+  // sun a strip to sit in and nowhere to travel.
+  const g = layout(2, true);
+  assert.ok(g.ly - g.ry >= 120, `only ${g.ly - g.ry} units of sky`);
+  assert.ok(fits(g));
+});
+
+test("a point outside the episode is held to its ends", () => {
+  const g = layout(2);
+  assert.deepEqual(sunAt(g, -3), sunAt(g, 0));
+  assert.deepEqual(sunAt(g, 12), sunAt(g, 1));
 });

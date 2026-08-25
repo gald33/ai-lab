@@ -405,6 +405,8 @@ def run(out: Path, headed: bool = False) -> int:
                 problems += blame(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
             problems += mobile(browser, base, boards[0], out)
+            for board in boards:
+                problems += daylight(browser, base, board, out)
             problems += ring(browser, base, out)
             browser.close()
     finally:
@@ -559,6 +561,61 @@ PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390)]
 #: meant to override and lost on source order, which no amount of reading the
 #: CSS made obvious.
 CHROME = ["#transport", ".counts", ".legend", ".at-top-left", ".at-top-right"]
+
+
+def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The sun marks how far through the episode a frame is.
+
+    An episode is a day. The page used to report how long the board had been
+    quiet in a pill -- a number about the replay rather than about the island --
+    while the sun sat in one spot from the open to the bell.
+
+    Driven through the page, at frames inside a single episode, so this is the
+    sun a viewer actually sees rather than the arc's arithmetic (which
+    `scene.test.mjs` checks on its own).
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    where = f"{stem} daylight"
+    page = browser.new_page(viewport={"width": 1500, "height": 1000},
+                            reduced_motion="reduce")
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_timeout(1200)
+    seen = page.evaluate("""async () => {
+      const s = document.getElementById('scrub');
+      const at = (i) => new Promise(r => {
+        s.value = String(i); s.dispatchEvent(new Event('input'));
+        setTimeout(() => {
+          const b = document.querySelector('.sun').getBoundingClientRect();
+          r({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+        }, 90);
+      });
+      const total = Number(s.max);
+      const out = [];
+      for (let i = 0; i <= total; i++) out.push(await at(i));
+      return { total, spots: out,
+               clock: (document.getElementById('clock') || {}).textContent || '' };
+    }""")
+    page.close()
+    bad = [f"{where}: {e}" for e in errs]
+    xs = [round(s["x"], 1) for s in seen["spots"]]
+    # It has to actually go somewhere, and westward: the same x at every frame
+    # is the sun this change exists to unpark.
+    if len(set(xs)) < 4:
+        bad.append(f"{where}: the sun stood in {len(set(xs))} place(s) across "
+                   f"{seen['total'] + 1} frames -- it is not marking the day")
+    backwards = sum(1 for a, b in zip(xs, xs[1:]) if b < a - 1)
+    # One step back per episode boundary: dawn puts it back in the east.
+    if backwards > 4:
+        bad.append(f"{where}: the sun went backwards {backwards} times; it should "
+                   f"only reset at an episode boundary")
+    if "quiet" in seen["clock"]:
+        bad.append(f"{where}: the idle-seconds pill is back: {seen['clock']!r}")
+    return bad
 
 
 def mobile(browser, base: str, board: Path, out: Path) -> list[str]:

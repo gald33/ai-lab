@@ -89,6 +89,30 @@ never learns which tree a board came from. Transport, scrubbing, episode chapter
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
 
+## The sun tells the time
+
+An episode is a day, so the day is readable from the sky. The sun crosses on an
+arc from the open to the bell, and during a replay it keeps travelling while a
+frame is held on screen — so a stretch where nobody acted *looks* long, in the
+one part of the page that is about the island rather than about the player.
+
+It replaces a pill that read `quiet 41s`: a number about the replay, next to a
+sun parked in one spot for the whole episode.
+
+The arc is bounded by the island rather than by a constant. It rises and sets
+beyond the island's width, where there is only water, and clears the island's
+topmost point at noon — the sun is drawn *behind* the land so it can set behind
+it, so an arc dipping below that edge would take it through the island at
+midday. `scene.test.mjs` holds both properties at every trader count and in both
+orientations.
+
+**The bell had no date.** The manager writes *"the bell is at 12:42:27Z"*, which
+`Date.parse` cannot read, so everything comparing it to a clock got `NaN` and
+quietly did nothing — the live countdown read "bell due" from the first second
+of every episode. The date now comes from the timestamp of the line that
+announced it, and a bell earlier in the day than its own announcement is
+tomorrow's.
+
 ## On a phone
 
 The page is a link you hand somebody, and most people open a link on a phone.

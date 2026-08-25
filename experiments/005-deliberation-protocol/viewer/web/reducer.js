@@ -33,9 +33,35 @@ function bundle(text) {
   return out;
 }
 
+/**
+ * The bell as a moment, not a time of day.
+ *
+ * The manager writes "the bell is at 12:42:27Z", which `Date.parse` cannot read
+ * -- it has no date in it. Everything downstream that compared it to a clock got
+ * `NaN` and quietly did nothing: the live countdown read "bell due" from the
+ * first second of every episode, and it is why the sun had no way to know how
+ * far through the day it was.
+ *
+ * The date comes from the line that announced the bell, which is timestamped in
+ * full. A bell earlier in the day than its own announcement is tomorrow's --
+ * an episode opening at 23:59 rings at 00:01.
+ */
+export function instant(clock, anchor) {
+  if (!clock) return null;
+  if (/\d{4}-\d{2}-\d{2}/.test(clock)) return clock;
+  const hms = /^(\d{1,2}):(\d{2})(?::(\d{2}))?Z?$/.exec(String(clock).trim());
+  const base = anchor ? new Date(anchor) : null;
+  if (!hms || !base || Number.isNaN(base.getTime())) return clock;
+  const when = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(),
+                                 base.getUTCDate(), +hms[1], +hms[2], +(hms[3] || 0)));
+  if (when.getTime() < base.getTime() - 60_000) when.setUTCDate(when.getUTCDate() + 1);
+  return when.toISOString();
+}
+
 const RECEIPTS = [
   // The schedule. `hide` rounds announce a span instead of a total, so the
   // episode count is optional and the page has to survive not knowing it.
+
   [/^Schedule for this round\. \d+ traders: ([^.]+)\./, (m, e) => {
     e.kind = "schedule";
     e.traders = m[1].split(",").map((s) => s.trim()).filter(Boolean);
@@ -61,7 +87,7 @@ const RECEIPTS = [
     const window = /PRODUCE is settled for the next (\d+)s/.exec(e.body);
     if (window) { e.staged = true; e.production_seconds = +window[1]; }
     const bell = /the bell is at (\S+?)[\s(]/.exec(e.body);
-    if (bell) e.bell_at = bell[1];
+    if (bell) e.bell_at = instant(bell[1], e.at);
     const span = /\((\d+)s\)/.exec(e.body);
     if (span) e.seconds = +span[1];
   }],
@@ -187,6 +213,7 @@ export function reduce(messages, { manager = MANAGER, goods = null } = {}) {
     episodes: null,
     staged: false,
     bell_at: null,
+    at: null,
     seconds: null,
     stocks: empty(traders, words),
     made: empty(traders, words),      // this episode's production, for the labour wheel
@@ -227,6 +254,11 @@ export function reduce(messages, { manager = MANAGER, goods = null } = {}) {
     events.push(e);
     const s = state;
     s.last = e;
+    // When this frame is, by the board's own clock. The scene needs it to know
+    // how far through the episode the frame sits -- the sun's position is that
+    // fraction, and a state that cannot say when it is cannot be drawn at a
+    // time of day.
+    s.at = e.at ?? s.at;
 
     switch (e.kind) {
       case "schedule":
