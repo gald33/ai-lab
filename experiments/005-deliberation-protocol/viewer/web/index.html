@@ -184,6 +184,39 @@ svg.island { display: block; width: 100%; height: 100%; }
   font-family: ui-monospace, monospace; }
 .qty.none { fill: var(--critical); }
 
+/* The closing card. Over the island, dismissable, and gone the moment you
+   scrub back into the round -- it reports an ending, so it must not be on
+   screen while there is still play to watch. */
+.curtain { position: fixed; inset: 0; display: grid; place-items: center;
+  pointer-events: none; z-index: 6; padding-bottom: 90px; }
+.curtain[hidden] { display: none; }
+.curtain .card { pointer-events: auto; position: relative; min-width: 320px;
+  max-width: min(440px, 92vw); animation: rise .5s cubic-bezier(.22,1,.36,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) { .curtain .card { animation: none; } }
+.curtain .shut { position: absolute; top: 8px; right: 8px; }
+.curtain h2 { margin: 0 0 2px; }
+.verdict { margin: 0 0 12px; font-size: 14px; line-height: 1.45; }
+.verdict b { color: var(--critical); }
+.verdict.good b { color: var(--good); }
+/* One row per trader: what they ended with as a multiple of playing alone.
+   Raw utilities are not comparable between traders -- each is defined only up
+   to its own monotone transformation -- so the multiple is the only honest
+   number to put side by side, and it is what the ledger scores a trader on. */
+.ratio { display: grid; grid-template-columns: 7.5em 1fr 4.2em; gap: 8px;
+  align-items: center; margin: 5px 0; }
+.ratio .seat { font-size: 12px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.ratio .track { position: relative; height: 9px; border-radius: 5px;
+  background: #ffffff14; overflow: hidden; }
+.ratio .track i { display: block; height: 100%; background: var(--util); }
+.ratio.under .track i { background: var(--critical); }
+/* Where playing alone would have put them: 1.00x, the line worth beating. */
+.ratio .track u { position: absolute; top: -3px; width: 2px; height: 15px;
+  background: var(--ink); opacity: .85; }
+.ratio .num { text-align: right; font-family: ui-monospace, monospace;
+  font-size: 12.5px; }
+.ratio.under .num { color: var(--critical); }
 .rope-shadow { fill: none; stroke: #000; stroke-opacity: .35; stroke-width: 5;
   transform: translateY(2px); }
 .rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .85;
@@ -439,6 +472,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <h2>The board</h2>
     <div class="ticker" id="ticker"></div>
   </section>
+
+  <!-- The round had no ending. It played three episodes, the sun went down and
+       it stopped; what any of it came to was behind a drawer. This is the
+       ending: it says what each trader ended up with against never having
+       traded at all, which is the one comparison the island is scored on. -->
+  <div class="curtain" id="closing" hidden>
+    <div class="card" role="status">
+      <button class="shut" id="closing-shut" title="Watch the island">×</button>
+      <h2 id="closing-head">round over</h2>
+      <p class="verdict" id="closing-verdict"></p>
+      <div id="closing-traders"></div>
+      <p class="note" id="closing-traffic"></p>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -455,6 +502,9 @@ const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
 
 let timeline = null, scene = null, player = null, live = null, reveal = null;
+//: Shut by hand, and only until the round is left behind: scrubbing back
+//: into play clears it, so the card returns when the ending does.
+let dismissed = false;
 let mode = "replay";
 
 // --- chrome ----------------------------------------------------------------
@@ -546,10 +596,88 @@ function hud(state, quiet) {
          from them.</div>` : "");
 }
 
+/**
+ * What the round came to, once there is no more of it.
+ *
+ * Every number here is derived from what the page already holds -- the
+ * trajectory in the sidecar and the autarky utilities beside it -- and each
+ * one reproduces the ledger's own figure exactly. Nothing is invented and
+ * nothing is asked of the manager.
+ *
+ * `capture` and `eff_round` are deliberately **not** here. Both are measured
+ * against the frontier of the island, the page has no frontier and cannot
+ * derive one from a trajectory, and a results screen guessing at the headline
+ * number is worse than one that leaves it out. The scoreboard has them.
+ *
+ * The comparison that IS available is the one a trader is scored on: what they
+ * ended with as a multiple of what they would have had never trading. Autarky
+ * is a per-episode utility and utility here is homogeneous of degree 1, so the
+ * total worth beating is `k x autarky_i`.
+ */
+function closing(state) {
+  const box = $("closing");
+  const over = state.phase === "over";
+  if (!over) dismissed = false;
+  if (!over || dismissed) { box.hidden = true; return; }
+
+  const traj = reveal?.round?.trajectory;
+  const alone = reveal?.autarky_utility;
+  const k = traj?.length || 0;
+  const rows = (traj && alone && k)
+    ? timeline.traders.map((name, i) => {
+      const total = accumulate(traj, i);
+      const floor = k * (alone[name] ?? 0);
+      return { name, total, floor, ratio: floor > 0 ? total / floor : null,
+               zeros: traj.filter((r) => (r[i] || 0) <= 1e-12).length };
+    })
+    : [];
+
+  const scored = rows.filter((r) => r.ratio !== null);
+  const beat = scored.filter((r) => r.ratio >= 1);
+  $("closing-verdict").className = `verdict${beat.length === scored.length ? " good" : ""}`;
+  $("closing-verdict").innerHTML = !scored.length
+    ? `This board has no sidecar, so the page knows what was traded and not what
+       any of it was worth. The counts below are everything it can say.`
+    : beat.length === 0
+      ? `<b>Nobody beat playing alone.</b> Every trader here ended the round worse
+         off than if they had never traded at all.`
+      : beat.length === scored.length
+        ? `<b>Everybody beat playing alone.</b> Trading left every trader better
+           off than working the island on their own.`
+        : `<b>${beat.map((r) => r.name).join(", ")}</b> beat playing alone;
+           ${scored.filter((r) => r.ratio < 1).map((r) => r.name).join(", ")} did not.`;
+
+  // Scaled so 1.00x -- playing alone -- always sits at the same place on every
+  // row, whatever the best ratio is. A bar that rescaled to its own winner
+  // would move the only line that means anything.
+  const span = Math.max(1.25, ...scored.map((r) => r.ratio));
+  $("closing-traders").innerHTML = rows.map((r) => {
+      const who = reveal?.players?.[r.name] ? `${r.name} · ${reveal.players[r.name]}` : r.name;
+    if (r.ratio === null) return `<div class="ratio"><span class="mono">${who}</span></div>`;
+    return `<div class="ratio${r.ratio < 1 ? " under" : ""}">
+      <span class="mono seat" title="${who}">${who}</span>
+      <span class="track"><i style="width:${(100 * Math.min(1, r.ratio / span)).toFixed(1)}%"></i>
+        <u style="left:${(100 / span).toFixed(1)}%" title="playing alone"></u></span>
+      <span class="num">${r.ratio.toFixed(2)}\u00d7</span></div>`;
+  }).join("");
+
+  const zeros = rows.reduce((n, r) => n + r.zeros, 0);
+  const c = state.counters;
+  $("closing-traffic").innerHTML =
+    `${k || state.episodes || 0} episodes · ${c.settled} settled ·
+     ${c.refused} refused · ${c.lapsed} lapsed` +
+    (zeros ? ` · <b>${zeros}</b> episode(s) ended holding none of some good,
+       which is zero utility however much of the rest they had.` : "") +
+    `<br>The full reveal — tastes, capacities, efficiency per episode — is under
+     <b>▤</b>, and the scored board is under <b>🏆</b>.`;
+  box.hidden = false;
+}
+
 function paint({ state, event, animate, quiet, index }) {
   scene.draw(state, timeline);
   if (animate && event) scene.play(event);
   hud(state, quiet);
+  closing(state);
   ticker(timeline.frames, index);
   $("scrub").value = String(index);
   $("pos").textContent = `${index + 1} / ${timeline.frames.length}`;
@@ -845,8 +973,16 @@ function drawer(button, panel, cls) {
 const rail = drawer("t-rail", "rail", "rail-open");
 const log = drawer("t-log", "log", "log-open");
 
+// Shutting the ending is the same gesture as shutting a drawer, and puts the
+// island back without moving the playhead.
+function shutClosing() {
+  dismissed = true;
+  $("closing").hidden = true;
+}
+$("closing-shut").addEventListener("click", shutClosing);
+
 addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { rail.set(false); log.set(false); }
+  if (e.key === "Escape") { rail.set(false); log.set(false); shutClosing(); }
   // Space is what a transport is played with everywhere else, but not while
   // somebody is using a control that has its own idea about it.
   if (e.key === " " && !/^(BUTTON|SELECT|INPUT)$/.test(document.activeElement?.tagName)) {

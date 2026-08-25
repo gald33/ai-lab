@@ -401,6 +401,7 @@ def run(out: Path, headed: bool = False) -> int:
             # got past this harness and were found by eye instead.
             for board in boards:
                 problems += replay(browser, base, board, out)
+            problems += bare(browser, base, boards[0], out)
             problems += ring(browser, base, out)
             browser.close()
     finally:
@@ -436,10 +437,108 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
                 round(total * at))
             page.wait_for_timeout(900)
             bad += check(page, traders, goods, f"{stem} @{name}{' still' if motion else ''}")
+            if name == "end":
+                bad += ending(page, reveal, f"{stem}{' still' if motion else ''}")
             suffix = f"-{label}" if label else ""
             page.screenshot(path=str(out / f"{stem}-{name}{suffix}.png"))
         bad += [f"{stem}{' still' if motion else ''}: {e}" for e in errs]
         page.close()
+    return bad
+
+
+def bare(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A board opened with no reveal sidecar still reaches its ending.
+
+    Live, there is no sidecar at all -- tastes are private and the seed is not
+    posted -- so every utility on the closing card is unavailable. The card has
+    to say that rather than throw, print `NaN`, or claim nobody beat autarky on
+    the strength of numbers it does not have.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1500, "height": 1000},
+                            reduced_motion="reduce")
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/?board=replays/board-{stem}.json")   # no &reveal=
+    page.wait_for_selector(".hut", timeout=10_000)
+    total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
+    page.evaluate("i => { const s = document.getElementById('scrub');"
+                  " s.value = String(i); s.dispatchEvent(new Event('input')); }", total)
+    page.wait_for_timeout(1200)
+    shown = page.evaluate("""() => {
+      const box = document.getElementById('closing');
+      if (!box || box.hidden) return null;
+      return { verdict: box.querySelector('.verdict').textContent,
+               rows: box.querySelectorAll('.ratio').length,
+               body: box.textContent };
+    }""")
+    page.screenshot(path=str(out / f"{stem}-end-no-sidecar.png"))
+    bad = [f"{stem} bare: {e}" for e in errs]
+    if shown is None:
+        bad.append(f"{stem} bare: no ending shown on a board without a sidecar")
+    else:
+        if "sidecar" not in shown["verdict"]:
+            bad.append(f"{stem} bare: the card does not say why it has no numbers: "
+                       f"{shown['verdict'].strip()!r}")
+        if shown["rows"]:
+            bad.append(f"{stem} bare: {shown['rows']} scored row(s) with no sidecar "
+                       f"to score from")
+        for junk in ("NaN", "undefined", "Infinity"):
+            if junk in shown["body"]:
+                bad.append(f"{stem} bare: the card prints {junk}")
+    page.close()
+    return bad
+
+
+def ending(page, reveal, where: str) -> list[str]:
+    """The round has an ending, and it says the right thing.
+
+    A replay used to stop rather than finish: three episodes played, the sun
+    went down, and what any of it came to sat behind a drawer. The numbers on
+    the card are the ledger's own -- what each trader ended with as a multiple
+    of never having traded -- so they are checkable here against the sidecar
+    rather than taken on the page's word.
+    """
+    bad: list[str] = []
+    shown = page.evaluate("""() => {
+      const box = document.getElementById('closing');
+      if (!box || box.hidden) return null;
+      return { verdict: box.querySelector('.verdict').textContent.trim(),
+               traffic: box.querySelector('#closing-traffic').textContent.trim(),
+               rows: [...box.querySelectorAll('.ratio')].map(r => ({
+                 text: (r.querySelector('.num') || {}).textContent || '',
+                 under: r.classList.contains('under') })) };
+    }""")
+    if shown is None:
+        return [f"{where}: the round ended and nothing said what it came to"]
+
+    traj = reveal.get("round", {}).get("trajectory") or []
+    alone = reveal.get("autarky_utility") or {}
+    want = []
+    for i, name in enumerate(sorted(alone)):
+        total = sum(row[i] for row in traj)
+        floor = len(traj) * alone[name]
+        want.append(total / floor if floor else None)
+    if len(shown["rows"]) != len(want):
+        bad.append(f"{where}: {len(shown['rows'])} traders on the closing card, "
+                   f"expected {len(want)}")
+    for row, ratio in zip(shown["rows"], want):
+        if ratio is None:
+            continue
+        # The number the ledger scores a trader on, to the digits shown.
+        if f"{ratio:.2f}" not in row["text"]:
+            bad.append(f"{where}: closing card shows {row['text']!r}, "
+                       f"expected {ratio:.2f}x")
+        # Below 1.00x is worse than never trading, and must read as such.
+        if (ratio < 1) != row["under"]:
+            bad.append(f"{where}: {ratio:.2f}x is marked "
+                       f"{'under' if row['under'] else 'fine'}, which is backwards")
+    if want and all(r is not None and r < 1 for r in want) \
+            and "beat playing alone" not in shown["verdict"]:
+        bad.append(f"{where}: every trader finished below autarky and the card "
+                   f"does not say so: {shown['verdict']!r}")
     return bad
 
 
