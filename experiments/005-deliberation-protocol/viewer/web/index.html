@@ -930,7 +930,13 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
   // separate time would be the one thing worse than no sun at all.
   stage?.setDay(state.phase === "closed" || state.phase === "over"
     ? 1 : scene.dayProgress(state));
-  if (animate && event) scene.play(event);
+  if (animate && event) {
+    scene.play(event);
+    // The same event, on the island itself: the site that made the good works,
+    // and what it made crosses the ground to the hut that made it. The card
+    // says the number; this says where it came from.
+    stage?.fire(event);
+  }
   hud(state);
   closing(state);
   ticker(timeline.frames, index);

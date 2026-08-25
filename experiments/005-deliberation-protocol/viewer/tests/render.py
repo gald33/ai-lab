@@ -472,6 +472,8 @@ def run(out: Path, headed: bool = False) -> int:
             problems += living(browser, base, boards[0], out)
             problems += alive(browser, base, boards[0], out)
             problems += turning(browser, base, boards[0], out)
+            problems += island(browser, base, out)
+            problems += mechanics(browser, base, out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
             problems += vocabulary(browser, base, boards[0])
@@ -855,6 +857,294 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
                 bad.append(f"{where}: the island is no darker with the sun down "
                            f"than with it up ({high['lum']:.0f} -> {low['lum']:.0f})")
         page.close()
+    return bad
+
+
+#: A stage built off-page, so a check can ask the model questions the page
+#: has no reason to expose. The same modules the viewer loads, driven directly.
+STAGE = """async ({w, h, n, portrait, goods}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h; document.body.appendChild(cv);
+  const st = new Stage(cv, {w, h});
+  st.pause();
+  st.setDay(0.45);
+  const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
+  const mid = {x: w / 2, y: h * (portrait ? 0.5 : 0.46)};
+  let spots;
+  if (n <= 2) {
+    const dx = w * (portrait ? 0 : 0.2), dy = h * (portrait ? 0.19 : 0);
+    spots = n === 1 ? [mid]
+      : [{x: mid.x - dx, y: mid.y - dy}, {x: mid.x + dx, y: mid.y + dy}];
+  } else spots = Array.from({length: n}, (_, i) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    return {x: mid.x + Math.cos(a) * w * 0.26, y: mid.y + Math.sin(a) * h * 0.20};
+  });
+  const made = st.build({traders, goods, seats: spots.map(p => st.groundAt(p.x, p.y))});
+  st.pause();
+  // What is directly under a point, ignoring anything standing on the ground
+  // rather than being it.
+  const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
+  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_|banner_|post$|notice)/;
+  const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
+  window.__under = (x, z) => {
+    ray.set(new THREE.Vector3(x, 8, z), down);
+    const hit = ray.intersectObject(made.island, true)
+      .filter(h => !chain(h.object).some(nm => SKIP.test(nm)))[0];
+    return hit ? hit.object.name : 'nothing';
+  };
+  window.__st = st;
+  window.__made = made;
+  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z])};
+}"""
+
+
+def island(browser, base: str, out: Path) -> list[str]:
+    """Nothing stands in the sea, and the goats do not run.
+
+    **Both of these were reported by somebody watching, not by a test**, which
+    is the argument for this one existing. The seats come from the page in
+    screen coordinates and are unprojected onto the island, and how much island
+    a screen fraction covers depends on the frame's shape -- so on a wide
+    window both settlements landed in the water, and on a narrow one two of
+    four landed on the market roof. The goats ran the delivered clip's numbers
+    at island scale, which is a metre a second across a meadow six wide, out
+    over the beach and off into the sea.
+
+    Asked of the model by raycast rather than of the picture by eye: what is
+    under this hut is a question with an exact answer.
+    """
+    bad: list[str] = []
+    #: Where a settlement may stand. Not the beach: a hut on sand is a hut
+    #: nobody put there on purpose.
+    LAND = {"meadow", "upland", "market_plaza", "ridge"}
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    shapes = [("desktop", 1200, 750, 2, False), ("wide", 1600, 700, 2, False),
+              ("tall", 900, 1100, 2, False), ("phone", 430, 780, 2, True),
+              ("desktop/4", 1200, 750, 4, False), ("phone/4", 430, 900, 4, True),
+              ("desktop/5", 1400, 800, 5, False)]
+    for label, w, h, n, portrait in shapes:
+        built = page.evaluate(STAGE, {"w": w, "h": h, "n": n, "portrait": portrait,
+                                      "goods": ["bread", "cloth", "iron", "salt", "fish"]})
+        seats = built["seats"]
+        for name, (x, z) in zip(built["traders"], seats):
+            under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
+            if under not in LAND:
+                bad.append(f"island {label}: {name}'s settlement stands on "
+                           f"{under!r} at ({x:.2f}, {z:.2f})")
+        # And not on top of each other: a frame narrow enough collapses the
+        # layout's ring, and two huts in one place is one hut with a spare card.
+        for i in range(len(seats)):
+            for j in range(i + 1, len(seats)):
+                d = ((seats[i][0] - seats[j][0]) ** 2 + (seats[i][1] - seats[j][1]) ** 2) ** 0.5
+                if d < 1.2:
+                    bad.append(f"island {label}: two settlements {d:.2f} apart, "
+                               f"which is inside a hut's own width")
+
+    # And the case the layout can actually produce but these shapes happen not
+    # to: two seats at the same point. Asked of the model directly, because a
+    # viewport that collapses the ring is a moving target and this is the
+    # property that has to hold whatever produced it.
+    twins = page.evaluate("""async () => {
+      const { buildIsland } = await import('./island3d.js');
+      const same = [[2.2, 1.1], [2.2, 1.1], [2.21, 1.09]];
+      const made = buildIsland({traders: ['A', 'B', 'C'],
+                                goods: ['bread', 'cloth'], seats: same});
+      return ['A', 'B', 'C'].map(n => [made.anchors[n].x, made.anchors[n].z]);
+    }""")
+    for i in range(len(twins)):
+        for j in range(i + 1, len(twins)):
+            d = ((twins[i][0] - twins[j][0]) ** 2 + (twins[i][1] - twins[j][1]) ** 2) ** 0.5
+            if d < 1.2:
+                bad.append(f"island: three seats at one point built settlements "
+                           f"{d:.2f} apart; they were not moved off each other")
+
+    # The herd, over three minutes of its own clock.
+    walk = page.evaluate("""() => {
+      const st = window.__st, made = window.__made;
+      const goats = made.island.children.filter(o => /^goat_/.test(o.name));
+      const seen = [], step = 0.25;
+      let fastest = 0;
+      const last = new Map();
+      for (let t = 0; t < 200; t += step) {
+        st.life.update(t, st.ctx());
+        for (const g of goats) {
+          const p = [g.position.x, g.position.z];
+          seen.push([g.name, p[0], p[1], window.__under(p[0], p[1])]);
+          const was = last.get(g.name);
+          if (was) fastest = Math.max(fastest, Math.hypot(p[0] - was[0], p[1] - was[1]) / step);
+          last.set(g.name, p);
+        }
+      }
+      return {n: goats.length, fastest,
+              off: seen.filter(s => !['meadow', 'upland', 'market_plaza', 'ridge'].includes(s[3]))
+                       .slice(0, 3)};
+    }""")
+    if not walk["n"]:
+        bad.append("island: no goats to check")
+    if walk["off"]:
+        where = ", ".join(f"{g[0]} on {g[3]!r} at ({g[1]:.1f}, {g[2]:.1f})" for g in walk["off"])
+        bad.append(f"island: a goat left the grass -- {where}")
+    #: Island units a second. A goat is about 0.35 long, so this is roughly a
+    #: body length per second -- an outer bound on "ambling", not a target.
+    if walk["fastest"] > 0.35:
+        bad.append(f"island: the goats move at {walk['fastest']:.2f} units/s, "
+                   f"which at this scale is a run, not a graze")
+    page.screenshot(path=str(out / "island-model.png"))
+    page.close()
+    return bad
+
+
+#: One of each kind the island has a clip for, with enough of a payload that
+#: the clip has something to carry.
+FIRED = [
+    {"kind": "produced", "trader": "T1", "made": {"bread": 0.8, "salt": 0.5}},
+    {"kind": "offer", "pid": "p1", "maker": "T1", "taker": "T2",
+     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
+    {"kind": "settled", "pid": "p1", "maker": "T1", "taker": "T2",
+     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
+    {"kind": "refused", "trader": "T2", "reason": "uncommitted stock"},
+    {"kind": "bell", "episode": 1, "lapsed": 2},
+    {"kind": "open", "episode": 2, "of": 3},
+]
+
+
+def mechanics(browser, base: str, out: Path) -> list[str]:
+    """Every event the island has a clip for actually shows, and then goes.
+
+    Three things, and the first is the one that matters: **a clip that runs but
+    cannot be seen is not an animation.** The delivered clips were watched one
+    at a time in a frame two units across; the island is eight and half of it
+    is behind the cards, so at their own scale the crates were a handful of
+    pixels and the rings were hairlines under the market roof. This measures
+    the canvas against the same island with nothing happening on it, and asks
+    for a share of the frame to have changed.
+
+    The second: it has to end. A clip that leaves a crate standing is a page
+    that accumulates litter over a long replay.
+
+    The third: it has to put back what it borrowed. Several of these move the
+    island's own nodes -- the hut banners, the crates beside a door -- and
+    those are not the clip's to keep.
+    """
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 1000, "height": 700})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errs.append(f"console error: {m.text}")
+            if m.type == "error" else None)
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    page.evaluate(STAGE, {"w": 900, "h": 560, "n": 2, "portrait": False,
+                          "goods": ["bread", "cloth", "iron", "salt", "fish"]})
+    seen = page.evaluate("""({events}) => {
+      const st = window.__st;
+      const shot = () => {
+        st.life.update(3, st.ctx());
+        st.renderer.render(st.scene, st.camera);
+        const s = document.createElement('canvas');
+        s.width = 300; s.height = 187;
+        const g = s.getContext('2d');
+        g.drawImage(st.canvas, 0, 0, s.width, s.height);
+        return g.getImageData(0, 0, s.width, s.height).data;
+      };
+      const diff = (a, b) => {
+        let n = 0;
+        for (let i = 0; i < a.length; i += 4)
+          if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
+              + Math.abs(a[i+2] - b[i+2]) > 18) n++;
+        return n / (a.length / 4);
+      };
+      const bare = shot();
+      return events.map((e) => {
+        st.clear();
+        const c = st.fire(e);
+        st.pause();
+        if (!c) return {kind: e.kind, clip: false};
+        let peak = 0;
+        for (let t = 0.1; t <= c.dur; t += 0.1) {
+          c.t0 = 0;
+          st.step(t);
+          peak = Math.max(peak, diff(bare, shot()));
+        }
+        // Past the end, which is what the stage's own loop does.
+        c.t0 = 0;
+        st.step(c.dur + 0.5);
+        const after = diff(bare, shot());
+        return {kind: e.kind, clip: true, peak, after, live: st.clips.length};
+      });
+    }""", {"events": FIRED})
+    for r in seen:
+        where = f"mechanics {r['kind']}"
+        if not r.get("clip"):
+            bad.append(f"{where}: the island has nothing to show for it")
+            continue
+        #: Share of the frame. Small, because the island is mostly island --
+        #: but an order of magnitude above the hairlines this replaced.
+        if r["peak"] < 0.004:
+            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the frame ever "
+                       f"changed; whatever it did cannot be seen")
+        if r["live"]:
+            bad.append(f"{where}: {r['live']} clip(s) still running after the end")
+        if r["after"] > 0.0005:
+            bad.append(f"{where}: {r['after'] * 100:.2f}% of the frame is still "
+                       f"changed once it finished; it left something behind")
+    # And the case `restore` actually exists for: a clip cut off part-way,
+    # which is what a rebuild does to whatever was in flight. Left alone, a
+    # bell interrupted mid-swing leaves every settlement's banner hanging in
+    # the air over the island for the rest of the round.
+    cut = page.evaluate("""() => {
+      const st = window.__st;
+      const shot = () => {
+        st.life.update(3, st.ctx());
+        st.renderer.render(st.scene, st.camera);
+        const s = document.createElement('canvas');
+        s.width = 300; s.height = 187;
+        const g = s.getContext('2d');
+        g.drawImage(st.canvas, 0, 0, s.width, s.height);
+        return g.getImageData(0, 0, s.width, s.height).data;
+      };
+      const diff = (a, b) => {
+        let n = 0;
+        for (let i = 0; i < a.length; i += 4)
+          if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
+              + Math.abs(a[i+2] - b[i+2]) > 18) n++;
+        return n / (a.length / 4);
+      };
+      st.clear();
+      const bare = shot();
+      const out = [];
+      for (const e of [{kind: 'bell', episode: 1, lapsed: 2},
+                       {kind: 'open', episode: 2, of: 3}]) {
+        const c = st.fire(e);
+        st.pause();
+        c.t0 = 0;
+        st.step(c.dur * 0.5);           // half way through, and then pulled
+        st.clear();
+        out.push([e.kind, diff(bare, shot())]);
+      }
+      return out;
+    }""")
+    for kind, left in cut:
+        if left > 0.0005:
+            bad.append(f"mechanics {kind}: cut off half way and {left * 100:.2f}% "
+                       f"of the frame stayed changed; it kept what it borrowed")
+
+    # A kind the island says nothing about must stay silent rather than throw.
+    quiet = page.evaluate("""() => {
+      const st = window.__st;
+      return [{kind: 'said', author: 'T1'}, {kind: 'tick', left: 30}, {kind: 'over'}]
+        .map(e => [e.kind, st.fire(e) === null]);
+    }""")
+    for kind, silent in quiet:
+        if not silent:
+            bad.append(f"mechanics {kind}: the island invented something to show")
+    bad += [f"mechanics: {e}" for e in errs]
+    page.screenshot(path=str(out / "mechanics.png"))
+    page.close()
     return bad
 
 
