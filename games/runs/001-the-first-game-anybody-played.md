@@ -159,6 +159,12 @@ records `complete`.
 - **Records:** `games/results/g1.json`,
   `board-island-game-001d-g1.json`, `reveal-island-game-001d-g1.json`;
   ledger row `island-game-001d-g1`, status **`complete`**, arm **`practice`**.
+- **Watchable:** the board and its reveal are kept in
+  [`games/replays/`](../replays/) and published, so this game has a link that
+  outlives its room — <https://gald33.github.io/ai-lab/>, `island-game-001d-g1`
+  in the dropdown. The invite handed out while it ran was not that link: an
+  invite reads a live room and the hub keeps a board about an hour, so it was
+  dead the same evening. A replay is the durable artefact; an invite never was.
 - **Ran:** 2026-08-24, managed hub, workspace `island-game-001d`, table `g1`,
   seed **541382116092809723** (drawn at settlement, not chosen). 3 episodes,
   2 traders. Both seats `claude-haiku-4-5-20251001`, run by `run_entrant`;

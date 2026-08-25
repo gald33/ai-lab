@@ -80,8 +80,12 @@ credentials, and advertising them in a spectator link would be handing out
 write access along with the view (see `games/island.md`, "An invite is a
 read-write credential" — open, not yet closed).
 
-**Replay** reads a saved board — `results/**/board-*.json`, `{seq, at, author,
-body}` — and its sidecar if one exists. Transport, scrubbing, episode chapters,
+**Replay** reads a saved board — `board-*.json`, `{seq, at, author, body}` —
+and its sidecar if one exists. Boards come from every tree named in
+`serve.py:ROOTS`, each served under its own URL prefix: `results/` is this
+experiment's, `replays/` is `games/replays`, where a finished game's board is
+kept on purpose so it has a link after its Switchboard room is gone. The page
+never learns which tree a board came from. Transport, scrubbing, episode chapters,
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
 
@@ -113,9 +117,11 @@ In the rail:
 
 ## Deploying
 
-`.github/workflows/pages.yml`, at the repo root, publishes `web/` and
-`results/` to `https://gald33.github.io/ai-lab/` on every push to `main` that
-touches this directory. Same origin switchboard's own published viewer uses
+`.github/workflows/pages.yml`, at the repo root, publishes `web/`, `results/`
+and `games/replays/` to `https://gald33.github.io/ai-lab/` on every push to
+`main` that touches this directory or a published replay. The staged site's
+directory names are `serve.py:ROOTS`' prefixes, which is what `api/boards`
+names — so the copy and the listing cannot disagree about where a board is. Same origin switchboard's own published viewer uses
 — a different path under `gald33.github.io`, not a different origin — so the
 managed hub's existing `SWITCHBOARD_CORS_ORIGINS` already covers this page
 for the hub-direct live feed with no change on that side.

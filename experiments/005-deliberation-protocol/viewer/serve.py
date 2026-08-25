@@ -2,8 +2,8 @@
 
 Two jobs, both boring on purpose:
 
-* serve `web/` and the saved boards in `results/`, so a replay works with
-  nothing running but this;
+* serve `web/` and the saved boards under each of `ROOTS`, so a replay works
+  with nothing running but this;
 * forward `api/state` to a local `switchboard-viewer`, so the live page reads
   the viewer rather than the hub.
 
@@ -17,8 +17,8 @@ one served from here is on the same origin by construction.
     switchboard-viewer                       # in the checkout that coordinates
     python viewer/serve.py                   # -> http://127.0.0.1:8790
 
-Nothing here writes anywhere, and no route reaches outside `web/` and
-`results/`.
+Nothing here writes anywhere, and no route reaches outside `web/` and the
+directories named in `ROOTS`.
 """
 
 from __future__ import annotations
@@ -37,7 +37,17 @@ import time
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 WEB = HERE / "web"
-RESULTS = HERE.parent / "results"
+
+#: URL prefix -> the directory it serves saved boards from. More than one,
+#: because a replay worth keeping is not always this experiment's: a game
+#: played in `games/` writes its board somewhere else entirely, and the page
+#: that knows how to play a board back should not care which tree it came
+#: from. A root that does not exist is skipped rather than refused -- a
+#: checkout with no published replays serves exactly what it did before.
+ROOTS = {
+    "results": HERE.parent / "results",
+    "replays": HERE.parents[2] / "games" / "replays",
+}
 
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8"}
@@ -53,10 +63,12 @@ _listing: tuple[float, list[dict]] = (0.0, [])
 
 
 def boards() -> list[dict]:
-    """Every saved board under `results/`, with its sidecar if one exists.
+    """Every saved board under any of `ROOTS`, with its sidecar if one exists.
 
     Newest first, because with many rounds kept the interesting one is the one
-    that just finished, and a dropdown sorted by filename buries it.
+    that just finished, and a dropdown sorted by filename buries it. Each
+    entry's `board` and `reveal` are paths under the root's URL prefix, which
+    is what makes the tree a board came from invisible to the page.
     """
     global _listing  # noqa: PLW0603 - one process, one cache
     now = time.monotonic()
@@ -64,19 +76,22 @@ def boards() -> list[dict]:
         return _listing[1]
 
     out = []
-    for path in RESULTS.rglob("board-*.json*"):
-        if path.suffix not in (".json", ".gz"):
+    for prefix, root in ROOTS.items():
+        if not root.is_dir():
             continue
-        rel = path.relative_to(RESULTS).as_posix()
-        stem = path.name.split(".")[0]
-        sidecar = path.with_name(stem.replace("board-", "reveal-", 1) + ".json")
-        out.append({
-            "label": stem.replace("board-", ""),
-            "board": f"results/{rel}",
-            "reveal": (f"results/{sidecar.relative_to(RESULTS).as_posix()}"
-                       if sidecar.exists() else None),
-            "at": path.stat().st_mtime,
-        })
+        for path in root.rglob("board-*.json*"):
+            if path.suffix not in (".json", ".gz"):
+                continue
+            rel = path.relative_to(root).as_posix()
+            stem = path.name.split(".")[0]
+            sidecar = path.with_name(stem.replace("board-", "reveal-", 1) + ".json")
+            out.append({
+                "label": stem.replace("board-", ""),
+                "board": f"{prefix}/{rel}",
+                "reveal": (f"{prefix}/{sidecar.relative_to(root).as_posix()}"
+                           if sidecar.exists() else None),
+                "at": path.stat().st_mtime,
+            })
     out.sort(key=lambda b: -b["at"])
     _listing = (now, out)
     return out
@@ -107,11 +122,14 @@ class Handler(BaseHTTPRequestHandler):
                               json.dumps(payload, default=list).encode())
         if path == "/api/state":
             return self._proxy()
-        if path.startswith("/results/"):
+        prefix = path.lstrip("/").split("/", 1)[0]
+        if prefix in ROOTS and "/" in path.lstrip("/"):
             # Saved boards and their sidecars only. This process can read the
             # whole checkout and has no business turning that into an HTTP
-            # surface, so the route is resolved and then checked for escape.
-            return self._file(self._under(RESULTS, path[len("/results/"):],
+            # surface, so the route is resolved and then checked for escape --
+            # per root, so one prefix cannot reach into another's tree either.
+            return self._file(self._under(ROOTS[prefix],
+                                          path.lstrip("/")[len(prefix) + 1:],
                                           ".json", ".gz"))
         return self._file(self._under(WEB, path.lstrip("/"), ".js", ".html", ".css"))
 
@@ -193,21 +211,27 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--results", type=Path, default=None,
                     help="which results tree to serve replays from "
                          "(default: this experiment's)")
+    ap.add_argument("--replays", type=Path, default=None,
+                    help="which tree of kept game replays to serve "
+                         "(default: games/replays)")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
 
-    if args.results:
-        # Rebinding the module global rather than threading it through every
-        # route: there is one results tree per process, chosen once at startup.
-        global RESULTS  # noqa: PLW0603
-        RESULTS = args.results.resolve()
+    # Rebound rather than threaded through every route: the roots are chosen
+    # once at startup and do not change while the process runs.
+    for name, chosen in (("results", args.results), ("replays", args.replays)):
+        if chosen:
+            ROOTS[name] = chosen.resolve()
 
     server = Server((args.host, args.port), Handler)
     server.upstream = args.viewer or None
     server.verbose = args.verbose
     found = boards()
     print(f"island view on http://{args.host}:{args.port}")
-    print(f"  {len(found)} saved board(s) under {RESULTS}")
+    for prefix, root in ROOTS.items():
+        kept = sum(1 for b in found if b["board"].startswith(f"{prefix}/"))
+        print(f"  {kept} saved board(s) under {root}"
+              f"{'' if root.is_dir() else ' (absent)'}")
     print(f"  live via {args.viewer}" if args.viewer else "  replays only")
     try:
         server.serve_forever()
