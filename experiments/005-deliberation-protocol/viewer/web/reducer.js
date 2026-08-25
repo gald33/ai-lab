@@ -17,6 +17,11 @@
 
 export const MANAGER = "manager";
 
+//: The line that says who is playing, and therefore who is dealing. Matched
+//: against every author rather than only the one called "manager", because a
+//: live board names its authors by peer id -- see `reduce`.
+const SCHEDULE = /^Schedule for this round\. \d+ traders: ([^.]+)\./;
+
 // Python's `repr` of a dict, which is what a receipt carries. Keys are the
 // manager's own good names and values are its own rounding, so this matches
 // exactly what it wrote rather than reformatting it into something tidier.
@@ -143,9 +148,19 @@ export function reduce(messages, { manager = MANAGER, goods = null } = {}) {
   // opening state has to be drawn before the first receipt arrives -- four
   // empty huts, not an empty island that fills in as names are discovered.
   let traders = [];
+  // Whoever announces the schedule *is* the manager. A saved board has already
+  // been written in seat names -- `manager`, `T1`, `T2` -- but a live one
+  // carries raw peer ids, so insisting the manager be literally called
+  // "manager" meant the schedule was never recognised live: `traders` stayed
+  // empty, the fallback below made a trader of every author, and the manager's
+  // own session id got a hut of its own on the island.
   for (const r of rows) {
-    const e = classify(r, { manager, traders });
-    if (e.kind === "schedule") { traders = e.traders; break; }
+    const found = SCHEDULE.exec(String(r.body ?? "").trim());
+    if (found) {
+      manager = r.author;
+      traders = found[1].split(",").map((x) => x.trim()).filter(Boolean);
+      break;
+    }
   }
   if (!traders.length) {
     const seen = new Set();

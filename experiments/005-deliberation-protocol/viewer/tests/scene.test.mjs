@@ -17,7 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         DWELL, dwellFor } from "../web/scene.js";
+         DWELL, dwellFor, shortName, NAME_MAX } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -190,4 +190,46 @@ test("a frame with nothing to watch still gets out of the way", () => {
 test("a long silence is still clamped", () => {
   // A round is mostly silence; replaying it at wall speed is a still picture.
   assert.equal(stepDelay(60_000, 1, { kind: "acknowledged" }), MAX_STEP);
+});
+
+
+// --- a name the card can hold ----------------------------------------------
+//
+// Found live, watching game 002: the huts were labelled
+// `ai-lab:claude/island-economy-game-wrapper-pcm5s6` and a base64 peer id, both
+// rendered straight across the island at full length. A saved board is written
+// in seat names, but a live one carries raw peer ids -- and an entrant picks
+// its own name anyway, so nothing has ever stopped a trader being called
+// something 40 characters long.
+
+test("a name that fits is left alone", () => {
+  for (const name of ["T1", "T2", "scout-v2", "trader-b"]) {
+    assert.equal(shortName(name), name);
+  }
+});
+
+test("a name that does not fit is clamped", () => {
+  const long = "ai-lab:claude/island-economy-game-wrapper-pcm5s6";
+  const got = shortName(long);
+  assert.ok(got.length <= NAME_MAX, `${got.length} characters is still too many`);
+  assert.notEqual(got, long);
+});
+
+test("the clamp keeps the end, because that is where names differ", () => {
+  // Two sessions on one repo share every character of their prefix. Clamping
+  // from the front would give both huts the same label.
+  const a = shortName("ai-lab:claude/island-economy-game-wrapper-pcm5s6");
+  const b = shortName("ai-lab:claude/island-economy-game-wrapper-zzzzzz");
+  assert.notEqual(a, b, "two long names clamped to the same label name nobody");
+});
+
+test("nothing is lost: a clamped name still carries its own tail", () => {
+  const long = "abcdefghijklmnopqrstuvwxyz";
+  assert.ok(long.endsWith(shortName(long).replace("…", "")));
+});
+
+test("an empty or missing name does not throw", () => {
+  assert.equal(shortName(""), "");
+  assert.equal(shortName(undefined), "");
+  assert.equal(shortName(null), "");
 });

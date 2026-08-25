@@ -512,8 +512,14 @@ export class Scene {
                              width: CARD_W, height: this.cardH, rx: 13 }));
     card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: CARD_TOP,
                              width: CARD_W, height: this.cardH, rx: 13 }));
-    card.append(el("text", { x: -CARD_W / 2 + 13, y: CARD_TOP + 25, class: "card-name" },
-                    name));
+    // Clamped, with the whole of it on hover. A seat is `T1` on a saved board,
+    // but live an author is a peer id and an entrant picks its own name -- so
+    // this has to survive `ai-lab:claude/island-economy-game-wrapper-pcm5s6`,
+    // which is a real name that really appeared and really ran off the island.
+    const label = el("text", { x: -CARD_W / 2 + 13, y: CARD_TOP + 25,
+                               class: "card-name" }, shortName(name));
+    label.append(el("title", {}, name));
+    card.append(label);
 
     // Labour: filled by what this trader spent this episode, and empty until a
     // production receipt says otherwise -- nobody has told this page anything
@@ -1021,4 +1027,19 @@ export function bundleText(bundle) {
 }
 
 const trim = (q) => String(Math.round(q * 1000) / 1000);
+
+//: How many characters of a name the card has room for beside its labour
+//: wheel, at `.card-name`'s size. Measured against the drawing rather than
+//: guessed: `CARD_W` less the padding and the wheel, over the width of a
+//: monospace digit at 15px.
+export const NAME_MAX = 14;
+
+/** A name the card can hold. The full one goes in a `<title>`. */
+export function shortName(name, max = NAME_MAX) {
+  const text = String(name ?? "");
+  if (text.length <= max) return text;
+  // Keep the tail: a peer id or a branch name differs at the end, and three
+  // cards all reading `ai-lab:claude/…` would name nobody.
+  return `…${text.slice(-(max - 1))}`;
+}
 
