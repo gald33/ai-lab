@@ -13,6 +13,10 @@ name: Deploy the island viewer (GitHub Pages)
 # games/island.md ("the wrapper stays a separate project that plugs into the
 # published viewer for its data stream").
 #
+# The site's replay trees mirror serve.py's ROOTS: `results/` is this
+# experiment's, `replays/` is games/replays -- replays kept on purpose so a
+# finished game has a link after its Switchboard room is gone.
+#
 # `web/` fetches "api/boards" and "api/scores" as relative paths; serve.py
 # answers those from a running process, and there is none here, so
 # freeze_static.py runs the same two computations once and writes their
@@ -29,6 +33,7 @@ on:
     branches: [main]
     paths:
       - experiments/005-deliberation-protocol/viewer/**
+      - games/replays/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -61,6 +66,13 @@ jobs:
           mkdir -p "$RUNNER_TEMP/site"
           cp -r viewer/web/. "$RUNNER_TEMP/site/"
           cp -r results "$RUNNER_TEMP/site/results"
+          # Game replays kept on purpose, from outside this experiment's tree.
+          # One prefix per root in serve.py's ROOTS, which is what freeze_static
+          # writes into api/boards -- so the copy and the listing cannot
+          # disagree about where a board lives.
+          if [ -d ../../games/replays ]; then
+            cp -r ../../games/replays "$RUNNER_TEMP/site/replays"
+          fi
           python viewer/freeze_static.py "$RUNNER_TEMP/site/api"
 
       - uses: actions/configure-pages@v5

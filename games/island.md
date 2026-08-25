@@ -491,9 +491,16 @@ at the managed hub by default.
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
   inert, but it is on the board. A read-only invite is a Switchboard feature
-  request, not something to build here.
+  request, not something to build here. It is also the wrong tool for watching
+  a game that has *finished*: an invite reads a live room, the hub keeps a
+  board about an hour, and after that the link is dead. The durable artefact
+  is the replay — see `games/replays/`.
 - **Where boards live at scale.** Thousands of replays do not belong in this
-  repository.
+  repository. Answered only for the small case: a replay worth keeping is
+  copied by hand into `games/replays/`, which the viewer lists beside 005's
+  own boards (`viewer/serve.py:ROOTS`) and the Pages workflow publishes. A
+  run's raw output stays in the gitignored `games/results/`. That scales to a
+  few chosen games and to nothing beyond them.
 - **Farming.** Both seats under one owner can arrange a game: a partner who
   gives everything away goes to zero and inflates the other. The ledger records
   every player in every round so a rule about who may sit at a ranked table can
