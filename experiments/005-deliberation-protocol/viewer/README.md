@@ -99,7 +99,7 @@ and trade, held at the episode's closing value through the bell rather than
 dropping to zero with the emptied shelf, because what the episode was worth is
 what it closed holding.
 
-In the rail:
+In the rail (the ▤ drawer, shut until asked for):
 
 - **`eff_round`** as the headline, with the autarky floor marked on its meter.
   Accumulated utility against the frontier of the total — the primary.
@@ -363,7 +363,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/scene.js` | the island, drawn from a state |
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the three feeds, and the replay clock |
-| `web/index.html` | the page: HUD, ticker, transport, the hidden half |
+| `web/index.html` | the page: the island, and the chrome floating over it |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
 | `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
@@ -380,6 +380,19 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `reveal.py` | the hidden half, after the fact, with `--check` |
 
 ## Notes on the drawing
+
+**The island is the page.** Not a panel in a dashboard with a picture in it:
+the scene fills the window and everything else floats over it — the title and
+the round's state top-left, the counters top-right, the transport along the
+bottom, the legend in the corner. The two panels that used to sit beside it are
+**drawers, shut until asked for**: `▤` for the hidden half and who has spoken,
+`☰` for the board's full transcript. `Esc` shuts both; `Space` plays. Chrome
+steps aside when a drawer opens rather than being buried by it — a drawer that
+covers the control which shuts it is a trap.
+
+**One mark per good.** The legend's glyph rides *on* its colour rather than
+beside it, because that is the chip that appears on a shelf and on a parcel in
+flight; two marks side by side are a pairing the reader has to learn.
 
 **An episode is a day.** It opens, it runs, a bell closes it and everything
 held is consumed -- so the sun rises when an episode opens and goes down behind
