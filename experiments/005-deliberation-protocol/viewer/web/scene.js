@@ -247,6 +247,23 @@ const CARD_H = 140, CARD_H_SCORED = 186;
 const CARD_TOP = 22;
 
 /** The box a trader's card occupies, in scene coordinates. */
+/**
+ * A seat moved just enough to keep its card on the canvas.
+ *
+ * With a model underneath, a settlement stands where it makes sense on the
+ * island and the card comes to it -- so the card's position is no longer
+ * chosen by `layout()` and is no longer guaranteed to fit. `fits()` states the
+ * same bounds for the layout's own seats; this is the nudge that makes an
+ * arbitrary point obey them.
+ */
+export function fitSeat(seat, g, cardH = CARD_H_SCORED, pad = 10) {
+  const lo = CARD_W / 2 + pad, hi = g.w - CARD_W / 2 - pad;
+  return {
+    x: Math.max(lo, Math.min(hi, seat.x)),
+    y: Math.max(84 + pad, Math.min(g.h - CARD_TOP - cardH - pad, seat.y)),
+  };
+}
+
 export function cardBox(seat, cardH = CARD_H_SCORED) {
   return { x: seat.x - CARD_W / 2, y: seat.y + CARD_TOP, w: CARD_W, h: cardH };
 }
@@ -291,7 +308,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 }
 
 export class Scene {
-  constructor(root, timeline, reveal = null, portrait = false) {
+  constructor(root, timeline, reveal = null, portrait = false, placed = null) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -302,6 +319,13 @@ export class Scene {
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
     this.portrait = portrait;
     this.geo = layout(this.traders.length, portrait);
+    // Where the settlements actually are, when there is a model underneath.
+    // The island decides; the card follows its hut rather than the other way
+    // round, which is why this arrives from outside instead of from `layout`.
+    this.placed = placed;
+    if (placed?.length === this.traders.length) {
+      this.geo = { ...this.geo, seats: placed.map((s) => fitSeat(s, this.geo, this.cardH)) };
+    }
     this.utilityTop = this.utilityScale();
     this.seats = {};
     this.bars = {};
@@ -322,6 +346,9 @@ export class Scene {
     if (portrait === this.portrait) return false;
     this.portrait = portrait;
     this.geo = layout(this.traders.length, portrait);
+    // The layout's own seats, for now. A caller with an island underneath
+    // follows this with `replace()`, because the settlements have to be put
+    // back on a frame of the new shape before the cards can find them.
     // Rebuilt from the new geometry rather than carried over: every one of
     // these is keyed to nodes `build()` is about to throw away.
     this.seats = {};
@@ -333,6 +360,18 @@ export class Scene {
     return true;
   }
 
+  /** Take new settlement positions -- the island was reframed under us. */
+  replace(placed) {
+    if (placed?.length !== this.traders.length) return;
+    this.geo = { ...this.geo, seats: placed.map((s) => fitSeat(s, this.geo, this.cardH)) };
+    this.seats = {};
+    this.bars = {};
+    this.labels = {};
+    this.top = undefined;
+    this.shown = new Map();
+    this.build();
+  }
+
   build() {
     const svg = this.root;
     const g = this.geo;
@@ -340,7 +379,8 @@ export class Scene {
     svg.replaceChildren();
     svg.append(this.defs());
 
-    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, fill: "url(#sea)" }));
+    svg.append(el("rect", { class: "sea-fill", x: 0, y: 0, width: g.w, height: g.h,
+                            fill: "url(#sea)" }));
     // Behind the water, so it sets *into* the sea rather than on top of it.
     svg.append(this.sun());
     svg.append(this.water());

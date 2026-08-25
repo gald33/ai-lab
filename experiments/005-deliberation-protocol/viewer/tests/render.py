@@ -99,7 +99,10 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
     counts = page.evaluate("""() => ({
       huts: document.querySelectorAll('.hut').length,
       cells: document.querySelectorAll('.hut .cell').length,
-      land: document.querySelectorAll('.land').length,
+      // Visible, not merely present: hiding the drawn world leaves its nodes
+      // in the DOM, and 'is there an island path' is not the question.
+      land: [...document.querySelectorAll('.land')]
+        .filter(n => n.getBoundingClientRect().width > 0).length,
       palms: [...document.querySelectorAll('.palm')].map(p => {
         const b = p.getBBox(); return [b.x, b.y, b.width, b.height];
       }),
@@ -109,22 +112,37 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
       palmBoxes: [...document.querySelectorAll('.palm')].map(p => {
         const b = p.getBoundingClientRect(); return [b.x, b.y, b.width, b.height];
       }),
+      // Whether there is a model under the page at all. A browser with no
+      // WebGL keeps the drawn island, and both have to be checkable.
+      modelled: document.querySelector('.app').classList.contains('has-3d'),
+      palmCount: [...document.querySelectorAll('.palm')]
+        .filter(p => p.getBoundingClientRect().width > 0).length,
     })""")
     if counts["huts"] != expect_traders:
         bad.append(f"{where}: {counts['huts']} huts, expected {expect_traders}")
     want_cells = expect_traders * expect_goods
     if counts["cells"] != want_cells:
         bad.append(f"{where}: {counts['cells']} shelf cells, expected {want_cells}")
-    if counts["land"] != 1:
-        bad.append(f"{where}: {counts['land']} land paths, expected 1")
-    # The bug this file exists to hold shut: scenery drawn on top of the only
-    # part of the picture carrying information.
-    for pb in counts["palmBoxes"]:
-        for cb in counts["cards"]:
-            if (pb[0] < cb[0] + cb[2] and pb[0] + pb[2] > cb[0]
-                    and pb[1] < cb[1] + cb[3] and pb[1] + pb[3] > cb[1]):
-                bad.append(f"{where}: a palm overlaps a trader card "
-                           f"(palm {[round(v) for v in pb]}, card {[round(v) for v in cb]})")
+    if counts["modelled"]:
+        # The island is a model now, and its scenery is in it -- so the drawn
+        # world must be gone rather than merely covered up, and the palm-vs-card
+        # check below has nothing left to measure. What replaces it is
+        # `painted()`: that the model actually drew.
+        for ghost, n in (("land", counts["land"]), ("palms", counts["palmCount"])):
+            if n:
+                bad.append(f"{where}: the model is up and the drawn {ghost} is still "
+                           f"there ({n}); two islands on one page")
+    else:
+        if counts["land"] != 1:
+            bad.append(f"{where}: {counts['land']} land paths, expected 1")
+        # The bug this file exists to hold shut: scenery drawn on top of the only
+        # part of the picture carrying information.
+        for pb in counts["palmBoxes"]:
+            for cb in counts["cards"]:
+                if (pb[0] < cb[0] + cb[2] and pb[0] + pb[2] > cb[0]
+                        and pb[1] < cb[1] + cb[3] and pb[1] + pb[3] > cb[1]):
+                    bad.append(f"{where}: a palm overlaps a trader card "
+                               f"(palm {[round(v) for v in pb]}, card {[round(v) for v in cb]})")
     bad += empty_slots(page, where)
     return bad
 
@@ -180,6 +198,10 @@ def motion(page, where: str) -> list[str]:
     """
     bad = []
     seen = page.evaluate("""async (reason) => {
+      // This drives the *drawn* scene in isolation -- the fallback a browser
+      // with no WebGL gets -- so the model's class comes off for it. With it on,
+      // the scenery is hidden and the palm check has nothing to measure.
+      document.querySelector('.app').classList.remove('has-3d');
       const scene = window.__probe, t = window.__timeline;
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const island = document.getElementById('island');
@@ -288,6 +310,10 @@ def production(page, where: str) -> list[str]:
     screen connected the flying glyph to the bar that grew.
     """
     seen = page.evaluate("""async () => {
+      // This drives the *drawn* scene in isolation -- the fallback a browser
+      // with no WebGL gets -- so the model's class comes off for it. With it on,
+      // the scenery is hidden and the palm check has nothing to measure.
+      document.querySelector('.app').classList.remove('has-3d');
       const scene = window.__probe, t = window.__timeline;
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const who = scene.traders[0], good = scene.goods[0];
@@ -427,6 +453,7 @@ def run(out: Path, headed: bool = False) -> int:
                 problems += blame(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
             problems += mobile(browser, base, boards[0], out)
+            problems += fallback(browser, base, boards[0], out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
             problems += vocabulary(browser, base, boards[0])
@@ -711,6 +738,50 @@ def vocabulary(browser, base: str, board: Path) -> list[str]:
     return bad
 
 
+def fallback(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A browser with no WebGL still gets an island.
+
+    The model is the island now, and a page that cannot build one must not show
+    an empty sea: the drawn world is still there and comes back. Checked by
+    taking WebGL away rather than by trusting the `try` around the build --
+    that is the one path no ordinary run exercises, and the failure it guards
+    against looks exactly like a replay that would not load.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1500, "height": 1000},
+                            reduced_motion="reduce")
+    page.add_init_script("""HTMLCanvasElement.prototype.getContext = new Proxy(
+        HTMLCanvasElement.prototype.getContext,
+        { apply: (f, t, a) => /webgl/i.test(a[0]) ? null : Reflect.apply(f, t, a) });""")
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_timeout(1400)
+    seen = page.evaluate("""() => ({
+      modelled: document.querySelector('.app').classList.contains('has-3d'),
+      hidden: document.getElementById('stage').hidden,
+      land: [...document.querySelectorAll('.land')]
+        .filter(n => n.getBoundingClientRect().width > 0).length,
+      huts: document.querySelectorAll('.hut').length,
+      cells: document.querySelectorAll('.hut .cell').length,
+    })""")
+    page.screenshot(path=str(out / f"{stem}-no-webgl.png"))
+    page.close()
+    where = f"{stem} no-webgl"
+    bad = [f"{where}: {e}" for e in errs]
+    if seen["modelled"]:
+        bad.append(f"{where}: the page claims a model it could not build")
+    if not seen["hidden"]:
+        bad.append(f"{where}: an empty canvas was left over the page")
+    if seen["land"] != 1:
+        bad.append(f"{where}: {seen['land']} drawn island(s); the fallback is not there")
+    if not seen["huts"] or not seen["cells"]:
+        bad.append(f"{where}: {seen['huts']} huts and {seen['cells']} shelf cells "
+                   f"-- the replay itself stopped drawing")
+    return bad
+
+
 def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
     """That the page works on a phone, which is where a shared link gets opened.
 
@@ -742,10 +813,26 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             return r.width && r.height ? { s, x: r.x, y: r.y, w: r.width, h: r.height } : null; };
           const land = document.querySelector('.land');
           const lb = land && land.getBoundingClientRect();
+          // With a model up, the island is pixels rather than a path, so its
+          // share of the screen is counted rather than measured off a box.
+          // This also catches the render that produced nothing at all, which a
+          // bounding box cannot: a canvas of the right size, and empty.
+          const cv = document.getElementById('stage');
+          let drawn = null;
+          if (document.querySelector('.app').classList.contains('has-3d') && cv) {
+            const s = document.createElement('canvas');
+            s.width = 160; s.height = Math.max(1, Math.round(160 * cv.height / cv.width));
+            const g = s.getContext('2d');
+            g.drawImage(cv, 0, 0, s.width, s.height);
+            const px = g.getImageData(0, 0, s.width, s.height).data;
+            let lit = 0;
+            for (let i = 3; i < px.length; i += 4) if (px[i] > 24) lit++;
+            drawn = lit / (s.width * s.height);
+          }
           return {
             scrollW: document.documentElement.scrollWidth, winW: innerWidth,
             winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
-            land: lb ? { w: lb.width, h: lb.height } : null,
+            land: lb ? { w: lb.width, h: lb.height } : null, drawn,
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
               .map(n => { const r = n.getBoundingClientRect();
@@ -765,14 +852,15 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
                 if (a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"]
                         and a["y"] < b["y"] + b["h"] and a["y"] + a["h"] > b["y"]):
                     bad.append(f"{where}: {a['s']} and {b['s']} overlap")
-        if seen["land"]:
-            # Fitted to width in a tall window, the island covered about a
-            # sixth of the screen. Half is not a design target so much as the
-            # line below which the cards stop being readable at all.
-            share = (seen["land"]["w"] * seen["land"]["h"]) / (seen["winW"] * seen["winH"])
-            if share < 0.30:
-                bad.append(f"{where}: the island covers {share:.0%} of the screen; "
-                           f"the picture is the page and this is a band in it")
+        # Fitted to width in a tall window, the island covered about a sixth of
+        # the screen. A third is not a design target so much as the line below
+        # which the cards stop being readable at all.
+        share = (seen["drawn"] if seen["drawn"] is not None
+                 else (seen["land"]["w"] * seen["land"]["h"]) / (seen["winW"] * seen["winH"])
+                 if seen["land"] else None)
+        if share is not None and share < 0.30:
+            bad.append(f"{where}: the island covers {share:.0%} of the screen; "
+                       f"the picture is the page and this is a band in it")
         for name, height in seen["taps"]:
             bad.append(f"{where}: {name!r} is {height:.0f}px tall, under a fingertip")
         if tag == "portrait":

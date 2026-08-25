@@ -89,6 +89,39 @@ never learns which tree a board came from. Transport, scrubbing, episode chapter
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
 
+## The island is a model
+
+The scene used to draw the island: a wobbled ellipse, palms placed to miss the
+cards, a hut per trader as a roof and a wall. It is a **three.js model** now,
+rendered to a canvas behind the page — terrain, a market at the centre, a
+settlement per seat, a site per good, a dock and boats. Ported from a design
+delivered as `island.html`; `island3d.js` holds the geometry and `stage.js`
+puts it under the scene.
+
+Two things about it are worth knowing before changing either.
+
+**The camera is orthographic, and that is not a style choice.** The cards,
+ropes and sun are SVG drawn in viewBox coordinates. Under perspective, the map
+from the island's ground to those coordinates depends on the viewport's aspect,
+so a hut and the card belonging to it drift apart when the window changes
+shape. Orthographic makes that map affine and viewport-independent, which is
+what lets a settlement stand exactly beneath its own card.
+
+**The settlements are placed on the screen and dropped onto the ground.**
+`seatSpots()` decides where traders go in the frame, `Stage.groundAt()` turns
+each into a point on the island, and the card goes back at `toViewBox()` of the
+hut. Placing them on a ring in island coordinates was tried first and put both
+huts on nearly the same pixel — the ring's axis and the camera's happened to
+line up. A spectator does not care which compass point a hut is on.
+
+**Without WebGL the page draws the island as it always did.** `.has-3d` is set
+only once a model is actually up, so the drawn world is hidden exactly when it
+has been replaced. `tests/render.py:fallback` takes WebGL away and checks the
+drawn island comes back — that path is not otherwise exercised, and its failure
+looks like a replay that will not load.
+
+three.js is **vendored**, not fetched: see [`web/vendor/three/`](web/vendor/three/).
+
 ## A day, not an episode
 
 **In the game an episode is called a day** — the round state, the chapter menu,

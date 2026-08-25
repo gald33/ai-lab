@@ -12,7 +12,18 @@
 /* The island is the page. Nothing sits beside it; everything sits on it. */
 html, body { height: 100%; overflow: hidden; background: var(--sea-far); }
 .app { position: fixed; inset: 0; }
-svg.island { display: block; width: 100%; height: 100%; }
+svg.island { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
+/* The model, behind the drawing. The two cover the same box and frame the same
+   rectangle of island, which is what lets a hut stand under its own card. */
+canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+  display: block; }
+/* With a model underneath, the scene stops drawing the world and keeps what it
+   is actually for: the cards, the ropes between them, the sun, and what is in
+   flight. The hut becomes a building rather than a glyph of one. */
+.has-3d .land, .has-3d .wet, .has-3d .square, .has-3d .water, .has-3d .scenery,
+.has-3d .sea-fill, .has-3d .surf, .has-3d .fire, .has-3d .firelight,
+.has-3d .hut-shadow, .has-3d .roof, .has-3d .roof-thatch, .has-3d .wall,
+.has-3d .window, .has-3d .door, .has-3d .hut-rim { display: none; }
 
 /* Chrome floats. `pointer-events` is off on the container and back on for the
    controls, so the whole island stays clickable underneath. */
@@ -486,6 +497,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 </style>
 
 <div class="app">
+  <canvas class="stage" id="stage" aria-hidden="true"></canvas>
   <svg class="island" id="island" role="img" aria-labelledby="scene-title"></svg>
   <title id="scene-title">The island: one hut per trader, their stocks on the shelf,
     open proposals as ropes across the square.</title>
@@ -577,8 +589,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 
 <script type="module">
 import { reduce } from "./reducer.js";
-import { Scene, GLYPH, bundleText } from "./scene.js";
+import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
+import { Stage } from "./stage.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
@@ -771,6 +784,79 @@ function closing(state) {
   box.hidden = false;
 }
 
+/**
+ * Put the island under the scene.
+ *
+ * The settlements are placed from where the scene has already put the cards --
+ * `groundAt` drops a viewBox point onto the island's ground -- rather than the
+ * scene being told where the huts ended up. One direction, and it is the one
+ * that keeps a hut standing under the card that belongs to it.
+ *
+ * A browser without WebGL keeps the drawn island: `.has-3d` is only set once
+ * there is something behind it, so the scene's own land, water and scenery are
+ * hidden exactly when they have been replaced.
+ */
+let stage = null;
+
+/**
+ * Build the island for this round and say where its settlements landed, in the
+ * scene's own coordinates.
+ *
+ * Returns `null` when there is no island -- a browser with no WebGL, or a
+ * model that failed to build -- and the scene then draws its own, which is what
+ * it did before there was a model at all. `.has-3d` is set only when there is
+ * something behind the page, so the drawn world is hidden exactly when it has
+ * been replaced and never merely because the code shipped.
+ */
+function raise(traders, goods, portrait) {
+  const canvas = $("stage");
+  const app = document.querySelector(".app");
+  try {
+    const geo = layout(traders.length, portrait);
+    if (!stage) stage = new Stage(canvas, geo); else stage.reframe(geo);
+    // Where the settlements go, chosen on the *screen* and then dropped onto
+    // the island's ground. Placing them on a ring in island coordinates put
+    // both huts on nearly the same pixel, because the ring's axis and the
+    // camera's happened to line up -- and a spectator does not care which
+    // compass point a hut is on, only that two traders are not stacked. This
+    // way the hut is under its card by construction rather than by luck.
+    const spots = seatSpots(traders.length, geo, portrait);
+    const { anchors } = stage.build({
+      traders, goods, seats: spots.map((s) => stage.groundAt(s.x, s.y)) });
+    canvas.hidden = false;
+    app.classList.add("has-3d");
+    return traders.map((n) => stage.toViewBox(anchors[n]));
+  } catch (err) {
+    // Reported rather than swallowed: a page that quietly lost its world would
+    // look like the replay failing to load.
+    console.error("the island did not build", err);
+    app.classList.remove("has-3d");
+    canvas.hidden = true;
+    return null;
+  }
+}
+
+/**
+ * Where the settlements stand, in the scene's coordinates.
+ *
+ * Two traders face each other across the market; more stand round it. Kept
+ * inside the middle of the frame so every hut lands on the meadow rather than
+ * the beach, and clear of the top where the round's state and the counters are.
+ */
+function seatSpots(n, geo, portrait) {
+  const mid = { x: geo.w / 2, y: geo.h * (portrait ? 0.5 : 0.46) };
+  if (n <= 2) {
+    const dx = geo.w * (portrait ? 0 : 0.2), dy = geo.h * (portrait ? 0.19 : 0);
+    return n === 1 ? [mid]
+      : [{ x: mid.x - dx, y: mid.y - dy }, { x: mid.x + dx, y: mid.y + dy }];
+  }
+  return Array.from({ length: n }, (_, i) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    return { x: mid.x + Math.cos(a) * geo.w * 0.26,
+             y: mid.y + Math.sin(a) * geo.h * 0.20 };
+  });
+}
+
 let lastPaint = null;
 
 function paint({ state, event, animate, index, until = null, hold = 0 }) {
@@ -953,7 +1039,10 @@ function mount(rows, { manager } = {}) {
   timeline = reduce(rows, manager ? { manager } : {});
   // The scene is built knowing whether it has a hidden half, because a card
   // with a score row is a different card, not the same one with a blank in it.
-  scene = new Scene($("island"), timeline, reveal, isPortrait());
+  // The island is built first: it decides where the settlements stand, and the
+  // scene then puts each trader's card at its own hut.
+  scene = new Scene($("island"), timeline, reveal, isPortrait(),
+                    raise(timeline.traders, timeline.goods, isPortrait()));
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -1104,7 +1193,12 @@ addEventListener("resize", () => {
     // Repainted from the last frame rather than through the player, because
     // live has no player at all and a rebuilt island would otherwise stay empty
     // until the next line arrived on the board.
-    if (scene?.reflow(isPortrait()) && lastPaint) paint({ ...lastPaint, animate: false });
+    if (scene?.reflow(isPortrait()) && lastPaint) {
+      // A rotated phone is a differently-shaped frame, so the island is reframed
+      // and its settlements land somewhere else; the scene takes the new places.
+      scene.replace(raise(scene.traders, scene.goods, isPortrait()));
+      paint({ ...lastPaint, animate: false });
+    } else stage?.resize();
   }, 180);
 });
 
