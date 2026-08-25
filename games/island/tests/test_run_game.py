@@ -400,3 +400,122 @@ def test_a_sealed_produce_is_refused_when_the_round_has_no_channel(hub):
     assert "no private channel" in mgr.refusals[0]["reason"]
     # And the ciphertext is not copied into the record that gets published.
     assert mgr.refusals[0]["line"] == "<sealed>"
+
+
+# --- two lobbies, one table (the failure that reads as nobody turning up) ---
+
+def test_a_table_settled_twice_is_refused_rather_than_played(settled, hub):
+    """The seed is never on the board, so whoever settles a table is the only
+    one who can deal it -- and a second lobby draining the same channel
+    settles it again, mints a second room key, and puts the entrants and the
+    manager in one workspace on two keys. Nobody can read anybody, the manager
+    settles nothing, and the record says `absent` as though the table were
+    empty. Every part works; the failure is silence. So it is refused.
+    """
+    lobby, table, _rooms, _key = settled
+
+    # A second lobby on the same channel: exactly what running `run_lobby`
+    # alongside `run_game` does.
+    other = Lobby(client=lobby.client)
+    other.drain()
+
+    invites = [b for m in other.client.history(other.channel, limit=500)
+               if isinstance(b := m.get("body"), str)
+               and b.startswith(f"{table.id} invite: ")]
+    assert len(invites) > 1, "the second lobby should have settled it again"
+
+    with pytest.raises(run_game.SettledTwice, match="more than one lobby"):
+        run_game.pending_invite(lobby, table)
+
+
+def test_one_lobby_still_yields_its_invite(settled):
+    """The guard must not fire on the ordinary case."""
+    lobby, table, _rooms, _key = settled
+
+    invite = run_game.pending_invite(lobby, table)
+
+    assert invite is not None and invite.workspace == table.workspace
+
+
+# --- claiming a table nobody else will run ---------------------------------
+
+def test_the_runner_offers_to_manage_a_table_nobody_claimed(hub, identities):
+    """The gap a real run found and every test here had hidden.
+
+    A table settles when it is full **and** managed. Every fixture above posts
+    `MANAGE` by hand, so `run_game` was only ever pointed at tables that were
+    already settled -- and in a real run nobody posts it, so two entrants took
+    their seats, the table sat full and unmanaged, and it would have lapsed
+    without a single line being played.
+
+    The runner is the thing that would manage it, so it says so on the board,
+    in the grammar, and its lobby settles that claim like anybody else's.
+    """
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    manager = _client(hub, "manager", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+
+    _seated(hub, key, "t1", "scout-v2")
+    opener = _client(hub, "opener", key)
+    opener.post("lobby", "OPEN traders=2 episodes=1 rounds=1")
+    lobby.drain()
+    _seated(hub, key, "t1", "scout-v2")
+    _seated(hub, key, "t2", "trader-b")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.full() and not table.settled, "full, and nobody to run it"
+
+    claimed: set[str] = set()
+    run_game.claim(manager, lobby, "lobby", claimed)
+    lobby.drain()
+
+    assert table.settled, "the runner's own claim is what settles it"
+    assert table.manager == "lucille"
+
+
+def test_the_runner_does_not_claim_a_table_somebody_else_took(hub, identities):
+    """`MANAGE` is an offer, not a seizure: a second claim is refused, so the
+    runner must not make one for a table that already has somebody."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    mine = _client(hub, "manager", key)
+    mine.register(name="lucille", kind="local", branch="main", task="")
+    theirs = _client(hub, "other", key)
+    theirs.register(name="somebody-else", kind="local", branch="main", task="")
+
+    opener = _client(hub, "opener", key)
+    opener.post("lobby", "OPEN traders=2 episodes=1 rounds=1")
+    lobby.drain()
+    theirs.post("lobby", "MANAGE g1")
+    lobby.drain()
+    assert lobby.tables["g1"].manager == "somebody-else"
+
+    before = lobby.refused
+    run_game.claim(mine, lobby, "lobby", set())
+    lobby.drain()
+
+    assert lobby.tables["g1"].manager == "somebody-else"
+    assert lobby.refused == before, "no refusal, because no second claim"
+
+
+def test_a_table_is_claimed_once_however_often_the_loop_turns(hub, identities):
+    """The loop runs every few seconds; a claim per turn would be a refusal
+    per turn on the board of a table it already offered to run."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    manager = _client(hub, "manager", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+    opener = _client(hub, "opener", key)
+    opener.post("lobby", "OPEN traders=2 episodes=1 rounds=1")
+    lobby.drain()
+
+    claimed: set[str] = set()
+    for _ in range(3):
+        run_game.claim(manager, lobby, "lobby", claimed)
+    lobby.drain()
+
+    lines = [m["body"] for m in lobby.client.history("lobby", limit=100)]
+    assert sum(1 for b in lines if b == "MANAGE g1") == 1
+    assert lobby.refused == 0

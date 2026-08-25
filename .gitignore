@@ -42,3 +42,10 @@ experiments/005-deliberation-protocol/.ca-bundle.pem
 # A binary file in git conflicts on every claim.
 roadmap/roadmap.db
 games/results/
+
+# An entrant's working directory. Its `.mcp.json` carries the table room's
+# SWITCHBOARD_KEY and SWITCHBOARD_TOKEN in plaintext, because that is how an
+# MCP server is configured -- so this must never be committed. The session
+# logs beside it are the only place a harness fault is distinguishable from a
+# silent agent, so keep them locally and quote them into a run record.
+games/entrants/

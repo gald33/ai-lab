@@ -14,13 +14,39 @@ their own sessions, reach the room with the invite, and this waits for them on
 a clock. Nothing here prompts anybody, and nothing here is a turn. The runner
 starts nothing, drives nobody, and only reads, settles and keeps time.
 
-**Practice, not ranked.** Until there is a private channel (`games/island.md`,
-item 2c) the private half has to be posted in the clear, so every trader can
-read every other trader's capacities and tastes. That is a different game from
-the one being measured, and it is marked as such on the board and in the
-record: a practice game is kept, counted, and never ranked. `--ranked` is
-refused with the reason rather than quietly producing a row that claims more
-than it can.
+**Run this or `run_lobby.py` against a workspace, never both.** This embeds a
+lobby of its own, and it has to: the seed is drawn at settlement and never
+posted, because posting it would hand every trader's tastes to everybody. So
+whoever settles a table is the only one who knows which island it is, and
+therefore the only one who can deal it. Two lobbies on one channel settle
+every table twice, mint two room keys for one workspace, and produce a game
+where the entrants and the manager cannot read each other -- which looks
+exactly like nobody turning up. `pending_invite` refuses rather than plays
+when it sees that, but the arrangement to avoid is running both at once.
+
+The honest name for this is a limitation, not a design: a manager that is not
+the lobby is what `games/island.md` wants, and it needs the lobby to be able
+to seal the seed to it. That is the same released-primitive wait as the
+private half.
+
+**Sealed or in the clear, and it says which.** A table whose every seat offered
+a key at `JOIN` plays sealed: the private half is sealed to each seat and
+`PRODUCE` is sealed back, so tastes and shares never reach the board. A table
+where any seat did not is not sealable -- the private half has to be posted in
+the clear, every trader can read every other trader's capacities and tastes,
+and that is a different game from the one being measured. It is marked as such
+on the board and in the record, kept, counted, and never ranked; `--ranked`
+skips it rather than producing a row that claims more than it can.
+
+**No agent can play a sealed round with the released Switchboard.** Sealing
+needs X25519, and an entrant's agent has `say`, `history`, `inbox` and `sleep`
+-- so every sealed round exercised here is driven by scripted clients calling
+`sealed.seal_to` directly. Switchboard has since shipped the tool that fixes
+this: `ask` seals to one recipient's published `exchange_key`, and `inbox`
+opens what was sealed to you. It is on their `main` and not in a release, so
+this module cannot use it yet, and a game played by real agents stays a
+practice game until it is. When that release lands, `island/sealed.py` goes
+and this deals through `ask` instead.
 """
 
 from __future__ import annotations
@@ -287,12 +313,42 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     return path
 
 
+def claim(manager: Client, lobby: Lobby, channel: str,
+          claimed: set[str]) -> None:
+    """Offer to run any table that is forming and has nobody to run it.
+
+    A table settles when it is full **and** managed, and `MANAGE` is the line
+    that says "I will run this one". This process is the thing that would run
+    it, so this is it saying so -- on the board, in the grammar, where the
+    lobby settles it like anybody else's claim.
+
+    It comes from a second client with its own identity, because the lobby
+    skips messages from its own `agent_id`: a lobby that settled its own
+    claims would be choosing the manager rather than witnessing a choice, and
+    would not see the line at all.
+    """
+    for table in lobby.tables.values():
+        if table.settled or table.lapsed or table.manager or table.id in claimed:
+            continue
+        claimed.add(table.id)
+        manager.post(channel, f"MANAGE {table.id}")
+        print(f"{table.id}: offering to manage it", flush=True)
+
+
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
-          ack_seconds: int, out: Path, ranked_only: bool = False) -> None:
-    """Poll the lobby; play whatever settles. Never returns on its own."""
+          ack_seconds: int, out: Path, ranked_only: bool = False,
+          ledger: Path | None = None, manager: Client | None = None,
+          channel: str = "lobby") -> None:
+    """Poll the lobby; claim what nobody is running; play whatever settles.
+
+    Never returns on its own.
+    """
     played: set[str] = set()
+    claimed: set[str] = set()
     while True:
         lobby.drain()
+        if manager is not None:
+            claim(manager, lobby, channel, claimed)
         for table in list(lobby.tables.values()):
             if not table.settled or table.id in played:
                 continue
@@ -301,7 +357,11 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 print(f"{table.id}: skipped -- not every seat offered a key to "
                       f"seal to, so this table cannot be ranked", flush=True)
                 continue
-            invite = pending_invite(lobby, table)
+            try:
+                invite = pending_invite(lobby, table)
+            except SettledTwice as exc:
+                print(f"{table.id}: refusing to play -- {exc}", flush=True)
+                continue
             if invite is None:
                 print(f"{table.id}: settled but no invite on the board", flush=True)
                 continue
@@ -312,26 +372,49 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
             path = out / f"{table.id}.json"
             path.write_text(json.dumps(rec, indent=1) + "\n")
             sidecar = publish(table, invite, rec, out)
-            added, _ = _scores.ingest(path, players=rec["players"])
+            added, _ = _scores.ingest(
+                path, players=rec["players"],
+                **({"ledger": ledger} if ledger is not None else {}))
             status = added[0]["status"] if added else "already recorded"
             print(f"{table.id}: wrote {path} and {sidecar.name}; "
                   f"ledger says {status}", flush=True)
         time.sleep(every)
 
 
+class SettledTwice(Exception):
+    """Two lobbies settled one table, so its room has two keys and no game."""
+
+
 def pending_invite(lobby: Lobby, table: Table) -> Invite | None:
-    """The invite the lobby posted for this table, read back off the board.
+    """The invite this lobby posted for the table, read back off the board.
 
     Read rather than reconstructed: the lobby minted the room's key and this
     is the only place it exists. Rebuilding one here would produce a different
     key and a different, empty room.
+
+    **And refuse outright if two exist.** A second lobby draining the same
+    channel settles the same table again -- a second settlement line, a second
+    `generate_key()`, a second invite -- and the two rooms then share a
+    workspace and nothing else. Entrants join on the first key, this manager on
+    the second, and neither can read a word the other writes: the traders talk
+    to themselves, the manager settles nothing, and the record comes out
+    `absent` as though nobody turned up. It cost an afternoon to see, because
+    every part of it works and the failure is silence.
     """
     marker = f"{table.id} invite: "
-    for msg in reversed(sorted(lobby.client.history(lobby.channel, limit=500),
-                               key=lambda r: r.get("seq", 0))):
-        body = msg.get("body")
-        if isinstance(body, str) and body.startswith(marker):
-            return Invite.decode(body[len(marker):])
+    found = [body[len(marker):]
+             for msg in sorted(lobby.client.history(lobby.channel, limit=500),
+                               key=lambda r: r.get("seq", 0))
+             if isinstance(body := msg.get("body"), str) and body.startswith(marker)]
+    if len(found) > 1:
+        raise SettledTwice(
+            f"{table.id} has {len(found)} invites on the board, so more than "
+            f"one lobby settled it and its room has more than one key. "
+            f"Whoever plays a table must be whoever settled it: the seed is "
+            f"never on the board, so a second lobby draws its own and mints "
+            f"its own room. Run `run_game` *or* `run_lobby` against a "
+            f"workspace, not both.")
+    return Invite.decode(found[0]) if found else None
     return None
 
 
@@ -346,19 +429,36 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--episode-seconds", type=int, default=schedule.EPISODE_SECONDS)
     ap.add_argument("--ack-seconds", type=int, default=schedule.ACK_SECONDS)
     ap.add_argument("--out", type=Path, default=Path("games/results"))
+    ap.add_argument("--ledger", type=Path, default=None,
+                    help="where finished rounds are recorded (default: the "
+                         "repo's own ledger). Point a rehearsal somewhere "
+                         "else: the ledger is append-only and a row written "
+                         "into it by a test does not come back out")
     ap.add_argument("--ranked", action="store_true",
                     help="refuse to play a table that is not sealable")
+    ap.add_argument("--managed-by", default="lucille",
+                    help="the name this runner offers to manage under, and "
+                         "the one the settlement line records")
     args = ap.parse_args(argv)
 
-    client = Client(ClientConfig(url=args.hub, url_source="explicit", token=args.token,
-                                 workspace=args.workspace, key=args.key),
-                    agent_id="lobby")
-    lobby = Lobby(client=client, channel=args.channel)
-    print(f"watching {args.hub}/{args.workspace}#{args.channel} for settled tables")
+    def _client(agent_id: str) -> Client:
+        return Client(ClientConfig(url=args.hub, url_source="explicit",
+                                   token=args.token, workspace=args.workspace,
+                                   key=args.key), agent_id=agent_id)
+
+    lobby = Lobby(client=_client("lobby"), channel=args.channel)
+    # The claimant, separate from the lobby that witnesses it -- see `claim`.
+    # Registered so the settlement line names it rather than a blinded id.
+    manager = _client(MANAGER)
+    manager.register(name=args.managed_by, kind="local", branch="main",
+                     task=f"running tables in {args.workspace}")
+    print(f"watching {args.hub}/{args.workspace}#{args.channel}, "
+          f"offering to manage as {args.managed_by}")
     try:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
               ack_seconds=args.ack_seconds, out=args.out,
-              ranked_only=args.ranked)
+              ranked_only=args.ranked, ledger=args.ledger,
+              manager=manager, channel=args.channel)
     except KeyboardInterrupt:
         print()
     return 0
