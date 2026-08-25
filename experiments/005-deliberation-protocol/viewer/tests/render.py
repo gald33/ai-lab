@@ -213,22 +213,35 @@ def motion(page, where: str) -> list[str]:
       await nap(300);
       found.parcel = watch('.parcel');
 
-      // The day ends. `draw()` carries the state; `play()` carries the passage.
-      const sunAt = () => scene.sunNode.getBoundingClientRect().top;
-      found.sunBefore = sunAt();
-      scene.draw({ ...t.final, phase: 'closed' }, t);
+      // The day ends. The bell brings the night; it does not move the sun --
+      // the sun is on its own clock and `sky()` carries it down while the
+      // bell's light plays. Driven in that order, and the bell is played with
+      // the disc deliberately left alone in between, so an animation that
+      // reached for it again would show up here.
+      const sunY = () => scene.sunNode.getBoundingClientRect().top;
+      scene.sky({ ...t.final, phase: 'market', bell_at: null }, null, 0);
+      found.sunBefore = sunY();
       scene.play({ kind: 'bell', episode: 1, lapsed: 0 });
-      await nap(900);
+      await nap(400);
+      found.sunAfterBellOnly = sunY();
+      scene.draw({ ...t.final, phase: 'closed' }, t);
+      scene.sky({ ...t.final, phase: 'closed' }, null, 0);
+      // The night overlay is a CSS transition on `.closed`, which is applied
+      // here rather than by the bell -- so it needs its own time to land.
+      await nap(1000);
       found.closed = island.classList.contains('closed');
-      found.sunSetting = sunAt() > found.sunBefore;
+      found.sunSetting = sunY() > found.sunBefore;
       found.nightOpacity = Number(getComputedStyle(
         document.querySelector('.night')).opacity);
 
-      // And a new episode is a new day.
+      // And a new day. The sun does not slide back across the sky to get
+      // there: it is dark at both ends of the night, and rises in the east.
       scene.draw({ ...t.final, phase: 'market' }, t);
+      scene.sky({ ...t.final, phase: 'market' }, null, 0);
       scene.play({ kind: 'open', episode: 2, of: 3 });
       await nap(300);
       found.reopened = !island.classList.contains('closed');
+      found.dawnDim = Number(getComputedStyle(scene.sunNode).opacity);
       return found;
     }""", REASON)
 
@@ -251,7 +264,16 @@ def motion(page, where: str) -> list[str]:
     if not seen["closed"] or seen["nightOpacity"] <= 0.05:
         bad.append(f"{where}: the bell did not bring night ({seen})")
     if not seen["sunSetting"]:
-        bad.append(f"{where}: the sun did not go down at the bell ({seen})")
+        bad.append(f"{where}: the sun did not go down when the day closed ({seen})")
+    # The point of this change: the bell is the light, not the disc. If playing
+    # it moves the sun, something has reached for the sun again.
+    if abs(seen["sunAfterBellOnly"] - seen["sunBefore"]) > 1:
+        bad.append(f"{where}: playing the bell moved the sun on its own "
+                   f"({seen['sunBefore']:.0f} -> {seen['sunAfterBellOnly']:.0f}); "
+                   f"the sun keeps its own clock and the bell carries the light")
+    if seen["dawnDim"] > 0.35:
+        bad.append(f"{where}: a new day started with the sun already at "
+                   f"{seen['dawnDim']:.2f} opacity; it should rise out of the sea")
     if not seen["reopened"]:
         bad.append(f"{where}: a new episode did not bring the day back")
     return bad
