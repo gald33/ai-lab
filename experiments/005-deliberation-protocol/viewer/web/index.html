@@ -66,6 +66,28 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   border-width: 1px 0 0; padding: 12px 16px 16px; animation: rise-in .22s ease-out; }
 .drawer.foot h2 { margin-bottom: 6px; }
 .drawer .ticker { height: calc(100% - 22px); overflow-y: auto; }
+
+/* The round picker. Chips rather than a text box: the listing is chosen by
+   what happened on the island, and the counts say what each choice leaves. */
+#picker .find input { width: 100%; margin: 0 0 12px; }
+#picker .facet { margin-bottom: 12px; }
+.facet-h { display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-3, #7d8b95); margin-bottom: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: baseline; gap: 5px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  background: #0e1519aa; color: var(--ink-2); font: inherit; font-size: 12px; line-height: 1.5; }
+.chip:hover { border-color: var(--ink-3, #7d8b95); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent, #c8761f); border-color: var(--accent, #c8761f);
+  color: #10161a; font-weight: 600; }
+.chip .n { font-variant-numeric: tabular-nums; opacity: .65; font-size: 11px; }
+.chip[aria-pressed="true"] .n { opacity: .8; }
+.chip:focus-visible, #picker input:focus-visible, .wide:focus-visible {
+  outline: 2px solid var(--accent, #c8761f); outline-offset: 2px; }
+#picker .wide { width: 100%; margin-top: 6px; }
+#picker .muted { margin: -4px 0 10px; font-size: 12px; color: var(--ink-3, #7d8b95); }
+#t-filter-n { font-size: 11px; font-variant-numeric: tabular-nums; margin-left: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @keyframes slide-in { from { transform: translateX(14px); opacity: 0; } }
 @keyframes rise-in  { from { transform: translateY(14px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
@@ -539,9 +561,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <div class="chrome at-top-right">
-    <input id="find" type="search" placeholder="find a board" spellcheck="false"
-           title="Narrow the list: words in any order, e.g. &quot;007 plan 12&quot;"
-           aria-label="Narrow the list of boards">
+    <button id="t-filter" aria-pressed="false" aria-controls="picker"
+            title="Choose a round by what happened in it">⌕<span id="t-filter-n"></span></button>
     <select id="source" title="Which board" aria-label="Which board"></select>
     <button id="reload" title="Read the source again">↻</button>
     <button id="t-rail" aria-pressed="false" aria-controls="rail"
@@ -569,6 +590,23 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <!-- Both shut until asked for. -->
+  <aside class="drawer side" id="picker" hidden>
+    <div class="card">
+      <h2>Which round</h2>
+      <p class="muted" id="picker-count">—</p>
+      <label class="find">
+        <span class="sr">Name</span>
+        <input id="find" type="search" placeholder="name, if you know it" spellcheck="false">
+      </label>
+      <div id="facets"></div>
+      <div class="sorts">
+        <span class="facet-h">Order</span>
+        <div class="chips" id="sorts"></div>
+      </div>
+      <button id="picker-reset" class="wide">Clear the filter</button>
+    </div>
+  </aside>
+
   <aside class="drawer side" id="rail" hidden>
     <div class="card" id="reveal-card">
       <h2>The hidden half</h2>
@@ -610,7 +648,7 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
-import { organise, countOf } from "./picker.js";
+import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
@@ -1206,6 +1244,7 @@ function drawer(button, panel, cls) {
   return { set, open };
 }
 
+const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");
 const log = drawer("t-log", "log", "log-open");
 
@@ -1279,7 +1318,9 @@ async function boot() {
   try {
     const list = await (await fetch("api/boards", { cache: "no-store" })).json();
     for (const b of list.boards || []) {
-      entries.push({ label: b.label, board: b.board,
+      // `facets` and `at` are what the picker filters and orders on; without
+      // them every round answers only the axis derived from its own path.
+      entries.push({ label: b.label, board: b.board, facets: b.facets || {}, at: b.at,
                      value: JSON.stringify({ board: b.board, reveal: b.reveal }) });
     }
     if (list.live) {
@@ -1313,29 +1354,91 @@ async function boot() {
     return;
   }
 
-  // Re-listing on every keystroke replaces the options under the selection, so
-  // what is being watched is remembered and put back when it survives the
-  // filter. A filter that silently swapped the board out from under a playing
-  // round would be the control doing something nobody asked it to.
+  // The filter is a set of chosen values per axis, plus a name. Re-listing
+  // replaces the options under the selection, so what is being watched is
+  // remembered and put back whenever it survives -- a filter that swapped the
+  // round out from under a playing board would be the control doing something
+  // nobody asked for.
+  const selection = { text: "" };
+  let sort = "newest";
+
+  function drawFacets() {
+    const box = $("facets");
+    box.replaceChildren();
+    for (const facet of FACETS) {
+      const values = options(entries, facet, selection);
+      // An axis every round answers the same way tells nobody anything, and a
+      // chip that cannot narrow is a chip in the way.
+      if (values.length < 2 && !(selection[facet.key] || []).length) continue;
+      const group = document.createElement("div");
+      group.className = "facet";
+      const head = document.createElement("span");
+      head.className = "facet-h";
+      head.textContent = facet.label;
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      chips.role = "group";
+      chips.ariaLabel = facet.label;
+      for (const { value, count } of values) {
+        const chosen = (selection[facet.key] || []).includes(value);
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.setAttribute("aria-pressed", String(chosen));
+        chip.innerHTML = `<span></span><span class="n"></span>`;
+        chip.firstChild.textContent = String(value);
+        chip.lastChild.textContent = String(count);
+        chip.onclick = () => {
+          const had = selection[facet.key] || [];
+          selection[facet.key] = chosen ? had.filter((v) => v !== value) : [...had, value];
+          relist();
+        };
+        chips.append(chip);
+      }
+      group.append(head, chips);
+      box.append(group);
+    }
+  }
+
+  function drawSorts() {
+    const box = $("sorts");
+    box.replaceChildren(...SORTS.map(({ key, label }) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = label;
+      chip.setAttribute("aria-pressed", String(sort === key));
+      chip.onclick = () => { sort = key; relist(); };
+      return chip;
+    }));
+  }
+
   function relist({ keep = true } = {}) {
     const chosen = keep ? select.value : null;
-    const groups = organise(entries, find.value);
+    const groups = organise(entries, selection, sort);
     const nodes = [];
     for (const { group, items } of groups) {
-      const options = items.map((e) => new Option(e.label, e.value));
-      if (!group) { nodes.push(...options); continue; }
+      const opts = items.map((e) => new Option(e.label, e.value));
+      if (!group) { nodes.push(...opts); continue; }
       const box = document.createElement("optgroup");
       box.label = group;
-      box.append(...options);
+      box.append(...opts);
       nodes.push(box);
     }
     select.replaceChildren(...nodes);
     const shown = countOf(groups);
+    const rounds = entries.filter((e) => !e.pinned).length;
     // A filter matching nothing keeps the last board on screen rather than
     // blanking the page: the list is empty, the round is not.
-    find.dataset.empty = String(shown === 0);
-    select.title = shown === entries.length
-      ? "Which board" : `Which board — ${shown} of ${entries.length}`;
+    $("picker-count").textContent = shown === entries.length
+      ? `${rounds} rounds` : `${shown} of ${entries.length} shown`;
+    const active = activeCount(selection);
+    $("t-filter-n").textContent = active ? String(active) : "";
+    $("t-filter").title = active
+      ? `Filtered on ${active} thing${active > 1 ? "s" : ""} — ${shown} shown`
+      : "Choose a round by what happened in it";
+    drawFacets();
+    drawSorts();
     if (chosen && [...select.options].some((o) => o.value === chosen)) {
       select.value = chosen;
       return false;
@@ -1343,15 +1446,19 @@ async function boot() {
     return shown > 0;
   }
 
-  find.oninput = () => { relist(); };
-  // Escape clears the filter rather than leaving the page filtered by
-  // something typed and forgotten.
-  find.onkeydown = (e) => {
-    if (e.key === "Escape") { find.value = ""; relist(); }
+  $("find").oninput = (e) => { selection.text = e.target.value; relist(); };
+  $("find").onkeydown = (e) => {
+    if (e.key === "Escape") { e.target.value = ""; selection.text = ""; relist(); }
     e.stopPropagation();
   };
+  $("picker-reset").onclick = () => {
+    for (const key of Object.keys(selection)) delete selection[key];
+    selection.text = "";
+    $("find").value = "";
+    relist();
+  };
   relist({ keep: false });
-  select.onchange = () => open(JSON.parse(select.value));
+  select.onchange = () => { picker.set(false); open(JSON.parse(select.value)); };
   $("reload").onclick = () => open(JSON.parse(select.value));
   open(JSON.parse(select.value));
 }
