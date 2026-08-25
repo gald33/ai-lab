@@ -16,6 +16,7 @@ Claim before starting: `roadmap claim <key>`
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
+- `next` **`006-standby-alarm-has-never-rung`** — Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock
 - `next` **`007-replicate-the-control`** — Replicate the bare control so the lab's best difference rests on more than one draw
 - `next` **`007-third-pass-on-ruin`** — A third ladder pass, to separate the ruin reduction from the control's own movement
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
@@ -47,6 +48,7 @@ graph TD
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
+  006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
   007_replicate_the_control["Replicate the bare control so the lab's best difference rests on more than one draw"]
   007_third_pass_on_ruin["A third ladder pass, to separate the ruin reduction from the control's own movement"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
@@ -404,6 +406,97 @@ graph TD
 
 </details>
 
+### `006-standby-alarm-has-never-rung`
+
+- **title:** Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock
+- **status:** ready
+- **arc:** agent-standby
+- **priority:** next
+- **refs:**
+  - `https://github.com/gald33/Lucille/blob/main/docs/architecture/agent-standby.md`
+  - `https://github.com/gald33/Lucille/blob/main/scripts/standby.py`
+  - `https://code.claude.com/docs/en/scheduled-tasks`
+  - `https://github.com/gald33/Lucille/pull/1338`
+
+<details><summary>evidence</summary>
+
+> MOVED FROM Lucille's roadmap (`agent-standby-duty-cycle`), where it was built
+> and where the code still lives. It is here because what is left is a question
+> about agents, not a feature Lucille is waiting on: Lucille has the mechanism,
+> merged across #1335/#1337/#1338, and can use the half that works.
+>
+> WHAT IS BUILT AND VERIFIED. An agent declares a cadence and an expertise,
+> writes a duty record to a coordination hub carrying `next_wake_at`, and is
+> supposed to re-stamp that record and re-create its own alarm on every wake, so
+> both clocks are wound by the same event. Measured end-to-end against the live
+> hub 2026-08-18: arm, a request filed by a second identity, a wake that reads
+> it, take, a clean wake, stand down.
+>
+> WHAT HAS NEVER HAPPENED: a wake firing on its own. Two attempts, both from a
+> Claude Code cloud session:
+>
+>   6h cadence, armed 2026-08-18 15:13Z, due 21:13Z. Checked 08-19 05:32Z:
+>     no scheduled jobs, wake count still 1, 8.3h late -> OVERDUE.
+>   5m cadence, armed 2026-08-20 13:58Z, due 14:03Z. Checked 08-21 07:29Z:
+>     no scheduled jobs, wake count still 1, 17.4h late -> GONE.
+>
+> The second run is the informative one. Shortening the cadence to the minimum
+> the tool allows, with the alarm due about ninety seconds after the turn ended,
+> did not help — which rules out "the gap was too long" and leaves the harness
+> itself.
+>
+> WHAT THE DOCS SAY, checked 2026-08-21 after asserting a mechanism I had not
+> verified. In-session scheduling is documented as requiring a live process:
+> `/loop`'s row in the comparison table reads "Runs on: your machine",
+> "Requires open session: **Yes**", and its limitations say "Tasks only fire
+> while Claude Code is running and idle." Separately, cloud sessions "stop after
+> a period of inactivity and the session's VM is reclaimed" — no duration given.
+>
+> SO THE OBSERVATION IS SOLID AND MY EXPLANATION WAS NOT. I had written that the
+> container suspends the moment a turn ends. The docs do not say that, and my
+> two runs cannot distinguish it from the alternative — that the VM was still up
+> and there was simply no running-and-idle process to fire anything. Both
+> predict exactly what I saw. Lucille's doc still states the unverified version
+> and should be corrected to cite the documented requirement instead; that edit
+> is part of this item.
+>
+> WHY IT IS WORTH DOING. "The agent keeps its own clock" is the whole claim, and
+> it is not a property of the agent. It is a property of the runtime, and moving
+> the same agent between harnesses changes whether it is true with nothing about
+> the agent having changed. That is the kind of hidden substrate dependency this
+> lab exists to find — a design that reads as self-contained, is adopted because
+> the reasoning is clean, and turns out to have been leaning on something nobody
+> wrote down.
+>
+> It also has a control built in already. The detector half is verified twice on
+> real absences, so a run that produces no wake is still legible rather than
+> ambiguous: the promise-with-a-timestamp says which of "quiet" and "dead"
+> happened. Few experiments arrive with their null case pre-instrumented.
+>
+> HOW YOU WOULD KNOW IT WORKED. One of two outcomes, both publishable:
+>
+>   1. A wake fires on its own, on some substrate, and the agent does the work
+>      waiting for it. State the substrate, the cadence, how many wakes were
+>      quiet, and what the quiet wakes cost — a daily expert is ~30 turns a
+>      month doing nothing, and if that is not worth what it buys, the honest
+>      outcome is to say so and delete the mechanism rather than keep it because
+>      it runs. The obvious first candidate is a session whose process genuinely
+>      persists (a terminal or desktop session), which is the cheapest available
+>      test and has not been run.
+>
+>   2. No substrate reachable from an agent provides this, and "an agent keeps
+>      its own clock" is written up as false — availability is lent by a runtime,
+>      not held by an agent. That is a result, and it retires the design rather
+>      than leaving it as something that looks shippable and is not.
+>
+> NOT AN ACCEPTABLE OUTCOME: adopting a server-side trigger and calling the
+> question answered. A trigger that fires into a fresh session survives the
+> agent that asked for it, which is a different mechanism with a different
+> failure mode — an availability outliving the agent asserting it — and it was
+> ruled out deliberately at the start rather than overlooked.
+
+</details>
+
 ### `007-replicate-the-control`
 
 - **title:** Replicate the bare control so the lab's best difference rests on more than one draw
@@ -524,20 +617,28 @@ graph TD
 
 <details><summary>evidence</summary>
 
-> PyPI serves roadmap-core 0.1.0; the repository is at 0.2.0. The generated
-> headers this lab committed therefore carry two things from the repository the
-> package was extracted from and not from here: they name
+> PyPI served roadmap-core 0.1.0 when this was filed, and the generated headers
+> this lab committed therefore carried two things from the repository the
+> package was extracted from and not from here: they named
 > `python scripts/roadmap.py sync` as the command to regenerate, which is a
-> file this checkout does not have, and ARCS.md opens with a paragraph about a
+> file this checkout does not have, and ARCS.md opened with a paragraph about a
 > flag ledger, a substrate-quality trace and a hygiene backlog under
-> `docs/architecture/`, none of which exist here. 0.2.0 fixes both — `CLI =
+> `docs/architecture/`, none of which exist here. 0.2.0 fixed both — `CLI =
 > "roadmap"` and the paragraph is gone.
 >
 > It lands in the one artifact written for a reader with nothing installed, so
 > the wrong command is the worst place for it to be.
 >
-> Done when the workflow installs a version that has the fix, `roadmap sync`
-> regenerates, and the committed markdown names a command this repo actually
-> has.
+> The regeneration half is settled: PyPI now serves 0.2.3, `roadmap sync` under
+> it reproduces the committed `roadmap/ROADMAP.md` and `ARCS.md` byte for byte,
+> and the workflow's install is pinned `>=0.2.0` so the fix is a requirement of
+> the job rather than whatever pip happens to resolve — 0.1.0 is still on PyPI
+> and would still render the wrong command.
+>
+> What is left is not a regeneration. This stays open behind
+> `lab-roadmap-adoption` because that item is `verifying` on purpose: whether
+> sessions actually file their open tail as items is a claim about behaviour
+> that no commit settles, and retiring this one first would report the adoption
+> as finished on the strength of a version bump.
 
 </details>

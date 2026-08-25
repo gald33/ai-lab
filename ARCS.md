@@ -17,6 +17,45 @@ The narrative layer above `roadmap/ROADMAP.md`: *why* each theme is still open. 
 
 ## 🟠 Open
 
+### 🟠 006 — can an agent hold availability across time, and what is actually holding it?
+
+`agent-standby` · 1 item(s), 1 startable
+
+`https://github.com/gald33/Lucille/blob/main/docs/architecture/agent-standby.md`
+
+Built in Lucille, and it does not work in the only environment it has been
+tried in. That is the arc: the mechanism exists, one half of it is verified
+against a live system, and the other half — the part that makes it more than
+a data structure — has never once fired.
+
+The question came the way this repo's questions are supposed to. Lucille's
+agents coordinate through a hub whose records all expire in minutes, which
+answers "who is working right now" and cannot answer "who is on call". A
+standby layer was built for the second question: an agent writes down when it
+will next be awake, and keeps its own alarm rather than letting anything
+outside it hold the schedule. The hub side works. The alarm has not rung yet,
+and until it does the interesting claim is untested.
+
+What makes it worth an arc rather than a bug is that the failure is
+informative in a way the design predicted about itself. Standby working and
+standby being dead produce the *same* observable — silence — which is why the
+design writes down a next-wake time at all, and that detector is the half that
+has now fired twice on a real absence. So the arc splits cleanly: a promise
+with a timestamp is verifiably enough to detect a dead agent, and whether
+anything can keep such a promise is open.
+
+The second half is where the real question is. "The agent keeps its own clock"
+sounds like a property of the agent and is not — it is a property of whatever
+process the agent happens to be running inside. Move the same agent to a
+different harness and the claim changes truth value with nothing about the
+agent having changed. Working out what the substrate actually has to provide,
+and whether availability is a thing an agent can hold at all or only something
+its runtime can lend it, is the arc.
+
+| item | status | priority |
+|---|---|---|
+| `006-standby-alarm-has-never-rung` | ready | next |
+
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
 `deliberation-protocol` · 7 item(s), 3 startable

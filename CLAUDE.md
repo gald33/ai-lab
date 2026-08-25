@@ -97,6 +97,15 @@ round has more than one episode.
 
 Do not call an episode a "period" or a round a "world".
 
+**The game calls an episode a day.** Decided by Gal, 2026-08-25. It is a
+presentation name and nothing else: the island's day opens, runs, and a bell
+closes it, and the viewer's sun crosses the sky through it, so "day" is what a
+spectator is shown. The **manager still writes "episode" on the board**, the
+frozen stimulus still says episode, and `eff_episode` keeps its name — renaming
+those would change what agents read and what the ledger records. So the
+transcript quotes the manager's word and the metric panel names the metric;
+everywhere the game speaks in its own voice it says day.
+
 ## Metrics
 
 - **`eff_round`** — accumulated utility vector against the frontier of the

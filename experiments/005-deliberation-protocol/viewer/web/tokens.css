@@ -1,0 +1,122 @@
+/* The island's palette, shared by every page in this viewer.
+   One committed look: an island at dusk. A light mode would be a different
+   picture rather than the same one lit differently, so there is not one. */
+:root {
+  color-scheme: dark;
+  --sea-near:   #1d3242;
+  --sea-mid:    #132532;
+  --sea-far:    #070d12;
+  --plane:      #0b1116;
+  --panel:      #171d21;   /* the surface every gate below was validated against */
+  --panel-2:    #1e262b;
+  --line:       #2b353b;
+  --ink:        #f2f4f4;
+  --ink-2:      #b6c0c4;
+  --muted:      #8b9599;
+  --fire:       #ffb648;
+
+  /* Scenery. Deliberately outside the categorical slots below: nothing here
+     ever encodes a good, a trader or a metric, so none of it is held to the
+     contrast gates -- and none of it may drift into a hue that would make a
+     reader look for meaning in the landscape. */
+  --sand:       #c9a86a;
+  --sand-lit:   #ddbe83;
+  --sand-dark:  #96793f;
+  --sand-wet:   #6f5729;
+  --surf:       #cfe6ef;
+  --thatch:     #7a4a34;
+  --thatch-lit: #96654a;
+  --frond:      #55803f;
+  --frond-dark: #3f6330;
+  --trunk:      #7a5a34;
+  --glass:      #ffd79a;
+  --sun:        #ffb45e;
+  --sun-core:   #fff2cf;
+  --sky-set:    #d9603a;   /* the sky at the moment the sun goes */
+
+  /* Categorical slots. Validated against --panel on the adjacent pairlist:
+     worst CVD ΔE 9.6 across slots 1–5, all ≥4.3:1 on the surface. They do NOT
+     clear all-pairs (yellow beside orange), which is why goods hold a fixed
+     shelf position and always wear a glyph.
+
+     Every number in this block is checked by `viewer/palette.py` and asserted
+     in `tests/test_palette.py`. They used to be claimed in a comment and
+     nothing recomputed them, which is how the two below went wrong. */
+  --good-1: #3987e5;
+  --good-2: #d95926;
+  --good-3: #199e70;
+  --good-4: #c98500;
+  --good-5: #d55181;
+  --good-6: #008300;
+  --good-7: #9085e9;
+
+  /* Metrics, not series: distinct from every good, so a score can never be
+     mistaken for a stock.
+
+     These were #9085e9 and #d55181 -- which are slots 7 and 5. Borrowing the
+     series colours held only while the island had four goods; a fifth good
+     drew --util in *byte-identical* pink to the utility bar beneath it. And
+     the old --eff sat ΔE 1.6 from --good-1 under dichromacy, so the headline
+     metric and the bread bar were already one colour to a red-green
+     dichromat -- at four goods, before fish, contradicting the comment that
+     used to be here.
+
+     Cyan and gold are what the series leaves free. Measured, not claimed:
+     worst CVD ΔE 18.4 from any slot 1–7, 37.0 from each other, ≥10.4:1 on the
+     surface. */
+  --eff:      #e8e06a;
+  --util:     #79d9e8;
+
+  /* Capture diverges around autarky, so it wears the documented diverging pair
+     rather than a series colour: two poles that read as opposite, with a
+     neutral midpoint that reads as "nothing gained and nothing lost".
+
+     --above is the same blue as --good-1 and is left that way deliberately:
+     it is drawn only on scores.html, which renders no goods at all, so the
+     two never share a surface. `test_palette.py` names this exemption rather
+     than allowing collisions in general. */
+  --above:    #3987e5;
+  --below:    #e66767;
+  --neutral:  #383835;
+
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --critical: #d03b3b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--plane); color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.sub { color: var(--muted); font-size: 12.5px; }
+.warn { color: var(--warning); }
+.note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+a { color: #9dc7f5; }
+button, select { font: inherit; color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; cursor: pointer; }
+button:hover, select:hover { border-color: #3c4950; }
+button[aria-pressed="true"] { background: #2c3940; border-color: #4a5b63; }
+button:disabled { opacity: .45; cursor: default; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 13px; margin-bottom: 12px; }
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.bar .spacer { flex: 1; }
+.meter { position: relative; height: 12px; background: #0e1519; border-radius: 6px;
+  margin: 12px 0 6px; overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--eff);
+  border-radius: 6px; }
+.meter u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink);
+  text-decoration: none; }
+.meter-legend { display: flex; justify-content: space-between; font-size: 11.5px;
+  color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { border-bottom: 1px solid var(--line); padding: 5px 6px; text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .06em; }
+th:first-child, td:first-child { text-align: left; }
+tr:last-child td { border-bottom: 0; }

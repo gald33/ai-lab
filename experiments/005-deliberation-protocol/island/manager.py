@@ -10,27 +10,24 @@ agents reach the same channel through the Switchboard MCP server. There is no
 intermediate script, no bespoke transport, and nothing either side can call
 that Switchboard does not already provide.
 
-It enforces exactly three things:
+It enforces exactly two things:
 
 * **timing** -- what it will still settle, given the schedule it posted;
 * **format** -- a line that is nearly a formatted message is refused, with the
   reason, and never repaired into a plausible one;
-* **scoring** -- read from settled state, never from what an agent said.
 
-It enforces no price, no role, no partner and no plan.
+It enforces no price, no role, no partner and no plan -- and it does not
+score. It records what each trader held at each bell and stops there. Utility
+needs a taste, tastes belong to `dealer.py`, and scoring happens afterwards
+from the seed (`score.trajectory_from`). That is the first of the four
+conditions in `games/island.md` under which somebody other than the lab could
+run this: a manager that holds no tastes knows nothing a spectator does not.
 """
 
 from __future__ import annotations
 
-import sys
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]
-                       / "002-barter-conventions" / "experiment"))
-
-from barter.economy import Island, utility  # noqa: E402
 
 import httpx  # noqa: E402
 
@@ -48,6 +45,7 @@ TRANSPORT_FAULTS = (httpx.TransportError, httpx.RemoteProtocolError)
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
+from .sealed import BoxKey, SealError, is_sealed  # noqa: E402
 
 #: Whether labour may be committed in several pieces within one episode.
 #: **Off by default**: every run before 007's run 002 settled one production per
@@ -56,6 +54,9 @@ from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 SPLIT_LABOUR = False
 
 MANAGER = "manager"
+#: What a trader seals a `PRODUCE` under. Bound into the key derivation and
+#: the AEAD, so a sealed private half cannot be replayed as a plan.
+SEALED_CONTEXT = "island.produce"
 _EPS = 1e-9
 
 
@@ -83,7 +84,11 @@ class Proposal:
 class Manager:
     """Reads the channel from a cursor; settles what it recognises."""
 
-    island: Island
+    #: Production capacity per unit of labour, by trader index then good --
+    #: `dealer.Dealer.capacity`. The manager takes this rather than an
+    #: `Island` because an `Island` also carries `alpha`, and the point of
+    #: the split is that this process never holds one.
+    capacity: tuple[tuple[float, ...], ...]
     client: Client
     channel: str = "island"
     goods: tuple[str, ...] = ("bread", "cloth", "iron", "salt")
@@ -105,7 +110,6 @@ class Manager:
     seen: set[str] = field(default_factory=set)
     holders: dict[str, Holder] = field(default_factory=dict)
     proposals: dict[str, Proposal] = field(default_factory=dict)
-    episode_utilities: list[list[float]] = field(default_factory=list)
     acknowledged: set[str] = field(default_factory=set)
     #: Every trader the manager has heard from at all, acknowledgement or
     #: action. A session that exits without appearing here never reached the
@@ -114,6 +118,20 @@ class Manager:
     #: Switchboard peer id -> trader name. Filled in as agents register, so
     #: the manager scores the trader rather than the transport's identity.
     alias: dict[str, str] = field(default_factory=dict)
+    #: trader name -> the signing key its seat was bound to, when `bind()`
+    #: was given one. A trader with no entry here is not key-checked at all
+    #: -- every existing caller of `bind()` omits it, so this is inert until
+    #: something passes a key. See `games/island.md`, "Seats, and who is in
+    #: one": the lobby is what witnesses this key today; nothing here draws
+    #: it from anywhere but its caller.
+    keys: dict[str, str] = field(default_factory=dict)
+    #: This manager's own sealing key, when a game gives it one. Traders seal
+    #: `PRODUCE` to its public half so that a plan's shares never reach the
+    #: board -- which is what closes the capacity leak, since capacity is
+    #: quantity divided by share and the quantity is in the public receipt.
+    #: Without one, a sealed line cannot be opened and is refused as such
+    #: rather than counted as talk.
+    box: BoxKey | None = None
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -140,9 +158,9 @@ class Manager:
 
     def __post_init__(self) -> None:
         if not self.names:
-            self.names = tuple(f"T{i + 1}" for i in range(self.island.n_agents))
+            self.names = tuple(f"T{i + 1}" for i in range(len(self.capacity)))
         for i, name in enumerate(self.names):
-            self.holders[name] = Holder(name, i, [0.0] * self.island.n_goods)
+            self.holders[name] = Holder(name, i, [0.0] * len(self.goods))
 
     # --- reading -----------------------------------------------------------
 
@@ -181,6 +199,14 @@ class Manager:
         cannot score it, and pretending otherwise would fabricate an empty
         episode.
         """
+        if self.keys:
+            # A roster read is what teaches Switchboard's own verifier a
+            # peer's published key -- signing.py, "the public key is sealed
+            # like any other content" -- so a signature cannot be checked
+            # without one. Gated on self.keys so the existing, keyless path
+            # every current caller takes never pays for a call it has no use
+            # for.
+            self.client.agents()
         rows = self._history_with_retry()
         if len(rows) >= 500:
             self.saturated = True
@@ -200,12 +226,33 @@ class Manager:
             # acknowledged. Unwrap with Switchboard's own inverse rather than
             # guessing at the shape.
             body, _forecast = unwrap_forecast(msg.get("body"))
-            self._consider(author, body if isinstance(body, str) else "")
+            self._consider(author, body if isinstance(body, str) else "",
+                           msg.get("signature"))
 
-    def _consider(self, author: str, text: str) -> None:
+    def _consider(self, author: str, text: str,
+                 signature: dict | None = None) -> None:
         if author not in self.holders:
             return
         self.spoke.add(author)
+        bound = self.keys.get(author)
+        if bound is not None:
+            verdict = signature or {}
+            if verdict.get("status") != "verified" or verdict.get("key") != bound:
+                self._refuse(author, "imposture",
+                            f"this did not come from the key {author} took "
+                            f"its seat with", text)
+                return
+        if is_sealed(text):
+            if self.box is None:
+                self._refuse(author, "sealed",
+                            "this round has no private channel, so a sealed "
+                            "line cannot be opened", text)
+                return
+            try:
+                text = self.box.open(text.strip(), SEALED_CONTEXT)
+            except SealError as exc:
+                self._refuse(author, "sealed", str(exc), text)
+                return
         upper = text.strip().upper()
         if upper.startswith("ACK"):
             self.acknowledged.add(author)
@@ -231,9 +278,13 @@ class Manager:
     def _refuse(self, author: str, kind: str, reason: str, text: str) -> None:
         """Say no, and keep why. The reason is the diagnostic, not the count."""
         self.refused += 1
+        # A sealed line is kept as the marker alone. Recording the ciphertext
+        # would put a plan the trader paid to hide into the run record, which
+        # is published; recording the plaintext would be worse.
+        kept = "<sealed>" if kind == "sealed" or is_sealed(text) else text.strip()[:200]
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
-                              "line": text.strip()[:200]})
+                              "line": kept})
         self.say(f"@{author} not settled: {reason}")
 
     # --- settling ----------------------------------------------------------
@@ -280,7 +331,7 @@ class Manager:
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
-            qty = share * self.island.capacity[h.index][g]
+            qty = share * self.capacity[h.index][g]
             h.holdings[g] += qty
             made[good] = round(qty, 4)
         h.spent, h.produced = h.spent + total, True
@@ -345,29 +396,35 @@ class Manager:
         """Ring the episode in. Nothing settles until this has been called."""
         self.episode_open = True
 
-    def close_episode(self) -> list[float]:
-        """The bell. Open proposals lapse, holdings are eaten, labour returns."""
+    def close_episode(self) -> dict[str, dict[str, float]]:
+        """The bell. Open proposals lapse, holdings are eaten, labour returns.
+
+        Returns what each trader held when it rang, which is this manager's
+        whole output: it does not compute utility and cannot, having no
+        tastes. `score.trajectory_from` turns these into a trajectory
+        afterwards, from the seed.
+        """
         self.drain()
         lapsed = [p.pid for p in self.proposals.values() if p.status == "open"]
         for p in self.proposals.values():
             if p.status == "open":
                 p.status = "lapsed"
-        utils = []
-        for name in self.names:
-            h = self.holders[name]
-            utils.append(utility(self.island.alpha[h.index], h.holdings))
-        self.episode_utilities.append(utils)
+
+        # Unrounded, because this is now the record rather than a diagnostic
+        # beside one. At six decimals a utility rebuilt from these agrees with
+        # one computed from full precision to 7.2e-07, against the ledger's
+        # 1e-6 tolerance -- which passes, and is not a margin.
+        held = {n: {g: self.holders[n].holdings[i]
+                    for i, g in enumerate(self.goods)}
+                for n in self.names}
 
         # What the numbers alone cannot answer later: who went without, and in
-        # what. A zero episode is one trader holding none of one good, and the
+        # what. A zero episode is one trader holding none of one good, and a
         # utility vector cannot say which trader or which good -- but that is
         # exactly the question every post-mortem of this run turned out to ask.
         self.episode_log.append({
             "episode": self.episode + 1,
-            "utilities": {n: round(u, 6) for n, u in zip(self.names, utils)},
-            "holdings": {n: {g: round(self.holders[n].holdings[i], 6)
-                             for i, g in enumerate(self.goods)}
-                         for n in self.names},
+            "holdings": held,
             "starved": {n: [g for i, g in enumerate(self.goods)
                             if self.holders[n].holdings[i] <= _EPS]
                         for n in self.names
@@ -379,7 +436,7 @@ class Manager:
         })
         self._settled_this_episode = 0
         for h in self.holders.values():
-            h.holdings = [0.0] * self.island.n_goods
+            h.holdings = [0.0] * len(self.goods)
             h.spent, h.produced = 0.0, False
         self.episode += 1
         self.episode_open = False
@@ -387,20 +444,21 @@ class Manager:
                                 f"{len(lapsed)} proposal(s) lapsed. "
                                 f"Everything held has been consumed; stocks and "
                                 f"labour are reset.")
-        return utils
+        return held
 
-    def bind(self, peer_id: str, name: str) -> None:
-        """Bind a Switchboard identity to a trader name, once, at launch."""
+    def bind(self, peer_id: str, name: str, key: str | None = None) -> None:
+        """Bind a Switchboard identity to a trader name, once, at launch.
+
+        `key` is optional and unused by every caller here today -- 005 binds
+        by launch order, not by a witnessed key, so imposture-checking stays
+        off for it. It exists for a caller that *did* witness one, such as a
+        lobby that bound this seat before the round opened: pass it and every
+        further message from `name` has to verify against it or be refused.
+        """
         self.alias[peer_id] = name
+        if key is not None:
+            self.keys[name] = key
 
-    def private_state(self, name: str) -> str:
-        h = self.holders[name]
-        cap = {g: round(self.island.capacity[h.index][i], 4)
-               for i, g in enumerate(self.goods)}
-        taste = {g: round(self.island.alpha[h.index][i], 4)
-                 for i, g in enumerate(self.goods)}
-        return (f"You are {name}. Your production capacity per unit of labour: "
-                f"{cap}. Your taste weights: {taste}. Nobody else knows either.")
 
 
 class Refused(Exception):

@@ -37,7 +37,12 @@ from barter.economy import draw_island  # noqa: E402
 from switchboard.client import Client  # noqa: E402
 from switchboard.config import ClientConfig  # noqa: E402
 
+from island import schedule  # noqa: E402
+from island import ca, toolchain  # noqa: E402
+from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
+from island.schedule import stamp  # noqa: E402
+from island.score import trajectory_from  # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
 STIM = HERE / "stimuli" / "v3"
@@ -66,30 +71,9 @@ os.environ.pop("SWITCHBOARD_KEY", None)
 # roots, it never disables a check -- and the file is exported so that the
 # agents' MCP subprocesses, which get an explicit env and would otherwise
 # inherit nothing, trust exactly what the manager trusts.
-def _ca_bundle() -> str:
-    import glob
-    import re
-
-    out: list[str] = []
-    for f in [*sorted(glob.glob("/etc/ssl/certs/*.pem")),
-              os.environ.get("SSL_CERT_FILE", ""),
-              "/root/.ccr/ca-bundle.crt"]:
-        if not f:
-            continue
-        try:
-            text = pathlib.Path(f).read_text()
-        except OSError:
-            continue
-        out += re.findall(
-            r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----", text, re.S)
-    seen: set[str] = set()
-    keep = [c for c in out if not (c in seen or seen.add(c))]
-    path = HERE / ".ca-bundle.pem"
-    path.write_text("\n".join(keep) + "\n")
-    return str(path)
-
-
-CA_BUNDLE = _ca_bundle()
+# Shared with the game layer's entrant, which needs the identical
+# bundle for the identical reason -- see island/ca.py.
+CA_BUNDLE = ca.bundle(HERE / ".ca-bundle.pem")
 for _var in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
     os.environ[_var] = CA_BUNDLE
 
@@ -264,21 +248,6 @@ EPISODE_SECONDS = 60
 DRAIN_EVERY = 1.5
 
 
-def stamp(ts: float) -> str:
-    """A deadline as an absolute UTC clock time.
-
-    A deadline stated as "in 120s" is only true at the instant it is posted.
-    An agent that reads the schedule ninety seconds after the manager wrote it
-    -- which is ordinary, since nobody is prompted and a session may spend its
-    first turns starting up -- reads "in 120s" and plans against a window that
-    has already mostly gone. Run 005 has a trader acknowledging with "Episode 1
-    in 120s" when episode 1 was about thirty seconds away.
-
-    So every deadline the manager posts is an absolute time. Every Switchboard
-    tool result carries the current time as `now` in the same form, so a
-    reader can tell how long it has left however late it arrives.
-    """
-    return time.strftime("%H:%M:%SZ", time.gmtime(ts))
 
 
 def body(text: str) -> str:
@@ -405,56 +374,105 @@ def preflight() -> None:
     way an agent gets it and call one tool. Ten seconds here against fifty
     rounds of silence is not a close trade.
     """
-    import shutil  # noqa: PLC0415
-
-    if not shutil.which("switchboard-mcp"):
-        raise SystemExit("preflight: switchboard-mcp is not on PATH")
     env = dict(MCP_CONFIG["mcpServers"]["switchboard"]["env"])
     env["SWITCHBOARD_AGENT_ID"] = "preflight"
-    calls = [
-        {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-         "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                    "clientInfo": {"name": "preflight", "version": "0"}}},
-        {"jsonrpc": "2.0", "method": "notifications/initialized"},
-        {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-         "params": {"name": "whoami", "arguments": {}}},
-    ]
     try:
-        done = subprocess.run(  # noqa: S603
-            ["switchboard-mcp"], input="\n".join(json.dumps(c) for c in calls),
-            env=env, capture_output=True, text=True, timeout=45, check=False)
-    except subprocess.TimeoutExpired:
-        raise SystemExit("preflight: switchboard-mcp did not answer in 45s") from None
-    out = done.stdout + done.stderr
-    if '"isError": true' in out or '"id": 2' not in out:
-        raise SystemExit(
-            "preflight: an agent's own MCP server could not reach the hub, so "
-            "every agent would start, find its tools broken and stop. This is "
-            "a harness fault, not agent behaviour.\n"
-            f"  hub {HUB}\n  last output: {out[-400:].strip()}")
+        toolchain.check(env, where=HUB)
+    except toolchain.Broken as exc:
+        raise SystemExit(f"preflight: {exc}") from None
     print(f"preflight: an agent's switchboard-mcp reached {HUB}")
+
+
+def instructions(arm: str, private: str, episodes: int) -> str:
+    block, hint = ARMS[arm]
+    parts = [body((STIM / "base.md").read_text())]
+    if block:
+        # A block naming a directory ("screen/s01-terse") is resolved against
+        # the stimuli root, so the screen's un-frozen blocks never sit in the
+        # frozen v3 directory.
+        path = (STIM.parent / f"{block}.md") if "/" in block else (STIM / f"{block}.md")
+        parts.append(body(path.read_text()))
+    if hint:
+        parts.append(body((STIM / "hint.md").read_text()))
+    parts.append(f"""## This round
+
+{private}
+
+{_horizon(arm, episodes)} There are no stages inside an episode: from the
+moment it opens until the bell, producing, proposing and approving all settle.
+Your capacities and tastes are the same in every episode of this round, and so
+is everyone else's.
+
+An episode is short. Reading the whole channel every time will cost you more of
+it than it is worth.
+
+Every deadline the manager posts is an absolute UTC clock time, and every
+Switchboard tool result carries the current time as `now` in the same form. A
+message you read is not a message just written -- work out how long you have
+by comparing the stated time with `now`, never by counting from when you read
+it.
+
+**Begin now.** Do not ask whether to start and do not wait to be told; there is
+nobody to answer you, and the clock is already running. Your first act should be
+`checkin`.
+
+Nobody will prompt you, ever. Nothing will wake you up. There is no turn that
+comes round to you, and if you stop acting you have left the island for good --
+the clock keeps running, the other traders keep dealing, and the bell rings on
+an episode you did nothing in.
+
+So keep yourself awake. `checkin` is the loop tool: it says you are still here
+and returns anything addressed to you since last time, and with `wait` it
+blocks for up to 25 seconds until something arrives. Call it, act on whatever
+came back, call it again. That is how you schedule your own next moment.
+
+Thinking is not free here. Time spent composing a plan you never say is time
+the episode spent without you. If you have worked something out, say it or act
+on it, then check in again.
+
+Never finish a reply without having called `checkin` or `say`. If you have
+nothing to do, call `checkin` with `wait` set to 25 and see what arrives. Keep
+going until the manager says the round is over. Only then stop.""")
+    return "\n\n".join(parts)
+
+
+def launch(name: str, arm: str, private: str, episodes: int,
+           workdir: Path, workspace: str, *, max_turns: int) -> subprocess.Popen:
+    """One agent, one long-lived session. Started once and never called again."""
+    home = workdir / name
+    home.mkdir(parents=True, exist_ok=True)
+    config = json.loads(json.dumps(MCP_CONFIG))
+    config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_AGENT_ID"] = name
+    config["mcpServers"]["switchboard"]["env"]["SWITCHBOARD_WORKSPACE"] = workspace
+    (home / ".mcp.json").write_text(json.dumps(config, indent=1))
+    env = dict(os.environ)
+    env.update({"SSL_CERT_FILE": CA_BUNDLE, "REQUESTS_CA_BUNDLE": CA_BUNDLE,
+                "SWITCHBOARD_URL": HUB, "SWITCHBOARD_TOKEN": TOKEN,
+                "SWITCHBOARD_WORKSPACE": workspace,
+                "SWITCHBOARD_AGENT_ID": name})
+    return subprocess.Popen(
+        ["claude", "-p", instructions(arm, private, episodes),
+         "--model", MODEL, "--max-turns", str(max_turns),
+         "--mcp-config", str(home / ".mcp.json"),
+         "--allowedTools", *TOOLS],
+        cwd=home, env=env,
+        stdout=open(home / "session.log", "w"), stderr=subprocess.STDOUT)
 
 
 def schedule_text(episodes: int, names: tuple[str, ...], *, hide: bool = False,
                   opens_at: float | None = None) -> str:
-    opens = opens_at if opens_at is not None else time.time() + ACK_SECONDS
-    # Stated absolutely, like every other deadline on this board: a countdown
-    # is what a trader misreads when it reads the message late.
-    ack_by = opens - (ACK_SECONDS - ACK_BY_SECONDS)
-    span = (f"Episodes are {EPISODE_SECONDS}s each; the next few are announced "
-            f"as they come." if hide
-            else f"{episodes} episodes, {EPISODE_SECONDS}s each.")
-    return (f"Schedule for this round. {len(names)} traders: "
-            f"{', '.join(names)}. {span} "
-            f"Within an episode there are no stages: PRODUCE, PROPOSE and "
-            f"APPROVE all settle for as long as the episode is open. At the "
-            f"bell open proposals lapse and everything held is consumed. "
-            f"Acknowledge with a line beginning ACK, by {stamp(ack_by)}. "
-            f"Every time on this board is absolute UTC, and every tool result "
-            f"carries the current time as `now`: read the deadline against "
-            f"that, not against when this message was written. "
-            f"Episode 1 opens at {stamp(opens)} "
-            f"whether or not everyone has.")
+    """This run's schedule, in the shared wording.
+
+    A thin adapter over `island.schedule`, which is where the text lives so
+    that the game's runner posts the same one. It exists because the three
+    durations below are rebound by `main()` from the command line, and the
+    shared version takes them as arguments rather than reading globals it
+    does not own.
+    """
+    return schedule.schedule_text(
+        episodes, names, hide=hide, opens_at=opens_at,
+        episode_seconds=EPISODE_SECONDS, ack_seconds=ACK_SECONDS,
+        ack_by_seconds=ACK_BY_SECONDS)
 
 
 def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
@@ -468,7 +486,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     it reaches. The absent traders are not simulated, replaced or stood in for.
     Nobody is there.
     """
-    island = draw_island(agents, goods, seed=seed)
+    dealer = Dealer.draw(seed, agents, GOODS[:goods])
+    island = dealer.island
     workdir = outdir / (f"{arm}-seed{seed}" + (f"-{only}" if only else ""))
     workdir.mkdir(parents=True, exist_ok=True)
     # The stamp is what keeps one run's board out of the next one's. Messages
@@ -479,7 +498,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     workspace = f"{WORKSPACE}-{arm}-{seed}-{RUN_STAMP}" + (f"-{only}" if only else "")
     channel = "island"
     client = client_for(MANAGER, workspace)
-    mgr = Manager(island=island, client=client, channel=channel)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel=channel,
+                  goods=dealer.goods)
     present = (only,) if only else mgr.names
     for n in present:
         mgr.bind(client_for(n, workspace).peer_id(n), n)
@@ -492,7 +512,13 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
     # agent cut off mid-round goes silent in a way that reads exactly like
     # choosing to stop. Scale it with the work, with headroom.
     def private_for(name: str) -> str:
-        text = mgr.private_state(name)
+        """The trader's own half of the island, plus whatever a run appends.
+
+        The hook is how a stimulus reaches one trader rather than the board --
+        the plan in 007, for instance. It never reaches the manager and never
+        reaches another trader.
+        """
+        text = dealer.private_state(name)
         if PRIVATE_HOOK is None:
             return text
         extra = PRIVATE_HOOK(arm, name, island, mgr.names.index(name))
@@ -603,7 +629,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             p.kill()
 
     return {"arm": arm, "seed": seed, "episodes": episodes,
-            "trajectory": mgr.episode_utilities,
+            "trajectory": trajectory_from(dealer.island, mgr.episode_log,
+                                          list(mgr.names), list(mgr.goods)),
             # The screen had to be diagnosed by re-reading boards that expire
             # in an hour. What the metrics cannot say goes in the record.
             "episode_log": mgr.episode_log, "refusals": mgr.refusals,

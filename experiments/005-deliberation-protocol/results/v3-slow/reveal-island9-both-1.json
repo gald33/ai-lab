@@ -1,0 +1,80 @@
+{
+ "seed": 1,
+ "agents": 2,
+ "goods": [
+  "bread",
+  "cloth",
+  "iron",
+  "salt"
+ ],
+ "traders": {
+  "T1": {
+   "taste": {
+    "bread": 0.0383561052431926,
+    "cloth": 0.49979166787064294,
+    "iron": 0.3835765458160872,
+    "salt": 0.0782756810700773
+   },
+   "capacity": {
+    "bread": 0.4173881928625384,
+    "cloth": 1.0253844479765355,
+    "iron": 0.44145352261988485,
+    "salt": 0.31680667281595243
+   }
+  },
+  "T2": {
+   "taste": {
+    "bread": 0.03941240652785954,
+    "cloth": 0.011499310102644588,
+    "iron": 0.7223631875218955,
+    "salt": 0.22672509584760034
+   },
+   "capacity": {
+    "bread": 1.0040122545290344,
+    "cloth": 0.9495250105692412,
+    "iron": 0.29979295247588866,
+    "salt": 1.5378690784708196
+   }
+  }
+ },
+ "autarky_utility": {
+  "T1": 0.23147761370922257,
+  "T2": 0.21800158588709997
+ },
+ "autarky_floor": 0.823179864305204,
+ "round": {
+  "workspace": "island9-both-1",
+  "arm": "both",
+  "episodes": 3,
+  "trajectory": [
+   [
+    0.24427208920249202,
+    0.0
+   ],
+   [
+    0.2213468454819477,
+    0.0
+   ],
+   [
+    0.2089193163090539,
+    0.0
+   ]
+  ],
+  "score": {
+   "eff_round": 0.0,
+   "eff_round_upper": 0.0,
+   "eff_episode": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "autarky_floor": 0.82318,
+   "gain_median": 0.485676,
+   "gain_worst": 0.0,
+   "below_autarky": 2,
+   "zero_agent_episodes": 3,
+   "agent_episodes": 6,
+   "first_above_floor": null
+  }
+ }
+}

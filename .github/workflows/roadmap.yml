@@ -37,7 +37,13 @@ jobs:
 
       # `[files]` adds PyYAML. Authoring an item IS writing a YAML file, so
       # without the extra every command below fails on the same import.
-      - run: pip install "roadmap-core[files]"
+      #
+      # The floor is stated rather than left to whatever pip resolves: 0.1.0 is
+      # still on PyPI and renders a `python scripts/roadmap.py sync` header for
+      # a file this repo does not have. A generated file is only worth
+      # committing if the command it names is real, so the version that fixed
+      # that is a requirement of this job, not a coincidence of resolution.
+      - run: pip install "roadmap-core[files]>=0.2.0"
 
       # Files -> store, built fresh each run. The store is not committed: it is
       # derived, and a binary file in git conflicts on every claim.

@@ -16,10 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]
                        / "002-barter-conventions" / "experiment"))
 
 from barter.economy import draw_island  # noqa: E402
+from island.dealer import Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
 from island.protocol import (Approve, Malformed, Produce,  # noqa: E402
                              Propose, parse)
-from island.score import score  # noqa: E402
+from island.score import score, trajectory_from  # noqa: E402
 
 
 class FakeHub:
@@ -59,7 +60,8 @@ EVEN = "PRODUCE bread=0.25 cloth=0.25 iron=0.25 salt=0.25"
 
 def fresh() -> Manager:
     hub = FakeHub()
-    m = Manager(island=draw_island(2, 4, seed=1), client=hub, channel="c")
+    m = Manager(capacity=Dealer.draw(seed=1, agents=2).capacity,
+                client=hub, channel="c")
     for n in m.names:
         m.bind(n, n)
     m.hub = hub  # type: ignore[attr-defined]
@@ -248,15 +250,22 @@ def test_open_proposals_lapse_at_the_bell_and_holdings_are_eaten():
     assert m.proposals["p1"].status == "lapsed"
     assert all(sum(h.holdings) == 0 for h in m.holders.values())
     assert all(not h.produced for h in m.holders.values())
-    assert len(m.episode_utilities) == 1
+    assert len(m.episode_log) == 1
 
 
 def test_a_good_nobody_makes_zeroes_everyone():
+    """Cobb-Douglas: hold none of one good and utility is zero, however much
+    of everything else you hold. The manager cannot say so itself -- it has no
+    tastes -- so the bell records the holdings and the rebuild reads them."""
     m = fresh()
     for n in m.names:
         m.hub.as_(n, "PRODUCE bread=0.34 cloth=0.33 iron=0.33")
     m.drain()
-    assert all(u == 0.0 for u in m.close_episode())
+    held = m.close_episode()
+
+    assert all(h["salt"] == 0.0 for h in held.values()), "nobody made salt"
+    (utils,) = trajectory_from(ISLAND, m.episode_log, list(m.names), list(m.goods))
+    assert all(u == 0.0 for u in utils)
 
 
 def test_a_message_carrying_a_timing_forecast_is_still_read():
@@ -290,7 +299,11 @@ def test_scoring_reads_settled_state_not_what_anyone_claimed():
     m.hub.as_("T1", EVEN)
     m.hub.as_("T2", "I produced a huge amount of everything")
     m.drain()
-    utils = m.close_episode()
+    held = m.close_episode()
+
+    assert sum(held["T1"].values()) > 0
+    assert sum(held["T2"].values()) == 0.0, "a self-report produces nothing"
+    (utils,) = trajectory_from(ISLAND, m.episode_log, list(m.names), list(m.goods))
     assert utils[0] > 0 and utils[1] == 0.0
     s = score(ISLAND, [utils])
     assert s.eff_episode == [0.0], "a self-report earns nothing"
@@ -361,8 +374,11 @@ def test_the_bell_records_who_went_without_and_in_what() -> None:
     assert log["produced"] == ["T1"]
     assert set(log["starved"]["T1"]) == {"cloth", "iron", "salt"}
     assert set(log["starved"]["T2"]) == {"bread", "cloth", "iron", "salt"}
-    assert log["utilities"]["T1"] == 0.0
     assert log["holdings"]["T1"]["bread"] > 0
+    # No utility here: the manager holds no tastes and cannot compute one.
+    # `starved` is the same fact in the form a manager can actually record --
+    # a trader holding none of a good has zero utility by construction.
+    assert "utilities" not in log
 
 
 def test_the_bell_records_which_proposals_lapsed() -> None:
@@ -522,14 +538,15 @@ def _lone_manager(seed=1):
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]
                            / "002-barter-conventions" / "experiment"))
-    from barter.economy import draw_island
+    from island.dealer import Dealer
     from island.manager import Manager
 
     class _Stub:
         def __init__(self): self.said = []
         def post(self, channel, text): self.said.append(text)
         def history(self, channel, limit=500): return []
-    mgr = Manager(island=draw_island(4, 4, seed=seed), client=_Stub())
+    dealer = Dealer.draw(seed, 4)
+    mgr = Manager(capacity=dealer.capacity, goods=dealer.goods, client=_Stub())
     mgr.open_episode()
     return mgr
 
