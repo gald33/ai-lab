@@ -315,7 +315,7 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
             page.wait_for_timeout(900)
             bad += check(page, traders, goods, f"{stem} @{name}{' still' if motion else ''}")
             suffix = f"-{label}" if label else ""
-            page.locator(".stage").screenshot(path=str(out / f"{stem}-{name}{suffix}.png"))
+            page.screenshot(path=str(out / f"{stem}-{name}{suffix}.png"))
         bad += [f"{stem}{' still' if motion else ''}: {e}" for e in errs]
         page.close()
     return bad
@@ -345,7 +345,7 @@ def ring(browser, base: str, out: Path) -> list[str]:
     }""", {"rows": synthetic(4, goods)})
     page.wait_for_timeout(700)
     bad = check(page, 4, len(goods), "ring/4")
-    page.locator(".stage").screenshot(path=str(out / "ring-4.png"))
+    page.screenshot(path=str(out / "ring-4.png"))
     bad += palms(page, "ring/4")
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]
