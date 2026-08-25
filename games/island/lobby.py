@@ -34,7 +34,7 @@ from switchboard.crypto import generate_key
 from switchboard.invite import Invite
 from switchboard.timing import unwrap_forecast
 
-from .protocol import Join, Malformed, Manage, Open, parse
+from .protocol import GOODS_DEFAULT, Join, Malformed, Manage, Open, parse
 
 #: How long an OPEN table waits to fill and be claimed before it lapses.
 #: Chosen, not derived -- long enough that a human posting JOIN by hand is not
@@ -65,6 +65,10 @@ class Table:
     episodes: int
     rounds: int
     opened_at: float
+    #: Part of the level, so it is fixed when the table opens: an entrant has to
+    #: know the format before it decides to sit down, and two rounds are only
+    #: comparable if they were drawn over the same number of goods.
+    goods: int = GOODS_DEFAULT
     #: peer id -> the name it joined under. Insertion order is seat order:
     #: the first peer to join is T1, the second T2, and so on -- the same
     #: labelling `island/manager.py` defaults to, so a settled table's seats
@@ -193,11 +197,16 @@ class Lobby:
     def _open(self, peer: str, action: Open) -> None:
         table = Table(id=f"g{self._next}", traders=action.traders,
                      episodes=action.episodes, rounds=action.rounds,
-                     opened_at=self.clock())
+                     goods=action.goods, opened_at=self.clock())
         self._next += 1
         self.tables[table.id] = table
         self.settled += 1
+        # The goods are announced with the rest of the format. An entrant reads
+        # this to know what island it is sitting down at -- the rules it hands
+        # its agent count the goods by name, so a table that kept the number to
+        # itself would have every trader briefed on the wrong island.
         self.say(f"{table.id} is forming: {table.traders} traders, "
+                f"{table.goods} goods, "
                 f"{table.episodes} episodes, {table.rounds} round"
                 f"{'s' if table.rounds != 1 else ''} -- JOIN {table.id} as "
                 f"<name>, or MANAGE {table.id}")

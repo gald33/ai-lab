@@ -76,7 +76,6 @@ sys.path.insert(0, str(_ISLAND / "viewer"))
 from island import schedule  # noqa: E402
 from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
-from island.manager import SEALED_CONTEXT  # noqa: E402
 from island.sealed import BoxKey, seal_to  # noqa: E402
 from island.score import trajectory_from  # noqa: E402
 
@@ -162,7 +161,11 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path) -> dict:
     """One settled table, from its first bell to its record."""
     client = Client.from_invite(invite, agent_id=MANAGER)
-    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    # The first `table.goods` of the vocabulary. The table settled its own
+    # count when it opened, and the entrants were briefed on that number -- so
+    # this must follow the table rather than a default of its own.
+    goods = GOODS[:table.goods]
+    dealer = Dealer.draw(table.seed, table.traders, goods)
     mgr = Manager(capacity=dealer.capacity, client=client,
                   channel="island", goods=dealer.goods,
                   # Only when there is somebody to seal to. A manager with no
@@ -301,7 +304,7 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     publishing it is what makes authorship checkable by anybody afterwards.
     """
     rnd = record["rounds"][0]
-    payload = _reveal.reveal(table.seed, table.traders, len(GOODS),
+    payload = _reveal.reveal(table.seed, table.traders, table.goods,
                              names=list(players(table)))
     payload["players"] = players(table)
     # The key that opens this game's room. Safe only because the game is done.

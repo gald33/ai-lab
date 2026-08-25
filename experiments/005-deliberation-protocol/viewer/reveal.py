@@ -29,12 +29,16 @@ from barter.economy import autarky, draw_island, efficiency, utility  # noqa: E4
 
 sys.path.insert(0, str(HERE.parent))
 
-from island.manager import Manager  # noqa: E402
+from island import dealer  # noqa: E402
 
-#: The manager's own naming, and the only mapping from a board word to an
-#: island index. `barter.economy.GOOD_NAMES` is a different vocabulary for the
-#: same positions and would silently mislabel every holding.
-GOODS = Manager.goods
+#: The island's vocabulary, and the only mapping from a board word to an island
+#: index. `barter.economy.GOOD_NAMES` is a different vocabulary for the same
+#: positions and would silently mislabel every holding.
+#:
+#: Read from the dealer rather than from `Manager.goods`, which is only that
+#: class's *default* -- a five-good round revealed against a four-word default
+#: would quietly drop its fifth good and mislabel nothing, which is worse.
+GOODS = dealer.GOODS
 
 
 def reveal(seed: int, agents: int, goods: int, names: list[str] | None = None) -> dict:

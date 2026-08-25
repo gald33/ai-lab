@@ -222,6 +222,88 @@ def motion(page, where: str) -> list[str]:
     return bad
 
 
+def production(page, where: str) -> list[str]:
+    """That the goods cause the shelf, rather than racing it.
+
+    The regression: `paint()` calls `draw()` then `play()`, `draw()` grew the
+    bar on a 0.55s CSS transition, and a sheaf flew for 1.5s. So the shelf had
+    finished filling a second before anything landed on it, and nothing on
+    screen connected the flying glyph to the bar that grew.
+    """
+    seen = page.evaluate("""async () => {
+      const scene = window.__probe, t = window.__timeline;
+      const nap = (ms) => new Promise(r => setTimeout(r, ms));
+      const who = scene.traders[0], good = scene.goods[0];
+      const bar = () => {
+        const el = scene.bars[who][good].bar;
+        const m = /scaleY\(([\d.]+)\)/.exec(el.style.transform || '');
+        return m ? Number(m[1]) : null;
+      };
+      // The computed value, not the attribute: the wheel is animated through
+      // the Web Animations API, which overrides the presentation attribute
+      // without ever rewriting it.
+      const wheel = () => getComputedStyle(scene.labels[who].wheel).strokeDasharray;
+
+      // Empty the shelf, then fill it the way a frame does: draw the new state
+      // first, then play the event that explains it.
+      const bare = { ...t.final, stocks: { ...t.final.stocks, [who]: {} },
+                     labour: { ...t.final.labour, [who]: null } };
+      scene.draw(bare, t); await nap(650);
+      const before = bar();
+
+      const made = { [good]: 1.4 };
+      const after = { ...t.final,
+                      stocks: { ...t.final.stocks, [who]: made },
+                      labour: { ...t.final.labour, [who]: 0 } };
+      scene.draw(after, t);
+      scene.play({ kind: 'produced', trader: who, made, unspent: 0 });
+
+      await nap(120);
+      const early = bar();
+      const working = document.querySelector(`.hut[data-trader="${who}"]`)
+                        .classList.contains('working');
+
+      // A live board repaints while the goods are still in the air. The shelf
+      // has to stay held through that, or the next poll fills it early and the
+      // arriving sheaf lands on a bar that already grew.
+      await nap(300);
+      scene.draw(after, t);
+      await nap(200);
+      const redrawn = bar();
+      const flying = document.querySelectorAll('.flights .sheaf').length;
+
+      // Past where the old CSS transition would have finished (0.5s). If the
+      // wheel is already at its final value here, nothing is animating it and
+      // the labour went in one silent step.
+      const wheelLate = wheel();
+      await nap(3200);
+      const settled = bar();
+      const wheelDone = wheel();
+      return { before, early, redrawn, settled, flying, working,
+               wheelLate, wheelDone };
+    }""")
+    bad = []
+    if seen["settled"] is None or seen["settled"] <= (seen["before"] or 0) + 0.05:
+        bad.append(f"{where}: the shelf never took the goods ({seen})")
+    # The one that matters: partway through the flight the bar is still low.
+    if seen["early"] is None or seen["early"] > (seen["settled"] or 1) * 0.5:
+        bad.append(f"{where}: the shelf filled before the goods landed "
+                   f"(bar was {seen['early']} of {seen['settled']} while still "
+                   f"in flight) — {seen}")
+    if seen["redrawn"] is None or seen["redrawn"] > (seen["settled"] or 1) * 0.5:
+        bad.append(f"{where}: a repaint during the flight filled the shelf early "
+                   f"(bar {seen['redrawn']} of {seen['settled']}) — {seen}")
+    if not seen["flying"]:
+        bad.append(f"{where}: nothing was in flight during production ({seen})")
+    if not seen["working"]:
+        bad.append(f"{where}: the hut did not work before its goods appeared")
+    if seen["wheelLate"] == seen["wheelDone"]:
+        bad.append(f"{where}: the labour went in one step — the wheel had already "
+                   f"finished at {seen['wheelLate']!r} while goods were still "
+                   "in flight")
+    return bad
+
+
 def palms(page, where: str) -> list[str]:
     """The trunk stands still while the crown moves.
 
@@ -322,12 +404,16 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
 
 
 def ring(browser, base: str, out: Path) -> list[str]:
-    """Four traders, which no saved replay has -- and where the events are driven.
+    """Four traders over five goods, neither of which any saved replay has --
+    and where the events are driven.
 
     Doubles as the motion check: a scene here is reachable from the page, so
     `motion()` can play a receipt at it and watch what appears.
     """
-    goods = ["bread", "cloth", "iron", "salt"]
+    # Five, because the island has five now and no saved replay does. The
+    # fifth slot is also where the palette used to draw a good in exactly the
+    # colour of the utility bar beneath it.
+    goods = ["bread", "cloth", "iron", "salt", "fish"]
     page = browser.new_page(viewport={"width": 1500, "height": 1000})
     errs: list[str] = []
     page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
@@ -346,6 +432,7 @@ def ring(browser, base: str, out: Path) -> list[str]:
     page.wait_for_timeout(700)
     bad = check(page, 4, len(goods), "ring/4")
     page.screenshot(path=str(out / "ring-4.png"))
+    bad += production(page, "ring/4")
     bad += palms(page, "ring/4")
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]

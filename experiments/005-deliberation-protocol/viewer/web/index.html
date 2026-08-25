@@ -179,8 +179,6 @@ svg.island { display: block; width: 100%; height: 100%; }
 .bar-zero { stroke: var(--critical); stroke-width: 2; stroke-linecap: round;
   opacity: 0; transition: opacity .3s ease; }
 .cell.empty .bar-zero { opacity: .85; }
-.cell.grew .bar-held { animation: grew .9s cubic-bezier(.2,.9,.3,1); }
-@keyframes grew { 0% { filter: brightness(2.2); } 100% { filter: none; } }
 .glyph { font-size: 14px; text-anchor: middle; }
 .qty { fill: var(--ink-2); font-size: 11px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
@@ -207,9 +205,25 @@ svg.island { display: block; width: 100%; height: 100%; }
 .parcel-qty { fill: var(--ink); font-size: 11px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
 
+/* What a trader made, on its way to the shelf. It is sized by how much of it
+   there is, so a big haul is a big thing crossing the card. */
 .sheaf-glyph { font-size: 17px; text-anchor: middle; }
 .sheaf-qty { fill: var(--ink); font-size: 10px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
+.sheaf-puff { fill: var(--glass); opacity: .1; }
+
+/* The hut works before anything comes out of it. */
+.hut.working .wall { filter: brightness(1.15); }
+.hut.working .window { filter: brightness(1.4); }
+.hut.working { animation: toil .42s ease-in-out infinite; transform-box: fill-box; }
+@keyframes toil { 0%, 100% { translate: 0 0; } 50% { translate: 0 -1.5px; } }
+
+/* And the shelf takes it: the bar jumps to meet what landed, rather than
+   having finished growing a second before it arrived. */
+.cell.grew .bar-held { animation: landed .7s cubic-bezier(.2,1.4,.4,1); }
+.cell.grew .glyph { animation: bump .7s cubic-bezier(.2,1.5,.4,1); }
+@keyframes landed { 0% { filter: brightness(2.4); } 100% { filter: none; } }
+@keyframes bump { 0%, 100% { scale: 1; } 35% { scale: 1.35; } }
 
 /* A shape, not a sentence. The manager's refusal reason used to be printed
    across the sand at 12px, where it is unreadable and where it is already
@@ -257,7 +271,7 @@ svg.island { display: block; width: 100%; height: 100%; }
    what `still()` in scene.js already honours for the event animations. */
 @media (prefers-reduced-motion: reduce) {
   .wave, .surf, .shallows, .palm .crown, .firelight, .fire .flame,
-  .fire .embers, .fire .ember, .rope-line, .cell.grew .bar-held, .pop-dot,
+  .fire .embers, .fire .ember, .rope-line, .cell.grew .bar-held, .cell.grew .glyph, .hut.working, .pop-dot,
   .island.closed .firelight {
     animation: none !important;
   }
@@ -459,7 +473,9 @@ function legend(goods, scored) {
   }), Object.assign(document.createElement("span"), {
     className: "sub", textContent: "pale = promised to an open offer",
   }), ...(scored ? [Object.assign(document.createElement("span"), {
-    className: "sub", textContent: "pink = what the shelf is worth to its owner",
+    // Named by what it is, not by its colour, so the legend cannot go stale the
+    // next time the palette moves -- which it just did.
+    className: "sub", textContent: "the bar under a shelf is what it is worth to its owner",
   })] : []));
 }
 

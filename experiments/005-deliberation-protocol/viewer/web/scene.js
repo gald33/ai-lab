@@ -41,7 +41,7 @@ const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
  */
 export const DWELL = {
   settled: 2100,   // parcels cross, stagger, and land
-  produced: 1800,  // a sheaf per good, lifted onto the shelf
+  produced: 2600,  // the hut works, then a sheaf per good lands on the shelf
   refused: 1500,   // one badge, rising
   said: 1300,      // one bubble, rising
   bell: 3600,      // the sun goes down. Not a thing to hurry
@@ -631,6 +631,12 @@ export class Scene {
     return top;
   }
 
+  /** One slot's two bars, at a stock and a free-to-offer part. */
+  setBar(b, qty, free, top = this.top) {
+    b.bar.style.transform = `scaleY(${Math.min(1, qty / top)})`;
+    b.held.style.transform = `scaleY(${Math.min(1, free / top)})`;
+  }
+
   draw(state, timeline) {
     // Cached: the ceiling is a property of the round, and on a live board it
     // only ever rises, so recomputing it per paint would be the frame-local
@@ -646,8 +652,14 @@ export class Scene {
         const qty = state.stocks[name]?.[good] || 0;
         const b = this.bars[name][good];
         const free = Math.max(0, qty - promised(good));
-        b.bar.style.transform = `scaleY(${Math.min(1, qty / top)})`;
-        b.held.style.transform = `scaleY(${Math.min(1, free / top)})`;
+        // What this slot looked like *before* this frame, kept so `produce()`
+        // can put it back. `paint()` calls `draw()` and then `play()`, so by
+        // the time production is animated the shelf has already been filled
+        // by it -- which is why the goods used to arrive at a bar that had
+        // finished growing half a second earlier.
+        b.was = b.now ?? { qty: 0, free: 0 };
+        b.now = { qty, free };
+        if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
         // the page must not imply more precision than they do.
         b.qty.textContent = qty > 1e-9 ? qty.toFixed(2) : "";
@@ -811,25 +823,78 @@ export class Scene {
     const seat = this.seats[e.trader];
     if (!seat) return;
     const made = Object.entries(e.made || {}).filter(([, q]) => q > 1e-9);
+    if (!made.length) return;
+
+    // The hut works before anything comes out of it. Production is the one
+    // thing a trader does entirely alone, and it used to have no beginning --
+    // goods simply appeared in the air above the shelf.
+    const hut = this.root.querySelector(`.hut[data-trader="${e.trader}"]`);
+    hut?.classList.add("working");
+    const wheel = this.labels[e.trader];
+    const span = still() ? 1 : DWELL.produced - 300;
+    const each = still() ? 0 : Math.min(520, (span - 900) / Math.max(1, made.length));
+
+    // The labour goes as the goods come. One unit divided across the shelf is
+    // the entire decision a trader makes here, and the wheel filling silently
+    // in the corner said none of it.
+    if (!still() && wheel?.wheel) {
+      const arc = 2 * Math.PI * 12;
+      const to = wheel.wheel.getAttribute("stroke-dasharray");
+      wheel.wheel.animate(
+        [{ strokeDasharray: `0 ${arc}` }, { strokeDasharray: to }],
+        { duration: span, easing: "cubic-bezier(.4,0,.3,1)" });
+    }
+
     made.forEach(([good, qty], i) => {
       const slot = this.bars[e.trader]?.[good];
       if (!slot) return;
-      slot.cell.classList.add("grew");
-      setTimeout(() => slot.cell.classList.remove("grew"), 900);
+      // Hold this slot at what it held before, and let the goods fill it. The
+      // arriving sheaf is what makes the bar grow -- before, the two were
+      // unrelated and the bar won the race by a second.
+      slot.holding = true;
+      this.setBar(slot, slot.was.qty, slot.was.free);
+      const delay = still() ? 0 : i * each;
+      const flight = still() ? 1 : Math.max(700, span - i * each - 120);
+
       const sheaf = el("g", { class: "sheaf" });
+      sheaf.append(el("circle", { class: "sheaf-puff", r: 15 }));
       sheaf.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
-      sheaf.append(el("text", { y: 15, class: "sheaf-qty" }, qty.toFixed(2)));
+      sheaf.append(el("text", { y: 16, class: "sheaf-qty" }, qty.toFixed(2)));
       this.flights.append(sheaf);
-      const x = seat.x + slot.x, to = seat.y + CARD_TOP + BASE - 12;
+
+      // Sized by how much of it there is, on the shelf's own scale -- so a big
+      // haul is a big thing crossing the card. Not by labour share: that is
+      // `qty / capacity`, and a capacity is private, so live the page has no
+      // way to know it and must not pretend otherwise.
+      const size = 0.62 + 0.55 * Math.min(1, qty / (this.top || 1));
+      const x = seat.x + slot.x, to = seat.y + CARD_TOP + BASE - 10;
       const anim = sheaf.animate([
-        { transform: `translate(${seat.x}px, ${seat.y - 16}px) scale(.5)`, opacity: 0 },
-        { transform: `translate(${(seat.x + x) / 2}px, ${seat.y + 4}px) scale(1)`,
-          opacity: 1, offset: .45 },
-        { transform: `translate(${x}px, ${to}px) scale(.8)`, opacity: 0 },
-      ], { duration: still() ? 1 : 1500, delay: still() ? 0 : i * 210,
-           easing: "cubic-bezier(.32,.9,.4,1)", fill: "backwards" });
-      anim.finished.then(() => sheaf.remove(), () => sheaf.remove());
+        { transform: `translate(${seat.x}px, ${seat.y - 12}px) scale(.35)`, opacity: 0 },
+        { transform: `translate(${seat.x}px, ${seat.y - 30}px) scale(${size})`,
+          opacity: 1, offset: .22 },
+        { transform: `translate(${(seat.x + x) / 2}px, ${seat.y - 6}px) scale(${size})`,
+          opacity: 1, offset: .55 },
+        { transform: `translate(${x}px, ${to}px) scale(${size * .8})`, opacity: 1 },
+      ], { duration: flight, delay, easing: "cubic-bezier(.3,.7,.35,1)",
+           fill: "backwards" });
+
+      anim.finished.then(() => {
+        // It landed. *Now* the shelf has it.
+        sheaf.remove();
+        slot.holding = false;
+        this.setBar(slot, slot.now.qty, slot.now.free);
+        slot.cell.classList.add("grew");
+        setTimeout(() => slot.cell.classList.remove("grew"), 700);
+      }, () => {
+        // Scrubbed away mid-flight: put the shelf where the state says it is
+        // rather than leaving it held at a value nothing is coming to fill.
+        sheaf.remove();
+        slot.holding = false;
+        this.setBar(slot, slot.now.qty, slot.now.free);
+      });
     });
+
+    setTimeout(() => hut?.classList.remove("working"), still() ? 1 : span);
   }
 
   /** Goods crossing the square. The only moment a trade is visible as motion. */

@@ -67,13 +67,9 @@ sys.path.insert(0, str(_ISLAND))
 
 from island import ca, toolchain  # noqa: E402
 
-#: The rules of the island, which are the same rules a game plays by -- so the
-#: game reads 005's frozen base stimulus rather than paraphrasing it into a
-#: second copy that could disagree. A code dependency is not grounding, the
-#: same way `run_v3.py` imports `barter.economy` from 002 without reading 002's
-#: documents. Nothing here writes to it and `tools/check_stimuli.py` still
-#: guards it.
-BASE = _ISLAND / "stimuli" / "v3" / "base.md"
+from .brief import FROZEN_GOODS, brief, goods_for  # noqa: E402
+from .protocol import GOODS_DEFAULT  # noqa: E402
+
 
 #: The only tools an entrant's agent has. Everything else it might want to do,
 #: it does by writing on the board -- which is the whole design.
@@ -82,26 +78,25 @@ TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
          "mcp__switchboard__dm", "mcp__switchboard__roster",
          "mcp__switchboard__whoami", "Bash(sleep:*)"]
 
-_FORMING = re.compile(r"^(\S+) is forming: (\d+) traders, (\d+) episodes")
+#: The goods are optional so an entrant still finds a table announced by a
+#: lobby that predates them -- and falls back to the four the frozen rules were
+#: written about, which is what such a lobby is dealing.
+_FORMING = re.compile(
+    r"^(\S+) is forming: (\d+) traders, (?:(\d+) goods, )?(\d+) episodes")
 _INVITE = re.compile(r"^(\S+) invite: (swb1_\S+)")
 
 
-def _body(text: str) -> str:
-    """A stimulus without its repo-facing title and note.
+def instructions(name: str, episodes: int,
+                 goods: int | tuple[str, ...] = len(FROZEN_GOODS)) -> str:
+    """What the agent is told. The island's rules, and where it is.
 
-    The same trimming `run_v3.py` does, and for the same reason: the heading
-    and the italic note under it are addressed to whoever maintains the file,
-    not to the trader, and `check_stimuli.py` hashes the body without them.
+    The rules come from 005's frozen stimulus with its goods arithmetic put
+    right for this game -- see `brief.py`. At the four goods that document was
+    written about the two are byte-identical, so a four-good game reads exactly
+    what game 001 read.
     """
-    lines = text.splitlines()
-    keep = [ln for ln in lines
-            if not ln.startswith("# ") and not ln.startswith("*")]
-    return "\n".join(keep).strip()
-
-
-def instructions(name: str, episodes: int) -> str:
-    """What the agent is told. The island's rules, and where it is."""
-    return f"""{_body(BASE.read_text())}
+    words = goods_for(goods) if isinstance(goods, int) else tuple(goods)
+    return f"""{brief(words)}
 
 ## This round
 
@@ -176,7 +171,8 @@ def _mcp_env(invite: Invite, *, agent_id: str, home: Path) -> dict[str, str]:
 
 
 def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
-           model: str, workdir: Path, max_turns: int) -> subprocess.Popen:
+           goods: int, model: str, workdir: Path,
+           max_turns: int) -> subprocess.Popen:
     """One agent, one long-lived session, in the table's room.
 
     The MCP server is pointed at the *table's* workspace and key from the
@@ -200,7 +196,7 @@ def launch(invite: Invite, *, name: str, agent_id: str, episodes: int,
     env.update({k: v for k, v in env_for_mcp.items() if k.startswith("SWITCHBOARD")})
     env.update({"SSL_CERT_FILE": bundle, "REQUESTS_CA_BUNDLE": bundle})
     return subprocess.Popen(
-        ["claude", "-p", instructions(name, episodes),
+        ["claude", "-p", instructions(name, episodes, goods),
          "--model", model, "--max-turns", str(max_turns),
          "--mcp-config", str(home / ".mcp.json"),
          "--allowedTools", *TOOLS],
@@ -265,9 +261,10 @@ def preflight(invite: Invite, *, agent_id: str, workdir: Path) -> None:
 
 
 def claim(client: Client, channel: str, *, name: str, table: str | None,
-          opening: tuple[int, int, int] | None, every: float,
-          deadline: float) -> tuple[str, int]:
-    """Take a seat, and return which table it is on and how long it runs.
+          opening: tuple[int, int, int] | None, goods: int, every: float,
+          deadline: float) -> tuple[str, int, int]:
+    """Take a seat, and return which table it is on, how long it runs, and
+    how many goods it is drawn over.
 
     With `--table` it claims that one. With `--open` it forms one and claims
     a seat on it. With neither it waits for a table somebody else opened --
@@ -276,7 +273,7 @@ def claim(client: Client, channel: str, *, name: str, table: str | None,
     if opening:
         traders, episodes, rounds = opening
         client.post(channel, f"OPEN traders={traders} episodes={episodes} "
-                             f"rounds={rounds}")
+                             f"rounds={rounds} goods={goods}")
 
     episodes = 0
     while time.time() < deadline:
@@ -287,7 +284,8 @@ def claim(client: Client, channel: str, *, name: str, table: str | None,
                 continue
             found = _FORMING.match(body)
             if found and (table is None or found.group(1) == table):
-                table, episodes = found.group(1), int(found.group(3))
+                table, episodes = found.group(1), int(found.group(4))
+                goods = int(found.group(3)) if found.group(3) else len(FROZEN_GOODS)
         if table and episodes:
             break
         time.sleep(every)
@@ -295,7 +293,7 @@ def claim(client: Client, channel: str, *, name: str, table: str | None,
         raise SystemExit("no table formed before the deadline")
 
     client.post(channel, f"JOIN {table} as {name}")
-    return table, episodes
+    return table, episodes, goods
 
 
 def wait_for_invite(client: Client, channel: str, table: str, *,
@@ -333,6 +331,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--open", dest="opening", nargs=3, type=int, default=None,
                     metavar=("TRADERS", "EPISODES", "ROUNDS"),
                     help="form a table, then claim a seat on it")
+    ap.add_argument("--goods", type=int, default=GOODS_DEFAULT,
+                    help="how many goods, when this entrant opens the table. "
+                         "Ignored when joining somebody else's -- the table "
+                         "announces its own, and the level is theirs to set")
     ap.add_argument("--model", default="claude-haiku-4-5-20251001")
     ap.add_argument("--every", type=float, default=3.0)
     ap.add_argument("--wait", type=float, default=900.0,
@@ -360,12 +362,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{args.name}: signing as {client.public_key}", flush=True)
 
         deadline = time.time() + args.wait
-        table, episodes = claim(client, args.channel, name=args.name,
-                                table=args.table,
-                                opening=tuple(args.opening) if args.opening else None,
-                                every=args.every, deadline=deadline)
-        print(f"{args.name}: claimed a seat on {table} ({episodes} episodes)",
-              flush=True)
+        table, episodes, goods = claim(client, args.channel, name=args.name,
+                                       table=args.table,
+                                       opening=tuple(args.opening) if args.opening else None,
+                                       goods=args.goods,
+                                       every=args.every, deadline=deadline)
+        print(f"{args.name}: claimed a seat on {table} "
+              f"({episodes} episodes, {goods} goods)", flush=True)
 
         invite = wait_for_invite(client, args.channel, table,
                                  every=args.every, deadline=deadline)
@@ -377,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
         # from a trader that started and chose to stop.
         preflight(invite, agent_id=agent_id, workdir=args.workdir)
 
-        agent = launch(invite, name=args.name, agent_id=agent_id,
+        agent = launch(invite, name=args.name, agent_id=agent_id, goods=goods,
                        episodes=episodes, model=args.model,
                        workdir=args.workdir,
                        max_turns=max(400, 40 * episodes))

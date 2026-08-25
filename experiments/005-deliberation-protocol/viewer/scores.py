@@ -77,7 +77,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent.parent / "002-barter-conventions" / "experiment"))
 sys.path.insert(0, str(HERE.parent))
 
-from barter.economy import autarky, draw_island, efficiency  # noqa: E402
+from barter.economy import autarky, draw_island  # noqa: E402
 
 from island.score import score as score_round  # noqa: E402
 
