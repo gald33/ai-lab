@@ -135,10 +135,60 @@ gap, and a container that survives twenty quiet minutes tells you nothing
 about one left alone overnight. What rung 3 buys is the first gap at which
 reclamation is plausible rather than hypothetical.
 
+**Arm B reported at 20:39:15Z** — due 20:39:00Z, 15s late. Across three
+deliveries the server's lateness is 59s, 134s, 15s: a minute of resolution and
+no pattern worth reading in n = 3.
+
+## The confound, found while rung 3 was being armed
+
+**Arm A may be keeping alive the very thing it claims to have survived.** It
+is a `sleep` running as a *tracked background task*: this harness knows the
+task is in flight, because that is how it notifies the agent when it exits. A
+session with a tracked task running is plausibly not idle at all — in which
+case the timer holds the container open and then reports finding it open. Two
+rungs at 0s late, with that punctuality, is exactly what that failure looks
+like from the outside.
+
+**Nothing in rungs 1 or 2 separates the two readings**, and both are recorded
+above as if only one were live. That is the same mistake as 001 — reading an
+arm in a condition where its firing cannot mean what it was armed to mean —
+made once more, one level up.
+
+### And a structural point the ladder cannot climb past
+
+An alarm held *inside* the container needs a process to hold it. With no
+process running there is nothing that could fire. So "an agent-held alarm" and
+"a process the agent is paying to keep running" are the same object, which is
+where the documented requirement the item already quotes — tasks fire only
+while Claude Code is "running and idle" — stops being a harness detail and
+starts being the answer.
+
+The interesting claim was never *can a sleeping process wake up*. It is
+**whether availability survives the agent going quiet**, and a promise that
+must stay awake to be kept is not surviving quiet; it is declining to be
+quiet. If that holds, the arc lands nearer its outcome 2 than its outcome 1,
+and it gets there by argument plus one measurement rather than by a ladder.
+
+### What rung 3 should be instead
+
+**Hold no process at all.** Fingerprint the container — boot id, uptime, a
+marker file — start nothing, and let only the server trigger come back an hour
+later to look:
+
+- **same container** → an in-container timer *could* have survived, and the
+  open question is what a quiet wake costs, not whether it is possible;
+- **fresh container** → nothing inside the old one survived, and no amount of
+  process-holding fixes that. The standby design's claim is false on this
+  substrate.
+
+Either way it is one measurement that the ladder's remaining rung was not
+going to produce. Rung 3 is **not armed on the old shape**; this is written
+before anything replaces it.
+
 ### Rungs
 
 | rung | gap | status |
 |---|---|---|
 | 1 | 5 min | **A arrived on time and uncontaminated; B 134s late** |
-| 2 | 20 min | **A arrived on time and uncontaminated; B pending 20:39Z** |
-| 3 | 60 min | armed once rung 2's reader reports |
+| 2 | 20 min | **A arrived on time and uncontaminated; B 15s late** |
+| 3 | 60 min | **not armed** — the shape is wrong, see the confound above |
