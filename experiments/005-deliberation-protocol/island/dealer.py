@@ -42,9 +42,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]
 
 from barter.economy import Island, draw_island  # noqa: E402
 
-#: The goods every island in this experiment is drawn over, in the order the
-#: manager and the reveal sidecar both read them in.
-GOODS = ("bread", "cloth", "iron", "salt")
+#: The island's **vocabulary** of goods, in the order the manager and the reveal
+#: sidecar both read them in. A game is drawn over the first N of it, which is
+#: the idiom `viewer/reveal.py` already used (`GOODS[:goods]`) -- so extending
+#: the list leaves every four-good round on disk reading exactly as before.
+#:
+#: 005 itself ran on the first four and its result is recorded against them;
+#: the fifth exists for games played since. `barter.economy.draw_island` was
+#: always goods-agnostic and in fact defaults to five, so four was a narrowing
+#: rather than the shape of the generator.
+GOODS = ("bread", "cloth", "iron", "salt", "fish")
+
+#: What 005 was run and frozen on. Anything comparing itself to those rounds
+#: has to be drawn over these.
+FROZEN_GOODS = GOODS[:4]
 
 
 @dataclass
@@ -52,7 +63,7 @@ class Dealer:
     """One island, and the private half of it that belongs to each trader."""
 
     island: Island
-    goods: tuple[str, ...] = GOODS
+    goods: tuple[str, ...] = FROZEN_GOODS
     names: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -60,7 +71,7 @@ class Dealer:
             self.names = tuple(f"T{i + 1}" for i in range(self.island.n_agents))
 
     @classmethod
-    def draw(cls, seed: int, agents: int, goods: tuple[str, ...] = GOODS,
+    def draw(cls, seed: int, agents: int, goods: tuple[str, ...] = FROZEN_GOODS,
              names: tuple[str, ...] = ()) -> Dealer:
         """The island this seed produces. Deterministic, and the reason the
         seed must not reach a board while a round is live: anybody holding it

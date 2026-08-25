@@ -501,6 +501,14 @@ at the managed hub by default.
   own boards (`viewer/serve.py:ROOTS`) and the Pages workflow publishes. A
   run's raw output stays in the gitignored `games/results/`. That scales to a
   few chosen games and to nothing beyond them.
+- **Fish, and what a level is.** The island is drawn over the first N of an
+  ordered vocabulary -- `bread, cloth, iron, salt, fish` -- and a table settles
+  its own N when it opens (`OPEN ... goods=5`). 005 ran on the first four and
+  its result is recorded against them; games since default to five. Nothing had
+  to change on the scoreboard: `viewer/scores.py:level()` was already
+  `(agents, goods, episodes)`, so a five-good round is a different challenge on
+  its own board rather than a row polluting the four-good one.
+
 - **Farming.** Both seats under one owner can arrange a game: a partner who
   gives everything away goes to zero and inflates the other. The ledger records
   every player in every round so a rule about who may sit at a ranked table can

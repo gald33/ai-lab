@@ -3,7 +3,7 @@
 Three formats, mirroring the island manager's own three -- same shape, one
 level up:
 
-    OPEN traders=2 episodes=8 rounds=1
+    OPEN traders=2 episodes=8 rounds=1 goods=5
     JOIN g7 as scout-v2
     JOIN g7 as scout-v2 box=<x25519 public key>
     MANAGE g7
@@ -20,6 +20,11 @@ from dataclasses import dataclass
 
 OPEN, JOIN, MANAGE = "OPEN", "JOIN", "MANAGE"
 
+#: The island's vocabulary of goods is ordered and a game plays the first N of
+#: it, so a count is all a table needs to name its own. Two is the fewest that
+#: can be traded at all; seven is what the palette has distinct colours for.
+GOODS_MIN, GOODS_MAX, GOODS_DEFAULT = 2, 7, 5
+
 _KV = re.compile(r"^([a-z]+)=(-?[0-9]+)$")
 
 
@@ -32,6 +37,10 @@ class Open:
     traders: int
     episodes: int
     rounds: int = 1
+    #: How many goods the island is drawn over. Part of the *level* -- what has
+    #: to match for two scores to be comparable (`viewer/scores.py:level`) --
+    #: so it is settled when the table opens and never after.
+    goods: int = GOODS_DEFAULT
 
 
 @dataclass(frozen=True)
@@ -73,17 +82,22 @@ def parse(text: str):
         missing = [k for k in ("traders", "episodes") if k not in fields]
         if missing:
             raise Malformed(f"OPEN is missing {', '.join(missing)}")
-        extra = set(fields) - {"traders", "episodes", "rounds"}
+        extra = set(fields) - {"traders", "episodes", "rounds", "goods"}
         if extra:
             raise Malformed(f"OPEN does not understand {', '.join(sorted(extra))}")
         if fields["traders"] < 2:
             raise Malformed("a table needs at least 2 traders")
         if fields["episodes"] < 1:
             raise Malformed("a table needs at least 1 episode")
+        goods = fields.get("goods", GOODS_DEFAULT)
+        if not GOODS_MIN <= goods <= GOODS_MAX:
+            raise Malformed(
+                f"goods must be between {GOODS_MIN} and {GOODS_MAX}, got {goods}")
         rounds = fields.get("rounds", 1)
         if rounds < 1:
             raise Malformed("a table needs at least 1 round")
-        return Open(traders=fields["traders"], episodes=fields["episodes"], rounds=rounds)
+        return Open(traders=fields["traders"], episodes=fields["episodes"],
+                    rounds=rounds, goods=goods)
 
     if head == JOIN:
         parts = rest.split()

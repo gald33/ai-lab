@@ -68,11 +68,15 @@ def test_the_rebuild_reads_traders_positionally_not_by_dict_order():
     JSON object happened to serialise would score the wrong trader, quietly
     and only when the orders differ -- so the order comes from `names`."""
     dealer = Dealer.draw(seed=1, agents=2, names=("T1", "T2"))
-    log = [{"holdings": {"T2": {g: 2.0 for g in GOODS},
-                         "T1": {g: 1.0 for g in GOODS}}}]
+    # The dealer's own goods, not the vocabulary: `GOODS` is the ordered list an
+    # island is drawn from a prefix of, so a five-word list against a four-good
+    # island is a different island.
+    goods = dealer.goods
+    log = [{"holdings": {"T2": {g: 2.0 for g in goods},
+                         "T1": {g: 1.0 for g in goods}}}]
 
-    straight = trajectory_from(dealer.island, log, ["T1", "T2"], list(GOODS))
-    swapped = trajectory_from(dealer.island, log, ["T2", "T1"], list(GOODS))
+    straight = trajectory_from(dealer.island, log, ["T1", "T2"], list(goods))
+    swapped = trajectory_from(dealer.island, log, ["T2", "T1"], list(goods))
 
     # T1 held 1.0 of everything and T2 held 2.0, whatever order the dict is
     # in: the first slot must follow `names`, not the dict.
@@ -84,10 +88,11 @@ def test_a_trader_holding_none_of_one_good_scores_zero():
     """Cobb-Douglas, and the reason a 'zero episode' is worth recording: it is
     not a rounding artefact, and the rebuild must reproduce it exactly."""
     dealer = Dealer.draw(seed=1, agents=2, names=("T1", "T2"))
-    log = [{"holdings": {"T1": {g: (0.0 if g == "salt" else 5.0) for g in GOODS},
-                         "T2": {g: 5.0 for g in GOODS}}}]
+    goods = dealer.goods
+    log = [{"holdings": {"T1": {g: (0.0 if g == "salt" else 5.0) for g in goods},
+                         "T2": {g: 5.0 for g in goods}}}]
 
-    rebuilt = trajectory_from(dealer.island, log, ["T1", "T2"], list(GOODS))
+    rebuilt = trajectory_from(dealer.island, log, ["T1", "T2"], list(goods))
 
     assert rebuilt[0][0] == 0.0
     assert rebuilt[0][1] > 0.0

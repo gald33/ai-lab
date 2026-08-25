@@ -412,3 +412,31 @@ def test_a_game_spanning_levels_is_not_on_a_level_board(tmp_path):
     assert played["mixed"]["eff_round"] is not None   # it still has a score
     data = scores.boards(rows)
     assert "mixed" not in {i["game_id"] for i in data["islands"]}
+
+
+# --- a level is a format, and the goods are part of it ----------------------
+#
+# Added when the island gained a fifth good. `level()` already read the goods
+# count, so a five-good round is a different challenge and lands on its own
+# leaderboard -- but "already correct" is worth an assertion, because the
+# alternative is 72 four-good rounds silently sharing a board with a game
+# played against a different frontier.
+
+def test_a_five_good_round_is_its_own_level():
+    four = {"island": {"agents": 2, "goods": 4, "episodes": 3}}
+    five = {"island": {"agents": 2, "goods": 5, "episodes": 3}}
+    assert scores.level(four) != scores.level(five)
+    assert scores.level(five) == (2, 5, 3)
+    assert "5 goods" in scores.level_label(scores.level(five))
+
+
+def test_adding_a_five_good_level_leaves_the_recorded_ones_alone():
+    """The 72 rounds on disk keep the levels they were played at."""
+    rows = scores.load(scores.LEDGER)
+    if not rows:
+        pytest.skip("no ledger to read")
+    before = {scores.level(r) for r in rows}
+    assert all(key[1] == 4 for key in before), (
+        "every recorded round was played over four goods; if that stops being "
+        "true this test is the wrong shape, not the ledger")
+    assert (2, 5, 3) not in before

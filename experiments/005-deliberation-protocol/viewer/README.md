@@ -373,6 +373,8 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `scores/boards.json` | the leaderboards, derived; rebuilt whenever it falls behind the record |
 | `scores/index.json` | round ids, so ingest need not re-read every round |
 | `tests/board.mjs` | reading a saved board, packed or not |
+| `palette.py` | the contrast and colour-blindness gates `tokens.css` describes |
+| `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |
@@ -389,6 +391,16 @@ bottom, the legend in the corner. The two panels that used to sit beside it are
 `☰` for the board's full transcript. `Esc` shuts both; `Space` plays. Chrome
 steps aside when a drawer opens rather than being buried by it — a drawer that
 covers the control which shuts it is a trap.
+
+**The palette is checked, not claimed.** `tokens.css` used to carry its
+contrast and CVD numbers in a comment that nothing recomputed, and two of them
+were wrong: `--util` was *byte-identical* to `--good-5`, and `--eff` sat at CVD
+ΔE **1.6** from `--good-1` — so the headline metric and the bread bar were
+already one colour to a red-green dichromat, at four goods, while the comment
+said 16.0. `palette.py` implements the gates (WCAG contrast, CIEDE2000, Viénot
+dichromacy) and `tests/test_palette.py` runs them, including a test that the
+numbers written in the stylesheet are the numbers it actually has. The metrics
+are cyan and gold now, which is what the series leaves free.
 
 **One mark per good.** The legend's glyph rides *on* its colour rather than
 beside it, because that is the chip that appears on a shelf and on a parcel in

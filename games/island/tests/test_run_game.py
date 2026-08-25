@@ -151,7 +151,6 @@ def _play_scripted(table, invite, room, out: Path):
     """
     from island.dealer import GOODS, Dealer
     from island.manager import MANAGER, Manager
-    from island.score import trajectory_from
 
     client = Client.from_invite(invite, agent_id=MANAGER)
     dealer = Dealer.draw(table.seed, table.traders, GOODS)

@@ -107,11 +107,13 @@ def test_an_entrant_opens_a_table_claims_a_seat_and_is_witnessed(running_lobby, 
     lobby, key = running_lobby
     entrant = _entrant(hub, key)
 
-    table, episodes = run_entrant.claim(
+    table, episodes, goods = run_entrant.claim(
         entrant, "lobby", name="scout-v2", table=None, opening=(2, 3, 1),
-        every=0.05, deadline=time.time() + 10)
+        goods=5, every=0.05, deadline=time.time() + 10)
 
-    assert (table, episodes) == ("g1", 3)
+    # The goods come back with the rest of the format: the entrant has to brief
+    # its agent on the island it is about to sit down at.
+    assert (table, episodes, goods) == ("g1", 3, 5)
     deadline = time.time() + 5
     while time.time() < deadline and not lobby.tables.get("g1", None):
         time.sleep(0.05)
@@ -127,15 +129,18 @@ def test_a_second_entrant_waits_for_a_table_it_did_not_open(running_lobby, hub, 
     lobby, key = running_lobby
     opener = _entrant(hub, key)
     run_entrant.claim(opener, "lobby", name="scout-v2", table=None,
-                      opening=(2, 3, 1), every=0.05, deadline=time.time() + 10)
+                      opening=(2, 3, 1), goods=5, every=0.05,
+                      deadline=time.time() + 10)
 
     second = _client(hub, "trader-b", key)
     second.register(name="trader-b", kind="local", branch="main", task="")
-    table, episodes = run_entrant.claim(
+    table, episodes, goods = run_entrant.claim(
         second, "lobby", name="trader-b", table=None, opening=None,
-        every=0.05, deadline=time.time() + 10)
+        goods=4, every=0.05, deadline=time.time() + 10)
 
-    assert (table, episodes) == ("g1", 3)
+    # It joined a table it did not open, so the *table's* goods are the ones it
+    # gets briefed on -- not the count it happened to be started with.
+    assert (table, episodes, goods) == ("g1", 3, 5)
     deadline = time.time() + 5
     while time.time() < deadline and len(lobby.tables["g1"].seats) < 2:
         time.sleep(0.05)
@@ -146,7 +151,8 @@ def test_the_invite_arrives_once_the_table_settles(running_lobby, hub, signer):
     lobby, key = running_lobby
     first = _entrant(hub, key)
     run_entrant.claim(first, "lobby", name="scout-v2", table=None,
-                      opening=(2, 3, 1), every=0.05, deadline=time.time() + 10)
+                      opening=(2, 3, 1), goods=5, every=0.05,
+                      deadline=time.time() + 10)
     second = _client(hub, "trader-b", key)
     second.register(name="trader-b", kind="local", branch="main", task="")
     second.post("lobby", "JOIN g1 as trader-b")
@@ -232,7 +238,7 @@ def test_the_session_is_pointed_at_an_absolute_mcp_config(tmp_path, monkeypatch)
 
     invite = Invite(url="http://127.0.0.1:1", workspace="w_table",
                     token="t", key=generate_key())
-    run_entrant.launch(invite, name="scout-v2", agent_id="t1", episodes=1,
+    run_entrant.launch(invite, name="scout-v2", agent_id="t1", episodes=1, goods=4,
                        model="m", workdir=Path("games/entrants"), max_turns=5)
 
     config = Path(seen["argv"][seen["argv"].index("--mcp-config") + 1])
