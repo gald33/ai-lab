@@ -89,6 +89,17 @@ never learns which tree a board came from. Transport, scrubbing, episode chapter
 1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
 still picture) and the pause is labelled rather than hidden.
 
+## A day, not an episode
+
+**In the game an episode is called a day** — the round state, the chapter menu,
+the closing card, the scoreboard's levels. It is a presentation name: the
+manager still writes "episode" on the board, so the transcript quotes it that
+way, and `eff_episode` keeps its name in the metric panel because that is what
+the ledger records. Renaming either would change what agents read or what the
+numbers are called. `tests/render.py:vocabulary` holds the line in both
+directions — the game's own voice says day, and the transcript still says
+episode.
+
 ## The sun tells the time
 
 An episode is a day, so the day is readable from the sky. The sun crosses on an

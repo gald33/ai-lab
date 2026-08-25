@@ -407,6 +407,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += mobile(browser, base, boards[0], out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
+            problems += vocabulary(browser, base, boards[0])
             problems += ring(browser, base, out)
             browser.close()
     finally:
@@ -585,6 +586,7 @@ def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
     page.goto(board_url(base, stem))
     page.wait_for_selector(".hut", timeout=10_000)
     page.wait_for_timeout(1200)
+    page.evaluate("u => { window.__boardUrl = u; }", f"replays/{board.name}")
     seen = page.evaluate("""async () => {
       const s = document.getElementById('scrub');
       const at = (i) => new Promise(r => {
@@ -600,8 +602,36 @@ def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
       return { total, spots: out,
                clock: (document.getElementById('clock') || {}).textContent || '' };
     }""")
+    # The live shape of the same call: there is no next line yet, so the sun is
+    # aimed at the bell over whatever is left of the day. Driven here because a
+    # live hub is not available to a test, and the arithmetic is the part that
+    # differs -- `until` is the bell rather than the next frame.
+    live = page.evaluate("""async () => {
+      const { reduce } = await import('./reducer.js');
+      const { Scene } = await import('./scene.js');
+      const board = await (await fetch(window.__boardUrl)).json();
+      const t = reduce(board.messages, {});
+      const open = t.frames.find((f) => f.event?.kind === 'open');
+      if (!open) return { error: 'no episode opens on this board' };
+      document.getElementById('island').replaceChildren();
+      const scene = new Scene(document.getElementById('island'), t, null);
+      const state = open.state;
+      scene.draw(state, t);
+      const at = () => scene.sunNode.getBoundingClientRect().x;
+      const dawn = at();
+      // What index.html does on a live poll, with the bell still ahead.
+      scene.sky(state, state.bell_at, 4000);
+      await new Promise(r => setTimeout(r, 500));
+      return { dawn, later: at(), bell: state.bell_at, secs: state.seconds };
+    }""")
     page.close()
     bad = [f"{where}: {e}" for e in errs]
+    if live.get("error"):
+        bad.append(f"{where}: {live['error']}")
+    elif not (live["later"] > live["dawn"] + 1):
+        bad.append(f"{where}: aimed at the bell the sun did not move "
+                   f"({live['dawn']:.0f} -> {live['later']:.0f}); live would sit still "
+                   f"between polls, which is when there is nothing else to watch")
     xs = [round(s["x"], 1) for s in seen["spots"]]
     # It has to actually go somewhere, and westward: the same x at every frame
     # is the sun this change exists to unpark.
@@ -615,6 +645,47 @@ def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
                    f"only reset at an episode boundary")
     if "quiet" in seen["clock"]:
         bad.append(f"{where}: the idle-seconds pill is back: {seen['clock']!r}")
+    return bad
+
+
+def vocabulary(browser, base: str, board: Path) -> list[str]:
+    """In the game an episode is called a day.
+
+    The board is not renamed and neither are the metrics: the manager writes
+    "episode 1 of 3 is open" in its own words, the transcript shows those words,
+    and `eff_episode` is an identifier in the ledger. What is renamed is
+    everything the game says in its own voice -- the round state, the chapter
+    menu, the closing card.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1500, "height": 1000},
+                            reduced_motion="reduce")
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_timeout(1000)
+    page.evaluate("() => { const s = document.getElementById('scrub');"
+                  " s.value = s.max; s.dispatchEvent(new Event('input')); }")
+    page.wait_for_timeout(900)
+    said = page.evaluate("""() => {
+      const of = (sel) => (document.querySelector(sel) || {}).textContent || '';
+      return { state: of('#ep'), chapters: of('#chapters'), closing: of('#closing'),
+               // The transcript is the board verbatim and keeps the manager's
+               // word; this asserts it is still there rather than renamed.
+               ticker: of('#ticker') };
+    }""")
+    page.close()
+    bad = []
+    for where, text in (("round state", said["state"]), ("chapter menu", said["chapters"]),
+                        ("closing card", said["closing"])):
+        if "episode" in text.lower():
+            bad.append(f"{stem} vocabulary: the {where} still says episode: "
+                       f"{text.strip()[:70]!r}")
+    if "day" not in said["state"].lower():
+        bad.append(f"{stem} vocabulary: the round state does not say day: "
+                   f"{said['state'].strip()[:70]!r}")
+    if said["ticker"] and "episode" not in said["ticker"].lower():
+        bad.append(f"{stem} vocabulary: the transcript stopped quoting the "
+                   f"manager's own word for an episode")
     return bad
 
 

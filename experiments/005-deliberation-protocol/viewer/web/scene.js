@@ -1183,7 +1183,7 @@ export class Scene {
    * This method only plays the passage.
    */
   bell(e) {
-    this.banner_(`bell — episode ${e.episode} closed` +
+    this.banner_(`sundown — day ${e.episode} closed` +
                  (e.lapsed ? ` · ${e.lapsed} lapsed` : ""));
     this.sundown(true);
   }
