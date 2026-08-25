@@ -112,10 +112,33 @@ Which is why the ladder has two more rungs. Five minutes is a gap; the arc's
 question lives at the hour, where a container is actually at risk of being
 reclaimed.
 
+### Rung 2 — twenty minutes. **Arm A arrived, into a quiet session.**
+
+*Appended 2026-08-25 20:31:46Z, from the wake itself.*
+
+| | |
+|---|---|
+| arm A armed | 20:11:41Z |
+| arm A due | 20:31:41Z |
+| **arm A arrived** | **20:31:41Z — on time, 0s late** |
+| last thing to touch this session before it | a turn of my own, ended ~20:12:10Z |
+| **quiet gap crossed** | **~19m 30s** |
+| contaminated? | **no** — nothing between |
+
+Four times rung 1's gap, same result and the same punctuality. Arm B is
+pending at 20:39Z as the control, and rung 3 is armed once it reports, so that
+its wake cannot land inside the hour it is measuring.
+
+Worth stating while it is still only twenty minutes: **this is not yet the
+regime that matters.** The 6-hour attempt on record is nineteen times this
+gap, and a container that survives twenty quiet minutes tells you nothing
+about one left alone overnight. What rung 3 buys is the first gap at which
+reclamation is plausible rather than hypothetical.
+
 ### Rungs
 
 | rung | gap | status |
 |---|---|---|
 | 1 | 5 min | **A arrived on time and uncontaminated; B 134s late** |
-| 2 | 20 min | **armed 20:11:40Z — A due 20:31:40Z, B reads at 20:38Z** |
-| 3 | 60 min | not armed |
+| 2 | 20 min | **A arrived on time and uncontaminated; B pending 20:39Z** |
+| 3 | 60 min | armed once rung 2's reader reports |
