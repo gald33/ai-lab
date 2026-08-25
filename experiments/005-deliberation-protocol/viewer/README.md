@@ -309,7 +309,7 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"            # the page: 40
+node --test "viewer/tests/*.test.mjs"            # the page: 48
 python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
 python viewer/tests/render.py                    # the drawing, in a real browser
 ```
@@ -320,6 +320,15 @@ nothing left over** — which is what will fail if `island/manager.py` or
 `run_v3.py` is reworded, rather than the island quietly emptying — and **every
 board with a sidecar reproduces the manager's scored trajectory** through the
 page's own reducer and utility code.
+
+On the pacing: **an eventful frame is held until its animation has played**,
+at every speed. Before that, `feeds.js` stepped every `MIN_STEP / speed` --
+35ms at the default `4x` -- while a parcel took a second to cross the square,
+so a busy stretch played six animations on top of each other and read as a
+flicker. `scene.js:DWELL` names how long each event needs and `feeds.js` reads
+it, so the floor cannot drift from the durations it mirrors. Speed still
+compresses the silence between events; it no longer compresses the events, so
+`16x` is not sixteen times faster on a busy board. That is deliberate.
 
 On the drawing: the geometry is pure arithmetic and is checked as such --
 every card and hut **fits on the canvas** and **no two cards overlap** at one
@@ -371,6 +380,21 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `reveal.py` | the hidden half, after the fact, with `--check` |
 
 ## Notes on the drawing
+
+**An episode is a day.** It opens, it runs, a bell closes it and everything
+held is consumed -- so the sun rises when an episode opens and goes down behind
+the island at the bell, and the campfire is the brightest thing left. Night is
+a *state* (`.island.closed`), not a flash: scrub to a closed frame and it is
+dark, with no event needing to have been played to put it there. The fire is
+drawn above the dark on purpose -- where it used to sit, dusk fell on it too
+and the campfire got dimmer as the day ended.
+
+**Nothing anybody said is printed on the island.** A refusal is a ✗ badge with
+the manager's reason as its `<title>`; a trader speaking is a speech bubble;
+production is the goods themselves lifting onto the shelf. The words are in the
+ticker underneath, where they are readable. An **attempt** draws nothing at
+all -- what it attempted arrives as the receipt or the refusal, and drawing
+both would say it twice.
 
 Goods hold a **fixed position** on every shelf and always wear their glyph, so
 identity is never colour alone. The palette is the four dark categorical slots,

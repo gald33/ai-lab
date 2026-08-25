@@ -16,8 +16,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { layout, cardBox, fits, placeScenery, coast, closedPath }
-  from "../web/scene.js";
+import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
+         DWELL, dwellFor } from "../web/scene.js";
+import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -69,6 +70,25 @@ test("scenery keeps off the cards", () => {
                    "a palm was planted on a trader's shelf");
 });
 
+test("a palm is kept off by its whole spread, not by where it is planted", () => {
+  // The second version of this bug: the anchor cleared the card and the fronds
+  // did not, because a palm reaches ~38 units right of its trunk.
+  const g = layout(2);
+  const card = cardBox(g.seats[0]);
+  const justLeftOfTheCard = [[card.x - PALM_BOX.w / 2, card.y + card.h / 2]];
+  assert.deepEqual(placeScenery(g.seats, justLeftOfTheCard), [],
+                   "a palm planted beside a card still reaches onto it");
+});
+
+test("the palm footprint covers where a palm is actually drawn", () => {
+  // Guards the constant against the drawing: fronds to x+38, crown to y-50,
+  // shadow to y+8, and the sway swings a little past all of that.
+  assert.ok(PALM_BOX.dx <= -14, "the shadow reaches left of the trunk");
+  assert.ok(PALM_BOX.dx + PALM_BOX.w >= 42, "the fronds reach right of it");
+  assert.ok(PALM_BOX.dy <= -54, "the crown stands above it");
+  assert.ok(PALM_BOX.dy + PALM_BOX.h >= 10, "the shadow lies below it");
+});
+
 test("scenery keeps off anything else it is told to", () => {
   const g = layout(2);
   const square = { x: g.fire.x - 148, y: g.fire.y - 74, w: 296, h: 128 };
@@ -116,4 +136,58 @@ test("surf and wet sand come off the same coast", () => {
             > Math.hypot(shore[0] - g.cx, shore[1] - g.ly));
   assert.ok(Math.hypot(inn[0] - g.cx, inn[1] - g.ly)
             < Math.hypot(shore[0] - g.cx, shore[1] - g.ly));
+});
+
+
+// --- how long a frame is held ---------------------------------------------
+//
+// The complaint this answers: "the animations were so quick I didn't catch
+// what's going on". The cause was not animation length. `feeds.js` stepped
+// every `MIN_STEP / speed` -- 35ms at the default 4x -- while a parcel took a
+// second to cross, so six events started during one.
+
+test("every event that draws something is held long enough to watch", () => {
+  // Read off `play()` in scene.js. A kind that draws and is missing here is a
+  // frame that flashes past, which is the whole bug.
+  for (const kind of ["settled", "produced", "refused", "said", "bell", "open",
+                      "over", "fault"]) {
+    assert.ok(DWELL[kind] > 0, `${kind} draws something and has no dwell`);
+  }
+});
+
+test("an attempt is not held, because it draws nothing", () => {
+  // Its receipt or its refusal is the tell; a bubble as well would say it
+  // twice, and holding a frame that draws nothing is just waiting.
+  assert.equal(dwellFor({ kind: "said", attempt: true }), 0);
+  assert.ok(dwellFor({ kind: "said", attempt: false }) > 0);
+});
+
+test("nothing is held for a viewer who asked for less motion", () => {
+  // `play()` collapses every animation to 1ms for them, so holding the frame
+  // would be making them wait for a still picture.
+  for (const kind of Object.keys(DWELL)) {
+    assert.equal(dwellFor({ kind }, true), 0, `${kind} still holds under reduce`);
+  }
+});
+
+test("speed compresses the waiting, not the events", () => {
+  const settled = { kind: "settled" };
+  for (const speed of [1, 4, 16]) {
+    assert.equal(stepDelay(0, speed, settled), DWELL.settled,
+                 `a settle is cut short at ${speed}x`);
+  }
+  // The bug, stated as an assertion: this used to be MIN_STEP / 4 = 35ms.
+  assert.ok(stepDelay(0, 4, settled) > MIN_STEP / 4);
+});
+
+test("a frame with nothing to watch still gets out of the way", () => {
+  // Otherwise every speed above 1x stops meaning anything.
+  const quiet = { kind: "acknowledged" };
+  assert.ok(stepDelay(MAX_STEP * 4, 16, quiet) < stepDelay(MAX_STEP * 4, 1, quiet));
+  assert.equal(stepDelay(0, 1, quiet), MIN_STEP);
+});
+
+test("a long silence is still clamped", () => {
+  // A round is mostly silence; replaying it at wall speed is a still picture.
+  assert.equal(stepDelay(60_000, 1, { kind: "acknowledged" }), MAX_STEP);
 });
