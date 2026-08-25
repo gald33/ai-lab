@@ -100,9 +100,35 @@ The reader stays where it was, **21:47Z**, which is now about 64 minutes out.
 The clock that matters is the gap since the last thing to touch the session,
 not the gap since the file was written.
 
+## Contaminated twice, and the design corrected rather than re-armed again
+
+A second operator message arrived at 20:48Z, five minutes into the second
+arming. Two contaminations out of two says something the probe should have
+been built for from the start: **an interactive session cannot hold a quiet
+hour**, and re-arming into one is just buying the same contamination again.
+
+So the reader moves, and the reading rule changes with it:
+
+- **the reader is a long one** — six hours out, not sixty-five minutes. It
+  will land after this session has stopped being used, whenever that is,
+  rather than betting on a gap inside it;
+- **the measurement is taken at read time from two things that are both still
+  observable then** — the container's identity (`boot_id`, `uptime`,
+  the scratchpad file) and **the gap since the last thing that touched this
+  session**. Neither needs the gap to have been planned in advance;
+- **so an interruption no longer ruins it.** Every message simply resets the
+  clock the read will measure against. If the reader finds a gap over an hour,
+  the reading holds; if it finds twenty minutes, it says twenty minutes and
+  the probe is re-read later rather than thrown away.
+
+That is strictly better than what was armed at 20:41Z, and the reason it was
+not built this way first is worth keeping: the design assumed the quiet was
+something to arrange, when it was something to *observe*.
+
 ## Denominators
 
-Probes armed: 2 (one contaminated before it began). Read: to be filled in. This section is appended to, never
+Probes armed: 3 (two contaminated by operator messages; the third is a
+corrected design, not a third attempt at the same one). Read: to be filled in. This section is appended to, never
 rewritten.
 
 ## Outcome
