@@ -134,6 +134,27 @@ up exactly when it was told to. The announced moment is settled onto the table
 (`run_game.ack_close`). The lobby still starts nothing; it just no longer
 announces a time the rest of the system ignores.
 
+**Three things a lobby that faces strangers needs, and now has.** The claimant
+is **witnessed like a seat**: `MANAGE` is refused unless Switchboard verified
+it, and the key goes on the board with the claim. It draws nothing and deals
+nothing, but a table it has claimed is a table nobody else will offer to run,
+so an unwitnessed claim is a way to stop games without ever writing a
+malformed line. **`OPEN` is capped per peer** at two tables *forming* at once
+(`MAX_FORMING_PER_PEER`) -- settling or lapsing one frees the slot, so an
+honest opener is never held up and a peer that mints tables for the noise is.
+And **a name is a name**: 1-32 characters of letters, digits, dash, underscore
+or dot, and never a seat label or a role, because `g7 seat T1 = T2` is a line
+nobody can read twice the same way. Refused, not renamed -- the lobby repairs
+nothing.
+
+**And it no longer goes deaf while a game is on.** `run_game` embeds the only
+lobby on its channel and a table takes minutes, so every `OPEN` and `JOIN`
+posted during a game used to wait for the last bell, and nothing lapsed on
+time either -- a lobby that looks dead to everybody not already at a table.
+The lobby's drain now runs on the game's own tick (`play(..., tick=)`), and a
+lobby that throws is said out loud rather than allowed to end the round: the
+game is the thing with a clock on it.
+
 ### What the lobby must never become
 
 It hands out **an invite and a time**. It never launches an entrant's agent.

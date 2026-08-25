@@ -61,6 +61,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
@@ -161,6 +162,21 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
                 f"{seal_to(by_slot[name], dealer.private_state(name), PRIVATE_CONTEXT)}")
 
 
+def _tick(tick: Callable[[], None] | None) -> None:
+    """Run the lobby's drain beside the game, and never let it stop one.
+
+    A game in progress is the thing with a clock on it. If the lobby throws --
+    a hub that blinked, a line it could not read -- the table it is running
+    must not die of it, so the fault is said out loud and the bells go on.
+    """
+    if tick is None:
+        return
+    try:
+        tick()
+    except Exception as exc:  # noqa: BLE001 - a game outranks its lobby
+        print(f"lobby drain failed mid-game, continuing: {exc!r}", flush=True)
+
+
 def ack_close(started: float, ack_seconds: float, table: Table) -> float:
     """When the ack window shuts: the later of this runner's own window and
     the time the board announced.
@@ -174,8 +190,16 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
 
 
 def play(table: Table, invite: Invite, *, episode_seconds: int,
-         ack_seconds: int, out: Path) -> dict:
-    """One settled table, from its first bell to its record."""
+         ack_seconds: int, out: Path, tick: Callable[[], None] | None = None) -> dict:
+    """One settled table, from its first bell to its record.
+
+    ``tick`` is called on every drain of this room, and is how the lobby keeps
+    reading while a game is on. A table takes minutes, and this runner embeds
+    the only lobby on its channel: without it, every OPEN and JOIN posted
+    during a game goes unanswered until the last bell, and nothing lapses on
+    time either. A lobby that goes deaf whenever it is busy is a lobby that
+    looks dead to everybody who was not already at a table.
+    """
     client = Client.from_invite(invite, agent_id=MANAGER)
     # The first `table.goods` of the vocabulary. The table settled its own
     # count when it opened, and the entrants were briefed on that number -- so
@@ -214,9 +238,11 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         while time.time() < deadline:
             bind_seats(mgr, table)
             mgr.drain()
+            _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
         mgr.drain()
+        _tick(tick)
 
     until(ack_deadline)
     missing = sorted(set(players(table)) - set(mgr.keys))
@@ -400,7 +426,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
             print(f"{table.id}: playing seed={table.seed} "
                   f"workspace={table.workspace}", flush=True)
             rec = play(table, invite, episode_seconds=episode_seconds,
-                       ack_seconds=ack_seconds, out=out)
+                       ack_seconds=ack_seconds, out=out, tick=lobby.drain)
             path = out / f"{table.id}.json"
             path.write_text(json.dumps(rec, indent=1) + "\n")
             sidecar = publish(table, invite, rec, out)

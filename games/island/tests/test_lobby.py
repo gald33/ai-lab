@@ -444,3 +444,71 @@ def test_the_time_the_board_announces_is_the_time_the_table_opens(hub):
             if isinstance(m.get("body"), str)]
     stamp = time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at))
     assert any(b.startswith("g1 is full:") and f"opens {stamp}" in b for b in said)
+
+
+def test_a_manage_from_an_unregistered_peer_is_refused(hub):
+    """The claimant is the one party whose absence means no game happens, so
+    it is witnessed exactly like a seat."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _client(hub, "stranger", key).post("lobby", "MANAGE g1")
+
+    lobby.drain()
+
+    assert lobby.tables["g1"].manager is None
+    assert lobby.refusals[-1]["kind"] == "manage"
+    assert "MANAGE" in lobby.refusals[-1]["reason"]
+
+
+def test_the_manager_s_key_goes_on_the_board_with_the_claim(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    manager = _entrant(hub, "m", key)
+    manager.post("lobby", "MANAGE g1")
+
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.manager_key
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any(f"g1 will be managed by" in b and table.manager_key in b
+               for b in said)
+
+
+def test_one_peer_cannot_mint_tables_without_limit(hub):
+    """OPEN costs its author nothing, and a lobby faces strangers."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    noisy = _client(hub, "noisy", key)
+    for _ in range(4):
+        noisy.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+
+    lobby.drain()
+
+    assert list(lobby.tables) == ["g1", "g2"]
+    assert lobby.refused == 2
+    assert "already have 2 tables forming" in lobby.refusals[-1]["reason"]
+
+
+def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub):
+    now = [1_000_000.0]
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
+    a, b = _client(hub, "a", key), _client(hub, "b", key)
+    for _ in range(2):
+        a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    b.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert list(lobby.tables) == ["g1", "g2", "g3"] and lobby.refused == 0
+
+    now[0] += lobby.table_ttl + 1
+    lobby.drain()  # sweeps a's two tables
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    assert "g4" in lobby.tables and lobby.tables["g4"].opened_by

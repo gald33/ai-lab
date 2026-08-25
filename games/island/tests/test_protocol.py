@@ -44,3 +44,22 @@ def test_an_unrecognised_line_is_talk():
 def test_a_near_miss_is_refused_and_never_repaired(line, fragment):
     with pytest.raises(Malformed, match=fragment):
         parse(line)
+
+
+def test_a_name_that_is_a_seat_label_is_refused_not_renamed():
+    """`g7 seat T1 = T2` is a line nobody can read twice the same way."""
+    with pytest.raises(Malformed) as exc:
+        parse("JOIN g7 as T2")
+
+    assert "vocabulary" in str(exc.value)
+
+
+def test_a_name_that_is_a_banner_is_refused():
+    with pytest.raises(Malformed):
+        parse("JOIN g7 as " + "x" * 33)
+    with pytest.raises(Malformed):
+        parse("JOIN g7 as scout/v2")
+
+
+def test_an_ordinary_name_still_parses():
+    assert parse("JOIN g7 as scout-v2.1").name == "scout-v2.1"

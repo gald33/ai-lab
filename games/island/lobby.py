@@ -68,6 +68,15 @@ OPEN_LEAD = 120.0
 #: takes the channel over rather than corrupting it.
 HOLD = "LOBBY holding this channel: "
 
+#: How many tables one peer may have forming at once. A lobby faces strangers,
+#: and OPEN costs its author nothing: without a cap, one peer can mint tables
+#: until every reader is scrolling past its noise, and every one of them sits
+#: for the full TTL. Two, so that opening a second table while waiting on the
+#: first is ordinary and a hundred is not. It bounds only what is *forming* --
+#: settling or lapsing a table frees the slot, so a busy honest opener is
+#: never held back for long.
+MAX_FORMING_PER_PEER = 2
+
 
 def _stamp(ts: float) -> str:
     """An absolute UTC clock time, the same convention `run_v3.py` uses for
@@ -84,6 +93,9 @@ class Table:
     episodes: int
     rounds: int
     opened_at: float
+    #: The peer that opened it, so that one peer cannot mint tables without
+    #: limit (`MAX_FORMING_PER_PEER`).
+    opened_by: str = ""
     #: Part of the level, so it is fixed when the table opens: an entrant has to
     #: know the format before it decides to sit down, and two rounds are only
     #: comparable if they were drawn over the same number of goods.
@@ -104,6 +116,11 @@ class Table:
     boxes: dict[str, str] = field(default_factory=dict)
     manager: str | None = None
     manager_peer: str | None = None
+    #: The signing key the winning MANAGE was verified under. Witnessed for
+    #: the same reason a seat's is: a name typed on a board proves nothing,
+    #: and the claimant is the one party whose absence means no game happens
+    #: at all.
+    manager_key: str | None = None
     settled: bool = False
     lapsed: bool = False
     workspace: str | None = None
@@ -293,7 +310,7 @@ class Lobby:
             elif isinstance(action, Join):
                 self._join(peer, action, signature)
             elif isinstance(action, Manage):
-                self._manage(peer, action)
+                self._manage(peer, action, signature)
         except Refused as exc:
             self._refuse(peer, type(action).__name__.lower(), str(exc), text)
 
@@ -306,9 +323,17 @@ class Lobby:
     # --- settling --------------------------------------------------------
 
     def _open(self, peer: str, action: Open) -> None:
+        forming = [t for t in self.tables.values()
+                   if t.opened_by == peer and not (t.settled or t.lapsed)]
+        if len(forming) >= MAX_FORMING_PER_PEER:
+            raise Refused(
+                f"you already have {len(forming)} tables forming "
+                f"({', '.join(t.id for t in forming)}) -- fill one, or wait "
+                f"for it to lapse, before opening another")
         table = Table(id=f"g{self._next}", traders=action.traders,
                      episodes=action.episodes, rounds=action.rounds,
-                     goods=action.goods, opened_at=self.clock())
+                     goods=action.goods, opened_at=self.clock(),
+                     opened_by=peer)
         self._next += 1
         self.tables[table.id] = table
         self.settled += 1
@@ -347,7 +372,7 @@ class Lobby:
             raise Refused(f"{action.name!r} is already seated at {action.table}")
         if table.full():
             raise Refused(f"{action.table} is full")
-        key = self._witness(signature)
+        key = self._witness(signature, "JOIN")
         table.seats[peer] = action.name
         table.keys[peer] = key
         if action.box:
@@ -361,7 +386,7 @@ class Lobby:
             self._settle(table)
 
     @staticmethod
-    def _witness(signature: dict | None) -> str:
+    def _witness(signature: dict | None, kind: str = "JOIN") -> str:
         """The key a message was verified under, or a refusal naming why not.
 
         Distinct reasons for distinct causes, the same discipline the rest of
@@ -371,24 +396,36 @@ class Lobby:
         """
         status = (signature or {}).get("status")
         if status is None or status == "unsigned":
-            raise Refused("JOIN must be signed -- this message carried no "
-                          "signature to witness")
+            raise Refused(f"{kind} must be signed -- this message carried no "
+                          f"signature to witness")
         if status == "unknown":
-            raise Refused("no signing key known for you yet -- register on "
-                          "this room before JOIN")
+            raise Refused(f"no signing key known for you yet -- register on "
+                          f"this room before {kind}")
         if status != "verified":
-            raise Refused("the signature on this JOIN does not match any "
-                          "key you have announced")
+            raise Refused(f"the signature on this {kind} does not match any "
+                          f"key you have announced")
         return signature["key"]
 
-    def _manage(self, peer: str, action: Manage) -> None:
+    def _manage(self, peer: str, action: Manage,
+                signature: dict | None = None) -> None:
+        """Claim the manager's chair -- witnessed, exactly like a seat.
+
+        A seat that cannot be verified is refused, and the claimant is the
+        one party whose absence means the game does not happen at all: it
+        draws nothing and deals nothing, but a table it has claimed is a
+        table nobody else will offer to run. So the same rule applies to it,
+        for the same reason.
+        """
         table = self._table(action.table)
         if table.manager is not None:
             raise Refused(f"{action.table} is already managed by "
                           f"{table.manager}")
-        table.manager, table.manager_peer = self._display(peer), peer
+        key = self._witness(signature, "MANAGE")
+        table.manager, table.manager_peer, table.manager_key = (
+            self._display(peer), peer, key)
         self.settled += 1
-        self.say(f"{action.table} will be managed by {table.manager}")
+        self.say(f"{action.table} will be managed by {table.manager}, "
+                f"key {key}")
         if table.ready():
             self._settle(table)
 

@@ -534,3 +534,20 @@ def test_a_table_that_announced_no_time_keeps_the_runner_s_own_window():
     table = Table(id="g1", traders=2, episodes=2, rounds=1, opened_at=0.0)
 
     assert run_game.ack_close(1_000_000.0, 60, table) == 1_000_060.0
+
+
+def test_the_lobby_keeps_reading_while_a_game_is_on():
+    calls = []
+    run_game._tick(lambda: calls.append(1))
+
+    assert calls == [1]
+
+
+def test_a_lobby_that_throws_mid_game_does_not_stop_the_game(capsys):
+    """A game in progress is the thing with a clock on it."""
+    def boom():
+        raise RuntimeError("hub blinked")
+
+    run_game._tick(boom)  # must not raise
+
+    assert "continuing" in capsys.readouterr().out

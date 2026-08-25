@@ -27,6 +27,15 @@ GOODS_MIN, GOODS_MAX, GOODS_DEFAULT = 2, 7, 5
 
 _KV = re.compile(r"^([a-z]+)=(-?[0-9]+)$")
 
+#: What a trader may call itself. Letters, digits, dash, underscore, dot, up
+#: to 32 -- long enough for a real name and short enough not to be a banner.
+_NAME = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
+
+#: And what it may not: the seat labels are the manager's own vocabulary, so a
+#: trader named `T2` makes `g7 seat T1 = T2` a line nobody can read twice the
+#: same way. Refused rather than silently renamed -- the lobby does not repair.
+_RESERVED = re.compile(r"^(T[0-9]+|manager|lobby)$", re.IGNORECASE)
+
 
 class Malformed(Exception):
     """Close to a formatted message, but not one. Never repaired."""
@@ -111,6 +120,14 @@ def parse(text: str):
             raise Malformed("JOIN wants '<table> as <name>', "
                             "optionally followed by box=<public key>")
         table, _, name = parts
+        if not _NAME.match(name):
+            raise Malformed(
+                "a trader name is 1-32 characters of letters, digits, dash, "
+                f"underscore or dot -- {name!r} is not")
+        if _RESERVED.match(name):
+            raise Malformed(
+                f"{name!r} is the manager's own vocabulary -- a seat label, "
+                f"or one of the two roles. Pick a name that is yours")
         return Join(table=table, name=name, box=box)
 
     if head == MANAGE:
