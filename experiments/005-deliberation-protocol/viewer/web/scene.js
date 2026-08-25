@@ -206,16 +206,33 @@ export function layout(n, portrait = false) {
  * set behind it, which also means an arc that dipped below that edge would take
  * the sun through the island at noon.
  */
+//: Past the bell, where the sun goes on down. The day does not stop at the
+//: horizon and neither does the disc: it keeps its own clock, and the bell's
+//: animation is the light going, not the sun being moved.
+export const SET = 1.28;
+
 export function sunAt(g, p) {
-  const at = Math.max(0, Math.min(1, p));
   const top = g.ly - g.ry;
   // Just clear of the island at noon, and low but still over water at either
   // end, where the island is not wide enough to be in the way.
   const apex = top * 0.34;
   const rest = top * 0.9;
+  const day = Math.max(0, Math.min(1, p));
+  const x = g.cx + g.rx * 1.02 * (2 * day - 1);
+  const y = rest - (rest - apex) * Math.sin(Math.PI * day);
+  if (p <= 1) {
+    // It comes up out of the sea rather than appearing already in it, which is
+    // also what makes a new day readable: the previous one set in the west and
+    // this one arrives in the east with nothing travelling backwards between.
+    return { x, y, dim: Math.max(0, Math.min(1, p / 0.06)) };
+  }
+  const sinking = Math.max(0, Math.min(1, (p - 1) / (SET - 1)));
   return {
-    x: g.cx + g.rx * 1.02 * (2 * at - 1),
-    y: rest - (rest - apex) * Math.sin(Math.PI * at),
+    x: x + g.rx * 0.16 * sinking,
+    // Behind the island, which works because the sun is drawn before the water
+    // and the land.
+    y: y + (g.ly - 24 - y) * sinking,
+    dim: 1 - sinking,
   };
 }
 
@@ -437,9 +454,9 @@ export class Scene {
   /** Put the sun at a point in the day, with no journey. */
   placeSun(p) {
     if (!this.sunNode) return;
-    const { x, y } = this.sunPoint(p);
+    const { x, y, dim } = this.sunPoint(p);
     this.sunNode.style.transform = `translate(${x}px, ${y}px) scale(1)`;
-    this.sunNode.style.opacity = "1";
+    this.sunNode.style.opacity = String(dim);
     this.sunP = p;
   }
 
@@ -453,16 +470,30 @@ export class Scene {
    * about the player.
    */
   sky(state, until = null, ms = 0) {
-    const from = this.dayProgress(state);
-    if (from === null || !this.sunNode) return;
-    const to = until === null ? from
-      : Math.max(from, this.dayProgress({ ...state, at: until }) ?? from);
-    if (!(ms > 0) || to <= from || still()) { this.placeSun(to || from); return; }
+    if (!this.sunNode) return;
+    const closed = state.phase === "closed" || state.phase === "over";
+    const from = this.sunP ?? 0;
+    let to;
+    if (closed) {
+      // The bell does not move the sun. It was already almost down when the
+      // bell rang and it goes on down; the bell's own animation is the light
+      // going and the fire coming up, and that runs alongside.
+      to = SET;
+    } else {
+      const now = this.dayProgress(state);
+      if (now === null) return;   // no clock on this board: leave it where it is
+      to = until === null ? now
+        : Math.max(now, this.dayProgress({ ...state, at: until }) ?? now);
+    }
+    // Never travel backwards across the sky. A new day begins in the east and
+    // the night between is a jump nobody watches: the disc is at zero opacity
+    // at both ends of it, so the next day rises out of the sea.
+    if (to < from || !(ms > 0) || still()) { this.placeSun(to); return; }
     const a = this.sunPoint(from), b = this.sunPoint(to);
     this.sunP = to;
     this.sunNode.animate([
-      { transform: `translate(${a.x}px, ${a.y}px) scale(1)`, opacity: 1 },
-      { transform: `translate(${b.x}px, ${b.y}px) scale(1)`, opacity: 1 },
+      { transform: `translate(${a.x}px, ${a.y}px) scale(1)`, opacity: a.dim },
+      { transform: `translate(${b.x}px, ${b.y}px) scale(1)`, opacity: b.dim },
     ], { duration: ms, easing: "linear", fill: "forwards" });
   }
 
@@ -894,19 +925,6 @@ export class Scene {
     // open at the moment it happened.
     this.state = state;
     this.root.classList.toggle("closed", closed);
-    // The time of day, set from the frame rather than from an animation, so
-    // that scrubbing lands the sun where that moment actually was. `bell()`
-    // and `dawn()` only play the passage between two of these.
-    if (closed) {
-      const dusk = this.sunPoint(1);
-      this.sunNode.style.transform =
-        `translate(${dusk.x + 20}px, ${this.geo.ly - 24}px) scale(.7)`;
-      this.sunNode.style.opacity = "0";
-      this.sunP = 1;
-    } else {
-      const p = this.dayProgress(state);
-      if (p !== null) this.placeSun(p);
-    }
   }
 
   /** One rope, going slack and fading, after the bell took the offer with it. */
@@ -1182,62 +1200,24 @@ export class Scene {
    * dusk there, so scrubbing lands in the dark without any event being played.
    * This method only plays the passage.
    */
+  /**
+   * The bell: the light goes and the fire comes up.
+   *
+   * It does not touch the sun. The sun keeps its own clock -- it was already
+   * almost down when the bell rang, and `sky()` carries it the rest of the way
+   * while this plays. An animation that seized the disc made the day stop and
+   * start again instead of running through.
+   */
   bell(e) {
     this.banner_(`sundown — day ${e.episode} closed` +
                  (e.lapsed ? ` · ${e.lapsed} lapsed` : ""));
-    this.sundown(true);
   }
 
-  /** A new episode is a new day, so the sun comes back up. */
+  /** A new day. The sun rises out of the sea on its own, by the clock. */
   dawn(e) {
-    this.banner_(`episode ${e.episode}${e.of ? ` of ${e.of}` : ""}`);
-    this.sundown(false);
+    this.banner_(`day ${e.episode}${e.of ? ` of ${e.of}` : ""}`);
   }
 
-  /**
-   * The sun's travel. Down and out at the bell, back up when an episode opens.
-   *
-   * The light itself is CSS, keyed off `.closed`, because it is a state. This
-   * is only the disc moving, which is the part that has to be a path rather
-   * than a value.
-   */
-  sundown(setting) {
-    const sun = this.sunNode;
-    if (!sun) return;
-    // Wherever the day left it. The sun crosses the sky through the episode
-    // now, so the bell has to continue that journey rather than restart it
-    // from a fixed spot -- a sun that jumped back to noon to begin setting
-    // would undo the hour it had just spent travelling.
-    const dusk = this.sunPoint(setting ? 1 : 0);
-    const from = this.sunPoint(setting ? (this.sunP ?? 1) : 0);
-    // It goes down *behind the island*, which works because the sun is drawn
-    // before the water and the land. The first version sent it to the island's
-    // top edge minus a margin -- four pixels below where it started, which is
-    // not a sunset, and which the test could only tell had moved at all.
-    const up = `translate(${from.x}px, ${from.y}px) scale(1)`;
-    const down = `translate(${dusk.x + 20}px, ${this.geo.ly - 24}px) scale(.7)`;
-    if (still()) {
-      // No journey for somebody who asked for less motion -- but the sun still
-      // has to be in the right place, or it hangs in a night sky.
-      sun.style.transform = setting ? down : up;
-      sun.style.opacity = setting ? "0" : "1";
-      this.sunP = setting ? 1 : 0;
-      return;
-    }
-    const frames = setting
-      ? [{ transform: up, opacity: 1 },
-         { transform: `translate(${dusk.x}px, ${this.geo.ly - this.geo.ry + 22}px) ` +
-                      "scale(.85)", opacity: 1, offset: .62 },
-         { transform: down, opacity: 0 }]
-      : [{ transform: down, opacity: 0 },
-         { transform: up, opacity: 1 }];
-    this.sunP = setting ? 1 : 0;
-    const anim = sun.animate(frames, {
-      duration: setting ? DWELL.bell - 400 : DWELL.open - 400,
-      easing: setting ? "cubic-bezier(.4,0,.7,1)" : "cubic-bezier(.2,.6,.3,1)",
-      fill: "forwards",
-    });
-  }
 
   banner_(text) {
     const node = this.banner.querySelector(".banner-text");

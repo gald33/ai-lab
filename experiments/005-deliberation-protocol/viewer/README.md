@@ -110,6 +110,15 @@ one part of the page that is about the island rather than about the player.
 It replaces a pill that read `quiet 41s`: a number about the replay, next to a
 sun parked in one spot for the whole episode.
 
+**Nothing else moves the sun.** The bell brings the night and lights the fire;
+it does not touch the disc. The sun was already almost down when the bell rang
+and it goes on down past the horizon on the same clock, so an event animation
+starts at its own moment and runs alongside rather than taking the day over and
+restarting it. The one discontinuity is the night itself — the sun sets in the
+west and the next day rises in the east — and it is invisible because the disc
+is at zero opacity at both ends of it: a day begins with the sun still out of
+sight and it comes up out of the sea.
+
 The arc is bounded by the island rather than by a constant. It rises and sets
 beyond the island's width, where there is only water, and clears the island's
 topmost point at noon — the sun is drawn *behind* the land so it can set behind

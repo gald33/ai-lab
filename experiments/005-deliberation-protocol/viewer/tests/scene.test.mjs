@@ -17,7 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt } from "../web/scene.js";
+         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt, SET } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -312,8 +312,34 @@ test("portrait has a sky for it to cross", () => {
   assert.ok(fits(g));
 });
 
-test("a point outside the episode is held to its ends", () => {
+test("a point outside the day is held to its ends", () => {
   const g = layout(2);
+  // Before the day, dawn. After it, fully set -- not the horizon: the sun goes
+  // on down past the bell, and `SET` is where it has finished doing so.
   assert.deepEqual(sunAt(g, -3), sunAt(g, 0));
-  assert.deepEqual(sunAt(g, 12), sunAt(g, 1));
+  assert.deepEqual(sunAt(g, 12), sunAt(g, SET));
+  assert.notDeepEqual(sunAt(g, SET), sunAt(g, 1));
+});
+
+test("the day runs on past the bell rather than stopping at the horizon", () => {
+  const g = layout(2);
+  const horizon = sunAt(g, 1), setting = sunAt(g, (1 + SET) / 2), gone = sunAt(g, SET);
+  // Down and further west, continuously: the bell rings while this is
+  // happening rather than causing it.
+  assert.ok(horizon.y < setting.y && setting.y < gone.y);
+  assert.ok(horizon.x < setting.x && setting.x < gone.x);
+  assert.ok(gone.y > g.ly - g.ry, "it should end behind the island");
+  assert.equal(horizon.dim, 1);
+  assert.ok(setting.dim > 0 && setting.dim < 1);
+  assert.equal(gone.dim, 0);
+});
+
+test("a day begins with the sun still out of sight", () => {
+  // Otherwise the night's jump from west to east is a sun popping into
+  // existence at dawn, which is the one moment the eye is on the sky.
+  for (const g of [layout(2), layout(2, true)]) {
+    assert.equal(sunAt(g, 0).dim, 0);
+    assert.ok(sunAt(g, 0.02).dim < 0.4);
+    assert.equal(sunAt(g, 0.1).dim, 1);
+  }
 });
