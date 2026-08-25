@@ -136,7 +136,36 @@ export function closedPath(pts, tension = 0.5) {
  * the canvas and a seat at the top puts it over the fire. It had simply never
  * been rendered -- every replay is two traders.
  */
-export function layout(n) {
+/**
+ * Where everything stands, for however many traders and whichever way up.
+ *
+ * A phone in portrait is about 0.46 wide-to-tall and the island's viewBox was
+ * 1.79, so the whole scene fitted to width and sat as a thin band with dead sky
+ * above and dead sea below -- the trader cards, which are the only part
+ * carrying information, rendered at about a third of a readable size.
+ *
+ * A row of huts is what will not fit. So in portrait they go in a **column**
+ * instead, and the viewBox goes tall with them; nothing else about the scene
+ * changes, because everything is positioned from `seats`, `ly`, `rx`, `ry` and
+ * `fire`. `fits()` is what holds the geometry honest either way.
+ */
+export function layout(n, portrait = false) {
+  if (portrait) {
+    // One seat above another, far enough apart for a hut above each card. The
+    // pitch is the seat's own extent -- hut, card and a gap -- rather than a
+    // number chosen to look right at one count of traders.
+    const pitch = 84 + CARD_TOP + CARD_H_SCORED + 54;
+    const top = 130;
+    const h = Math.max(940, top + pitch * n + 90);
+    const w = 520;
+    const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: top + i * pitch }));
+    return {
+      w, h, cx: w / 2, ly: h / 2, rx: w / 2 - 34, ry: h / 2 - 40, seats,
+      // Beside the column rather than in it: a fire between two stacked huts
+      // would sit underneath a card.
+      fire: { x: w / 2, y: h - 62 },
+    };
+  }
   if (n <= 2) {
     const g = { w: BASE_W, h: BASE_H, cx: BASE_W / 2, ly: 298, rx: 452, ry: 188 };
     const seats = n === 2
@@ -217,7 +246,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 }
 
 export class Scene {
-  constructor(root, timeline, reveal = null) {
+  constructor(root, timeline, reveal = null, portrait = false) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -226,12 +255,37 @@ export class Scene {
     // and there is deliberately no path that fills it in live.
     this.reveal = reveal;
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
-    this.geo = layout(this.traders.length);
+    this.portrait = portrait;
+    this.geo = layout(this.traders.length, portrait);
     this.utilityTop = this.utilityScale();
     this.seats = {};
     this.bars = {};
     this.labels = {};
     this.build();
+  }
+
+  /**
+   * Turn the island the other way up, when the window did.
+   *
+   * `build()` already replaces everything it drew, so this is a rebuild rather
+   * than a second code path -- there is one way the scene is constructed, and a
+   * rotated phone goes through it again. Returns whether anything changed, so
+   * the page can skip a repaint on a resize that did not cross the boundary
+   * (every scroll on mobile Safari fires one).
+   */
+  reflow(portrait) {
+    if (portrait === this.portrait) return false;
+    this.portrait = portrait;
+    this.geo = layout(this.traders.length, portrait);
+    // Rebuilt from the new geometry rather than carried over: every one of
+    // these is keyed to nodes `build()` is about to throw away.
+    this.seats = {};
+    this.bars = {};
+    this.labels = {};
+    this.top = undefined;
+    this.shown = new Map();
+    this.build();
+    return true;
   }
 
   build() {
@@ -667,6 +721,11 @@ export class Scene {
     // until the next episode opens.
     const closed = state.phase === "closed" || state.phase === "over";
     const last = state.episodes_closed[state.episodes_closed.length - 1];
+    // Before the round starts nobody has produced, so every slot is empty and
+    // none of it means anything yet. The zero mark is a finding about play, and
+    // there has not been any -- eight red troughs on the opening frame say the
+    // island is on fire when it has not been lit.
+    const started = state.phase !== "before" && state.phase !== "ack";
     for (const name of this.traders) {
       const promised = (good) => timeline.committed(state, name, good);
       const shelf = closed && last ? last.holdings[name] : state.stocks[name];
@@ -690,8 +749,9 @@ export class Scene {
         // the same "0.00" as an actual zero.
         b.qty.textContent = qty <= 1e-9 ? "0.00"
           : qty < 0.005 ? "<0.01" : qty.toFixed(2);
-        b.qty.classList.toggle("none", qty <= 1e-9);
-        b.cell.classList.toggle("empty", qty <= 1e-9);
+        const none = started && qty <= 1e-9;
+        b.qty.classList.toggle("none", none);
+        b.cell.classList.toggle("empty", none);
       }
       const spent = state.labour[name];
       const wheel = this.labels[name];

@@ -411,6 +411,78 @@ svg.island { display: block; width: 100%; height: 100%; }
 .score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
 .score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+/* --- a narrow window ------------------------------------------------------
+   The chrome is laid out for a desk: a title row across the top with the
+   counters beside it, a 760px transport centred at the bottom, and a legend in
+   the corner clear of both. On a phone all three land on each other -- the
+   title wraps under the counters, the board select runs off the left edge, and
+   the transport's speeds and chapter menu run off the right.
+
+   Nothing is dropped for being small; it is re-stacked. The one thing that does
+   go is the pair of explanatory notes under the legend, which are a caption for
+   a picture there is barely room to draw. */
+@media (max-width: 700px) {
+  /* A picker, four buttons and a title do not fit across 390px, and of those
+     the title is the only thing that is not a control. It goes: the page is
+     named in the browser tab, and the board in the picker. What is left of the
+     top-left column is the round's state, which drops below the control row
+     rather than sharing 44 vertical pixels with it. */
+  .at-top-left { top: 62px; left: 10px; right: auto; gap: 6px; }
+  .at-top-left .titles { display: none; }
+  .at-top-left .hud { flex-wrap: wrap; }
+  /* Under the title rather than beside it, and left-aligned with everything
+     else instead of hanging off a right edge the controls also want. */
+  .counts { top: 96px; left: 10px; right: auto; }
+  .at-top-right { top: 10px; right: 10px; left: auto; gap: 6px; }
+  /* The picker is the widest thing in the row and the only one that can give:
+     the buttons are touch targets and must not shrink. */
+  .at-top-right select { max-width: 34vw; }
+  .app.rail-open .at-top-right, .app.rail-open .counts { right: 10px; }
+
+  #status { top: 168px; left: 10px; right: 10px; max-width: none; }
+
+  /* Full width, and wrapping: the scrub gets a row of its own so it is long
+     enough to drag, and the buttons fall underneath rather than off the side. */
+  .at-bottom { left: 10px; right: 10px; transform: none; width: auto;
+    flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 8px; }
+  .at-bottom #scrub { order: -1; flex: 1 0 100%; min-width: 0; }
+  .at-bottom select { max-width: 40vw; }
+
+  /* Above the transport, not behind it, and only the goods -- the two notes
+     are the first thing to go when there is no room for both a caption and
+     the thing it captions. */
+  .legend { left: 10px; right: 10px; bottom: auto; top: 132px; max-width: none;
+    min-width: 0; gap: 6px 10px; }
+  .legend span.sub { display: none; }
+
+  /* A drawer is the whole screen at this width; half of one is neither. */
+  .drawer.side { width: 100%; border-width: 0; }
+  .drawer.foot { height: min(52vh, 420px); }
+
+  .curtain { padding-bottom: 130px; padding-left: 10px; padding-right: 10px; }
+}
+
+/* A fingertip is about 9mm and these are the only controls on the page. Keyed
+   to the pointer rather than the width, because a tablet is neither narrow nor
+   short and is still touched. Found by measuring: the scoreboard tab was 32px. */
+@media (pointer: coarse) {
+  .chrome button, .chrome select, .chrome .tab, .curtain .shut {
+    min-height: 40px; display: inline-flex; align-items: center; }
+}
+
+/* Landscape on a phone: almost no height, so the bottom bar and the top row
+   are competing for the same few hundred pixels. Everything gets tighter
+   rather than re-stacked -- the island is wide here and wants the middle. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .at-top-left { top: 8px; }
+  .at-top-left .sub { display: none; }
+  .at-top-right { top: 8px; }
+  .counts { top: 52px; right: 16px; left: auto; }
+  .at-bottom { bottom: 8px; padding: 5px 10px; }
+  .legend { display: none; }
+  .drawer.foot { height: 70vh; }
+}
+
 </style>
 
 <div class="app">
@@ -423,7 +495,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
        the page and the controls are on top of it. -->
   <div class="chrome at-top-left">
     <div class="titles">
-      <h1>🏝 The island</h1>
+      <h1>🏝 <span class="name">The island</span></h1>
       <span class="sub" id="where">—</span>
     </div>
     <div class="hud">
@@ -510,6 +582,15 @@ import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer }
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
+/**
+ * Which way up the island should be drawn.
+ *
+ * The scene's viewBox is wide, so on a phone held upright it fitted to width
+ * and left the trader cards -- the only part of the picture carrying anything
+ * -- at about a third of a readable size. Taller than it is wide means the
+ * huts stack instead of standing in a row.
+ */
+const isPortrait = () => innerHeight > innerWidth;
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 
@@ -688,7 +769,10 @@ function closing(state) {
   box.hidden = false;
 }
 
+let lastPaint = null;
+
 function paint({ state, event, animate, quiet, index }) {
+  lastPaint = { state, event, animate: false, quiet, index };
   scene.draw(state, timeline);
   if (animate && event) scene.play(event);
   hud(state, quiet);
@@ -864,7 +948,7 @@ function mount(rows, { manager } = {}) {
   timeline = reduce(rows, manager ? { manager } : {});
   // The scene is built knowing whether it has a hidden half, because a card
   // with a score row is a different card, not the same one with a blank in it.
-  scene = new Scene($("island"), timeline, reveal);
+  scene = new Scene($("island"), timeline, reveal, isPortrait());
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -995,6 +1079,21 @@ function shutClosing() {
   $("closing").hidden = true;
 }
 $("closing-shut").addEventListener("click", shutClosing);
+
+// Rotating the phone rebuilds the island the other way up. Debounced, and a
+// no-op unless the boundary was actually crossed: mobile browsers fire `resize`
+// on every scroll and on every address-bar nudge, and rebuilding the scene on
+// each one would throw away every animation in flight.
+let reflowing = null;
+addEventListener("resize", () => {
+  clearTimeout(reflowing);
+  reflowing = setTimeout(() => {
+    // Repainted from the last frame rather than through the player, because
+    // live has no player at all and a rebuilt island would otherwise stay empty
+    // until the next line arrived on the board.
+    if (scene?.reflow(isPortrait()) && lastPaint) paint({ ...lastPaint, animate: false });
+  }, 180);
+});
 
 addEventListener("keydown", (e) => {
   if (e.key === "Escape") { rail.set(false); log.set(false); shutClosing(); }

@@ -404,6 +404,7 @@ def run(out: Path, headed: bool = False) -> int:
             for board in boards:
                 problems += blame(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
+            problems += mobile(browser, base, boards[0], out)
             problems += ring(browser, base, out)
             browser.close()
     finally:
@@ -546,6 +547,104 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
             bad.append(f"{tag}: the refusal badge itself stopped being drawn")
     bad += [f"{where}: {e}" for e in errs]
     page.close()
+    return bad
+
+
+#: Phone viewports the page has to work at: a common portrait, a small one,
+#: and the same phone turned on its side.
+PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390)]
+
+#: The chrome that floats over the island. Any two of these overlapping is the
+#: bug this exists to hold shut -- it happened twice while the breakpoints were
+#: being written, once because a media block was authored above the rules it
+#: meant to override and lost on source order, which no amount of reading the
+#: CSS made obvious.
+CHROME = ["#transport", ".counts", ".legend", ".at-top-left", ".at-top-right"]
+
+
+def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
+    """That the page works on a phone, which is where a shared link gets opened.
+
+    Three things, none of which a desktop screenshot can show:
+
+    * nothing scrolls sideways;
+    * no two pieces of floating chrome sit on top of each other;
+    * in portrait the island is not a thin band. The scene's viewBox is wide,
+      so it used to fit to width and leave the trader cards -- the only part
+      carrying information -- at about a third of a readable size, with dead
+      sky above and dead sea below.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    for tag, w, h in PHONES:
+        page = browser.new_page(viewport={"width": w, "height": h}, is_mobile=True,
+                                has_touch=True, reduced_motion="reduce")
+        errs: list[str] = []
+        page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+                if m.type == "error" else None)
+        page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(1400)
+        seen = page.evaluate("""(chrome) => {
+          const box = (s) => { const n = document.querySelector(s);
+            if (!n || n.hidden) return null;
+            const r = n.getBoundingClientRect();
+            return r.width && r.height ? { s, x: r.x, y: r.y, w: r.width, h: r.height } : null; };
+          const land = document.querySelector('.land');
+          const lb = land && land.getBoundingClientRect();
+          return {
+            scrollW: document.documentElement.scrollWidth, winW: innerWidth,
+            winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
+            land: lb ? { w: lb.width, h: lb.height } : null,
+            taps: [...document.querySelectorAll('button, select, .tab')]
+              .filter(n => n.offsetParent !== null)
+              .map(n => { const r = n.getBoundingClientRect();
+                          return [n.id || n.textContent.trim().slice(0, 8), r.height]; })
+              .filter(([, hh]) => hh < 34),
+          };
+        }""", CHROME)
+        page.screenshot(path=str(out / f"{stem}-{tag}.png"), full_page=False)
+        where = f"{stem} @{tag} {w}x{h}"
+
+        if seen["scrollW"] > seen["winW"] + 1:
+            bad.append(f"{where}: the page scrolls sideways "
+                       f"({seen['scrollW']}px of content in {seen['winW']}px)")
+        boxes = seen["boxes"]
+        for i, a in enumerate(boxes):
+            for b in boxes[i + 1:]:
+                if (a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"]
+                        and a["y"] < b["y"] + b["h"] and a["y"] + a["h"] > b["y"]):
+                    bad.append(f"{where}: {a['s']} and {b['s']} overlap")
+        if seen["land"]:
+            # Fitted to width in a tall window, the island covered about a
+            # sixth of the screen. Half is not a design target so much as the
+            # line below which the cards stop being readable at all.
+            share = (seen["land"]["w"] * seen["land"]["h"]) / (seen["winW"] * seen["winH"])
+            if share < 0.30:
+                bad.append(f"{where}: the island covers {share:.0%} of the screen; "
+                           f"the picture is the page and this is a band in it")
+        for name, height in seen["taps"]:
+            bad.append(f"{where}: {name!r} is {height:.0f}px tall, under a fingertip")
+        if tag == "portrait":
+            # Turning the phone rebuilds the island the other way up. Untested,
+            # this is the kind of thing that silently keeps the tall viewBox in
+            # landscape and looks fine in every screenshot taken upright.
+            before = page.get_attribute("#island", "viewBox")
+            page.set_viewport_size({"width": h, "height": w})
+            page.wait_for_timeout(700)
+            after = page.get_attribute("#island", "viewBox")
+            tall = lambda v: (lambda a: a[2] < a[3])([float(x) for x in v.split()])
+            if before == after:
+                bad.append(f"{where}: rotating the phone left the viewBox at "
+                           f"{after!r} -- the island did not turn with it")
+            elif not (tall(before) and not tall(after)):
+                bad.append(f"{where}: rotated from {before!r} to {after!r}, which is "
+                           f"not tall-then-wide")
+            elif not page.query_selector(".hut .cell"):
+                bad.append(f"{where}: the island came back from a rotation empty")
+        bad += [f"{where}: {e}" for e in errs]
+        page.close()
     return bad
 
 
