@@ -65,4 +65,52 @@ in. This section is appended to, never rewritten.
 
 ## Outcome
 
-*(appended after the probe — empty until then)*
+### Rung 1 — five minutes. **Arm A arrived, into a quiet session.**
+
+*Appended 2026-08-25 20:01:28Z, from the wake itself. The pre-registered text
+above is unedited.*
+
+| | |
+|---|---|
+| arm A armed | 19:56:20Z |
+| arm A due | 20:01:20Z |
+| **arm A arrived** | **20:01:20Z — on time, 0s late** |
+| last thing to touch this session before it | a turn of my own, ended ~19:57:00Z |
+| **quiet gap crossed** | **~4m 20s** |
+| contaminated? | **no** — no pull-request event, no message, nothing between |
+
+The wake is what produced this record: the session was idle, the timer exited,
+and the agent was invoked to find out. That is the observation 001 could not
+make, because in 001 the session was already awake when its timer landed.
+
+**Arm B is still pending at 20:09Z**, doing the job it was given: coming to
+read a result it does not know exists yet. It is left armed rather than
+cancelled — its firing is the control for this rung, and a control cancelled
+because the treatment already looked good is not a control.
+
+### What this does and does not license
+
+**Does:** across a four-and-a-half minute gap, in a Claude Code remote session,
+an alarm held inside the agent's own container survived the end of the turn and
+reached the agent. The 5-minute cadence attempt on record — armed 2026-08-20
+13:58Z, due 14:03Z, never fired, found 17.4h later — is **not** reproduced here.
+
+**Does not:** explain the difference. The two are not the same mechanism. That
+attempt used the harness's own scheduled-task feature, documented as firing
+only "while Claude Code is running and idle"; this is a process inside the
+container whose exit the runtime relays. So this rung does not overturn the
+earlier observation, and it does not yet say an agent can hold its own clock —
+it says one substrate keeps one kind of in-container timer alive across five
+quiet minutes.
+
+Which is why the ladder has two more rungs. Five minutes is a gap; the arc's
+question lives at the hour, where a container is actually at risk of being
+reclaimed.
+
+### Rungs
+
+| rung | gap | status |
+|---|---|---|
+| 1 | 5 min | **A arrived, uncontaminated** |
+| 2 | 20 min | armed after arm B reports, so its wake cannot contaminate the gap |
+| 3 | 60 min | not armed |
