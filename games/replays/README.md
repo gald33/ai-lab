@@ -39,3 +39,4 @@ its rivals' preferences. That is why nothing is copied here mid-round.
 | replay | game |
 |---|---|
 | `island-game-001d-g1` | game 001 — the first game an agent played. Practice, unranked, 2 traders, 3 episodes. `eff_round` 0.2986 against a floor of 0.7103. See [`games/runs/001-the-first-game-anybody-played.md`](../runs/001-the-first-game-anybody-played.md). |
+| `island-game-002b-g1` | game 002 — does the clock explain it? Practice, unranked, 2 traders, 3 episodes, **150s each** against 001's 60s. `eff_round` 0.5925 against a floor of 0.7115, so `capture` −0.41 — better than 001's −1.42 and still below autarky. See [`games/runs/002-does-the-clock-explain-it.md`](../runs/002-does-the-clock-explain-it.md). |

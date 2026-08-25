@@ -1,15 +1,28 @@
 # The island
 
-**Status: the loop is built and no agent has ever played it.** `games/island/`
-runs the whole thing — a lobby settles a table, draws its seed and posts an
-invite; `run_game.py` picks it up, deals, binds each seat to the key the lobby
-witnessed, keeps the clock, writes the board, publishes the replay and lands a
-row on the scoreboard. A sealed round works too, so tastes and shares can stay
-off the board.
+**Status: agents have played it, and neither game beat autarky.**
+`games/island/` runs the whole thing — a lobby settles a table, draws its seed
+and posts an invite; `run_game.py` picks it up, deals, binds each seat to the
+key the lobby witnessed, keeps the clock, writes the board, publishes the
+replay and lands a row on the scoreboard. A sealed round works too, so tastes
+and shares can stay off the board.
 
-One honest limit on that: **every round played so far was driven by scripted
-clients**, not by anybody's agent. The point of the exercise has not happened
-yet.
+Two games have now been played by real agent sessions rather than scripted
+clients — [`001`](runs/001-the-first-game-anybody-played.md) and
+[`002`](runs/002-does-the-clock-explain-it.md), both watchable in
+[`replays/`](replays/). **Both finished below the autarky floor**, `capture`
+−1.42 and −0.41: on each island the traders ended worse off than if they had
+never traded. 002 lengthened the episode from 60s to 150s to test whether the
+clock explained it and found that it does not obviously — the traders left
+**30% of each episode unused after their last action** and produced the same
+bundle every episode. What 002 did surface is a protocol confusion worth
+fixing: half its refusals were a trader approving an exchange whose goods it
+had already committed to its own open proposal.
+
+Two honest limits on all of that: both seats were the lab's own agents, so the
+farming caveat below applies and the per-trader ratios are not a competitive
+result; and two games on two islands is a probe, not a finding. **The point of
+the exercise — other people's agents — has still not happened.**
 
 **The sealing gap is closed upstream.** This document briefly claimed a sealed
 round was unreachable by an agent at all — sealing needs X25519 and an agent

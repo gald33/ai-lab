@@ -134,6 +134,163 @@ the run.
 
 *Written after. Numbers with denominators; no interpretation here.*
 
+- **Records:** `games/results/g1.json`,
+  `board-island-game-002b-g1.json`, `reveal-island-game-002b-g1.json`;
+  ledger row `island-game-002b-g1`, round `7ad2ab4efa5b0156`, status
+  **`complete`**, arm **`practice`**, level **`2 traders · 4 goods · 3
+  episodes`** — the same level as game 001, which is what makes the two
+  comparable at all. `scores.py --verify` redraws all 75 rows from their own
+  seeds: **0 disagreed**.
+- **Watchable:** board and reveal kept in [`games/replays/`](../replays/) and
+  published — <https://gald33.github.io/ai-lab/>, `island-game-002b-g1` in the
+  dropdown.
+- **Ran:** 2026-08-25, managed hub, workspace `island-game-002b`, table `g1`,
+  seed **6789904112895503135** (drawn at settlement, not chosen). 3 episodes of
+  **150s**, 2 traders. Both seats `claude-haiku-4-5-20251001` run by
+  `run_entrant`; the record's `model` field reads `entrants` for the same
+  reason as 001.
+- **Ran, in denominators:** sessions started **2/2**; reached the board
+  **2/2**; seats bound **2/2**; acknowledged **2/2** (`T1`, `T2`); lines
+  settled **16**; refused **4**; **talk 0**; proposals lapsed **4** (3 in
+  episode 2, 1 in episode 3); channel messages **54**; wall clock **577.2s**.
+  **Relaunched 1** — attempt 1 spent and produced nothing; see *Deviations*.
+- **Numbers:** `eff_round` **0.5925** (upper 0.5950) against an autarky floor
+  of **0.7115**, so `capture` = **−0.4127**. Per-trader `u_i / autarky_i`:
+  T1 **0.691**, T2 **0.927** — both still below 1.00×. Zero episodes:
+  T1 **1 of 3**, T2 **0 of 3**. `eff_episode` `[0.641, 0.000, 0.795]`.
+  Per-episode utilities `[[0.230, 0.161], [0, 0.192], [0.208, 0.269]]`.
+  Three exchanges settled (`p1`, `p2` in episode 1; `p7` in episode 3).
+
+### Against game 001, at the same level
+
+| | 001 (60s) | 002 (150s) |
+|---|---|---|
+| `capture` | **−1.4209** | **−0.4127** |
+| `eff_round` / floor | 0.2986 / 0.7103 | 0.5925 / 0.7115 |
+| lines settled | 8 | **16** |
+| lines refused | 4 | 4 |
+| **talk** | **0** | **0** |
+| exchanges that settled | 1 | 3 |
+| T1 zero episodes | 2 of 3 | 1 of 3 |
+| T1 · T2 vs playing alone | 0.26× · 0.83× | 0.69× · 0.93× |
+
+- **The four refusals.** One timing error: T2 wrote `PRODUCE` at 12:39:45,
+  before the acknowledgement window closed and the episode opened, and was told
+  the episode had closed. One addressing error: T1 wrote `APPROVE p3` on its
+  own proposal. **Two are the same error, and it is new** — a trader approving
+  an exchange whose goods it had already committed to its own open proposal:
+  T2 offered 0.1 bread in `p4` and then tried to approve `p3`, which asked for
+  0.1 bread, holding 0.0413 uncommitted; T1 offered 0.5 cloth in `p7` and then
+  tried to approve `p6`, which asked for 0.4 cloth, holding 0.3868.
+- **Where the round was lost.** Episode 2 is the only zero, and it is T1's:
+  T1 produced no iron and never got any. `p3` (T1 wants iron, bread, salt for
+  cloth) and `p4` (T2 wants cloth for bread, salt) were both open and
+  compatible in one direction — **T1 could have approved `p4`**, holding 0.5368
+  cloth uncommitted against the 0.4 it asked. Instead T1 approved its own `p3`,
+  T2's approval of `p3` was refused for committed bread, and T1's replacement
+  `p5` went up 30s before the bell and was never answered. Three proposals
+  lapsed.
+- **How much of the clock was used.** The last agent line of each episode
+  landed **56s, 31s and 49s** before its bell — **136s of 453s, 30% of the
+  round's episode time, after both traders had stopped acting.** Median gap
+  between an agent's own consecutive lines: T1 **42s**, T2 **51s**, so a 150s
+  episode is about three actions per trader. Game 001's idle tails were
+  **2s, 13s, 22s of 62s**.
+- **Production did not change across episodes.** T1 wrote
+  `PRODUCE cloth=0.6 bread=0.2 salt=0.2` in all three; T2 wrote the same bundle
+  in episodes 2 and 3. Every produce line landed within 7–22s of the episode
+  opening. No labour went unspent in any episode by either trader.
+- **The failure mode 001 was named for did not recur.** In 001, T1 wrote
+  `PRODUCE cloth=1` twice — all labour on one good, zero under Cobb-Douglas
+  without a trade. In 002 the same entrant, on a different island, spread
+  across three goods every episode.
+
+### Assumptions
+
+| # | assumption | held? |
+|---|---|---|
+| 1 | 150s is long enough to matter and short enough to stay affordable | **affordable yes; "long enough to matter" is not shown.** Capture moved, but 30% of the episode time went unused after the last agent action |
+| 2 | `capture` makes two seeds comparable at one level | **held, and it mattered** — the two floors are 0.7103 and 0.7115, near enough that raw `eff_round` would have told the same story here. It will not always |
+| 3 | the four-good brief is what 001's agents read | **held** — `test_brief.py` asserts byte-identity with `stimuli/v3/base.md`'s body, and it passes |
+| 4 | both sessions start and reach the board | **held on attempt 2, failed on attempt 1**, and the two are counted apart below |
+
+### The hypothesis
+
+**The prediction held and the stated reason did not.**
+
+The hypothesis said capture would rise above −1.42 *because* a trader had spent
+all its labour on one good and needed time to notice. Capture did rise, to
+**−0.4127**. But no trader went all-in on one good in this game, so the
+mechanism the hypothesis named was never in play; and both traders stopped
+acting well before every bell, so the extra 4½ minutes were not consumed.
+**A game in which 30% of the added time went unused is not evidence that time
+was the binding constraint.** What separates 002 from 001 on the board is a
+different island and a different production shape, and one game against one
+game cannot say which of the three did the work.
+
+The falsifier written before the run — "capture at or below −1.4 with the same
+shape of play" — did not fire. Neither half of it: the number moved and the
+shape of play changed too, which is a confound rather than a confirmation.
+
+**The talk count is unchanged: 0.** The possibility flagged before the run —
+that more time would go into conversation — did not happen. All 54 channel
+messages were schedule, protocol lines and manager rulings. These agents do not
+talk to each other when given more room; they post another proposal, or
+nothing.
+
+### Deviations
+
+Two attempts. **Both stay in the denominator**; a run that spent and produced
+nothing is still a run.
+
+- **Attempt 1, `island-game-002`, seed 6532871921561426033 — died, spent,
+  produced nothing.** Both entrant sessions were launched with `nohup … &` from
+  a tool call. The harness kills the process group when the call returns and
+  `nohup` does not survive that, so both sessions started, were killed
+  mid-round, and wrote nothing to the board. **A harness fault of mine, not an
+  agent one**, and on the board indistinguishable from two traders who chose
+  silence — which is the distinction `PREFLIGHT.md` requires a run to be able
+  to draw, and it was drawn from the session logs, not the board.
+- **The fix:** `setsid`, verified to survive a tool call returning *before* the
+  entrants were started rather than after.
+- **Attempt 2, `island-game-002b`** — the run recorded above.
+
+**A viewer bug was found by watching the run, not by testing it.** The huts on
+the island were labelled with a session id and a peer key, because the reducer
+recognised the manager only by the literal author name `manager` and a card had
+no clamp on a name it did not choose. Live boards use blinded peer ids, so
+neither held. Fixed in [#46](https://github.com/gald33/ai-lab/pull/46). It is
+recorded here because *watching the game is what found it*, which is the first
+concrete argument for the viewer existing.
+
 ## What this changed
 
-*Written after.*
+**A game beat its own previous game by a wide margin and still lost to
+autarky.** `capture` −0.41: both traders ended below where they would have been
+never trading, T1 at 0.69× and T2 at 0.93× of playing alone. Two games have
+now been played through by agents, on two different islands, and **neither
+finished above the floor**. The below-autarky finding from 001 is not a fluke
+of one draw.
+
+**The clock is not exonerated, and it is no longer the leading suspect.** The
+number moved in the direction the hypothesis predicted, but the traders left
+30% of the added time unused and revised nothing across episodes — the same
+production bundle three times, posted within twenty seconds of each opening.
+Whatever these traders are short of, it is not seconds. A paired design over
+several seeds could still separate the clock from the draw; it is no longer the
+cheapest question to ask.
+
+**A new failure mode, and it is a protocol one.** Half the refusals were a
+trader approving an exchange whose goods it had already promised to its own
+open proposal. The manager's arithmetic is right — an open proposal commits
+stock — but nothing in the brief says so in those words, and both traders got
+it wrong in the same way on the same day. Episode 2 was lost to exactly this,
+with a settleable exchange sitting open the whole time: **T1 could have
+approved `p4` and did not.** That is a candidate the next run can act on, and
+unlike the clock it is testable by changing one paragraph of text rather than
+by spending more.
+
+**What it says about ranked play: still nothing.** Both seats were the lab's
+own agents, both hands were face up, and `agent-switchboard` is still at 0.10.0
+with no sealed-to-peer messaging. This is practice, unranked, and n=1 against
+n=1 — a probe, which is what the record said before the numbers existed.
