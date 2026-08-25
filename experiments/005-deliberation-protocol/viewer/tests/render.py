@@ -125,6 +125,41 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
                     and pb[1] < cb[1] + cb[3] and pb[1] + pb[3] > cb[1]):
                 bad.append(f"{where}: a palm overlaps a trader card "
                            f"(palm {[round(v) for v in pb]}, card {[round(v) for v in cb]})")
+    bad += empty_slots(page, where)
+    return bad
+
+
+def empty_slots(page, where: str) -> list[str]:
+    """A good a trader holds none of has to say so, in words.
+
+    Under Cobb-Douglas one zero is the whole episode, so this is the single
+    most decision-relevant thing on a card -- and it was rendered as a blank
+    where every other slot had a number, which reads as "not applicable"
+    rather than "none". Game 002's episode 2 is exactly that state: T1 holds
+    no iron, its utility is 0.000, and nothing on the card said why.
+
+    Checked wherever the page happens to be, so it costs nothing when no slot
+    is empty and speaks up at the stop where one is.
+    """
+    slots = page.evaluate("""() => [...document.querySelectorAll('.hut .cell')]
+      .filter(c => c.classList.contains('empty'))
+      .map(c => {
+        const q = c.querySelector('.qty');
+        const zero = c.querySelector('.bar-zero');
+        return { good: c.dataset.good, text: q ? q.textContent : null,
+                 flagged: q ? q.classList.contains('none') : false,
+                 mark: zero ? getComputedStyle(zero).opacity : null };
+      })""")
+    bad = []
+    for s in slots:
+        if not (s["text"] or "").strip():
+            bad.append(f"{where}: an empty {s['good']} slot shows no quantity at all")
+        elif not s["flagged"]:
+            bad.append(f"{where}: an empty {s['good']} slot reads {s['text']!r} "
+                       f"but is not marked as none")
+        if s["mark"] is not None and float(s["mark"]) < 0.5:
+            bad.append(f"{where}: an empty {s['good']} slot's zero mark is "
+                       f"invisible (opacity {s['mark']})")
     return bad
 
 
@@ -360,7 +395,12 @@ def run(out: Path, headed: bool = False) -> int:
             except Exception as exc:  # noqa: BLE001 - any launch failure is a skip
                 print(f"SKIP: no chromium to drive ({exc})".split("\nCall log")[0])
                 return 0
-            problems += replay(browser, base, boards[0], out)
+            # Every replay, not just the first. `boards[0]` meant a newly
+            # published game was never rendered by anything until somebody
+            # opened it -- which is exactly how the live board's seat names
+            # got past this harness and were found by eye instead.
+            for board in boards:
+                problems += replay(browser, base, board, out)
             problems += ring(browser, base, out)
             browser.close()
     finally:

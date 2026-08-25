@@ -559,8 +559,15 @@ export class Scene {
       cell.append(bar, held);
       // An empty slot has to say empty. A dark trough reads as "small", and the
       // difference between small and none is the whole of Cobb-Douglas.
-      cell.append(el("line", { class: "bar-zero", x1: x + 4, y1: BASE - 1.5,
-                               x2: x + BAR_W - 4, y2: BASE - 1.5 }));
+      //
+      // This was a rule along the base of the trough, which is the one shape it
+      // must not be: a short bar is *also* a rule along the base of the trough.
+      // On game 002's episode 2 the trader holding no iron was less conspicuous
+      // than the one holding 0.06 bread beside it, while its utility read 0.000
+      // and nothing on the card said why. An outline around the whole empty
+      // trough cannot be mistaken for a quantity.
+      cell.append(el("rect", { class: "bar-zero", x: x + 0.75, y: BASE - BAR_MAX + 0.75,
+                               width: BAR_W - 1.5, height: BAR_MAX - 1.5, rx: 4 }));
       cell.append(el("text", { x: cx, y: BASE + 17, class: "glyph" }, GLYPH[good] || "▪"));
       cell.append(el("text", { x: cx, y: BASE + 31, class: "qty" }, ""));
       card.append(cell);
@@ -652,10 +659,19 @@ export class Scene {
       this.scaledAt = timeline.frames.length;
     }
     const top = this.top;
+    // After the bell the shelf is empty and a live reading says zero for every
+    // good, which is true and useless -- and it made the card contradict
+    // itself, because the utility beneath already held the closing basket.
+    // Game 002's last frame read `UTILITY 0.208` over four zeros. What the
+    // episode was worth is what it closed holding, so the shelf holds it too,
+    // until the next episode opens.
+    const closed = state.phase === "closed" || state.phase === "over";
+    const last = state.episodes_closed[state.episodes_closed.length - 1];
     for (const name of this.traders) {
       const promised = (good) => timeline.committed(state, name, good);
+      const shelf = closed && last ? last.holdings[name] : state.stocks[name];
       for (const good of this.goods) {
-        const qty = state.stocks[name]?.[good] || 0;
+        const qty = shelf?.[good] || 0;
         const b = this.bars[name][good];
         const free = Math.max(0, qty - promised(good));
         // What this slot looked like *before* this frame, kept so `produce()`
@@ -668,7 +684,12 @@ export class Scene {
         if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
         // the page must not imply more precision than they do.
-        b.qty.textContent = qty > 1e-9 ? qty.toFixed(2) : "";
+        // Zero is a number and gets written as one. Blank reads as "not
+        // applicable"; `0.00` in the critical colour reads as "none, and that
+        // is the problem". `<0.01` keeps a rounded-down holding from printing
+        // the same "0.00" as an actual zero.
+        b.qty.textContent = qty <= 1e-9 ? "0.00"
+          : qty < 0.005 ? "<0.01" : qty.toFixed(2);
         b.qty.classList.toggle("none", qty <= 1e-9);
         b.cell.classList.toggle("empty", qty <= 1e-9);
       }
@@ -682,10 +703,7 @@ export class Scene {
         // After the bell the shelf is empty and a live reading would say zero,
         // which is true and useless: what the episode was worth is what it
         // closed holding. Hold that until the next episode opens.
-        const closed = state.phase === "closed" || state.phase === "over";
-        const last = state.episodes_closed[state.episodes_closed.length - 1];
-        const held = closed && last ? last.holdings[name] : state.stocks[name];
-        const u = utilityOf(this.reveal, name, held);
+        const u = utilityOf(this.reveal, name, shelf);
         const label = this.labels[name];
         const w = CARD_W - 26;
         label.score.setAttribute("width",

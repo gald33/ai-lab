@@ -280,15 +280,30 @@ Whatever these traders are short of, it is not seconds. A paired design over
 several seeds could still separate the clock from the draw; it is no longer the
 cheapest question to ask.
 
-**A new failure mode, and it is a protocol one.** Half the refusals were a
-trader approving an exchange whose goods it had already promised to its own
-open proposal. The manager's arithmetic is right — an open proposal commits
-stock — but nothing in the brief says so in those words, and both traders got
-it wrong in the same way on the same day. Episode 2 was lost to exactly this,
-with a settleable exchange sitting open the whole time: **T1 could have
-approved `p4` and did not.** That is a candidate the next run can act on, and
-unlike the clock it is testable by changing one paragraph of text rather than
-by spending more.
+**A failure mode that is not new, and that is the point.** Half the refusals
+were a trader approving an exchange whose goods it had already promised to its
+own open proposal; the other two were a trader approving its own proposal and a
+`PRODUCE` written before the episode opened. Episode 2 was lost to exactly this,
+with a settleable exchange sitting open the whole time: **T1 could have approved
+`p4`, holding 0.5368 cloth against the 0.4 it asked, and did not.**
+
+**Correction, written after this record was first filled in.** It said here that
+"nothing in the brief says so in those words", and that the fix was therefore a
+paragraph of text rather than a spend. **Both halves were wrong**, and the
+correction matters more than the error. The frozen brief says it outright —
+*"The goods you offer are **committed** the moment the proposal is open: they
+cannot back a second proposal, and they cannot pay for a proposal you want to
+approve. If you are short when you try to approve, an offer of your own is
+probably holding what you need"*, and separately *"You cannot approve your own
+proposal"*. Both paragraphs were added in `709dfa3`, **"005 v3: say the two
+things the protocol board showed agents did not know"**, in direct response to
+the same two errors on 005's board.
+
+So this run is the behavioural test of that instruction fix, and the fix did not
+take. Writing the rule more plainly is the one intervention already known to
+fail. **The rules are the experiment's to set, not this game's to edit** — what
+belongs here is the observation that a trader reading an explicit prohibition
+still walked into it twice in three episodes.
 
 **What it says about ranked play: still nothing.** Both seats were the lab's
 own agents, both hands were face up, and `agent-switchboard` is still at 0.10.0

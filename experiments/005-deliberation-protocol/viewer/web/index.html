@@ -176,9 +176,9 @@ svg.island { display: block; width: 100%; height: 100%; }
   transition: transform .55s cubic-bezier(.22,1,.36,1); }
 /* Nothing at all, said out loud. A dark trough reads as "a little"; the
    difference between a little and none is the whole of Cobb-Douglas. */
-.bar-zero { stroke: var(--critical); stroke-width: 2; stroke-linecap: round;
-  opacity: 0; transition: opacity .3s ease; }
-.cell.empty .bar-zero { opacity: .85; }
+.bar-zero { fill: none; stroke: var(--critical); stroke-width: 1.5;
+  stroke-dasharray: 3 4; opacity: 0; transition: opacity .3s ease; }
+.cell.empty .bar-zero { opacity: .9; }
 .glyph { font-size: 14px; text-anchor: middle; }
 .qty { fill: var(--ink-2); font-size: 11px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
