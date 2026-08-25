@@ -104,3 +104,13 @@ the round-0 focal point in both hinted cells, and 24 of 48 worlds would again be
 What has to change first is the renderer, not the round count — the hint (and
 arguably the signal) must be shown at a precision that does not hand every agent
 an identical string, or the hint cells must be dropped.
+
+---
+
+**Followed up 2026-08-25.** The prescription in the paragraph above — render
+the hint at a higher precision — does not work, and `RENDER-PRECISION.md` shows
+why from this same record: the hint is one number given to everyone by design,
+184 of 192 round-0 hinted submissions are that number as printed, and the
+3-decimal grid never once collided two agents' private signals. The choice is
+between dropping the hinted cells and redefining the hint, and the round-0
+check that decides it is now `analysis/focal.py`.
