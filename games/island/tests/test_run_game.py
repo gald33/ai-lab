@@ -24,7 +24,7 @@ from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 
 from games.island import run_game
-from games.island.lobby import Lobby
+from games.island.lobby import Lobby, Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
                        / "experiments" / "005-deliberation-protocol" / "viewer"))
@@ -518,3 +518,19 @@ def test_a_table_is_claimed_once_however_often_the_loop_turns(hub, identities):
     lines = [m["body"] for m in lobby.client.history("lobby", limit=100)]
     assert sum(1 for b in lines if b == "MANAGE g1") == 1
     assert lobby.refused == 0
+
+
+def test_a_seat_is_not_absent_before_the_time_the_board_announced():
+    """An entrant that turns up when the board said is on time, even if this
+    runner's own ack window would have closed first."""
+    table = Table(id="g1", traders=2, episodes=2, rounds=1, opened_at=0.0,
+                  opens_at=1_000_120.0)
+
+    assert run_game.ack_close(1_000_000.0, 60, table) == 1_000_120.0
+    assert run_game.ack_close(1_000_000.0, 300, table) == 1_000_300.0
+
+
+def test_a_table_that_announced_no_time_keeps_the_runner_s_own_window():
+    table = Table(id="g1", traders=2, episodes=2, rounds=1, opened_at=0.0)
+
+    assert run_game.ack_close(1_000_000.0, 60, table) == 1_000_060.0

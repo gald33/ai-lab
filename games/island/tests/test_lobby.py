@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
@@ -428,3 +430,17 @@ def test_the_hold_line_is_not_read_as_talk_or_refused(hub):
     lobby.drain()
 
     assert lobby.refused == 0
+
+
+def test_the_time_the_board_announces_is_the_time_the_table_opens(hub):
+    """One number behind both: the line the entrants read and the clock the
+    manager keeps. A board that announces a time and runs from another lies."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: 1_000_000.0)
+    table = _settle_one(lobby, hub, key)
+
+    assert table.opens_at == 1_000_000.0 + lobby.open_lead
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    stamp = time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at))
+    assert any(b.startswith("g1 is full:") and f"opens {stamp}" in b for b in said)

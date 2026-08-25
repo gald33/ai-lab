@@ -161,6 +161,18 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
                 f"{seal_to(by_slot[name], dealer.private_state(name), PRIVATE_CONTEXT)}")
 
 
+def ack_close(started: float, ack_seconds: float, table: Table) -> float:
+    """When the ack window shuts: the later of this runner's own window and
+    the time the board announced.
+
+    The board already told the entrants when this table opens, and an entrant
+    that arrives at the announced time is on time. A table settled at 19:38
+    and announced for 19:40 would otherwise be free to call its seats absent
+    at 19:39, for turning up exactly when they were told to.
+    """
+    return max(started + ack_seconds, table.opens_at or 0.0)
+
+
 def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path) -> dict:
     """One settled table, from its first bell to its record."""
@@ -191,7 +203,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     bind_seats(mgr, table)
 
     started = time.time()
-    ack_deadline = started + ack_seconds
+    ack_deadline = ack_close(started, ack_seconds, table)
     mgr.say(schedule.schedule_text(table.episodes, mgr.names,
                                    opens_at=ack_deadline,
                                    episode_seconds=episode_seconds,
