@@ -88,6 +88,11 @@ read a result it does not know exists yet. It is left armed rather than
 cancelled — its firing is the control for this rung, and a control cancelled
 because the treatment already looked good is not a control.
 
+**Arm B reported at 20:11:14Z** — due 20:09:00Z, **134s late**. Larger than
+001's 59s and in the same direction: the scheduler's resolution is a minute,
+and delivery sits somewhere behind it. Both arms of rung 1 therefore fired,
+and the one held inside the container was the punctual one.
+
 ### What this does and does not license
 
 **Does:** across a four-and-a-half minute gap, in a Claude Code remote session,
@@ -111,6 +116,6 @@ reclaimed.
 
 | rung | gap | status |
 |---|---|---|
-| 1 | 5 min | **A arrived, uncontaminated** |
-| 2 | 20 min | armed after arm B reports, so its wake cannot contaminate the gap |
+| 1 | 5 min | **A arrived on time and uncontaminated; B 134s late** |
+| 2 | 20 min | **armed 20:11:40Z — A due 20:31:40Z, B reads at 20:38Z** |
 | 3 | 60 min | not armed |
