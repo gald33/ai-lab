@@ -53,9 +53,11 @@ TABLE_TTL = 900.0
 
 #: Lead time between a table settling and the round it announces as its
 #: start. Gives every seated entrant a moment to see the invite and connect
-#: before anything is expected of them -- the island manager is not started
-#: by this module, so nothing actually opens at this time yet; it is
-#: informational until build-order item 2 makes it real.
+#: before anything is expected of them. This module still starts nothing --
+#: it hands out an invite and a time -- but the time is no longer decorative:
+#: it is settled onto the table as `Table.opens_at`, and `run_game` will not
+#: call a seat absent before it (`play`). A board that announces a time and
+#: then runs the clock from some other one is a board that lies.
 OPEN_LEAD = 120.0
 
 #: The line one lobby posts to say it is the one reading this channel. Two
@@ -105,6 +107,9 @@ class Table:
     settled: bool = False
     lapsed: bool = False
     workspace: str | None = None
+    #: When the board said this table opens -- settled once, so the line the
+    #: entrants read and the clock the manager keeps come from one number.
+    opens_at: float | None = None
     #: Drawn at settlement, never before -- see `Lobby._settle`. Not on the
     #: board: `barter.economy.draw_island(agents, goods, seed)` is public and
     #: deterministic, so a seed posted where entrants can read it hands them
@@ -407,7 +412,7 @@ class Lobby:
                         token=self.client.config.token, key=key,
                         note=f"{table.id}: {table.traders} traders, "
                              f"{table.episodes} episodes")
-        opens_at = _stamp(self.clock() + self.open_lead)
+        table.opens_at = self.clock() + self.open_lead
         roster = ", ".join(f"{label} = {name}"
                            for label, name in zip(
                                (table.label(p) for p in table.seats),
@@ -416,7 +421,7 @@ class Lobby:
             "; PRACTICE -- not every seat offered a key to seal to, so the "
             "private half is public and this game is not ranked")
         self.say(f"{table.id} is full: {roster}; managed by "
-                f"{table.manager}; opens {opens_at}{note}")
+                f"{table.manager}; opens {_stamp(table.opens_at)}{note}")
         self.say(f"{table.id} invite: {invite.encode()}")
 
     def _sweep(self) -> None:

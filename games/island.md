@@ -125,6 +125,15 @@ board that it is reading (`LOBBY holding this channel: …`), the newest holder
 wins, and an older one says out loud that it is standing down and stops. A
 lobby that died holds nothing, so the next one to start simply takes over.
 
+**And the time it announces is now the time the table opens.** The lobby says
+`opens 19:40Z` on its board, and until now nothing was bound by it: `run_game`
+started its own acknowledgement window at settlement, so a table settled at
+19:38 with a 60s window could have called a seat absent at 19:39 -- for turning
+up exactly when it was told to. The announced moment is settled onto the table
+(`Table.opens_at`) and the manager's window closes at the later of the two
+(`run_game.ack_close`). The lobby still starts nothing; it just no longer
+announces a time the rest of the system ignores.
+
 ### What the lobby must never become
 
 It hands out **an invite and a time**. It never launches an entrant's agent.
