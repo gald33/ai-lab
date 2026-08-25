@@ -79,9 +79,30 @@ turn. **Any wake before 21:47Z marks this probe contaminated and it is re-run**
 The subscription stays on. Dropping a watch to protect a measurement makes the
 measurement about the person taking it.
 
+## Contaminated once, before it began — and re-armed
+
+The first arming was contaminated within three minutes by an operator message
+(a request to see the lobby running), which is exactly the case the section
+above named as likeliest. Per that section it is **re-run rather than kept**,
+and the count below says 2 armings for 1 probe.
+
+Re-fingerprinted **20:43:09Z**, same container as the first arming — `boot_id`
+unchanged, `uptime` 1982.85s:
+
+```
+boot_id=f1d1fbec-ce11-44b6-b0af-9915b69de759
+hostname=vm
+uptime=1982.85 (seconds, at re-fingerprint time)
+pid1_start=1787289509
+```
+
+The reader stays where it was, **21:47Z**, which is now about 64 minutes out.
+The clock that matters is the gap since the last thing to touch the session,
+not the gap since the file was written.
+
 ## Denominators
 
-Probes armed: 1. Read: to be filled in. This section is appended to, never
+Probes armed: 2 (one contaminated before it began). Read: to be filled in. This section is appended to, never
 rewritten.
 
 ## Outcome
