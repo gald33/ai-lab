@@ -336,3 +336,95 @@ def test_two_tables_draw_different_seeds(hub):
     lobby.drain()
 
     assert lobby.tables["g1"].seed != lobby.tables["g2"].seed
+
+
+def _settle_one(lobby, hub, key, table="g1", seats=("scout-v2", "trader-b")):
+    """Open, seat and manage one table on an already-constructed lobby."""
+    opener = _client(hub, f"opener-{table}", key)
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    for i, name in enumerate(seats):
+        _entrant(hub, f"{table}-t{i}", key).post("lobby", f"JOIN {table} as {name}")
+    manager = _client(hub, f"m-{table}", key)
+    manager.register(name=f"lucille-{table}", kind="local", branch="main", task="")
+    manager.post("lobby", f"MANAGE {table}")
+    lobby.drain()
+    return lobby.tables[table]
+
+
+def test_a_restarted_lobby_does_not_settle_a_table_a_second_time(hub, tmp_path):
+    """The seed is never on the board, so a lobby that forgot a settlement
+    would draw a second one and mint a second room for one table."""
+    key = generate_key()
+    state = tmp_path / "lobby.json"
+    first = Lobby(client=_client(hub, "lobby", key), state_path=state)
+    table = _settle_one(first, hub, key)
+    assert table.settled and table.seed is not None
+
+    second = Lobby(client=_client(hub, "lobby", key), state_path=state)
+    second.load()
+    second.drain()
+
+    # Same table, same seed, same room -- restored, not re-settled.
+    assert second.tables["g1"].seed == table.seed
+    assert second.tables["g1"].workspace == table.workspace
+    assert second.tables["g1"].seats == table.seats
+    assert second.tables["g1"].keys == table.keys
+    posted = [m["body"] for m in second.client.history("lobby", limit=500)
+              if isinstance(m.get("body"), str)]
+    assert sum(b.startswith("g1 invite: ") for b in posted) == 1
+    assert sum(b.startswith("g1 is full:") for b in posted) == 1
+    # And the next table it opens is g2, not a second g1.
+    assert _settle_one(second, hub, key, table="g2",
+                       seats=("scout-c", "trader-d")).id == "g2"
+
+
+def test_a_lobby_with_no_state_file_starts_clean(hub, tmp_path):
+    lobby = Lobby(client=_client(hub, "lobby", generate_key()),
+                  state_path=tmp_path / "absent.json")
+    lobby.load()
+
+    assert lobby.tables == {} and lobby.seen == set()
+
+
+def test_the_newest_lobby_holds_the_channel_and_the_older_one_stands_down(hub):
+    """Two lobbies on one board settle every table twice -- two seeds, two
+    room keys -- and the game that follows plays to nobody."""
+    key = generate_key()
+    old = Lobby(client=_client(hub, "lobby", key))
+    old.hold()
+    new = Lobby(client=_client(hub, "lobby-2", key))
+    new.hold()
+
+    opener = _client(hub, "opener", key)
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    old.drain()
+    new.drain()
+
+    assert old.stood_down and old.tables == {}
+    assert not new.stood_down and list(new.tables) == ["g1"]
+    said = [m["body"] for m in new.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("stands down" in b for b in said)
+    assert sum(b.startswith("g1 is forming") for b in said) == 1
+
+
+def test_a_lobby_that_holds_alone_keeps_reading(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    lobby.hold()
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+
+    lobby.drain()
+
+    assert not lobby.stood_down and list(lobby.tables) == ["g1"]
+
+
+def test_the_hold_line_is_not_read_as_talk_or_refused(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    lobby.hold()
+
+    lobby.drain()
+
+    assert lobby.refused == 0

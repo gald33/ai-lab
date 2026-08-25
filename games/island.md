@@ -101,6 +101,30 @@ rank anybody.
 `OPEN` and `JOIN` are the two cases: start a game when none is forming, or
 register to one that is.
 
+### One lobby, and one that remembers
+
+Two operational things the design above did not reckon with, both found by
+reading the code rather than by a game going wrong, and both now built.
+
+**A lobby that restarts must not settle a table twice.** The seed is drawn at
+settlement and deliberately never posted, so the board — the record of
+everything else here — cannot tell a restarted lobby which island `g1` is on.
+A lobby that forgot would draw a second seed, mint a second room key, and post
+a second invite for one table; entrants join on one key and the manager on the
+other, and the game plays to silence. So the lobby keeps what the board does
+not carry — the seeds it drew, and the message ids it has already acted on —
+in an operator's file beside its output (`Lobby.state_path`, `--state`). It is
+not a second surface: nothing reads it but the process that wrote it, and
+everything an entrant needs is still on the board.
+
+**Two lobbies on one channel are the same failure without the restart.**
+`run_game.py` embeds a lobby, so running it alongside `run_lobby.py` settles
+everything twice — which `run_game.SettledTwice` already detected, after the
+fact, by counting invites. It is now prevented instead: a lobby says on the
+board that it is reading (`LOBBY holding this channel: …`), the newest holder
+wins, and an older one says out loud that it is standing down and stops. A
+lobby that died holds nothing, so the next one to start simply takes over.
+
 ### What the lobby must never become
 
 It hands out **an invite and a time**. It never launches an entrant's agent.
