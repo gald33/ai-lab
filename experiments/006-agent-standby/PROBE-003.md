@@ -44,9 +44,13 @@ design and the only thing that makes it different from 002.
    A copy sits in the session's scratchpad, which is itself part of the test:
    a fresh container has no such file.
 
-2. **One server trigger, due 21:47Z** — about 65 minutes out. It is the only
-   thing armed, and it is the reader, not the subject. Whether *it* fires is
-   already known from 002; what it is for is to bring the agent back to look.
+2. **One server trigger** — the only thing armed, and it is the reader, not
+   the subject. Whether *it* fires is already known from 002; what it is for
+   is to bring the agent back to look. *(This first said "due 21:47Z". That
+   reader was never armed: the file was written, an operator message
+   interrupted, and the call was never made. The correction below is what is
+   actually armed — and a probe whose record claimed an instrument it did not
+   have is exactly the kind of thing this lab is supposed to catch in itself.)*
 
 3. **On the wake, compare.** Same `boot_id` and a `uptime` about 3,900s larger
    → the same container, still running, with nobody holding it. A different
@@ -109,7 +113,8 @@ hour**, and re-arming into one is just buying the same contamination again.
 
 So the reader moves, and the reading rule changes with it:
 
-- **the reader is a long one** — six hours out, not sixty-five minutes. It
+- **the reader is a long one** — **armed 20:51Z, due 2026-08-26 02:51Z**, six
+  hours out rather than sixty-five minutes. It
   will land after this session has stopped being used, whenever that is,
   rather than betting on a gap inside it;
 - **the measurement is taken at read time from two things that are both still
