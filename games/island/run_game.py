@@ -22,7 +22,11 @@ therefore the only one who can deal it. Two lobbies on one channel settle
 every table twice, mint two room keys for one workspace, and produce a game
 where the entrants and the manager cannot read each other -- which looks
 exactly like nobody turning up. `pending_invite` refuses rather than plays
-when it sees that, but the arrangement to avoid is running both at once.
+when it sees that, but the arrangement to avoid is running both at once, so
+this holds the channel on the board when it starts and an older lobby reading
+the same board stands down (`lobby.HOLD`). It also keeps its own state in a
+file, so a restart plays on with the tables it settled rather than settling
+them again under new ids.
 
 The honest name for this is a limitation, not a design: a manager that is not
 the lobby is what `games/island.md` wants, and it needs the lobby to be able
@@ -350,12 +354,25 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
     claimed: set[str] = set()
     while True:
         lobby.drain()
+        if lobby.stood_down:
+            print("another lobby holds this channel; stopping rather than "
+                  "settling every table twice", flush=True)
+            return
         if manager is not None:
             claim(manager, lobby, channel, claimed)
         for table in list(lobby.tables.values()):
             if not table.settled or table.id in played:
                 continue
             played.add(table.id)
+            if (out / f"{table.id}.json").exists():
+                # A restarted runner restores the tables it settled (that is
+                # the point of the state file), and a table's record on disk
+                # is the evidence it already played one. Replaying it would
+                # deal the same island twice and write a second row for one
+                # game.
+                print(f"{table.id}: already played -- {out / f'{table.id}.json'} "
+                      f"is on disk", flush=True)
+                continue
             if ranked_only and not table.sealable():
                 print(f"{table.id}: skipped -- not every seat offered a key to "
                       f"seal to, so this table cannot be ranked", flush=True)
@@ -437,6 +454,11 @@ def main(argv: list[str] | None = None) -> int:
                          "repo's own ledger). Point a rehearsal somewhere "
                          "else: the ledger is append-only and a row written "
                          "into it by a test does not come back out")
+    ap.add_argument("--state", type=Path, default=None,
+                    help="where the embedded lobby keeps what the board does "
+                         "not carry -- the seeds it drew and the lines it has "
+                         "already acted on -- so a restart does not settle a "
+                         "table twice (default: <out>/lobby-<ws>-<ch>.json)")
     ap.add_argument("--ranked", action="store_true",
                     help="refuse to play a table that is not sealable")
     ap.add_argument("--managed-by", default="lucille",
@@ -449,14 +471,18 @@ def main(argv: list[str] | None = None) -> int:
                                    token=args.token, workspace=args.workspace,
                                    key=args.key), agent_id=agent_id)
 
-    lobby = Lobby(client=_client("lobby"), channel=args.channel)
+    state = args.state or args.out / f"lobby-{args.workspace}-{args.channel}.json"
+    lobby = Lobby(client=_client("lobby"), channel=args.channel, state_path=state)
+    lobby.load()
+    lobby.hold()
     # The claimant, separate from the lobby that witnesses it -- see `claim`.
     # Registered so the settlement line names it rather than a blinded id.
     manager = _client(MANAGER)
     manager.register(name=args.managed_by, kind="local", branch="main",
                      task=f"running tables in {args.workspace}")
     print(f"watching {args.hub}/{args.workspace}#{args.channel}, "
-          f"offering to manage as {args.managed_by}")
+          f"offering to manage as {args.managed_by}, "
+          f"holding as {lobby.holder}, state in {state}")
     try:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
               ack_seconds=args.ack_seconds, out=args.out,

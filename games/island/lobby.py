@@ -15,18 +15,27 @@ item 2 onward in `games/island.md`).
 A seat is claimed by a Switchboard peer, not by the name typed after `as` --
 the name is what a `JOIN` line is addressed by and what the settlement shows,
 but the *seat* belongs to whichever peer wrote the line, so one peer cannot
-seat itself twice at the same table by typing a different name each time.
-Binding that peer to the name with a witnessed signing key, so an impostor can
-be told apart from the real seat later in the round, is build-order item 2 and
-is not done here -- this only prevents one peer from occupying two seats at
-the *lobby* stage.
+seat itself twice at the same table by typing a different name each time. That
+peer is also bound to the signing key its `JOIN` was verified under, witnessed
+once here and posted with the seat (`_join`, `_witness`), which is what lets
+the island manager tell an impostor from the real seat later in the round.
+
+**Two things this process needs that its board does not carry.** A settled
+table's seed is deliberately never posted, so a restarted lobby cannot read
+its own past settlements back off the board -- it would draw a second seed and
+mint a second room for a table that already has one. So this keeps its state
+in a file (`state_path`), and holds its channel against another lobby draining
+the same board (`hold`). Neither is a new primitive on the board: one is an
+operator's file, the other is one line of board text saying who is reading.
 """
 
 from __future__ import annotations
 
+import json
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Callable
 
 from switchboard.client import Client
@@ -48,6 +57,14 @@ TABLE_TTL = 900.0
 #: by this module, so nothing actually opens at this time yet; it is
 #: informational until build-order item 2 makes it real.
 OPEN_LEAD = 120.0
+
+#: The line one lobby posts to say it is the one reading this channel. Two
+#: lobbies draining one board settle every table twice -- two seeds, two room
+#: keys, two invites -- and the game that follows is silence
+#: (`run_game.SettledTwice`, which is where that failure was first paid for).
+#: The newest holder wins and the rest stand down, so starting a second lobby
+#: takes the channel over rather than corrupting it.
+HOLD = "LOBBY holding this channel: "
 
 
 def _stamp(ts: float) -> str:
@@ -125,6 +142,14 @@ class Lobby:
     #: Injectable so a test can pin the seed a settlement draws rather than
     #: asserting against whatever `secrets` happened to produce.
     draw_seed: Callable[[], int] = lambda: secrets.randbits(63)
+    #: Where this lobby's own state is kept across restarts. Optional: a test
+    #: and a one-shot drain need none, a standing process does.
+    state_path: Path | None = None
+    #: This process's holder token, once `hold()` has claimed the channel.
+    holder: str | None = None
+    #: Set when a newer lobby took the channel over. A stood-down lobby reads
+    #: nothing and settles nothing; it does not compete for the board.
+    stood_down: bool = False
     seen: set[str] = field(default_factory=set)
     tables: dict[str, Table] = field(default_factory=dict)
     settled: int = 0
@@ -133,6 +158,69 @@ class Lobby:
     refusals: list[dict] = field(default_factory=list)
     _names: dict[str, str] = field(default_factory=dict)
     _next: int = 1
+
+    # --- holding the channel ---------------------------------------------
+
+    def hold(self) -> str:
+        """Say on the board that this process is the lobby reading it.
+
+        Not a lock and not a lease -- a lobby that dies holds nothing, and the
+        next one to start says so and takes over. It exists because the
+        alternative is two lobbies settling the same table into two rooms,
+        which is invisible until a game plays to nobody. See `HOLD`.
+        """
+        self.holder = secrets.token_hex(4)
+        self.say(f"{HOLD}{self.holder}")
+        return self.holder
+
+    def _stand_down(self, rows: list[dict]) -> bool:
+        """Whether a newer lobby now holds this channel. Said once, out loud:
+        a process that has gone quiet should say why it went quiet."""
+        if self.holder is None:
+            return False
+        holders = [body[len(HOLD):].strip()
+                   for msg in rows
+                   if isinstance(body := msg.get("body"), str)
+                   and body.startswith(HOLD)]
+        if not holders or holders[-1] == self.holder:
+            return False
+        if not self.stood_down:
+            self.stood_down = True
+            self.say(f"lobby {self.holder} stands down: {holders[-1]} holds "
+                    f"this channel now. Two lobbies settle every table twice, "
+                    f"so this one stops reading.")
+        return True
+
+    # --- state across restarts --------------------------------------------
+
+    def save(self) -> None:
+        """Write what the board does not carry: the seeds, and which messages
+        have already been acted on.
+
+        The board is still the record of what happened. This is only what a
+        *reader* of it needs to not act twice -- a settled table's seed is
+        never posted (see `Table.seed`), so a lobby that forgot it would draw
+        another one and mint a second room for a table that already has one.
+        """
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"next": self._next, "seen": sorted(self.seen),
+                   "tables": {tid: asdict(t) for tid, t in self.tables.items()}}
+        tmp = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=1) + "\n")
+        tmp.replace(self.state_path)
+
+    def load(self) -> None:
+        """Restore a previous process's state, if there is any. A missing file
+        is the ordinary first run, not an error."""
+        if self.state_path is None or not self.state_path.exists():
+            return
+        payload = json.loads(self.state_path.read_text())
+        self._next = payload.get("next", self._next)
+        self.seen = set(payload.get("seen", ()))
+        self.tables = {tid: Table(**row)
+                       for tid, row in payload.get("tables", {}).items()}
 
     # --- reading -------------------------------------------------------
 
@@ -150,10 +238,15 @@ class Lobby:
         Never blocks anyone: this is a poll, not a wait, the same contract
         `island/manager.py`'s `drain()` keeps.
         """
+        # The roster first, and not only for the names: fetching it is how the
+        # client learns the keys it verifies signatures against, so a history
+        # read before it would witness nothing and refuse every JOIN.
         self._names = {a["agent_id"]: a["name"] for a in self.client.agents()
                        if a.get("name")}
         rows = sorted(self.client.history(self.channel, limit=500),
                       key=lambda r: r.get("seq", 0))
+        if self._stand_down(rows):
+            return
         for msg in rows:
             mid = str(msg.get("id"))
             if mid in self.seen:
@@ -165,7 +258,20 @@ class Lobby:
             body, _forecast = unwrap_forecast(msg.get("body"))
             self._consider(peer, body if isinstance(body, str) else "",
                            msg.get("signature"))
+        self._forget(rows)
         self._sweep()
+        self.save()
+
+    def _forget(self, rows: list[dict]) -> None:
+        """Drop message ids that have fallen out of the window we read.
+
+        A message older than the last 500 on this channel is never delivered
+        here again, so remembering it forever is only a file that grows. Skip
+        a window that came back empty rather than treating it as evidence.
+        """
+        if not rows:
+            return
+        self.seen &= {str(msg.get("id")) for msg in rows}
 
     def _consider(self, peer: str, text: str, signature: dict | None = None) -> None:
         try:
