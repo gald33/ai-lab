@@ -15,7 +15,8 @@ name: Deploy the island viewer (GitHub Pages)
 #
 # The site's replay trees mirror serve.py's ROOTS: `results/` is this
 # experiment's, `replays/` is games/replays -- replays kept on purpose so a
-# finished game has a link after its Switchboard room is gone.
+# finished game has a link after its Switchboard room is gone -- and
+# `ceiling/` is 007's exported rounds.
 #
 # `web/` fetches "api/boards" and "api/scores" as relative paths; serve.py
 # answers those from a running process, and there is none here, so
@@ -33,6 +34,7 @@ on:
     branches: [main]
     paths:
       - experiments/005-deliberation-protocol/viewer/**
+      - experiments/007-execution-ceiling/replays/**
       - games/replays/**
       - .github/workflows/pages.yml
   workflow_dispatch:
@@ -72,6 +74,10 @@ jobs:
           # disagree about where a board lives.
           if [ -d ../../games/replays ]; then
             cp -r ../../games/replays "$RUNNER_TEMP/site/replays"
+          fi
+          # 007's exported rounds, under the prefix serve.py gives them.
+          if [ -d ../007-execution-ceiling/replays ]; then
+            cp -r ../007-execution-ceiling/replays "$RUNNER_TEMP/site/ceiling"
           fi
           python viewer/freeze_static.py "$RUNNER_TEMP/site/api"
 

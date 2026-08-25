@@ -47,6 +47,12 @@ WEB = HERE / "web"
 ROOTS = {
     "results": HERE.parent / "results",
     "replays": HERE.parents[2] / "games" / "replays",
+    # 007's rounds, exported into this shape by its own
+    # `tools/export_replays.py`. A separate prefix rather than a second tree
+    # under `results`, because the label a page shows has to say which
+    # experiment a round came from: 007 replicated one cell four times, so an
+    # arm and a seed alone name four different rounds.
+    "ceiling": HERE.parents[1] / "007-execution-ceiling" / "replays",
 }
 
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
