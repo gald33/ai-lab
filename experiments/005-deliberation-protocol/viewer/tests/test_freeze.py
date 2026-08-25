@@ -33,11 +33,26 @@ IMPORTS = re.compile(r'from "(\./[\w./-]+\.js)(\?v=(\w+))?"')
 
 @pytest.fixture
 def site(tmp_path):
-    """A staged copy, the way `pages.yml` makes one."""
-    for f in WEB.iterdir():
+    """A staged copy, the way `pages.yml` makes one.
+
+    `cp -r viewer/web/. site/` copies the **tree**, and this used to copy only
+    the files at the top of it -- so a module importing one in a subdirectory
+    was never staged, and "every stamped URL still points at a file" could not
+    have caught a broken one. It could not have been broken until `stage.js`
+    started importing the vendored three.js, which is exactly when a fixture
+    that lies stops being harmless.
+    """
+    # A directory of its own, so a test that wants a twin can put one beside it.
+    # With the staged site *as* `tmp_path`, a twin made inside it became part of
+    # the tree the next walk hashed -- every file counted twice, and the build
+    # fingerprint stopped being a function of the build.
+    root = tmp_path / "site"
+    for f in WEB.rglob("*"):
         if f.is_file():
-            (tmp_path / f.name).write_bytes(f.read_bytes())
-    return tmp_path
+            out = root / f.relative_to(WEB)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(f.read_bytes())
+    return root
 
 
 def imports(path: Path):
@@ -74,11 +89,13 @@ def test_every_stamped_url_still_points_at_a_file(site):
 def test_the_same_build_stamps_the_same_way(site, tmp_path):
     # Otherwise every deploy invalidates every cache, which is the opposite
     # problem and just as bad.
+    files = [f for f in site.rglob("*") if f.is_file()]
     twin = tmp_path / "twin"
     twin.mkdir()
-    for f in site.iterdir():
-        if f.is_file():
-            (twin / f.name).write_bytes(f.read_bytes())
+    for f in files:
+        out = twin / f.relative_to(site)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(f.read_bytes())
     assert freeze_static.stamp(site) == freeze_static.stamp(twin)
 
 

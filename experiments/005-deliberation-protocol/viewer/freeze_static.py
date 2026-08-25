@@ -45,7 +45,12 @@ def stamp(site: Path) -> str | None:
     if not files:
         return None
     digest = hashlib.sha256()
-    for f in sorted(site.glob("*.js")):
+    # Every module, vendored ones included: three.js is the largest thing the
+    # page loads and an upgrade to it has to change the build's fingerprint,
+    # or a browser holding the old one keeps it. Only the top-level files have
+    # their imports rewritten -- vendored code is left as it was shipped, and
+    # its own relative imports resolve inside its directory either way.
+    for f in sorted(site.rglob("*.js")):
         digest.update(f.read_bytes())
     version = digest.hexdigest()[:10]
     for f in files:

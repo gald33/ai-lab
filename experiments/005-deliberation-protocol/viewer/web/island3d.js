@@ -1,0 +1,382 @@
+/**
+ * The island as a model, rather than as a drawing of one.
+ *
+ * Ported from the design delivered as `island.html` + `island-model.js`, with
+ * two things generalised, because the design was authored against one board.
+ *
+ * **The goods.** It hardcoded bread, cloth, iron and salt with a site apiece.
+ * The island has an ordered vocabulary of seven and a game is drawn over the
+ * first N of it, so a five-good game would have had nowhere to make fish. The
+ * four bespoke sites are kept and matched **by name**; anything else gets a
+ * generic works, and fish gets nets on the shore, so a game can be played over
+ * any prefix without the island quietly omitting one of its goods.
+ *
+ * **The seats.** It placed two settlements by hand. They are placed by the
+ * caller here, in island coordinates, because the page already knows where a
+ * trader's card is and the hut has to stand under it.
+ *
+ * Scenery colour is the viewer's scenery tokens. Good colour appears only on a
+ * site's marker flag, and the trader colours are their own -- not `--util` and
+ * `--eff`, which the design used and which mean utility and efficiency on the
+ * card three centimetres away.
+ */
+
+import * as THREE from "./vendor/three/three.module.js";
+
+const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+
+function mat(name, color, roughness = 0.9, metalness = 0.0, emissive = null) {
+  const m = new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  if (emissive) { m.emissive = new THREE.Color(emissive); m.emissiveIntensity = 0.6; }
+  m.name = name;
+  return m;
+}
+
+const M = {
+  sea: mat("sea", 0x36718f, 0.35, 0.05),
+  seaDeep: mat("sea_deep", 0x244a63, 0.4, 0.05),
+  surf: mat("surf", 0xcfe6ef, 0.5),
+  sand: mat("sand", 0xddbe83, 0.95),
+  sandWet: mat("sand_wet", 0x96793f, 0.9),
+  grass: mat("grass", 0x55803f, 0.92),
+  grassDark: mat("grass_dark", 0x3f6330, 0.95),
+  rock: mat("rock", 0x6d757a, 0.85),
+  thatch: mat("thatch", 0x7a4a34, 0.9),
+  thatchLit: mat("thatch_lit", 0x96654a, 0.9),
+  timber: mat("timber", 0x7a5a34, 0.9),
+  cloth: mat("cloth", 0xe8e2d4, 0.85),
+  salt: mat("salt_crust", 0xe9eef0, 0.7),
+  wheat: mat("wheat", 0xc9a86a, 0.9),
+  glass: mat("lantern", 0xffd79a, 0.4, 0.0, 0xffb45e),
+};
+
+//: The good slots, in the stylesheet's order, so a flag on the island is the
+//: colour of that good's chip in the legend and its bar on a shelf.
+export const GOOD_COLOURS = [0x3987e5, 0xd95926, 0x199e70, 0xc98500,
+                             0x8f6fd8, 0xd8578f, 0x51b6c2];
+
+//: Seat colours, and deliberately not the metric tokens the design reached for.
+//: `--util` and `--eff` name utility and efficiency, and both are drawn on the
+//: card standing beside the hut; a banner in one of them would be the third
+//: thing on screen wearing a colour that already means something else.
+export const SEAT_COLOURS = [0xe8a13d, 0x6fc2a0, 0xc98bd8, 0xd9694f,
+                             0x86a8e0, 0xd3c463];
+
+const goodMat = (good, i) =>
+  mat(`good_${good}`, GOOD_COLOURS[i % GOOD_COLOURS.length], 0.6, 0.1);
+const seatMat = (name, i) =>
+  mat(`trader_${name}`, SEAT_COLOURS[i % SEAT_COLOURS.length], 0.7);
+
+function add(group, geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0], scale = null) {
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.position.set(...pos);
+  mesh.rotation.set(...rot);
+  if (scale) mesh.scale.set(...scale);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+/** A wobbly rounded landmass slab: irregular silhouette, soft bevelled edge. */
+function slab(radius, depth, bevel, wobble, phase, baseY, material, name) {
+  const pts = [];
+  const N = 96;
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * Math.PI * 2;
+    const r = radius * (1 + wobble * Math.sin(3 * t + phase)
+                          + wobble * 0.6 * Math.sin(5 * t - phase * 1.7));
+    pts.push(new THREE.Vector2(Math.cos(t) * r, Math.sin(t) * r));
+  }
+  const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), {
+    depth, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel,
+    bevelSegments: 4, curveSegments: 12,
+  });
+  geo.rotateX(-Math.PI / 2);
+  geo.computeBoundingBox();
+  geo.translate(0, baseY - geo.boundingBox.min.y, 0);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function hut(id, traderMat) {
+  const g = new THREE.Group();
+  g.name = `settlement_${id}`;
+  add(g, new THREE.CylinderGeometry(0.34, 0.38, 0.42, 24), M.cloth, `hut_${id}_wall`, [0, 0.21, 0]);
+  add(g, new THREE.ConeGeometry(0.52, 0.42, 24), M.thatch, `hut_${id}_roof`, [0, 0.63, 0]);
+  add(g, new THREE.SphereGeometry(0.05, 12, 10), M.thatchLit, `hut_${id}_finial`, [0, 0.86, 0]);
+  add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), M.timber, `hut_${id}_door`, [0, 0.12, 0.379]);
+  add(g, new THREE.CylinderGeometry(0.022, 0.022, 1.0, 10), M.timber, `hut_${id}_pole`, [0.5, 0.5, 0.12]);
+  add(g, new THREE.BoxGeometry(0.02, 0.26, 0.3), traderMat, `hut_${id}_banner`, [0.5, 0.82, 0.28]);
+  add(g, new THREE.SphereGeometry(0.05, 12, 10), M.glass, `hut_${id}_lantern`, [-0.3, 0.42, 0.3]);
+  add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, `hut_${id}_crate_a`, [-0.42, 0.08, -0.2], [0, 0.4, 0]);
+  add(g, new THREE.BoxGeometry(0.13, 0.13, 0.13), M.timber, `hut_${id}_crate_b`, [-0.5, 0.2, -0.28], [0, 0.9, 0]);
+  return g;
+}
+
+function marker(name, material) {
+  const g = new THREE.Group();
+  g.name = `marker_${name}`;
+  add(g, new THREE.CylinderGeometry(0.018, 0.024, 0.62, 10), M.timber, `marker_${name}_post`, [0, 0.31, 0]);
+  add(g, new THREE.BoxGeometry(0.03, 0.16, 0.22), material, `marker_${name}_flag`, [0, 0.53, 0.11]);
+  return g;
+}
+
+function tree(i, scale = 1) {
+  const g = new THREE.Group();
+  g.name = `tree_${i}`;
+  add(g, new THREE.CylinderGeometry(0.045, 0.075, 0.55, 12), M.timber, `tree_${i}_trunk`, [0, 0.275, 0], [0, 0, 0.06]);
+  add(g, new THREE.SphereGeometry(0.3, 20, 16), M.grass, `tree_${i}_canopy_a`, [0.02, 0.72, 0], [0, 0, 0], [1, 0.8, 1]);
+  add(g, new THREE.SphereGeometry(0.2, 18, 14), M.grassDark, `tree_${i}_canopy_b`, [-0.16, 0.62, 0.1], [0, 0, 0], [1, 0.85, 1]);
+  add(g, new THREE.SphereGeometry(0.17, 18, 14), M.grass, `tree_${i}_canopy_c`, [0.16, 0.6, -0.1]);
+  g.scale.setScalar(scale);
+  return g;
+}
+
+function palm(i) {
+  const g = new THREE.Group();
+  g.name = `palm_${i}`;
+  add(g, new THREE.CylinderGeometry(0.04, 0.065, 0.95, 12), M.timber, `palm_${i}_trunk`, [0, 0.47, 0], [0.12, 0, 0.1]);
+  for (let f = 0; f < 5; f++) {
+    const a = (f / 5) * Math.PI * 2;
+    add(g, new THREE.SphereGeometry(0.26, 16, 12), f % 2 ? M.grass : M.grassDark,
+      `palm_${i}_frond_${f}`, [Math.cos(a) * 0.18 - 0.1, 0.94, Math.sin(a) * 0.18],
+      [0, a, 0], [1, 0.22, 0.55]);
+  }
+  return g;
+}
+
+function boat(i, sailMat) {
+  const g = new THREE.Group();
+  g.name = `boat_${i}`;
+  add(g, new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.55, 2.1]);
+  add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
+  add(g, new THREE.CylinderGeometry(0.018, 0.022, 0.8, 10), M.timber, `boat_${i}_mast`, [0, 0.5, 0]);
+  add(g, new THREE.BoxGeometry(0.012, 0.44, 0.32), sailMat, `boat_${i}_sail`, [0, 0.62, 0.14]);
+  return g;
+}
+
+const GRASS_Y = 0.70, HILL_Y = 1.12, SAND_Y = 0.40;
+
+/** Where a good is made. Four are the design's; the rest are built to fit. */
+const SITES = {
+  bread(g, r) {                                  // the fields
+    for (let x = 0; x < 4; x++) for (let z = 0; z < 3; z++) {
+      add(g, new THREE.BoxGeometry(0.3, 0.11, 0.24), (x + z) % 2 ? M.wheat : M.grass,
+        `field_plot_${x}_${z}`, [(x - 1.5) * 0.34, 0.055, (z - 1) * 0.28]);
+    }
+    return [0.85, 0, 0.3];
+  },
+  cloth(g) {                                     // the drying racks
+    for (let i = 0; i < 3; i++) {
+      const x = (i - 1) * 0.46;
+      add(g, new THREE.CylinderGeometry(0.022, 0.022, 0.62, 8), M.timber, `rack_${i}_post_a`, [x - 0.16, 0.31, 0]);
+      add(g, new THREE.CylinderGeometry(0.022, 0.022, 0.62, 8), M.timber, `rack_${i}_post_b`, [x + 0.16, 0.31, 0]);
+      add(g, new THREE.BoxGeometry(0.42, 0.02, 0.02), M.timber, `rack_${i}_beam`, [x, 0.6, 0]);
+      add(g, new THREE.BoxGeometry(0.34, 0.4, 0.014), i === 1 ? M.wheat : M.cloth, `rack_${i}_cloth`, [x, 0.38, 0.01]);
+    }
+    return [0.95, 0, 0.25];
+  },
+  iron(g) {                                      // the quarry
+    for (let i = 0; i < 3; i++) {
+      add(g, new THREE.BoxGeometry(1.0 - i * 0.22, 0.16, 0.62 - i * 0.12), M.rock,
+        `quarry_terrace_${i}`, [i * 0.1, -0.08 - i * 0.16, -i * 0.1]);
+    }
+    add(g, new THREE.DodecahedronGeometry(0.14), M.rock, "quarry_spoil_a", [0.5, 0.06, 0.34], [0.4, 0.2, 0.7]);
+    add(g, new THREE.DodecahedronGeometry(0.1), M.rock, "quarry_spoil_b", [0.62, 0.03, 0.2], [0.9, 0.5, 0.1]);
+    add(g, new THREE.BoxGeometry(0.2, 0.16, 0.2), M.timber, "quarry_cart", [-0.5, 0.08, 0.3], [0, 0.6, 0]);
+    return [-0.15, 0.02, 0.42];
+  },
+  salt(g) {                                      // the pans
+    for (let i = 0; i < 4; i++) {
+      const x = (i % 2) * 0.62 - 0.31, z = Math.floor(i / 2) * 0.56 - 0.28;
+      add(g, new THREE.BoxGeometry(0.56, 0.05, 0.5), M.sandWet, `pan_${i}_bed`, [x, 0.025, z]);
+      add(g, new THREE.BoxGeometry(0.48, 0.03, 0.42), M.salt, `pan_${i}_brine`, [x, 0.055, z]);
+    }
+    add(g, new THREE.ConeGeometry(0.16, 0.22, 16), M.salt, "salt_heap", [0.66, 0.11, -0.5]);
+    return [-0.7, 0, -0.42];
+  },
+  fish(g) {                                      // nets, and a rack of the catch
+    for (let i = 0; i < 3; i++) {
+      const x = (i - 1) * 0.5;
+      add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8), M.timber, `net_${i}_post`, [x, 0.35, -0.2], [0.1, 0, 0.05]);
+      add(g, new THREE.BoxGeometry(0.44, 0.36, 0.01), M.cloth, `net_${i}_mesh`, [x, 0.42, -0.19], [0, 0, 0.05]);
+    }
+    add(g, new THREE.BoxGeometry(0.7, 0.06, 0.34), M.timber, "fish_table", [0, 0.28, 0.34]);
+    add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.28, 8), M.timber, "fish_table_leg_a", [-0.28, 0.14, 0.34]);
+    add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.28, 8), M.timber, "fish_table_leg_b", [0.28, 0.14, 0.34]);
+    return [0.78, 0, 0.1];
+  },
+};
+
+/** Any good the design did not draw a site for: a works, plainly built. */
+function works(g) {
+  add(g, new THREE.BoxGeometry(0.7, 0.34, 0.5), M.timber, "works_shed", [0, 0.17, 0]);
+  add(g, new THREE.BoxGeometry(0.78, 0.06, 0.58), M.thatch, "works_roof", [0, 0.37, 0]);
+  add(g, new THREE.CylinderGeometry(0.09, 0.11, 0.3, 12), M.rock, "works_kiln", [0.5, 0.15, 0.24]);
+  add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, "works_crate", [-0.48, 0.08, 0.26], [0, 0.5, 0]);
+  return [0, 0, -0.42];
+}
+
+/**
+ * The island, for this round's traders and goods.
+ *
+ * `seats` are island-space `[x, z]` positions, one per trader in order --
+ * the caller places them, because the page already knows where a trader's card
+ * is and the hut belongs under it.
+ */
+export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth", "iron", "salt"],
+                              seats = null, seed = 20260825 } = {}) {
+  const island = new THREE.Group();
+  island.name = "the_island";
+  const r = rng(seed);
+  const anchors = {};
+
+  // — sea and shelf —
+  add(island, new THREE.CylinderGeometry(4.95, 4.95, 0.12, 96), M.seaDeep, "sea", [0, -0.06, 0]);
+  add(island, new THREE.CylinderGeometry(4.62, 4.62, 0.09, 96), M.sea, "shallows", [0, -0.005, 0]);
+  add(island, new THREE.TorusGeometry(4.22, 0.075, 8, 120), M.surf, "surf_ring", [0, 0.055, 0], [Math.PI / 2, 0, 0], [1, 1, 0.5]);
+
+  // — land —
+  island.add(slab(4.15, 0.14, 0.14, 0.10, 0.7, 0.0, M.sandWet, "shore_shelf"));
+  island.add(slab(3.9, 0.24, 0.20, 0.11, 0.7, 0.08, M.sand, "beach"));
+  island.add(slab(3.25, 0.34, 0.20, 0.12, 1.9, 0.36, M.grass, "meadow"));
+  island.add(slab(1.55, 0.44, 0.22, 0.16, 3.1, 0.68, M.grassDark, "upland"));
+
+  add(island, new THREE.SphereGeometry(1.05, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2),
+    M.grassDark, "ridge", [-0.35, HILL_Y - 0.04, -0.35], [0, 0, 0], [1, 0.55, 0.9]);
+  add(island, new THREE.DodecahedronGeometry(0.34), M.rock, "summit_rock", [-0.55, HILL_Y + 0.42, -0.5], [0.3, 0.6, 0.2]);
+  add(island, new THREE.DodecahedronGeometry(0.2), M.rock, "summit_rock_2", [-0.15, HILL_Y + 0.34, -0.72], [0.5, 1.1, 0.3]);
+
+  // — the market at the centre —
+  const market = new THREE.Group();
+  market.name = "market";
+  market.position.set(0.45, GRASS_Y, 0.55);
+  add(market, new THREE.CylinderGeometry(0.95, 1.0, 0.06, 48), M.sand, "market_plaza", [0, 0.03, 0]);
+  add(market, new THREE.CylinderGeometry(0.28, 0.3, 0.1, 32), M.rock, "market_stone", [0, 0.11, 0]);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    add(market, new THREE.CylinderGeometry(0.035, 0.04, 0.62, 10), M.timber,
+      `market_post_${i}`, [Math.cos(a) * 0.55, 0.37, Math.sin(a) * 0.55]);
+  }
+  add(market, new THREE.ConeGeometry(0.86, 0.46, 6), M.thatchLit, "market_roof", [0, 0.9, 0], [0, Math.PI / 6, 0]);
+  add(market, new THREE.SphereGeometry(0.06, 12, 10), M.glass, "market_lantern", [0, 0.66, 0]);
+  add(market, new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8), M.timber, "market_bell_post", [0.8, 0.31, -0.3]);
+  add(market, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    M.thatchLit, "market_bell", [0.8, 0.52, -0.3], [Math.PI, 0, 0]);
+  market.scale.setScalar(1.3);
+  island.add(market);
+  anchors.market = new THREE.Vector3(0.45, GRASS_Y, 0.55);
+
+  // — settlements, one per seat —
+  const ring = (i, n, rad, turn = 0) => {
+    const a = turn + (i / n) * Math.PI * 2;
+    return [Math.cos(a) * rad, Math.sin(a) * rad];
+  };
+  const placed = [];
+  traders.forEach((name, i) => {
+    const [x, z] = seats?.[i] ?? ring(i, traders.length, 2.35, -0.6);
+    const g = hut(name, seatMat(name, i));
+    g.position.set(x, GRASS_Y, z);
+    // Facing the market, which is what a settlement on an island with one
+    // market would do.
+    g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
+    g.scale.setScalar(1.35);
+    island.add(g);
+    anchors[name] = new THREE.Vector3(x, GRASS_Y, z);
+    placed.push([x, z, 0.95]);
+  });
+
+  // — a site per good —
+  goods.forEach((good, i) => {
+    const site = new THREE.Group();
+    site.name = `site_${good}`;
+    // Salt is worked on the wet shelf and iron cut out of the upland; the rest
+    // sit on the meadow. Placed on a ring the settlements are not on.
+    const wet = good === "salt" || good === "fish";
+    const high = good === "iron";
+    const [x, z] = ring(i, goods.length, wet ? 2.75 : high ? 1.7 : 2.15, 0.85);
+    site.position.set(x, wet ? SAND_Y - 0.02 : high ? HILL_Y : GRASS_Y, z);
+    site.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
+    const at = (SITES[good] || works)(site, r);
+    const flag = marker(good, goodMat(good, i));
+    flag.position.set(...at);
+    site.add(flag);
+    site.scale.setScalar(wet ? 1.25 : 1.3);
+    island.add(site);
+    anchors[`site_${good}`] = new THREE.Vector3(x, GRASS_Y, z);
+    placed.push([x, z, 1.0]);
+  });
+
+  // — the dock and the boats —
+  const dock = new THREE.Group();
+  dock.name = "dock";
+  dock.position.set(3.15, 0, 1.35);
+  dock.rotation.y = -1.35;
+  for (let i = 0; i < 7; i++) {
+    add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * 0.26]);
+  }
+  for (let i = 0; i < 4; i++) {
+    add(dock, new THREE.CylinderGeometry(0.035, 0.035, 0.62, 8), M.timber,
+      `dock_pile_${i}`, [(i % 2 ? 0.3 : -0.3), 0.0, 0.3 + Math.floor(i / 2) * 1.1]);
+  }
+  add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit, "dock_bollard", [0.3, 0.5, 1.62]);
+  // One boat per seat, up to what the jetty holds: the traders arrived somehow.
+  traders.slice(0, 3).forEach((name, i) => {
+    const b = boat(i + 1, seatMat(name, i));
+    b.position.set(-0.75 + i * 0.85, 0.02, 1.5 - i * 0.4);
+    b.rotation.y = 0.22 - i * 0.57;
+    dock.add(b);
+  });
+  dock.scale.setScalar(1.3);
+  island.add(dock);
+  placed.push([2.9, 1.2, 0.9]);
+
+  // — the trail: market to each settlement, each site, and the dock head —
+  const trail = new THREE.Group();
+  trail.name = "trails";
+  const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z]),
+                ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z]),
+                [2.75, 1.15]];
+  for (const [ex, ez] of ends) {
+    for (let s = 1; s <= 7; s++) {
+      const k = s / 8;
+      const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
+      const onSand = Math.hypot(x, z) > 3.1;
+      add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
+        `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
+        [x + (r() - 0.5) * 0.08, (onSand ? SAND_Y : GRASS_Y) + 0.02, z + (r() - 0.5) * 0.08]);
+    }
+  }
+  island.add(trail);
+
+  // — scattered planting, off everything that carries meaning —
+  const keepOut = [[0.45, 0.55, 1.3], ...placed];
+  let n = 0;
+  for (let i = 0; i < 600 && n < 22; i++) {
+    const a = r() * Math.PI * 2, rad = 0.9 + r() * 3.1;
+    const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
+    const wob = 1 + 0.12 * Math.sin(3 * a + 1.9) + 0.07 * Math.sin(5 * a - 3.2);
+    if (rad > 3.9 * wob) continue;
+    if (keepOut.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr)) continue;
+    const onGrass = rad < 3.0 * wob;
+    const g = onGrass ? tree(n, 1.0 + r() * 0.55) : palm(n);
+    if (!onGrass) g.scale.setScalar(1.25);
+    g.position.set(x, onGrass ? GRASS_Y - 0.02 : SAND_Y - 0.02, z);
+    g.rotation.y = r() * Math.PI * 2;
+    island.add(g);
+    n++;
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = r() * Math.PI * 2, rad = 3.4 + r() * 1.0;
+    add(island, new THREE.DodecahedronGeometry(0.1 + r() * 0.13), M.rock, `shore_rock_${i}`,
+      [Math.cos(a) * rad, 0.24, Math.sin(a) * rad], [r(), r(), r()]);
+  }
+
+  return { island, anchors, ground: GRASS_Y };
+}
