@@ -163,3 +163,98 @@ def test_a_game_with_no_reveal_beside_it_cannot_be_checked_at_all(tmp_path):
 
     assert not report.passed
     assert any("no reveal sidecar" in f for f in report.failures)
+
+
+# --- the clock ------------------------------------------------------------
+#
+# The manager announces an absolute bell time when it opens an episode; the
+# hub stamps the bell when it arrives. A manager cannot write both.
+
+def _timed(seq, author, body, at):
+    return {"seq": seq, "at": at, "author": author, "body": body,
+            "signature": {"status": "unsigned"}}
+
+
+def _clock_board(bell_at="2026-08-26T05:31:00Z", announced="05:31:00",
+                 schedule=True):
+    messages = []
+    if schedule:
+        messages.append(_timed(1, "manager",
+                               "Schedule for this round. 2 traders: T1, T2. "
+                               "1 episodes, 60s each. Episode 1 opens at "
+                               "05:30:00Z whether or not everyone has.",
+                               "2026-08-26T05:29:30Z"))
+    messages += [
+        _timed(2, "manager", f"episode 1 of 1 is open; the bell is at "
+                             f"{announced}Z (60s). PRODUCE, PROPOSE and "
+                             f"APPROVE all settle until the bell.",
+               "2026-08-26T05:30:00Z"),
+        _timed(3, "manager", "bell — episode 1 closed. 0 proposal(s) lapsed.",
+               bell_at),
+    ]
+    return {"workspace": "w", "channel": "island", "messages": messages}
+
+
+def _clock(board):
+    report = verify.Report()
+    verify.check_clock(board, report)
+    return report
+
+
+def test_a_bell_rung_when_the_board_said_passes():
+    report = _clock(_clock_board(bell_at="2026-08-26T05:31:01.4Z"))
+
+    assert report.passed, report.failures
+    assert report.checks["clock"] == [2, 2], "the schedule, and the one bell"
+
+
+def test_a_bell_rung_early_fails_however_it_is_worded():
+    """The one direction that takes time from a trader who believed the board."""
+    report = _clock(_clock_board(bell_at="2026-08-26T05:30:41Z"))
+
+    assert not report.passed
+    assert any("19.0s EARLY" in f for f in report.failures)
+
+
+def test_a_bell_far_past_its_time_fails_too():
+    report = _clock(_clock_board(bell_at="2026-08-26T05:32:30Z"))
+
+    assert not report.passed
+    assert any("90.0s late" in f for f in report.failures)
+
+
+def test_a_couple_of_seconds_late_is_the_polling_loop_not_a_fault():
+    report = _clock(_clock_board(bell_at="2026-08-26T05:31:03Z"))
+
+    assert report.passed
+
+
+def test_a_bell_just_after_midnight_is_not_read_as_a_day_early():
+    """The board states times without dates, so the date has to come from the
+    message beside them -- or a bell at 00:00:02 reads as 24h early."""
+    board = _clock_board(bell_at="2026-08-27T00:00:02Z", announced="00:00:00")
+    board["messages"][0]["body"] = board["messages"][0]["body"].replace(
+        "05:30:00Z", "23:59:00Z")
+    board["messages"][0]["at"] = "2026-08-26T23:58:30Z"
+    board["messages"][1]["at"] = "2026-08-26T23:59:02Z"
+
+    report = _clock(board)
+
+    assert report.passed, report.failures
+
+
+def test_a_round_with_no_schedule_announced_fails():
+    report = _clock(_clock_board(schedule=False))
+
+    assert not report.passed
+    assert any("no schedule was announced" in f for f in report.failures)
+
+
+def test_a_board_that_announces_no_bell_times_says_so_rather_than_passing():
+    board = {"workspace": "w", "channel": "island", "messages": [
+        _timed(1, "manager", "bell — episode 1 closed.", "2026-08-26T05:31:00Z")]}
+
+    report = _clock(board)
+
+    assert report.passed
+    assert any("announces no bell times" in s for s in report.skipped)
