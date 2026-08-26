@@ -1223,11 +1223,33 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     const b = new THREE.Box3().setFromObject(o);
     decks[nm] = [b.min.y, b.max.y];
   }
+  // How far each good's flag clears the ground directly beneath it.
+  //
+  // The parts of a site are built at offsets from the site's origin and only
+  // the origin was ever asked how high the island is there, so on a slope they
+  // went into it -- reported as three flags drawn inside the hill with their
+  // poles showing. Two of them measure 3 and 5 hundredths under, which is
+  // enough: a flag is 0.16 tall, so a twentieth of a unit takes a third of it
+  // into the grass and the rest reads as lying on the slope.
+  //
+  // A ray from the camera to the flag was tried instead and taken out again:
+  // it could not be made to fail. Even with a flag genuinely under the ground
+  // its top half still catches the ray first, so the check that reads like the
+  // complaint answers yes to everything, and 600 raycasts a shape bought
+  // nothing this line does not.
+  const flags = {};
+  for (const good of goods) {
+    const f = made.island.getObjectByName(`marker_${good}_flag`);
+    if (!f) continue;
+    const box = new THREE.Box3().setFromObject(f);
+    const mid = box.getCenter(new THREE.Vector3());
+    flags[good] = box.min.y - made.ground(mid.x, mid.z);
+  }
   // Everything the island places on purpose, by name, so a check can ask
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited,
+  return {traders, decks, sited, flags,
           seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
           card0: geo.cards.length ? geo.cards[0].y : null,
@@ -1339,6 +1361,13 @@ def island(browser, base: str, out: Path) -> list[str]:
         # what "elements are drawn on top of one another" looked like from a
         # seat. A market stall is about 0.9 across and a hut about 0.8, so a
         # metre between centres is two of them not touching.
+        # A flag is a sign, and a sign inside a hill signs nothing. Asked of the
+        # model at the flag's own position rather than its site's, which is
+        # exactly the distinction the bug turned on.
+        for good, clear in built["flags"].items():
+            if clear < -0.02:
+                bad.append(f"island {label}: {good}'s flag is {-clear:.2f} below "
+                           f"the ground under it; it is drawn inside the hill")
         sited = built["sited"]
         names = sorted(sited)
         for i, a in enumerate(names):

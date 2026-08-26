@@ -611,6 +611,24 @@ none of them is a defect a still screenshot shows.
   `spaced()` takes fixed obstacles now, and `island()` asks whether *any* two
   things the island placed on purpose are within a metre of each other; against
   the old placement it reports 25.
+* **Three flags were drawn inside the mountain.** A site is placed by its
+  origin and its parts are not: the group asks the island how high it is at one
+  point and everything inside it inherits that one answer, which is right on
+  the flat and wrong on a slope. The iron site stands at radius 1.7, a hair
+  outside the upland's own 1.55, so the offsets its parts are built at carried
+  them into the side of the hill — the flags by a twentieth of a unit, which is
+  a third of a flag, and the quarry's own spoil by six tenths. `follow()` adds
+  the terrain under each part on top of the height it was *designed* at, so a
+  salt pan still sits a little into the sand and a quarry terrace is still cut
+  into the rock.
+
+  A ray from the camera to each flag was tried as the check, because that reads
+  like the complaint, and it was **taken out again: it could not be made to
+  fail.** A flag is 0.16 tall, so even one genuinely under the ground catches
+  the ray on its top half — the check answers yes to everything, and 600
+  raycasts a frame shape bought nothing that measuring the clearance beneath
+  the flag does not.
+
 * **The shockwaves are gone.** Five clips fired expanding rings, and a
   production of four goods put four up at once with an offer's and a bell's
   arriving on top at 4×. Cut to three first, then to none: the second report
