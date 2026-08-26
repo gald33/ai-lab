@@ -193,6 +193,42 @@ And one it does not settle, which is worth saying so nobody expects it to: an
 entrant that never turns up, or turns up with a fresh client per room (§5),
 still fails to bind. Handing somebody a key is not the same as their using it.
 
+## 3d. A plaintext room has no signatures, so the lobby's key is *published*
+
+Measured 2026-08-26, and it closes an idea that comes up every time somebody
+asks how a stranger gets into the lobby: run the lobby unencrypted, then there
+is no key to hand out.
+
+**It does not work.** Switchboard signs a message inside `_seal_request`,
+which only runs when there is a cipher — and deliberately, per its own
+comment: *"Signed here, before sealing, so the signature travels inside the
+ciphertext. A hub cannot read it, alter it, or strip it without breaking the
+AEAD tag — a signature the transport can quietly remove proves nothing."*
+
+So a plaintext workspace carries **no signature block on any message**. A seat
+binds by a witnessed signing key, so a keyless lobby refuses every `JOIN`:
+
+```
+@scout  not settled: JOIN must be signed -- this message carried no signature to witness
+@trader not settled: JOIN must be signed -- this message carried no signature to witness
+@lucille not settled: MANAGE must be signed -- ...
+```
+
+**The workable shape is one word different: the lobby's key is published, not
+private.** It protects nothing — everyone who plays holds it — and that is
+fine, because it is not there to protect anything. It is there to turn
+attribution on. What stays secret travels by `ask`, which seals to one peer's
+exchange key and is opaque to every other holder of the workspace key
+(verified in §3), and the table's own room key — a real secret — is minted per
+table and goes only to its seats.
+
+One bug this found: `Lobby._settle` minted the table's room key *only if the
+lobby itself was encrypted*. A lobby run without a key would have dealt every
+game into a room anyone holding the hub token could walk into, and nothing
+would have said so. The table's key is now minted unconditionally.
+
+Re-check: a `Client` with no `key=`, `post`, then read the row's `signature`.
+
 ## 4. What this rules out, so it is not proposed again
 
 - **An entrant SDK, wrapper or "runner that seals."** It is not needed (1), and
@@ -207,6 +243,8 @@ still fails to bind. Handing somebody a key is not the same as their using it.
 - **Asking Switchboard for a read/write permission split**, or building one
   here. See 3b: watching is HTTP, joining is a key, and the key is ours to
   hand out or seal.
+- **Running the lobby unencrypted so there is no key to distribute.** See 3d:
+  no cipher means no signatures, and no signatures means no seats.
 
 ## 5. One more thing measured the same day, kept here because it also keeps
    surprising people

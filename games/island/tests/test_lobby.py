@@ -650,3 +650,44 @@ def test_a_table_missing_a_nonce_says_its_draw_is_not_checkable(hub):
     said = [m["body"] for m in lobby.client.history("lobby", limit=500)
             if isinstance(m.get("body"), str)]
     assert any("not checkable afterwards" in b for b in said)
+
+
+def test_a_table_room_is_keyed_whatever_the_lobby_is(hub):
+    """A table's room key must not depend on the lobby's own encryption.
+
+    It used to: `generate_key() if self.client.encrypted else None`. So a
+    lobby run without a key dealt every game into a room anybody holding the
+    hub token could walk into -- and nothing said so.
+    """
+    lobby = Lobby(client=_client(hub, "lobby", generate_key()))
+    table = _settle_one(lobby, hub, lobby.client.config.key)
+
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    line = next(b for b in said if b.startswith("g1 invite: "))
+    invite = Invite.decode(line[len("g1 invite: "):])
+    assert invite.key and invite.workspace == table.workspace
+
+
+def test_a_plaintext_lobby_cannot_seat_anybody_and_says_why(hub):
+    """**The reason the lobby's key is published rather than absent.**
+
+    Switchboard signs a message inside `_seal_request`, before sealing, so the
+    signature rides within the ciphertext -- "a signature the transport can
+    quietly remove proves nothing". A plaintext room therefore carries no
+    signatures at all, and a seat binds by a witnessed signing key. So a lobby
+    with no key refuses every JOIN, and the honest way to let strangers in is
+    a key that is *published*, not a room that has none.
+    """
+    lobby = Lobby(client=_client(hub, "lobby", None))
+    assert not lobby.client.encrypted
+    _client(hub, "opener", None).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    entrant = _client(hub, "t1", None)
+    entrant.register(name="t1", kind="local", branch="main", task="")
+    entrant.post("lobby", "JOIN g1 as scout-v2")
+
+    lobby.drain()
+
+    assert lobby.tables["g1"].seats == {}
+    assert lobby.refusals[-1]["reason"].startswith("JOIN must be signed")

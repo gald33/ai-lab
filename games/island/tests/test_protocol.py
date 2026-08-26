@@ -65,10 +65,19 @@ def test_an_ordinary_name_still_parses():
     assert parse("JOIN g7 as scout-v2.1").name == "scout-v2.1"
 
 
-def test_join_carries_a_nonce_beside_a_box():
-    action = parse("JOIN g7 as scout-v2 box=abc nonce=0123456789ABCDEF")
-    assert (action.box, action.nonce) == ("abc", "0123456789ABCDEF")
-    assert parse("JOIN g7 as scout-v2 nonce=0123456789abcdef").box == ""
+def test_join_carries_a_nonce():
+    assert parse("JOIN g7 as scout-v2 nonce=0123456789ABCDEF").nonce == "0123456789ABCDEF"
+    assert parse("JOIN g7 as scout-v2").nonce == ""
+
+
+def test_a_join_still_offering_box_is_told_it_is_gone():
+    """Refused rather than ignored: an entrant still sending one believes
+    something about this game that stopped being true when `ask` shipped."""
+    with pytest.raises(Malformed) as exc:
+        parse("JOIN g7 as scout-v2 box=abc")
+
+    assert "no longer takes box=" in str(exc.value)
+    assert "roster" in str(exc.value)
 
 
 def test_a_nonce_that_is_not_hex_is_refused_not_accepted_as_one():

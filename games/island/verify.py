@@ -195,13 +195,15 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
     if not traders:
         report.skip("production: the reveal names no capacities")
         return
+    # A sealed round puts no plan on the board at all -- `ask` delivers it to
+    # the manager's own channel. So sealing is recognised by what the manager
+    # announced, not by counting markers: the marker was this repo's stopgap
+    # and stopped existing when `ask` shipped.
+    sealed = any(str(m.get("body", "")).startswith("SEALED round")
+                 for m in board["messages"] if m.get("author") == "manager")
     pending: dict[str, dict[str, float]] = {}
-    sealed = 0
     for msg in board["messages"]:
         body, author = msg.get("body", ""), msg.get("author", "")
-        if body.startswith("SEALED") and author in traders:
-            sealed += 1
-            continue
         plan = PRODUCE.match(body)
         if plan and author in traders:
             shares = {}
@@ -238,9 +240,10 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
         else:
             report.ok("production")
     if sealed:
-        report.skip(f"production: {sealed} sealed PRODUCE line(s) -- the shares "
-                    f"are not on the board, which is what sealing is for, so "
-                    f"that arithmetic cannot be redone by anybody")
+        report.skip("production: this round was sealed, so no plan is on the "
+                    "board and the arithmetic cannot be redone by anybody -- "
+                    "which is what sealing is for. The receipts stay public "
+                    "and everything else here is checked as usual")
 
 
 def check_exchange(board: dict, report: Report) -> None:

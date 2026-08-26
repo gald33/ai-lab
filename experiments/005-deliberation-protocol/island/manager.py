@@ -45,7 +45,6 @@ TRANSPORT_FAULTS = (httpx.TransportError, httpx.RemoteProtocolError)
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
-from .sealed import BoxKey, SealError, is_sealed  # noqa: E402
 
 #: Whether labour may be committed in several pieces within one episode.
 #: **Off by default**: every run before 007's run 002 settled one production per
@@ -56,7 +55,10 @@ SPLIT_LABOUR = False
 MANAGER = "manager"
 #: What a trader seals a `PRODUCE` under. Bound into the key derivation and
 #: the AEAD, so a sealed private half cannot be replayed as a plan.
-SEALED_CONTEXT = "island.produce"
+#: The marker a board line used to carry when this repo sealed its own
+#: payloads. Kept only to recognise one on an **old** board: sealing is
+#: Switchboard's `ask` now, which never puts a body on the channel at all.
+SEALED_MARKER = "SEALED "
 _EPS = 1e-9
 
 
@@ -121,6 +123,8 @@ class Manager:
     intrusions: list[dict] = field(default_factory=list)
     #: The distinct keys those lines came from, so the manager says it once.
     intruders: set[str] = field(default_factory=set)
+    #: How many lines arrived sealed to this manager rather than on the board.
+    sealed_in: int = 0
     #: Switchboard peer id -> trader name. Filled in as agents register, so
     #: the manager scores the trader rather than the transport's identity.
     alias: dict[str, str] = field(default_factory=dict)
@@ -131,13 +135,6 @@ class Manager:
     #: one": the lobby is what witnesses this key today; nothing here draws
     #: it from anywhere but its caller.
     keys: dict[str, str] = field(default_factory=dict)
-    #: This manager's own sealing key, when a game gives it one. Traders seal
-    #: `PRODUCE` to its public half so that a plan's shares never reach the
-    #: board -- which is what closes the capacity leak, since capacity is
-    #: quantity divided by share and the quantity is in the public receipt.
-    #: Without one, a sealed line cannot be opened and is refused as such
-    #: rather than counted as talk.
-    box: BoxKey | None = None
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -213,6 +210,7 @@ class Manager:
             # every current caller takes never pays for a call it has no use
             # for.
             self.client.agents()
+        self._drain_sealed()
         rows = self._history_with_retry()
         if len(rows) >= 500:
             self.saturated = True
@@ -236,6 +234,48 @@ class Manager:
             # came to report 1/2 acknowledged when both traders had in fact
             # acknowledged. Unwrap with Switchboard's own inverse rather than
             # guessing at the shape.
+            body, _forecast = unwrap_forecast(msg.get("body"))
+            self._consider(author, body if isinstance(body, str) else "",
+                           msg.get("signature"))
+
+    def _drain_sealed(self) -> None:
+        """Read what was sealed to this manager alone.
+
+        A sealed `PRODUCE` cannot ride the channel: Switchboard's `ask` seals
+        to one peer's published exchange key and delivers to that peer's own
+        `@` channel, and **only `inbox()` opens it** -- `history()` hands back
+        the envelope. So the manager reads both, and a line that arrives here
+        is settled exactly as one that arrives on the board: same author, same
+        signature check, same refusals.
+
+        What the room still sees is that it happened. The outer message is an
+        ordinary workspace-encrypted send, so every member reads sender,
+        recipient, size and timing; only the body is theirs alone. And the
+        receipt the manager posts afterwards is public, which is the whole
+        point of sealing the plan and not the result.
+        """
+        if not self.keys:
+            return
+        try:
+            rows = self.client.inbox()
+        except AttributeError:      # a client without an inbox: nothing sealed
+            return
+        for msg in rows:
+            mid = str(msg.get("id"))
+            if mid in self.seen:
+                continue
+            self.seen.add(mid)
+            peer = str(msg.get("from") or "")
+            author = self.alias.get(peer, "")
+            if not author or author == MANAGER:
+                self._intrusion(peer, msg)
+                continue
+            self.sealed_in += 1
+            if msg.get("unreadable"):
+                self._refuse(author, "sealed",
+                            "this was sealed to somebody else, or to a key "
+                            "this manager does not hold", "<sealed>")
+                continue
             body, _forecast = unwrap_forecast(msg.get("body"))
             self._consider(author, body if isinstance(body, str) else "",
                            msg.get("signature"))
@@ -296,17 +336,17 @@ class Manager:
                             f"this did not come from the key {author} took "
                             f"its seat with", text)
                 return
-        if is_sealed(text):
-            if self.box is None:
-                self._refuse(author, "sealed",
-                            "this round has no private channel, so a sealed "
-                            "line cannot be opened", text)
-                return
-            try:
-                text = self.box.open(text.strip(), SEALED_CONTEXT)
-            except SealError as exc:
-                self._refuse(author, "sealed", str(exc), text)
-                return
+        if text.strip().startswith(SEALED_MARKER):
+            # This repo used to seal its own payloads and post them here. It
+            # does not any more -- `ask` delivers a sealed line to the
+            # manager's own channel and `_drain_sealed` reads it. A blob on
+            # the board is therefore either an old client or a mistake, and
+            # either way it settles nothing.
+            self._refuse(author, "sealed",
+                        "sealed payloads do not ride this board any more -- "
+                        "send it with `ask` addressed to the manager and it "
+                        "will be opened and settled", "<sealed>")
+            return
         upper = text.strip().upper()
         if upper.startswith("ACK"):
             self.acknowledged.add(author)
@@ -335,7 +375,8 @@ class Manager:
         # A sealed line is kept as the marker alone. Recording the ciphertext
         # would put a plan the trader paid to hide into the run record, which
         # is published; recording the plaintext would be worse.
-        kept = "<sealed>" if kind == "sealed" or is_sealed(text) else text.strip()[:200]
+        kept = ("<sealed>" if kind == "sealed"
+                or text.strip().startswith(SEALED_MARKER) else text.strip()[:200])
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
                               "line": kept})
