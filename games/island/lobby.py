@@ -21,6 +21,22 @@ peer is also bound to the signing key its `JOIN` was verified under, witnessed
 once here and posted with the seat (`_join`, `_witness`), which is what lets
 the island manager tell an impostor from the real seat later in the round.
 
+**The lobby is a public room whose key is published -- not a room without
+one.** Everything on its board is meant to be readable by anybody, so the
+obvious move is to run it in plaintext and hand nobody anything. That does not
+work, and the reason is worth keeping: Switchboard signs a message *inside*
+the seal, so that the transport cannot strip the signature without breaking
+the AEAD tag. A plaintext room therefore carries **no signatures at all**, and
+a seat here binds by a witnessed signing key -- so a keyless lobby refuses
+every `JOIN` it receives. The key is what turns attribution on; publishing it
+is what lets strangers in. It protects nothing and is not meant to.
+
+What must stay private travels sealed to one peer (`ask`), which is unaffected
+either way: it seals to the recipient's exchange key, so every other holder of
+the workspace key -- which here is everybody -- still cannot open it. And the
+table's own room always gets a key of its own (`_settle`), which is a real
+secret and is handed only to its seats.
+
 **Two things this process needs that its board does not carry.** A settled
 table's seed is deliberately never posted, so a restarted lobby cannot read
 its own past settlements back off the board -- it would draw a second seed and
@@ -574,7 +590,13 @@ class Lobby:
         else:
             table.seed, table.draw = self.draw_seed(), "unverified"
         table.workspace = f"{self.client.config.workspace}-{table.id}"
-        key = generate_key() if self.client.encrypted else None
+        # **Always minted, whatever the lobby is.** The lobby is meant to be a
+        # public room -- no key to hand out is the simplest answer to "how
+        # does a stranger get in" -- but a table is not: its room key is what
+        # makes a seat a seat, and deriving it from the lobby's own state
+        # meant a public lobby silently dealt every game in a room anybody
+        # holding the hub token could walk into.
+        key = generate_key()
         invite = Invite(url=self.client.config.url, workspace=table.workspace,
                         token=self.client.config.token, key=key,
                         note=f"{table.id}: {table.traders} traders, "
