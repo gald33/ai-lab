@@ -34,7 +34,8 @@ python -m games.island.run_game \
     --state  /var/lib/island/lobby.json \
     --page   /srv/island/lobby.html \
     --ledger /var/lib/island/ledger.jsonl \
-    --max-games 2
+    --max-games 2 \
+    --keep 50
 ```
 
 **One, not two.** `run_game` embeds the lobby it plays from, and two lobbies
@@ -95,12 +96,38 @@ and it has no back end.
 - **The page's timestamp**: it is rewritten every poll (a few seconds), so a
   page more than a minute old means the process is not polling.
 - **`LOBBY holding this channel: <token>`** on the lobby board, posted at
-  startup. If a second one appears from a different token, two processes are
-  running and one has stood down — fix the deployment, not the board.
+  startup. **This is not a count of processes, and reading it as one is a
+  mistake this document used to make.** Every restart posts another line with
+  a fresh token, so two lines fifteen minutes apart from the same agent id are
+  one process that restarted, not two processes running. What a second *live*
+  holder actually looks like is the other process saying **`stands down`** on
+  the board — that line, not the count of holder lines, is the symptom. The
+  reliable check is the machine's own: exactly one `run_game` process. (Beware
+  a `pgrep` pattern that matches its own command line and reports two.)
 - **`lines were posted here that this lobby never read`** on the board means
   the board outran the read window between two polls. It is said out loud
   rather than passing as quiet, and it means the poll interval is too long
   for how busy the room is.
+
+## What it writes forever, and what to do about it
+
+The board and the replay of a finished game are the durable artefacts — the
+hub keeps a board about an hour, after which this copy is the only one — so
+`--out` grows by one record, one board and one reveal per game, tens of
+kilobytes each. `--ledger` grows by one row per round and is small, and
+`viewer/scores.py:parts` already reads a rolled-off `ledger-2026-08.jsonl.gz`
+beside the live file, so rotating it by month is supported and needs nothing
+new here.
+
+`--keep N` prunes finished games' raw output, oldest first, once they are in
+the ledger: **the ledger row survives, so the game is still counted and still
+in every denominator** — what goes is the board and reveal files it points at.
+Leave it unset to keep everything, which is right while games are rare and
+wrong on a disk that is filling.
+
+**A replay worth keeping is copied by hand into `games/replays/`** and lives
+in git, exactly as it did before any of this ran. Pruning `--out` never
+touches those.
 
 ## What it costs to leave running
 
