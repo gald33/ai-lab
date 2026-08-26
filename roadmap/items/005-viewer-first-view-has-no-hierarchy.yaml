@@ -1,0 +1,53 @@
+id: 005-viewer-first-view-has-no-hierarchy
+title: Give the viewer a first-view hierarchy — nothing currently says where to look first
+arc: deliberation-protocol
+priority: now
+status: ready
+refs:
+  - experiments/005-deliberation-protocol/viewer/README.md
+  - experiments/005-deliberation-protocol/viewer/web/index.html
+  - experiments/005-deliberation-protocol/viewer/web/scene.js
+evidence: |
+  Reported 2026-08-26, watching the viewer cold: "there's currently a lot of
+  information competing for attention. On first viewing I don't know whether I
+  should watch the island, inspect the four trader cards, understand the
+  floating trades, watch utility, or look at settled/refused/lapsed."
+
+  That is five surfaces, all live at once, all drawn at roughly equal weight:
+  the 3D island in the middle; a trader card per seat in the margins (shelves,
+  labour, utility, the ALONE bar); the offer chip floating over the island with
+  its rope; the metric panel; and the settled/refused/lapsed counters in the
+  chrome band. Each was designed and defended on its own -- the README's
+  "Notes on the drawing" has a paragraph justifying nearly every one -- and no
+  document anywhere states which of them a first-time viewer is supposed to
+  read first, or what the others are for once they have.
+
+  WHY THIS IS THE INTERESTING ONE. Every visual decision recorded in
+  `viewer/README.md` so far is *subtractive and local*: a mark that carried no
+  information came off (ground marks, shockwave rings, the hut's flag, the
+  tether's ring, the hut's lantern). Each was right on its own and none of them
+  addresses this, because the problem is not that any single element is
+  unearned -- it is that five earned elements at equal weight have no order.
+  Removing a sixth thing will not fix it. This needs a stated hierarchy, which
+  is a *decision*, not a cleanup: what is the one thing a viewer watches, what
+  is glanceable, and what is only there when asked for.
+
+  NOT A LICENCE TO DELETE THE RECEIPTS. Everything named above is drawn from
+  manager receipts and the three rules in `games/island.md` "Watching" still
+  bind: only what the manager said, the hidden half stays hidden while it
+  matters, a replay publishes its island. Demoting a surface means changing
+  its weight or putting it behind a disclosure, never inventing a summary the
+  manager did not settle.
+
+  Also worth resolving in the same pass, since it is the same question: the
+  viewer already knows whether it is live or a replay, and a first-time viewer
+  of a *replay* can be told where to look in a way a live watcher cannot.
+
+  HOW YOU WOULD KNOW IT WORKED. State the intended reading order in
+  `viewer/README.md` alongside the other drawing decisions, then check it the
+  way the null result was checked rather than by assertion: show the viewer
+  cold to someone who has not seen it, ask what they looked at first and what
+  they thought it meant, and record the answer. One person is not a finding,
+  but "the first thing they watched was the thing the document says is first"
+  is at least falsifiable, and nothing of the kind has been recorded for this
+  page.

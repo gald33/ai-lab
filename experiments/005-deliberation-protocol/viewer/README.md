@@ -357,6 +357,19 @@ What each clip carries itself now:
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
 
+### The huts have no lanterns
+
+Each hut carried a small emissive sphere by its door, brightened as the day went
+on the argument that it was the one thing on the island brighter at dusk than at
+noon. **Cut as unnecessary (2026-08-26).** The campfire already carries
+nightfall, and a warm dot per hut says nothing the fire has not — while a small
+bright dot on this island already means a good in flight, which is the same
+reason the fireflies are held a clearing's width off the fire.
+
+The material stays: `island-events.js` still clones it for an offer's lit notice,
+which is a mark that fires once for a reason rather than a light that is simply
+on.
+
 ### One face per good, wherever the island draws one
 
 A crate standing in a trader's yard and the flag over the site that *makes*

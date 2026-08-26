@@ -299,7 +299,13 @@ function hut(id, traderMat) {
   //: already looking at, and it costs the island a pole and a scrap of cloth.
   add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), traderMat, `hut_${id}_door`, [0, 0.12, 0.379]);
   add(g, new THREE.CylinderGeometry(0.385, 0.4, 0.055, 24), traderMat, `hut_${id}_band`, [0, 0.41, 0]);
-  add(g, new THREE.SphereGeometry(0.05, 12, 10), M.glass, `hut_${id}_lantern`, [-0.3, 0.42, 0.3]);
+  //: **The hut had a lantern and does not any more.** A 0.05 emissive sphere
+  //: by the door, ramped up as the day went (`island-life.js`), on the
+  //: argument that it was the one thing brighter at dusk than at noon. Cut as
+  //: unnecessary: the campfire already carries nightfall, and a second warm
+  //: dot per hut is a light that says nothing the fire has not said -- while
+  //: on this island a small bright dot already means a good in flight, which
+  //: is the same reason the fireflies are held clear of the fire below.
   add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, `hut_${id}_crate_a`, [-0.42, 0.08, -0.2], [0, 0.4, 0]);
   add(g, new THREE.BoxGeometry(0.13, 0.13, 0.13), M.timber, `hut_${id}_crate_b`, [-0.5, 0.2, -0.28], [0, 0.9, 0]);
   return g;
