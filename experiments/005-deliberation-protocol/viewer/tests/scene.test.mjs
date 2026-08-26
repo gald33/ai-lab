@@ -60,10 +60,20 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
       assert.equal(g.cards.length, n, "every trader has a card position");
       assert.ok(g.islandBox.w > 0 && g.islandBox.h > 0, "the island has a box");
       for (const [i, seat] of g.cards.entries()) {
-        assert.ok(!overlaps(cardBox(seat), g.islandBox),
-                  `card ${i} of ${n} stands on the island `
-                  + `(${JSON.stringify(cardBox(seat))} in `
-                  + `${JSON.stringify(g.islandBox)})`);
+        if (g.islandFoot !== undefined) {
+          // Portrait stacks the cards under the island, so what they have to
+          // clear is where it stops *drawing* -- not its box, whose bottom
+          // sixth is empty: the island is a disc under a tilted camera and is
+          // not as tall as it is wide.
+          assert.ok(cardBox(seat).y >= g.islandFoot,
+                    `card ${i} of ${n} starts at ${cardBox(seat).y}, above the `
+                    + `island's foot at ${g.islandFoot}`);
+        } else {
+          assert.ok(!overlaps(cardBox(seat), g.islandBox),
+                    `card ${i} of ${n} stands on the island `
+                    + `(${JSON.stringify(cardBox(seat))} in `
+                    + `${JSON.stringify(g.islandBox)})`);
+        }
       }
     });
 
