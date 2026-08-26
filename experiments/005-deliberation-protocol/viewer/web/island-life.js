@@ -307,6 +307,48 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     }));
   }
 
+  // — the fire at the centre, which is the point of the middle of the island —
+  //
+  //: It burns low all day and comes up as the light goes, so by the bell it is
+  //: the brightest thing left. A `PointLight` with it, because a fire that
+  //: glows and throws nothing on the ground beside it reads as a decal.
+  const flames = [0, 1, 2].map((i) => island.getObjectByName(`flame_${i}`))
+    .filter(Boolean).map((f) => ({ f, y0: f.position.y, s0: f.scale.y }));
+  const hearth = island.getObjectByName("fire");
+  const glow = new THREE.PointLight(0xff9a3c, 0, 4.2, 2);
+  if (hearth) {
+    glow.position.copy(hearth.position).setY(hearth.position.y + 0.4);
+    island.add(glow);
+  }
+
+  // — the fireflies, which are only out after dark —
+  //
+  //: The one thing on the island a spectator gets for waiting. They are over
+  //: the meadow, not the sea or the sand, and they are nothing at midday: a
+  //: firefly visible in daylight is a bright dot, which on this island already
+  //: means a good in flight.
+  const sparks = Array.from({ length: 26 }, (_, i) => {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xfff0a8, emissive: 0xffd24a,
+        emissiveIntensity: 0, transparent: true, opacity: 0 }));
+    m.name = `firefly_${i}`;
+    const a = (i / 26) * Math.PI * 2 * 3.7 + 0.4;
+    const rad = 0.9 + ((i * 37) % 100) / 100 * 2.1;
+    const [x, z] = onMeadow(Math.cos(a) * rad, Math.sin(a) * rad, 0.5);
+    m.position.set(x, ground(x, z) + 0.35, z);
+    island.add(m);
+    return { m, x, z, base: ground(x, z), phase: i * 1.37, drift: 0.35 + (i % 5) * 0.08 };
+  });
+
+  parts.push((t) => {
+    for (const { m, x, z, base, phase, drift } of sparks) {
+      m.position.x = x + Math.sin(t * 0.5 + phase) * drift;
+      m.position.z = z + Math.cos(t * 0.37 + phase * 1.6) * drift;
+      m.position.y = base + 0.32 + Math.sin(t * 0.9 + phase * 2.1) * 0.16;
+    }
+  });
+
   // — the lanterns, which come up as the day goes —
   const lanterns = named(/lantern$/).map((l) => {
     l.material = l.material.clone();
@@ -334,7 +376,36 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   const seaDay = new THREE.Color(0x6fa6c8);
   const seaDusk = new THREE.Color(0x3c4a7a);
 
+  //: How much a clip is adding to the fire on top of the day's own value.
+  //: **An event may make the fire flare and that has to move the light**, not
+  //: just the cones: three flames are a few hundred pixels on an island eight
+  //: units across, and a fire that brightens without lighting the ground round
+  //: it is a decal. The day owns the base level and this is added to it, so a
+  //: clip never fights the clock -- it leans on it and lets go.
+  let flare = 0;
+  //: How far into night a clip is holding the light, or `null` for "the day's
+  //: own clock". **The bell is nightfall and the dawn is the light coming
+  //: back**, and both were previously only a prop moving: the sun going down
+  //: is the page's clock, so at a bell the island snapped to dusk and the clip
+  //: rang a bell the size of a plum beside it. This lets the two clips carry
+  //: the light itself, which is the largest thing either of them is about.
+  let held = null;
+
   return {
+    /**
+     * A clip's own contribution to the fire and to the light, for **this frame
+     * only**.
+     *
+     * Consumed by the next `update` and reset. A clip sets them every frame it
+     * runs, so one that ends -- or is cut off half way, or is thrown away with
+     * the island under it -- stops contributing by not saying anything, and
+     * there is no state left holding the island at midnight because a restore
+     * did not run. That was the first shape of this and it left the whole
+     * island dark after a bell.
+     */
+    flare(v) { flare = v; },
+    hold(v) { held = v; },
+
     /**
      * @param {number} t     seconds, for anything on its own rhythm
      * @param {object} ctx   `{ day, key, ambient }` -- `day` from the page's
@@ -343,6 +414,14 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     update(t, { day = null, turn = 0, key = null, ambient = null,
                 fill = null } = {}) {
       for (const part of parts) part(t);
+      // A clip holding the light wins over the clock, and never goes backwards
+      // from it: at a real bell the page has already put the day at dusk, and
+      // a clip that pulled it back would fight its own page.
+      if (held !== null) day = day === null ? held : Math.max(day, held);
+      const lift = flare;
+      // Spent. Whoever wants them next frame has to ask again.
+      held = null;
+      flare = 0;
       if (day === null) return;
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
@@ -389,6 +468,26 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       // brighter at dusk than at noon.
       const lit = clamp01((day - 0.62) / 0.25) * 1.5 + 0.05;
       for (const l of lanterns) l.material.emissiveIntensity = lit;
+      // The fire, on the same clock and a little ahead of it: it is banked all
+      // day and built up before the light has quite gone.
+      const burn = clamp01(clamp01((day - 0.52) / 0.3) + lift);
+      for (const { f, y0, s0 } of flames) {
+        f.material.emissiveIntensity = 0.35 + burn * 2.6;
+        // Flicker, which is what makes a cone read as flame at all.
+        const lick = 1 + Math.sin(t * 7.3 + y0 * 21) * 0.12 + Math.sin(t * 11.7) * 0.06;
+        f.scale.set(0.8 + burn * 0.35, (0.7 + burn * 0.5) * lick * (s0 || 1), 0.8 + burn * 0.35);
+        f.position.y = y0 + burn * 0.05;
+      }
+      glow.intensity = burn * 5.5 * (1 + Math.sin(t * 6.1) * 0.06);
+      //: **Only after dark**, and out over the meadow. `night` runs a little
+      //: behind the fire: the fire is built before the light goes and the
+      //: fireflies come once it has.
+      const night = clamp01((day - 0.7) / 0.22);
+      for (const { m } of sparks) {
+        m.material.opacity = night * 0.95;
+        m.material.emissiveIntensity = night * 2.4;
+        m.visible = night > 0.02;
+      }
     },
   };
 }

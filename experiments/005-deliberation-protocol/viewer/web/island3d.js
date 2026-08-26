@@ -54,6 +54,10 @@ export const M = {
   salt: mat("salt_crust", 0xe9eef0, 0.7),
   wheat: mat("wheat", 0xc9a86a, 0.9),
   glass: mat("lantern", 0xffd79a, 0.4, 0.0, 0xffb45e),
+  //: The fire's own. Emissive from the start and driven by the life layer,
+  //: which turns it up as the day goes -- the one thing on this island that is
+  //: brighter at the bell than at noon.
+  flame: mat("flame", 0xffb347, 0.5, 0.0, 0xff7a1e),
 };
 
 //: The good slots, in the stylesheet's order, so a flag on the island is the
@@ -126,9 +130,9 @@ const MEADOW = { radius: 3.25, wobble: 0.12, phase: 1.9 };
 export const meadowEdge = (x, z) =>
   silhouette(MEADOW.radius, MEADOW.wobble, MEADOW.phase)(Math.atan2(-z, x));
 
-//: Inside this, the island is the market and the hill: a settlement dropped
+//: Inside this, the island is the fire and the hill: a settlement dropped
 //: there stands on the plaza roof or sinks into the upland. Measured from the
-//: two of them -- the market's plaza reaches 2.01 from the centre, the
+//: two of them -- the fire's cleared ground reaches 2.01 from the centre, the
 //: upland's outline 1.92.
 const HOME_IN = 2.15;
 
@@ -153,7 +157,7 @@ export function homeSite(x, z, margin = 0.55) {
  * a narrow frame collapses its ring, so on a phone with four traders two of
  * them unprojected to within a hut's width of each other. They are moved
  * *around* the island rather than in or out, so each keeps the distance from
- * the market the layout gave it.
+ * the fire the layout gave it.
  */
 /**
  * @param {Array<[number, number]>} seats  what may be turned
@@ -492,22 +496,54 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   // is rather than assuming one of three constants.
   const ground = grounder(island);
 
-  // — the market at the centre —
-  const market = new THREE.Group();
-  market.name = "market";
-  market.position.set(0.45, ground(0.45, 0.55), 0.55);
-  add(market, new THREE.CylinderGeometry(0.95, 1.0, 0.06, 48), M.sand, "market_plaza", [0, 0.03, 0]);
-  add(market, new THREE.CylinderGeometry(0.28, 0.3, 0.1, 32), M.rock, "market_stone", [0, 0.11, 0]);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    add(market, new THREE.CylinderGeometry(0.035, 0.04, 0.62, 10), M.timber,
-      `market_post_${i}`, [Math.cos(a) * 0.55, 0.37, Math.sin(a) * 0.55]);
+  // — the fire at the centre —
+  //
+  //: **This was a market and the market had no purpose.** A roofed stall with
+  //: six posts and a plaza stood in the middle of the island because a barter
+  //: game sounds like it should have one -- but nothing on the board ever
+  //: happens there. A trade is struck between two traders and settled by the
+  //: manager; nobody walks to a stall. So the biggest building on the island
+  //: was a label for a thing that does not exist, and it was reported as
+  //: exactly that.
+  //:
+  //: A fire is what the middle of this island is actually for. It is the point
+  //: every settlement faces and every trail runs to, it is the one thing that
+  //: has something to say at the bell -- it comes up as the light goes -- and
+  //: the drawn island the model replaced had a campfire there all along.
+  const fire = new THREE.Group();
+  fire.name = "fire";
+  fire.position.set(0.45, ground(0.45, 0.55), 0.55);
+  // The cleared ground round it, which is where the trails end.
+  add(fire, new THREE.CylinderGeometry(0.95, 1.0, 0.06, 48), M.sand, "hearth_ground", [0, 0.03, 0]);
+  add(fire, new THREE.CylinderGeometry(0.42, 0.46, 0.05, 24), M.sandWet, "hearth_ash", [0, 0.07, 0]);
+  // A ring of stones, set by hand rather than drawn as a torus: a hearth is
+  // stones somebody carried, and a smooth ring reads as masonry.
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + 0.3;
+    add(fire, new THREE.DodecahedronGeometry(0.1 + (i % 3) * 0.02), M.rock,
+      `hearth_stone_${i}`, [Math.cos(a) * 0.5, 0.09, Math.sin(a) * 0.5],
+      [i * 0.7, i * 1.3, i * 0.4]);
   }
-  add(market, new THREE.ConeGeometry(0.86, 0.46, 6), M.thatchLit, "market_roof", [0, 0.9, 0], [0, Math.PI / 6, 0]);
-  add(market, new THREE.SphereGeometry(0.06, 12, 10), M.glass, "market_lantern", [0, 0.66, 0]);
-  add(market, new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8), M.timber, "market_bell_post", [0.8, 0.31, -0.3]);
-  add(market, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
-    M.thatchLit, "market_bell", [0.8, 0.52, -0.3], [Math.PI, 0, 0]);
+  // Logs, leaning in.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.6;
+    add(fire, new THREE.CylinderGeometry(0.045, 0.055, 0.6, 8), M.timber,
+      `hearth_log_${i}`, [Math.cos(a) * 0.13, 0.2, Math.sin(a) * 0.13],
+      [Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5]);
+  }
+  // The flames. Named so the life layer can find them: they are the one thing
+  // on this island that is brighter the later it gets, and it owns the day.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    add(fire, new THREE.ConeGeometry(0.13 - i * 0.02, 0.34 + i * 0.1, 8), M.flame,
+      `flame_${i}`, [Math.cos(a) * 0.06, 0.3 + i * 0.05, Math.sin(a) * 0.06]);
+  }
+  // The bell keeps its post beside the fire. It is the island's clock, not the
+  // market's -- it was only ever hanging there because the stall was.
+  add(fire, new THREE.CylinderGeometry(0.02, 0.025, 0.72, 8), M.timber, "bell_post", [0.78, 0.4, -0.32]);
+  add(fire, new THREE.BoxGeometry(0.36, 0.02, 0.02), M.timber, "bell_arm", [0.62, 0.74, -0.32]);
+  add(fire, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    M.thatchLit, "bell", [0.48, 0.68, -0.32], [Math.PI, 0, 0]);
   //: **Smaller than it was, twice.** Every prop was built at about a third
   //: again its drawn size, and between them the market, two settlements, four
   //: sites, the jetty and twenty-two trees left an island with no ground
@@ -515,9 +551,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: as crowded; this is the second, down to about three-quarters of what the
   //: model shipped with. They all move together, because shrinking one of them
   //: only makes the rest look bigger.
-  market.scale.setScalar(0.95);
-  island.add(market);
-  anchors.market = market.position.clone();
+  fire.scale.setScalar(0.95);
+  island.add(fire);
+  anchors.fire = fire.position.clone();
 
   // — settlements, one per seat —
   const ring = (i, n, rad, turn = 0) => {
@@ -548,8 +584,8 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const [x, z] = homes[i];
     const g = hut(name, seatMat(name, i));
     g.position.set(x, ground(x, z), z);
-    // Facing the market, which is what a settlement on an island with one
-    // market would do.
+    // Facing the fire, which is what a settlement on an island with one fire
+    // in the middle of it would do.
     g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
     g.scale.setScalar(0.95);
     island.add(g);
@@ -610,7 +646,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   island.add(dock);
   placed.push([2.9, 1.2, 0.9]);
 
-  // — the trail: market to each settlement, each site, and the dock head —
+  // — the trail: the fire to each settlement, each site, and the dock head —
   const trail = new THREE.Group();
   trail.name = "trails";
   const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z]),

@@ -577,15 +577,30 @@ export class Scene {
     this.layTethers();
     const open = this.state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
-    const placedRopes = new Map();
-    this.ropes.replaceChildren(...open.map((p) => {
+    const want = new Map();
+    for (const p of open) {
       const pair = [p.maker, p.taker].sort().join("~");
       const i = rank.get(pair) || 0;
       rank.set(pair, i + 1);
-      placedRopes.set(p.pid, i);
-      return this.rope(p, i);
-    }));
-    this.shown = placedRopes;
+      want.set(p.pid, i);
+    }
+    //: **Only rebuilt when the offers change.** This runs on every frame the
+    //: camera turns, which is every frame, and it used to replace every rope
+    //: node each time -- and a fresh node restarts its CSS animation, so the
+    //: dashes crawling toward the trader an offer is addressed to were reset
+    //: sixty times a second and the line sat still. The same ropes are now
+    //: moved to where the settlements went; new ones are built once.
+    const same = this.shown.size === want.size
+      && [...want].every(([pid, fan]) => this.shown.get(pid) === fan);
+    if (same) {
+      for (const p of open) {
+        const node = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
+        if (node) this.aimRope(node, p, want.get(p.pid));
+      }
+    } else {
+      this.ropes.replaceChildren(...open.map((p) => this.rope(p, want.get(p.pid))));
+      this.shown = want;
+    }
   }
 
   /**
@@ -1240,20 +1255,52 @@ export class Scene {
     anim.finished.then(() => node.remove(), () => node.remove());
   }
 
+  /**
+   * Where a rope hangs, given who is at each end and how many share the pair.
+   *
+   * **Drawn from the maker to the taker, and that direction is the content.**
+   * The dashes crawl along the path, so a line built the other way round would
+   * animate goods flowing to the trader who is offering them.
+   */
+  ropePath(p, fan) {
+    const a = this.pins[p.maker], b = this.pins[p.taker];
+    if (!a || !b) return null;
+    const lift = this.modelled ? 34 : 84;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - lift - 64 - fan * 44;
+    return { d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}`, mx, my };
+  }
+
+  /**
+   * Move a rope already on screen to where its settlements are now.
+   *
+   * **In place, because the dashes are an animation.** `follow` runs on every
+   * frame the camera turns -- which is every frame -- and it used to rebuild
+   * every rope from scratch each time. A fresh node restarts its CSS
+   * animation, so the crawl was reset sixty times a second and the line sat
+   * perfectly still: an offer that is supposed to show goods heading for the
+   * trader they are offered to showed a static dashed line instead.
+   */
+  aimRope(g, p, fan) {
+    const at = this.ropePath(p, fan);
+    if (!at) return;
+    for (const path of g.querySelectorAll(".rope-shadow, .rope-line")) {
+      path.setAttribute("d", at.d);
+    }
+    g.querySelector(".rope-chip")?.setAttribute(
+      "transform", `translate(${at.mx} ${at.my + 20})`);
+  }
+
   rope(p, fan = 0) {
     // Between the *settlements*, not the cards. An offer is a thing happening
     // on the island between two huts; drawn between two cards in the margins it
     // would be a line across the whole frame, over everything, saying nothing
     // about where it is happening.
-    const a = this.pins[p.maker], b = this.pins[p.taker];
-    if (!a || !b) return el("g");
-    const lift = this.modelled ? 34 : 84;
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - lift - 64 - fan * 44;
+    const at = this.ropePath(p, fan);
+    if (!at) return el("g");
+    const { d, mx, my } = at;
     const g = el("g", { class: "rope", "data-pid": p.pid });
-    g.append(el("path", { class: "rope-shadow",
-                          d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}` }));
-    g.append(el("path", { class: "rope-line",
-                          d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}` }));
+    g.append(el("path", { class: "rope-shadow", d }));
+    g.append(el("path", { class: "rope-line", d }));
     const chip = el("g", { class: "rope-chip", transform: `translate(${mx} ${my + 20})` });
     const text = `${bundleText(p.give)} → ${bundleText(p.want)}`;
     const width = Math.max(104, text.length * 8.4);
