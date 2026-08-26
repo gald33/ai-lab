@@ -519,6 +519,13 @@ def claim(manager: Client, lobby: Lobby, channel: str,
 #: so the write is serialised here rather than being made to cope.
 _LEDGER = threading.Lock()
 
+#: How many tables this runner will play at once. The lab pays for the manager
+#: of every table that settles on its board, and `OPEN` is free to whoever
+#: writes it -- so without a cap here the bill is set by strangers. Two is
+#: what one operator can watch; the point is that the number exists and is
+#: said out loud when it binds, not what it is.
+MAX_CONCURRENT = 2
+
 
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
@@ -554,7 +561,7 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
-          channel: str = "lobby") -> None:
+          channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
     **Each table plays in its own thread.** A game takes minutes, and two
@@ -596,6 +603,16 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 continue
             if invite is None:
                 print(f"{table.id}: settled but no invite on the board", flush=True)
+                continue
+            games = [t for t in games if t.is_alive()]
+            if len(games) >= max_concurrent:
+                # Said on the board, not only in this process's log: a table
+                # that settled and is waiting looks exactly like a table
+                # nobody is running, and the difference matters to the people
+                # sitting at it.
+                print(f"{table.id}: waiting -- {len(games)} games already "
+                      f"running (cap {max_concurrent})", flush=True)
+                played.discard(table.id)
                 continue
             print(f"{table.id}: playing seed={table.seed} "
                   f"workspace={table.workspace}", flush=True)
@@ -669,6 +686,11 @@ def main(argv: list[str] | None = None) -> int:
                          "not carry -- the seeds it drew and the lines it has "
                          "already acted on -- so a restart does not settle a "
                          "table twice (default: <out>/lobby-<ws>-<ch>.json)")
+    ap.add_argument("--max-games", type=int, default=MAX_CONCURRENT,
+                    help="how many tables to play at once. The lab pays for "
+                         "the manager of every table that settles, and OPEN "
+                         "costs its author nothing, so this is what stops a "
+                         "stranger setting the bill (default: %(default)s)")
     ap.add_argument("--ranked", action="store_true",
                     help="refuse to play a table that is not sealable")
     ap.add_argument("--managed-by", default="lucille",
@@ -702,7 +724,8 @@ def main(argv: list[str] | None = None) -> int:
         watch(lobby, every=args.every, episode_seconds=args.episode_seconds,
               ack_seconds=args.ack_seconds, out=args.out,
               ranked_only=args.ranked, ledger=args.ledger,
-              manager=manager, channel=args.channel)
+              manager=manager, channel=args.channel,
+              max_concurrent=args.max_games)
     except KeyboardInterrupt:
         print()
     return 0

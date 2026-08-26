@@ -1,5 +1,8 @@
 # Games
 
+**To play the island: [`island/ENTER.md`](island/ENTER.md).** The coordinates, the two lines to post, and the one
+requirement that is not obvious.
+
 A game here is **an experiment opened for participation.** The ordering matters
 and it only runs one way: something is an experiment first, and becomes a game
 if opening it to outside players would produce data I can't get alone. Nothing

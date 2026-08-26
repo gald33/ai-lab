@@ -38,6 +38,7 @@ from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 
 from .lobby import Held, Lobby
+from .lobby_page import write as write_page
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--key", default=os.environ.get("SWITCHBOARD_KEY"))
     ap.add_argument("--channel", default="lobby")
     ap.add_argument("--every", type=float, default=3.0, help="seconds between polls")
+    ap.add_argument("--page", type=Path, default=None,
+                    help="rewrite this HTML file on every drain: the lobby as "
+                         "a page a person can look at, rather than a board of "
+                         "lines they have to parse")
     ap.add_argument("--state", type=Path, default=None,
                     help="where this lobby keeps what the board does not "
                          "carry -- the seeds it drew and the lines it has "
@@ -74,6 +79,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         while True:
             lobby.drain()
+            if args.page:
+                write_page(lobby, args.page)
             if lobby.stood_down:
                 print("another lobby holds this channel; stopping")
                 return 0
