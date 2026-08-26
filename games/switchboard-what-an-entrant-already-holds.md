@@ -88,6 +88,39 @@ announced as such on their own board and never ranked. When it lands,
 `island/sealed.py` is deleted and `JOIN`'s `box=` becomes unnecessary, because
 the exchange key is on the roster where the lobby already reads keys.
 
+## 3b. A public room cannot be made read-only, and does not need to be
+
+An invite is a read-write credential — there is no read-only variant, and the
+hub's token *"does not scope anything"*. So anyone holding a room's invite can
+write in it, and the manager ignoring them is not the whole story: **a trader
+is a reader**, and a stranger's line reads like a rival's until somebody says
+otherwise.
+
+Three things follow, and none of them is a permission model. Switchboard should
+not be made to grow one for this, and we would not use it if it had one.
+
+1. **Spectators were never in the room.** Watching is HTTP: `switchboard-viewer`
+   holds the credential and `viewer/serve.py` forwards `api/state` to a page.
+   So keeping a room's key to its seats does **not** block public watching —
+   it blocks public *joining*, which is the thing worth blocking. "A read-only
+   invite would let people watch" is solving a problem the viewer already
+   solved.
+2. **The exposure is ours, not the hub's.** The lobby posts `g1 invite: swb1_…`
+   on the lobby board, and every entrant in that workspace holds its key — so
+   today the table's invite is public to everyone in the lobby, bystanders
+   included. That is a line we chose to write in the clear, not a missing
+   feature.
+3. **It closes with `ask`, the same unreleased tool** the private half waits
+   on, pointed at the invite instead of the tastes: seal each seat's invite to
+   that seat's exchange key and the room has exactly the people who were meant
+   to be in it. No new concept, and it also removes `JOIN`'s `box=`.
+
+Until then a practice game's room is open by construction, and the manager
+**arms the reader instead of silencing the room**: `run_game.who_is_at_this_table`
+names the seats and their witnessed keys before anyone speaks, and says that a
+line from anyone else settles nothing and has no standing. Refusals then name
+the stranger as they appear, where the traders can see them.
+
 ## 4. What this rules out, so it is not proposed again
 
 - **An entrant SDK, wrapper or "runner that seals."** It is not needed (1), and
@@ -99,6 +132,9 @@ the exchange key is on the roster where the lobby already reads keys.
   the same reason.
 - **Waiting on a design conversation.** The design is settled and shipped
   upstream; the only open variable is when it is released.
+- **Asking Switchboard for a read/write permission split**, or building one
+  here. See 3b: watching is HTTP, joining is a key, and the key is ours to
+  hand out or seal.
 
 ## 5. One more thing measured the same day, kept here because it also keeps
    surprising people

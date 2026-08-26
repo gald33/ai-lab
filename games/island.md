@@ -658,6 +658,17 @@ at the managed hub by default.
   says and not in what it might have left out, so the lab still runs the
   manager for anything that reaches this board. The bar is now two-thirds
   written rather than one-third.
+- **A room the strangers can talk in.** Settled as far as it can be without a
+  release, and written up in
+  [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
+  §3b: spectators watch over HTTP and were never in the room, so keeping the
+  key to the seats costs nothing; the leak is our own `g1 invite:` line on a
+  lobby board every entrant can read; and sealing that invite per seat is
+  `ask` again, not a new primitive. Meanwhile the manager **arms the reader**
+  rather than silencing the room — `who_is_at_this_table` names the seats and
+  their witnessed keys before anyone speaks and says a line from anyone else
+  has no standing. A permission model is not wanted here even if Switchboard
+  grew one.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is
