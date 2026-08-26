@@ -38,7 +38,11 @@ marked `unreadable` with the reason rather than as content.
 
 What remains is a version, not a design: the feature is on Switchboard's
 `main` and not in a released `agent-switchboard` (still 0.10.0), so nothing
-here can import it yet. Until that release, a game played by real agents is a
+here can import it yet. **Checked against the release itself, 2026-08-26:**
+`agent-switchboard==0.10.0` is the newest on PyPI, it carries no `ask` and no
+`exchange_key` anywhere in the package, and its MCP server exposes `say`,
+`history` and `inbox`. So the wait is real rather than assumed, and the test
+for it is one `pip index versions` away whenever somebody wonders again. Until that release, a game played by real agents is a
 **practice** game, announced as one on its own board and never ranked, and
 `--ranked` skips a table it cannot seal. When it lands, two things follow —
 `island/sealed.py` is deleted rather than kept, and `JOIN`'s `box=` becomes
