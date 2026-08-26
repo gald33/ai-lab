@@ -50,6 +50,21 @@ class FakeHub:
         self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
                           "channel": "c", "from": who, "body": body})
 
+    def signed(self, who: str, body: str, key: str | None,
+               status: str = "verified") -> None:
+        """A line from a peer, carrying the hub's reading of its signature."""
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who, "body": body,
+                          "signature": {"status": status, "key": key}})
+
+    def agents(self) -> list[dict]:
+        """The roster read the manager does before checking signatures. Empty
+        here: these tests hand it the verdicts directly."""
+        return []
+
+    def said(self) -> list[str]:
+        return [r["body"] for r in self.rows if r["from"] == MANAGER]
+
     def history(self, channel: str, *, limit: int = 50, **kw) -> list[dict]:
         return list(self.rows)
 
@@ -613,3 +628,55 @@ def test_the_bell_returns_all_the_labour():
         assert abs(mgr.holders["T1"].spent - 1.0) < 1e-9
     finally:
         M.SPLIT_LABOUR = False
+
+
+def test_a_line_from_a_key_that_took_no_seat_is_recorded_not_ignored() -> None:
+    """A room key can be handed on. What the record must do is notice."""
+    m = fresh()
+    m.keys["T1"] = "key-one"
+    m.client.signed("stranger", "PRODUCE bread=0.5", "key-three")
+
+    m.drain()
+
+    assert len(m.intrusions) == 1
+    entry = m.intrusions[0]
+    assert entry["key"] == "key-three" and "PRODUCE" in entry["line"]
+    assert m.intruders == {"key-three"}
+    assert any("took no seat" in line and "not ranked" in line
+               for line in m.client.said())
+
+
+def test_the_manager_says_it_once_per_key_however_many_lines_there_are() -> None:
+    m = fresh()
+    for i in range(4):
+        m.client.signed("stranger", f"noise {i}", "key-three")
+
+    m.drain()
+
+    assert len(m.intrusions) == 4
+    assert sum("took no seat" in line for line in m.client.said()) == 1
+
+
+def test_a_seat_not_yet_bound_is_not_mistaken_for_an_intruder() -> None:
+    """A trader whose registration this manager has not read yet binds on a
+    later drain -- it is not a stranger, and the witnessed key says so."""
+    m = fresh()
+    m.keys["T1"] = "key-one"
+    m.client.signed("peer-not-yet-aliased", "ACK ready", "key-one")
+
+    m.drain()
+
+    assert m.intrusions == []
+
+
+def test_an_unsigned_line_from_a_stranger_is_recorded_too() -> None:
+    """Unsigned is not a way to be invisible: the peer id stands in for a key
+    that was never offered."""
+    m = fresh()
+    m.client.signed("stranger", "hello", None, status="unsigned")
+
+    m.drain()
+
+    assert len(m.intrusions) == 1
+    assert m.intrusions[0]["status"] == "unsigned"
+    assert m.intruders == {"unsigned:stranger"}

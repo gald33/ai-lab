@@ -255,6 +255,13 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         "trajectory": trajectory,
         "traffic": {"settled": rnd.get("settled"), "refused": rnd.get("refused"),
                     "talk": rnd.get("talk")},
+        # Whether anybody who took no seat wrote in this room. A room key can
+        # be handed on and that cannot be prevented; what can be done is to
+        # notice, and a round played through interference is kept, counted and
+        # never ranked rather than quietly scored. Absent in older records,
+        # which is why this reads the list rather than trusting a flag.
+        "company": len(rnd.get("intrusions") or []),
+        "intruders": rnd.get("intruders", []),
         # A round nobody reached is not a round somebody lost. It stays in the
         # ledger and in every denominator, and it is never ranked.
         "status": status(rnd, names),
@@ -508,6 +515,11 @@ def games(rows: list[dict]) -> list[dict]:
             # Every reason a game is not ranked, kept apart from each other.
             "finished": len(members) >= declared,
             "all_scored": len(scored) == len(members),
+            # A game is only ranked if every round of it was played without
+            # company. One round with a stranger writing in the room is enough
+            # to hold the whole game out, because the rounds are one attempt.
+            "uninterrupted": all(not m.get("company") for m in members),
+            "company": sum(m.get("company", 0) for m in members),
             "level": list(levels.pop()) if len(levels) == 1 else None,
             # Which islands this game was rolled on -- one per round, since the
             # island is drawn per round rather than once per game.
@@ -539,7 +551,8 @@ def boards(rows: list[dict]) -> dict:
     """
     played = games(rows)
     ranked = [g for g in played
-              if g["finished"] and g["all_scored"] and g["capture"] is not None]
+              if g["finished"] and g["all_scored"] and g["capture"] is not None
+              and g["uninterrupted"]]
 
     levels: dict[tuple, list[dict]] = {}
     for g in ranked:

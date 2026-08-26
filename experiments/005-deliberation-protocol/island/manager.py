@@ -115,6 +115,12 @@ class Manager:
     #: action. A session that exits without appearing here never reached the
     #: board, which is a different event from one that acted and then stopped.
     spoke: set[str] = field(default_factory=set)
+    #: Lines written in this room by keys that took no seat -- see
+    #: `_intrusion`. Kept whole, because the question they answer afterwards
+    #: is whether the game was played through interference.
+    intrusions: list[dict] = field(default_factory=list)
+    #: The distinct keys those lines came from, so the manager says it once.
+    intruders: set[str] = field(default_factory=set)
     #: Switchboard peer id -> trader name. Filled in as agents register, so
     #: the manager scores the trader rather than the transport's identity.
     alias: dict[str, str] = field(default_factory=dict)
@@ -215,8 +221,13 @@ class Manager:
             if mid in self.seen:
                 continue
             self.seen.add(mid)
-            author = self.alias.get(str(msg.get("from") or ""), "")
-            if not author or author == MANAGER:
+            peer = str(msg.get("from") or "")
+            author = self.alias.get(peer, "")
+            # The manager's own lines, however this client names itself.
+            if author == MANAGER or peer == getattr(self.client, "agent_id", None):
+                continue
+            if not author:
+                self._intrusion(peer, msg)
                 continue
             # A Switchboard `say` that carries a timing forecast arrives as an
             # envelope, not a string. Stringifying it turns "ACK. Ready." into
@@ -228,6 +239,49 @@ class Manager:
             body, _forecast = unwrap_forecast(msg.get("body"))
             self._consider(author, body if isinstance(body, str) else "",
                            msg.get("signature"))
+
+    def _intrusion(self, peer: str, msg: dict) -> None:
+        """Somebody in this room who is not at this table has written in it.
+
+        **Recorded rather than ignored.** A room key can be handed on: a seated
+        trader may pass it to a confederate, or run a second client of its own,
+        and neither can be prevented -- the key is theirs once they hold it,
+        and no permission model Switchboard has or should grow would change
+        that. What can be done is to *notice*, and the board already carries
+        everything needed: the lobby witnessed which key took each seat, in
+        public, and every message here says which key it was signed under. A
+        line from any other key is somebody who was never seated.
+
+        So it goes in the record, with the key it came from, and the round is
+        marked as one that had company. The traders were told at the opening
+        that such lines have no standing; what this adds is that **a game
+        played through interference can be told apart afterwards from one that
+        was not**, which is what lets a ruined game be kept, counted and left
+        unranked instead of quietly scored.
+
+        Said out loud **once per key**, not once per line: a stranger writing
+        ten lines should not make the manager write ten more.
+        """
+        signature = msg.get("signature") or {}
+        key = signature.get("key") if signature.get("status") == "verified" else None
+        # A seat that has not been aliased yet is not an intruder -- it is a
+        # trader whose registration this manager has not read, and it binds on
+        # a later drain. The key the lobby witnessed is what tells them apart.
+        if key is not None and key in set(self.keys.values()):
+            return
+        body, _forecast = unwrap_forecast(msg.get("body"))
+        text = body if isinstance(body, str) else ""
+        mark = key or f"unsigned:{peer}"
+        first = mark not in self.intruders
+        self.intruders.add(mark)
+        self.intrusions.append({"episode": self.episode + 1, "key": key,
+                                "peer": peer, "status": signature.get("status"),
+                                "line": text.strip()[:200]})
+        if first:
+            self.say(f"a line here came from {mark}, which took no seat at "
+                    f"this table. It settles nothing and has no standing. "
+                    f"This round is recorded as one that had company, and a "
+                    f"round with company is not ranked.")
 
     def _consider(self, author: str, text: str,
                  signature: dict | None = None) -> None:

@@ -152,6 +152,41 @@ def check_authorship(board: dict, reveal: dict, report: Report) -> None:
             report.ok("authorship")
 
 
+def check_company(board: dict, reveal: dict, report: Report) -> None:
+    """Did anybody who took no seat write in this room?
+
+    Not a fault in the board — it is a fact about the game, and one a reader
+    has to be told rather than left to infer from a name they do not
+    recognise. A room key can be handed on: a seated trader can pass it to a
+    confederate or run a second client of its own, and no permission model
+    prevents that. What the record can do is show it, because the lobby
+    witnessed which key took each seat in public and every line here says
+    which key signed it.
+
+    A board with company **fails**, and the failure is the point: it is what
+    keeps such a game out of the rankings while keeping it in the ledger and
+    in every denominator.
+    """
+    keys = reveal.get("seat_keys") or {}
+    if not keys:
+        report.skip("company: this replay carries no witnessed seat keys, so a "
+                    "stranger's line cannot be told from a seat's")
+        return
+    strangers: dict[str, int] = {}
+    for msg in board["messages"]:
+        author = msg.get("author", "")
+        if author in keys or author == "manager":
+            continue
+        strangers[author] = strangers.get(author, 0) + 1
+    if not strangers:
+        report.ok("company")
+        return
+    for who, lines in sorted(strangers.items()):
+        report.bad("company", f"{lines} line(s) from {who}, which took no seat "
+                              f"at this table -- this game was played through "
+                              f"interference and is not rankable")
+
+
 def check_production(board: dict, reveal: dict, report: Report) -> None:
     """Every receipt must equal `share × capacity`, and capacity comes from
     the seed. A manager that credited a friend cannot survive this."""
@@ -367,6 +402,7 @@ def verify(board_path: Path, reveal_path: Path | None = None) -> Report:
     reveal = json.loads(reveal_path.read_text())
     check_draw(reveal, report)
     check_authorship(board, reveal, report)
+    check_company(board, reveal, report)
     check_production(board, reveal, report)
     check_exchange(board, report)
     check_timing(board, reveal, report)

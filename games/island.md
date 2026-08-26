@@ -698,6 +698,29 @@ at the managed hub by default.
   `(agents, goods, episodes)`, so a five-good round is a different challenge on
   its own board rather than a row polluting the four-good one.
 
+- **A key that was handed on.** Settled, as far as it can be. Once a seat
+  holds the room key it is theirs: they can pass it to a confederate or run a
+  second client of their own, and nothing prevents either — not a permission
+  model, which Switchboard does not have and should not grow, and not sealing
+  the invite, which only decides who gets a key in the first place. **What is
+  possible is to notice, and that is now built.** The lobby witnessed which
+  key took each seat, in public, before the round; every line in the room says
+  which key signed it; so a line from any other key is somebody who was never
+  seated. The manager records each one (`island/manager.py:_intrusion`) — it
+  used to *skip* them, which meant a stranger's line was not refused but
+  invisible — says so once per key rather than once per line, and the round is
+  recorded as one that had company. `viewer/scores.py` keeps such a round in
+  the ledger and in every denominator and **never ranks it**, and
+  `verify.verify` fails a board that has company, naming who and how many
+  lines.
+
+  The trade this makes is deliberate: interference cannot be prevented, so it
+  is made **visible and costly** instead. The traders were told at the opening
+  that such lines have no standing, the game can still be played, and a game
+  played through interference is told apart afterwards from one that was not.
+  A ruined game is kept, counted, and unranked — not quietly scored, and not
+  dropped from the denominator either.
+
 - **Farming.** Both seats under one owner can arrange a game: a partner who
   gives everything away goes to zero and inflates the other. The ledger records
   every player in every round so a rule about who may sit at a ranked table can
