@@ -55,7 +55,14 @@ const crate = (material, size = 0.17) =>
 const PROP = 1.7;
 
 /**
- * A flat ring on the ground, for a pulse, a shock or a seal.
+ * A flat ring on the ground: a mark where something happened.
+ *
+ * **Nothing built with this expands any more.** Five clips used to grow one
+ * out of a settlement or the market, a four-good production put four up at
+ * once, and at 4x they arrived stacked -- reported by somebody watching, twice,
+ * the second time as too distracting to read past. What is left are the two
+ * that never travelled anywhere: a patch of light at the site that produced,
+ * and a seal pressed onto the plaza where a deal closed.
  *
  * Fat on purpose. A ring is the cheapest thing on the island that covers real
  * area, and a hairline one at a third opacity -- which is what the diorama
@@ -64,6 +71,22 @@ const PROP = 1.7;
 function ring(material, radius = 0.3, y = 0.05) {
   return mesh(new THREE.TorusGeometry(radius, 0.1, 8, 56), material,
     "ring", [0, y, 0], [Math.PI / 2, 0, 0]);
+}
+
+/**
+ * A patch of light lying on the ground, at a size and staying there.
+ *
+ * **What replaced the shockwaves.** A clip has to cover real area or nobody
+ * sees it -- `mechanics` holds every one of them to a share of the drawn
+ * island, and the three that lost a ring fell straight through it -- and an
+ * expanding ring was the cheap way to get that area. This is the honest way:
+ * the same area, all of it at once, in the one place the thing happened. It
+ * fades up and down and it never moves, so several at once read as several
+ * places rather than as a pile of waves.
+ */
+function patch(material, radius, y = 0.05) {
+  return mesh(new THREE.CircleGeometry(radius, 40), material,
+    "patch", [0, y, 0], [-Math.PI / 2, 0, 0]);
 }
 
 /** A few puffs behind something crossing the island, so the path reads. */
@@ -391,21 +414,24 @@ function offered(event, { anchors, traders, ground }) {
   const scroll = mesh(new THREE.BoxGeometry(0.03, 0.5, 0.56), scrollMat, "notice", [0, 0.95, 0.28]);
   post.add(scroll);
 
-  // The ring is the loud half of this clip: a post and a notice are a metre of
-  // timber on an island eight across, and on their own they were a twentieth
-  // of what every other event puts on screen. The ring is what carries it out
-  // to where somebody watching the whole island will catch it.
+  // A post and a notice are a metre of timber on an island eight across, so
+  // something has to carry this out to somebody watching the whole island.
   //
-  //: **The one that is still allowed to travel**, along with the bell's and
-  //: the dawn's. An offer is addressed to the rest of the island, so a ring
-  //: going out from it is what it means; production and a settled deal are
-  //: not, and theirs were taken away. Quieter than it was, because with four
-  //: kinds of ring on screen at once the loudest one was competing rather
-  //: than carrying.
-  const pulseMat = own(c, clone(M.glass, { transparent: true, opacity: 0.5 }));
-  const pulse = ring(pulseMat, 0.9);
-  pulse.position.set(post.position.x, post.position.y + 0.05, post.position.z);
-  c.root.add(pulse);
+  //: **It used to be a ring going out from the post**, and it is a lamp on the
+  //: post now. Every expanding ring on this island has gone the same way: five
+  //: clips fired one, a four-good production put four up at once, and at 4x
+  //: they arrived on top of each other -- reported twice by somebody watching,
+  //: the second time as simply too distracting to read. A lamp on the post and
+  //: the light it throws on the ground say the same thing and say it *in one
+  //: place*, which is where the offer actually is.
+  const lampMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
+  const lamp = mesh(new THREE.SphereGeometry(0.11, 16, 12), lampMat, "offer_lamp",
+                    [0, 1.32, 0.1]);
+  post.add(lamp);
+  const litMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
+  const lit = patch(litMat, 1.15);
+  lit.position.set(spot.at.x, spot.at.y + 0.04, spot.at.z);
+  c.root.add(lit);
 
   c.update = (t) => {
     const rise = easeOut(win(t, 0, 0.5));
@@ -418,8 +444,9 @@ function offered(event, { anchors, traders, ground }) {
     scroll.rotation.y = Math.sin(t * 4.2) * 0.1 * flut;
     post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
     const p = win(t, 0.6, 2.8);
-    pulse.scale.set(0.5 + easeOut(p) * 1.15, 0.5 + easeOut(p) * 1.15, 1);
-    pulseMat.opacity = 0.5 * (1 - p ** 2);
+    lampMat.opacity = 0.85 * Math.sin(Math.PI * p) ** 0.6;
+    lampMat.emissiveIntensity = 0.4 + Math.sin(Math.PI * p) * 1.6;
+    litMat.opacity = 0.42 * Math.sin(Math.PI * p) ** 0.7;
     // Taken down at the end rather than left standing: the rope on the card is
     // what says an offer is still open, and two things saying it disagree the
     // moment one of them is a second behind.
@@ -462,8 +489,10 @@ function settled(event, { anchors, goods }) {
   // The seal goes down where the deal was struck, which on this island is the
   // market -- not at either hut, because it belongs to neither of them.
   //
-  //: A stamp rather than a wave: see the note on `produced`'s mark. A deal
-  //: closes in one place too.
+  //: **A stamp, and it no longer travels.** It used to grow out of the market
+  //: like every other ring on this island, and a settlement is not something
+  //: that spreads -- it is a deal closing in one place. It presses down onto
+  //: the plaza at the size the plaza is and fades there.
   const sealMat = own(c, clone(M.glass, { transparent: true, opacity: 0.6 }));
   const seal = ring(sealMat, MARKET_R);
   seal.position.set(anchors.market.x, anchors.market.y + 0.08, anchors.market.z);
@@ -488,7 +517,10 @@ function settled(event, { anchors, goods }) {
       if (gone > 0) l.box.scale.setScalar(1 - gone);
     });
     const s = win(t, 2.0, 3.8);
-    seal.scale.set(1 + easeOut(s) * 1.2, 1 + easeOut(s) * 1.2, 1);
+    // Down onto the ground, not out across it: a shade under full size at the
+    // moment it lands and settling to it.
+    const press = 0.94 + easeOut(Math.min(1, s * 4)) * 0.06;
+    seal.scale.set(press, press, 1);
     sealMat.opacity = 0.85 * (1 - s ** 2);
   };
   return c;
@@ -542,17 +574,24 @@ function belled(event, { island, anchors, traders }) {
   if (bell) borrow(c, bell);
   const y0 = bell?.position.y ?? 0;
 
-  //: **One, where there were three.** A bell ringing out over the island is
-  //: the clearest thing a ring can mean and it keeps its ring; three of them
-  //: chasing each other, over an offer's and a production's, is the pile
-  //: somebody watching called confusing.
-  const shockMat = own(c, clone(M.surf, { transparent: true, opacity: 0.55 }));
-  const shocks = [0].map(() => {
-    const s = ring(own(c, shockMat.clone()), MARKET_R);
-    s.position.set(anchors.market.x, anchors.market.y + 0.09, anchors.market.z);
-    c.root.add(s);
-    return s;
-  });
+  //: **The three shockwaves are gone**, and so is the one they were cut down
+  //: to. A bell ringing out is the clearest thing an expanding ring can mean,
+  //: which is exactly why this was the last one to go -- but the bell already
+  //: swings, every banner comes down, and the whole island goes to night on
+  //: the same beat. It was never the ring carrying the bell.
+  //
+  //: What is left standing in for it is the market's own lantern, which is
+  //: lit at dusk anyway: it flares as the bell swings and goes back to the
+  //: day's own value afterwards, so nothing about it is a thing that travels.
+  const lantern = island.getObjectByName("market_lantern");
+  if (lantern) borrow(c, lantern, { material: true });
+  const lit0 = lantern?.material.emissiveIntensity ?? 0;
+  //: And the plaza under it, because a lantern is a marble on an island eight
+  //: across. This is the area the shockwave used to cover, held in one place.
+  const tollMat = own(c, clone(M.surf, { transparent: true, opacity: 0 }));
+  const toll = patch(tollMat, MARKET_R * 1.15);
+  toll.position.set(anchors.market.x, anchors.market.y + 0.05, anchors.market.z);
+  c.root.add(toll);
 
   // Every settlement's own banner goes up and away with the offers that
   // lapsed. Restored at the end -- these are the island's, not the clip's.
@@ -568,11 +607,12 @@ function belled(event, { island, anchors, traders }) {
       bell.rotation.z = Math.sin(t * 9) * 0.5 * (1 - swing) ** 1.4;
       bell.position.y = y0 + Math.sin(t * 26) * 0.006 * (1 - swing);
     }
-    shocks.forEach((s, i) => {
-      const p = win(t, 0.05 + i * 0.34, 2.6 + i * 0.34);
-      s.scale.set(1 + easeOut(p) * 1.55, 1 + easeOut(p) * 1.55, 1);
-      s.material.opacity = 0.85 * (1 - p ** 2);
-    });
+    const p = win(t, 0.05, 2.6);
+    if (lantern) {
+      lantern.material.emissiveIntensity = lit0 + 2.4 * Math.sin(Math.PI * p) ** 0.7;
+      lantern.scale.setScalar(1 + 0.5 * Math.sin(Math.PI * p) ** 0.7);
+    }
+    tollMat.opacity = 0.5 * Math.sin(Math.PI * p) ** 0.6;
     flags.forEach(({ b, y0: by, r0 }, i) => {
       const ev = easeIn(win(t, 1.4 + i * 0.18, 3.4 + i * 0.18));
       const back = easeOut(win(t, 3.5, 4.2));
@@ -605,17 +645,22 @@ function opened(event, { island, anchors, traders }) {
       return { b, y0: b.position.y };
     });
 
-  // And the day itself, crossing the island from the market outward. This is
-  // the part that is actually large enough to notice at a glance.
+  //: **The dawn used to cross the island from the market outward**, and that
+  //: ring is gone with the rest of them. What a new day looks like is already
+  //: on screen and is bigger than any ring: the night lifts off the whole
+  //: frame, the light comes back up on the model, and every banner runs back
+  //: up its pole. A ring going out from the middle was a fourth thing saying
+  //: it, and the one a viewer called distracting.
+  //
+  //: What stands where it stood is the first light on the plaza: the same
+  //: area, arriving all at once and staying where the market is.
   const dawnMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
-  const sweep = ring(dawnMat, MARKET_R);
-  sweep.position.set(anchors.market.x, anchors.market.y + 0.09, anchors.market.z);
-  c.root.add(sweep);
+  const first = patch(dawnMat, MARKET_R * 1.15);
+  first.position.set(anchors.market.x, anchors.market.y + 0.05, anchors.market.z);
+  c.root.add(first);
 
   c.update = (t) => {
-    const d = win(t, 0.1, 2.4);
-    sweep.scale.set(1 + easeOut(d) * 1.55, 1 + easeOut(d) * 1.55, 1);
-    dawnMat.opacity = 0.8 * (1 - d ** 2);
+    dawnMat.opacity = 0.5 * Math.sin(Math.PI * win(t, 0.1, 2.6)) ** 0.6;
     stock.forEach(({ cr, k, y0, r0 }) => {
       const drain = easeIn(win(t, 0.1 + k * 0.5, 1.7 + k * 0.5));
       const back = easeOut(win(t, 2.6 + k * 0.4, 4.0 + k * 0.4));
