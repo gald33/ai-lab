@@ -384,8 +384,12 @@ function offered(event, { anchors, traders, ground }) {
   const scroll = mesh(new THREE.BoxGeometry(0.03, 0.5, 0.56), scrollMat, "notice", [0, 0.95, 0.28]);
   post.add(scroll);
 
+  // The ring is the loud half of this clip: a post and a notice are a metre of
+  // timber on an island eight across, and on their own they were a twentieth
+  // of what every other event puts on screen. The ring is what carries it out
+  // to where somebody watching the whole island will catch it.
   const pulseMat = own(c, clone(M.glass, { transparent: true, opacity: 0.5 }));
-  const pulse = ring(pulseMat, 0.42);
+  const pulse = ring(pulseMat, 1.0);
   pulse.position.set(post.position.x, post.position.y + 0.05, post.position.z);
   c.root.add(pulse);
 
@@ -399,8 +403,8 @@ function offered(event, { anchors, traders, ground }) {
     const flut = win(t, 1.2, 3.0);
     scroll.rotation.y = Math.sin(t * 4.2) * 0.1 * flut;
     post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
-    const p = win(t, 0.8, 2.8);
-    pulse.scale.set(1 + easeOut(p) * 1.9, 1 + easeOut(p) * 1.9, 1);
+    const p = win(t, 0.6, 2.8);
+    pulse.scale.set(0.5 + easeOut(p) * 1.8, 0.5 + easeOut(p) * 1.8, 1);
     pulseMat.opacity = 0.8 * (1 - p ** 2);
     // Taken down at the end rather than left standing: the rope on the card is
     // what says an offer is still open, and two things saying it disagree the
