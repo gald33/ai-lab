@@ -392,6 +392,11 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
                                           list(mgr.names), list(mgr.goods)),
             "episode_log": mgr.episode_log,
             "refusals": mgr.refusals,
+            # Lines from keys that took no seat. A round that had company is
+            # kept and counted and never ranked -- see `island/manager.py`,
+            # `_intrusion`, and `viewer/scores.py`.
+            "intrusions": mgr.intrusions,
+            "intruders": sorted(mgr.intruders),
             "spoke": sorted(mgr.spoke),
             "acknowledged": sorted(mgr.acknowledged),
             "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,

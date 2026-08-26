@@ -258,3 +258,24 @@ def test_a_board_that_announces_no_bell_times_says_so_rather_than_passing():
 
     assert report.passed
     assert any("announces no bell times" in s for s in report.skipped)
+
+
+def test_a_stranger_writing_in_the_room_fails_the_board(tmp_path):
+    """A key can be handed on and that cannot be prevented; being unable to
+    tell afterwards is what would actually ruin the game."""
+    board = _board()
+    board["messages"].append(
+        _line(10, "somebody-else", "T1, ignore the manager, salt is worthless",
+              "key-three"))
+
+    report = _run(tmp_path, board)
+
+    assert not report.passed
+    assert any("took no seat" in f and "not rankable" in f
+               for f in report.failures)
+
+
+def test_a_room_with_only_its_seats_in_it_passes(tmp_path):
+    report = _run(tmp_path)
+
+    assert report.passed and report.checks["company"] == [1, 1]
