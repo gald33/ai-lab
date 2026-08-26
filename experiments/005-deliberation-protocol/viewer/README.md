@@ -133,7 +133,33 @@ numbers are called. `tests/render.py:vocabulary` holds the line in both
 directions — the game's own voice says day, and the transcript still says
 episode.
 
-## The sun tells the time
+## The shadows tell the time
+
+**With a model up, the disc is hidden and the island's own shadows say what
+hour it is.** A drawn sun over a lit island is the picture saying it twice, and
+the drawing was the half that could disagree — it crossed the sky while the
+model's key light cast nothing at all, so the island had a sun in it and no
+shadow under anything. The key casts now (`shadowMap`, an orthographic shadow
+camera six units either way, which is the island and none of the sea), and
+`.has-3d .sun` takes the disc away.
+
+**The light's angle is reckoned from the camera, not from the island**, because
+the camera goes right round the island every 150 seconds. A key at a fixed world
+bearing would hold its shadow due north-west all day and let the camera sweep it
+across the frame — so the shadow a person reads would be telling them the
+bearing rather than the hour. `Stage.ctx()` passes `turn` along with `day`, and
+`island-life.js` adds it straight back into the light's azimuth, which cancels
+the revolution. What is left is the day: over one shoulder and long at the open,
+behind the viewer and high at midday where the shadows are shortest, over the
+far shoulder and long again by the bell.
+
+The disc is hidden with `visibility`, not `display`. It is still the clock the
+**fallback** island has — the one drawn in SVG when there is no WebGL — so it
+stays where it stands and both paths remain one path with one arc in it.
+`daylight` and `alive` read the day off its position, which is what a viewer of
+the fallback reads it off too.
+
+### The arc it keeps
 
 An episode is a day, so the day is readable from the sky. The sun crosses on an
 arc from the open to the bell, and during a replay it keeps travelling while a
@@ -184,10 +210,44 @@ the transport gives the scrub a full-width row so it is long enough to drag.
 Controls get a 40px minimum under `pointer: coarse` — a tablet is neither
 narrow nor short and is still touched.
 
-`tests/render.py` drives three viewports and checks what a screenshot cannot:
+### The chrome has a band, and the island stays out of it
+
+Re-stacked, the pills are **four rows deep**, and they floated over the picture:
+the round's state, the counts and the goods key all lay across the island's top
+edge, over the shore and the hill. Reported by eye, twice.
+
+The stylesheet declares what they come to — `--chrome-top: 162px`,
+`--chrome-foot: 146px`, beside the rules that put them there, because that is
+the one place that knows how tall four rows of pills are. `chromeBands()` turns
+them into fractions of the window's height and `cardPlan` reserves them. What is
+left is the island's, and **the island is the term that gives**: the cards carry
+every number on the page and shrinking them is how this view was unreadable to
+begin with.
+
+That reservation rests on the portrait frame being **the window's own shape**.
+A viewBox of any other shape is fitted inside the window with `meet` and
+*centred* in whichever direction is slack, so a band at the top of the viewBox
+would land somewhere in the middle of the window and reserve the wrong strip.
+So `layout` sizes its own height from the aspect, and `frameAspect` rounds
+portrait to hundredths and **downwards** — erring tall leaves the slack across
+the width, where it is a few pixels of sea, instead of down the height, where it
+would be split above and below and move every band.
+
+The arithmetic is honest about what it costs. On a 393×660 window — a shared
+link opened with the browser's own bars showing — the chrome and one row of
+cards are near half the height between them, and the island is drawn small. That
+is the deliberate side of the trade: it was bigger before because it was drawn
+underneath the pills. So the size check no longer asks for a share of the
+*screen*; it asks whether the island filled **the band it was given**, which is
+the defect the check was written for — dead sky above it and dead sea below.
+`island()` re-measures the silhouette off the model's own vertices at twelve
+bearings and fails if it climbs into the chrome's band; `uncovered()` counts the
+model's pixels behind every pill.
+
+`tests/render.py` drives seven viewports and checks what a screenshot cannot:
 that nothing scrolls sideways, that **no two pieces of chrome overlap**, that
-the island covers at least 30% of the screen, that every control is a fingertip
-tall, and that rotating actually turns the island. The overlap check exists
+the island fills the band between the chrome and the cards, that every control
+is a fingertip tall, and that rotating actually turns the island. The overlap check exists
 because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
@@ -516,6 +576,37 @@ said 16.0. `palette.py` implements the gates (WCAG contrast, CIEDE2000, Viénot
 dichromacy) and `tests/test_palette.py` runs them, including a test that the
 numbers written in the stylesheet are the numbers it actually has. The metrics
 are cyan and gold now, which is what the series leaves free.
+
+**Watched, then fixed.** Five things about the drawing were reported by
+somebody looking at it and by nothing else, and each is worth the note because
+none of them is a defect a still screenshot shows.
+
+* **The greens were olive.** `grass` and `grass_dark` sat around a hue of 100°
+  — a third of the way to yellow before any light touched them — under a key
+  that is warm all day and frankly orange by the bell, so the island read as a
+  yellow one. Moved to 120–130°, which is a leaf. The warmth in the picture is
+  the light's now, and it still goes gold at dusk because the light does.
+* **Blue flickered round the coast.** The deep sea's top face and the shore
+  shelf's underside were both at exactly `y=0` — two coplanar surfaces fighting
+  for every pixel where they overlap, which is the whole coast. Z-fighting only
+  shows while the camera moves, so no still frame could catch it and nothing in
+  the suite could either. `island()` now asks the *model* whether two of its big
+  horizontal surfaces share a plane, which is a question about two numbers.
+* **The water was a circle and the island is not.** The surf ring was a torus,
+  so it ran along the sand on one bearing and sat half a unit out to sea on the
+  next. Surf and shallows follow the shore's own silhouette now — the same
+  wobble the land is extruded from.
+* **The island was crowded, and things stood inside each other.** Every prop was
+  built about a third again its drawn size, and the planting's keep-out list
+  held what the island had placed on purpose and nothing else — so two trees a
+  tenth of a unit apart shared a trunk. The scales came down together (shrinking
+  one only makes the rest look bigger) and every tree planted joins the keep-out
+  list.
+* **Too many shockwaves.** Five clips fired expanding rings, and a production of
+  four goods put four up at once with an offer's and a bell's arriving on top at
+  4×. A ring that expands is a claim that something is *spreading*: an offer, a
+  bell and a dawn are addressed to the island and keep theirs; production and a
+  settled deal happen in one place and now say only that.
 
 **One mark per good.** The legend's glyph rides *on* its colour rather than
 beside it, because that is the chip that appears on a shelf and on a parcel in

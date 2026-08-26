@@ -100,6 +100,64 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
   }
 }
 
+//: A phone, and what its stylesheet declares the pill rows and the transport
+//: come to. Fractions of the window's height, which is the form `layout` takes
+//: them in -- see `chromeBands()` in `index.html`.
+const PHONE = { w: 390, h: 844 };
+const BANDS = { top: 162 / PHONE.h, foot: 146 / PHONE.h };
+const shape = ({ w, h }) => Math.floor((w / h) * 100) / 100;
+
+for (const n of [1, 2, 4]) {
+  test(`the chrome's band is the chrome's, with ${n} trader(s)`, () => {
+    // Reported twice by somebody looking at a phone: four rows of pills stand
+    // across the top of the frame and the island was drawn underneath them.
+    const g = layout(n, true, shape(PHONE), BANDS);
+    const above = Math.round(g.h * BANDS.top);
+    assert.ok(g.islandTop >= above,
+              `the island starts at ${g.islandTop}, inside the chrome's band `
+              + `which runs to ${above}`);
+    const last = Math.max(...g.cards.map((c) => cardBox(c).y + cardBox(c).h));
+    const foot = g.h - Math.round(g.h * BANDS.foot);
+    assert.ok(last <= foot,
+              `the last card ends at ${last}, inside the transport's band `
+              + `which starts at ${foot}`);
+  });
+}
+
+test("the portrait frame is the window's own shape, so nothing letterboxes", () => {
+  // The whole reservation rests on this. A viewBox of some other shape is
+  // fitted inside the window with `meet` and *centred* in whichever direction
+  // is slack, so a band at the top of the viewBox lands in the middle of the
+  // window and reserves the wrong strip.
+  for (const win of [{ w: 390, h: 844 }, { w: 393, h: 660 }, { w: 360, h: 640 }]) {
+    const g = layout(2, true, shape(win), { top: 162 / win.h, foot: 146 / win.h });
+    const scale = Math.min(win.w / g.w, win.h / g.h);
+    assert.ok(Math.abs(g.h * scale - win.h) < 1,
+              `a ${g.w}x${g.h} frame in a ${win.w}x${win.h} window leaves `
+              + `${(win.h - g.h * scale).toFixed(0)}px of it unpainted`);
+  }
+});
+
+test("a bigger band is paid for by the island, not by the cards", () => {
+  // The cards carry every number on the page; the island is the term that
+  // gives. On a short phone that leaves the island small, and that is the
+  // deliberate half of the trade -- it was bigger before because it was drawn
+  // underneath the pills.
+  //: A short phone -- what a shared link opens into with the browser's own
+  //: bars showing. On a tall one the island is already at the frame's full
+  //: width with the bands taken out, so there is nothing to see.
+  const win = { w: 393, h: 660 };
+  const bands = { top: 162 / win.h, foot: 146 / win.h };
+  const bare = layout(2, true, shape(win), { top: 0, foot: 0 });
+  const full = layout(2, true, shape(win), bands);
+  assert.equal(bare.h, full.h, "the frame is the window's shape either way");
+  assert.ok(full.islandBox.w < bare.islandBox.w,
+            `the island did not give anything up (${bare.islandBox.w} -> `
+            + `${full.islandBox.w})`);
+  const height = (g) => cardBox(g.cards[0]).h;
+  assert.equal(height(bare), height(full), "a card is the same card");
+});
+
 test("a wider window is spent on the island, never on the cards", () => {
   // The viewBox only ever widens with the frame. On a landscape phone the
   // fixed one letterboxed to a quarter of the screen and the rest was black.
