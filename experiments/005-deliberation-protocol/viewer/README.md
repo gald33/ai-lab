@@ -449,14 +449,43 @@ a box down without one.
 
 ### How many boxes is a holding
 
-A box is a sixth of the round's own largest holding of that good. **Not
-capacity**, which is what a first reading asks for: capacity is private to a
-trader and the page never has it live, so a denominator that existed in a
-replay and not on a live board would make a box mean two different things. The
-round's biggest settled holding is available in both, comes from settled state
-rather than from anything an agent said, and is the rule the card's shelf scale
-already used. Any non-zero holding is at least one box — a trader with a little
-of something has some of it.
+**A box is a fixed quantity, and it is the same one on every board.**
+
+It was a sixth of the round's own largest settled holding of that good, so six
+boxes was whatever the biggest pile turned out to be. That reads well in a
+replay and is wrong twice over. A denominator taken from how a round *ended* is
+not known while it is running, so a live board had no scale at all and every
+non-zero holding was a single box; and even in a replay it made a box mean a
+different quantity on every board, so two rounds side by side could not be
+compared by looking at them.
+
+The scale comes from the **distribution**, which the design fixes and which is
+therefore known before a single message is posted. `barter.economy`'s
+`draw_island` gives every trader a capacity per good of `exp(0.8 · N(0,1))` —
+lognormal, `spread = 0.8`, the same for every island this game has ever drawn.
+Six boxes is its **ninetieth percentile, 2.79**: a pile at the top of what one
+trader can make of one thing. A box is a sixth of that, `UNIT ≈ 0.465`.
+
+The ninetieth and not the median, which was the other candidate: the largest
+pile ever settled on any board on disk is 5.91 and the median round's biggest
+is 0.75, so a median-sized cap (0.167 a box) puts a full yard under both and
+says nothing. At `0.465` the median round's biggest pile draws two boxes, the
+upper quartile three, the ninetieth four, and only the genuine extremes
+saturate at six. Any non-zero holding is still at least one box — a trader with
+a little of something has some of it.
+
+`tests/test_box_unit.py` re-derives the quantile from `draw_island` itself, so
+a change to `spread` — or to the shape of the draw — fails there rather than
+silently rescaling every yard on the island. The number is a literal in three
+places (the page, the checks, and that test's own constant) because JavaScript
+cannot import a Python module; the test is what stops the three drifting.
+
+Two things moved with it. A crate is a little larger (0.15 island units, from
+0.13), because a box is worth about three times what it was and there are one
+to three of them in a yard now rather than five or six. And `render.py`'s
+event fixture was scaled up: its quantities were chosen when 0.8 of a good was
+five crates, and the events it fires say they are showing "the day's work
+standing in the yard", which 0.8 no longer is.
 
 ### The three legs of an exchange
 
@@ -532,7 +561,7 @@ The island can now be *wrong* in ways it could not be as a prop layer: a box
 left behind after a trade, a pile that did not grow when a receipt arrived, a
 stack floating over the grass. `render.py:stock` drives a stage directly with
 holdings it chooses — a trader holding nothing, holding a crumb, holding more
-than the round ever saw — and compares the yards against the board. It found a
+than six boxes can show — and compares the yards against the board. It found a
 real placement bug on its first run: a settlement sits on an annulus reaching
 most of the way to the meadow's rim, so for some seats the ground *behind* the
 hut is sea, and the clamp that keeps a yard on the grass pulled the whole thing
