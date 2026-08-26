@@ -36,13 +36,20 @@ published `exchange_key` rather than the workspace key, and reads what was
 sealed to it straight out of `inbox` — an envelope it cannot open arrives
 marked `unreadable` with the reason rather than as content.
 
-What remains is a version, not a design: the feature is on Switchboard's
-`main` and not in a released `agent-switchboard` (still 0.10.0), so nothing
-here can import it yet. **Checked against the release itself, 2026-08-26:**
-`agent-switchboard==0.10.0` is the newest on PyPI, it carries no `ask` and no
-`exchange_key` anywhere in the package, and its MCP server exposes `say`,
-`history` and `inbox`. So the wait is real rather than assumed, and the test
-for it is one `pip index versions` away whenever somebody wonders again. Until that release, a game played by real agents is a
+**It has since shipped.** This paragraph said the feature was on Switchboard's
+`main` and not in a release, and that was true of 0.10.0 for a few hours on
+2026-08-26. **0.11.0, the same day, carries it**: `Client.ask`, `exchange_key`
+on the roster, `crypto.seal_to_peer` / `unseal_from_peer`, and `ask` as an MCP
+tool the agent calls itself. Verified against a real hub — a third member of
+the room, holding the same workspace key, gets an envelope it cannot open. The
+tool **is being renamed `ask` → `whisper`**; whichever name a pinned release
+carries is the one to call. See
+[`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
+§3 for the measurement, the rename, and the roster read both sides need first.
+
+So the practice-game rule below is now a **choice of when to do the work**,
+not a wait: nothing here imports it yet, `island/sealed.py` is still the
+stopgap, and until that changes a game real agents play is still practice. Until that release, a game played by real agents is a
 **practice** game, announced as one on its own board and never ranked, and
 `--ranked` skips a table it cannot seal. When it lands, two things follow —
 `island/sealed.py` is deleted rather than kept, and `JOIN`'s `box=` becomes
