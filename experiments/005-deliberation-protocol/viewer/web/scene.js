@@ -40,7 +40,10 @@ const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
  * A kind that is not here is a frame with nothing to watch, and is not held.
  */
 export const DWELL = {
-  settled: 2100,   // parcels cross, stagger, and land
+  //: Three legs now, not one: the losing card empties into its own boxes, the
+  //: boxes cross the island, and the arriving boxes fill the gaining card. It
+  //: was 2100 when the whole exchange was parcels crossing the square.
+  settled: 3600,
   produced: 2600,  // the hut works, then a sheaf per good lands on the shelf
   refused: 1500,   // one badge, rising
   said: 1300,      // one bubble, rising
@@ -512,6 +515,9 @@ export class Scene {
     //: Where each settlement is on screen. The same as its card's seat when
     //: there is no model; from the stage, every frame, when there is.
     this.pins = {};
+    //: `trader:good` to a viewBox point: where that pile of boxes is drawn.
+    //: Empty without a model, and the card's own seat stands in for it.
+    this.yards = {};
     this.bars = {};
     this.labels = {};
     this.build();
@@ -560,9 +566,14 @@ export class Scene {
    *
    * Cheaper than `replace()` on purpose, because this runs every frame.
    */
-  follow(placed) {
+  follow(placed, yards = null) {
     if (placed?.length !== this.traders.length || !this.state) return;
     this.traders.forEach((name, i) => { this.pins[name] = placed[i]; });
+    //: Where each trader's pile of each good stands, in this frame's viewBox.
+    //: A symbol crossing between a box on the island and a bar on the card has
+    //: to start or end somewhere real, and the island is a canvas the SVG
+    //: layer cannot see into.
+    if (yards) this.yards = yards;
     this.layTethers();
     const open = this.state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
@@ -1414,11 +1425,18 @@ export class Scene {
       // way to know it and must not pretend otherwise.
       const size = 0.62 + 0.55 * Math.min(1, qty / (this.top || 1));
       const x = seat.x + slot.x, to = seat.y + CARD_TOP + BASE - 10;
+      //: **From the boxes.** The goods stand on the island now -- a pile per
+      //: good beside every hut -- so the symbol that fills a bar comes off the
+      //: pile it is counting rather than out of the top of its own card. With
+      //: no model there is no pile, and the card's seat stands in as it always
+      //: did.
+      const from = this.yards[`${e.trader}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
       const anim = sheaf.animate([
-        { transform: `translate(${seat.x}px, ${seat.y - 12}px) scale(.35)`, opacity: 0 },
-        { transform: `translate(${seat.x}px, ${seat.y - 30}px) scale(${size})`,
+        { transform: `translate(${from.x}px, ${from.y}px) scale(.35)`, opacity: 0 },
+        { transform: `translate(${from.x}px, ${from.y - 26}px) scale(${size})`,
           opacity: 1, offset: .22 },
-        { transform: `translate(${(seat.x + x) / 2}px, ${seat.y - 6}px) scale(${size})`,
+        { transform: `translate(${(from.x + x) / 2}px, ` +
+                     `${(from.y + to) / 2 - 40}px) scale(${size})`,
           opacity: 1, offset: .55 },
         { transform: `translate(${x}px, ${to}px) scale(${size * .8})`, opacity: 1 },
       ], { duration: flight, delay, easing: "cubic-bezier(.3,.7,.35,1)",
@@ -1447,6 +1465,17 @@ export class Scene {
   flight(e) {
     const a = this.seats[e.maker], b = this.seats[e.taker];
     if (!a || !b) return;
+    //: **With a model, the goods cross the island and not the card layer.**
+    //: The boxes themselves come off one trader's pile, fly the offer's line
+    //: and stack in the other's, so a parcel drawn across the square as well
+    //: would be the page saying it twice -- and the two would disagree the
+    //: first time one of them was a frame behind.
+    //:
+    //: What the cards do instead is the two ends of that journey: the bar that
+    //: is losing empties *into* its own boxes, and the bar that is gaining
+    //: fills *from* the boxes arriving. A symbol never crosses the square; it
+    //: only ever goes between a pile and the card that counts it.
+    if (Object.keys(this.yards).length) return this.hands(e);
     const send = (from, to, bundle, cls) => {
       // Staggered: a three-good bundle sent all at once is one blur, and how
       // much crossed the square is the thing a spectator is here for.
@@ -1496,6 +1525,90 @@ export class Scene {
    * dusk there, so scrubbing lands in the dark without any event being played.
    * This method only plays the passage.
    */
+  /**
+   * A settled exchange, on the cards: what each side loses and what it gains.
+   *
+   * Three legs in sequence, and the middle one is not drawn here at all.
+   *
+   * 1. The **losing** bar unfills and its symbols fly down to its own pile,
+   *    which is where the boxes are waiting to be sent.
+   * 2. The boxes cross the island. That is `island-events.js` and it is the
+   *    only thing that moves between the two settlements.
+   * 3. The symbols fly off the arriving boxes up to the **gaining** bar, and
+   *    the bar fills as they land.
+   *
+   * So a good is in exactly one place at every moment of the exchange, and no
+   * bar changes until something has arrived to change it.
+   */
+  hands(e) {
+    const OUT = still() ? 1 : 820;      // card -> its own boxes
+    const CROSS = still() ? 0 : 1500;   // the island's own leg, not drawn here
+    const IN = still() ? 1 : 900;       // arriving boxes -> card
+    const move = (owner, taker, bundle, base) => {
+      Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
+        .forEach(([good, qty], i) => {
+          const delay = base + (still() ? 0 : i * 180);
+          this.hand(owner, good, qty, "out", delay, OUT);
+          this.hand(taker, good, qty, "in", delay + OUT + CROSS, IN);
+        });
+    };
+    move(e.maker, e.taker, e.give, 0);
+    move(e.taker, e.maker, e.want, still() ? 0 : 220);
+    const rope = this.ropes.querySelector(`.rope[data-pid="${e.pid}"]`);
+    if (rope) rope.classList.add("settling");
+  }
+
+  /**
+   * One symbol between a trader's card and that trader's own pile of one good.
+   *
+   * `"out"` is losing it: the bar empties first and the symbol falls to the
+   * boxes, which are about to be carried off. `"in"` is gaining it: the symbol
+   * rises off the boxes that just landed and the bar fills when it arrives.
+   * The bar is only ever changed by something reaching it.
+   */
+  hand(name, good, qty, way, delay, span) {
+    const seat = this.seats[name], slot = this.bars[name]?.[good];
+    if (!seat || !slot) return;
+    const yard = this.yards[`${name}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
+    const x = seat.x + slot.x, at = seat.y + CARD_TOP + BASE - 10;
+    // Held at what it was until the symbol lands, the same way `produce()`
+    // holds a shelf: a bar that moved on its own would win the race and the
+    // symbol would arrive at a bar that had already finished changing.
+    slot.holding = true;
+    if (way === "in") this.setBar(slot, slot.was.qty, slot.was.free);
+    const mark = el("g", { class: `sheaf ${way}` });
+    mark.append(el("circle", { class: "sheaf-puff", r: 13 }));
+    mark.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
+    mark.append(el("text", { y: 16, class: "sheaf-qty" }, qty.toFixed(2)));
+    this.flights.append(mark);
+
+    const size = 0.6 + 0.5 * Math.min(1, qty / (this.top || 1));
+    const A = way === "out" ? { x, y: at } : yard;
+    const B = way === "out" ? yard : { x, y: at };
+    const anim = mark.animate([
+      { transform: `translate(${A.x}px, ${A.y}px) scale(${size * .7})`, opacity: 0 },
+      { transform: `translate(${A.x * .7 + B.x * .3}px, ` +
+                   `${(A.y + B.y) / 2 - 34}px) scale(${size})`, opacity: 1, offset: .3 },
+      { transform: `translate(${B.x}px, ${B.y}px) scale(${size * .8})`, opacity: 1 },
+    ], { duration: span, delay, easing: "cubic-bezier(.35,.65,.3,1)", fill: "backwards" });
+
+    const done = () => {
+      mark.remove();
+      slot.holding = false;
+      this.setBar(slot, slot.now.qty, slot.now.free);
+      if (way === "in") {
+        slot.cell.classList.add("grew");
+        setTimeout(() => slot.cell.classList.remove("grew"), 700);
+      }
+    };
+    // Scrubbed away mid-flight lands in the same place: the shelf is what the
+    // board says, not what an animation was on its way to making it.
+    anim.finished.then(done, done);
+    // Losing is the one that empties as the symbol *leaves*, so the bar is
+    // already down by the time the boxes are carried off the island.
+    if (way === "out") setTimeout(done, still() ? 1 : delay + span * 0.35);
+  }
+
   /**
    * The bell: the light goes and the fire comes up.
    *

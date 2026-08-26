@@ -47,6 +47,14 @@ function mesh(geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0]) {
 const crate = (material, size = 0.17) =>
   mesh(new THREE.BoxGeometry(size, size, size), material, "crate");
 
+/** A box, standing squarely in the slot it belongs to and nowhere else. */
+function land_(box, at) {
+  box.position.copy(at);
+  box.rotation.set(0, 0, 0);
+  box.scale.setScalar(1);
+  box.visible = true;
+}
+
 //: Everything a clip spawns is bigger than the delivered clip drew it.
 //: The clips were watched one at a time in a frame about two units across;
 //: the island is eight, and half of it is behind the traders' cards. A crate
@@ -130,8 +138,16 @@ function bannerPost(material, h = 1.35) {
  */
 function clip(dur) {
   const c = {
-    root: new THREE.Group(), dur, mine: [], borrowed: [], update() {},
-    restore() { for (const put of c.borrowed) put(); },
+    root: new THREE.Group(), dur, mine: [], borrowed: [], settle: [], update() {},
+    //: Run when the clip retires **and** when it is cleared mid-flight, which
+    //: is what a scrub is. Two things happen here: what the clip borrowed off
+    //: the island goes back, and what it was carrying is put down where the
+    //: board says it ended up. A clip cut short must never leave a box in the
+    //: air or a field still cut.
+    restore() {
+      for (const put of c.borrowed) put();
+      for (const down of c.settle) down();
+    },
   };
   return c;
 }
@@ -202,6 +218,36 @@ function beside(home, market, ground, side = 1.15, out = 0.25) {
  *                        carries (`trader`, `made`, `maker`, `taker`, ...)
  * @param {object} world  `{ island, anchors, traders, goods }` from the build
  */
+/**
+ * The piles a clip is about to move with its own hands.
+ *
+ * The page sets the island to what the board says before it plays the frame's
+ * event, and a settlement whose boxes are still on the maker's side would be
+ * snapped to the taker's yard under the very animation carrying them. These
+ * are the pairs `Stage.showStock` leaves alone; every other pile is set.
+ */
+export function carried(event) {
+  //: The bell eats everything every trader is holding, and eating it is the
+  //: animation. Nothing in any yard is reconciled while that plays, or the
+  //: boxes would be swept off the ground the instant the frame painted and the
+  //: clip would be animating an empty island.
+  if (event?.kind === "bell") return "all";
+  const keep = new Set();
+  if (event?.kind === "produced") {
+    for (const good of Object.keys(event.made || {})) keep.add(`${event.trader}:${good}`);
+  } else if (event?.kind === "settled") {
+    for (const good of Object.keys(event.give || {})) {
+      keep.add(`${event.maker}:${good}`);
+      keep.add(`${event.taker}:${good}`);
+    }
+    for (const good of Object.keys(event.want || {})) {
+      keep.add(`${event.maker}:${good}`);
+      keep.add(`${event.taker}:${good}`);
+    }
+  }
+  return keep;
+}
+
 export function stageEvent(event, world) {
   switch (event?.kind) {
     case "produced": return produced(event, world);
@@ -215,15 +261,21 @@ export function stageEvent(event, world) {
 }
 
 /**
- * Production: the site works, and what it made walks home.
+ * Production: the site works, and what it made walks home **and stays there**.
  *
  * The site's own parts are animated in place -- the fields ripen and are cut,
  * the racks fill, the quarry cart runs, the pans dry -- because they are
- * already standing where that good is made. What the clip adds is the yield:
- * a crate per good produced, which rises at the site and crosses the island to
- * the settlement that produced it.
+ * already standing where that good is made. What the clip adds is the yield.
+ *
+ * **The yield is real now.** It used to be a crate that appeared at the site,
+ * crossed the island and shrank out of existence at the hut, so the ground
+ * held nothing between one receipt and the next. The boxes this makes come
+ * from the standing stock, and they are still standing in the trader's yard
+ * when the clip is long finished -- until a trade carries them off or the bell
+ * eats them. Production is one of the two moments a good is allowed to appear
+ * from nothing, because it is the moment one is made.
  */
-function produced(event, { island, anchors, goods }) {
+function produced(event, { island, anchors, goods, stock }) {
   const made = Object.entries(event.made || {}).filter(([, q]) => q > 1e-9);
   const home = anchors[event.trader];
   if (!made.length || !home) return null;
@@ -256,16 +308,32 @@ function produced(event, { island, anchors, goods }) {
       const p = win(t, 0.1, 2.4);
       glow.opacity = 0.55 * Math.sin(Math.PI * p) ** 0.8;
     });
-    // Bigger the more was made, but only a little: this says which good and
-    // roughly how much, and a crate the size of a hut would say neither.
-    const size = (0.16 + Math.min(0.9, qty) * 0.09) * PROP;
-    const box = crate(own(c, goodMat(good, goods.indexOf(good))), size);
-    c.root.add(box);
-    legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                from: from.clone().setY(from.y + 0.25),
-                to: home.clone().setY(home.y + 0.2) });
+    // How many boxes this receipt is worth: what the yard should hold after it,
+    // less what it holds now. A production too small to move the count by a
+    // whole box still works its site -- the receipt happened -- it just does
+    // not put another crate in the yard, which is the honest picture.
+    if (!stock) continue;
+    const add = stock.want(good, (event.after?.[good] ?? qty))
+              - stock.count(event.trader, good);
+    if (add <= 0) continue;
+    const born = from.clone().setY(from.y + 0.28);
+    const boxes = stock.mint(good, add, born);
+    // The slots are claimed now, at the start, so the flight has somewhere to
+    // aim and a second receipt arriving mid-air stacks after these rather than
+    // on top of them.
+    const rest = stock.put(event.trader, good, boxes);
+    boxes.forEach((box, k) => {
+      legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
+                  from: born, to: rest[k] });
+    });
   }
-  if (!legs.length) return null;
+  if (!legs.length) {
+    // Nothing crossed the ground, but the site still worked and the mark still
+    // went down: a receipt is a thing that happened.
+    if (!works.length) return null;
+    c.update = (t) => { for (const w of works) w(t); };
+    return c;
+  }
 
   const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
   const dust = mesh(new THREE.CircleGeometry(0.22 * PROP, 20), dustMat, "dust",
@@ -275,27 +343,33 @@ function produced(event, { island, anchors, goods }) {
   c.update = (t) => {
     for (const w of works) w(t);
     legs.forEach(({ box, wake, from, to }, i) => {
-      const t0 = 0.9 + i * 0.35;
+      const t0 = 0.9 + i * 0.3;
+      // Coming into being at the site that made it: the one place a box is
+      // allowed to grow out of nothing.
       const pop = easeOut(win(t, t0 - 0.6, t0));
       const p = easeInOut(win(t, t0, t0 + 1.9));
       box.visible = pop > 0.01;
       box.scale.setScalar(pop);
       box.position.lerpVectors(from, to, p);
-      box.position.y += Math.sin(p * Math.PI) * 0.75;
+      box.position.y += Math.sin(p * Math.PI) * 0.6;
       box.rotation.set(p * 4.2, p * 3.1, p * 1.8);
       wake(from, to, p, 0.75);
-      const land = win(t, t0 + 1.8, t0 + 2.3);
+      // The hop as it lands on the pile, and then it is simply standing there.
+      const land = win(t, t0 + 1.8, t0 + 2.4);
       if (land > 0) {
-        box.position.y = home.y + 0.1
-          + Math.abs(Math.sin(land * Math.PI * 2)) * 0.14 * (1 - land);
+        box.position.copy(to);
+        box.position.y = to.y + Math.abs(Math.sin(land * Math.PI * 2)) * 0.12 * (1 - land);
+        box.rotation.set(0, 0, 0);
+        box.scale.setScalar(1);
         dustMat.opacity = Math.max(dustMat.opacity, 0.4 * (1 - land));
         dust.scale.setScalar(1 + land * 1.5);
       }
-      const gone = win(t, t0 + 2.6, t0 + 3.2);
-      if (gone > 0) box.scale.setScalar(pop * (1 - gone));
     });
     if (t < 0.9) dustMat.opacity = 0;
   };
+  // Scrubbed away mid-flight, the boxes are still the trader's: the receipt
+  // happened. Put them down in the slots they were already promised.
+  c.settle.push(() => { for (const { box, to } of legs) land_(box, to); });
   return c;
 }
 
@@ -457,31 +531,48 @@ function offered(event, { anchors, traders, ground }) {
 }
 
 /** A settlement: the goods actually cross the island, both ways. */
-function settled(event, { anchors, goods }) {
+function settled(event, { anchors, goods, stock }) {
   const a = anchors[event.maker], b = anchors[event.taker];
-  if (!a || !b) return null;
+  if (!a || !b || !stock) return null;
   const c = clip(4.2);
-  const from = a.clone().setY(a.y + 0.45), to = b.clone().setY(b.y + 0.45);
 
   const legs = [];
-  const push = (bundle, src, dst, base) => {
+  //: **The same boxes, moved.** They used to be crates conjured at one hut and
+  //: dissolved at the other, which is a picture of goods being destroyed and
+  //: re-created rather than changing hands. These come off the maker's own
+  //: pile and go onto the taker's, and the count in each yard is the count the
+  //: board says after the exchange.
+  const push = (bundle, giver, taker, base) => {
     Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
       .forEach(([good, q], i) => {
-        const box = crate(own(c, goodMat(good, goods.indexOf(good))),
-          (0.15 + Math.min(0.9, q) * 0.08) * PROP);
-        c.root.add(box);
-        legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                    a: src, b: dst, t0: base + i * 0.3 });
+        const move = Math.min(
+          stock.count(giver, good),
+          Math.max(1, stock.count(giver, good)
+                      - stock.want(good, event.after?.[giver]?.[good] ?? 0)));
+        const boxes = stock.take(giver, good, move);
+        if (!boxes.length) return;
+        const rest = stock.put(taker, good, boxes);
+        boxes.forEach((box, k) => {
+          legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
+                      a: box.position.clone(), b: rest[k],
+                      t0: base + i * 0.3 + k * 0.12 });
+        });
       });
   };
-  push(event.give, from, to, 0.25);
-  push(event.want, to, from, 0.55);
+  //: Started when the losing card has finished emptying into these boxes.
+  //: `scene.js` runs that leg in 820ms and this is the middle of the three:
+  //: symbols down to the pile, pile across the island, symbols up to the other
+  //: card. A box that set off first would be carrying goods the bar it came
+  //: from still showed.
+  push(event.give, event.maker, event.taker, 0.85);
+  push(event.want, event.taker, event.maker, 1.05);
   if (!legs.length) return null;
+  c.settle.push(() => { for (const { box, b: at } of legs) land_(box, at); });
 
   const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
   const dust = legs.map((l) => {
     const d = mesh(new THREE.CircleGeometry(0.18 * PROP, 20), own(c, dustMat.clone()), "dust",
-      [l.b.x, l.b.y - 0.42, l.b.z], [-Math.PI / 2, 0, 0]);
+      [l.b.x, l.b.y - 0.06, l.b.z], [-Math.PI / 2, 0, 0]);
     c.root.add(d);
     return d;
   });
@@ -500,21 +591,23 @@ function settled(event, { anchors, goods }) {
 
   c.update = (t) => {
     legs.forEach((l, i) => {
-      const p = easeInOut(win(t, l.t0, l.t0 + 1.6));
+      const p = easeInOut(win(t, l.t0, l.t0 + 1.5));
       l.box.visible = t > l.t0 - 0.01;
       l.box.position.lerpVectors(l.a, l.b, p);
       l.box.position.y = l.a.y + (l.b.y - l.a.y) * p + Math.sin(p * Math.PI) * 0.85;
       l.box.rotation.set(p * 5, p * 3.4, p * 2);
       l.wake(l.a, l.b, p, 0.85);
-      const land = win(t, l.t0 + 1.5, l.t0 + 2.0);
-      if (land > 0) {
-        l.box.position.y = l.b.y - 0.25
-          + Math.abs(Math.sin(land * Math.PI * 2)) * 0.14 * (1 - land);
-        dust[i].material.opacity = 0.42 * (1 - land);
-        dust[i].scale.setScalar(1 + land * 1.6);
+      const down = win(t, l.t0 + 1.5, l.t0 + 2.0);
+      if (down > 0) {
+        // The hop as it settles onto the new owner's pile -- and then it is
+        // simply standing there. Nothing vanishes: the good did not stop
+        // existing, it changed hands.
+        land_(l.box, l.b);
+        l.box.position.y = l.b.y
+          + Math.abs(Math.sin(down * Math.PI * 2)) * 0.12 * (1 - down);
+        dust[i].material.opacity = 0.42 * (1 - down);
+        dust[i].scale.setScalar(1 + down * 1.6);
       } else dust[i].material.opacity = 0;
-      const gone = win(t, l.t0 + 2.4, l.t0 + 3.0);
-      if (gone > 0) l.box.scale.setScalar(1 - gone);
     });
     const s = win(t, 2.0, 3.8);
     // Down onto the ground, not out across it: a shade under full size at the
@@ -568,8 +661,19 @@ function refused(event, { anchors, traders, ground }) {
 }
 
 /** The bell: the market's own bell rings, and the island hears it. */
-function belled(event, { island, anchors, traders }) {
+function belled(event, { island, anchors, traders, stock }) {
   const c = clip(4.2);
+  //: **The one place a good is allowed to stop existing.** Everything held at
+  //: the bell is consumed -- that is the rule the manager settles by -- so the
+  //: boxes in every yard go down into the ground and are gone. They are not
+  //: swept away between frames: a spectator watches the day's holdings being
+  //: eaten, which is the whole reason a zero episode is worth looking at.
+  const eaten = (stock ? traders.flatMap((t) => stock.all(t)) : []).map((box) => ({
+    box, y0: box.position.y, turn: box.rotation.y }));
+  c.settle.push(() => {
+    if (!stock) return;
+    for (const t of traders) stock.clear(t);
+  });
   const bell = island.getObjectByName("market_bell");
   if (bell) borrow(c, bell);
   const y0 = bell?.position.y ?? 0;
@@ -613,6 +717,12 @@ function belled(event, { island, anchors, traders }) {
       lantern.scale.setScalar(1 + 0.5 * Math.sin(Math.PI * p) ** 0.7);
     }
     tollMat.opacity = 0.5 * Math.sin(Math.PI * p) ** 0.6;
+    eaten.forEach(({ box, y0, turn }, i) => {
+      const go = easeIn(win(t, 0.6 + (i % 6) * 0.12, 2.8 + (i % 6) * 0.12));
+      box.position.y = y0 - go * 0.34;
+      box.rotation.y = turn + go * 2.2;
+      box.scale.setScalar(Math.max(0.001, 1 - go));
+    });
     flags.forEach(({ b, y0: by, r0 }, i) => {
       const ev = easeIn(win(t, 1.4 + i * 0.18, 3.4 + i * 0.18));
       const back = easeOut(win(t, 3.5, 4.2));

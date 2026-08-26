@@ -487,6 +487,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += alive(browser, base, boards[0], out)
             problems += turning(browser, base, boards[0], out)
             problems += uncovered(browser, base, boards[0], out)
+            problems += stock(browser, base, out)
             problems += island(browser, base, out)
             problems += mechanics(browser, base, out)
             for board in boards:
@@ -1260,6 +1261,132 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
           band: Math.round(geo.h * chrome.top),
           seaTop: top, seaBottom: bottom};
 }"""
+
+
+#: A stage driven directly, so a check can ask the island what is standing on
+#: it for a set of holdings it chose. The same modules the page loads.
+STOCK = """async ({goods, cases}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const { layout } = await import('./scene.js');
+  const cv = document.createElement('canvas');
+  cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
+  const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
+  st.pause();
+  const traders = ['T1', 'T2'];
+  const made = st.build({traders, goods});
+  st.pause();
+  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.2])));
+  const out = [];
+  for (const c of cases) {
+    st.showStock(c.stocks, c.event ?? null);
+    const boxes = [];
+    st.stock.root.traverse(o => { if (o.isMesh) boxes.push(o); });
+    // Where every box actually stands, and how far each is above the ground
+    // beneath it: a crate floating over the grass or sunk into it is the same
+    // defect the flags had, and this is a hundred more chances to have it.
+    made.island.updateMatrixWorld(true);
+    // A box stands on the ground or squarely on the box under it, and nowhere
+    // in between: the clearance is a whole number of box heights or the pile
+    // is floating.
+    const off = boxes.map(b => {
+      const w = b.getWorldPosition(new THREE.Vector3());
+      const h = w.y - made.ground(w.x, w.z) - 0.065;
+      return +(h - Math.round(h / 0.1326) * 0.1326).toFixed(3);
+    });
+    // Nothing standing in a hut, and no two yards in each other.
+    let clash = null;
+    for (const b of boxes) {
+      const w = b.getWorldPosition(new THREE.Vector3());
+      for (const t of traders) {
+        const h = made.anchors[t];
+        if (Math.hypot(w.x - h.x, w.z - h.z) < 0.5) clash = `${b.name} inside ${t}'s hut`;
+      }
+      if (Math.hypot(w.x, w.z) > 3.3) clash = `${b.name} off the meadow`;
+    }
+    out.push({tally: st.stock.tally(), n: boxes.length, clash,
+              low: off.length ? Math.min(...off) : 0,
+              high: off.length ? Math.max(...off) : 0});
+  }
+  return out;
+}"""
+
+
+def stock(browser, base: str, out: Path) -> list[str]:
+    """What is standing on the island is what the board says is held.
+
+    **Goods stopped being clip props.** A crate used to appear at a site,
+    cross the island and shrink out of existence at the hut, so between one
+    receipt and the next the ground held nothing at all. Every trader has a
+    yard now and what it holds stands in it, which means the island can be
+    *wrong* in a way it could not be before -- a box left behind after a trade,
+    a pile that did not grow when a receipt arrived, a stack floating over the
+    grass.
+
+    Asked of the model directly with holdings this check chose, because the
+    interesting cases (a trader holding one good, holding none, holding more
+    than the round's ceiling) are not all on any board on disk.
+    """
+    goods = ["bread", "cloth", "iron", "salt"]
+    #: `ceil` is 1.2 for every good above, and six boxes is the ceiling, so a
+    #: box is 0.2 of a good and these are the counts to expect.
+    cases = [
+        {"name": "nobody has anything", "stocks": {"T1": {}, "T2": {}},
+         "want": {"T1": {g: 0 for g in goods}, "T2": {g: 0 for g in goods}}},
+        {"name": "one good each",
+         "stocks": {"T1": {"bread": 1.2}, "T2": {"salt": 0.4}},
+         "want": {"T1": {"bread": 6, "cloth": 0, "iron": 0, "salt": 0},
+                  "T2": {"bread": 0, "cloth": 0, "iron": 0, "salt": 2}}},
+        {"name": "a crumb is still a box",
+         "stocks": {"T1": {"iron": 0.001}, "T2": {}},
+         "want": {"T1": {"bread": 0, "cloth": 0, "iron": 1, "salt": 0},
+                  "T2": {g: 0 for g in goods}}},
+        {"name": "more than the round ever saw",
+         "stocks": {"T1": {"cloth": 99}, "T2": {}},
+         "want": {"T1": {"bread": 0, "cloth": 6, "iron": 0, "salt": 0},
+                  "T2": {g: 0 for g in goods}}},
+        {"name": "back to nothing", "stocks": {"T1": {}, "T2": {}},
+         "want": {"T1": {g: 0 for g in goods}, "T2": {g: 0 for g in goods}}},
+        # The bell is eating the lot, and eating it is the animation: the yards
+        # are left exactly as they were for the clip to empty. So this follows
+        # a case that put goods on the ground, and asks that they are still
+        # there after a paint whose board says everybody holds nothing.
+        {"name": "before the bell", "stocks": {"T1": {"bread": 1.2}, "T2": {"salt": 0.4}},
+         "want": {"T1": {"bread": 6, "cloth": 0, "iron": 0, "salt": 0},
+                  "T2": {"bread": 0, "cloth": 0, "iron": 0, "salt": 2}}},
+        {"name": "the bell leaves the clip to it",
+         "stocks": {"T1": {}, "T2": {}}, "event": {"kind": "bell"},
+         "want": {"T1": {"bread": 6, "cloth": 0, "iron": 0, "salt": 0},
+                  "T2": {"bread": 0, "cloth": 0, "iron": 0, "salt": 2}}},
+    ]
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    seen = page.evaluate(STOCK, {"goods": goods,
+                                 "cases": [{"stocks": c["stocks"],
+                                            "event": c.get("event")} for c in cases]})
+    page.screenshot(path=str(out / "island-stock.png"))
+    page.close()
+    bad = [f"stock: {e}" for e in errs]
+    for case, got in zip(cases, seen):
+        where = f"stock {case['name']!r}"
+        if case.get("event", {}).get("kind") == "bell" and not got["n"]:
+            bad.append(f"{where}: the yards were emptied by the paint; the "
+                       f"bell's own clip had nothing left to eat")
+        for name, want in case["want"].items():
+            if got["tally"].get(name) != want:
+                bad.append(f"{where}: {name} holds {got['tally'].get(name)}, "
+                           f"the board says {want}")
+        if got["clash"]:
+            bad.append(f"{where}: {got['clash']}")
+        #: Every box sitting on the ground under it, to within a hair. Half a
+        #: box is 0.065, so this is the same question the flags answer.
+        if got["n"] and not -0.04 <= got["low"] <= got["high"] <= 0.04:
+            bad.append(f"{where}: boxes stand between {got['low']:+.3f} and "
+                       f"{got['high']:+.3f} off the ground beneath them")
+    return bad
 
 
 def island(browser, base: str, out: Path) -> list[str]:

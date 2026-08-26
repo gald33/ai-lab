@@ -252,6 +252,73 @@ because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
 
+## The goods stand on the island
+
+**Nothing pops or vanishes except when it is created or consumed.**
+
+Every good used to be a clip prop. A crate appeared when a production receipt
+arrived, crossed the island, and shrank out of existence at the hut three
+seconds later; a settled exchange conjured crates at one settlement and
+dissolved them at the other. So the ground held nothing between events — a
+trader's stock existed only as a bar on its card — and what the island showed
+was goods being destroyed and re-created rather than changing hands.
+
+[`island-stock.js`](web/island-stock.js) is the other half. Every trader has a
+**yard** beside its hut and what it holds stands there as boxes, each wearing
+the good's colour and the good's own symbol — the same two marks the legend and
+the card's shelf use, because colour alone does not identify.
+
+| what happens on the board | what the island does |
+|---|---|
+| a production receipt | boxes are **made** at the site that made them and hop home to the yard |
+| a settled exchange | **the same boxes** leave one yard, fly the offer's line, and stack in the other |
+| the bell | what was held is **eaten**, and the boxes go down into the ground |
+
+Those three are the only times a count changes, and each is a thing the manager
+settled. The one cut that is not an animation is a **scrub**: jump into the
+middle of a replay and the island has to be what the board says at that frame
+with no journey to show. `rest()` is that cut and it is the only path that puts
+a box down without one.
+
+### How many boxes is a holding
+
+A box is a sixth of the round's own largest holding of that good. **Not
+capacity**, which is what a first reading asks for: capacity is private to a
+trader and the page never has it live, so a denominator that existed in a
+replay and not on a live board would make a box mean two different things. The
+round's biggest settled holding is available in both, comes from settled state
+rather than from anything an agent said, and is the rule the card's shelf scale
+already used. Any non-zero holding is at least one box — a trader with a little
+of something has some of it.
+
+### The three legs of an exchange
+
+A good is in exactly one place at every moment, and no bar changes until
+something arrives to change it:
+
+1. the **losing** bar empties and its symbols fall to its own boxes (820ms);
+2. the boxes cross the island (1500ms) — the only thing that moves between the
+   two settlements;
+3. the symbols rise off the arriving boxes and the **gaining** bar fills as
+   they land (900ms).
+
+With a model up the card layer draws no parcel across the square at all. The
+boxes are already crossing; a parcel would be the page saying it twice, and the
+two would disagree the first time one was a frame behind.
+
+### What a check can catch that could not exist before
+
+The island can now be *wrong* in ways it could not be as a prop layer: a box
+left behind after a trade, a pile that did not grow when a receipt arrived, a
+stack floating over the grass. `render.py:stock` drives a stage directly with
+holdings it chooses — a trader holding nothing, holding a crumb, holding more
+than the round ever saw — and compares the yards against the board. It found a
+real placement bug on its first run: a settlement sits on an annulus reaching
+most of the way to the meadow's rim, so for some seats the ground *behind* the
+hut is sea, and the clamp that keeps a yard on the grass pulled the whole thing
+back on top of the hut it was meant to stand beside. A yard picks the first
+bearing with room now — behind, then either flank, then in front.
+
 ## Utilities and efficiency
 
 Both need tastes, so both are replay-only, and the live page says so rather than
