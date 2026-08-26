@@ -337,6 +337,86 @@ The offer and the refusal still raise a **post with a notice on it** beside the
 maker's hut. That is a notice board, not a flag, and it is the only thing on the
 island that says an offer stands.
 
+### The water casts no shadow
+
+Reported by eye: a dark, soft-edged **rectangle** sitting on the meadow,
+flickering rather than sitting still.
+
+It was the sea. `island3d.js:add()` gives every mesh `castShadow`, and the
+water is a flat disc sixteen units across against a shadow camera six units
+either way. Two things go wrong at once. The frustum clips the shadow map, so
+its own edge is a straight line laid across whatever it falls on; and from a
+light forty-five degrees up the disc's **far side is nearer the light than the
+island is**, so the water wins the texels the land needs, the land is compared
+against the water's depth, and it comes out shadowed. The patch crawled as the
+light swung through the day, which is what read as flicker.
+
+Widening the disc from five units to sixteen — so the frame ends in open water
+rather than a void — made it obvious. It did not cause it.
+
+Water casting a shadow is meaningless in any case, and nothing on this island
+stands far enough out to sea to throw one onto deep water, so the disc neither
+casts nor receives now. The shallows, the shelf and the beach still do both,
+which is where the coast's own shadows are.
+
+`render.py:island` asks the model rather than the picture: **every mesh that
+casts must fit inside the box the shadow camera covers.** "Is this caster
+inside the box that can hold its shadow" has an exact answer, where "is there a
+rectangle on the grass" is a question about pixels that only fails once
+somebody has already seen it. Neutered, it reports the sea at 16 against a
+reach of 6, in every frame shape.
+
+### An element is smaller when there are more of them
+
+A fixed element size at a growing table is how an island reads as crowded and
+how a hut ends up drawn against a production site — a layout accident, not a
+fact the manager settled. The props were sized by eye at a small table and
+stayed constant as it grew; at eight traders and five goods, settlements and
+sites covered **62%** of the meadow and overlapped.
+
+Three things, and they are one rule seen from three sides:
+
+**Size.** `room = √(REF / crowd)`, clamped to 0.72–1.1, where `crowd` is
+traders plus goods and `REF` is 8 — the table the current sizes were tuned at,
+so nothing moves on an island already drawn. The rule is area-preserving: twice
+as many things, each about seven-tenths the size, covering the same grass. It
+holds: the footprint share is 36–39% from two traders and four goods up to
+eight and five, where it used to run to 62%.
+
+**Bearing.** Settlements and sites used to be laid on two independent rings,
+and the comment said "a ring the settlements are not on", which was not true —
+a dry site sits at 2.15 and a settlement may stand anywhere from 2.15 out to
+the grass's edge. Which bearings collided came down to how the two counts
+happened to divide the circle. There is one schedule now, `crowd` slots wide,
+dealt alternately between the two kinds. **The angular pitch is the density
+rule**: `2π/crowd`, the same arithmetic that shrinks the props, applied to the
+ground they stand on.
+
+**Then measure.** Any placement rule works on anchors, and what a spectator
+reads as "these two are drawn against each other" is the ground the props
+actually cover — which is not centred on the anchor, because a hut carries
+crates beside its door and a site carries a flag on a pole. A hut cleared the
+bread field by the rule and still overlapped it by a tenth of a unit. So the
+props are built and *then* the footprints are measured, and any overlapping
+pair is separated along whichever axis is cheaper. A settlement moves freely; a
+site moves only along its own ring, because its radius is what it means — salt
+is worked on the wet shelf, iron is cut out of the upland.
+
+Two consequences worth naming. `spaced()` no longer moves seats only around the
+island: a seat caught between the hill and a site on its own bearing had the
+push taken straight back off it by the clamp, so it relaxes in two dimensions
+and lets `homeSite` put it back on the grass. And `follow()` — which walks a
+site's parts down onto the slope under each of them — now runs *after* the
+settling rather than during the build, because it reads the ground once and
+adding the slope twice is what running it before a move would do.
+
+`render.py:island` measures footprints at six through eight traders as well as
+the shapes it already had, and asks two things: no two of them overlap, and
+together they cover no more than 48% of the meadow. The old "two settlements at
+least 1.2 apart" is gone — the right question asked against a constant, from
+when a hut was always the same size. Neutered to a constant size, the new one
+reports 51%, 56% and 62% and two overlaps.
+
 ### There are no ground marks left
 
 There was a ring under every event. Reported as shockwaves, they became a patch
