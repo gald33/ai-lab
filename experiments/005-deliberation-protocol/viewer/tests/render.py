@@ -972,21 +972,13 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const { Stage } = await import('./stage.js');
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
-  const st = new Stage(cv, {w, h});
+  const { layout } = await import('./scene.js');
+  const geo = layout(n, portrait, w / h);
+  const st = new Stage(cv, geo);
   st.pause();
   st.setDay(0.45);
   const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
-  const mid = {x: w / 2, y: h * (portrait ? 0.5 : 0.46)};
-  let spots;
-  if (n <= 2) {
-    const dx = w * (portrait ? 0 : 0.2), dy = h * (portrait ? 0.19 : 0);
-    spots = n === 1 ? [mid]
-      : [{x: mid.x - dx, y: mid.y - dy}, {x: mid.x + dx, y: mid.y + dy}];
-  } else spots = Array.from({length: n}, (_, i) => {
-    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    return {x: mid.x + Math.cos(a) * w * 0.26, y: mid.y + Math.sin(a) * h * 0.20};
-  });
-  const made = st.build({traders, goods, seats: spots.map(p => st.groundAt(p.x, p.y))});
+  const made = st.build({traders, goods});
   st.pause();
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
@@ -1001,7 +993,52 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   };
   window.__st = st;
   window.__made = made;
-  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z])};
+  // Where the island's own silhouette lands in the scene's coordinates.
+  //
+  // Everything but the weather: clouds, gulls and falling leaves are over the
+  // island rather than part of it, and one of them at the top of the frame is
+  // not the island being cut. Everything else counts, and the trees do most of
+  // the work -- the camera is tilted, so a tree on the far shore projects well
+  // above the water it stands beside.
+  //
+  // Its actual vertices, not a bounding box round them: the box's top corner
+  // is where the tallest tree's height meets the widest sea's radius, and
+  // nothing is there. Sampled every few vertices, which is plenty for a
+  // silhouette made of hundreds.
+  //
+  // **At every bearing, not the one it was built at.** The camera goes round
+  // the island, and the silhouette is a different shape from each side -- the
+  // hill is on one side of it and the dock on another. Measured at the bearing
+  // it happens to start from, the island looks clear of the frame and then
+  // rises out of it a minute later.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_)/;
+  const meshes = [];
+  for (const part of made.island.children) {
+    if (WEATHER.test(part.name)) continue;
+    part.updateWorldMatrix(true, true);
+    part.traverse((node) => {
+      if (node.geometry && node.geometry.attributes.position) meshes.push(node);
+    });
+  }
+  const v = new THREE.Vector3();
+  const was = st.turn;
+  let top = Infinity, bottom = -Infinity;
+  for (let k = 0; k < 12; k++) {
+    st.aim(was + (k / 12) * Math.PI * 2);
+    for (const node of meshes) {
+      const pos = node.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 7) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(node.matrixWorld);
+        const p = st.toViewBox(v);
+        if (p.y < top) top = p.y;
+        if (p.y > bottom) bottom = p.y;
+      }
+    }
+  }
+  st.aim(was);
+  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
+          geo: {w: geo.w, h: geo.h}, portrait,
+          seaTop: top, seaBottom: bottom};
 }"""
 
 
@@ -1030,11 +1067,33 @@ def island(browser, base: str, out: Path) -> list[str]:
     shapes = [("desktop", 1200, 750, 2, False), ("wide", 1600, 700, 2, False),
               ("tall", 900, 1100, 2, False), ("phone", 430, 780, 2, True),
               ("desktop/4", 1200, 750, 4, False), ("phone/4", 430, 900, 4, True),
-              ("desktop/5", 1400, 800, 5, False)]
+              ("desktop/5", 1400, 800, 5, False),
+              # The frames a shared link opens into on a phone: the browser's
+              # own bars take a hundred points and more off the window, and
+              # everything the layout reserved is worth less of it.
+              ("safari", 393, 660, 2, True), ("small", 360, 640, 2, True),
+              ("safari/3", 393, 660, 3, True)]
     for label, w, h, n, portrait in shapes:
         built = page.evaluate(STAGE, {"w": w, "h": h, "n": n, "portrait": portrait,
                                       "goods": ["bread", "cloth", "iron", "salt", "fish"]})
         seats = built["seats"]
+        # The island cut across its own shore by the top of the frame.
+        #
+        # Asked of the model rather than of the picture: the topmost drawn pixel
+        # cannot tell the island's shore from a cloud sitting over it, and with
+        # motion stilled the clouds sit wherever they started. This projects the
+        # sea's own disc and asks where its edge lands.
+        #
+        # Only in portrait. A frame wider than it is tall has no room to give
+        # the sea, and there the cut falls in open water where nothing reads it;
+        # in portrait the island was sliced flat with the land going over the
+        # edge, which is what a phone showing the browser's bars looked like.
+        #: A little clear of it, not merely inside: an island whose shore is
+        #: flush with the frame's first row already reads as running off it.
+        if portrait and built["seaTop"] < 8:
+            bad.append(f"island {label}: the island's silhouette reaches "
+                       f"{built['seaTop']:.0f} in the frame at its worst bearing; "
+                       f"it is cut off at the top")
         for name, (x, z) in zip(built["traders"], seats):
             under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
             if under not in LAND:
@@ -1156,14 +1215,20 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         g.drawImage(st.canvas, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
+      // Changed pixels as a share of the *island's* own, not of the frame's.
+      // How much of the frame is island is a layout decision -- the cards took
+      // the margins and it halved -- and a clip does not become less visible
+      // because the page put something else beside the island.
+      let ground = 0;
       const diff = (a, b) => {
         let n = 0;
         for (let i = 0; i < a.length; i += 4)
           if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
               + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / (a.length / 4);
+        return n / Math.max(1, ground);
       };
       const bare = shot();
+      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
       return events.map((e) => {
         st.clear();
         const c = st.fire(e);
@@ -1187,15 +1252,15 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         if not r.get("clip"):
             bad.append(f"{where}: the island has nothing to show for it")
             continue
-        #: Share of the frame. Small, because the island is mostly island --
+        #: Share of the island. Small, because most of an island is ground --
         #: but an order of magnitude above the hairlines this replaced.
-        if r["peak"] < 0.004:
-            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the frame ever "
+        if r["peak"] < 0.012:
+            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the island ever "
                        f"changed; whatever it did cannot be seen")
         if r["live"]:
             bad.append(f"{where}: {r['live']} clip(s) still running after the end")
-        if r["after"] > 0.0005:
-            bad.append(f"{where}: {r['after'] * 100:.2f}% of the frame is still "
+        if r["after"] > 0.0015:
+            bad.append(f"{where}: {r['after'] * 100:.2f}% of the island is still "
                        f"changed once it finished; it left something behind")
     # And the case `restore` actually exists for: a clip cut off part-way,
     # which is what a rebuild does to whatever was in flight. Left alone, a
@@ -1212,15 +1277,17 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         g.drawImage(st.canvas, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
+      let ground = 0;
       const diff = (a, b) => {
         let n = 0;
         for (let i = 0; i < a.length; i += 4)
           if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
               + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / (a.length / 4);
+        return n / Math.max(1, ground);
       };
       st.clear();
       const bare = shot();
+      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
       const out = [];
       for (const e of [{kind: 'bell', episode: 1, lapsed: 2},
                        {kind: 'open', episode: 2, of: 3}]) {
@@ -1234,9 +1301,9 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       return out;
     }""")
     for kind, left in cut:
-        if left > 0.0005:
+        if left > 0.0015:
             bad.append(f"mechanics {kind}: cut off half way and {left * 100:.2f}% "
-                       f"of the frame stayed changed; it kept what it borrowed")
+                       f"of the island stayed changed; it kept what it borrowed")
 
     # A kind the island says nothing about must stay silent rather than throw.
     quiet = page.evaluate("""() => {
@@ -1364,21 +1431,13 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const { Stage } = await import('./stage.js');
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
-  const st = new Stage(cv, {w, h});
+  const { layout } = await import('./scene.js');
+  const geo = layout(n, portrait, w / h);
+  const st = new Stage(cv, geo);
   st.pause();
   st.setDay(0.45);
   const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
-  const mid = {x: w / 2, y: h * (portrait ? 0.5 : 0.46)};
-  let spots;
-  if (n <= 2) {
-    const dx = w * (portrait ? 0 : 0.2), dy = h * (portrait ? 0.19 : 0);
-    spots = n === 1 ? [mid]
-      : [{x: mid.x - dx, y: mid.y - dy}, {x: mid.x + dx, y: mid.y + dy}];
-  } else spots = Array.from({length: n}, (_, i) => {
-    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    return {x: mid.x + Math.cos(a) * w * 0.26, y: mid.y + Math.sin(a) * h * 0.20};
-  });
-  const made = st.build({traders, goods, seats: spots.map(p => st.groundAt(p.x, p.y))});
+  const made = st.build({traders, goods});
   st.pause();
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
@@ -1393,7 +1452,52 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   };
   window.__st = st;
   window.__made = made;
-  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z])};
+  // Where the island's own silhouette lands in the scene's coordinates.
+  //
+  // Everything but the weather: clouds, gulls and falling leaves are over the
+  // island rather than part of it, and one of them at the top of the frame is
+  // not the island being cut. Everything else counts, and the trees do most of
+  // the work -- the camera is tilted, so a tree on the far shore projects well
+  // above the water it stands beside.
+  //
+  // Its actual vertices, not a bounding box round them: the box's top corner
+  // is where the tallest tree's height meets the widest sea's radius, and
+  // nothing is there. Sampled every few vertices, which is plenty for a
+  // silhouette made of hundreds.
+  //
+  // **At every bearing, not the one it was built at.** The camera goes round
+  // the island, and the silhouette is a different shape from each side -- the
+  // hill is on one side of it and the dock on another. Measured at the bearing
+  // it happens to start from, the island looks clear of the frame and then
+  // rises out of it a minute later.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_)/;
+  const meshes = [];
+  for (const part of made.island.children) {
+    if (WEATHER.test(part.name)) continue;
+    part.updateWorldMatrix(true, true);
+    part.traverse((node) => {
+      if (node.geometry && node.geometry.attributes.position) meshes.push(node);
+    });
+  }
+  const v = new THREE.Vector3();
+  const was = st.turn;
+  let top = Infinity, bottom = -Infinity;
+  for (let k = 0; k < 12; k++) {
+    st.aim(was + (k / 12) * Math.PI * 2);
+    for (const node of meshes) {
+      const pos = node.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 7) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(node.matrixWorld);
+        const p = st.toViewBox(v);
+        if (p.y < top) top = p.y;
+        if (p.y > bottom) bottom = p.y;
+      }
+    }
+  }
+  st.aim(was);
+  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
+          geo: {w: geo.w, h: geo.h}, portrait,
+          seaTop: top, seaBottom: bottom};
 }"""
 
 
@@ -1422,11 +1526,33 @@ def island(browser, base: str, out: Path) -> list[str]:
     shapes = [("desktop", 1200, 750, 2, False), ("wide", 1600, 700, 2, False),
               ("tall", 900, 1100, 2, False), ("phone", 430, 780, 2, True),
               ("desktop/4", 1200, 750, 4, False), ("phone/4", 430, 900, 4, True),
-              ("desktop/5", 1400, 800, 5, False)]
+              ("desktop/5", 1400, 800, 5, False),
+              # The frames a shared link opens into on a phone: the browser's
+              # own bars take a hundred points and more off the window, and
+              # everything the layout reserved is worth less of it.
+              ("safari", 393, 660, 2, True), ("small", 360, 640, 2, True),
+              ("safari/3", 393, 660, 3, True)]
     for label, w, h, n, portrait in shapes:
         built = page.evaluate(STAGE, {"w": w, "h": h, "n": n, "portrait": portrait,
                                       "goods": ["bread", "cloth", "iron", "salt", "fish"]})
         seats = built["seats"]
+        # The island cut across its own shore by the top of the frame.
+        #
+        # Asked of the model rather than of the picture: the topmost drawn pixel
+        # cannot tell the island's shore from a cloud sitting over it, and with
+        # motion stilled the clouds sit wherever they started. This projects the
+        # sea's own disc and asks where its edge lands.
+        #
+        # Only in portrait. A frame wider than it is tall has no room to give
+        # the sea, and there the cut falls in open water where nothing reads it;
+        # in portrait the island was sliced flat with the land going over the
+        # edge, which is what a phone showing the browser's bars looked like.
+        #: A little clear of it, not merely inside: an island whose shore is
+        #: flush with the frame's first row already reads as running off it.
+        if portrait and built["seaTop"] < 8:
+            bad.append(f"island {label}: the island's silhouette reaches "
+                       f"{built['seaTop']:.0f} in the frame at its worst bearing; "
+                       f"it is cut off at the top")
         for name, (x, z) in zip(built["traders"], seats):
             under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
             if under not in LAND:
@@ -1548,14 +1674,20 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         g.drawImage(st.canvas, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
+      // Changed pixels as a share of the *island's* own, not of the frame's.
+      // How much of the frame is island is a layout decision -- the cards took
+      // the margins and it halved -- and a clip does not become less visible
+      // because the page put something else beside the island.
+      let ground = 0;
       const diff = (a, b) => {
         let n = 0;
         for (let i = 0; i < a.length; i += 4)
           if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
               + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / (a.length / 4);
+        return n / Math.max(1, ground);
       };
       const bare = shot();
+      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
       return events.map((e) => {
         st.clear();
         const c = st.fire(e);
@@ -1579,15 +1711,15 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         if not r.get("clip"):
             bad.append(f"{where}: the island has nothing to show for it")
             continue
-        #: Share of the frame. Small, because the island is mostly island --
+        #: Share of the island. Small, because most of an island is ground --
         #: but an order of magnitude above the hairlines this replaced.
-        if r["peak"] < 0.004:
-            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the frame ever "
+        if r["peak"] < 0.012:
+            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the island ever "
                        f"changed; whatever it did cannot be seen")
         if r["live"]:
             bad.append(f"{where}: {r['live']} clip(s) still running after the end")
-        if r["after"] > 0.0005:
-            bad.append(f"{where}: {r['after'] * 100:.2f}% of the frame is still "
+        if r["after"] > 0.0015:
+            bad.append(f"{where}: {r['after'] * 100:.2f}% of the island is still "
                        f"changed once it finished; it left something behind")
     # And the case `restore` actually exists for: a clip cut off part-way,
     # which is what a rebuild does to whatever was in flight. Left alone, a
@@ -1604,15 +1736,17 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         g.drawImage(st.canvas, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
+      let ground = 0;
       const diff = (a, b) => {
         let n = 0;
         for (let i = 0; i < a.length; i += 4)
           if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
               + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / (a.length / 4);
+        return n / Math.max(1, ground);
       };
       st.clear();
       const bare = shot();
+      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
       const out = [];
       for (const e of [{kind: 'bell', episode: 1, lapsed: 2},
                        {kind: 'open', episode: 2, of: 3}]) {
@@ -1626,9 +1760,9 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       return out;
     }""")
     for kind, left in cut:
-        if left > 0.0005:
+        if left > 0.0015:
             bad.append(f"mechanics {kind}: cut off half way and {left * 100:.2f}% "
-                       f"of the frame stayed changed; it kept what it borrowed")
+                       f"of the island stayed changed; it kept what it borrowed")
 
     # A kind the island says nothing about must stay silent rather than throw.
     quiet = page.evaluate("""() => {
@@ -1809,11 +1943,15 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             g.drawImage(cv, 0, 0, s.width, s.height);
             const px = g.getImageData(0, 0, s.width, s.height).data;
             let lit = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
-            for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
-              if (px[(y * s.width + x) * 4 + 3] <= 24) continue;
-              lit++;
-              if (x < x0) x0 = x; if (x > x1) x1 = x;
-              if (y < y0) y0 = y; if (y > y1) y1 = y;
+            for (let y = 0; y < s.height; y++) {
+              let row = 0;
+              for (let x = 0; x < s.width; x++) {
+                if (px[(y * s.width + x) * 4 + 3] <= 24) continue;
+                row++;
+                if (x < x0) x0 = x; if (x > x1) x1 = x;
+                if (y < y0) y0 = y; if (y > y1) y1 = y;
+              }
+              lit += row;
             }
             drawn = lit / (s.width * s.height);
             if (lit) {

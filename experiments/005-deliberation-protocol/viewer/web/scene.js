@@ -184,15 +184,24 @@ function cardPlan(n, w, h, cardH, portrait) {
     //: quantities, utility, the autarky mark -- sat behind the controls on
     //: every real phone.
     const below = 260;
+    //: Room above the island for the part of it that does not fit its own box.
+    //:
+    //: The sea disc is wider than the frame the island is fitted to -- 4.95
+    //: island units against 4.35 -- so it overhangs the box by about a
+    //: fourteenth of the box's height at each end. Below, that overhang falls
+    //: into the gap over the cards and reads as more sea. Above, it fell off
+    //: the top of the frame: on a phone showing the browser's bars the island
+    //: was cut flat across its own shore, with the land running off the edge.
+    const spill = Math.round(islandH * 0.07) + 12;
     const cards = Array.from({ length: n }, (_, i) => {
       const row = Math.floor(i / 2);
       // A row with one card in it sits in the middle rather than off to a side.
       const alone = i === n - 1 && n % 2 === 1;
       return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-               y: islandH + 8 + row * pitch };
+               y: spill + islandH + 8 + row * pitch };
     });
-    return { cards, islandBox: { x: 0, y: 0, w, h: islandH },
-             h: islandH + rows * pitch + below };
+    return { cards, islandBox: { x: 0, y: spill, w, h: islandH },
+             h: spill + islandH + rows * pitch + below };
   }
   //: A column's width, from the card's own: the margin is as wide as what
   //: stands in it and no wider, because every unit of it is island.
