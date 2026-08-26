@@ -35,11 +35,10 @@
 
 import * as THREE from "./vendor/three/three.module.js";
 import { GOOD_COLOURS, onMeadow } from "./island3d.js";
-//: The page's one list of what a good is marked with, from the module that
-//: already owns it. A second copy here would be a second answer to "what is
-//: bread" the first time somebody added a good, and a box on the ground has to
-//: wear the same mark as the bar on the card and the chip in the legend.
-import { GLYPH } from "./scene.js";
+//: What a good looks like when the island draws one, from the module the site
+//: flags read too: a crate in a yard and the flag over the site that made it
+//: are the same claim and must wear the same mark.
+import { face } from "./good-face.js";
 
 //: A box's side, in island units. A hut is about 0.8 across at the scale the
 //: island draws it, so this is a crate a person could lift and a stack of six
@@ -53,44 +52,6 @@ const MOST = 6;
 //: `OUT` clears the hut: its roof reaches half a unit and the banner pole
 //: half again, so a yard any closer stacks crates through the thatch.
 const OUT = 0.86, PITCH = 0.3;
-
-const cache = new Map();
-
-/**
- * A box's face: the good's colour with the good's own symbol on it.
- *
- * The same two marks the legend and the card's shelf use, so a box on the
- * ground and a bar on a card are recognisably the same good. Colour alone does
- * not identify -- the palette passes the adjacent-pair gates and not all-pairs
- * -- which is exactly why the symbol is on the box and not just the colour.
- */
-function face(good, colour) {
-  const key = `${good}:${colour}`;
-  if (cache.has(key)) return cache.get(key);
-  const c = document.createElement("canvas");
-  c.width = c.height = 128;
-  const g = c.getContext("2d");
-  g.fillStyle = `#${colour.toString(16).padStart(6, "0")}`;
-  g.fillRect(0, 0, 128, 128);
-  // A lip, so the faces of a stack read as separate boxes rather than as one
-  // painted block.
-  g.strokeStyle = "rgba(0,0,0,0.28)";
-  g.lineWidth = 8;
-  g.strokeRect(4, 4, 120, 120);
-  //: **Always something.** A good the glyph table has never heard of -- the
-  //: eighth one somebody adds -- would otherwise get a plain coloured cube,
-  //: and colour alone does not identify. The card's shelf already falls back
-  //: to the same mark for the same reason.
-  g.font = "76px serif";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillStyle = "rgba(255,255,255,0.92)";
-  g.fillText(GLYPH[good] || "\u25aa", 64, 70);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  cache.set(key, tex);
-  return tex;
-}
 
 /**
  * Where the yard stands, and which way it runs.
@@ -163,8 +124,10 @@ export function standing(island, { traders, goods, anchors, ground }) {
   const mats = {};
   const yards = {};
   goods.forEach((good, i) => {
-    mats[good] = new THREE.MeshStandardMaterial({
-      map: face(good, GOOD_COLOURS[i % GOOD_COLOURS.length]), roughness: 0.85 });
+    const colour = GOOD_COLOURS[i % GOOD_COLOURS.length];
+    const mark = face(good, colour);
+    mats[good] = new THREE.MeshStandardMaterial(
+      mark ? { map: mark, roughness: 0.85 } : { color: colour, roughness: 0.85 });
   });
   for (const t of traders) {
     if (!anchors[t]) continue;

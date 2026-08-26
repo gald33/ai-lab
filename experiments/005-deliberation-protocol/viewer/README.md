@@ -292,6 +292,30 @@ What each clip carries itself now:
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
 
+### One face per good, wherever the island draws one
+
+A crate standing in a trader's yard and the flag over the site that *makes*
+that good are the same claim, and they were made two different ways: the crate
+carried a colour and a symbol, the flag carried a colour and nothing at all.
+A flag with only its colour asks a viewer to tell pink from purple across an
+island eight units wide, which is exactly what the palette does not promise —
+it clears **adjacent** pairs, not all pairs, and that is the whole reason a good
+carries a glyph anywhere.
+
+[`good-face.js`](web/good-face.js) is the one texture both read. It lives in its
+own file because the glyph table belongs to `scene.js` and the model must not
+import the drawing layer; nothing in it imports the model either, since the
+colour arrives as an argument, so there is no cycle in either direction.
+
+It returns `null` where there is no `document`. The island is built headless by
+checks that ask it geometry questions — where a hut stands, how high the ground
+is — and never render a pixel, and a model that cannot be constructed without a
+browser is a model those checks cannot ask. The caller falls back to the flat
+colour, which is what a face is under its mark anyway.
+
+`island()` reads each flag's own texture and fails below a tenth of the face
+covered. Against the shipped flags it reports **50**.
+
 ### A clip asks the island; it does not reach into it
 
 The bell is not a bell swinging. It is the light going and the fire coming up —

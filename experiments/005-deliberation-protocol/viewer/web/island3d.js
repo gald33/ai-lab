@@ -22,6 +22,9 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
+//: What a good looks like when the island draws one -- the same face a crate
+//: in a trader's yard wears.
+import { face } from "./good-face.js";
 
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
 
@@ -292,11 +295,27 @@ function hut(id, traderMat) {
   return g;
 }
 
-function marker(name, material) {
+/**
+ * The flag over a site: whose work this is, in the good's own colour and mark.
+ *
+ * **It carried only the colour.** A crate standing in a trader's yard has the
+ * good's symbol on every face, and the flag over the site that *made* that
+ * good had a plain coloured rectangle -- which asks a viewer to tell pink from
+ * purple across an island eight units wide, and the palette does not promise
+ * that: it clears adjacent pairs and not all pairs, which is the whole reason
+ * a good carries a glyph anywhere. Same texture as the crates now.
+ *
+ * Square, where it used to be a banner. The mark is drawn in a square and a
+ * flag 0.16 by 0.22 stretched it by a third across.
+ */
+function marker(name, colour) {
   const g = new THREE.Group();
   g.name = `marker_${name}`;
   add(g, new THREE.CylinderGeometry(0.018, 0.024, 0.62, 10), M.timber, `marker_${name}_post`, [0, 0.31, 0]);
-  add(g, new THREE.BoxGeometry(0.03, 0.16, 0.22), material, `marker_${name}_flag`, [0, 0.53, 0.11]);
+  const mark = face(name, colour, { lip: false });
+  const flag = new THREE.MeshStandardMaterial(
+    mark ? { map: mark, roughness: 0.85 } : { color: colour, roughness: 0.85 });
+  add(g, new THREE.BoxGeometry(0.025, 0.2, 0.2), flag, `marker_${name}_flag`, [0, 0.52, 0.1]);
   return g;
 }
 
@@ -607,7 +626,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     site.position.set(x, floor - (wet ? 0.02 : 0), z);
     site.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
     const at = (SITES[good] || works)(site, r);
-    const flag = marker(good, goodMat(good, i));
+    const flag = marker(good, GOOD_COLOURS[i % GOOD_COLOURS.length]);
     flag.position.set(...at);
     site.add(flag);
     site.scale.setScalar(wet ? 0.88 : 0.92);

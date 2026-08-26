@@ -1297,18 +1297,46 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // complaint answers yes to everything, and 600 raycasts a shape bought
   // nothing this line does not.
   const flags = {};
+  const flagFace = {};
   for (const good of goods) {
     const f = made.island.getObjectByName(`marker_${good}_flag`);
     if (!f) continue;
     const box = new THREE.Box3().setFromObject(f);
     const mid = box.getCenter(new THREE.Vector3());
     flags[good] = box.min.y - made.ground(mid.x, mid.z);
+    // And what the flag is painted with. It carried only the good's colour,
+    // which asks a viewer to tell pink from purple across an island eight
+    // units wide -- the palette clears adjacent pairs and not all pairs, which
+    // is the whole reason a good has a glyph. Read the same way a crate's face
+    // is read, because it is now the same texture.
+    const img = f.material.map?.image;
+    if (!img) { flagFace[good] = {hex: null, mark: 0}; continue; }
+    const sc = document.createElement('canvas');
+    sc.width = img.width; sc.height = img.height;
+    sc.getContext('2d').drawImage(img, 0, 0);
+    const g2 = sc.getContext('2d');
+    const px = g2.getImageData(0, 0, sc.width, sc.height).data;
+    const at = (x, y) => { const i = (y * sc.width + x) * 4;
+                           return [px[i], px[i + 1], px[i + 2]]; };
+    const base = at(Math.round(sc.width * 0.5), Math.round(sc.height * 0.1));
+    let marked = 0, seen = 0;
+    for (let y = sc.height * 0.25; y < sc.height * 0.85; y += 2) {
+      for (let x = sc.width * 0.25; x < sc.width * 0.75; x += 2) {
+        const cc = at(Math.round(x), Math.round(y));
+        seen++;
+        if (Math.abs(cc[0] - base[0]) + Math.abs(cc[1] - base[1])
+            + Math.abs(cc[2] - base[2]) > 40) marked++;
+      }
+    }
+    flagFace[good] = {
+      hex: '#' + base.map(v => v.toString(16).padStart(2, '0')).join(''),
+      mark: +(marked / Math.max(1, seen)).toFixed(3)};
   }
   // Everything the island places on purpose, by name, so a check can ask
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags,
+  return {traders, decks, sited, flags, flagFace,
           seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
           card0: geo.cards.length ? geo.cards[0].y : null,
@@ -1735,6 +1763,14 @@ def island(browser, base: str, out: Path) -> list[str]:
         # A flag is a sign, and a sign inside a hill signs nothing. Asked of the
         # model at the flag's own position rather than its site's, which is
         # exactly the distinction the bug turned on.
+        # A flag names the good its site makes, and a colour alone does not
+        # name it: the palette clears adjacent pairs, not all pairs. Same
+        # texture as the crates in a trader's yard, and read the same way.
+        for good, seen_face in (built.get("flagFace") or {}).items():
+            if seen_face["mark"] < 0.1:
+                bad.append(f"island {label}: {good}'s site flag carries no mark "
+                           f"({seen_face['mark']:.0%} of its face); it is a "
+                           f"coloured rectangle and nothing else")
         for good, clear in built["flags"].items():
             if clear < -0.02:
                 bad.append(f"island {label}: {good}'s flag is {-clear:.2f} below "
