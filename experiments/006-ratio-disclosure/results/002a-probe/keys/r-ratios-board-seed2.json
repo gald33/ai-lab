@@ -1,0 +1,42 @@
+[
+ {
+  "key": "cost/T1",
+  "revision": 1,
+  "value": "Cost ratios (bread numeraire): cloth 5.99, iron 2.72, salt 3.56. Capacities: bread 1.95, cloth 0.33, iron 0.72, salt 0.55 per labour unit."
+ },
+ {
+  "key": "cost/T2",
+  "revision": 1,
+  "value": "bread:1.33_iron cloth:0.46_iron salt:8.33_iron (iron as reference: 1 unit)"
+ },
+ {
+  "key": "cost/T3",
+  "revision": 1,
+  "value": "T3 opportunity costs per unit produced. Bread: iron=0.42 cloth=0.87 salt=0.97. Cloth: bread=1.15 iron=0.48 salt=1.12. Iron: bread=2.38 cloth=2.07 salt=2.31. Salt: bread=1.03 cloth=0.90 iron=0.43."
+ },
+ {
+  "key": "cost/T4",
+  "revision": 1,
+  "value": "Per unit labour: bread=1.0154, cloth=1.1914, iron=0.821, salt=1.4715. Opportunity costs: iron costs cloth=1.451, bread=1.237, salt=2.042. Cloth costs iron=0.689, bread=0.852, salt=1.408. Bread costs cloth=1.174, iron=1.237, salt=1.449. Salt costs cloth=0.710, bread=0.690, iron=0.490."
+ },
+ {
+  "key": "worth/T1",
+  "revision": 5,
+  "value": "Worth ep5 (final, fresh production): cloth 5.99, iron 2.74, salt 3.55. Holding: bread 0.98, cloth 0.15, iron 0.007, salt 0.008"
+ },
+ {
+  "key": "worth/T2",
+  "revision": 6,
+  "value": "episode 5 (final): bread:1.33_iron cloth:0.46_iron salt:8.31_iron (holdings bread=0.1551 cloth=0.4499 iron=0.1932 salt=0.0046)"
+ },
+ {
+  "key": "worth/T3",
+  "revision": 2,
+  "value": "T3 Episode 2 holdings: bread=0.7679, cloth=0.1755, iron=0.0636, salt=0.078. Will trade: give salt for any good; give bread only for iron; keep cloth for utility. Can supply iron trading counterparty."
+ },
+ {
+  "key": "worth/T4",
+  "revision": 6,
+  "value": "Ep5 (final): Holding bread=0.114, cloth=0.620, iron=0.143, salt=0.283. Final trade opportunity."
+ }
+]

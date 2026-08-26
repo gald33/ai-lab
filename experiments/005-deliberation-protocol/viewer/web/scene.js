@@ -246,6 +246,9 @@ const CARD_H = 140, CARD_H_SCORED = 186;
 //: The card hangs below the seat, clear of the hut rather than pasted onto it.
 const CARD_TOP = 22;
 
+/** A name safe to put in a selector: live, a seat is a raw peer id. */
+const cssName = (s) => (window.CSS?.escape ? CSS.escape(s) : String(s));
+
 /** The box a trader's card occupies, in scene coordinates. */
 /**
  * A seat moved just enough to keep its card on the canvas.
@@ -358,6 +361,39 @@ export class Scene {
     this.shown = new Map();
     this.build();
     return true;
+  }
+
+  /**
+   * The camera turned; the cards go with their huts.
+   *
+   * Cheaper than `replace()` on purpose, because this runs every frame while
+   * the island rotates: the hut groups move and the ropes between them are
+   * redrawn, and nothing else is rebuilt. A card is only meaningful standing
+   * under the settlement it belongs to, so if the island turns and the cards
+   * do not, the two halves of the page stop being about the same island.
+   */
+  follow(placed) {
+    if (placed?.length !== this.traders.length || !this.state) return;
+    this.traders.forEach((name, i) => {
+      const seat = fitSeat(placed[i], this.geo, this.cardH);
+      const hut = this.root.querySelector(`.hut[data-trader="${cssName(name)}"]`);
+      if (!hut) return;
+      hut.setAttribute("transform", `translate(${seat.x} ${seat.y})`);
+      this.seats[name] = seat;
+    });
+    // The ropes are drawn between seats, so they are the one other thing that
+    // has to be re-laid rather than left pointing where the huts used to be.
+    const open = this.state.proposals.filter((p) => p.status === "open");
+    const rank = new Map();
+    const placedRopes = new Map();
+    this.ropes.replaceChildren(...open.map((p) => {
+      const pair = [p.maker, p.taker].sort().join("~");
+      const i = rank.get(pair) || 0;
+      rank.set(pair, i + 1);
+      placedRopes.set(p.pid, i);
+      return this.rope(p, i);
+    }));
+    this.shown = placedRopes;
   }
 
   /** Take new settlement positions -- the island was reframed under us. */

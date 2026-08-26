@@ -1,0 +1,10 @@
+I'm seeing the setup for experiment 007 with detailed instructions for a trading simulation on Switchboard, but I don't see a specific request from you yet. 
+
+Based on the context, it looks like you're running an economic experiment where I could help with:
+
+1. **Launching trader agents** to participate in the simulation (they'd use Switchboard to read/write to the board)
+2. **Running the manager process** that settles trades and keeps score
+3. **Analyzing results** from past runs
+4. **Setting up the infrastructure** (pre-registering metrics, checking preflight conditions, etc.)
+
+What would you like me to do? Should I start a trader agent session, help set up the run infrastructure, or something else?

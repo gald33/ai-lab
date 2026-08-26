@@ -17,6 +17,8 @@ Claim before starting: `roadmap claim <key>`
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - `next` **`006-standby-alarm-has-never-rung`** — Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock
+- `next` **`007-replicate-the-control`** — Replicate the bare control so the lab's best difference rests on more than one draw
+- `next` **`007-third-pass-on-ruin`** — A third ladder pass, to separate the ruin reduction from the control's own movement
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
   - ↔ related: **`005-episodes-to-threshold`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 
@@ -47,6 +49,8 @@ graph TD
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
   006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
+  007_replicate_the_control["Replicate the bare control so the lab's best difference rests on more than one draw"]
+  007_third_pass_on_ruin["A third ladder pass, to separate the ruin reduction from the control's own movement"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
   005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
@@ -490,6 +494,83 @@ graph TD
 > agent that asked for it, which is a different mechanism with a different
 > failure mode — an availability outliving the agent asserting it — and it was
 > ruled out deliberately at the start rather than overlooked.
+
+</details>
+
+### `007-replicate-the-control`
+
+- **title:** Replicate the bare control so the lab's best difference rests on more than one draw
+- **status:** ready
+- **arc:** execution-ceiling
+- **priority:** next
+- **refs:**
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md`
+
+<details><summary>evidence</summary>
+
+> Row 14 of the hypothesis ledger is the strongest difference this lab has:
+> handed the full plan, four independent replicates of the plan cell all beat
+> the control — rounds above their own floor 5, 4, 7 and 5 against 1, mean
+> `eff_round` 0.390–0.737 against 0.192, median captured gain +0.68 to +1.00
+> against −0.11. Not one replicate overlaps.
+>
+> It rests on **one** control draw. Run 003 measured a control-type cell moving
+> by 1.03 sd on captured gain and 0.073–0.114 on the bounded shares, so a single
+> draw of `e-bare` carries exactly the uncertainty that retired every other
+> difference in the ledger. Four-against-one is not a comparison; it is four
+> measurements against a number of unknown position.
+>
+> Two more `e-bare` replicates on seeds 1–12, 5 episodes, 45/30 timing — the
+> same command run 001 used — would make it four against three, and would be
+> the first fully replicated difference in this repo.
+>
+> Done when both replicates are recorded, the control's own between-run spread
+> is reported beside the plan cell's, and the ledger's row 14 is regraded from
+> "probably yes" to a strength the evidence actually supports — in either
+> direction.
+>
+> Cost: 96 agent sessions, about 65 minutes.
+
+</details>
+
+### `007-third-pass-on-ruin`
+
+- **title:** A third ladder pass, to separate the ruin reduction from the control's own movement
+- **status:** ready
+- **arc:** execution-ceiling
+- **priority:** next
+- **refs:**
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `experiments/007-execution-ceiling/runs/005-the-ladder-pass-b.md`
+  - `experiments/007-execution-ceiling/PREREGISTRATION-v3.md`
+
+<details><summary>evidence</summary>
+
+> With the cheat removed, the protocol and hint blocks did not move the primary:
+> no cell met "≥ +0.15 on 8 of 12 seeds" in either pass, and `l-protocol`
+> reversed sign between them (+0.044 then −0.126).
+>
+> The co-primary did move, and in the same direction both times. Share of
+> trader-episodes ending in zero utility, pooled over 24 seeds against the
+> control: `l-protocol` −0.108, `l-hint` −0.118, `l-both` **−0.161**. All three
+> lower in both passes.
+>
+> The reason this is graded `weak` and not `supported`: the **control's own**
+> ruin rate moved 0.298 → 0.184 between the same two passes, a swing of 0.114.
+> Only `l-both` sits clearly outside that. A third pass on the same seeds would
+> say whether −0.161 is a treatment or whether the control is simply wandering
+> under it.
+>
+> This is the only signal the legitimate blocks produced, so it is worth one
+> pass and not more. If pass C leaves `l-both` inside the control's spread, the
+> decomposed blocks have nothing, and `PREREGISTRATION-v3.md`'s stopping rule
+> ends the experiment rather than proposing a fifth block.
+>
+> Done when pass C is recorded, the three passes' control spread is reported as
+> a number, and `l-both` is called resolved or unresolved against it.
+>
+> Cost: 192 agent sessions, about 80 minutes.
 
 </details>
 

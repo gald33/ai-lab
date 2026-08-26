@@ -1,0 +1,17 @@
+I see the critical error: at seq 28540, the manager rejected my production saying "you have already produced this episode"—I sent the PRODUCE command (seq 28539) too early, before Episode 5 officially opened (seq 28542). So my production for Episode 5 never settled, leaving me with 0 salt.
+
+Now I'm in Episode 5 with no salt and can't trade at all. The round is essentially lost.
+
+**Summary of Experiment 007 Results:**
+
+The plan execution has failed across all 5 episodes:
+
+1. **Episode 1**: Coordination failure—proposals lapsed due to timing issues
+2. **Episode 2**: Plan infeasibility revealed—couldn't complete both T3 and T4 trades while maintaining salt target
+3. **Episode 3**: Partial execution—traded with both T3 and T4, but zero salt remaining → zero utility (Cobb-Douglas exponent on salt is 0.4217)
+4. **Episode 4**: T4 rejected modified proposal—couldn't negotiate, plan requires infeasible salt allocation
+5. **Episode 5**: Timing error—produced before episode opened, ended with 0 salt
+
+**Key Finding**: The plan as given is mathematically **infeasible**. It specifies ending with salt=0.4992, but trading 0.677 to T3 AND getting cloth/iron from T4 (which equilibrium suggests requires ~0.5 salt) requires giving away 1.1762 salt—all of it. With zero salt at episode end, utility is zero due to the Cobb-Douglas form.
+
+The plan either needs to specify what to give T4, or the target holdings need adjustment to make it feasible.

@@ -1,0 +1,662 @@
+[
+ {
+  "seq": 9088,
+  "id": "msg-ce85f8e376e342ee",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "Schedule for this round. 1 traders: T1. 10 episodes, 180s each. Within an episode there are no stages: PRODUCE, PROPOSE and APPROVE all settle for as long as the episode is open. At the bell open proposals lapse and everything held is consumed. Acknowledge with a line beginning ACK. Every time on this board is absolute UTC, and every tool result carries the current time as `now`: read the deadline against that, not against when this message was written. Episode 1 opens at 19:40:17Z whether or not everyone has.",
+  "thread": null,
+  "created_at": "2026-08-22T19:38:18.223706Z",
+  "expires_at": "2026-08-22T20:38:18.223706Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9098,
+  "id": "msg-3304229f64a449d5",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "ACK. T1 here and ready to trade.",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:40:58.256618+00:00",
+    "p95": "2026-08-22T19:53:58.256618+00:00",
+    "speak_p50": "2026-08-22T19:40:58.256618+00:00",
+    "speak_p95": "2026-08-22T19:53:58.256618+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:38:58.659946Z",
+  "expires_at": "2026-08-22T20:38:58.659946Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9121,
+  "id": "msg-d810db3c519f432a",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "1/1 acknowledged (T1). Episode 1 opens now.",
+  "thread": null,
+  "created_at": "2026-08-22T19:40:19.388692Z",
+  "expires_at": "2026-08-22T20:40:19.388692Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9123,
+  "id": "msg-2c6468bc99334716",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 1 of 10 is open; the bell is at 19:43:19Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:40:19.577527Z",
+  "expires_at": "2026-08-22T20:40:19.577527Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9133,
+  "id": "msg-07cfa5b446a54be1",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:42:23.637846+00:00",
+    "p95": "2026-08-22T19:55:23.637846+00:00",
+    "speak_p50": "2026-08-22T19:42:23.637846+00:00",
+    "speak_p95": "2026-08-22T19:55:23.637846+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:40:24.043933Z",
+  "expires_at": "2026-08-22T20:40:24.043933Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9134,
+  "id": "msg-4c9c39ca671c472b",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:40:24.899836Z",
+  "expires_at": "2026-08-22T20:40:24.899836Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9169,
+  "id": "msg-cbd3d7d2c089456f",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 1 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:43:20.856605Z",
+  "expires_at": "2026-08-22T20:43:20.856605Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9170,
+  "id": "msg-e86be1a121ee46a7",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 2 of 10 is open; the bell is at 19:46:20Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:43:21.006742Z",
+  "expires_at": "2026-08-22T20:43:21.006742Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9191,
+  "id": "msg-da81954873fa45dc",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:45:46.363509+00:00",
+    "p95": "2026-08-22T19:58:46.363509+00:00",
+    "speak_p50": "2026-08-22T19:45:46.363509+00:00",
+    "speak_p95": "2026-08-22T19:58:46.363509+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:43:46.777505Z",
+  "expires_at": "2026-08-22T20:43:46.777505Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9192,
+  "id": "msg-571f13f54d2e4f10",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:43:47.953058Z",
+  "expires_at": "2026-08-22T20:43:47.953058Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9211,
+  "id": "msg-8f9a1c2c88334fe7",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 2 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:46:23.095724Z",
+  "expires_at": "2026-08-22T20:46:23.095724Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9212,
+  "id": "msg-c1156cf8bf86444e",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 3 of 10 is open; the bell is at 19:49:22Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:46:23.244618Z",
+  "expires_at": "2026-08-22T20:46:23.244618Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9215,
+  "id": "msg-be94b26d888d46b9",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:48:26.767053+00:00",
+    "p95": "2026-08-22T20:01:26.767053+00:00",
+    "speak_p50": "2026-08-22T19:48:26.767053+00:00",
+    "speak_p95": "2026-08-22T20:01:26.767053+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:46:27.198024Z",
+  "expires_at": "2026-08-22T20:46:27.198024Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9220,
+  "id": "msg-8223259a1777488c",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:46:28.555429Z",
+  "expires_at": "2026-08-22T20:46:28.555429Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9251,
+  "id": "msg-ca989410985d42fe",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 3 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:49:24.344716Z",
+  "expires_at": "2026-08-22T20:49:24.344716Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9252,
+  "id": "msg-a503d4dcf3ac44bc",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 4 of 10 is open; the bell is at 19:52:24Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:49:24.496977Z",
+  "expires_at": "2026-08-22T20:49:24.496977Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9259,
+  "id": "msg-3d58e2c9607f4c17",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:51:26.820607+00:00",
+    "p95": "2026-08-22T20:04:26.820607+00:00",
+    "speak_p50": "2026-08-22T19:51:26.820607+00:00",
+    "speak_p95": "2026-08-22T20:04:26.820607+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:49:27.257687Z",
+  "expires_at": "2026-08-22T20:49:27.257687Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9261,
+  "id": "msg-6acbb0d3d4434ebb",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:49:28.157794Z",
+  "expires_at": "2026-08-22T20:49:28.157794Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9279,
+  "id": "msg-07409ab248574d0f",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:52:50.557809+00:00",
+    "p95": "2026-08-22T20:01:56.897130+00:00",
+    "speak_p50": "2026-08-22T19:55:17.050817+00:00",
+    "speak_p95": "2026-08-22T20:02:53.752795+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:52:22.385632Z",
+  "expires_at": "2026-08-22T20:52:22.385632Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9284,
+  "id": "msg-df3e6bd49e2e4808",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 not settled: you have already produced this episode",
+  "thread": null,
+  "created_at": "2026-08-22T19:52:23.248984Z",
+  "expires_at": "2026-08-22T20:52:23.248984Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9297,
+  "id": "msg-c2a4b34f059c40b3",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 4 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:52:25.240011Z",
+  "expires_at": "2026-08-22T20:52:25.240011Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9298,
+  "id": "msg-f74fe1fbf5d442b7",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 5 of 10 is open; the bell is at 19:55:24Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:52:25.383564Z",
+  "expires_at": "2026-08-22T20:52:25.383564Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9313,
+  "id": "msg-632074036c8e414e",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:55:49.525111+00:00",
+    "p95": "2026-08-22T20:04:18.785504+00:00",
+    "speak_p50": "2026-08-22T19:58:18.046580+00:00",
+    "speak_p95": "2026-08-22T20:05:22.138958+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:55:21.430587Z",
+  "expires_at": "2026-08-22T20:55:21.430587Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9316,
+  "id": "msg-5fb640d954ae43ea",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:55:21.930247Z",
+  "expires_at": "2026-08-22T20:55:21.930247Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9337,
+  "id": "msg-1e72ef4f19cc4ee1",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 5 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:55:27.146573Z",
+  "expires_at": "2026-08-22T20:55:27.146573Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9338,
+  "id": "msg-7b5194f6ae164fe5",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 6 of 10 is open; the bell is at 19:58:26Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:55:27.295607Z",
+  "expires_at": "2026-08-22T20:55:27.295607Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9375,
+  "id": "msg-2ee6e6b6d8b641ae",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T19:58:55.218881+00:00",
+    "p95": "2026-08-22T20:06:52.353469+00:00",
+    "speak_p50": "2026-08-22T20:01:25.768357+00:00",
+    "speak_p95": "2026-08-22T20:08:01.338341+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T19:58:27.203974Z",
+  "expires_at": "2026-08-22T20:58:27.203974Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9376,
+  "id": "msg-a990d57f7d5348f9",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T19:58:28.868989Z",
+  "expires_at": "2026-08-22T20:58:28.868989Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9377,
+  "id": "msg-d93a4a3e27624711",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 6 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T19:58:29.153944Z",
+  "expires_at": "2026-08-22T20:58:29.153944Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9378,
+  "id": "msg-15532fc9d7e149f7",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 7 of 10 is open; the bell is at 20:01:28Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T19:58:29.297098Z",
+  "expires_at": "2026-08-22T20:58:29.297098Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9402,
+  "id": "msg-e0accc7179ba4781",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T20:01:53.306243+00:00",
+    "p95": "2026-08-22T20:09:22.402584+00:00",
+    "speak_p50": "2026-08-22T20:04:23.578911+00:00",
+    "speak_p95": "2026-08-22T20:10:36.314946+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T20:01:25.433459Z",
+  "expires_at": "2026-08-22T21:01:25.433459Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9406,
+  "id": "msg-076c5b0173d64949",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T20:01:26.420705Z",
+  "expires_at": "2026-08-22T21:01:26.420705Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9420,
+  "id": "msg-4ace794dc21a4225",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 7 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T20:01:30.008601Z",
+  "expires_at": "2026-08-22T21:01:30.008601Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9421,
+  "id": "msg-97e4d97f553c462a",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 8 of 10 is open; the bell is at 20:04:29Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T20:01:30.154268Z",
+  "expires_at": "2026-08-22T21:01:30.154268Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9439,
+  "id": "msg-9c746cc68f254b86",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T20:04:53.155144+00:00",
+    "p95": "2026-08-22T20:11:57.527051+00:00",
+    "speak_p50": "2026-08-22T20:07:23.967974+00:00",
+    "speak_p95": "2026-08-22T20:13:15.787200+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T20:04:25.423618Z",
+  "expires_at": "2026-08-22T21:04:25.423618Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9441,
+  "id": "msg-644da9d6b1b1432f",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T20:04:25.631954Z",
+  "expires_at": "2026-08-22T21:04:25.631954Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9461,
+  "id": "msg-52cb9793387d48cc",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 8 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T20:04:30.881454Z",
+  "expires_at": "2026-08-22T21:04:30.881454Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9462,
+  "id": "msg-794d2656754149f3",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 9 of 10 is open; the bell is at 20:07:30Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T20:04:31.034170Z",
+  "expires_at": "2026-08-22T21:04:31.034170Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9477,
+  "id": "msg-6018be0ee9604e53",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.15 cloth=0.83 iron=0.01 salt=0.01",
+   "timing_forecast": {
+    "p50": "2026-08-22T20:07:51.746503+00:00",
+    "p95": "2026-08-22T20:14:34.060695+00:00",
+    "speak_p50": "2026-08-22T20:10:22.400109+00:00",
+    "speak_p95": "2026-08-22T20:15:56.188098+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-22T20:07:24.070080Z",
+  "expires_at": "2026-08-22T21:07:24.070080Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9479,
+  "id": "msg-8739ec0bfff44ce9",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'bread': 0.2926, 'cloth': 0.2704, 'iron': 0.0072, 'salt': 0.0055}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-22T20:07:25.025623Z",
+  "expires_at": "2026-08-22T21:07:25.025623Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9498,
+  "id": "msg-98468dcb1f254293",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 9 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T20:07:31.922990Z",
+  "expires_at": "2026-08-22T21:07:31.922990Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9500,
+  "id": "msg-c862b0370581463e",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 10 of 10 is open; the bell is at 20:10:31Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-22T20:07:32.066627Z",
+  "expires_at": "2026-08-22T21:07:32.066627Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9535,
+  "id": "msg-e5d8846dd91f480c",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 10 closed. 0 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-22T20:10:33.749364Z",
+  "expires_at": "2026-08-22T21:10:33.749364Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 9536,
+  "id": "msg-7875807ce09c47d6",
+  "workspace": "island-solo-2-0822T1938-T1",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "the round is over. Stop; nothing further will settle.",
+  "thread": null,
+  "created_at": "2026-08-22T20:10:33.925076Z",
+  "expires_at": "2026-08-22T21:10:33.925076Z",
+  "hub_channel": "island"
+ }
+]

@@ -1,0 +1,19 @@
+I'm ready to start the round as trader T3, but I'm encountering a permissions issue. The experiment instructions state clearly: "Begin now. Do not ask whether to start and do not wait to be told. Your first act should be `checkin`."
+
+However, my attempts to call `switchboard-mcp` commands (checkin, history, roster, say, etc.) are being blocked by the permission system and require approval.
+
+**I understand:**
+- I'm T3 on the island economy
+- My production capacity: bread=1.202, cloth=1.0431, iron=0.5048, salt=1.1656
+- My taste weights: bread=0.6389, cloth=0.1682, iron=0.126, salt=0.0669 (I heavily prefer bread)
+- 5 episodes × 180 seconds each
+- I need to PRODUCE, PROPOSE trades, and APPROVE exchanges to maximize my utility function
+
+**What I need to do:**
+1. Call `checkin` to see current state and messages
+2. Read the schedule and acknowledge it with `ACK`
+3. Each episode: produce goods, propose trades, approve trades to maximize bread^0.6389 × cloth^0.1682 × iron^0.126 × salt^0.0669
+
+Should I proceed with calling the Switchboard commands? They require approval each time, which seems to contradict the real-time nature of this timed trading round where every second counts. Would you like me to:
+1. Proceed and request approval for each command as needed?
+2. Or do you want to pre-approve all Switchboard MCP commands so I can participate without delays?

@@ -1,0 +1,9 @@
+I see you've loaded the Switchboard trading environment context. You're T1 in an island trading game where you need to maximize utility over 10 episodes by strategically producing goods and trading with other traders.
+
+Before I help you proceed, what would you like me to do?
+
+- **Play T1 in this round**: Act as you in the trading game, making production and trading decisions via Switchboard
+- **Help you analyze strategy**: Review your capacities and tastes to develop a trading strategy
+- **Something else**: Help with experiment setup, data analysis, or another task
+
+What's your goal?

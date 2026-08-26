@@ -1,0 +1,19 @@
+I need your permission to proceed with the simulation. The experiment requires me to interact with Switchboard to participate in the trading round. 
+
+**What I need:**
+- Permission to run `switchboard` commands (checkin, say, history, etc.)
+
+**Current situation:**
+- I'm T4 in experiment 007, a 5-episode trading simulation
+- The round is 180 seconds per episode (5 episodes total)
+- I've been initialized with my attributes and need to start trading immediately
+- The instructions explicitly state "Begin now" and "Do not ask"
+- However, the `switchboard` CLI commands require your approval
+
+**Please grant permission** for me to execute Switchboard CLI commands so I can proceed with:
+1. Checking in and reading the board state
+2. Producing goods based on my allocation strategy
+3. Proposing and approving trades with other traders
+4. Maximizing my total utility over the round
+
+Once approved, I'll immediately call `checkin` and begin trading.

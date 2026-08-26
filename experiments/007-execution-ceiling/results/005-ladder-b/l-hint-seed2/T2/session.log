@@ -1,0 +1,21 @@
+I understand the setup - I'm T2 in an active island trading simulation. However, I need to clarify something: while the switchboard MCP tool schemas have been loaded, I don't have direct invocation access to them from this interface to actually participate in real-time in the running simulation.
+
+**Here's what I understand about my role as T2:**
+
+- **My constraints:** 1 labour unit/episode across bread, cloth, iron, salt
+- **My strengths:** Best at cloth (1.4016 capacity), worst at salt (0.0774)
+- **My preferences:** Relatively balanced across goods, slightly favor bread and cloth
+- **Optimal solo strategy:** Allocate labour shares = taste weights (0.32, 0.321, 0.299, 0.059)
+- **The key insight:** My utility is a product - zero in ANY good means zero total utility
+
+**What I need from you:**
+
+1. **Are you running the simulation externally?** If so, can you provide me with board history/messages, and I'll analyze them and suggest actions?
+
+2. **Should I simulate my trading decisions** in a script that you can feed to the actual agents?
+
+3. **Do you want me to analyze the experimental setup** - like what a rational T2 strategy should be given this island configuration?
+
+4. **Is there a specific problem** related to 007's execution ceiling hypothesis I should help debug?
+
+The instructions say "Begin now" and "the clock is running," but I can't actually send messages to an active Switchboard board from this interface. What's the actual task you need help with?

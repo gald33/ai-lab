@@ -1,0 +1,18 @@
+**Critical Finding from Initial Setup:**
+
+The agent has discovered that the execution plan required for "rung 1" of experiment 007 **has not been posted to the board**. According to the experiment design in CLAUDE.md, rung 1 should provide:
+
+> "the full plan — shares, holdings, named exchanges, counterparties"
+
+**Current Situation:**
+- Episode 1 is actively running (55 seconds remaining when the agent checked)
+- Other traders (T1, T2, T3) have noticed the missing plan and are trading ad-hoc without it
+- The round cannot measure "execution" of a plan if no plan has been provided
+- I'm ready to act as T4 but need the plan stimulus to proceed with rung 1
+
+**Questions:**
+1. Is there a pre-computed equilibrium plan file that should be posted to the board?
+2. Should I (or the orchestrator) post the plan to the "island" channel?
+3. Is this run intended as rung 1 (full plan provided), or a different rung?
+
+I can continue in the trading loop collecting ad-hoc gain (like the other agents are doing), but to properly test "execution" of a handed plan, the plan needs to be provided first. What would you like me to do?

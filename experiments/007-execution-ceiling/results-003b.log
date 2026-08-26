@@ -1,0 +1,20 @@
+model claude-haiku-4-5-20251001  arms ['e-plan']  rounds 12  episodes 5  agents 4
+clock-bound: 15.8 min per round; 12 rounds at 10 at a time is 2 wave(s), so about 32 min of wall-clock and 48 agent sessions.
+
+preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  e-plan    seed 5  eff_round 0.559  floor 0.590  per-episode [0.00 0.00 0.83 0.00 0.00]  settled 65  refused 18  talk 1  ack 4/4  16m
+  e-plan    seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00]  settled 65  refused 9  talk 0  ack 3/4  16m
+  e-plan    seed 8  eff_round 0.369  floor 0.569  per-episode [1.00 0.00 0.00 0.00 0.00]  settled 73  refused 18  talk 0  ack 4/4  17m
+  e-plan    seed 6  eff_round 0.991  floor 0.652  per-episode [0.98 0.99 0.99 0.99 0.99]  settled 88  refused 1  talk 0  ack 4/4  16m
+  e-plan    seed 3  eff_round 0.840  floor 0.604  per-episode [0.00 1.00 1.00 1.00 1.00]  settled 83  refused 7  talk 0  ack 4/4  17m
+  e-plan    seed 1  eff_round 0.998  floor 0.642  per-episode [1.00 1.00 1.00 1.00 1.00]  settled 76  refused 7  talk 0  ack 4/4  16m
+  e-plan    seed 7  eff_round 0.814  floor 0.616  per-episode [0.00 0.00 0.99 0.99 0.99]  settled 79  refused 8  talk 0  ack 4/4  17m
+  e-plan    seed 10  eff_round 0.886  floor 0.600  per-episode [0.00 1.00 1.00 1.00 1.00]  settled 91  refused 15  talk 0  ack 3/4  17m
+  e-plan    seed 2  eff_round 0.939  floor 0.674  per-episode [0.98 0.99 0.99 0.99 0.00]  settled 78  refused 8  talk 0  ack 3/4  17m
+  e-plan    seed 9  eff_round 0.978  floor 0.645  per-episode [0.91 0.99 0.99 0.99 0.99]  settled 69  refused 5  talk 0  ack 4/4  17m
+  e-plan    seed 11  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 12  FAILED ConnectError: [Errno 111] Connection refused
+
+2 of 12 rounds failed and are written to the result as failed, not dropped.
+
+wrote /home/user/ai-lab/experiments/007-execution-ceiling/results/003-stability-b/v3.json

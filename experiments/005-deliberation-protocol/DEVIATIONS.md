@@ -360,3 +360,161 @@ primary metric and never in place of it.
 
 **Not frozen.** The file carries that in its own header, alongside the
 statement that no result from it may be reported as evidence about protocols.
+
+## D12 — run 006 adds an implication, not a fact, and holds the timing fix constant
+
+*Written 2026-08-22, before the run it affects.*
+
+`stimuli/probe/constant.md` states no fact the base instructions do not already
+carry. The base says "Your capacities and tastes are the same in every episode
+of this round, and so is everyone else's". The block draws the consequence:
+that knowledge about a trader keeps its value, that early episodes buy
+information and later ones should spend it, and that a poor rate reflects costs
+that do not move.
+
+It is a **domain instruction** and a run using it may not be cited as evidence
+about deliberation protocols. It is not frozen, and its own header says so.
+
+**Two changes were in flight and are deliberately not conflated.** PR #23
+replaced relative countdowns with absolute UTC deadlines. Both cells of run 006
+carry that fix, so it is constant between them and cannot explain a difference
+between the cells. Separately, `probe-bare` re-measures run 005's control under
+the fix, on the same three islands, which is the only way to see what the fix
+itself did — a weaker across-run comparison, reported as one.
+
+**Cost if the separation fails.** If anything other than the deadline format
+differs between run 005 and this run, comparison 1 measures that instead. A1
+names it and the commits are diffable.
+
+## D13 — The hub 502'd fifteen minutes into run 006, and the run died with it
+
+**Written after the abort, before the relaunch. 2026-08-22.**
+
+Run 006 launched at 18:22 UTC and stopped at 18:36. Preflight was green and the
+sessions were live; what failed was the hub's gateway, which answered one of
+the manager's `history` reads with a Cloudflare **502 Bad gateway**. That
+exception propagated out of `drain()`, out of `wait_until()`, out of the thread
+pool, and killed the process — taking all six rounds, not the one round whose
+read had failed. Nine agent sessions were left orphaned and were killed by
+hand. The hub answered 200 again minutes later.
+
+**This is a harness failure, classified as one, and it produced no data.** No
+round record was written; nothing from the 18:22 attempt is scored, cited, or
+counted in any denominator. Run 006's numbers come entirely from the relaunch.
+
+**The fix.** `Manager._history_with_retry` retries a transient read — no status
+or 5xx — four times at 2/4/8s. A read is safe to repeat: history is refetched
+whole and deduplicated by message id, so a retry cannot double-count or lose a
+message. A hub that is still refusing after the last attempt still raises: a
+manager that cannot read the board cannot score it, and swallowing that would
+fabricate an empty episode. Writes are **not** retried — a repeated `say` would
+duplicate an announcement on the board.
+
+Retries are counted in `drain_errors` and written into every round record, so a
+run that limped is distinguishable from one that did not.
+
+**Why this is not a design change.** It touches timing and transport only. No
+price, role, trade or production decision is affected, and no malformed message
+becomes a well-formed one. The relaunch is the same specification, the same
+seeds and the same stimuli as the aborted attempt, under a new run stamp.
+
+## D14 — A solo trader is given text that speaks of other traders
+
+**Written before run 007. 2026-08-22.**
+
+Run 007 puts one trader on a board with no counterparties, to measure what an
+agent alone reaches against the autarky optimum every earlier run has scored
+against. The base instructions are handed to it **unchanged** — they still
+describe other traders, proposing and approving.
+
+**Why not write a solo variant.** Two reasons, and the second is the binding
+one. First, the point of the run is to measure the same agent under the same
+instructions with the population removed; rewriting the text would change two
+things at once and the number would no longer speak to runs 003–006. Second,
+run 006 closed the question of whether added or altered instruction text helps,
+and it closed it in the negative — composing a new block here would be exactly
+the move that run's stopping rule forbids.
+
+**The cost.** A trader may spend episodes waiting for counterparties who do not
+exist, and produce less than it otherwise would. That is named as A3 in the run
+record: if it happens, it is reported as this impurity biting, not as an agent
+failing to allocate labour. The roster is what tells the trader it is alone;
+the manager does not announce it, because announcing it would be the system
+making a decision the agents should read off the board themselves.
+
+**What is not affected.** Nothing about production settlement changes: same
+parser, same budget rule, same refusals (A4). The island is still drawn at four
+agents, so the trader's capacities, tastes and autarky optimum are the ones it
+had in runs 005 and 006 (A2).
+
+## D15 — A secondary measure added to run 007 after it opened
+
+**Written 2026-08-22, while run 007 was in its first wave and before any of its
+data had been read.**
+
+Run 007's record was committed with solo capture as its primary and a list of
+secondaries that did not include the MRS/MRT gap. The gap was added afterwards,
+and this records that honestly rather than letting the record read as though it
+had been planned.
+
+**What was added.** For each production act, the per-good log gap between the
+payoff ratio `(α_g/x_g)/(α_0/x_0)` and the cost ratio `capacity_0/capacity_g`.
+
+**Why it is not a new hypothesis.** The two ratios are equal exactly when an
+agent produced its own optimum — the tangency condition, verified in
+`tests/test_solo_floor.py`. So the gap is arithmetically implied by the primary:
+it is zero precisely when solo capture is 1, and it carries direction where
+capture carries only magnitude. It cannot turn a negative primary into a
+positive finding, and no threshold is attached to it.
+
+**Why the timing is safe.** It was written before any of run 007's boards were
+read, and its behaviour is fixed by tests on synthetic bundles rather than on
+the run's data. The hypothesis and the threshold in the record are untouched.
+
+**Where it came from.** The owner asked what the payoff ratio adds to the cost
+ratio; the answer — that at the optimum it adds nothing, and away from the
+optimum it names the direction — is the measure. It is also written up in
+`PROPOSAL-ratio-disclosure.md`, which belongs to a later experiment.
+
+## D16 — Run 007 died to a dropped connection, and nine finished rounds died with it
+
+**Written after run 007's abort, before anything was concluded from it.
+2026-08-22.**
+
+At 20:29, twelve minutes before the second wave would have ended, the hub
+disconnected without answering a manager read. The exception was
+`httpx.RemoteProtocolError`. D13's retry catches `SwitchboardError` — the hub
+answering badly — and this was the hub not answering at all, so it went past
+the except clause, out of `run_round`, out of the thread pool, and killed the
+process. `v3.json` was never written.
+
+**Two faults, and the second is the one that keeps costing.**
+
+1. *The retry was too narrow.* Fixed: `TRANSPORT_FAULTS` now covers
+   `httpx.TransportError` and `httpx.RemoteProtocolError` alongside the 5xx
+   case, on the same bounded four attempts. A read is still safe to repeat.
+2. *One round's death destroyed every other round's record.* This is the
+   second time — run 006 lost six rounds to the same shape. The rounds are
+   independent worlds and their records now fail independently: `one()` catches
+   everything, prints the failure, and writes `{"failed": true, "error": ...}`
+   into the result. **A failed round is written down as failed and stays in the
+   denominator; it is never dropped.**
+
+**What survived, and why it is usable.** Nine of the twelve solo rounds had
+already played all ten episodes and been closed by their manager; seed 3's T2,
+T3 and T4 were truncated at 9, 7 and 3 episodes. The boards were pulled off the
+hub before the TTL and are saved under `results/007-solo/boards/`. Every
+production act on them is settled state that the manager had already accepted
+and announced. The endpoint is computed over those 104 acts, with the truncated
+rounds' shorter denominators shown per trader rather than averaged away.
+
+**What did not survive.** `v3.json`, and with it the per-round record: `spoke`,
+`acknowledged`, `relaunched`, `drain_errors`, `seconds`. Alive fraction and the
+rescue count are therefore **not reported for run 007** — they cannot be
+reconstructed from a board, and inferring them from message counts would be a
+self-report by another name. The run record says so rather than substituting a
+proxy.
+
+**This is a harness failure and is classified as one.** It is not evidence
+about agents, and the numbers it interrupted are reported with the interruption
+named beside them.

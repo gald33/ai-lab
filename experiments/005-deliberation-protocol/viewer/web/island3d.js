@@ -32,7 +32,7 @@ function mat(name, color, roughness = 0.9, metalness = 0.0, emissive = null) {
   return m;
 }
 
-const M = {
+export const M = {
   sea: mat("sea", 0x36718f, 0.35, 0.05),
   seaDeep: mat("sea_deep", 0x244a63, 0.4, 0.05),
   surf: mat("surf", 0xcfe6ef, 0.5),
@@ -62,9 +62,9 @@ export const GOOD_COLOURS = [0x3987e5, 0xd95926, 0x199e70, 0xc98500,
 export const SEAT_COLOURS = [0xe8a13d, 0x6fc2a0, 0xc98bd8, 0xd9694f,
                              0x86a8e0, 0xd3c463];
 
-const goodMat = (good, i) =>
+export const goodMat = (good, i) =>
   mat(`good_${good}`, GOOD_COLOURS[i % GOOD_COLOURS.length], 0.6, 0.1);
-const seatMat = (name, i) =>
+export const seatMat = (name, i) =>
   mat(`trader_${name}`, SEAT_COLOURS[i % SEAT_COLOURS.length], 0.7);
 
 function add(group, geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0], scale = null) {
@@ -79,14 +79,116 @@ function add(group, geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0], scale
   return mesh;
 }
 
+/**
+ * The outline a slab is cut to: a radius at an angle, in the slab's own plane.
+ *
+ * Named and shared because the meadow's outline is not only drawn -- it is the
+ * coastline everything standing on the island has to stay inside of, and a
+ * second copy of these three terms would drift from the one that is rendered.
+ */
+const silhouette = (radius, wobble, phase) => (t) =>
+  radius * (1 + wobble * Math.sin(3 * t + phase)
+              + wobble * 0.6 * Math.sin(5 * t - phase * 1.7));
+
+//: The meadow, as `slab()` is asked for it below. Kept beside the call.
+const MEADOW = { radius: 3.25, wobble: 0.12, phase: 1.9 };
+
+/**
+ * How far the grass reaches, in the direction of an island point.
+ *
+ * A slab is cut in its own plane and then laid flat by `rotateX(-PI/2)`, which
+ * sends the slab's `+y` to the island's `-z`. So the angle at which a point
+ * `(x, z)` meets the outline is `atan2(-z, x)` and not the `atan2(z, x)` a
+ * reader would reach for -- get that wrong and this follows a coastline
+ * rotated against the one on screen, which is worse than no clamp at all.
+ */
+export const meadowEdge = (x, z) =>
+  silhouette(MEADOW.radius, MEADOW.wobble, MEADOW.phase)(Math.atan2(-z, x));
+
+//: Inside this, the island is the market and the hill: a settlement dropped
+//: there stands on the plaza roof or sinks into the upland. Measured from the
+//: two of them -- the market's plaza reaches 2.01 from the centre, the
+//: upland's outline 1.92.
+const HOME_IN = 2.15;
+
+/**
+ * Where a settlement can actually stand: on the meadow, outside the middle.
+ *
+ * Same bearing, moved along it. The middle yields to the coast when a bearing
+ * has no room for both -- better a hut close to the hill than one in the sea.
+ */
+export function homeSite(x, z, margin = 0.55) {
+  const d = Math.hypot(x, z);
+  const [ux, uz] = d > 1e-6 ? [x / d, z / d] : [1, 0];
+  const out = Math.max(0.4, meadowEdge(ux, uz) - margin);
+  const r = Math.min(out, Math.max(Math.min(HOME_IN, out), d));
+  return [ux * r, uz * r];
+}
+
+/**
+ * Settlements turned apart until none is standing in another's doorway.
+ *
+ * Two seats can arrive at the same place: the page lays them out on screen and
+ * a narrow frame collapses its ring, so on a phone with four traders two of
+ * them unprojected to within a hut's width of each other. They are moved
+ * *around* the island rather than in or out, so each keeps the distance from
+ * the market the layout gave it.
+ */
+function spaced(seats, min = 1.3, passes = 40) {
+  const ang = seats.map(([x, z]) => Math.atan2(z, x));
+  const rad = seats.map(([x, z]) => Math.hypot(x, z));
+  const at = (i) => [Math.cos(ang[i]) * rad[i], Math.sin(ang[i]) * rad[i]];
+  for (let p = 0; p < passes; p++) {
+    let worst = 0;
+    for (let i = 0; i < ang.length; i++) {
+      for (let j = i + 1; j < ang.length; j++) {
+        const a = at(i), b = at(j);
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (d >= min) continue;
+        worst = Math.max(worst, min - d);
+        const turn = (min - d) / Math.max(rad[i] + rad[j], 0.8) * 0.6;
+        // Two seats exactly on top of each other have no side to be pushed to;
+        // the tie is broken by index so the pair still comes apart.
+        const away = Math.sin(ang[i] - ang[j]) || 1;
+        const s = Math.sign(away);
+        ang[i] += turn * s;
+        ang[j] -= turn * s;
+      }
+    }
+    if (!worst) break;
+  }
+  return ang.map((a, i) => [Math.cos(a) * rad[i], Math.sin(a) * rad[i]]);
+}
+
+/**
+ * The same point, moved inside the grass if it was not already.
+ *
+ * **The model owns where a settlement may stand.** The page picks seats in
+ * screen coordinates and unprojects them, and how much island a screen
+ * fraction covers depends on the frame's shape -- so on a wide window the
+ * seats the layout chose landed in the sea. Pulling the point in along its own
+ * bearing keeps the arrangement the page asked for and only takes back the
+ * part of it the island does not have.
+ *
+ * `margin` is what has to fit inside the edge: a hut's footprint, or a goat.
+ */
+export function onMeadow(x, z, margin = 0.55) {
+  const d = Math.hypot(x, z);
+  if (!d) return [0, 0];
+  const limit = Math.max(0.4, meadowEdge(x, z) - margin);
+  // Scaling toward the centre does not change the bearing, so the edge this
+  // was measured against is still the edge at the point it lands on.
+  return d <= limit ? [x, z] : [x * (limit / d), z * (limit / d)];
+}
+
 /** A wobbly rounded landmass slab: irregular silhouette, soft bevelled edge. */
 function slab(radius, depth, bevel, wobble, phase, baseY, material, name) {
+  const edge = silhouette(radius, wobble, phase);
   const pts = [];
   const N = 96;
   for (let i = 0; i < N; i++) {
     const t = (i / N) * Math.PI * 2;
-    const r = radius * (1 + wobble * Math.sin(3 * t + phase)
-                          + wobble * 0.6 * Math.sin(5 * t - phase * 1.7));
+    const r = edge(t);
     pts.push(new THREE.Vector2(Math.cos(t) * r, Math.sin(t) * r));
   }
   const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), {
@@ -161,7 +263,7 @@ function boat(i, sailMat) {
   return g;
 }
 
-const GRASS_Y = 0.70, HILL_Y = 1.12, SAND_Y = 0.40;
+export const GRASS_Y = 0.70, HILL_Y = 1.12, SAND_Y = 0.40;
 
 /** Where a good is made. Four are the design's; the rest are built to fit. */
 const SITES = {
@@ -245,7 +347,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   // — land —
   island.add(slab(4.15, 0.14, 0.14, 0.10, 0.7, 0.0, M.sandWet, "shore_shelf"));
   island.add(slab(3.9, 0.24, 0.20, 0.11, 0.7, 0.08, M.sand, "beach"));
-  island.add(slab(3.25, 0.34, 0.20, 0.12, 1.9, 0.36, M.grass, "meadow"));
+  island.add(slab(MEADOW.radius, 0.34, 0.20, MEADOW.wobble, MEADOW.phase, 0.36, M.grass, "meadow"));
   island.add(slab(1.55, 0.44, 0.22, 0.16, 3.1, 0.68, M.grassDark, "upland"));
 
   add(island, new THREE.SphereGeometry(1.05, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -279,8 +381,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     return [Math.cos(a) * rad, Math.sin(a) * rad];
   };
   const placed = [];
+  // Clamped and separated before any of them is built, because a seat arrives
+  // from the page in screen coordinates and the island is the only thing that
+  // knows where its own grass ends -- or that two of them landed in one place.
+  const homes = spaced(traders.map((_, i) =>
+    homeSite(...(seats?.[i] ?? ring(i, traders.length, 2.35, -0.6)))))
+    .map(([x, z]) => homeSite(x, z));
   traders.forEach((name, i) => {
-    const [x, z] = seats?.[i] ?? ring(i, traders.length, 2.35, -0.6);
+    const [x, z] = homes[i];
     const g = hut(name, seatMat(name, i));
     g.position.set(x, GRASS_Y, z);
     // Facing the market, which is what a settlement on an island with one
@@ -309,7 +417,10 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     site.add(flag);
     site.scale.setScalar(wet ? 1.25 : 1.3);
     island.add(site);
-    anchors[`site_${good}`] = new THREE.Vector3(x, GRASS_Y, z);
+    // The site's own height, not the meadow's: salt is worked down on the wet
+    // shelf and iron up on the ridge, and anything staged at a site has to
+    // arrive where the site actually is.
+    anchors[`site_${good}`] = new THREE.Vector3(x, site.position.y, z);
     placed.push([x, z, 1.0]);
   });
 

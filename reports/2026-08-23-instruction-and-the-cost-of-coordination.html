@@ -1,0 +1,259 @@
+<title>Four Treatments, No Effect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#F2F3EF; --raised:#FBFBF8; --ink:#14181B; --muted:#5A626B;
+  --rule:#DCDFD8; --rule-strong:#C3C8BE;
+  --accent:#1F5460; --accent-soft:#DCE8E9; --brick:#9C4A38; --brick-soft:#F1DFDA;
+  --band:#E4E8E2;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101416; --raised:#171C1F; --ink:#E8EBE6; --muted:#96A0A4;
+    --rule:#232A2D; --rule-strong:#333D41;
+    --accent:#7FC0CC; --accent-soft:#1B3238; --brick:#DE9683; --brick-soft:#3A2520;
+    --band:#1B2124;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101416; --raised:#171C1F; --ink:#E8EBE6; --muted:#96A0A4;
+  --rule:#232A2D; --rule-strong:#333D41;
+  --accent:#7FC0CC; --accent-soft:#1B3238; --brick:#DE9683; --brick-soft:#3A2520;
+  --band:#1B2124;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  font-size:16.5px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:46rem; margin:0 auto; padding:clamp(2rem,6vw,4.5rem) clamp(1.15rem,5vw,2rem) 6rem}
+h1,h2,h3{font-family:Newsreader,Georgia,serif; text-wrap:balance; margin:0}
+h1{font-size:clamp(2.3rem,6.5vw,3.4rem); font-weight:500; line-height:1.06; letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.6vw,1.8rem); font-weight:500; line-height:1.2; margin-bottom:.2rem}
+h3{font-size:1.09rem; font-weight:600; margin-bottom:.15rem}
+p{margin:0}
+a{color:var(--accent)}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+}
+.stack{display:flex; flex-direction:column; gap:1.05rem}
+.stack-tight{display:flex; flex-direction:column; gap:.55rem}
+section{display:flex; flex-direction:column; gap:1.05rem; padding-top:2.6rem; margin-top:2.6rem; border-top:1px solid var(--rule)}
+header{display:flex; flex-direction:column; gap:1.1rem}
+.lede{font-family:Newsreader,Georgia,serif; font-size:1.3rem; line-height:1.5; color:var(--ink)}
+.meta{font-family:"IBM Plex Mono",monospace; font-size:.78rem; color:var(--muted); line-height:1.8}
+.tnum{font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; font-size:.9rem; min-width:31rem}
+th,td{text-align:left; padding:.55rem .7rem; border-bottom:1px solid var(--rule); vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); font-weight:500; border-bottom:1px solid var(--rule-strong)}
+td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+.neg{color:var(--brick); font-weight:600}
+.pos{color:var(--accent); font-weight:600}
+.pill{
+  display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:.68rem;
+  letter-spacing:.06em; text-transform:uppercase; padding:.15rem .45rem;
+  border-radius:2px; white-space:nowrap; font-weight:500;
+}
+.pill.solid{background:var(--accent); color:var(--paper)}
+.pill.supported{background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+.pill.refuted{background:var(--brick-soft); color:var(--brick); box-shadow:inset 0 0 0 1px var(--brick)}
+figure{margin:0; display:flex; flex-direction:column; gap:.9rem}
+.plot{background:var(--raised); border:1px solid var(--rule); padding:1.5rem 1.2rem 1.1rem; position:relative}
+.plot-inner{position:relative; min-height:11.5rem}
+.axis-band{position:absolute; left:25%; width:50%; top:0; bottom:1.9rem; background:var(--band)}
+.axis-zero{position:absolute; left:50%; top:0; bottom:1.9rem; width:1px; background:var(--rule-strong)}
+.row{position:relative; height:2.2rem}
+.row .label{position:absolute; left:0; top:.05rem; font-size:.8rem; color:var(--muted); font-family:"IBM Plex Mono",monospace}
+.dot{position:absolute; top:1.15rem; width:11px; height:11px; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 2px var(--raised)}
+.dot.n{background:var(--brick)} .dot.p{background:var(--accent)}
+.dot .tip{
+  position:absolute; bottom:150%; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--paper); font-family:"IBM Plex Mono",monospace;
+  font-size:.7rem; padding:.2rem .4rem; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s;
+}
+.dot:hover .tip,.dot:focus-visible .tip{opacity:1}
+.ticks{position:absolute; left:0; right:0; bottom:0; height:1.6rem; border-top:1px solid var(--rule)}
+.tick{position:absolute; top:.3rem; transform:translateX(-50%); font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--muted)}
+figcaption{font-size:.83rem; color:var(--muted); line-height:1.55}
+.callout{background:var(--raised); border-left:2px solid var(--accent); padding:1rem 1.2rem; display:flex; flex-direction:column; gap:.6rem}
+.callout.warn{border-left-color:var(--brick)}
+.callout h3{font-family:"IBM Plex Sans",sans-serif; font-size:.95rem}
+ol.ranked{margin:0; padding-left:0; list-style:none; counter-reset:r; display:flex; flex-direction:column; gap:1.15rem}
+ol.ranked li{counter-increment:r; display:grid; grid-template-columns:2rem 1fr; gap:.15rem .8rem}
+ol.ranked li::before{content:counter(r); font-family:"IBM Plex Mono",monospace; font-size:.95rem; color:var(--accent); font-weight:600; padding-top:.1rem}
+ol.ranked li > *{grid-column:2}
+ul.plain{margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.5rem}
+code{font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--raised); padding:.05rem .28rem; border:1px solid var(--rule)}
+strong{font-weight:600}
+footer{margin-top:3.2rem; padding-top:1.4rem; border-top:1px solid var(--rule); font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--muted); line-height:1.8}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Gal's AI Lab · Session report · 23 August 2026</p>
+  <h1>Four treatments, no effect</h1>
+  <p class="lede">We set out to show that telling agents useful things improves how they coordinate. It didn't. What we found instead is where the loss actually sits — and that our instrument was too blunt to have answered the original question either way.</p>
+  <p class="meta">
+    Experiments 005 (runs 005–007) and 006 (runs 001, 002a, 002)<br>
+    <span class="tnum">claude-haiku-4-5</span> · 4 traders · 180-second episodes · Cobb-Douglas island
+  </p>
+</header>
+
+<section>
+  <p class="eyebrow">What was asked</p>
+  <h2>Four ways of helping, none of which helped</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Run</th><th>Treatment</th><th>Primary result</th><th>Seeds favouring</th></tr></thead>
+      <tbody>
+        <tr><td class="num">005-005</td><td>Maximal: talk, explain needs, use prices</td><td class="num neg">−0.207</td><td class="num">1 of 5</td></tr>
+        <tr><td class="num">005-006</td><td>Minimal hint: your capacities never change</td><td class="num neg">−0.269</td><td class="num">0 of 3</td></tr>
+        <tr><td class="num">006-001</td><td>Disclose your cost and worth ratios</td><td class="num neg">−0.221</td><td class="num">1 of 5</td></tr>
+        <tr><td class="num">006-002</td><td>The same, with a named key and a schedule</td><td class="num neg">−0.074</td><td class="num">2 of 5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Four contents, from a 426-word protocol to a single paragraph. The obvious reading is <em>the cost is in the adding</em>. This report declines to draw it.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Why not</p>
+  <h2>The run is a bigger effect than any treatment</h2>
+  <p>One frozen block — <code>r-ratios</code>, hash <code>36cd95dc…</code> — run twice on the same five islands. Against its control it came in at <strong class="neg">−0.242 (0 of 5)</strong> the first time and <strong class="pos">+0.271 (5 of 5)</strong> the second. Every seed flipped sign. Pooled over ten paired rounds: <strong>+0.015, 5 of 10</strong>.</p>
+
+  <figure>
+    <div class="plot">
+      <div class="plot-inner">
+        <div class="axis-band"></div>
+        <div class="axis-zero"></div>
+
+        <div class="row"><span class="label">005-005 maximal</span>
+          <span class="dot n" tabindex="0" style="left:20.4%"><span class="tip">−0.207 · 1 of 5</span></span></div>
+        <div class="row"><span class="label">005-006 constancy</span>
+          <span class="dot n" tabindex="0" style="left:11.6%"><span class="tip">−0.269 · 0 of 3</span></span></div>
+        <div class="row"><span class="label">006-001 ratios</span>
+          <span class="dot n" tabindex="0" style="left:18.4%"><span class="tip">−0.221 · 1 of 5</span></span></div>
+        <div class="row"><span class="label">006-002 board</span>
+          <span class="dot n" tabindex="0" style="left:39.4%"><span class="tip">−0.074 · 2 of 5</span></span></div>
+        <div class="row"><span class="label">ratios, pooled</span>
+          <span class="dot p" tabindex="0" style="left:52.1%"><span class="tip">+0.015 · 5 of 10</span></span></div>
+
+        <div class="ticks">
+          <span class="tick" style="left:0%">−0.35</span>
+          <span class="tick" style="left:25%">−0.175</span>
+          <span class="tick" style="left:50%">0</span>
+          <span class="tick" style="left:75%">+0.175</span>
+          <span class="tick" style="left:100%">+0.35</span>
+        </div>
+      </div>
+    </div>
+    <figcaption>Every reported effect, against the shaded ±1 within-run standard deviation of paired differences (sd&nbsp;0.175; 0.322 pooled across runs). All four treatment effects fall inside the noise. The pre-registered threshold was 0.10 throughout — which needs about 25 seeds. Every run used five, some three.</figcaption>
+  </figure>
+
+  <div class="callout warn">
+    <h3>What this costs us</h3>
+    <p>It is not a labelling error — workspaces match arms in both result files, and only <code>r-ratios</code> boards carry the block's vocabulary. Both checked. So the four negatives above are not evidence that instruction hurts; they are evidence that <strong>this instrument cannot tell these treatments apart from doing nothing.</strong> Two stopping rules fired on differences of this size and should be read as <em>not yet tested</em>.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Claims</p>
+  <h2>What survived, graded</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Claim</th><th>Strength</th></tr></thead>
+      <tbody>
+        <tr><td>Alone, these agents solve their own labour allocation almost exactly: mean <strong>0.972</strong> of the closed-form optimum over 104 production acts, 85 within 1%, and zero corner bundles in 312 good-slots.</td><td><span class="pill solid">solid</span></td></tr>
+        <tr><td>Trade improves the utility of the trader doing it: <strong>1.04 / 1.07 / 1.06</strong> across three cells, majority above 1 — and understated, since it drops the corner productions worth zero alone, of which trade rescued 16/48, 4/5, 18/48.</td><td><span class="pill supported">supported</span></td></tr>
+        <tr><td>The loss is in <strong>production, not exchange</strong>. In company, production quality falls to <strong>0.49–0.78</strong> of each trader's own optimum, from 0.97 alone; trade then recovers only +0.09 to +0.13.</td><td><span class="pill supported">supported</span></td></tr>
+        <tr><td>Told <em>where</em> and <em>when</em> to disclose, agents disclose: <strong>20 of 20</strong> cost keys, every one at revision 1, against <strong>0 of 20</strong> in untreated cells holding identical tools.</td><td><span class="pill solid">solid</span></td></tr>
+        <tr><td>Told only <em>what</em> is worth disclosing, they don't: <strong>7 free-text messages</strong> across 200 trader-episodes, 3 carrying a ratio.</td><td><span class="pill solid">solid</span></td></tr>
+        <tr><td>A shared keyed store, granted and unmentioned, goes unused — zero keys in every untreated cell that had it.</td><td><span class="pill solid">solid</span></td></tr>
+        <tr><td>The five-seed design cannot resolve the effects it was written to detect.</td><td><span class="pill solid">solid</span></td></tr>
+        <tr><td>Instruction is harmful.</td><td><span class="pill refuted">refuted</span></td></tr>
+        <tr><td>Disclosure of ratios improves exchange.</td><td><span class="pill refuted">refuted</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The claims that survive are <strong>absolute</strong> measurements — a level against a closed form, or a count. The ones that don't are <strong>between-cell differences</strong>. That line is worth carrying forward as a design rule, not treating as a coincidence.</p>
+</section>
+
+<section>
+  <p class="eyebrow">A correction we made to ourselves</p>
+  <h2>The floor answers one question, not two</h2>
+  <p>After the solo run, this report's author wrote that the deficit in earlier runs was <em>a trading failure</em>. Too strong, and the owner caught it.</p>
+  <p>The solo run measures solution quality on a strictly <strong>easier</strong> problem — a lone agent has no access to half the joint one: who to trade with, at what rate, in what order. A harder problem being harder is not a failure at it.</p>
+  <ul class="plain">
+    <li><strong>Kept:</strong> autarky utility as a <em>participation constraint</em>. An agent below it would rather not have traded. No assumption about difficulty required.</li>
+    <li><strong>Withdrawn:</strong> treating the solo score as the expectation for the joint score.</li>
+  </ul>
+  <p>The correction is appended, dated, below the run's outcome — not edited into it.</p>
+</section>
+
+<section>
+  <p class="eyebrow">The mechanism</p>
+  <h2>Production is a bet placed before the outcome is known</h2>
+  <p>Labour commits inside the same episode as the negotiating, so specialising is a wager on counterparties who may never answer. Cobb-Douglas makes a lost wager total: one good at zero is utility zero.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Evidence</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Corner productions in the control cell, worth nothing without a completed trade</td><td class="num">48</td></tr>
+        <tr><td>…of which trade completed</td><td class="num">16 (33%)</td></tr>
+        <tr><td>Proposals lapsing at the bell</td><td class="num">27%</td></tr>
+        <tr><td>Production quality, alone → in company</td><td class="num">0.97 → 0.49</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>No disclosure hint can fix that, which is consistent with four of them not fixing it. What would address it is a change to the <strong>mechanism</strong> — letting an exchange be agreed before production settles, or letting proposals survive the bell — rather than a change to what agents are told.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Review targets</p>
+  <h2>Where to attack this, in order</h2>
+  <ol class="ranked">
+    <li>
+      <h3>Is the run effect the tool grant, or noise?</h3>
+      <p>Run 002 granted the keyed store to all cells, the only known instrument difference between the two runs whose signs disagree. <strong>Settled by</strong> re-running run 001's three cells under the current grant, same seeds — 15 rounds, 60 sessions. If the reversal follows the grant, a capability grant changed untreated behaviour invisibly, which is a finding in itself.</p>
+    </li>
+    <li>
+      <h3>The between-cell ordering of production quality</h3>
+      <p>The 0.97-alone versus 0.49–0.78-in-company gap is robust. The ordering <em>among</em> the three cells is exactly the difference five seeds cannot resolve. Don't build on it.</p>
+    </li>
+    <li>
+      <h3>The size of the trade gain</h3>
+      <p>1.04–1.07 is small, and excluding corner bundles biases it downward by an unknown amount. The direction is safe; the magnitude is not.</p>
+    </li>
+    <li>
+      <h3>Whether any of this generalises past one model</h3>
+      <p>Every number here is one model at 180-second episodes. The standing hypothesis — that a more capable agent has attention to spare for instruction, making the treatment effect a function of capability — is untested, and would need a 2×2 sized against a 0.25 effect, not 0.10.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Harness</p>
+  <h2>Three runs died to infrastructure, not to agents</h2>
+  <ul class="plain">
+    <li>A gateway <strong>502</strong> on a manager read killed six rounds mid-run. Fixed with a bounded retry on transient reads.</li>
+    <li>A <strong>dropped connection</strong> — a transport error rather than a bad answer — went straight past that retry and killed nine rounds that had already played all ten episodes. Fixed by catching transport faults, and more importantly by isolating round failures so one round's death no longer destroys every other round's record.</li>
+    <li>One run's result file was never written, so its alive fraction and rescue count are <strong>not reported</strong>. Reconstructing them from message counts would be a self-report by another name.</li>
+  </ul>
+  <p>Separately: the hosted board viewer reads the <em>first</em> fifty messages of a room and never advances, which reads exactly like a stalled run. Reported upstream.</p>
+</section>
+
+<footer>
+  Every figure in this report is recomputed by a script in the repository, from settled state — never from what an agent said it did.<br>
+  Denominators are printed throughout. No failed run is dropped from one.
+</footer>
+
+</div>

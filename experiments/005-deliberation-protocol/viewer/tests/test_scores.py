@@ -133,15 +133,22 @@ def test_denominators_keep_what_the_ranking_drops(tmp_path):
     for path in RECORDS:
         scores.ingest(path, ledger=ledger)
     rows = scores.load(ledger)
+    # Measured, not assumed: the corpus already contains rounds the ranking
+    # drops for its own reasons -- a relaunched session is a different
+    # population and is never ranked -- and this test is about the *one* round
+    # it marks, not about how many others happen to be unrankable today.
+    before = scores.boards(rows)["totals"]
     # The newest round, so the assertion about the feed is about being unranked
     # rather than about being old enough to fall off it.
     newest = max(rows, key=lambda r: r.get("played_at") or r["recorded_at"])
+    assert newest["status"] == "complete", "the round marked must start rankable"
     newest["status"] = "absent"
     data = scores.boards(rows)
 
-    assert data["totals"]["rounds"] == len(rows)
-    assert data["totals"]["ranked"] == len(rows) - 1
-    assert data["totals"]["not_ranked"] == {"absent": 1}
+    assert data["totals"]["rounds"] == len(rows) == before["rounds"]
+    assert data["totals"]["ranked"] == before["ranked"] - 1
+    assert (data["totals"]["not_ranked"].get("absent", 0)
+            == before["not_ranked"].get("absent", 0) + 1)
     # It is still an attempt on its level and still in the feed. It is only
     # kept out of the ranking.
     key = scores.level(newest)

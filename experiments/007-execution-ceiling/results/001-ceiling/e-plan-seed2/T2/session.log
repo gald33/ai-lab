@@ -1,0 +1,18 @@
+I'm ready to start executing the trading plan, but I need to interact with Switchboard to participate in the experiment. The system is requesting approval for:
+
+1. **Environment variables** - Setting switchboard credentials (already in `.mcp.json`)
+2. **Network calls** - Connecting to `switchboard.lucille-ai.com` to read/write to the trading channel
+
+The experiment is already underway (clock is running on episode 1 of 5), and other traders (T1, T3, T4) are already active. I need to:
+
+1. Acknowledge the schedule 
+2. Submit my production plan: `PRODUCE cloth=1.0`
+3. Make exchange proposals to T1 and T4
+4. Approve matching exchanges
+5. Keep checking in to monitor the board and respond to other traders
+
+**Can I proceed with:**
+- Setting switchboard environment variables and connecting to the island channel?
+- Making the trading actions (PRODUCE, PROPOSE, APPROVE messages)?
+
+Once approved, I'll execute the full plan across all 5 episodes (each ~3 minutes).

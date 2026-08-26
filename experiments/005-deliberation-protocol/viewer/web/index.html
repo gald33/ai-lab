@@ -43,6 +43,12 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .at-bottom .speeds { display: flex; gap: 4px; }
 .chrome button, .chrome select, .chrome .tab { background: #0e1519cc; backdrop-filter: blur(6px); }
 .at-top-right select { max-width: 230px; }
+/* Narrow by default: the list is the control, and this only earns its width
+   when somebody is actually typing in it. */
+.at-top-right #find { width: 96px; transition: width .15s ease; }
+.at-top-right #find:focus, .at-top-right #find:not(:placeholder-shown) { width: 168px; }
+.at-top-right #find[data-empty="true"] { border-color: var(--warn, #c86a4a); }
+@media (prefers-reduced-motion: reduce) { .at-top-right #find { transition: none; } }
 .at-bottom button, .at-bottom select { background: var(--panel-2); backdrop-filter: none; }
 .chrome .tab { text-decoration: none; border: 1px solid var(--line); border-radius: 8px;
   padding: 6px 11px; color: var(--ink-2); font-size: 14px; line-height: 1.3; }
@@ -60,6 +66,28 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   border-width: 1px 0 0; padding: 12px 16px 16px; animation: rise-in .22s ease-out; }
 .drawer.foot h2 { margin-bottom: 6px; }
 .drawer .ticker { height: calc(100% - 22px); overflow-y: auto; }
+
+/* The round picker. Chips rather than a text box: the listing is chosen by
+   what happened on the island, and the counts say what each choice leaves. */
+#picker .find input { width: 100%; margin: 0 0 12px; }
+#picker .facet { margin-bottom: 12px; }
+.facet-h { display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-3, #7d8b95); margin-bottom: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: baseline; gap: 5px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  background: #0e1519aa; color: var(--ink-2); font: inherit; font-size: 12px; line-height: 1.5; }
+.chip:hover { border-color: var(--ink-3, #7d8b95); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent, #c8761f); border-color: var(--accent, #c8761f);
+  color: #10161a; font-weight: 600; }
+.chip .n { font-variant-numeric: tabular-nums; opacity: .65; font-size: 11px; }
+.chip[aria-pressed="true"] .n { opacity: .8; }
+.chip:focus-visible, #picker input:focus-visible, .wide:focus-visible {
+  outline: 2px solid var(--accent, #c8761f); outline-offset: 2px; }
+#picker .wide { width: 100%; margin-top: 6px; }
+#picker .muted { margin: -4px 0 10px; font-size: 12px; color: var(--ink-3, #7d8b95); }
+#t-filter-n { font-size: 11px; font-variant-numeric: tabular-nums; margin-left: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @keyframes slide-in { from { transform: translateX(14px); opacity: 0; } }
 @keyframes rise-in  { from { transform: translateY(14px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
@@ -308,6 +336,15 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .night { pointer-events: none; opacity: 0;
   transition: opacity 2.4s cubic-bezier(.4,0,.4,1); }
 .island.closed .night { opacity: .58; }
+/* With a model underneath, the island dims itself: its light is on the day's
+   clock and is already the colour of dusk by the bell. The drawn overlays on
+   top of that were night twice over and sunset twice over -- the burn at half
+   opacity across the whole frame flattened the model back into one orange
+   shape, which is the opposite of what a sunset does to a landscape. Kept at a
+   fraction, so the sky still turns without painting over the island. */
+.has-3d .island.closed .night { opacity: .2; }
+.has-3d .island.closed .vignette { opacity: 1.1; }
+.has-3d .island.closed .sky-burn { opacity: .14; }
 .vignette { pointer-events: none; transition: opacity 2.4s ease; }
 .island.closed .vignette { opacity: 1.35; }
 /* The sky burns as the sun touches the water, then goes out. */
@@ -524,6 +561,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <div class="chrome at-top-right">
+    <button id="t-filter" aria-pressed="false" aria-controls="picker"
+            title="Choose a round by what happened in it">⌕<span id="t-filter-n"></span></button>
     <select id="source" title="Which board" aria-label="Which board"></select>
     <button id="reload" title="Read the source again">↻</button>
     <button id="t-rail" aria-pressed="false" aria-controls="rail"
@@ -551,6 +590,23 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <!-- Both shut until asked for. -->
+  <aside class="drawer side" id="picker" hidden>
+    <div class="card">
+      <h2>Which round</h2>
+      <p class="muted" id="picker-count">—</p>
+      <label class="find">
+        <span class="sr">Name</span>
+        <input id="find" type="search" placeholder="name, if you know it" spellcheck="false">
+      </label>
+      <div id="facets"></div>
+      <div class="sorts">
+        <span class="facet-h">Order</span>
+        <div class="chips" id="sorts"></div>
+      </div>
+      <button id="picker-reset" class="wide">Clear the filter</button>
+    </div>
+  </aside>
+
   <aside class="drawer side" id="rail" hidden>
     <div class="card" id="reveal-card">
       <h2>The hidden half</h2>
@@ -592,6 +648,7 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
+import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
 const $ = (id) => document.getElementById(id);
@@ -823,6 +880,10 @@ function raise(traders, goods, portrait) {
     const spots = seatSpots(traders.length, geo, portrait);
     const { anchors } = stage.build({
       traders, goods, seats: spots.map((s) => stage.groundAt(s.x, s.y)) });
+    // While the island turns, the cards ride their own settlements. Set here
+    // rather than inside the stage because the stage draws an island and knows
+    // nothing about what is written on top of it.
+    stage.onFrame = (st) => scene?.follow(traders.map((n) => st.toViewBox(anchors[n])));
     canvas.hidden = false;
     app.classList.add("has-3d");
     return traders.map((n) => stage.toViewBox(anchors[n]));
@@ -865,7 +926,17 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
   // The day's own clock, before the event: `play()` may take the sun down at a
   // bell or bring it up at an open, and that has to win over the glide.
   scene.sky(state, until, hold);
-  if (animate && event) scene.play(event);
+  // The island's light is on the same clock as the drawn sun. Two suns keeping
+  // separate time would be the one thing worse than no sun at all.
+  stage?.setDay(state.phase === "closed" || state.phase === "over"
+    ? 1 : scene.dayProgress(state));
+  if (animate && event) {
+    scene.play(event);
+    // The same event, on the island itself: the site that made the good works,
+    // and what it made crosses the ground to the hut that made it. The card
+    // says the number; this says where it came from.
+    stage?.fire(event);
+  }
   hud(state);
   closing(state);
   ticker(timeline.frames, index);
@@ -1179,6 +1250,7 @@ function drawer(button, panel, cls) {
   return { set, open };
 }
 
+const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");
 const log = drawer("t-log", "log", "log-open");
 
@@ -1247,13 +1319,20 @@ document.addEventListener("keydown", (e) => {
 // anything else replays a saved board.
 async function boot() {
   const select = $("source");
-  const options = [];
+  const find = $("find");
+  const entries = [];
   try {
     const list = await (await fetch("api/boards", { cache: "no-store" })).json();
     for (const b of list.boards || []) {
-      options.push(new Option(b.label, JSON.stringify({ board: b.board, reveal: b.reveal })));
+      // `facets` and `at` are what the picker filters and orders on; without
+      // them every round answers only the axis derived from its own path.
+      entries.push({ label: b.label, board: b.board, facets: b.facets || {}, at: b.at,
+                     value: JSON.stringify({ board: b.board, reveal: b.reveal }) });
     }
-    if (list.live) options.unshift(new Option("live — the running round", JSON.stringify({ live: list.live })));
+    if (list.live) {
+      entries.unshift({ label: "live — the running round", pinned: true,
+                        value: JSON.stringify({ live: list.live }) });
+    }
   } catch {
     // Opened without the little server: fall back to whatever the URL says.
   }
@@ -1262,24 +1341,130 @@ async function boot() {
     // Labelled the way the listing labels one. The path is what was asked for,
     // not what to call it, and it is long enough to swallow the control.
     const named = board.split("/").pop().replace(/^board-/, "").replace(/\.json(\.gz)?$/, "");
-    options.unshift(new Option(named || board,
-                               JSON.stringify({ board, reveal: params.get("reveal") })));
+    entries.unshift({ label: named || board, pinned: true,
+                      value: JSON.stringify({ board, reveal: params.get("reveal") }) });
   }
   if (params.get("live")) {
-    options.unshift(new Option("live", JSON.stringify({ live: params.get("live") })));
+    entries.unshift({ label: "live", pinned: true,
+                      value: JSON.stringify({ live: params.get("live") }) });
   }
   const hub = await hubConfigFromParams();
   if (hub) {
-    options.unshift(new Option(`live · ${hub.workspace}`, JSON.stringify({ hub })));
+    entries.unshift({ label: `live · ${hub.workspace}`, pinned: true,
+                      value: JSON.stringify({ hub }) });
   }
-  if (!options.length) {
+  if (!entries.length) {
     $("status").innerHTML = `Nothing to show. Serve this page with
       <code class="mono">python viewer/serve.py</code>, or pass
       <code class="mono">?board=…</code>.`;
     return;
   }
-  select.replaceChildren(...options);
-  select.onchange = () => open(JSON.parse(select.value));
+
+  // The filter is a set of chosen values per axis, plus a name. Re-listing
+  // replaces the options under the selection, so what is being watched is
+  // remembered and put back whenever it survives -- a filter that swapped the
+  // round out from under a playing board would be the control doing something
+  // nobody asked for.
+  const selection = { text: "" };
+  let sort = "newest";
+
+  function drawFacets() {
+    const box = $("facets");
+    box.replaceChildren();
+    for (const facet of FACETS) {
+      const values = options(entries, facet, selection);
+      // An axis every round answers the same way tells nobody anything, and a
+      // chip that cannot narrow is a chip in the way.
+      if (values.length < 2 && !(selection[facet.key] || []).length) continue;
+      const group = document.createElement("div");
+      group.className = "facet";
+      const head = document.createElement("span");
+      head.className = "facet-h";
+      head.textContent = facet.label;
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      chips.role = "group";
+      chips.ariaLabel = facet.label;
+      for (const { value, count } of values) {
+        const chosen = (selection[facet.key] || []).includes(value);
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.setAttribute("aria-pressed", String(chosen));
+        chip.innerHTML = `<span></span><span class="n"></span>`;
+        chip.firstChild.textContent = String(value);
+        chip.lastChild.textContent = String(count);
+        chip.onclick = () => {
+          const had = selection[facet.key] || [];
+          selection[facet.key] = chosen ? had.filter((v) => v !== value) : [...had, value];
+          relist();
+        };
+        chips.append(chip);
+      }
+      group.append(head, chips);
+      box.append(group);
+    }
+  }
+
+  function drawSorts() {
+    const box = $("sorts");
+    box.replaceChildren(...SORTS.map(({ key, label }) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = label;
+      chip.setAttribute("aria-pressed", String(sort === key));
+      chip.onclick = () => { sort = key; relist(); };
+      return chip;
+    }));
+  }
+
+  function relist({ keep = true } = {}) {
+    const chosen = keep ? select.value : null;
+    const groups = organise(entries, selection, sort);
+    const nodes = [];
+    for (const { group, items } of groups) {
+      const opts = items.map((e) => new Option(e.label, e.value));
+      if (!group) { nodes.push(...opts); continue; }
+      const box = document.createElement("optgroup");
+      box.label = group;
+      box.append(...opts);
+      nodes.push(box);
+    }
+    select.replaceChildren(...nodes);
+    const shown = countOf(groups);
+    const rounds = entries.filter((e) => !e.pinned).length;
+    // A filter matching nothing keeps the last board on screen rather than
+    // blanking the page: the list is empty, the round is not.
+    $("picker-count").textContent = shown === entries.length
+      ? `${rounds} rounds` : `${shown} of ${entries.length} shown`;
+    const active = activeCount(selection);
+    $("t-filter-n").textContent = active ? String(active) : "";
+    $("t-filter").title = active
+      ? `Filtered on ${active} thing${active > 1 ? "s" : ""} — ${shown} shown`
+      : "Choose a round by what happened in it";
+    drawFacets();
+    drawSorts();
+    if (chosen && [...select.options].some((o) => o.value === chosen)) {
+      select.value = chosen;
+      return false;
+    }
+    return shown > 0;
+  }
+
+  $("find").oninput = (e) => { selection.text = e.target.value; relist(); };
+  $("find").onkeydown = (e) => {
+    if (e.key === "Escape") { e.target.value = ""; selection.text = ""; relist(); }
+    e.stopPropagation();
+  };
+  $("picker-reset").onclick = () => {
+    for (const key of Object.keys(selection)) delete selection[key];
+    selection.text = "";
+    $("find").value = "";
+    relist();
+  };
+  relist({ keep: false });
+  select.onchange = () => { picker.set(false); open(JSON.parse(select.value)); };
   $("reload").onclick = () => open(JSON.parse(select.value));
   open(JSON.parse(select.value));
 }

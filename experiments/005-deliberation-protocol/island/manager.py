@@ -26,13 +26,32 @@ run this: a manager that holds no tastes knows nothing a spectator does not.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
-from switchboard.client import Client  # noqa: E402
+import httpx  # noqa: E402
+
+from switchboard.client import Client, SwitchboardError  # noqa: E402
+
+#: What a hub that is briefly unwell looks like from here. `SwitchboardError`
+#: is the hub answering badly; the `httpx` errors are it not answering at all
+#: -- a dropped connection, a refused socket, a read that timed out. D13
+#: caught only the first kind, and run 007 died at 20:29 to the second: a
+#: `RemoteProtocolError` from a server that disconnected without a response
+#: went straight past the except clause and took nine finished rounds' records
+#: with it. Both kinds are the same event for our purposes and both are safe
+#: to repeat on a read.
+TRANSPORT_FAULTS = (httpx.TransportError, httpx.RemoteProtocolError)
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
 from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
 from .sealed import BoxKey, SealError, is_sealed  # noqa: E402
+
+#: Whether labour may be committed in several pieces within one episode.
+#: **Off by default**: every run before 007's run 002 settled one production per
+#: episode, and flipping this silently would change what those numbers mean.
+#: An experiment that wants it says so, and records it.
+SPLIT_LABOUR = False
 
 MANAGER = "manager"
 #: What a trader seals a `PRODUCE` under. Bound into the key derivation and
@@ -131,6 +150,9 @@ class Manager:
     #: recent rows and skips what it has seen, which is safe while it drains
     #: faster than the board fills -- and silently lossy if it ever does not.
     saturated: bool = False
+    #: Reads the hub refused with a transient error and we retried. Recorded
+    #: because a run that limped is not the same evidence as one that did not.
+    drain_errors: int = 0
     _settled_this_episode: int = 0
     _next: int = 1
 
@@ -145,8 +167,38 @@ class Manager:
     def say(self, text: str) -> None:
         self.client.post(self.channel, text)
 
+    def _history_with_retry(self, tries: int = 4) -> list:
+        delay = 2.0
+        for attempt in range(tries):
+            try:
+                return sorted(self.client.history(self.channel, limit=500),
+                              key=lambda r: r.get("seq", 0))
+            except TRANSPORT_FAULTS:
+                if attempt == tries - 1:
+                    raise
+                self.drain_errors += 1
+                time.sleep(delay)
+                delay *= 2
+            except SwitchboardError as exc:
+                transient = exc.status is None or exc.status >= 500
+                if not transient or attempt == tries - 1:
+                    raise
+                self.drain_errors += 1
+                time.sleep(delay)
+                delay *= 2
+        raise AssertionError("unreachable")
+
     def drain(self) -> None:
-        """Read whatever has appeared since last time. Never blocks anyone."""
+        """Read whatever has appeared since last time. Never blocks anyone.
+
+        The hub is behind a gateway that returns 5xx now and then; a single
+        such refusal once killed a whole run mid-episode. A read is safe to
+        repeat -- history is refetched whole and deduplicated by id -- so a
+        transient refusal is retried rather than raised. A hub that stays down
+        past the last attempt still raises: a run that cannot read the board
+        cannot score it, and pretending otherwise would fabricate an empty
+        episode.
+        """
         if self.keys:
             # A roster read is what teaches Switchboard's own verifier a
             # peer's published key -- signing.py, "the public key is sealed
@@ -155,8 +207,7 @@ class Manager:
             # every current caller takes never pays for a call it has no use
             # for.
             self.client.agents()
-        rows = sorted(self.client.history(self.channel, limit=500),
-                      key=lambda r: r.get("seq", 0))
+        rows = self._history_with_retry()
         if len(rows) >= 500:
             self.saturated = True
         for msg in rows:
@@ -254,27 +305,40 @@ class Manager:
         if not self.episode_open:
             raise Refused("this episode has closed")
         h = self.holders[author]
-        if h.produced:
-            raise Refused("you have already produced this episode")
         total = sum(action.plan.values())
-        if total > 1.0 + 1e-6:
-            # Enough precision to show the excess. A plan over budget by 1e-4
-            # rounds to "sums to 1.000; the budget is 1.0", which reads as the
-            # manager refusing a plan that obeys it, and the trader spends a
-            # message finding out otherwise.
-            raise Refused(f"shares sum to {total:.6g}, over the budget of 1.0 "
-                          f"by {total - 1.0:.6g}")
+        # Labour may be committed in as many pieces as a trader likes, so long
+        # as the pieces sum to the budget. One line spending all of it behaves
+        # exactly as before; what is new is that a trader may hold some back,
+        # see what its trades do, and spend the rest knowing. See 007's D4 --
+        # this is the manager settling a smaller commitment, not the manager
+        # deciding anything about what to make.
+        if SPLIT_LABOUR:
+            if h.spent + total > 1.0 + 1e-6:
+                raise Refused(
+                    f"shares sum to {total:.6g} and you have already spent "
+                    f"{h.spent:.6g}, over the budget of 1.0 by "
+                    f"{h.spent + total - 1.0:.6g}")
+        else:
+            if h.produced:
+                raise Refused("you have already produced this episode")
+            if total > 1.0 + 1e-6:
+                # Enough precision to show the excess. A plan over budget by
+                # 1e-4 rounds to "sums to 1.000; the budget is 1.0", which
+                # reads as the manager refusing a plan that obeys it, and the
+                # trader spends a message finding out otherwise.
+                raise Refused(f"shares sum to {total:.6g}, over the budget of "
+                              f"1.0 by {total - 1.0:.6g}")
         made = {}
         for good, share in action.plan.items():
             g = self._good(good)
             qty = share * self.capacity[h.index][g]
             h.holdings[g] += qty
             made[good] = round(qty, 4)
-        h.spent, h.produced = total, True
+        h.spent, h.produced = h.spent + total, True
         self.settled += 1
         self._settled_this_episode += 1
         self.say(f"@{author} produced {made}; "
-                                f"{round(1 - total, 4)} labour unspent")
+                                f"{round(1 - h.spent, 4)} labour unspent")
 
     def _propose(self, author: str, action: Propose) -> None:
         if not self.episode_open:

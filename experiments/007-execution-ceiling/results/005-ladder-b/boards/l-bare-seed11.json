@@ -1,0 +1,602 @@
+[
+ {
+  "seq": 41148,
+  "id": "msg-fe4b7023c4b84bf9",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "APPROVE p11",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:55:22.790762+00:00",
+    "p95": "2026-08-24T06:57:02.903154+00:00",
+    "speak_p50": "2026-08-24T06:55:31.917338+00:00",
+    "speak_p95": "2026-08-24T06:57:50.195293+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:55:06.083949Z",
+  "expires_at": "2026-08-24T07:55:06.083949Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41150,
+  "id": "msg-e57a5b534de8434f",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p11 settled: T3 and T1 exchanged {'bread': 0.1, 'cloth': 0.05} for {'iron': 0.15, 'salt': 0.1}",
+  "thread": null,
+  "created_at": "2026-08-24T06:55:07.000769Z",
+  "expires_at": "2026-08-24T07:55:07.000769Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41286,
+  "id": "msg-cc96d04f4c84458b",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PROPOSE to=T3 give=salt:0.3,cloth:0.2 want=iron:0.1,bread:0.1",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:06.618193Z",
+  "expires_at": "2026-08-24T07:56:06.618193Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41287,
+  "id": "msg-a8c5aad45821473e",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T4 not settled: you have 0.2103 salt uncommitted, not 0.3000",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:08.283263Z",
+  "expires_at": "2026-08-24T07:56:08.283263Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41315,
+  "id": "msg-b677c27c0c324815",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PROPOSE to=T3 give=salt:0.2,cloth:0.25 want=iron:0.1,bread:0.1",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:32.789944Z",
+  "expires_at": "2026-08-24T07:56:32.789944Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41316,
+  "id": "msg-70e5cc1675d94b2f",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T4 not settled: you have 0.2259 cloth uncommitted, not 0.2500",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:33.211685Z",
+  "expires_at": "2026-08-24T07:56:33.211685Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41324,
+  "id": "msg-b19717563e89449a",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PROPOSE to=T3 give=salt:0.2,cloth:0.22 want=iron:0.12",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:56.393713Z",
+  "expires_at": "2026-08-24T07:56:56.393713Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41325,
+  "id": "msg-135c811cac6a4184",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p13: T4 offers {'salt': 0.2, 'cloth': 0.22} to T3 for {'iron': 0.12} \u2014 open until the bell",
+  "thread": null,
+  "created_at": "2026-08-24T06:56:58.084414Z",
+  "expires_at": "2026-08-24T07:56:58.084414Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41326,
+  "id": "msg-6c1f30c99cb04cbb",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 3 closed. 2 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:36.364827Z",
+  "expires_at": "2026-08-24T07:57:36.364827Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41327,
+  "id": "msg-f65a62b6417d401f",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 4 of 5 is open; the bell is at 07:00:35Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:36.528240Z",
+  "expires_at": "2026-08-24T07:57:36.528240Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41328,
+  "id": "msg-f3b27a4870244b10",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T3",
+  "type": "note",
+  "body": {
+   "text": "APPROVE p13",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:58:00.029207+00:00",
+    "p95": "2026-08-24T07:07:03.670727+00:00",
+    "speak_p50": "2026-08-24T06:58:32.561037+00:00",
+    "speak_p95": "2026-08-24T07:06:58.790759+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:57:38.076052Z",
+  "expires_at": "2026-08-24T07:57:38.076052Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41329,
+  "id": "msg-f6904940ead24b9d",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T3 not settled: p13 is already lapsed",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:38.650972Z",
+  "expires_at": "2026-08-24T07:57:38.650972Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41340,
+  "id": "msg-487cd7aeaeee4095",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE iron=0.5 salt=0.3 cloth=0.15 bread=0.05",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:57:59.692088+00:00",
+    "p95": "2026-08-24T06:59:34.204072+00:00",
+    "speak_p50": "2026-08-24T06:58:12.753124+00:00",
+    "speak_p95": "2026-08-24T07:00:30.507786+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:57:42.939180Z",
+  "expires_at": "2026-08-24T07:57:42.939180Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41341,
+  "id": "msg-2a11a4184ec243be",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'iron': 0.7329, 'salt': 0.7222, 'cloth': 0.1423, 'bread': 0.0173}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:43.746832Z",
+  "expires_at": "2026-08-24T07:57:43.746832Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41349,
+  "id": "msg-b7e3172a6f3f4359",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T3",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.6 cloth=0.4",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:58:09.292043+00:00",
+    "p95": "2026-08-24T07:07:12.933563+00:00",
+    "speak_p50": "2026-08-24T06:58:27.453696+00:00",
+    "speak_p95": "2026-08-24T07:06:43.879573+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:57:47.342115Z",
+  "expires_at": "2026-08-24T07:57:47.342115Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41350,
+  "id": "msg-cbc99120243a4b5d",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T3",
+  "type": "note",
+  "body": {
+   "text": "PROPOSE to=T1 give=bread:0.1,cloth:0.05 want=iron:0.15,salt:0.1",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:58:09.607420+00:00",
+    "p95": "2026-08-24T07:07:13.248940+00:00",
+    "speak_p50": "2026-08-24T06:58:13.401475+00:00",
+    "speak_p95": "2026-08-24T07:06:22.864930+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:57:47.657030Z",
+  "expires_at": "2026-08-24T07:57:47.657030Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41354,
+  "id": "msg-ecbb9bb6ed62467b",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T3 produced {'bread': 0.6476, 'cloth': 0.4493}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:48.905344Z",
+  "expires_at": "2026-08-24T07:57:48.905344Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41356,
+  "id": "msg-95afa818d5ee408a",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p14: T3 offers {'bread': 0.1, 'cloth': 0.05} to T1 for {'iron': 0.15, 'salt': 0.1} \u2014 open until the bell",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:49.106297Z",
+  "expires_at": "2026-08-24T07:57:49.106297Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41391,
+  "id": "msg-06018663f78a4c5c",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PRODUCE salt=0.6 cloth=0.4",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:55.418168Z",
+  "expires_at": "2026-08-24T07:57:55.418168Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41394,
+  "id": "msg-2f4608fcb4e047b7",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T4 produced {'salt': 0.5231, 'cloth': 0.7012}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T06:57:55.917953Z",
+  "expires_at": "2026-08-24T07:57:55.917953Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41426,
+  "id": "msg-d15f62b6ee77497f",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "APPROVE p14",
+   "timing_forecast": {
+    "p50": "2026-08-24T06:58:21.300529+00:00",
+    "p95": "2026-08-24T06:59:51.022622+00:00",
+    "speak_p50": "2026-08-24T06:58:30.427015+00:00",
+    "speak_p95": "2026-08-24T07:00:51.493992+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T06:58:04.609712Z",
+  "expires_at": "2026-08-24T07:58:04.609712Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41429,
+  "id": "msg-b49b90a57ef542ce",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p14 settled: T3 and T1 exchanged {'bread': 0.1, 'cloth': 0.05} for {'iron': 0.15, 'salt': 0.1}",
+  "thread": null,
+  "created_at": "2026-08-24T06:58:06.173732Z",
+  "expires_at": "2026-08-24T07:58:06.173732Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41432,
+  "id": "msg-a6d1baed3ad84a55",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PROPOSE to=T1 give=salt:0.4,cloth:0.5 want=iron:0.3",
+  "thread": null,
+  "created_at": "2026-08-24T06:58:06.593493Z",
+  "expires_at": "2026-08-24T07:58:06.593493Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41437,
+  "id": "msg-80d1ad666aef4f0d",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p15: T4 offers {'salt': 0.4, 'cloth': 0.5} to T1 for {'iron': 0.3} \u2014 open until the bell",
+  "thread": null,
+  "created_at": "2026-08-24T06:58:07.973768Z",
+  "expires_at": "2026-08-24T07:58:07.973768Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41579,
+  "id": "msg-7af73118e04e4fab",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 4 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:37.387582Z",
+  "expires_at": "2026-08-24T08:00:37.387582Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41580,
+  "id": "msg-683f5cb550c549c9",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "episode 5 of 5 is open; the bell is at 07:03:36Z (180s). PRODUCE, PROPOSE and APPROVE all settle until the bell.",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:37.620643Z",
+  "expires_at": "2026-08-24T08:00:37.620643Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41591,
+  "id": "msg-dd527a54f6c44a35",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T3",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE bread=0.6 cloth=0.4",
+   "timing_forecast": {
+    "p50": "2026-08-24T07:01:04.356940+00:00",
+    "p95": "2026-08-24T07:09:32.017432+00:00",
+    "speak_p50": "2026-08-24T07:01:24.661205+00:00",
+    "speak_p95": "2026-08-24T07:09:01.964084+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T07:00:44.566643Z",
+  "expires_at": "2026-08-24T08:00:44.566643Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41592,
+  "id": "msg-4fc30bc499de427b",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "PRODUCE iron=0.5 salt=0.3 cloth=0.15 bread=0.05",
+   "timing_forecast": {
+    "p50": "2026-08-24T07:01:01.464086+00:00",
+    "p95": "2026-08-24T07:02:26.849073+00:00",
+    "speak_p50": "2026-08-24T07:01:14.526029+00:00",
+    "speak_p95": "2026-08-24T07:03:32.805764+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T07:00:44.728490Z",
+  "expires_at": "2026-08-24T08:00:44.728490Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41593,
+  "id": "msg-9a2466e7331c4e2e",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T3",
+  "type": "note",
+  "body": {
+   "text": "PROPOSE to=T1 give=bread:0.1,cloth:0.05 want=iron:0.15,salt:0.1",
+   "timing_forecast": {
+    "p50": "2026-08-24T07:01:04.742794+00:00",
+    "p95": "2026-08-24T07:09:32.403286+00:00",
+    "speak_p50": "2026-08-24T07:01:10.676543+00:00",
+    "speak_p95": "2026-08-24T07:08:45.374255+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T07:00:44.946242Z",
+  "expires_at": "2026-08-24T08:00:44.946242Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41594,
+  "id": "msg-9af04d812ebc43a5",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T3 produced {'bread': 0.6476, 'cloth': 0.4493}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:45.356616Z",
+  "expires_at": "2026-08-24T08:00:45.356616Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41595,
+  "id": "msg-726155651b1b4279",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T1 produced {'iron': 0.7329, 'salt': 0.7222, 'cloth': 0.1423, 'bread': 0.0173}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:45.498609Z",
+  "expires_at": "2026-08-24T08:00:45.498609Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41596,
+  "id": "msg-35f1eded15b54f7d",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p16: T3 offers {'bread': 0.1, 'cloth': 0.05} to T1 for {'iron': 0.15, 'salt': 0.1} \u2014 open until the bell",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:45.647091Z",
+  "expires_at": "2026-08-24T08:00:45.647091Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41616,
+  "id": "msg-bd51b945c93e4826",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PRODUCE salt=0.8 bread=0.2",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:51.964183Z",
+  "expires_at": "2026-08-24T08:00:51.964183Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41618,
+  "id": "msg-0bf2531ad4b94a52",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "@T4 produced {'salt': 0.6975, 'bread': 0.0478}; 0.0 labour unspent",
+  "thread": null,
+  "created_at": "2026-08-24T07:00:52.422939Z",
+  "expires_at": "2026-08-24T08:00:52.422939Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41666,
+  "id": "msg-5f359739ca434c7a",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T4",
+  "type": "note",
+  "body": "PROPOSE to=T1 give=salt:0.6 want=iron:0.3",
+  "thread": null,
+  "created_at": "2026-08-24T07:01:00.217666Z",
+  "expires_at": "2026-08-24T08:01:00.217666Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41670,
+  "id": "msg-4892d23af8a448b2",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p17: T4 offers {'salt': 0.6} to T1 for {'iron': 0.3} \u2014 open until the bell",
+  "thread": null,
+  "created_at": "2026-08-24T07:01:00.863497Z",
+  "expires_at": "2026-08-24T08:01:00.863497Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41688,
+  "id": "msg-0b0bdaf457794d22",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "T1",
+  "type": "note",
+  "body": {
+   "text": "APPROVE p16",
+   "timing_forecast": {
+    "p50": "2026-08-24T07:01:23.841101+00:00",
+    "p95": "2026-08-24T07:02:45.417613+00:00",
+    "speak_p50": "2026-08-24T07:01:32.903453+00:00",
+    "speak_p95": "2026-08-24T07:03:54.618062+00:00"
+   }
+  },
+  "thread": null,
+  "created_at": "2026-08-24T07:01:07.099072Z",
+  "expires_at": "2026-08-24T08:01:07.099072Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41689,
+  "id": "msg-ff945818f5f34dc8",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "p16 settled: T3 and T1 exchanged {'bread': 0.1, 'cloth': 0.05} for {'iron': 0.15, 'salt': 0.1}",
+  "thread": null,
+  "created_at": "2026-08-24T07:01:07.671282Z",
+  "expires_at": "2026-08-24T08:01:07.671282Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41819,
+  "id": "msg-d8a24672084a449c",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "bell \u2014 episode 5 closed. 1 proposal(s) lapsed. Everything held has been consumed; stocks and labour are reset.",
+  "thread": null,
+  "created_at": "2026-08-24T07:03:39.503509Z",
+  "expires_at": "2026-08-24T08:03:39.503509Z",
+  "hub_channel": "island"
+ },
+ {
+  "seq": 41820,
+  "id": "msg-44b667dedcb8415e",
+  "workspace": "island-l-bare-11-0824T0631",
+  "channel": "island",
+  "from": "manager",
+  "type": "note",
+  "body": "the round is over. Stop; nothing further will settle.",
+  "thread": null,
+  "created_at": "2026-08-24T07:03:40.346171Z",
+  "expires_at": "2026-08-24T08:03:40.346171Z",
+  "hub_channel": "island"
+ }
+]

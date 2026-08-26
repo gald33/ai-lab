@@ -1,0 +1,21 @@
+model claude-haiku-4-5-20251001  arms ['r-bare', 'r-placebo', 'r-ratios']  rounds 5  episodes 10  agents 4
+clock-bound: 32.0 min per round; 15 rounds at 10 at a time is 2 wave(s), so about 64 min of wall-clock and 60 agent sessions.
+
+preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  r-placebo seed 2  eff_round 0.494  floor 0.674  per-episode [0.00 0.73 0.66 0.66 0.00 0.00 0.00 0.00 0.00 0.00]  settled 101  refused 24  talk 0  ack 4/4  32m
+  r-placebo seed 1  eff_round 0.232  floor 0.642  per-episode [0.63 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 116  refused 6  talk 0  ack 4/4  32m
+  r-bare    seed 3  eff_round 0.000  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 80  refused 13  talk 0  ack 4/4  32m
+  r-placebo seed 4  eff_round 0.448  floor 0.653  per-episode [0.00 0.00 0.78 0.78 0.00 0.00 0.00 0.00 0.00 0.00]  settled 101  refused 11  talk 0  ack 4/4  32m
+  r-bare    seed 5  eff_round 0.407  floor 0.590  per-episode [0.00 0.00 0.54 0.54 0.54 0.00 0.00 0.00 0.00 0.00]  settled 82  refused 9  talk 1  ack 4/4  32m
+  r-placebo seed 3  eff_round 0.494  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00 0.64 0.00 0.00 0.00 0.00]  settled 74  refused 9  talk 0  ack 4/4  32m
+  r-bare    seed 4  eff_round 0.445  floor 0.653  per-episode [0.76 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 86  refused 1  talk 1  ack 4/4  32m
+  r-placebo seed 5  eff_round 0.360  floor 0.590  per-episode [0.00 0.00 0.00 0.52 0.52 0.00 0.00 0.00 0.00 0.00]  settled 56  refused 5  talk 0  ack 4/4  32m
+  r-bare    seed 2  eff_round 0.515  floor 0.674  per-episode [0.00 0.00 0.70 0.67 0.67 0.66 0.59 0.00 0.00 0.00]  settled 70  refused 9  talk 0  ack 4/4  32m
+  r-bare    seed 1  eff_round 0.347  floor 0.642  per-episode [0.00 0.57 0.52 0.51 0.51 0.51 0.00 0.00 0.00 0.00]  settled 90  refused 8  talk 0  ack 4/4  32m
+  r-ratios  seed 1  eff_round 0.266  floor 0.642  per-episode [0.00 0.00 0.58 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 112  refused 13  talk 0  ack 4/4  32m
+  r-ratios  seed 2  eff_round 0.464  floor 0.674  per-episode [0.00 0.71 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 96  refused 14  talk 2  ack 4/4  32m
+  r-ratios  seed 3  eff_round 0.198  floor 0.604  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 57  refused 7  talk 3  ack 4/4  32m
+  r-ratios  seed 5  eff_round 0.000  floor 0.590  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 67  refused 10  talk 2  ack 4/4  32m
+  r-ratios  seed 4  eff_round 0.000  floor 0.653  per-episode [0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00]  settled 71  refused 4  talk 0  ack 4/4  32m
+
+wrote /home/user/ai-lab/experiments/006-ratio-disclosure/results/001-first/v3.json

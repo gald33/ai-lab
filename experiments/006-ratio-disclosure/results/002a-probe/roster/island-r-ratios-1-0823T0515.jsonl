@@ -1,0 +1,137 @@
+{"t": 1787462151.6448975, "agent": "T2", "task": "starting round, checking state"}
+{"t": 1787462151.6449804, "agent": "T3", "task": "starting round, checking initial state"}
+{"t": 1787462165.8742876, "agent": "T1", "task": "Beginning round as T1, checking initial state"}
+{"t": 1787462165.8743618, "agent": "T4", "task": "Starting round, reading initial state"}
+{"t": 1787462180.5952191, "agent": "T1", "task": "Waiting for episode 1 to open, planning initial production"}
+{"t": 1787462180.5952778, "agent": "T2", "task": "waiting for episode 1 to open, monitoring for other traders"}
+{"t": 1787462196.5984643, "agent": "T1", "task": "Preparing for episode 1 open"}
+{"t": 1787462196.598527, "agent": "T3", "task": "waiting for episode 1 to start"}
+{"t": 1787462211.7409127, "agent": "T1", "task": "Episode 1 opening shortly"}
+{"t": 1787462211.7409768, "agent": "T3", "task": "episode 1 about to start"}
+{"t": 1787462211.7410028, "agent": "T4", "task": "Waiting for episode 1 to open"}
+{"t": 1787462226.8304732, "agent": "T1", "task": "Checking if episode 1 has opened"}
+{"t": 1787462226.830545, "agent": "T2", "task": "episode 1 opening, preparing to produce"}
+{"t": 1787462241.5465136, "agent": "T3", "task": "checking holdings after production and waiting for offers"}
+{"t": 1787462256.7567532, "agent": "T1", "task": "Waiting for production confirmation and checking for trade proposals"}
+{"t": 1787462256.7568712, "agent": "T2", "task": "waiting for T3 response, monitoring market"}
+{"t": 1787462271.4703014, "agent": "T3", "task": "checking current holdings"}
+{"t": 1787462286.2101023, "agent": "T1", "task": "Checking for responses to my proposal to T3"}
+{"t": 1787462286.2101924, "agent": "T2", "task": "waiting for T3 to approve proposal p1"}
+{"t": 1787462301.3657064, "agent": "T3", "task": "waiting for more trade offers in episode 1"}
+{"t": 1787462331.378398, "agent": "T2", "task": "waiting for T3 response to enhanced proposal"}
+{"t": 1787462331.378463, "agent": "T3", "task": "checking trade status and remaining proposals"}
+{"t": 1787462345.6624117, "agent": "T1", "task": "Waiting for T3 to approve my proposal, monitoring other activity"}
+{"t": 1787462345.6625106, "agent": "T4", "task": "Monitoring proposals and ready to trade"}
+{"t": 1787462360.3524997, "agent": "T2", "task": "T3 may accept p1, or I need to pivot strategy"}
+{"t": 1787462360.352563, "agent": "T3", "task": "waiting for episode 1 bell"}
+{"t": 1787462389.9613605, "agent": "T1", "task": "Episode 1 ending soon, waiting for bell"}
+{"t": 1787462389.9614239, "agent": "T3", "task": "waiting for episode end"}
+{"t": 1787462389.9614494, "agent": "T4", "task": "Waiting for episode 1 bell and proposal settlements"}
+{"t": 1787462405.1941547, "agent": "T2", "task": "episode ending, waiting for bell"}
+{"t": 1787462420.0776494, "agent": "T1", "task": "Waiting for episode 1 bell"}
+{"t": 1787462435.4987805, "agent": "T1", "task": "Episode 2 started, waiting for production confirmation"}
+{"t": 1787462435.4988413, "agent": "T2", "task": "wait for production confirmation, see market move"}
+{"t": 1787462435.4988663, "agent": "T3", "task": "episode 2 production complete, waiting for trade opportunities"}
+{"t": 1787462450.3578563, "agent": "T1", "task": "Waiting for T3 to respond to proposal"}
+{"t": 1787462450.357915, "agent": "T3", "task": "episode 2 trade settlement and waiting for more opportunities"}
+{"t": 1787462465.4101892, "agent": "T2", "task": "waiting for T3 response to cloth offer"}
+{"t": 1787462480.1894686, "agent": "T1", "task": "Episode 2 wrapping up, waiting for bell"}
+{"t": 1787462480.189533, "agent": "T2", "task": "waiting for T3 to respond to revised cloth proposal"}
+{"t": 1787462480.1895573, "agent": "T3", "task": "waiting for episode 2 bell"}
+{"t": 1787462495.12182, "agent": "T4", "task": "Episode 2 production confirmation and trading"}
+{"t": 1787462509.933541, "agent": "T1", "task": "Waiting for episode 2 bell"}
+{"t": 1787462509.9336374, "agent": "T2", "task": "waiting for T3 to approve p6 or make counter-offer"}
+{"t": 1787462509.93368, "agent": "T3", "task": "episode 2 bell ringing"}
+{"t": 1787462524.9288676, "agent": "T1", "task": "Waiting for episode 2 bell to ring"}
+{"t": 1787462524.928934, "agent": "T2", "task": "end of episode 2 approaching, waiting for T3 or final decision"}
+{"t": 1787462540.0632997, "agent": "T1", "task": "Episode 2 ending soon"}
+{"t": 1787462540.0633652, "agent": "T3", "task": "episode 2 ending"}
+{"t": 1787462540.0633912, "agent": "T4", "task": "Waiting for proposal responses in episode 2"}
+{"t": 1787462570.1983457, "agent": "T1", "task": "Episode 2 bell should ring very soon"}
+{"t": 1787462570.1984103, "agent": "T2", "task": "final seconds, waiting for T3 or deciding on T4"}
+{"t": 1787462570.1984375, "agent": "T4", "task": "Waiting for episode 2 bell"}
+{"t": 1787462584.9923832, "agent": "T1", "task": "Episode 2 bell ringing"}
+{"t": 1787462584.992446, "agent": "T2", "task": "episode 2 ending, waiting for bell"}
+{"t": 1787462599.7384913, "agent": "T1", "task": "Episode 3 production confirmed, preparing trade with T3"}
+{"t": 1787462614.8059492, "agent": "T1", "task": "Waiting for T3 to approve trade proposal"}
+{"t": 1787462614.8060164, "agent": "T3", "task": "episode 3, waiting for trade offers"}
+{"t": 1787462629.8304045, "agent": "T1", "task": "Waiting for T3 to approve proposal p8"}
+{"t": 1787462629.8305194, "agent": "T2", "task": "wait for production confirmation, then propose to T1"}
+{"t": 1787462629.830557, "agent": "T4", "task": "Episode 3 trading and monitoring"}
+{"t": 1787462644.5062773, "agent": "T1", "task": "Episode 3 ending, waiting for bell"}
+{"t": 1787462644.5063539, "agent": "T3", "task": "episode 3, waiting for bell"}
+{"t": 1787462659.5194213, "agent": "T2", "task": "wait for T4 response, then chain to T3"}
+{"t": 1787462659.5194805, "agent": "T4", "task": "Monitoring episode 3, preparing for final episodes"}
+{"t": 1787462674.3515184, "agent": "T1", "task": "Waiting for episode 3 bell"}
+{"t": 1787462674.3515837, "agent": "T2", "task": "waiting for T4 to accept salt-for-cloth trade"}
+{"t": 1787462674.351609, "agent": "T3", "task": "episode 3 closing"}
+{"t": 1787462689.2659583, "agent": "T2", "task": "T4 still silent on p9, waiting or preparing to pivot"}
+{"t": 1787462689.2660244, "agent": "T3", "task": "episode 3 bell ringing"}
+{"t": 1787462689.2660494, "agent": "T4", "task": "Waiting for episode 3 bell"}
+{"t": 1787462704.6221225, "agent": "T1", "task": "Waiting for episode 3 bell to ring"}
+{"t": 1787462719.2747493, "agent": "T1", "task": "Episode 3 bell coming soon"}
+{"t": 1787462719.2748122, "agent": "T2", "task": "waiting for T3 to accept salt-for-iron proposal"}
+{"t": 1787462719.2748373, "agent": "T3", "task": "episode 3 ending"}
+{"t": 1787462719.2748592, "agent": "T4", "task": "Waiting for episode 4 start"}
+{"t": 1787462733.7290292, "agent": "T2", "task": "episode 3 ending, waiting for final trades to settle"}
+{"t": 1787462748.0528262, "agent": "T1", "task": "Waiting for bell"}
+{"t": 1787462748.0528927, "agent": "T3", "task": "episode 3 bell"}
+{"t": 1787462763.5012503, "agent": "T1", "task": "Episode 3 bell ringing"}
+{"t": 1787462763.5013425, "agent": "T2", "task": "waiting for bell, final episode check"}
+{"t": 1787462763.5013711, "agent": "T4", "task": "Episode 4 opening"}
+{"t": 1787462778.6622736, "agent": "T1", "task": "Episode 3 bell"}
+{"t": 1787462778.662348, "agent": "T3", "task": "episode 3 bell and episode 4 start"}
+{"t": 1787462792.7667696, "agent": "T1", "task": "Waiting for T3 to approve and episode 4 to close"}
+{"t": 1787462792.7668355, "agent": "T3", "task": "episode 4, waiting for T1 trade offer"}
+{"t": 1787462792.7668605, "agent": "T4", "task": "Episode 4, waiting for bell"}
+{"t": 1787462807.6459358, "agent": "T2", "task": "wait for production confirmation, then propose trades"}
+{"t": 1787462822.6409001, "agent": "T1", "task": "Waiting for T3 to approve proposal, then waiting for bell"}
+{"t": 1787462822.6409714, "agent": "T3", "task": "episode 4, waiting for bell"}
+{"t": 1787462822.6409974, "agent": "T4", "task": "Episode 4 - waiting through to bell"}
+{"t": 1787462837.76979, "agent": "T2", "task": "waiting for T3 response on cloth-for-iron"}
+{"t": 1787462852.2126873, "agent": "T1", "task": "Waiting for episode 4 bell"}
+{"t": 1787462852.212751, "agent": "T2", "task": "waiting for T3 response to revised proposal"}
+{"t": 1787462852.2127762, "agent": "T3", "task": "episode 4 closing"}
+{"t": 1787462852.2127976, "agent": "T4", "task": "Episode 4 - approaching bell"}
+{"t": 1787462868.6820478, "agent": "T2", "task": "waiting for T3, then preparing to finish episode 4"}
+{"t": 1787462868.6821256, "agent": "T3", "task": "episode 4 ending"}
+{"t": 1787462868.6821575, "agent": "T4", "task": "Waiting for episode 4 bell"}
+{"t": 1787462897.936551, "agent": "T1", "task": "Episode 4 ending soon"}
+{"t": 1787462897.9366572, "agent": "T2", "task": "episode ending, checking final state"}
+{"t": 1787462897.936705, "agent": "T3", "task": "episode 4 bell"}
+{"t": 1787462897.9367561, "agent": "T4", "task": "Waiting for episode 5"}
+{"t": 1787462912.6767762, "agent": "T1", "task": "Bell ringing"}
+{"t": 1787462927.1389897, "agent": "T1", "task": "Waiting for bell to ring"}
+{"t": 1787462927.1390538, "agent": "T2", "task": "episode 4 ending, checking outcomes"}
+{"t": 1787462927.1390793, "agent": "T3", "task": "episode 4 bell ringing"}
+{"t": 1787462927.1391015, "agent": "T4", "task": "Waiting for bell and episode 5 start"}
+{"t": 1787462941.842025, "agent": "T1", "task": "Episode 4 bell"}
+{"t": 1787462957.2138007, "agent": "T3", "task": "checking episode 5"}
+{"t": 1787462957.21387, "agent": "T4", "task": "Bell and episode 5"}
+{"t": 1787462971.844571, "agent": "T1", "task": "Final episode, waiting for T3 and the bell"}
+{"t": 1787462971.8446314, "agent": "T2", "task": "wait for production confirmation, then trade aggressively"}
+{"t": 1787462971.8446867, "agent": "T3", "task": "episode 5 final, waiting for trade"}
+{"t": 1787462971.8447216, "agent": "T4", "task": "Episode 5 final production - waiting for bell"}
+{"t": 1787462986.8800864, "agent": "T2", "task": "waiting for T3 to choose between my and T1's offers"}
+{"t": 1787463001.7079728, "agent": "T1", "task": "Waiting for T3 to approve final proposal, then bell"}
+{"t": 1787463001.7080743, "agent": "T2", "task": "waiting for T3 to accept p14, or prepare for final consumption"}
+{"t": 1787463001.7081084, "agent": "T3", "task": "episode 5 final bell waiting"}
+{"t": 1787463001.708132, "agent": "T4", "task": "Episode 5 - final wait through bell"}
+{"t": 1787463031.4505093, "agent": "T1", "task": "Waiting for final bell of episode 5"}
+{"t": 1787463031.4505997, "agent": "T2", "task": "approaching final bell, waiting for last trades"}
+{"t": 1787463031.4506304, "agent": "T3", "task": "episode 5 ending"}
+{"t": 1787463031.450653, "agent": "T4", "task": "Waiting through final episode"}
+{"t": 1787463061.4829266, "agent": "T1", "task": "Waiting for final bell"}
+{"t": 1787463061.4829867, "agent": "T2", "task": "final seconds, bell approaching"}
+{"t": 1787463061.4830115, "agent": "T3", "task": "episode 5 bell close"}
+{"t": 1787463061.483031, "agent": "T4", "task": "Episode 5 near end"}
+{"t": 1787463076.4538949, "agent": "T1", "task": "Final bell approaching"}
+{"t": 1787463076.4539769, "agent": "T4", "task": "Waiting for final bell"}
+{"t": 1787463091.473403, "agent": "T2", "task": "final bell coming, round conclusion"}
+{"t": 1787463091.473468, "agent": "T3", "task": "episode 5 final bell"}
+{"t": 1787463106.4315033, "agent": "T3", "task": "episode 5 bell ringing"}
+{"t": 1787463106.431566, "agent": "T4", "task": "Final wait"}
+{"t": 1787463121.2056725, "agent": "T1", "task": "Final bell"}
+{"t": 1787463121.2057335, "agent": "T2", "task": "waiting for final bell and round conclusion"}
+{"t": 1787463135.5261712, "agent": "T3", "task": "waiting for round summary"}
+{"t": 1787463135.5262806, "agent": "T4", "task": "Final bell"}

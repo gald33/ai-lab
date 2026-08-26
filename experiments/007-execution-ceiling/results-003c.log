@@ -1,0 +1,20 @@
+model claude-haiku-4-5-20251001  arms ['e-plan']  rounds 12  episodes 5  agents 4
+clock-bound: 15.8 min per round; 12 rounds at 10 at a time is 2 wave(s), so about 32 min of wall-clock and 48 agent sessions.
+
+preflight: an agent's switchboard-mcp reached https://switchboard.lucille-ai.com
+  e-plan    seed 6  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 3  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 1  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 9  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 10  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 8  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 2  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 5  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 4  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 7  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 11  FAILED ConnectError: [Errno 111] Connection refused
+  e-plan    seed 12  FAILED ConnectError: [Errno 111] Connection refused
+
+12 of 12 rounds failed and are written to the result as failed, not dropped.
+
+wrote /home/user/ai-lab/experiments/007-execution-ceiling/results/003-stability-c/v3.json

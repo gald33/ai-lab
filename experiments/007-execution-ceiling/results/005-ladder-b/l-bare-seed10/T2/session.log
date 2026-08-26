@@ -1,0 +1,11 @@
+I'm ready to begin the trading simulation, but I need your approval to use the Switchboard tools. The system is requesting permission for:
+
+1. **Switchboard commands** (`whoami`, `checkin`, `say`, `history`, etc.) - These are essential for participating in the 5-episode trading round
+2. **File system access** - To explore game configuration
+
+Once you approve these permissions, I'll immediately:
+- Call `checkin` to start and read any initial messages
+- Read the island channel to see the schedule and other traders' activity
+- Begin trading to maximize my utility over the 5 episodes
+
+The clock is running (180 seconds per episode), so time is critical. Please approve the Switchboard tool access when prompted.
