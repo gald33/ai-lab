@@ -76,6 +76,12 @@ from .protocol import GOODS_DEFAULT  # noqa: E402
 TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
          "mcp__switchboard__history", "mcp__switchboard__inbox",
          "mcp__switchboard__dm", "mcp__switchboard__roster",
+         # A sealed round is played through this one: the manager `ask`s each
+         # seat its private half, `inbox` opens it, and a plan goes back the
+         # same way. Without it an agent can read what it was dealt and has no
+         # way to answer, which is a game it cannot play rather than a game it
+         # plays badly.
+         "mcp__switchboard__ask",
          "mcp__switchboard__whoami", "Bash(sleep:*)"]
 
 #: The goods are optional so an entrant still finds a table announced by a
