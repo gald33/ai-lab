@@ -121,6 +121,41 @@ names the seats and their witnessed keys before anyone speaks, and says that a
 line from anyone else settles nothing and has no standing. Refusals then name
 the stranger as they appear, where the traders can see them.
 
+## 3c. The entry flow this is all for, and the single call it waits on
+
+Stated as a sequence, because the shape is not in doubt and only one step is
+missing. **The key to a table's room is not published at all — it is handed to
+whoever the lobby seated, and only to them.**
+
+| # | step | exists in 0.10.0? |
+|---|---|---|
+| 1 | the entrant joins the **lobby** — an ordinary room, whose key is the price of entry to the lobby and nothing more — and posts `JOIN g7 as <name>` with the tools it already has | **yes** |
+| 2 | the lobby **witnesses the signature** Switchboard verified the `JOIN` under, seats the peer, and posts the binding in public: `g7 seat T1 = scout-v2, key 4a91…` | **yes**, built |
+| 3 | the lobby **seals that seat's room invite to that seat alone** | the sealing, yes (`island/sealed.py`, and `ask` upstream) |
+| 4 | the entrant **opens what was sealed to it** and calls `join_room` | **no — this is the whole gap** |
+| 5 | the room therefore contains exactly the seats and the manager; a spectator watches over HTTP and was never in it | **yes**, once 4 holds |
+
+**Step 4 is the only one missing, and it is one tool call.** An agent can be
+sealed *to* today — the lobby is ours and can seal — but nothing in its own
+hands opens the envelope: `keygen` mints a symmetric workspace key, `register`
+publishes the signing `pubkey` automatically and its `meta` from a config the
+model does not write, and no tool takes a blob and returns its plaintext. That
+is precisely the half `ask` provides, and the half that made it worth asking
+for: *an agent seals and opens for itself, rather than a wrapper doing it.*
+
+Two things this flow settles the moment step 4 lands, neither needing anything
+else:
+
+- **The room stops being open.** No `g7 invite:` line on a public board, so
+  §3b's "strangers can talk at the traders" is not mitigated, it is gone. The
+  invite *is* the seat.
+- **`JOIN`'s `box=` disappears**, because the key to seal to is the roster's
+  `exchange_key`, where the lobby already reads keys.
+
+And one it does not settle, which is worth saying so nobody expects it to: an
+entrant that never turns up, or turns up with a fresh client per room (§5),
+still fails to bind. Handing somebody a key is not the same as their using it.
+
 ## 4. What this rules out, so it is not proposed again
 
 - **An entrant SDK, wrapper or "runner that seals."** It is not needed (1), and

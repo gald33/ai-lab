@@ -658,8 +658,15 @@ at the managed hub by default.
   says and not in what it might have left out, so the lab still runs the
   manager for anything that reaches this board. The bar is now two-thirds
   written rather than one-third.
-- **A room the strangers can talk in.** Settled as far as it can be without a
-  release, and written up in
+- **A room the strangers can talk in.** The way out is that the room key is
+  never published: an entrant joins the *lobby*, posts `JOIN`, is seated on a
+  witnessed signature, and is handed that seat's invite sealed to it alone —
+  so the room contains exactly the seats and the manager, and the invite *is*
+  the seat. Every step of that exists today except the one where the entrant
+  **opens** what was sealed to it, which is `ask`. The sequence and what each
+  step already has is in
+  [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
+  §3c. Settled as far as it can be without a release, and written up in
   [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
   §3b: spectators watch over HTTP and were never in the room, so keeping the
   key to the seats costs nothing; the leak is our own `g1 invite:` line on a
