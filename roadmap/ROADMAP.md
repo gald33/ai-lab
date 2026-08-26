@@ -13,6 +13,7 @@ Claim before starting: `roadmap claim <key>`
 **In priority order, most important first.** An item with no marker carries no stated priority — take it as unjudged, not as low. The order within a band is alphabetical and means nothing.
 
 - `now` **`005-render-precision-fix`** — Stop the instrument handing every agent the same printed number
+- `now` **`005-viewer-first-view-has-no-hierarchy`** — Give the viewer a first-view hierarchy — nothing currently says where to look first
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
@@ -49,6 +50,7 @@ graph TD
   005_render_precision_fix["Stop the instrument handing every agent the same printed number"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
+  005_viewer_first_view_has_no_hierarchy["Give the viewer a first-view hierarchy — nothing currently says where to look first"]
   005_viewer_flickering_shadow_rectangle["Find and fix the flickering shadow-like rectangle reported mid-island"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
   006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
@@ -368,6 +370,65 @@ graph TD
 >
 > What claim 5 may say: that no content-retry rate stands on a moving
 > denominator. Not that the harness-failure count of zero is complete.
+
+</details>
+
+### `005-viewer-first-view-has-no-hierarchy`
+
+- **title:** Give the viewer a first-view hierarchy — nothing currently says where to look first
+- **status:** ready
+- **arc:** deliberation-protocol
+- **priority:** now
+- **refs:**
+  - `experiments/005-deliberation-protocol/viewer/README.md`
+  - `experiments/005-deliberation-protocol/viewer/web/index.html`
+  - `experiments/005-deliberation-protocol/viewer/web/scene.js`
+
+<details><summary>evidence</summary>
+
+> Reported 2026-08-26, watching the viewer cold: "there's currently a lot of
+> information competing for attention. On first viewing I don't know whether I
+> should watch the island, inspect the four trader cards, understand the
+> floating trades, watch utility, or look at settled/refused/lapsed."
+>
+> That is five surfaces, all live at once, all drawn at roughly equal weight:
+> the 3D island in the middle; a trader card per seat in the margins (shelves,
+> labour, utility, the ALONE bar); the offer chip floating over the island with
+> its rope; the metric panel; and the settled/refused/lapsed counters in the
+> chrome band. Each was designed and defended on its own -- the README's
+> "Notes on the drawing" has a paragraph justifying nearly every one -- and no
+> document anywhere states which of them a first-time viewer is supposed to
+> read first, or what the others are for once they have.
+>
+> WHY THIS IS THE INTERESTING ONE. Every visual decision recorded in
+> `viewer/README.md` so far is *subtractive and local*: a mark that carried no
+> information came off (ground marks, shockwave rings, the hut's flag, the
+> tether's ring, the hut's lantern). Each was right on its own and none of them
+> addresses this, because the problem is not that any single element is
+> unearned -- it is that five earned elements at equal weight have no order.
+> Removing a sixth thing will not fix it. This needs a stated hierarchy, which
+> is a *decision*, not a cleanup: what is the one thing a viewer watches, what
+> is glanceable, and what is only there when asked for.
+>
+> NOT A LICENCE TO DELETE THE RECEIPTS. Everything named above is drawn from
+> manager receipts and the three rules in `games/island.md` "Watching" still
+> bind: only what the manager said, the hidden half stays hidden while it
+> matters, a replay publishes its island. Demoting a surface means changing
+> its weight or putting it behind a disclosure, never inventing a summary the
+> manager did not settle.
+>
+> Also worth resolving in the same pass, since it is the same question: the
+> viewer already knows whether it is live or a replay, and a first-time viewer
+> of a *replay* can be told where to look in a way a live watcher cannot.
+>
+> HOW YOU WOULD KNOW IT WORKED. State the intended reading order in
+> `viewer/README.md` alongside the other drawing decisions, then check it the
+> way the null result was checked rather than by assertion: show the viewer
+> cold to someone who has not seen it, ask what they looked at first and what
+> they thought it meant, and record the answer. One person is not a finding,
+> but "the first thing they watched was the thing the document says is first"
+> is at least falsifiable, and nothing of the kind has been recorded for this
+> page.
 
 </details>
 

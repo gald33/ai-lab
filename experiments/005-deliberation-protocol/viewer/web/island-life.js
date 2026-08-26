@@ -384,12 +384,6 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     }
   });
 
-  // — the lanterns, which come up as the day goes —
-  const lanterns = named(/lantern$/).map((l) => {
-    l.material = l.material.clone();
-    return l;
-  });
-
   const dawn = new THREE.Color(0xffb07a);
   const noon = new THREE.Color(0xfff6e2);
   const dusk = new THREE.Color(0xd9603a);
@@ -563,10 +557,6 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         water.g = Math.min(1, water.g);
         water.b = Math.min(1, water.b);
       }
-      // Lit as the light goes, which is the one thing on the island that is
-      // brighter at dusk than at noon.
-      const lit = clamp01((day - 0.62) / 0.25) * 1.5 + 0.05;
-      for (const l of lanterns) l.material.emissiveIntensity = lit;
       // The fire, on the same clock and a little ahead of it: it is banked all
       // day and built up before the light has quite gone.
       const burn = clamp01(clamp01((day - 0.52) / 0.3) + lift);
