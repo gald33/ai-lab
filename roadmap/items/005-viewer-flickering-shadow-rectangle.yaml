@@ -1,0 +1,38 @@
+id: 005-viewer-flickering-shadow-rectangle
+title: Find and fix the flickering shadow-like rectangle reported mid-island
+arc: deliberation-protocol
+priority: next
+status: ready
+refs:
+  - experiments/005-deliberation-protocol/viewer/web/stage.js
+  - experiments/005-deliberation-protocol/viewer/web/island-life.js
+evidence: |
+  Reported 2026-08-26, from a screenshot of the 3D island: a dark, soft-edged
+  rectangular patch sitting in the middle of the scene, distinct from any
+  drawn prop, and seen flickering rather than sitting still.
+
+  Not yet root-caused, but the likely mechanism is already on record in the
+  code the rectangle's shape points at. `stage.js`'s key light casts a real
+  shadow from an **orthographic** camera sized to a fixed box (`left: -6,
+  right: 6, top: 6, bottom: -6`, `stage.js` around `Object.assign(this.key.shadow.camera, ...)`)
+  -- an orthographic shadow frustum is exactly a rectangle, and its bias is
+  tuned deliberately small ("small, because a large one detaches a shadow
+  from its own tree"). `island-life.js:534` moves that light's position every
+  frame as the sun swings across the day (`key.position.set(Math.sin(swing) *
+  7.5, high, Math.cos(swing) * 7.5)`), which moves the shadow camera's box
+  with it -- a light re-aimed every frame is a shadow map redrawn every frame,
+  which is exactly where a small bias produces visible shadow acne or a
+  detached edge that would read as flicker rather than as a still artifact.
+
+  That reasoning is offered as the first thing to check, not a diagnosis: it
+  has not been reproduced against the actual screenshot, and the shape could
+  equally be something else layered in the same area (a clip's ground patch,
+  e.g. the "patch of light lying on the ground" `viewer/README.md`'s
+  "Notes on the drawing" describes replacing the old shockwave rings with, or
+  a z-fighting plane). Rule those out before touching the shadow camera.
+
+  Done when the rectangle is identified against a running board (which node,
+  drawn by which code) and either fixed or, if it turns out to be an
+  intentional mark misread as an artifact, written up as such in
+  `viewer/README.md`'s "Notes on the drawing" the way this experiment's other
+  visual decisions already are.

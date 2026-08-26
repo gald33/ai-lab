@@ -58,7 +58,7 @@ its runtime can lend it, is the arc.
 
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
-`deliberation-protocol` · 7 item(s), 3 startable
+`deliberation-protocol` · 8 item(s), 4 startable
 
 `experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
 
@@ -79,6 +79,7 @@ five rounds of Haiku.
 | `005-word-cap-fits-the-protocol` | done | now |
 | `005-episodes-to-threshold` | ready | next |
 | `005-transport-retry-audit` | done | next |
+| `005-viewer-flickering-shadow-rectangle` | ready | next |
 | `005-paired-statistic-choice` | ready | later |
 
 ### 🟠 007 — if the answer is handed over, do they take it, and what survives when it is taken away?
