@@ -1,0 +1,28 @@
+id: island-viewer-density-scaled-spacing
+title: Scale element size to element count on the island viewer, so huts and production sites are never crowded together
+arc: lab-practice
+priority: later
+status: ready
+refs:
+  - games/island.md
+evidence: |
+  games/island.md, "Watching": "The spectator surface is built: an island
+  drawn from the board, replays with transport and chapters, and a
+  scoreboard." That drawing has no stated layout rule yet for how many
+  elements (huts, production sites) can occupy the island at once, and a
+  fixed element size at a growing table size is how a board reads as
+  crowded and how a hut ends up rendered adjacent to a production site —
+  a layout accident, not a fact the manager settled.
+
+  The fix decided here: an element's drawn size on the island varies
+  inversely with the number of elements the current table has, so a
+  denser island still reads as legible and spaced rather than as a
+  fixed-size grid overflowing its board. Concretely, this should keep
+  huts and production sites from rendering adjacent to each other
+  regardless of table size, and should keep the island from reading as
+  crowded at whatever table size the game is run with.
+
+  Done when the viewer computes drawn element size from the live table's
+  element count (not a constant), and a rendered island at a larger table
+  size can be shown to keep huts non-adjacent to production sites and
+  free of visual crowding, at whatever table sizes the lab actually runs.

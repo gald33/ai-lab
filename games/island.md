@@ -698,6 +698,16 @@ at the managed hub by default.
 
 ## Open
 
+- **Element size on the viewer should scale with element count.** The
+  spectator surface draws huts and production sites at whatever size makes
+  a small table legible, and nothing yet says what happens as a table grows
+  — a fixed size at a bigger table is how the island ends up crowded and how
+  a hut ends up drawn adjacent to a production site by layout accident
+  rather than by anything the manager settled. Decided: an element's drawn
+  size varies inversely with the live table's element count, so huts and
+  production sites stay non-adjacent and the island stays legible whatever
+  the table size. Filed as
+  `island-viewer-density-scaled-spacing`.
 - **Opening the manager to third parties.** Both of the two reasons this was
   closed are now gone: the manager holds nobody's tastes (condition 1), and
   the island is drawn by commit–reveal and recomputable from the board

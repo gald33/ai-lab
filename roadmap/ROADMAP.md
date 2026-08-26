@@ -21,6 +21,7 @@ Claim before starting: `roadmap claim <key>`
 - `next` **`007-third-pass-on-ruin`** — A third ladder pass, to separate the ruin reduction from the control's own movement
 - `later` **`005-paired-statistic-choice`** — Decide whether minimum dispersion is the right paired statistic
   - ↔ related: **`005-episodes-to-threshold`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
+- `later` **`island-viewer-density-scaled-spacing`** — Scale element size to element count on the island viewer, so huts and production sites are never crowded together
 
 ## ⏸ Deferred — startable, deliberately not now
 
@@ -51,6 +52,7 @@ graph TD
   006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
   007_replicate_the_control["Replicate the bare control so the lab's best difference rests on more than one draw"]
   007_third_pass_on_ruin["A third ladder pass, to separate the ruin reduction from the control's own movement"]
+  island_viewer_density_scaled_spacing["Scale element size to element count on the island viewer, so huts and production sites are never crowded together"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
   005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
@@ -596,6 +598,40 @@ graph TD
 > a number, and `l-both` is called resolved or unresolved against it.
 >
 > Cost: 192 agent sessions, about 80 minutes.
+
+</details>
+
+### `island-viewer-density-scaled-spacing`
+
+- **title:** Scale element size to element count on the island viewer, so huts and production sites are never crowded together
+- **status:** ready
+- **arc:** lab-practice
+- **priority:** later
+- **refs:**
+  - `games/island.md`
+
+<details><summary>evidence</summary>
+
+> games/island.md, "Watching": "The spectator surface is built: an island
+> drawn from the board, replays with transport and chapters, and a
+> scoreboard." That drawing has no stated layout rule yet for how many
+> elements (huts, production sites) can occupy the island at once, and a
+> fixed element size at a growing table size is how a board reads as
+> crowded and how a hut ends up rendered adjacent to a production site —
+> a layout accident, not a fact the manager settled.
+>
+> The fix decided here: an element's drawn size on the island varies
+> inversely with the number of elements the current table has, so a
+> denser island still reads as legible and spaced rather than as a
+> fixed-size grid overflowing its board. Concretely, this should keep
+> huts and production sites from rendering adjacent to each other
+> regardless of table size, and should keep the island from reading as
+> crowded at whatever table size the game is run with.
+>
+> Done when the viewer computes drawn element size from the live table's
+> element count (not a constant), and a rendered island at a larger table
+> size can be shown to keep huts non-adjacent to production sites and
+> free of visual crowding, at whatever table sizes the lab actually runs.
 
 </details>
 
