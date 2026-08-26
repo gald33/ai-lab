@@ -1466,6 +1466,27 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     }
   }
   st.aim(was);
+  //: **Every mesh that casts a shadow, against the box the shadow camera
+  //: covers.** A caster wider than that box has its shadow map clipped by the
+  //: frustum's own edge, which is a straight line laid across whatever it
+  //: falls on -- and a *flat* caster that wide is worse still, because from a
+  //: light forty-five degrees up its far side is nearer the light than the
+  //: island is, so it wins the texels the island needs and shadows it. That is
+  //: what the sea disc was doing: a dark rectangle on the meadow, crawling as
+  //: the light swung, reported by eye and traced here.
+  const shadowBox = { ...st.key.shadow.camera };
+  const casters = [];
+  {
+    const b = new THREE.Box3();
+    made.island.traverse((n) => {
+      if (!n.isMesh || !n.castShadow) return;
+      b.setFromObject(n);
+      const reach = Math.max(Math.abs(b.min.x), Math.abs(b.max.x),
+                             Math.abs(b.min.z), Math.abs(b.max.z));
+      casters.push({ name: n.name, reach: +reach.toFixed(2) });
+    });
+  }
+
   // Where each of the island's big horizontal surfaces starts and stops, so a
   // check can ask whether two of them share a plane. Names, not everything:
   // these are the ones that overlap each other across the whole coast.
@@ -1526,11 +1547,33 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
       hex: '#' + base.map(v => v.toString(16).padStart(2, '0')).join(''),
       mark: +(marked / Math.max(1, seen)).toFixed(3)};
   }
+  //: **The horizontal footprint of every settlement and every site.** Not a
+  //: radius from the anchor: a salt pan is a long thing and a hut is a round
+  //: one, and a circle round either of them is a different claim from the
+  //: ground it actually covers. Two boxes that do not overlap is the exact
+  //: statement of "these are not drawn against each other", and it is the
+  //: thing a spectator reported seeing on a crowded table.
+  const foot = [];
+  {
+    const b = new THREE.Box3();
+    for (const nm of [...traders.map(t => `settlement_${t}`),
+                      ...goods.map(g => `site_${g}`)]) {
+      const o = made.island.getObjectByName(nm);
+      if (!o) continue;
+      b.setFromObject(o);
+      foot.push({ name: nm, box: [b.min.x, b.min.z, b.max.x, b.max.z].map(v => +v.toFixed(3)) });
+    }
+  }
+
   // Everything the island places on purpose, by name, so a check can ask
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace,
+  return {traders, decks, sited, flags, flagFace, casters, foot,
+          //: The meadow's own area, to say what "crowded" is a share of.
+          meadow: Math.PI * 3.2 * 3.2,
+          shadowReach: Math.min(shadowBox.right, shadowBox.top,
+                                -shadowBox.left, -shadowBox.bottom),
           seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
           card0: geo.cards.length ? geo.cards[0].y : null,
@@ -1897,7 +1940,13 @@ def island(browser, base: str, out: Path) -> list[str]:
               # own bars take a hundred points and more off the window, and
               # everything the layout reserved is worth less of it.
               ("safari", 393, 660, 2, True), ("small", 360, 640, 2, True),
-              ("safari/3", 393, 660, 3, True)]
+              ("safari/3", 393, 660, 3, True),
+              # The crowded end. Eight traders and five goods is thirteen
+              # things on an island six units of grass across, and it is the
+              # shape nothing was ever drawn at: the props were sized by eye at
+              # a table half that and stayed constant as it grew.
+              ("crowd/8", 1400, 820, 8, False), ("crowd/7", 1200, 750, 7, False),
+              ("crowd/6", 1200, 750, 6, False)]
     for label, w, h, n, portrait in shapes:
         # The window is put into the shape being asked about before the stage
         # is built, because the stage reads the chrome's bands off the page's
@@ -1944,6 +1993,68 @@ def island(browser, base: str, out: Path) -> list[str]:
                        f"{built['shoreTop']:.0f} in the frame at its worst bearing, "
                        f"above the band the chrome has at {built['band']:.0f}; "
                        f"it is drawn under the pills")
+        #: **Nothing casts a shadow from outside the shadow camera's box.**
+        #:
+        #: Reported by eye as a dark, soft-edged rectangle sitting on the
+        #: meadow and flickering rather than sitting still. It was the sea:
+        #: `add()` gives every mesh `castShadow`, and the water is a flat disc
+        #: sixteen units across against a shadow camera six units either way.
+        #: Two things go wrong at once. The frustum clips the map, so its own
+        #: edge is a straight line laid across whatever it falls on; and from a
+        #: light forty-five degrees up the disc's far side is *nearer the
+        #: light* than the island is, so the water wins the texels the land
+        #: needs and the land is compared against the water's depth and comes
+        #: out shadowed. The rectangle crawled as the light swung, which is
+        #: what read as flicker.
+        #:
+        #: Asked of the model rather than of the picture: "is this caster
+        #: inside the box that can hold its shadow" has an exact answer, where
+        #: "is there a rectangle on the grass" is a question about pixels that
+        #: only fails once somebody has already seen it.
+        for c in built["casters"]:
+            if c["reach"] > built["shadowReach"]:
+                bad.append(f"island {label}: {c['name']} casts a shadow and "
+                           f"reaches {c['reach']} from the middle, past the "
+                           f"{built['shadowReach']} the shadow camera covers; "
+                           f"the frustum's edge is drawn across the island")
+        #: **No two things the island places are drawn against each other**,
+        #: and the island does not fill up as the table grows.
+        #:
+        #: Both halves of one report: a fixed element size at a growing table
+        #: is how a hut ends up rendered adjacent to a production site, which
+        #: is a layout accident and not a fact the manager settled. The props
+        #: shrink with the count now (`room` in `island3d.js`, area-preserving,
+        #: so twice as many things each about seven-tenths the size cover the
+        #: same grass), settlements and sites are dealt onto one schedule of
+        #: bearings so the angular pitch shrinks with them, and what is built
+        #: is then measured and settled.
+        #:
+        #: Measured as the ground the props actually cover, not as a radius
+        #: from the anchor: a hut carries crates beside its door and a site
+        #: carries a flag on a pole, so both boxes sit off to one side of the
+        #: point any placement rule was satisfied at. That is exactly the gap
+        #: this found -- a hut cleared the bread field by the rule and still
+        #: overlapped it by a tenth of a unit.
+        feet = built["foot"]
+        for k, one in enumerate(feet):
+            for two in feet[k + 1:]:
+                a, b = one["box"], two["box"]
+                gap = max(max(a[0] - b[2], b[0] - a[2]),
+                          max(a[1] - b[3], b[1] - a[3]))
+                if gap <= 0:
+                    bad.append(f"island {label}: {one['name']} and {two['name']} "
+                               f"overlap by {-gap:.2f} on the ground; they are "
+                               f"drawn against each other")
+        covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
+                      for f in feet)
+        #: A share, not an area: what "crowded" means is how much of the grass
+        #: is taken, and the whole point of the size rule is that this number
+        #: stays put as the table grows. It sits at 36-39% from two traders and
+        #: four goods up to eight and five.
+        if feet and covered > 0.48 * built["meadow"]:
+            bad.append(f"island {label}: settlements and sites cover "
+                       f"{covered / built['meadow']:.0%} of the meadow; the "
+                       f"island is drawn full")
         # Two horizontal faces at exactly one height, both of them wide enough
         # to cover the coast, is z-fighting -- and z-fighting only shows while
         # the camera moves, so a still screenshot cannot catch it and nothing
@@ -1994,14 +2105,16 @@ def island(browser, base: str, out: Path) -> list[str]:
             if under not in LAND:
                 bad.append(f"island {label}: {name}'s settlement stands on "
                            f"{under!r} at ({x:.2f}, {z:.2f})")
-        # And not on top of each other: a frame narrow enough collapses the
-        # layout's ring, and two huts in one place is one hut with a spare card.
-        for i in range(len(seats)):
-            for j in range(i + 1, len(seats)):
-                d = ((seats[i][0] - seats[j][0]) ** 2 + (seats[i][1] - seats[j][1]) ** 2) ** 0.5
-                if d < 1.2:
-                    bad.append(f"island {label}: two settlements {d:.2f} apart, "
-                               f"which is inside a hut's own width")
+        #: **"Two settlements at least 1.2 apart" is gone**, and the footprint
+        #: test above replaces it. It was the right question -- a frame narrow
+        #: enough collapses the layout's ring, and two huts in one place is one
+        #: hut with a spare card -- asked against a constant, from when a hut
+        #: was always the same size. A hut is drawn smaller at a bigger table
+        #: now, so 1.2 between their middles is a different amount of daylight
+        #: at four traders and at eight, and the rule failed a seven-trader
+        #: island whose huts had a tenth of a unit of grass between them. The
+        #: replacement measures the grass rather than the middles, which is
+        #: what the question was always about.
 
     # And the case the layout can actually produce but these shapes happen not
     # to: two seats at the same point. Asked of the model directly, because a

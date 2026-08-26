@@ -170,39 +170,62 @@ export function homeSite(x, z, margin = 0.55) {
  *   laid on their own ring at their own radii and nothing was comparing the
  *   two. Reported as things drawn on top of one another.
  */
-function spaced(seats, fixed = [], min = 1.3, passes = 60) {
-  const ang = seats.map(([x, z]) => Math.atan2(z, x));
-  const rad = seats.map(([x, z]) => Math.hypot(x, z));
-  const at = (i) => [Math.cos(ang[i]) * rad[i], Math.sin(ang[i]) * rad[i]];
+/**
+ * @param {number} min   how far a seat must stay from a `fixed` obstacle
+ * @param {number} mine  how far two seats must stay from each other. Separate
+ *   from `min` because a settlement and a production site are not the same
+ *   size, so "far enough apart" is not the same number for a pair of huts as
+ *   for a hut and a salt pan. One number for both is why a hut could come down
+ *   half on a pan and still satisfy the rule.
+ * @param {function} clamp  where a seat is allowed to be, applied after every
+ *   push. `homeSite`, in practice.
+ *
+ * **This used to move seats only around the island**, never in or out, so that
+ * each kept the distance from the fire the layout gave it. That is a nicer
+ * arrangement and it cannot always be had: a seat squeezed between two sites
+ * on the same ring has nowhere to turn to, and the passes then push it back
+ * and forth between them until they run out -- measured at a four-trader,
+ * five-good table, where a hut and the bread field overlapped by a quarter of
+ * a unit and no number of passes moved it. It relaxes in two dimensions now
+ * and lets `clamp` put it back on the grass; a seat keeps its bearing where it
+ * can and gives up its radius where it must, because a hut standing on a salt
+ * pan is worse than a hut a little further from the fire.
+ */
+function spaced(seats, fixed = [], min = 1.3, passes = 120, mine = min,
+                clamp = (x, z) => [x, z]) {
+  const at = seats.map(([x, z]) => [x, z]);
+  //: A seat exactly on top of another has no side to be pushed to; the tie is
+  //: broken by index so the pair still comes apart.
+  const tie = (i) => [Math.cos(i * 2.4), Math.sin(i * 2.4)];
   for (let p = 0; p < passes; p++) {
     let worst = 0;
-    for (let i = 0; i < ang.length; i++) {
-      for (let j = i + 1; j < ang.length; j++) {
-        const a = at(i), b = at(j);
-        const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-        if (d >= min) continue;
-        worst = Math.max(worst, min - d);
-        const turn = (min - d) / Math.max(rad[i] + rad[j], 0.8) * 0.6;
-        // Two seats exactly on top of each other have no side to be pushed to;
-        // the tie is broken by index so the pair still comes apart.
-        const away = Math.sin(ang[i] - ang[j]) || 1;
-        const s = Math.sign(away);
-        ang[i] += turn * s;
-        ang[j] -= turn * s;
+    for (let i = 0; i < at.length; i++) {
+      for (let j = i + 1; j < at.length; j++) {
+        const dx = at[i][0] - at[j][0], dz = at[i][1] - at[j][1];
+        const d = Math.hypot(dx, dz);
+        if (d >= mine) continue;
+        worst = Math.max(worst, mine - d);
+        const [ux, uz] = d > 1e-6 ? [dx / d, dz / d] : tie(i);
+        const push = (mine - d) / 2;
+        at[i][0] += ux * push; at[i][1] += uz * push;
+        at[j][0] -= ux * push; at[j][1] -= uz * push;
       }
       // The immovable ones push and are not pushed, so a seat goes round them.
       for (const [fx, fz] of fixed) {
-        const a = at(i);
-        const d = Math.hypot(a[0] - fx, a[1] - fz);
+        const dx = at[i][0] - fx, dz = at[i][1] - fz;
+        const d = Math.hypot(dx, dz);
         if (d >= min) continue;
         worst = Math.max(worst, min - d);
-        const away = Math.sin(ang[i] - Math.atan2(fz, fx)) || 1;
-        ang[i] += (min - d) / Math.max(rad[i], 0.8) * 0.6 * Math.sign(away);
+        const [ux, uz] = d > 1e-6 ? [dx / d, dz / d] : tie(i);
+        at[i][0] += ux * (min - d); at[i][1] += uz * (min - d);
       }
+      // Back onto the grass after every push, so the relaxation is solving the
+      // problem the island actually has rather than one on an infinite plane.
+      at[i] = clamp(at[i][0], at[i][1]);
     }
     if (!worst) break;
   }
-  return ang.map((a, i) => [Math.cos(a) * rad[i], Math.sin(a) * rad[i]]);
+  return at;
 }
 
 /**
@@ -516,7 +539,29 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: blue puddle under it. Reported as exactly that. Sixteen units covers the
   //: long side of any viewport this frames, and it is one flat disc that casts
   //: nothing and receives nothing, so the whole cost is the fill.
-  add(island, new THREE.CylinderGeometry(16, 16, 0.12, 128), M.seaDeep, "sea", [0, -0.10, 0]);
+  //: **The open sea neither casts a shadow nor takes one**, and that is a bug
+  //: fix, not a nicety.
+  //:
+  //: Reported as a dark, soft-edged rectangle sitting on the meadow and
+  //: flickering rather than sitting still. It is the shadow map: a flat disc
+  //: this wide, lit from forty-five degrees, has a far edge that is *closer to
+  //: the light* than the middle of the island is -- so in the shadow camera's
+  //: own space the water lands on the same texels as the land and wins them.
+  //: The land is then compared against the water's depth and comes out
+  //: shadowed, over exactly the footprint where the two overlap: the rectangle
+  //: is the shadow frustum's own box clipped against the disc, and it crawls
+  //: as the light swings through the day, which is the flicker.
+  //:
+  //: The disc going from five units to sixteen made it obvious; it did not
+  //: cause it. Water casting a shadow is meaningless in any case -- and
+  //: nothing on this island stands far enough out to sea to throw one onto
+  //: the deep water, so it does not need to receive one either. The shallows,
+  //: the shelf and the beach still do both, which is where the coast's own
+  //: shadows are.
+  const sea = add(island, new THREE.CylinderGeometry(16, 16, 0.12, 128), M.seaDeep,
+    "sea", [0, -0.10, 0]);
+  sea.castShadow = false;
+  sea.receiveShadow = false;
   //: The water follows the coast rather than a circle. A round shallows and a
   //: round line of surf against a wobbled shore put the white water a long way
   //: out on one bearing and up on the sand at another.
@@ -604,6 +649,46 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   island.add(fire);
   anchors.fire = fire.position.clone();
 
+  // — how much room each thing gets, which depends on how many things there are —
+  //
+  //: **An element's drawn size falls as the table grows.** Every prop was a
+  //: constant, tuned by eye at one table, so the same island that reads well
+  //: with two traders and four goods is a solid mat of props with eight and
+  //: five: a hut ends up drawn against a production site, which is a layout
+  //: accident and not something the manager settled.
+  //:
+  //: The rule is area-preserving. `room` is `sqrt(REF / crowd)`, so the *total*
+  //: footprint of the settlements and sites stays about what it is at `REF` --
+  //: twice as many things, each about seven-tenths the size, covering the same
+  //: grass. `REF` is 8 because that is the table the current sizes were tuned
+  //: at (four traders, four goods), so nothing moves on the islands already
+  //: drawn.
+  //:
+  //: Clamped both ways. A tiny table does not get to grow props until the
+  //: island is a diorama of three enormous huts, and a huge one does not get
+  //: to shrink them past the point where a spectator can tell a hut from a
+  //: crate.
+  const crowd = traders.length + goods.length;
+  const room = Math.max(0.72, Math.min(1.1, Math.sqrt(8 / Math.max(1, crowd))));
+  //: How far apart two of them have to stand: **the room the two of them
+  //: actually take up, plus a gap.**
+  //:
+  //: It was a flat 1.5 between every pair, and a hut's own footprint is 1.4
+  //: across at the corner it is rotated to while a salt pan is 1.5 -- so 1.5
+  //: between their middles is two things touching, and that is what was
+  //: reported. `RHUT` and `RSITE` are the widest half-footprint each of them
+  //: has at scale 1, measured off the model (`render.py:island` reads the same
+  //: boxes back and fails if a pair ever overlaps), and `GAP` is the bare
+  //: grass between them.
+  //:
+  //: The size part scales with `room` and the gap does not. A separation held
+  //: fixed while the props shrink leaves them where they were on an island
+  //: that now has room for more; one that shrank with them closes the grass
+  //: between two things that are not the same thing.
+  const RHUT = 0.73 * 0.95 * room, RSITE = 0.87 * 0.92 * room;
+  const GAP = 0.18;
+  const apart = { seat: 2 * RHUT + GAP, site: RHUT + RSITE + GAP };
+
   // — settlements, one per seat —
   const ring = (i, n, rad, turn = 0) => {
     const a = turn + (i / n) * Math.PI * 2;
@@ -615,9 +700,34 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: wet work is out on the shelf, iron up on the upland, the rest on the
   //: meadow -- the same arithmetic the loop below uses, and the one place it
   //: is written.
-  const siteAt = goods.map((good, i) => ring(
-    i, goods.length,
-    good === "salt" || good === "fish" ? 2.75 : good === "iron" ? 1.7 : 2.15, 0.85));
+  //: **Settlements and sites share one schedule of bearings.**
+  //:
+  //: They used to be laid on two independent rings -- the sites on their own
+  //: at their own radii, the seats evenly round a third -- and the comment
+  //: said "a ring the settlements are not on", which was not true: a dry site
+  //: sits at 2.15 and a settlement may stand anywhere from 2.15 out to the
+  //: grass's edge, so the two rings are the same band and which bearings
+  //: collided was down to how `traders.length` and `goods.length` happened to
+  //: divide the circle. Relaxing the seats afterwards could not fix it either,
+  //: because a seat caught between the hill and a site on its own bearing has
+  //: the push taken straight back off it by the clamp.
+  //:
+  //: So there is one schedule now, `crowd` slots wide, and the two kinds are
+  //: dealt into it alternately. **The angular pitch is the density rule**: it
+  //: is `2π/crowd`, so every element on the island gets a share of the circle
+  //: that shrinks exactly as the table grows -- which is the same arithmetic
+  //: that shrinks the props themselves, applied to the ground they stand on.
+  const deal = [];
+  for (let k = 0, gi = 0, ti = 0; k < crowd; k++) {
+    if (gi < goods.length && gi * traders.length <= ti * goods.length) {
+      deal.push(["site", gi++]);
+    } else deal.push(["seat", ti++]);
+  }
+  const bearing = (k) => -0.6 + (k / crowd) * Math.PI * 2;
+  const slotOf = (kind, i) => bearing(deal.findIndex(([w, j]) => w === kind && j === i));
+  const polar = (a, rad) => [Math.cos(a) * rad, Math.sin(a) * rad];
+  const siteAt = goods.map((good, i) => polar(slotOf("site", i),
+    good === "salt" || good === "fish" ? 2.75 : good === "iron" ? 1.7 : 2.15));
   // Clamped and separated before any of them is built, because a seat arrives
   // from the page in screen coordinates and the island is the only thing that
   // knows where its own grass ends -- or that two of them landed in one place.
@@ -627,7 +737,8 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   // hut could come down on the salt pans. Reported as elements drawn on top of
   // one another.
   const homes = spaced(traders.map((_, i) =>
-    homeSite(...(seats?.[i] ?? ring(i, traders.length, 2.35, -0.6)))), siteAt, 1.5)
+    homeSite(...(seats?.[i] ?? polar(slotOf("seat", i), 2.45)))),
+    siteAt, apart.site, 120, apart.seat, homeSite)
     .map(([x, z]) => homeSite(x, z));
   traders.forEach((name, i) => {
     const [x, z] = homes[i];
@@ -636,10 +747,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     // Facing the fire, which is what a settlement on an island with one fire
     // in the middle of it would do.
     g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
-    g.scale.setScalar(0.95);
+    g.scale.setScalar(0.95 * room);
     island.add(g);
     anchors[name] = g.position.clone();
-    placed.push([x, z, 0.95]);
   });
 
   // — a site per good —
@@ -659,17 +769,120 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const flag = marker(good, GOOD_COLOURS[i % GOOD_COLOURS.length]);
     flag.position.set(...at);
     site.add(flag);
-    site.scale.setScalar(wet ? 0.88 : 0.92);
+    site.scale.setScalar((wet ? 0.88 : 0.92) * room);
     island.add(site);
-    // Every part of the site stands where the ground is under *it*, not where
-    // it is under the site's origin. See `follow`.
-    follow(site, ground, floor);
-    // The site's own height, not the meadow's: salt is worked down on the wet
-    // shelf and iron up on the ridge, and anything staged at a site has to
-    // arrive where the site actually is.
-    anchors[`site_${good}`] = site.position.clone();
-    placed.push([x, z, 1.0]);
+    //: `follow` is **not** run here. It walks a site's parts down onto the
+    //: slope under each of them, reading the ground once and adding the
+    //: difference -- so it can only be applied when the site has stopped
+    //: moving, and the settling below may still walk one along its ring.
+    //: Running it twice would apply the slope twice.
+    site.userData.ring = Math.hypot(x, z);
+    site.userData.dip = wet ? 0.02 : 0;
   });
+
+  // — and then everything placed is measured, and settled —
+  //
+  //: **The rule the bearings were dealt by is not the thing a viewer sees.**
+  //: The schedule above works on anchors -- the point a group is placed at --
+  //: and what a spectator reads as "these two are drawn against each other" is
+  //: the ground the props actually cover, which is not centred on the anchor:
+  //: a hut carries two crates beside its door and a site carries a flag on a
+  //: pole, so both boxes sit off to one side of the point the rule was
+  //: satisfied at. Measured at a four-trader, five-good table, a hut cleared
+  //: the bread field by the rule and still overlapped it by a tenth of a unit.
+  //:
+  //: So the props are built, and *then* the footprints are measured and any
+  //: overlapping pair is separated along whichever axis is cheaper -- the
+  //: standard resolution for two boxes, and the same statement
+  //: `render.py:island` reads back.
+  //:
+  //: **A settlement moves freely; a site moves only along its own ring.** A
+  //: site's radius is what it means -- salt is worked on the wet shelf, iron
+  //: is cut out of the upland -- so it may be walked round the island but
+  //: never in or out. A hut's place is a suggestion, and gives way.
+  {
+    const box = new THREE.Box3();
+    const flat = (o) => {
+      box.setFromObject(o);
+      return [box.min.x, box.min.z, box.max.x, box.max.z];
+    };
+    const face = (o, x, z) => {
+      o.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
+    };
+    const movers = [
+      ...traders.map((t) => ({ o: island.getObjectByName(`settlement_${t}`), ring: 0 })),
+      ...goods.map((g) => {
+        const o = island.getObjectByName(`site_${g}`);
+        return o ? { o, ring: o.userData.ring, dip: o.userData.dip } : null;
+      }),
+    ].filter((m) => m && m.o);
+    const put = (m, x, z) => {
+      let nx = x, nz = z;
+      if (m.ring) {
+        // Round the island, never in or out.
+        const a = Math.atan2(nz, nx);
+        nx = Math.cos(a) * m.ring;
+        nz = Math.sin(a) * m.ring;
+      } else {
+        [nx, nz] = homeSite(nx, nz);
+      }
+      m.o.position.set(nx, ground(nx, nz) - (m.dip || 0), nz);
+      face(m.o, nx, nz);
+    };
+    //: Bare grass between two footprints, in island units. Not zero: two boxes
+    //: that touch exactly still read as one thing at the size this is drawn.
+    const CLEAR = 0.06;
+    for (let pass = 0; pass < 80; pass++) {
+      let worst = 0;
+      for (let i = 0; i < movers.length; i++) {
+        let a = flat(movers[i].o);
+        for (let j = 0; j < movers.length; j++) {
+          if (j === i) continue;
+          const b = flat(movers[j].o);
+          const ox = (a[2] - a[0] + b[2] - b[0]) / 2
+                   - Math.abs((a[0] + a[2]) / 2 - (b[0] + b[2]) / 2);
+          const oz = (a[3] - a[1] + b[3] - b[1]) / 2
+                   - Math.abs((a[1] + a[3]) / 2 - (b[1] + b[3]) / 2);
+          //: Overlapping on **both** axes is what two boxes touching means; a
+          //: negative overlap is the bare grass between them, so the test is
+          //: against `-CLEAR` rather than against zero.
+          if (ox <= -CLEAR || oz <= -CLEAR) continue;
+          worst = Math.max(worst, Math.min(ox, oz) + CLEAR);
+          //: Half each, so a pair settles between them rather than one of them
+          //: being walked across the island by the other.
+          const move = (Math.min(ox, oz) + CLEAR + 0.03) / 2;
+          const sx = (a[0] + a[2]) / 2 >= (b[0] + b[2]) / 2 ? 1 : -1;
+          const sz = (a[1] + a[3]) / 2 >= (b[1] + b[3]) / 2 ? 1 : -1;
+          const [dx, dz] = ox < oz ? [move * sx, 0] : [0, move * sz];
+          put(movers[i], movers[i].o.position.x + dx, movers[i].o.position.z + dz);
+          put(movers[j], movers[j].o.position.x - dx, movers[j].o.position.z - dz);
+          // Measured where it now is, rather than against a box that has
+          // stopped being true.
+          a = flat(movers[i].o);
+        }
+      }
+      if (worst <= 0) break;
+    }
+    traders.forEach((name, i) => {
+      const h = island.getObjectByName(`settlement_${name}`);
+      if (!h) return;
+      anchors[name] = h.position.clone();
+      placed.push([h.position.x, h.position.z, 0.95 * room]);
+    });
+    goods.forEach((good) => {
+      const o = island.getObjectByName(`site_${good}`);
+      if (!o) return;
+      // Every part of the site stands where the ground is under *it*, not
+      // where it is under the site's origin. See `follow` -- and it is only
+      // safe now that the site has stopped moving.
+      follow(o, ground, ground(o.position.x, o.position.z));
+      // The site's own height, not the meadow's: salt is worked down on the
+      // wet shelf and iron up on the ridge, and anything staged at a site has
+      // to arrive where the site actually is.
+      anchors[`site_${good}`] = o.position.clone();
+      placed.push([o.position.x, o.position.z, 1.0 * room]);
+    });
+  }
 
   // — the dock and the boats —
   const dock = new THREE.Group();
@@ -722,18 +935,25 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: has to find room rather than a gap in the meaning.
   const keepOut = [[0.45, 0.55, 1.3], ...placed];
   let n = 0;
-  for (let i = 0; i < 900 && n < 16; i++) {
+  //: Fewer of them on a crowded island, and smaller. Trees are not the table's
+  //: elements, but they are most of what makes the grass look full, and an
+  //: island whose huts have made room only to have it taken by planting has
+  //: not made any.
+  const trees = Math.round(16 * room);
+  for (let i = 0; i < 900 && n < trees; i++) {
     const a = r() * Math.PI * 2, rad = 0.9 + r() * 3.1;
     const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
     const wob = 1 + 0.12 * Math.sin(3 * a + 1.9) + 0.07 * Math.sin(5 * a - 3.2);
     if (rad > 3.9 * wob) continue;
     if (keepOut.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr)) continue;
     const onGrass = rad < 3.0 * wob;
-    const g = onGrass ? tree(n, 0.62 + r() * 0.26) : palm(n);
-    if (!onGrass) g.scale.setScalar(0.82);
+    const g = onGrass ? tree(n, (0.62 + r() * 0.26) * room) : palm(n);
+    if (!onGrass) g.scale.setScalar(0.82 * room);
     //: A canopy is about 0.3 across at scale 1, so this is two of them: they
-    //: can lean together and they cannot share a trunk.
-    keepOut.push([x, z, 0.62]);
+    //: can lean together and they cannot share a trunk. The gap is kept whole
+    //: as they shrink -- planting that closes up as it gets smaller is the
+    //: crowding this is here to stop.
+    keepOut.push([x, z, 0.62 * room + 0.12]);
     // Rooted a little into whatever is under it -- which on the upland is a
     // third of a unit above the meadow, and on the meadow's rim is a slope.
     g.position.set(x, ground(x, z) - 0.02, z);
