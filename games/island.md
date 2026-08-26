@@ -352,13 +352,26 @@ runs the manager. But the bar is writable, and it is four things:
    board for an hour, after which the manager's saved copy is the only one. Two
    independent copies make an omitted message detectable; signing makes a
    fabricated one detectable.
-4. **The clock is checkable.** The schedule is announced before the round and
-   every message carries the hub's own timestamp, so a bell rung early for one
-   trader and late for another is visible in the record.
+4. **The clock is checkable** — **built**. The schedule is announced before
+   the round, the manager states each episode's bell as an absolute time when
+   it opens it, and the hub stamps every message as it arrives. Two clocks,
+   and the manager writes only one of them: `verify.check_clock` compares the
+   announced bell with the hub's stamp on the bell that followed. Early fails
+   with essentially no allowance — that is the direction that takes time from
+   a trader who read the schedule and believed it — and late is allowed the
+   seconds a polling loop explains and no more. On a game played through
+   `run_game.play` live on 2026-08-26 it reports `clock 3/3`, the two bells
+   landing 2.9s and 3.5s after their announced times.
 
-With those four, a stranger's manager is verifiable to the same standard as the
-lab's. Without them, "anyone may run it" is a claim the board cannot support —
-which is what this section used to say.
+**Three of the four are now built** — the manager holds no tastes, the island
+is drawn by commit–reveal, and the clock is checkable. The one that is not is
+**condition 3**: a board archived by somebody other than the party that wrote
+it. That is not an oversight; it is the one of the four that cannot be built
+alone, and `verify.py` demonstrates exactly why — it recomputes everything a
+board *says* and can say nothing about what a board *omits*. Until a second
+copy exists, a stranger's manager is verifiable in what it wrote down and not
+in what it chose not to, so the lab still runs the manager. The gap is now one
+specific missing party rather than a bar nobody had written.
 
 Anyone is free to run the manager, the viewer and the ledger for their own
 games; all of it is open. Those games are simply not on this board.

@@ -39,6 +39,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 PRODUCE = re.compile(r"^PRODUCE\s+(.*)$", re.IGNORECASE)
@@ -47,6 +48,17 @@ OFFER = re.compile(r"^(p\d+): (T\d+) offers (\{.*?\}) to (T\d+) for (\{.*?\})")
 SETTLED = re.compile(r"^(p\d+) settled: (T\d+) and (T\d+) exchanged "
                      r"(\{.*?\}) for (\{.*?\})")
 BELL = re.compile(r"^bell — episode (\d+) closed")
+OPENED = re.compile(r"^episode (\d+) of (\d+) is open; the bell is at "
+                    r"(\d{2}:\d{2}:\d{2})Z \((\d+)s\)")
+OPENS_AT = re.compile(r"Episode 1 opens at (\d{2}:\d{2}:\d{2})Z")
+
+#: How late a bell may be rung before it counts as a fault. The manager rings
+#: on a polling loop, so a second or two of lateness is the loop and not a
+#: choice; thirty seconds is not. **Early has no allowance at all** -- a bell
+#: rung before the time the board announced is the one direction that takes
+#: time away from a trader who read the schedule and believed it.
+LATE_ALLOWED = 30.0
+EARLY_ALLOWED = 1.0
 SHARE = re.compile(r"^([a-z]+)=([0-9.]+)$")
 
 
@@ -224,6 +236,102 @@ def check_exchange(board: dict, report: Report) -> None:
             report.ok("exchange")
 
 
+def _at(stamp: str | None) -> float | None:
+    """A board timestamp as seconds. Hub-written, which is the point: it is
+    the one clock on the board that the manager did not choose."""
+    if not stamp:
+        return None
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def _announced(clock: str, near: float) -> float:
+    """An announced `HH:MM:SSZ` as seconds, on the day it must have meant.
+
+    The board states times absolutely but without a date, so the date comes
+    from the message the announcement sits beside, and a bell just after
+    midnight is read as the next day rather than as twenty-four hours early.
+    """
+    day = datetime.fromtimestamp(near, tz=timezone.utc).date()
+    hour, minute, second = (int(part) for part in clock.split(":"))
+    stamped = datetime(day.year, day.month, day.day, hour, minute, second,
+                       tzinfo=timezone.utc).timestamp()
+    for shift in (0, 86400, -86400):
+        if abs(stamped + shift - near) <= 43200:
+            return stamped + shift
+    return stamped
+
+
+def check_clock(board: dict, report: Report) -> None:
+    """Was each bell rung when the board said it would be?
+
+    The fourth of the four conditions in `games/island.md`: *"the schedule is
+    announced before the round and every message carries the hub's own
+    timestamp, so a bell rung early for one trader and late for another is
+    visible in the record."* This is that, checked.
+
+    Two clocks, and the check is that they agree. The manager **announces** an
+    absolute bell time when it opens an episode, and the hub **stamps** every
+    message as it arrives -- including the bell. A manager that closed an
+    episode early has a stamp before its own announcement, which no wording
+    can cover.
+    """
+    announced: dict[int, tuple[float, int]] = {}
+    schedule_at = opens_at = None
+    for msg in board["messages"]:
+        body, at = msg.get("body", ""), _at(msg.get("at"))
+        opens = OPENS_AT.search(body)
+        if opens and at is not None:
+            schedule_at, opens_at = at, _announced(opens.group(1), at)
+            continue
+        head = OPENED.match(body)
+        if head and at is not None:
+            announced[int(head.group(1))] = (_announced(head.group(3), at),
+                                             int(head.group(4)))
+    if not announced:
+        report.skip("the clock: this board announces no bell times -- an older "
+                    "round, or one driven by something other than run_game")
+        return
+
+    if schedule_at is None:
+        report.bad("clock", "no schedule was announced before the round")
+    elif opens_at is not None and opens_at < schedule_at:
+        report.bad("clock", "the schedule announced an opening already past "
+                            "when it was posted")
+    else:
+        report.ok("clock")
+
+    for msg in board["messages"]:
+        bell = BELL.match(msg.get("body", ""))
+        at = _at(msg.get("at"))
+        if not bell or at is None:
+            continue
+        episode = int(bell.group(1))
+        if episode not in announced:
+            report.bad("clock", f"episode {episode} closed without its opening "
+                                f"ever announcing a bell time")
+            continue
+        due, _seconds = announced[episode]
+        drift = at - due
+        if drift < -EARLY_ALLOWED:
+            report.bad("clock", f"episode {episode}'s bell was rung "
+                                f"{abs(round(drift, 1))}s EARLY -- the board "
+                                f"said {stamp_of(due)}, the hub stamped it "
+                                f"{stamp_of(at)}")
+        elif drift > LATE_ALLOWED:
+            report.bad("clock", f"episode {episode}'s bell was rung "
+                                f"{round(drift, 1)}s late, past the "
+                                f"{int(LATE_ALLOWED)}s a polling loop explains")
+        else:
+            report.ok("clock")
+
+
+def stamp_of(ts: float) -> str:
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%H:%M:%SZ")
+
+
 def check_timing(board: dict, reveal: dict, report: Report) -> None:
     """Bells in order, one per episode, each after the last."""
     bells = [(int(BELL.match(m["body"]).group(1)), m.get("at"))
@@ -262,6 +370,7 @@ def verify(board_path: Path, reveal_path: Path | None = None) -> Report:
     check_production(board, reveal, report)
     check_exchange(board, report)
     check_timing(board, reveal, report)
+    check_clock(board, report)
     return report
 
 
