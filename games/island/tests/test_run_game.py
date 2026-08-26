@@ -748,3 +748,26 @@ class _StubLobby:
 
     def drain(self) -> None:
         pass
+
+
+def test_the_runner_writes_the_lobby_page_because_nothing_else_can(monkeypatch, tmp_path):
+    """`run_lobby --page` cannot be the answer: it would be a second lobby on
+    the channel, and one of the two would stand down."""
+    import threading
+
+    lobby = _StubLobby({})
+    page = tmp_path / "lobby.html"
+    monkeypatch.setattr(run_game, "write_page",
+                        lambda lob, path: path.write_text("<!doctype html>rendered"))
+    watcher = threading.Thread(
+        target=run_game.watch, args=(lobby,),
+        kwargs={"every": 0.05, "episode_seconds": 1, "ack_seconds": 1,
+                "out": tmp_path, "page": page}, daemon=True)
+    watcher.start()
+    for _ in range(60):
+        if page.exists():
+            break
+        time.sleep(0.05)
+    lobby.stood_down = True
+
+    assert page.read_text().startswith("<!doctype html>")
