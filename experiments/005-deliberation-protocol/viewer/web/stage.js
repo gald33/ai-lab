@@ -21,7 +21,8 @@
 import * as THREE from "./vendor/three/three.module.js";
 import { buildIsland } from "./island3d.js";
 import { enliven } from "./island-life.js";
-import { stageEvent } from "./island-events.js";
+import { standing } from "./island-stock.js";
+import { carried, stageEvent } from "./island-events.js";
 
 //: How much island the frame holds, in island units, measured on the short
 //: side of the viewBox.
@@ -148,6 +149,8 @@ export class Stage {
    */
   build({ traders, goods, seats }) {
     if (this.island) {
+      this.stock?.dispose();
+      this.stock = null;
       this.scene.remove(this.island);
       dispose(this.island);
     }
@@ -159,6 +162,12 @@ export class Stage {
     this.world = { island: made.island, anchors: made.anchors,
                    ground: made.ground, traders, goods };
     this.life = enliven(this.island, { ground: made.ground });
+    //: What every trader is holding, standing on the ground beside its hut.
+    //: Built with the island rather than by a clip, because it outlives every
+    //: clip: a box is put down when a good is made and picked up when it is
+    //: traded, and between those it is simply there.
+    this.stock = standing(this.island, this.world);
+    this.world.stock = this.stock;
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
     // at a moment rather than one with its gulls at the origin.
@@ -294,6 +303,21 @@ export class Stage {
    * reader who asked for less motion. The page calls this for every event it
    * paints, so "not everything is worth animating" has to be cheap.
    */
+  /**
+   * What the board says everybody is holding, standing on the island.
+   *
+   * Called by the page every time it paints, *before* the frame's event is
+   * fired, and told which event that will be. A clip that carries goods --
+   * a production, a settlement -- moves the boxes itself, so those piles are
+   * left exactly as they were and the clip is what changes them. Every other
+   * pile is set to what the board says, which is also what a scrub does to all
+   * of them: jump into the middle of a replay and there is no journey to show.
+   */
+  showStock(stocks, event = null) {
+    if (!this.stock) return;
+    this.stock.rest(stocks, this.still ? null : carried(event));
+  }
+
   fire(event) {
     if (!this.world || this.still) return null;
     const c = stageEvent(event, this.world);

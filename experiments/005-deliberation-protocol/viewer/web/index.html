@@ -690,6 +690,7 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
+import { ceilings } from "./island-stock.js";
 import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
@@ -967,7 +968,15 @@ function raise(traders, goods, portrait) {
     // While the island turns, the cards ride their own settlements. Set here
     // rather than inside the stage because the stage draws an island and knows
     // nothing about what is written on top of it.
-    stage.onFrame = (st) => scene?.follow(traders.map((n) => st.toViewBox(anchors[n])));
+    // Every frame: where each settlement is on screen, and where each trader's
+    // yard of a given good is. The second is what lets a symbol fly between a
+    // box standing on the island and the bar on the card that counts it --
+    // the two halves of the page are drawn by different engines and this is
+    // the one place they are put in the same coordinates.
+    stage.onFrame = (st) => scene?.follow(
+      traders.map((n) => st.toViewBox(anchors[n])),
+      st.stock && Object.fromEntries(traders.flatMap((n) => goods.map((g) =>
+        [`${n}:${g}`, st.toViewBox(st.stock.next(n, g))]))));
     canvas.hidden = false;
     app.classList.add("has-3d");
     return traders.map((n) => stage.toViewBox(anchors[n]));
@@ -993,6 +1002,15 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
   // separate time would be the one thing worse than no sun at all.
   stage?.setDay(state.phase === "closed" || state.phase === "over"
     ? 1 : scene.dayProgress(state));
+  // What everybody is holding, standing on the ground beside their huts.
+  //
+  // **Before the event, and told which event is coming.** A clip that carries
+  // goods moves the boxes with its own hands, so those piles are left exactly
+  // where they are and the clip is what changes them; every other pile is set
+  // to what the board says. Without an event to play -- a scrub, a live poll
+  // that brought nothing -- all of them are simply set, which is the one cut
+  // in the whole design and the only way a box is put down without a journey.
+  stage?.showStock(state.stocks, animate ? event : null);
   if (animate && event) {
     scene.play(event);
     // The same event, on the island itself: the site that made the good works,
@@ -1178,6 +1196,9 @@ function mount(rows, { manager } = {}) {
   scene = new Scene($("island"), timeline, reveal, isPortrait(),
                     raise(timeline.traders, timeline.goods, isPortrait()),
                     frameAspect(), chromeBands());
+  // How big a holding this round ever got, per good, so a box on the ground
+  // means the same fraction of it from the first message to the last.
+  stage?.stock?.ceil(ceilings(timeline));
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }

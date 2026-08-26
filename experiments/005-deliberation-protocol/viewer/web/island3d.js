@@ -396,6 +396,32 @@ const GROUND = /^(shore_shelf|beach|meadow|upland|ridge)$/;
  * they add up to would be a second model of the island that could disagree
  * with the one on screen.
  */
+/**
+ * Let everything in a placed group follow the ground **under itself**.
+ *
+ * **A site is placed by its origin and its parts are not.** The group asks the
+ * island how high it is at one point and every part inside it inherits that one
+ * answer -- right on the flat, wrong on a slope. The iron site stands at radius
+ * 1.7, a hair outside the upland's own 1.55, so the offsets its parts are built
+ * at carried them into the side of the hill: three flags were drawn inside the
+ * mountain with only their poles showing, and the quarry's own spoil was six
+ * tenths of a unit under the rock it came out of.
+ *
+ * Each part keeps the height it was *designed* at relative to its site's ground
+ * -- a salt pan is meant to sit a little into the sand and still does -- and
+ * the terrain under it is added on top. So this follows the slope rather than
+ * flattening the design onto it.
+ */
+function follow(group, ground, base) {
+  group.updateMatrixWorld(true);
+  for (const part of group.children) {
+    const at = part.getWorldPosition(new THREE.Vector3());
+    part.position.y += (ground(at.x, at.z, base) - base) / (group.scale.y || 1);
+  }
+  group.updateMatrixWorld(true);
+  return group;
+}
+
 function grounder(island) {
   const meshes = island.children.filter((n) => GROUND.test(n.name));
   const ray = new THREE.Raycaster();
@@ -526,7 +552,8 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const [x, z] = siteAt[i];
     // Wet work sits a little into the sand; everything else stands on top of
     // whatever the island is at that point.
-    site.position.set(x, ground(x, z) - (wet ? 0.02 : 0), z);
+    const floor = ground(x, z);
+    site.position.set(x, floor - (wet ? 0.02 : 0), z);
     site.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
     const at = (SITES[good] || works)(site, r);
     const flag = marker(good, goodMat(good, i));
@@ -534,6 +561,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     site.add(flag);
     site.scale.setScalar(wet ? 0.88 : 0.92);
     island.add(site);
+    // Every part of the site stands where the ground is under *it*, not where
+    // it is under the site's origin. See `follow`.
+    follow(site, ground, floor);
     // The site's own height, not the meadow's: salt is worked down on the wet
     // shelf and iron up on the ridge, and anything staged at a site has to
     // arrive where the site actually is.
