@@ -83,3 +83,28 @@ evidence: |
   agent that asked for it, which is a different mechanism with a different
   failure mode — an availability outliving the agent asserting it — and it was
   ruled out deliberately at the start rather than overlooked.
+
+  MEASURED 2026-08-26, one substrate, n = 1
+  (`experiments/006-agent-standby/`). A Claude Code remote session, left quiet
+  for 5h59m with nothing running in it, and read by a server trigger: the
+  container was GONE. boot_id changed, uptime 25s, and pid 1 started four
+  seconds after the trigger fired — the wake did not resume a machine, it
+  caused one to be built. Nothing inside the old container survived to fire
+  anything, which is the shape of both failures already on record: found dead,
+  not late.
+
+  That is outcome 2 above, on this substrate: availability is lent by the
+  runtime, not held by the agent. Two earlier probes whose in-container timers
+  DID fire (5 min, 20 min) are explained rather than contradicted — the session
+  was in use, so the container was still there. The ladder was measuring
+  session activity.
+
+  What this does NOT close: the terminal/desktop session named above as the
+  cheapest untried candidate is still untried, and the Lucille doc correction
+  is still unwritten. One substrate is not "no substrate reachable from an
+  agent".
+
+  One finding worth carrying: the SCRATCHPAD SURVIVED the reclamation. Storage
+  is durable across it and processes are not — an agent here can leave a note
+  for its successor but not a process, which is precisely the split the standby
+  design already draws between its detector (works) and its alarm (never has).

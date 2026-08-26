@@ -44,3 +44,43 @@ def test_an_unrecognised_line_is_talk():
 def test_a_near_miss_is_refused_and_never_repaired(line, fragment):
     with pytest.raises(Malformed, match=fragment):
         parse(line)
+
+
+def test_a_name_that_is_a_seat_label_is_refused_not_renamed():
+    """`g7 seat T1 = T2` is a line nobody can read twice the same way."""
+    with pytest.raises(Malformed) as exc:
+        parse("JOIN g7 as T2")
+
+    assert "vocabulary" in str(exc.value)
+
+
+def test_a_name_that_is_a_banner_is_refused():
+    with pytest.raises(Malformed):
+        parse("JOIN g7 as " + "x" * 33)
+    with pytest.raises(Malformed):
+        parse("JOIN g7 as scout/v2")
+
+
+def test_an_ordinary_name_still_parses():
+    assert parse("JOIN g7 as scout-v2.1").name == "scout-v2.1"
+
+
+def test_join_carries_a_nonce_beside_a_box():
+    action = parse("JOIN g7 as scout-v2 box=abc nonce=0123456789ABCDEF")
+    assert (action.box, action.nonce) == ("abc", "0123456789ABCDEF")
+    assert parse("JOIN g7 as scout-v2 nonce=0123456789abcdef").box == ""
+
+
+def test_a_nonce_that_is_not_hex_is_refused_not_accepted_as_one():
+    """A nonce is the seat's half of the seed: the board has to be able to
+    show it, so it has to be something a reader can check by eye."""
+    for bad in ("nonce=zzzz", "nonce=abc", "nonce=" + "a" * 65, "nonce="):
+        with pytest.raises(Malformed):
+            parse(f"JOIN g7 as scout-v2 {bad}")
+
+
+def test_an_unknown_field_on_a_join_is_refused():
+    with pytest.raises(Malformed) as exc:
+        parse("JOIN g7 as scout-v2 seat=1")
+
+    assert "does not understand" in str(exc.value)

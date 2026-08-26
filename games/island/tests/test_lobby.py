@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 from switchboard.invite import Invite
 
+from games.island import lobby as lobby_module
 from games.island.lobby import Lobby
 
 WORKSPACE = "w_lobby-test"
@@ -444,3 +447,206 @@ def test_the_time_the_board_announces_is_the_time_the_table_opens(hub):
             if isinstance(m.get("body"), str)]
     stamp = time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at))
     assert any(b.startswith("g1 is full:") and f"opens {stamp}" in b for b in said)
+
+
+def test_a_manage_from_an_unregistered_peer_is_refused(hub):
+    """The claimant is the one party whose absence means no game happens, so
+    it is witnessed exactly like a seat."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _client(hub, "stranger", key).post("lobby", "MANAGE g1")
+
+    lobby.drain()
+
+    assert lobby.tables["g1"].manager is None
+    assert lobby.refusals[-1]["kind"] == "manage"
+    assert "MANAGE" in lobby.refusals[-1]["reason"]
+
+
+def test_the_manager_s_key_goes_on_the_board_with_the_claim(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    manager = _entrant(hub, "m", key)
+    manager.post("lobby", "MANAGE g1")
+
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.manager_key
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any(f"g1 will be managed by" in b and table.manager_key in b
+               for b in said)
+
+
+def test_one_peer_cannot_mint_tables_without_limit(hub):
+    """OPEN costs its author nothing, and a lobby faces strangers."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    noisy = _client(hub, "noisy", key)
+    for _ in range(4):
+        noisy.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+
+    lobby.drain()
+
+    assert list(lobby.tables) == ["g1", "g2"]
+    assert lobby.refused == 2
+    assert "already have 2 tables forming" in lobby.refusals[-1]["reason"]
+
+
+def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub):
+    now = [1_000_000.0]
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
+    a, b = _client(hub, "a", key), _client(hub, "b", key)
+    for _ in range(2):
+        a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    b.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert list(lobby.tables) == ["g1", "g2", "g3"] and lobby.refused == 0
+
+    now[0] += lobby.table_ttl + 1
+    lobby.drain()  # sweeps a's two tables
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    assert "g4" in lobby.tables and lobby.tables["g4"].opened_by
+
+
+def test_two_lobbies_cannot_hold_one_state_file(hub, tmp_path):
+    """`hold` keeps a second lobby off the board; this keeps one off the file,
+    where a second writer is invisible rather than merely wrong."""
+    from games.island.lobby import Held
+
+    key = generate_key()
+    first = Lobby(client=_client(hub, "lobby", key), state_path=tmp_path / "s.json")
+    first.lock()
+    second = Lobby(client=_client(hub, "lobby-2", key), state_path=tmp_path / "s.json")
+
+    with pytest.raises(Held) as exc:
+        second.lock()
+
+    assert "another lobby already holds" in str(exc.value)
+    # A different file is a different lobby, and is fine.
+    Lobby(client=_client(hub, "lobby-3", key), state_path=tmp_path / "t.json").lock()
+
+
+def test_a_board_that_outran_the_window_is_said_out_loud(hub, monkeypatch):
+    """A missed line must not look like a line nobody wrote."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    talker = _client(hub, "talker", key)
+    talker.post("lobby", "hello")
+    lobby.drain()
+    assert lobby.missed == 0
+
+    # More arrives than one window holds, so the oldest of it falls out before
+    # this lobby ever reads it. Shrinking the window is how a three-message
+    # test reproduces what a busy board does to a 500-message one.
+    talker.post("lobby", "chatter")
+    talker.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    monkeypatch.setattr(lobby_module, "WINDOW", 1)
+    lobby.drain()
+
+    assert lobby.missed == 1
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("never read" in b for b in said)
+    # And it still settled the line it *did* read.
+    assert list(lobby.tables) == ["g1"]
+
+
+def test_an_ordinary_drain_reports_nothing_missed(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    talker = _client(hub, "talker", key)
+    for _ in range(3):
+        talker.post("lobby", "chatter")
+        lobby.drain()
+
+    assert lobby.missed == 0 and lobby.last_seq > 0
+
+
+def test_a_table_commits_before_any_seat_can_have_joined(hub):
+    """The commitment is only worth anything at the moment it is made: a lobby
+    that has not read a nonce cannot pick a seed to suit anybody."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    import hashlib
+    assert table.commit == hashlib.sha256(table.nonce.encode()).hexdigest()
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any(f"g1 commits {table.commit}" in b for b in said)
+    assert not any(table.nonce in b for b in said), "the nonce stays secret"
+
+
+def test_a_seed_every_seat_helped_draw_is_recomputable_from_the_board(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key),
+                  draw_nonce=lambda: "aaaaaaaaaaaaaaaa")
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2 nonce=1111111111111111")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b nonce=2222222222222222")
+    manager = _entrant(hub, "m", key)
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.verifiable() and table.draw == "commit-reveal"
+
+    import hashlib
+    material = "|".join(["aaaaaaaaaaaaaaaa", "1111111111111111", "2222222222222222"])
+    expected = int.from_bytes(hashlib.sha256(material.encode()).digest()[:8], "big") >> 1
+    assert table.seed == expected, "anybody can recompute it once the nonce is out"
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("drawn from every nonce at this table" in b for b in said)
+
+
+def test_the_order_seats_arrived_in_cannot_change_the_island(hub):
+    """Sorted, so a lobby cannot re-order arrivals into a better island."""
+    key = generate_key()
+    seeds = []
+    for first, second in (("t1", "t2"), ("t2", "t1")):
+        lobby = Lobby(client=_client(hub, f"lobby-{first}", key),
+                      draw_nonce=lambda: "aaaaaaaaaaaaaaaa")
+        _client(hub, f"opener-{first}", key).post(
+            "lobby", "OPEN traders=2 episodes=3 rounds=1")
+        lobby.drain()
+        nonces = {"t1": "1111111111111111", "t2": "2222222222222222"}
+        for who in (first, second):
+            _entrant(hub, f"{who}-{first}", key).post(
+                "lobby", f"JOIN {list(lobby.tables)[-1]} as {who}-{first} "
+                         f"nonce={nonces[who]}")
+        _entrant(hub, f"m-{first}", key).post("lobby", f"MANAGE {list(lobby.tables)[-1]}")
+        lobby.drain()
+        seeds.append(lobby.tables[list(lobby.tables)[-1]].seed)
+
+    assert seeds[0] == seeds[1]
+
+
+def test_a_table_missing_a_nonce_says_its_draw_is_not_checkable(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2 nonce=1111111111111111")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b")
+    _entrant(hub, "m", key).post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert not table.verifiable() and table.draw == "unverified"
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("not checkable afterwards" in b for b in said)

@@ -37,7 +37,7 @@ from pathlib import Path
 from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 
-from .lobby import Lobby
+from .lobby import Held, Lobby
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,6 +60,11 @@ def main(argv: list[str] | None = None) -> int:
                     agent_id="lobby")
     state = args.state or Path("games/results") / f"lobby-{args.workspace}-{args.channel}.json"
     lobby = Lobby(client=client, channel=args.channel, state_path=state)
+    try:
+        lobby.lock()
+    except Held as exc:
+        print(exc)
+        return 1
     lobby.load()
     lobby.hold()
     print(f"lobby on {args.hub}/{args.workspace}#{args.channel}"

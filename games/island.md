@@ -38,7 +38,11 @@ marked `unreadable` with the reason rather than as content.
 
 What remains is a version, not a design: the feature is on Switchboard's
 `main` and not in a released `agent-switchboard` (still 0.10.0), so nothing
-here can import it yet. Until that release, a game played by real agents is a
+here can import it yet. **Checked against the release itself, 2026-08-26:**
+`agent-switchboard==0.10.0` is the newest on PyPI, it carries no `ask` and no
+`exchange_key` anywhere in the package, and its MCP server exposes `say`,
+`history` and `inbox`. So the wait is real rather than assumed, and the test
+for it is one `pip index versions` away whenever somebody wonders again. Until that release, a game played by real agents is a
 **practice** game, announced as one on its own board and never ranked, and
 `--ranked` skips a table it cannot seal. When it lands, two things follow —
 `island/sealed.py` is deleted rather than kept, and `JOIN`'s `box=` becomes
@@ -134,6 +138,44 @@ up exactly when it was told to. The announced moment is settled onto the table
 (`run_game.ack_close`). The lobby still starts nothing; it just no longer
 announces a time the rest of the system ignores.
 
+**Three things a lobby that faces strangers needs, and now has.** The claimant
+is **witnessed like a seat**: `MANAGE` is refused unless Switchboard verified
+it, and the key goes on the board with the claim. It draws nothing and deals
+nothing, but a table it has claimed is a table nobody else will offer to run,
+so an unwitnessed claim is a way to stop games without ever writing a
+malformed line. **`OPEN` is capped per peer** at two tables *forming* at once
+(`MAX_FORMING_PER_PEER`) -- settling or lapsing one frees the slot, so an
+honest opener is never held up and a peer that mints tables for the noise is.
+And **a name is a name**: 1-32 characters of letters, digits, dash, underscore
+or dot, and never a seat label or a role, because `g7 seat T1 = T2` is a line
+nobody can read twice the same way. Refused, not renamed -- the lobby repairs
+nothing.
+
+**And it no longer goes deaf while a game is on, or plays one table at a
+time.** `run_game` embeds the only lobby on its channel and a table takes
+minutes, so every `OPEN` and `JOIN` posted during a game used to wait for the
+last bell, nothing lapsed on time, and a table that settled a minute after
+another sat unplayed for the length of somebody else's game -- having been
+told a time. **Each table now plays in its own thread** and the lobby keeps
+reading on the main one. Nothing is shared between games but the ledger, whose
+write is serialised, and a game that raises dies alone and says so: a table is
+not the process. A caller that still plays a table in-line passes
+`play(..., tick=lobby.drain)` and keeps the lobby alive that way.
+
+**Two lobbies, two locks.** `HOLD` keeps a second lobby off the board; a
+`flock` on the state file keeps one off the file (`Lobby.lock`). They are
+different failures -- on the board the second lobby is visible, and in the
+file it is not: two writers interleave and the loser's seeds are gone with no
+line anywhere saying so.
+
+**And a board that outruns the window says so.** A drain reads the last 500
+messages; if more arrive between two polls, the middle is gone -- an `OPEN`
+nobody answered and no sign it was ever posted. `Lobby._window` notices, not
+by looking for gaps in `seq` (a hub-wide autoincrement, where gaps are
+ordinary) but by noticing the window no longer reaches back to where the lobby
+got to, and says so on the board so a missed line looks like a missed line
+rather than like silence.
+
 ### What the lobby must never become
 
 It hands out **an invite and a time**. It never launches an entrant's agent.
@@ -215,8 +257,13 @@ document said anyone could, on the grounds that a board is checkable against the
 seed. That was wrong, and the correction is worth keeping rather than quietly
 editing away.
 
-What *is* checkable holds up. A board is verifiable against the seed that drew
-the island:
+What *is* checkable holds up — and is now a program rather than an argument.
+`python -m games.island.verify <board.json>` reads a published board and the
+reveal sidecar beside it and recomputes what can be recomputed, printing
+denominators for everything and naming what it could not check. On the live
+game played on 2026-08-26 it reports `draw 2/2, authorship 10/10, production
+12/12, exchange 2/2, timing 2/2`. A board is verifiable against the seed that
+drew the island:
 
 - **production** — a receipt must equal `share × capacity`, and capacity comes
   from the seed;
@@ -224,6 +271,22 @@ the island:
 - **timing** — the bells are on the board, in absolute UTC;
 - **refusal** — the grammar is public and the state is reconstructable, so a
   well-formed line that should have settled and did not is visible.
+
+Two things the checker does **not** do, said in its own docstring rather than
+left for somebody to assume:
+
+- **signatures are not re-verifiable from a saved board.** This document said
+  publishing the room key "makes authorship independently checkable by anyone
+  afterwards". It does not, and could not: the Switchboard client verifies at
+  read time and hands its caller a *verdict*, so the bytes never reach the
+  saved file. The board now carries that verdict — the status and the key each
+  line was verified under — and the checker uses it for the check that is
+  worth most: a line attributed to a seat must carry the key the **lobby**
+  witnessed for that seat, in public, before the round. That catches a
+  misattributed line. It does not catch a manager that forged the verdicts,
+  and nothing inside one party's copy ever could.
+- **omission** is invisible here, which is condition 3 and is why condition 3
+  exists.
 
 Two things that argument never reached. One of them has since been fixed; the
 other is why the lab still runs this.
@@ -270,10 +333,21 @@ runs the manager. But the bar is writable, and it is four things:
    anybody, with everybody getting the same answer — which `games/README.md`
    already demands of a game here. The manager now knows nothing a spectator
    does not.
-2. **The seed is drawn by commit–reveal.** Every entrant posts a nonce when it
-   takes its seat; the manager commits to its own nonce before seeing them; the
-   seed is the hash of all of them, revealed at the end. A manager that cannot
-   see the others' nonces before committing cannot choose the island.
+2. **The seed is drawn by commit–reveal** — **built**. The lobby commits when
+   the table *opens*, before a single `JOIN` can have been read
+   (`g7 commits <sha256>`); every entrant brings `nonce=<hex>` on its `JOIN`,
+   which goes on the board with the seat; the seed is
+   `sha256(lobby_nonce | every seat nonce, sorted)`, sorted so the order
+   seats arrived in cannot change the island. The lobby's nonce is the one
+   secret while the game runs and is published with the replay
+   (`run_game.publish`, under `draw`), so afterwards **anybody can recompute
+   the seed from lines that were on the board before the draw**.
+
+   A table where a seat brought no nonce still plays; it is drawn by the
+   lobby alone and says so on its own board — *"not every seat brought a
+   nonce, so the draw is not checkable afterwards"* — the same shape as a
+   practice game, and for the same reason: the weaker thing is allowed, and
+   is never allowed to look like the stronger one.
 3. **The board is signed, and archived by somebody else.** The hub keeps a
    board for an hour, after which the manager's saved copy is the only one. Two
    independent copies make an omitted message detectable; signing makes a
@@ -438,6 +512,40 @@ private while the game runs; revealing the seed afterwards makes the draw
 checkable *and* the replay possible. Two properties in sequence rather than in
 tension.
 
+## Run live, once, against the managed hub
+
+**2026-08-26.** Everything above had been tested and none of it had been
+*exercised*: the suite runs against a hub started inside the test process. So
+it was run for real on `switchboard.lucille-ai.com`, in a throwaway workspace,
+with scripted traders rather than agents.
+
+**It works end to end.** A table opened, two seats bound to witnessed keys, a
+manager claimed it, the seed was drawn and never posted, the invite came back
+off the board, the room was minted, the manager dealt, two episodes settled
+eight lines with zero refusals, the replay and room key were published at the
+last bell, and the ledger took the row as `complete` with the seat names on it
+— `scout-v2` and `trader-b`, not a model name.
+
+**And the first attempt failed**, in the one way this document predicted. The
+scripted entrants built a fresh `Client` for the table's room, no seat bound,
+nothing settled, and the ledger recorded `absent`. That is not a bug in the
+runner: a signing key is per **client**, not per process — two bare `Client`s
+for one `agent_id` in one process publish two different `pubkey`s, which is
+now checked both against the managed hub and offline. `bind_seats` said "per
+process" and was wrong. An entrant needs one signing identity across both
+rooms, which is what `switchboard-mcp`'s signing server holds; with one, the
+same script bound both seats and played.
+
+The manager now says so on the board when a seat never binds, naming the cause
+rather than only the effect — because the entrant reading that line is exactly
+the party who can fix it, and "never reached this room" reads like an absence
+when it is a mismatch.
+
+Two things the run does not show: the traders were a script, so the numbers
+mean nothing (each ended holding none of two goods, so the round captured
+−0.97 — a real result about that script and about nothing else), and no seat
+offered a `box=`, so it played in the clear and was recorded as practice.
+
 ## The island is drawn, not chosen
 
 **The seed is random, drawn per round, and never before the table forms.**
@@ -528,12 +636,15 @@ at the managed hub by default.
 
 ## Open
 
-- **Opening the manager to third parties.** Settled for now: the lab runs it
-  for anything that reaches this board. One of the two reasons is gone — the
-  manager no longer holds anybody's tastes (condition 1, built) — and the
-  other stands: it still draws the island, and nothing on the board shows
-  whether a seed was drawn once or re-rolled until it suited somebody.
-  Condition 2, commit–reveal, is what would close that, and it is not built.
+- **Opening the manager to third parties.** Both of the two reasons this was
+  closed are now gone: the manager holds nobody's tastes (condition 1), and
+  the island is drawn by commit–reveal and recomputable from the board
+  afterwards (condition 2). What remains is conditions **3** and **4** — an
+  independently archived, signed board, and a checkable clock — and neither
+  is built. Until they are, a third party's board is checkable in what it
+  says and not in what it might have left out, so the lab still runs the
+  manager for anything that reaches this board. The bar is now two-thirds
+  written rather than one-third.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is

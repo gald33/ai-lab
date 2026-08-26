@@ -7,10 +7,11 @@ not choose partners, does not choose islands, and does not rank anybody.
 
 **It hands out an invite and a time, and then it is done.** It never launches
 an entrant's agent, and it never starts the island manager for the table it
-just settled -- that is for whoever claimed `MANAGE` to do, out of band. This
-module is the lobby's settlement only; the standing island-manager process
-that would actually run a settled table is separate, unbuilt work (build-order
-item 2 onward in `games/island.md`).
+just settled. This module is the lobby's settlement only; the process that
+picks a settled table up and actually deals it is `run_game.py`, which embeds
+a lobby of its own for the reason its docstring gives -- the seed is drawn at
+settlement and never posted, so whoever settles a table is the only party who
+can deal it.
 
 A seat is claimed by a Switchboard peer, not by the name typed after `as` --
 the name is what a `JOIN` line is addressed by and what the settlement shows,
@@ -31,7 +32,10 @@ operator's file, the other is one line of board text saying who is reading.
 
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import json
+import os
 import secrets
 import time
 from dataclasses import asdict, dataclass, field
@@ -68,6 +72,21 @@ OPEN_LEAD = 120.0
 #: takes the channel over rather than corrupting it.
 HOLD = "LOBBY holding this channel: "
 
+#: How many tables one peer may have forming at once. A lobby faces strangers,
+#: and OPEN costs its author nothing: without a cap, one peer can mint tables
+#: until every reader is scrolling past its noise, and every one of them sits
+#: for the full TTL. Two, so that opening a second table while waiting on the
+#: first is ordinary and a hundred is not. It bounds only what is *forming* --
+#: settling or lapsing a table frees the slot, so a busy honest opener is
+#: never held back for long.
+MAX_FORMING_PER_PEER = 2
+
+#: How many messages one drain reads. The hub keeps a board for about an hour,
+#: and this is the slice of it a poll takes; a board busier than this between
+#: two polls loses its middle, which `Lobby._window` notices out loud rather
+#: than letting it pass as quiet.
+WINDOW = 500
+
 
 def _stamp(ts: float) -> str:
     """An absolute UTC clock time, the same convention `run_v3.py` uses for
@@ -84,6 +103,9 @@ class Table:
     episodes: int
     rounds: int
     opened_at: float
+    #: The peer that opened it, so that one peer cannot mint tables without
+    #: limit (`MAX_FORMING_PER_PEER`).
+    opened_by: str = ""
     #: Part of the level, so it is fixed when the table opens: an entrant has to
     #: know the format before it decides to sit down, and two rounds are only
     #: comparable if they were drawn over the same number of goods.
@@ -98,12 +120,31 @@ class Table:
     #: here was never seated: `_join` refuses a JOIN it cannot verify rather
     #: than seating it keyless.
     keys: dict[str, str] = field(default_factory=dict)
+    #: peer id -> the nonce its JOIN brought, if it brought one. A table where
+    #: every seat did is drawn by commit-reveal (`Lobby._settle`) and its draw
+    #: is checkable afterwards by anybody.
+    nonces: dict[str, str] = field(default_factory=dict)
+    #: This lobby's commitment, posted when the table opens and before any
+    #: JOIN can have been read: `sha256(nonce)`.
+    commit: str = ""
+    #: The nonce behind that commitment. Secret until the game ends, and then
+    #: published with the replay -- which is the whole mechanism: a lobby that
+    #: could not see the seats' nonces when it committed cannot have chosen
+    #: the island, and anybody can check the arithmetic afterwards.
+    nonce: str = ""
+    #: How the seed was drawn: "commit-reveal" or "unverified".
+    draw: str = "unverified"
     #: peer id -> the X25519 key its JOIN offered for sealing, if it offered
     #: one. A seat without one can only play a practice game: there is nothing
     #: to seal its private half to.
     boxes: dict[str, str] = field(default_factory=dict)
     manager: str | None = None
     manager_peer: str | None = None
+    #: The signing key the winning MANAGE was verified under. Witnessed for
+    #: the same reason a seat's is: a name typed on a board proves nothing,
+    #: and the claimant is the one party whose absence means no game happens
+    #: at all.
+    manager_key: str | None = None
     settled: bool = False
     lapsed: bool = False
     workspace: str | None = None
@@ -118,6 +159,13 @@ class Table:
     #: specific seat over the board is the sealed channel, build-order item
     #: 2c, and is not done here.
     seed: int | None = None
+
+    def verifiable(self) -> bool:
+        """Whether this table's island can be shown to have been drawn rather
+        than chosen: every seat brought a nonce, and the lobby committed to
+        its own before it could read any of them."""
+        return bool(self.seats) and bool(self.commit) and all(
+            p in self.nonces for p in self.seats)
 
     def sealable(self) -> bool:
         """Whether every seat gave the manager something to seal to, which is
@@ -147,14 +195,25 @@ class Lobby:
     #: Injectable so a test can pin the seed a settlement draws rather than
     #: asserting against whatever `secrets` happened to produce.
     draw_seed: Callable[[], int] = lambda: secrets.randbits(63)
+    #: Injectable for the same reason `draw_seed` is: a test pins the lobby's
+    #: half of a commit-reveal rather than asserting against `secrets`.
+    draw_nonce: Callable[[], str] = lambda: secrets.token_hex(16)
     #: Where this lobby's own state is kept across restarts. Optional: a test
     #: and a one-shot drain need none, a standing process does.
     state_path: Path | None = None
+    #: The open handle carrying this process's flock on the state file.
+    _lock: object | None = None
     #: This process's holder token, once `hold()` has claimed the channel.
     holder: str | None = None
     #: Set when a newer lobby took the channel over. A stood-down lobby reads
     #: nothing and settles nothing; it does not compete for the board.
     stood_down: bool = False
+    #: The highest `seq` this lobby has read. Kept to notice a board that
+    #: outran the window rather than to order anything -- see `_window`.
+    last_seq: int = 0
+    #: How many times that has happened. In the state file, so a restart does
+    #: not report a clean board it never had.
+    missed: int = 0
     seen: set[str] = field(default_factory=set)
     tables: dict[str, Table] = field(default_factory=dict)
     settled: int = 0
@@ -198,6 +257,37 @@ class Lobby:
 
     # --- state across restarts --------------------------------------------
 
+    def lock(self) -> None:
+        """Take an exclusive lock on the state file, for this process's life.
+
+        `hold()` keeps two lobbies off one board; this keeps two off one file.
+        They are different failures: the board is where the second lobby is
+        visible, and the state file is where it is not -- two writers simply
+        interleave, and the loser's seeds are gone with no line anywhere
+        saying so.
+
+        Advisory and process-scoped, which is what `flock` gives and all that
+        is wanted: a lock file left behind by a killed process is not a lock,
+        so a restart is never blocked by its own corpse.
+        """
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        path = self.state_path.with_suffix(self.state_path.suffix + ".lock")
+        handle = path.open("w")
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            raise Held(
+                f"another lobby already holds {path} -- two processes writing "
+                f"one state file interleave their seeds, and the one that "
+                f"loses says nothing. Point this one at its own --state, or "
+                f"stop the other.") from None
+        handle.write(f"{os.getpid()}\n")
+        handle.flush()
+        self._lock = handle
+
     def save(self) -> None:
         """Write what the board does not carry: the seeds, and which messages
         have already been acted on.
@@ -211,6 +301,7 @@ class Lobby:
             return
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"next": self._next, "seen": sorted(self.seen),
+                   "last_seq": self.last_seq, "missed": self.missed,
                    "tables": {tid: asdict(t) for tid, t in self.tables.items()}}
         tmp = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
         tmp.write_text(json.dumps(payload, indent=1) + "\n")
@@ -223,6 +314,8 @@ class Lobby:
             return
         payload = json.loads(self.state_path.read_text())
         self._next = payload.get("next", self._next)
+        self.last_seq = payload.get("last_seq", 0)
+        self.missed = payload.get("missed", 0)
         self.seen = set(payload.get("seen", ()))
         self.tables = {tid: Table(**row)
                        for tid, row in payload.get("tables", {}).items()}
@@ -248,10 +341,11 @@ class Lobby:
         # read before it would witness nothing and refuse every JOIN.
         self._names = {a["agent_id"]: a["name"] for a in self.client.agents()
                        if a.get("name")}
-        rows = sorted(self.client.history(self.channel, limit=500),
+        rows = sorted(self.client.history(self.channel, limit=WINDOW),
                       key=lambda r: r.get("seq", 0))
         if self._stand_down(rows):
             return
+        self._window(rows)
         for msg in rows:
             mid = str(msg.get("id"))
             if mid in self.seen:
@@ -267,10 +361,37 @@ class Lobby:
         self._sweep()
         self.save()
 
+    def _window(self, rows: list[dict]) -> None:
+        """Say so when the board outran the window between two drains.
+
+        The lobby reads the last `WINDOW` messages each time. If more than
+        that arrive in one interval, the oldest of them fall out before they
+        are ever read -- an `OPEN` nobody answered, a `JOIN` that was never
+        seated, and no sign anywhere that anything was dropped.
+
+        `seq` is a hub-wide autoincrement, so a gap between consecutive rows
+        is ordinary and proves nothing. What does prove it is the *window no
+        longer reaching back to where this lobby got to*: if the oldest row
+        now sits above the highest seq already read, everything between the
+        two is gone. Said out loud on the board, because a lobby that missed
+        somebody should not look like a lobby nobody wrote to.
+        """
+        if not rows:
+            return
+        seqs = [int(r.get("seq", 0)) for r in rows]
+        oldest, newest = seqs[0], seqs[-1]
+        if self.last_seq and oldest > self.last_seq + 1:
+            self.missed += 1
+            self.say(f"lines were posted here that this lobby never read: the "
+                    f"board moved from seq {self.last_seq} to {oldest} between "
+                    f"reads, past a {WINDOW}-message window. Anything asked in "
+                    f"between went unanswered -- please post it again.")
+        self.last_seq = max(self.last_seq, newest)
+
     def _forget(self, rows: list[dict]) -> None:
         """Drop message ids that have fallen out of the window we read.
 
-        A message older than the last 500 on this channel is never delivered
+        A message older than the last `WINDOW` on this channel is never delivered
         here again, so remembering it forever is only a file that grows. Skip
         a window that came back empty rather than treating it as evidence.
         """
@@ -293,7 +414,7 @@ class Lobby:
             elif isinstance(action, Join):
                 self._join(peer, action, signature)
             elif isinstance(action, Manage):
-                self._manage(peer, action)
+                self._manage(peer, action, signature)
         except Refused as exc:
             self._refuse(peer, type(action).__name__.lower(), str(exc), text)
 
@@ -306,9 +427,22 @@ class Lobby:
     # --- settling --------------------------------------------------------
 
     def _open(self, peer: str, action: Open) -> None:
+        forming = [t for t in self.tables.values()
+                   if t.opened_by == peer and not (t.settled or t.lapsed)]
+        if len(forming) >= MAX_FORMING_PER_PEER:
+            raise Refused(
+                f"you already have {len(forming)} tables forming "
+                f"({', '.join(t.id for t in forming)}) -- fill one, or wait "
+                f"for it to lapse, before opening another")
         table = Table(id=f"g{self._next}", traders=action.traders,
                      episodes=action.episodes, rounds=action.rounds,
-                     goods=action.goods, opened_at=self.clock())
+                     goods=action.goods, opened_at=self.clock(),
+                     opened_by=peer)
+        # Committed here, before a single JOIN exists, which is the only
+        # moment at which committing means anything: a lobby that has not
+        # seen the seats' nonces cannot pick a seed to suit anybody.
+        table.nonce = self.draw_nonce()
+        table.commit = hashlib.sha256(table.nonce.encode()).hexdigest()
         self._next += 1
         self.tables[table.id] = table
         self.settled += 1
@@ -316,6 +450,9 @@ class Lobby:
         # this to know what island it is sitting down at -- the rules it hands
         # its agent count the goods by name, so a table that kept the number to
         # itself would have every trader briefed on the wrong island.
+        self.say(f"{table.id} commits {table.commit} -- bring "
+                f"nonce=<16-64 hex digits> on your JOIN and this table's "
+                f"island is drawn from all of them together")
         self.say(f"{table.id} is forming: {table.traders} traders, "
                 f"{table.goods} goods, "
                 f"{table.episodes} episodes, {table.rounds} round"
@@ -347,21 +484,24 @@ class Lobby:
             raise Refused(f"{action.name!r} is already seated at {action.table}")
         if table.full():
             raise Refused(f"{action.table} is full")
-        key = self._witness(signature)
+        key = self._witness(signature, "JOIN")
         table.seats[peer] = action.name
         table.keys[peer] = key
         if action.box:
             table.boxes[peer] = action.box
+        if action.nonce:
+            table.nonces[peer] = action.nonce.lower()
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
                 f"key {key}"
-                f"{', sealed' if action.box else ', in the clear'} "
+                f"{', sealed' if action.box else ', in the clear'}"
+                f"{', nonce ' + action.nonce.lower() if action.nonce else ''} "
                 f"({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)
 
     @staticmethod
-    def _witness(signature: dict | None) -> str:
+    def _witness(signature: dict | None, kind: str = "JOIN") -> str:
         """The key a message was verified under, or a refusal naming why not.
 
         Distinct reasons for distinct causes, the same discipline the rest of
@@ -371,24 +511,36 @@ class Lobby:
         """
         status = (signature or {}).get("status")
         if status is None or status == "unsigned":
-            raise Refused("JOIN must be signed -- this message carried no "
-                          "signature to witness")
+            raise Refused(f"{kind} must be signed -- this message carried no "
+                          f"signature to witness")
         if status == "unknown":
-            raise Refused("no signing key known for you yet -- register on "
-                          "this room before JOIN")
+            raise Refused(f"no signing key known for you yet -- register on "
+                          f"this room before {kind}")
         if status != "verified":
-            raise Refused("the signature on this JOIN does not match any "
-                          "key you have announced")
+            raise Refused(f"the signature on this {kind} does not match any "
+                          f"key you have announced")
         return signature["key"]
 
-    def _manage(self, peer: str, action: Manage) -> None:
+    def _manage(self, peer: str, action: Manage,
+                signature: dict | None = None) -> None:
+        """Claim the manager's chair -- witnessed, exactly like a seat.
+
+        A seat that cannot be verified is refused, and the claimant is the
+        one party whose absence means the game does not happen at all: it
+        draws nothing and deals nothing, but a table it has claimed is a
+        table nobody else will offer to run. So the same rule applies to it,
+        for the same reason.
+        """
         table = self._table(action.table)
         if table.manager is not None:
             raise Refused(f"{action.table} is already managed by "
                           f"{table.manager}")
-        table.manager, table.manager_peer = self._display(peer), peer
+        key = self._witness(signature, "MANAGE")
+        table.manager, table.manager_peer, table.manager_key = (
+            self._display(peer), peer, key)
         self.settled += 1
-        self.say(f"{action.table} will be managed by {table.manager}")
+        self.say(f"{action.table} will be managed by {table.manager}, "
+                f"key {key}")
         if table.ready():
             self._settle(table)
 
@@ -405,7 +557,10 @@ class Lobby:
         """
         table.settled = True
         self.settled += 1
-        table.seed = self.draw_seed()
+        if table.verifiable():
+            table.seed, table.draw = self._commit_reveal(table), "commit-reveal"
+        else:
+            table.seed, table.draw = self.draw_seed(), "unverified"
         table.workspace = f"{self.client.config.workspace}-{table.id}"
         key = generate_key() if self.client.encrypted else None
         invite = Invite(url=self.client.config.url, workspace=table.workspace,
@@ -417,12 +572,33 @@ class Lobby:
                            for label, name in zip(
                                (table.label(p) for p in table.seats),
                                table.seats.values()))
+        drawn = ("drawn from every nonce at this table, this lobby's included "
+                 f"(committed {table.commit})" if table.verifiable()
+                 else "drawn by this lobby alone -- not every seat brought a "
+                      "nonce, so the draw is not checkable afterwards")
         note = "" if table.sealable() else (
             "; PRACTICE -- not every seat offered a key to seal to, so the "
             "private half is public and this game is not ranked")
         self.say(f"{table.id} is full: {roster}; managed by "
                 f"{table.manager}; opens {_stamp(table.opens_at)}{note}")
+        self.say(f"{table.id}: the island is {drawn}")
         self.say(f"{table.id} invite: {invite.encode()}")
+
+    @staticmethod
+    def _commit_reveal(table: Table) -> int:
+        """The seed as the hash of every nonce at this table, the lobby's own
+        included.
+
+        Sorted, so that the order seats happened to arrive in cannot change
+        the island; 63 bits, because that is what `random.Random` is seeded
+        with everywhere else here. The lobby's nonce stays secret until the
+        replay, so nobody can compute the seed while the game is on -- and
+        once it is published, anybody can, from lines that were on the board
+        before the draw.
+        """
+        material = "|".join([table.nonce] + sorted(table.nonces.values()))
+        digest = hashlib.sha256(material.encode()).digest()
+        return int.from_bytes(digest[:8], "big") >> 1
 
     def _sweep(self) -> None:
         """Lapse whatever has sat past its deadline unfilled or unmanaged.
@@ -448,3 +624,7 @@ class Lobby:
 
 class Refused(Exception):
     """A well-formed line the lobby will not settle, with a reason."""
+
+
+class Held(Exception):
+    """Another process holds this lobby's state file."""

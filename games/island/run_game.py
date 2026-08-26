@@ -59,14 +59,16 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
+from typing import Callable
 
 from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
-from .lobby import Lobby, Table
+from .lobby import Held, Lobby, Table
 
 # The island economy this game runs, from 005's tree. A code dependency is not
 # grounding -- 005's own CLAUDE.md says exactly that about its import of 002 --
@@ -97,8 +99,19 @@ def bind_seats(mgr: Manager, table: Table) -> set[str]:
     **By key, not by peer id.** A peer id is blinded per workspace, so the id
     the lobby saw is not the id the table's room sees for the same agent --
     they differ, and binding the lobby's would silently ignore every line the
-    trader wrote. The signing key is per process and crosses rooms unchanged,
+    trader wrote. The signing key is what can cross the two rooms unchanged,
     which is the thing that makes a witnessed key worth witnessing.
+
+    **"Can", not "does".** A key is per *client*, not per process: two bare
+    `Client`s for one `agent_id` in one process publish two different
+    `pubkey`s, checked against the managed hub and offline both. It crosses
+    only when something holds one identity for that agent -- `signing`'s
+    server on an `agent_id` socket, which every client then attaches to
+    instead of minting its own, and which `switchboard-mcp` runs. An entrant
+    that builds a fresh client per room is not wrong about the protocol; it
+    simply is not the same entrant in the second room, and this returns
+    without it. `play` says that on the board rather than leaving it to look
+    like an absence.
 
     Idempotent, and returns the slots bound so far: an entrant cannot be found
     before it registers in the room, so this is called again on every drain
@@ -161,6 +174,21 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
                 f"{seal_to(by_slot[name], dealer.private_state(name), PRIVATE_CONTEXT)}")
 
 
+def _tick(tick: Callable[[], None] | None) -> None:
+    """Run the lobby's drain beside the game, and never let it stop one.
+
+    A game in progress is the thing with a clock on it. If the lobby throws --
+    a hub that blinked, a line it could not read -- the table it is running
+    must not die of it, so the fault is said out loud and the bells go on.
+    """
+    if tick is None:
+        return
+    try:
+        tick()
+    except Exception as exc:  # noqa: BLE001 - a game outranks its lobby
+        print(f"lobby drain failed mid-game, continuing: {exc!r}", flush=True)
+
+
 def ack_close(started: float, ack_seconds: float, table: Table) -> float:
     """When the ack window shuts: the later of this runner's own window and
     the time the board announced.
@@ -174,8 +202,15 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
 
 
 def play(table: Table, invite: Invite, *, episode_seconds: int,
-         ack_seconds: int, out: Path) -> dict:
-    """One settled table, from its first bell to its record."""
+         ack_seconds: int, out: Path, tick: Callable[[], None] | None = None) -> dict:
+    """One settled table, from its first bell to its record.
+
+    ``tick`` is called on every drain of this room. `watch` no longer needs
+    it -- it plays each table in its own thread and keeps draining the lobby
+    on its own -- but a caller that plays a table in-line still does, or the
+    lobby goes deaf for the length of the game: every OPEN and JOIN waits for
+    the last bell, and nothing lapses on time either.
+    """
     client = Client.from_invite(invite, agent_id=MANAGER)
     # The first `table.goods` of the vocabulary. The table settled its own
     # count when it opened, and the entrants were briefed on that number -- so
@@ -214,9 +249,11 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         while time.time() < deadline:
             bind_seats(mgr, table)
             mgr.drain()
+            _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
         mgr.drain()
+        _tick(tick)
 
     until(ack_deadline)
     missing = sorted(set(players(table)) - set(mgr.keys))
@@ -225,7 +262,12 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         # ever occupied is a different event from a trader that chose not to
         # speak, and the record has to be able to tell them apart.
         mgr.say(f"{', '.join(missing)} never reached this room and cannot be "
-                f"settled for; the round opens without them.")
+                f"settled for; the round opens without them. If you are here "
+                f"and reading this, your seat did not bind: a seat binds by "
+                f"the signing key the lobby witnessed on your JOIN, and a "
+                f"client built fresh for this room mints a new one. Reach "
+                f"both rooms with one signing identity -- switchboard-mcp's "
+                f"signing server does this for you.")
     mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
             f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
             f"Episode 1 opens now.")
@@ -247,6 +289,15 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
                   seconds=round(time.time() - started, 1))
 
 
+def _verdict(signature: dict | None) -> dict:
+    """The manager's reading of one line's signature, kept small on purpose."""
+    block = signature or {}
+    kept = {"status": block.get("status", "unsigned")}
+    if isinstance(block.get("key"), str):
+        kept["key"] = block["key"]
+    return kept
+
+
 def save_board(mgr: Manager, out: Path) -> Path:
     """The channel as a file, in the shape the viewer and the ledger read.
 
@@ -262,7 +313,17 @@ def save_board(mgr: Manager, out: Path) -> Path:
                  "author": names.get(str(m.get("from") or ""),
                                      MANAGER if str(m.get("from")) == mgr.client.agent_id
                                      else str(m.get("from") or "?")),
-                 "body": m.get("body")}
+                 "body": m.get("body"),
+                 # What the manager's own client made of the signature when it
+                 # read the line, and the key it verified under. **Not a
+                 # signature**: the client verifies at read time and hands its
+                 # caller a verdict, so the bytes never reach here and a later
+                 # reader cannot re-verify -- see `verify.py`, which says so
+                 # rather than implying otherwise. What it does buy is the
+                 # check that matters most: a line attributed to a seat has to
+                 # carry the key the lobby witnessed for that seat, in public,
+                 # before the round.
+                 "signature": _verdict(m.get("signature"))}
                 for m in rows if isinstance(m.get("body"), str)]
     path = out / f"board-{mgr.client.config.workspace}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -327,6 +388,22 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     payload["room_key"] = invite.key
     payload["round"] = {"seed": table.seed, "workspace": rnd["workspace"],
                         "trajectory": rnd["trajectory"]}
+    # How the island was drawn, and everything needed to check it. The lobby's
+    # nonce is the one piece that was secret while the game ran; published
+    # here, the seed becomes recomputable by anybody from lines that were on
+    # the lobby's board before the draw -- which is what stops a manager
+    # re-rolling an island until it suited somebody.
+    payload["seat_keys"] = {table.label(peer): key
+                            for peer, key in table.keys.items()}
+    payload["draw"] = {
+        "method": table.draw,
+        "commit": table.commit,
+        "nonce": table.nonce,
+        "seat_nonces": {table.label(peer): nonce
+                        for peer, nonce in table.nonces.items()},
+        "recompute": ("sha256 of the lobby nonce and every seat nonce sorted, "
+                      "joined by '|', first 8 bytes big-endian, >> 1"),
+    }
     path = out / f"reveal-{rnd['workspace']}.json"
     path.write_text(json.dumps(payload, indent=1) + "\n")
     return path
@@ -354,16 +431,55 @@ def claim(manager: Client, lobby: Lobby, channel: str,
         print(f"{table.id}: offering to manage it", flush=True)
 
 
+#: One game finishing writes a row; two finishing together would write two
+#: into the same ledger at once. The ledger is append-only and its own reader,
+#: so the write is serialised here rather than being made to cope.
+_LEDGER = threading.Lock()
+
+
+def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
+                ack_seconds: int, out: Path, ledger: Path | None) -> None:
+    """One table, start to ledger row. Runs in its own thread -- see `watch`.
+
+    Nothing it touches is shared except the ledger: the table is its own, the
+    room is its own, and the `Manager` and its `Client` are built inside
+    `play`. A game that raises says so and dies alone; the lobby and every
+    other table go on, because a table is not the process.
+    """
+    try:
+        rec = play(table, invite, episode_seconds=episode_seconds,
+                   ack_seconds=ack_seconds, out=out)
+        path = out / f"{table.id}.json"
+        path.write_text(json.dumps(rec, indent=1) + "\n")
+        sidecar = publish(table, invite, rec, out)
+        with _LEDGER:
+            added, _ = _scores.ingest(
+                path, players=rec["players"],
+                **({"ledger": ledger} if ledger is not None else {}))
+        status = added[0]["status"] if added else "already recorded"
+        print(f"{table.id}: wrote {path} and {sidecar.name}; "
+              f"ledger says {status}", flush=True)
+    except Exception as exc:  # noqa: BLE001 - one table must not take the rest
+        print(f"{table.id}: game failed -- {exc!r}", flush=True)
+
+
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby") -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
+    **Each table plays in its own thread.** A game takes minutes, and two
+    tables can settle a minute apart: playing them in turn means the second
+    one's traders sit in a room where nothing happens, for the length of
+    somebody else's game, having been told a time. The lobby keeps reading on
+    this thread throughout, which is why `play` no longer needs to drain it.
+
     Never returns on its own.
     """
     played: set[str] = set()
     claimed: set[str] = set()
+    games: list[threading.Thread] = []
     while True:
         lobby.drain()
         if lobby.stood_down:
@@ -399,17 +515,15 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 continue
             print(f"{table.id}: playing seed={table.seed} "
                   f"workspace={table.workspace}", flush=True)
-            rec = play(table, invite, episode_seconds=episode_seconds,
-                       ack_seconds=ack_seconds, out=out)
-            path = out / f"{table.id}.json"
-            path.write_text(json.dumps(rec, indent=1) + "\n")
-            sidecar = publish(table, invite, rec, out)
-            added, _ = _scores.ingest(
-                path, players=rec["players"],
-                **({"ledger": ledger} if ledger is not None else {}))
-            status = added[0]["status"] if added else "already recorded"
-            print(f"{table.id}: wrote {path} and {sidecar.name}; "
-                  f"ledger says {status}", flush=True)
+            thread = threading.Thread(
+                target=_play_table, args=(table, invite),
+                kwargs={"episode_seconds": episode_seconds,
+                        "ack_seconds": ack_seconds, "out": out,
+                        "ledger": ledger},
+                name=f"game-{table.id}", daemon=True)
+            games.append(thread)
+            thread.start()
+        games = [t for t in games if t.is_alive()]
         time.sleep(every)
 
 
@@ -485,6 +599,11 @@ def main(argv: list[str] | None = None) -> int:
 
     state = args.state or args.out / f"lobby-{args.workspace}-{args.channel}.json"
     lobby = Lobby(client=_client("lobby"), channel=args.channel, state_path=state)
+    try:
+        lobby.lock()
+    except Held as exc:
+        print(exc)
+        return 1
     lobby.load()
     lobby.hold()
     # The claimant, separate from the lobby that witnesses it -- see `claim`.
