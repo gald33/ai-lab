@@ -49,17 +49,20 @@ const BOX = 0.13;
 //: stays a yard.
 const MOST = 6;
 //: How far the pile stands off the hut, and how far apart two goods' piles are.
-//: `OUT` clears the hut: its roof reaches half a unit and the banner pole
-//: half again, so a yard any closer stacks crates through the thatch.
+//: `OUT` clears the hut: its roof reaches half a unit out from the middle of
+//: it, so a yard any closer stacks crates through the thatch. It was set
+//: against the banner pole as well, which the hut no longer has -- kept as it
+//: is, because a yard tight against the wall reads as part of the building.
 const OUT = 0.86, PITCH = 0.3;
 
 /**
  * Where the yard stands, and which way it runs.
  *
- * Behind the hut as seen from the fire: the door and the banner face the
- * middle of the island because that is where a settlement with one fire in
- * front of it looks, and a stack of crates across the front would cover the
- * only side of the hut that says whose it is.
+ * Behind the hut as seen from the fire: the door faces the middle of the
+ * island because that is where a settlement with one fire in front of it
+ * looks, and a stack of crates across the front would cover the door, which
+ * is now painted in the trader's own colour and is half of what says whose
+ * hut this is.
  */
 function yardAt(home, centre, ground) {
   const away = new THREE.Vector3(home.x - centre.x, 0, home.z - centre.z);

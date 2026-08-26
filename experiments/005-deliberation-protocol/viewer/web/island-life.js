@@ -204,6 +204,16 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     b.userData.r.rotation.x = -flap;
   }));
 
+  //: **How much sun there is to cast anything**, on the day's own clock: 1
+  //: through the middle of the day, 0 for the first and last of it. Anything
+  //: that only exists because the sun is high reads this rather than `day`,
+  //: because "the sun is up" and "it is late" are not the same curve -- the
+  //: sun is up at dawn too, and casts almost nothing.
+  //:
+  //: 1 until the page says otherwise, so a board with no clock on it keeps the
+  //: island it already had rather than losing half of it to a missing number.
+  let sunUp = 1;
+
   // — clouds, and their shadows crossing the meadow —
   const shadowMat = new THREE.MeshStandardMaterial({
     color: 0x3f6330, roughness: 1, transparent: true, opacity: 0.34 });
@@ -224,8 +234,13 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     cl.userData.m.opacity = 0.9 * clamp01(Math.sin(Math.PI * p) * 2.2);
     const sx = x * 0.72, sz = z * 0.85;
     sh.position.set(sx, high(sx, sz) + 0.03, sz);
+    //: **Gone by dusk.** A shadow is the sun being blocked, so a hard dark
+    //: patch crossing the meadow at the bell -- while the key has swung almost
+    //: to the horizon and every other shadow on the island has gone long and
+    //: soft -- is the one thing on screen still claiming it is noon. It fades
+    //: out with the light and comes back with it.
     sh.material.opacity = 0.26 * clamp01(Math.sin(Math.PI * p) * 1.8)
-      * (Math.hypot(x * 0.72, z * 0.85) < 3.0 ? 1 : 0.15);
+      * (Math.hypot(x * 0.72, z * 0.85) < 3.0 ? 1 : 0.15) * sunUp;
   }));
 
   // — goats, on the meadow and out of everyone's way —
@@ -317,7 +332,8 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   const hearth = island.getObjectByName("fire");
   const glow = new THREE.PointLight(0xff9a3c, 0, 4.2, 2);
   if (hearth) {
-    glow.position.copy(hearth.position).setY(hearth.position.y + 0.4);
+    //: Just above the flames, which are shorter than they were.
+    glow.position.copy(hearth.position).setY(hearth.position.y + 0.22);
     island.add(glow);
   }
 
@@ -327,6 +343,15 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: the meadow, not the sea or the sand, and they are nothing at midday: a
   //: firefly visible in daylight is a bright dot, which on this island already
   //: means a good in flight.
+  //:
+  //: **And never over the fire.** They were seeded on a ring about the
+  //: island's centre, which the fire is very nearly at, so the densest part of
+  //: the swarm hung in the smoke -- and against flames that are themselves
+  //: small warm dots, a firefly beside them is not a firefly, it is a spark
+  //: coming off the fire. `CLEAR` is the fire's own clearing (0.63) plus the
+  //: widest drift below, so no firefly wanders back over it either.
+  const hearthAt = hearth ? hearth.position : new THREE.Vector3(0, 0, 0);
+  const CLEAR = 1.5;
   const sparks = Array.from({ length: 26 }, (_, i) => {
     const m = new THREE.Mesh(
       new THREE.SphereGeometry(0.035, 8, 6),
@@ -334,8 +359,18 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         emissiveIntensity: 0, transparent: true, opacity: 0 }));
     m.name = `firefly_${i}`;
     const a = (i / 26) * Math.PI * 2 * 3.7 + 0.4;
-    const rad = 0.9 + ((i * 37) % 100) / 100 * 2.1;
-    const [x, z] = onMeadow(Math.cos(a) * rad, Math.sin(a) * rad, 0.5);
+    const rad = 1.5 + ((i * 37) % 100) / 100 * 1.7;
+    let px = Math.cos(a) * rad, pz = Math.sin(a) * rad;
+    //: Pushed straight out from the fire rather than re-drawn, so the swarm
+    //: keeps the spread it was seeded with and only the near ones move.
+    const dx = px - hearthAt.x, dz = pz - hearthAt.z;
+    const d = Math.hypot(dx, dz);
+    if (d < CLEAR) {
+      const [ux, uz] = d > 1e-6 ? [dx / d, dz / d] : [Math.cos(a), Math.sin(a)];
+      px = hearthAt.x + ux * CLEAR;
+      pz = hearthAt.z + uz * CLEAR;
+    }
+    const [x, z] = onMeadow(px, pz, 0.5);
     m.position.set(x, ground(x, z) + 0.35, z);
     island.add(m);
     return { m, x, z, base: ground(x, z), phase: i * 1.37, drift: 0.35 + (i % 5) * 0.08 };
@@ -373,6 +408,20 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: nothing the camera can see. Something has to keep the shaded faces darker
   //: than the lit ones or dusk arrives as a flat orange wash with no island
   //: left in it.
+  //: **What the water outside the picture is, at this hour.**
+  //:
+  //: The renderer draws into the letterboxed rectangle the `<svg>` fits its
+  //: viewBox into, and the bands beside or above that rectangle are not drawn
+  //: at all -- so however wide the sea disc is, the frame ends in the page's
+  //: own dark backing. That is the void a spectator asked to be rid of. The
+  //: bands cannot be *rendered* into without breaking the mapping that puts a
+  //: hut under its card, so they are **cleared to the sea's own colour**
+  //: instead, and this is that colour: the deep water's material as this
+  //: hour's light leaves it, so the band and the water inside the frame are
+  //: the same blue and the join does not show. It goes down with the light
+  //: like everything else.
+  const deep = new THREE.Color(0x244a63);
+  const water = new THREE.Color(0x244a63);
   const seaDay = new THREE.Color(0x6fa6c8);
   const seaDusk = new THREE.Color(0x3c4a7a);
 
@@ -390,6 +439,27 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: rang a bell the size of a plum beside it. This lets the two clips carry
   //: the light itself, which is the largest thing either of them is about.
   let held = null;
+  //: **Whether this island has ever been told the time.**
+  //:
+  //: `day === null` means "the page cannot read this board's clock", and the
+  //: rule for it is to leave the light where it is -- not knowing the hour is
+  //: not the same as it being dawn, and a live board that drops a poll should
+  //: not flicker to morning and back.
+  //:
+  //: That rule is right *within* a round and was wrong *across* one. The key,
+  //: the ambient and the fill belong to the stage and outlive the island: a
+  //: round watched to its bell leaves them at dusk, and the next round built
+  //: on top of them inherits that dusk and holds it, for every frame, if its
+  //: own clock is one this page cannot read. Reported as a second replay whose
+  //: daylight never changed, on a board that was dark from the first frame to
+  //: the last.
+  //:
+  //: So the hold only applies once there is something to hold. An island that
+  //: has never had an hour gets the middle of the day, which is the honest
+  //: reading of "this board does not say" and is what the drawn island did
+  //: before there was a clock at all.
+  let told = false;
+  const NOON = 0.42;
 
   return {
     /**
@@ -406,6 +476,9 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     flare(v) { flare = v; },
     hold(v) { held = v; },
 
+    /** The sea's colour at this hour, for whatever has to paint water. */
+    water,
+
     /**
      * @param {number} t     seconds, for anything on its own rhythm
      * @param {object} ctx   `{ day, key, ambient }` -- `day` from the page's
@@ -413,7 +486,6 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
      */
     update(t, { day = null, turn = 0, key = null, ambient = null,
                 fill = null } = {}) {
-      for (const part of parts) part(t);
       // A clip holding the light wins over the clock, and never goes backwards
       // from it: at a real bell the page has already put the day at dusk, and
       // a clip that pulled it back would fight its own page.
@@ -422,6 +494,18 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       // Spent. Whoever wants them next frame has to ask again.
       held = null;
       flare = 0;
+      //: **Resolved before the parts run, and the parts run either way.** The
+      //: loose animations are the island being alive and none of them need a
+      //: clock -- gulls, goats, boats keep going on a board that never said
+      //: what time it is -- but the one that does read the sun has to read
+      //: *this* frame's, not the last one's, or a bell leaves a shadow behind
+      //: for a frame.
+      if (day === null && !told) day = NOON;
+      if (day !== null) {
+        told = true;
+        sunUp = clamp01((Math.sin(Math.PI * clamp01(day)) - 0.1) / 0.45);
+      }
+      for (const part of parts) part(t);
       if (day === null) return;
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
@@ -463,6 +547,21 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         fill.intensity = 0.75 * (0.55 + Math.sin(a) * 0.45);
         fill.color.copy(day < 0.5 ? seaDusk.clone().lerp(seaDay, day / 0.5)
                                   : seaDay.clone().lerp(seaDusk, (day - 0.5) / 0.5));
+      }
+      //: The same sum the renderer does for a flat surface facing up, done
+      //: once: the material's colour under the ambient, plus what the key and
+      //: the fill add at the angle they arrive from. It is an approximation --
+      //: the check that keeps it honest compares this band against a rendered
+      //: sea pixel a few pixels inside the frame, so it cannot drift far
+      //: without being caught.
+      if (ambient && key && fill) {
+        water.copy(deep).multiply(ambient.color).multiplyScalar(ambient.intensity);
+        water.add(deep.clone().multiply(key.color)
+          .multiplyScalar(key.intensity * Math.max(0, Math.sin(a)) * 0.42));
+        water.add(deep.clone().multiply(fill.color).multiplyScalar(fill.intensity * 0.3));
+        water.r = Math.min(1, water.r);
+        water.g = Math.min(1, water.g);
+        water.b = Math.min(1, water.b);
       }
       // Lit as the light goes, which is the one thing on the island that is
       // brighter at dusk than at noon.

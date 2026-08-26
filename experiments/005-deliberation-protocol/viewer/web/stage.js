@@ -35,6 +35,11 @@ import { carried, stageEvent } from "./island-events.js";
 //: standing on rather than looking at from orbit.
 const EXTENT = 4.35;
 
+//: The layer the open sea is on, as well as its own. `render()` draws this
+//: layer alone across the whole canvas first, so the bands the letterbox
+//: leaves are water rather than a hole in the page.
+const WATER = 1;
+
 //: Looking down and along, from over the trader's shoulder rather than a
 //: satellite. **Lower than it was** (0.86): the flatter the camera sits, the
 //: more the island reads as a plan of itself, and the less a turn of the
@@ -117,6 +122,12 @@ export class Stage {
     this.fill.position.set(-5, 3, -4);
     this.scene.add(this.fill);
 
+    //: The rig is on the water's layer as well as its own. A camera set to one
+    //: layer collects only what is on it, **lights included** -- so the
+    //: backdrop pass drew the sea with nothing lighting it and the bands came
+    //: out black, which is a worse void than the one they replaced.
+    for (const l of [this.ambient, this.key, this.fill]) l.layers.enable(WATER);
+
     this.island = null;
     this.anchors = {};
     this.life = null;
@@ -132,6 +143,9 @@ export class Stage {
     //: method vanish behind an integer.
     this.raf = null;
     this.t0 = 0;
+    //: Whether a frame has already thrown, so the console gets the reason once
+    //: rather than once per frame.
+    this.hurt = false;
     // Somebody who asked for less motion gets a still island: everything the
     // loop does is atmosphere, and none of it carries a fact.
     this.still = matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
@@ -161,6 +175,22 @@ export class Stage {
     this.ground = made.ground;
     this.world = { island: made.island, anchors: made.anchors,
                    ground: made.ground, traders, goods };
+    //: **A new round does not open in the last one's dark.**
+    //:
+    //: The rig -- key, ambient, fill -- belongs to the stage and outlives the
+    //: island, so a round watched to its bell leaves it at dusk. `day` is the
+    //: page's, set on every paint, and it is `null` on a board whose schedule
+    //: line the page cannot read; the rule for `null` is to leave the light
+    //: alone, because not knowing the hour is not the same as it being dawn.
+    //: Between them, a second replay played from its first frame to its last
+    //: in the previous round's night, which is what was reported.
+    //:
+    //: Both halves are needed. Forgetting the hour here is what makes the
+    //: island *untold*, and `island-life` gives an untold island the middle of
+    //: the day rather than whatever the lights happen to be holding; without
+    //: it the update at the foot of this method tells the new island the old
+    //: hour before the page ever gets a paint in.
+    this.day = null;
     this.life = enliven(this.island, { ground: made.ground });
     //: What every trader is holding, standing on the ground beside its hut.
     //: Built with the island rather than by a clip, because it outlives every
@@ -172,6 +202,9 @@ export class Stage {
     //: second one: the bell makes it flare and the dawn lets it die, and both
     //: have to move the light it throws, not just the cones.
     this.world.life = this.life;
+    //: The disc of deep water, marked for the backdrop pass. It keeps layer 0
+    //: as well, so the framed pass still draws it in its place.
+    made.island.getObjectByName("sea")?.layers.enable(WATER);
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
     // at a moment rather than one with its gulls at the origin.
@@ -270,8 +303,13 @@ export class Stage {
     const vw = this.geo.w * k, vh = this.geo.h * k;
     const vx = (w - vw) / 2, vy = (h - vh) / 2;
     // WebGL counts from the bottom; the page counts from the top.
-    this.renderer.setViewport(vx, h - vy - vh, vw, vh);
-    this.renderer.setScissor(vx, h - vy - vh, vw, vh);
+    this.view = [vx, h - vy - vh, vw, vh];
+    //: The whole canvas, for the pass that paints the water behind the
+    //: letterbox. Kept beside the framed one so `render()` does not have to
+    //: measure the canvas again sixty times a second.
+    this.whole = [0, 0, w, h];
+    this.renderer.setViewport(...this.view);
+    this.renderer.setScissor(...this.view);
     this.renderer.setScissorTest(true);
     this.render();
   }
@@ -392,14 +430,32 @@ export class Stage {
       //: in -- so they have to be set before the layer that spends them. The
       //: other way round applied each contribution one frame late, which left
       //: the island dark for a frame after a bell finished.
-      this.step(t);
-      this.life.update(t, this.ctx());
-      this.renderer.render(this.scene, this.camera);
-      // The camera moved, so every settlement is somewhere else on screen and
-      // the cards have to go with them. This is the whole reason the page hands
-      // the stage a callback rather than the stage knowing about the scene.
-      this.onFrame?.(this);
+      //: **Asked for again before any of the work, not after it.** A frame
+      //: that threw used to take the loop with it: the re-arm was the last
+      //: statement, so one exception anywhere in `step`, `life.update` or
+      //: `onFrame` meant no frame was ever requested again and the island
+      //: froze exactly as it stood -- sun stopped, clouds stopped, camera
+      //: stopped -- with the canvas still showing the last thing drawn. That
+      //: is what "the second replay's daylight never changed" was. Asking
+      //: first makes a bad frame a bad frame.
       this.raf = requestAnimationFrame(tick);
+      try {
+        this.step(t);
+        this.life.update(t, this.ctx());
+        //: `render()`, not `renderer.render()`. The loop used to call the
+        //: renderer directly and so skipped the full-canvas clear, which is
+        //: the only thing that wipes the letterbox bars -- so the bars kept a
+        //: strip of an older frame for as long as the page was open.
+        this.render();
+        // The camera moved, so every settlement is somewhere else on screen and
+        // the cards have to go with them. This is the whole reason the page hands
+        // the stage a callback rather than the stage knowing about the scene.
+        this.onFrame?.(this);
+      } catch (err) {
+        //: Once. A throw that repeats sixty times a second would bury the
+        //: message that says what it was.
+        if (!this.hurt) { this.hurt = true; console.error("island frame", err); }
+      }
     };
     this.raf = requestAnimationFrame(tick);
   }
@@ -410,7 +466,48 @@ export class Stage {
   }
 
   render() {
-    if (this.island) this.renderer.render(this.scene, this.camera);
+    if (!this.island) return;
+    //: **Clear the whole canvas, not just the part being drawn into.**
+    //:
+    //: The renderer draws into the letterboxed rectangle the `<svg>` fits its
+    //: viewBox into, with everything outside it scissored away -- and a
+    //: scissored clear only clears inside the scissor. So the bars beside or
+    //: above that rectangle keep whatever was last drawn there, for ever: the
+    //: moment the rectangle changes shape -- a resize, a reflow, a phone
+    //: rotating, the chrome's band appearing -- a strip of the previous frame
+    //: is left stranded outside the new one. Reported as a frozen bar across
+    //: the top of the island with clouds cut in half in it, and it never
+    //: refreshed because nothing was drawing there any more.
+    //: **The water is painted behind the letterbox, not guessed at.**
+    //:
+    //: The renderer draws into the rectangle the `<svg>` fits its viewBox
+    //: into, because that mapping is what puts a hut under its card. The bands
+    //: beside or above that rectangle are not drawn at all, so however wide
+    //: the sea disc is the frame ends in the page's own dark backing -- an
+    //: island in a void, with a band of it above and below on any window whose
+    //: shape does not match the viewBox's.
+    //:
+    //: So there are two passes. The first is the sea alone, across the whole
+    //: canvas, through the same camera at a viewport the full width of it: the
+    //: disc is far wider than the frame, so what lands in the bands is open
+    //: water. The second is the island, in its own rectangle, scissored.
+    //:
+    //: Two passes rather than a clear colour chosen to look like water,
+    //: because it is the *same mesh under the same lights* -- it goes down
+    //: with the day and through every colour the sea passes through without
+    //: anybody keeping a second copy of that arithmetic in step. The first
+    //: attempt did keep one, and it was half a stop out at noon.
+    this.renderer.setScissorTest(false);
+    if (this.whole) this.renderer.setViewport(...this.whole);
+    this.renderer.clear();
+    //: Layer 1 is the sea and nothing else. Set on the camera rather than by
+    //: hiding every other node, which would be a traversal per frame.
+    this.camera.layers.set(WATER);
+    this.renderer.render(this.scene, this.camera);
+    this.camera.layers.set(0);
+    if (this.view) this.renderer.setViewport(...this.view);
+    this.renderer.setScissorTest(true);
+    this.renderer.render(this.scene, this.camera);
   }
 
   destroy() {

@@ -679,13 +679,12 @@ function belled(event, { island, anchors, traders, stock, life }) {
   //: set them directly would be overwritten by the layer on the next frame or
   //: would have to be undone by a restore that might never run.
 
-  // Every settlement's own banner goes up and away with the offers that
-  // lapsed. Restored at the end -- these are the island's, not the clip's.
-  const flags = traders.map((n) => island.getObjectByName(`hut_${n}_banner`))
-    .filter(Boolean).map((b) => {
-      borrow(c, b);
-      return { b, y0: b.position.y, r0: b.rotation.y };
-    });
+  //: **The banners going up with the lapsed offers are gone with the
+  //: banners.** A hut has no flag any more -- a flag on this island says which
+  //: good is made where, and nothing else -- so the bell is the swing, the
+  //: day's stock being eaten, and the night coming down over the whole frame.
+  //: Those are three things a viewer can see from any distance; the scrap of
+  //: cloth leaving a pole was never one of them.
 
   c.update = (t) => {
     const swing = win(t, 0, 2.2);
@@ -703,12 +702,6 @@ function belled(event, { island, anchors, traders, stock, life }) {
       box.position.y = y0 - go * 0.34;
       box.rotation.y = turn + go * 2.2;
       box.scale.setScalar(Math.max(0.001, 1 - go));
-    });
-    flags.forEach(({ b, y0: by, r0 }, i) => {
-      const ev = easeIn(win(t, 1.4 + i * 0.18, 3.4 + i * 0.18));
-      const back = easeOut(win(t, 3.5, 4.2));
-      b.position.y = by + (ev * 0.9) * (1 - back);
-      b.rotation.y = r0 + ev * 3.2 * (1 - back);
     });
   };
   return c;
@@ -734,15 +727,13 @@ function opened(event, { island, anchors, traders, life }) {
                y0: cr.position.y, r0: cr.rotation.y };
     }));
 
-  // The banners run back up their own poles. A floating bar over each hut was
-  // the first cut of this and it read as two planks in the sky: the island has
-  // a flag on a pole at every settlement already, and a flag going up is the
-  // oldest way there is of saying a day has started.
-  const flags = traders.map((n) => island.getObjectByName(`hut_${n}_banner`))
-    .filter(Boolean).map((b) => {
-      borrow(c, b);
-      return { b, y0: b.position.y };
-    });
+  //: **No banner runs back up a pole, because there is no pole.** This used to
+  //: end with a flag rising at every settlement, which was the oldest way there
+  //: is of saying a day has started -- and then the huts lost their flags, so
+  //: that a flag on this island means one thing and one thing only. What is
+  //: left is the larger half and always was: the night lifting off the whole
+  //: frame, the light coming back up on the model, and every trader's crates
+  //: coming back out of the ground.
 
   //: **The dawn used to cross the island from the centre outward**, and that
   //: ring is gone with the rest of them. What a new day looks like is already
@@ -768,13 +759,6 @@ function opened(event, { island, anchors, traders, life }) {
       cr.scale.setScalar(sc);
       cr.position.y = y0 - (1 - sc) * 0.28;
       cr.rotation.y = r0 + drain * 2.4 * (1 - back);
-    });
-    flags.forEach(({ b, y0 }, i) => {
-      // Down while the day's stock drains, then up.
-      const down = easeInOut(win(t, 0.2 + i * 0.15, 1.4 + i * 0.15));
-      const up = easeOut(win(t, 2.2 + i * 0.25, 3.8 + i * 0.25));
-      b.position.y = y0 - 0.62 * (down - up);
-      b.rotation.y = Math.sin(t * 4.4) * 0.2 * up * (1 - win(t, 3.8, 4.4));
     });
   };
   return c;

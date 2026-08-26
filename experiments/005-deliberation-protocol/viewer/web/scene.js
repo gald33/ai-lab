@@ -604,23 +604,26 @@ export class Scene {
   }
 
   /**
-   * The line from each card to the settlement it is about.
+   * A mark on each settlement, saying which trader's it is.
    *
-   * A card in the margin is a card that has stopped saying *whose* it is, so
-   * the line is not decoration: it is the only thing left connecting a number
-   * to a hut. Kept quiet -- thin, dim, under everything -- because it crosses
-   * the picture, and re-laid every frame because the island turns under it.
+   * **There was a dashed line from here to the trader's card**, on the
+   * argument that a card out in the margin has stopped saying whose it is.
+   * Four traders make four of those lines, and they cross the whole picture
+   * and each other -- reported as clutter over the island the page exists to
+   * show. What says whose a settlement is, on the island, is the coloured
+   * banner already flying over it; the card says whose it is by being labelled.
+   *
+   * The mark stays because it is what a rope hangs from and what the goods
+   * fly between, and because a settlement with nothing on it is a hut.
+   * Re-laid every frame because the island turns under it.
    */
   layTethers() {
     if (!this.tethers) return;
     if (!this.modelled) { this.tethers.replaceChildren(); return; }
     this.tethers.replaceChildren(...this.traders.flatMap((name) => {
-      const seat = this.seats[name], pin = this.pins[name];
-      if (!seat || !pin) return [];
-      const from = edgeToward(cardBox(seat, this.cardH), pin);
+      const pin = this.pins[name];
+      if (!pin) return [];
       const g = el("g", { class: "tether", "data-trader": name });
-      g.append(el("path", { class: "tether-line",
-                            d: `M ${from.x} ${from.y} L ${pin.x} ${pin.y}` }));
       g.append(el("circle", { class: "tether-pin", cx: pin.x, cy: pin.y, r: 5.5 }));
       return [g];
     }));
