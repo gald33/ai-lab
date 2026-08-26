@@ -69,6 +69,7 @@ from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
 from .lobby import Held, Lobby, Table
+from .lobby_page import write as write_page
 
 # The island economy this game runs, from 005's tree. A code dependency is not
 # grounding -- 005's own CLAUDE.md says exactly that about its import of 002 --
@@ -561,7 +562,8 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
-          channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT) -> None:
+          channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT,
+          page: Path | None = None) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
     **Each table plays in its own thread.** A game takes minutes, and two
@@ -577,6 +579,16 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
     games: list[threading.Thread] = []
     while True:
         lobby.drain()
+        if page is not None:
+            # This runner embeds the only lobby on its channel, so it is also
+            # the only process that can render one -- `run_lobby --page` would
+            # have to be a second lobby, which is the thing HOLD exists to
+            # prevent. A deployment that ran the page and the games separately
+            # would have one of them stand down.
+            try:
+                write_page(lobby, page)
+            except Exception as exc:  # noqa: BLE001 - a page is not a game
+                print(f"lobby page not written: {exc!r}", flush=True)
         if lobby.stood_down:
             print("another lobby holds this channel; stopping rather than "
                   "settling every table twice", flush=True)
@@ -686,6 +698,11 @@ def main(argv: list[str] | None = None) -> int:
                          "not carry -- the seeds it drew and the lines it has "
                          "already acted on -- so a restart does not settle a "
                          "table twice (default: <out>/lobby-<ws>-<ch>.json)")
+    ap.add_argument("--page", type=Path, default=None,
+                    help="rewrite this HTML file on every poll: the lobby as a "
+                         "page a person can look at. It belongs here rather "
+                         "than on run_lobby because this process embeds the "
+                         "only lobby its channel may have")
     ap.add_argument("--max-games", type=int, default=MAX_CONCURRENT,
                     help="how many tables to play at once. The lab pays for "
                          "the manager of every table that settles, and OPEN "
@@ -725,7 +742,7 @@ def main(argv: list[str] | None = None) -> int:
               ack_seconds=args.ack_seconds, out=args.out,
               ranked_only=args.ranked, ledger=args.ledger,
               manager=manager, channel=args.channel,
-              max_concurrent=args.max_games)
+              max_concurrent=args.max_games, page=args.page)
     except KeyboardInterrupt:
         print()
     return 0

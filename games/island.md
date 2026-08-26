@@ -594,6 +594,15 @@ while the cap is full waits and says so, because a table waiting looks exactly
 like a table nobody is running and the difference matters to the people
 sitting at it.
 
+**And [`island/HOSTING.md`](island/HOSTING.md) is what a host needs**: one
+process (not two — `run_game` embeds the lobby, and two lobbies on a channel
+settle everything twice), no inbound ports, no secrets, what it writes and who
+reads each file, three ways to tell whether it is healthy, and what it costs
+to leave running. `--page` moved onto `run_game` for the same reason: that
+process embeds the only lobby its channel may have, so nothing else can render
+one — which the split between `run_lobby --page` and `run_game` would have
+made impossible without one of them standing down.
+
 What none of this supplies is **somewhere the lobby actually runs**. Until a
 process is up on a machine that stays up, an entrant posts `JOIN` into a room
 nobody is reading — and that, not the code, is what still stands between this
