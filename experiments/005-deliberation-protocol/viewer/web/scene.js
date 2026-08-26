@@ -170,13 +170,20 @@ function cardPlan(n, w, h, cardH, portrait) {
     // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
     // fit beside each other with a gutter and three do not.
     const rows = Math.ceil(n / 2);
-    //: The island's band. Taller than it is wide so there is sky over the
-    //: island for the sun to cross -- the island itself fills the width and
-    //: sits in the middle of it.
-    const islandH = Math.round(w * 1.22);
+    //: The island's band: square, so the island fills the width of the frame
+    //: and nothing of the band is spent on nothing.
+    const islandH = w;
     //: Clearance under the last card for the transport, which floats over the
-    //: bottom of the window and would otherwise sit on top of it.
-    const below = 110;
+    //: bottom of the window.
+    //:
+    //: **Measured, not guessed.** The transport is about 130 points tall
+    //: whatever the phone, but a point is worth more of this viewBox the
+    //: shorter the window is -- 157 units on a roomy frame and 196 on a phone
+    //: showing the browser's own bars, which is what a shared link opens into.
+    //: The first cut of this reserved 110 and the cards' bottom halves --
+    //: quantities, utility, the autarky mark -- sat behind the controls on
+    //: every real phone.
+    const below = 260;
     const cards = Array.from({ length: n }, (_, i) => {
       const row = Math.floor(i / 2);
       // A row with one card in it sits in the middle rather than off to a side.
