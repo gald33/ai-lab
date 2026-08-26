@@ -569,3 +569,84 @@ def test_an_ordinary_drain_reports_nothing_missed(hub):
         lobby.drain()
 
     assert lobby.missed == 0 and lobby.last_seq > 0
+
+
+def test_a_table_commits_before_any_seat_can_have_joined(hub):
+    """The commitment is only worth anything at the moment it is made: a lobby
+    that has not read a nonce cannot pick a seed to suit anybody."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    import hashlib
+    assert table.commit == hashlib.sha256(table.nonce.encode()).hexdigest()
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any(f"g1 commits {table.commit}" in b for b in said)
+    assert not any(table.nonce in b for b in said), "the nonce stays secret"
+
+
+def test_a_seed_every_seat_helped_draw_is_recomputable_from_the_board(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key),
+                  draw_nonce=lambda: "aaaaaaaaaaaaaaaa")
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2 nonce=1111111111111111")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b nonce=2222222222222222")
+    manager = _entrant(hub, "m", key)
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert table.verifiable() and table.draw == "commit-reveal"
+
+    import hashlib
+    material = "|".join(["aaaaaaaaaaaaaaaa", "1111111111111111", "2222222222222222"])
+    expected = int.from_bytes(hashlib.sha256(material.encode()).digest()[:8], "big") >> 1
+    assert table.seed == expected, "anybody can recompute it once the nonce is out"
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("drawn from every nonce at this table" in b for b in said)
+
+
+def test_the_order_seats_arrived_in_cannot_change_the_island(hub):
+    """Sorted, so a lobby cannot re-order arrivals into a better island."""
+    key = generate_key()
+    seeds = []
+    for first, second in (("t1", "t2"), ("t2", "t1")):
+        lobby = Lobby(client=_client(hub, f"lobby-{first}", key),
+                      draw_nonce=lambda: "aaaaaaaaaaaaaaaa")
+        _client(hub, f"opener-{first}", key).post(
+            "lobby", "OPEN traders=2 episodes=3 rounds=1")
+        lobby.drain()
+        nonces = {"t1": "1111111111111111", "t2": "2222222222222222"}
+        for who in (first, second):
+            _entrant(hub, f"{who}-{first}", key).post(
+                "lobby", f"JOIN {list(lobby.tables)[-1]} as {who}-{first} "
+                         f"nonce={nonces[who]}")
+        _entrant(hub, f"m-{first}", key).post("lobby", f"MANAGE {list(lobby.tables)[-1]}")
+        lobby.drain()
+        seeds.append(lobby.tables[list(lobby.tables)[-1]].seed)
+
+    assert seeds[0] == seeds[1]
+
+
+def test_a_table_missing_a_nonce_says_its_draw_is_not_checkable(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2 nonce=1111111111111111")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b")
+    _entrant(hub, "m", key).post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    table = lobby.tables["g1"]
+    assert not table.verifiable() and table.draw == "unverified"
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("not checkable afterwards" in b for b in said)

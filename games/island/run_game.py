@@ -369,6 +369,20 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     payload["room_key"] = invite.key
     payload["round"] = {"seed": table.seed, "workspace": rnd["workspace"],
                         "trajectory": rnd["trajectory"]}
+    # How the island was drawn, and everything needed to check it. The lobby's
+    # nonce is the one piece that was secret while the game ran; published
+    # here, the seed becomes recomputable by anybody from lines that were on
+    # the lobby's board before the draw -- which is what stops a manager
+    # re-rolling an island until it suited somebody.
+    payload["draw"] = {
+        "method": table.draw,
+        "commit": table.commit,
+        "nonce": table.nonce,
+        "seat_nonces": {table.label(peer): nonce
+                        for peer, nonce in table.nonces.items()},
+        "recompute": ("sha256 of the lobby nonce and every seat nonce sorted, "
+                      "joined by '|', first 8 bytes big-endian, >> 1"),
+    }
     path = out / f"reveal-{rnd['workspace']}.json"
     path.write_text(json.dumps(payload, indent=1) + "\n")
     return path

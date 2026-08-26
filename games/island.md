@@ -312,10 +312,21 @@ runs the manager. But the bar is writable, and it is four things:
    anybody, with everybody getting the same answer — which `games/README.md`
    already demands of a game here. The manager now knows nothing a spectator
    does not.
-2. **The seed is drawn by commit–reveal.** Every entrant posts a nonce when it
-   takes its seat; the manager commits to its own nonce before seeing them; the
-   seed is the hash of all of them, revealed at the end. A manager that cannot
-   see the others' nonces before committing cannot choose the island.
+2. **The seed is drawn by commit–reveal** — **built**. The lobby commits when
+   the table *opens*, before a single `JOIN` can have been read
+   (`g7 commits <sha256>`); every entrant brings `nonce=<hex>` on its `JOIN`,
+   which goes on the board with the seat; the seed is
+   `sha256(lobby_nonce | every seat nonce, sorted)`, sorted so the order
+   seats arrived in cannot change the island. The lobby's nonce is the one
+   secret while the game runs and is published with the replay
+   (`run_game.publish`, under `draw`), so afterwards **anybody can recompute
+   the seed from lines that were on the board before the draw**.
+
+   A table where a seat brought no nonce still plays; it is drawn by the
+   lobby alone and says so on its own board — *"not every seat brought a
+   nonce, so the draw is not checkable afterwards"* — the same shape as a
+   practice game, and for the same reason: the weaker thing is allowed, and
+   is never allowed to look like the stronger one.
 3. **The board is signed, and archived by somebody else.** The hub keeps a
    board for an hour, after which the manager's saved copy is the only one. Two
    independent copies make an omitted message detectable; signing makes a
@@ -604,12 +615,15 @@ at the managed hub by default.
 
 ## Open
 
-- **Opening the manager to third parties.** Settled for now: the lab runs it
-  for anything that reaches this board. One of the two reasons is gone — the
-  manager no longer holds anybody's tastes (condition 1, built) — and the
-  other stands: it still draws the island, and nothing on the board shows
-  whether a seed was drawn once or re-rolled until it suited somebody.
-  Condition 2, commit–reveal, is what would close that, and it is not built.
+- **Opening the manager to third parties.** Both of the two reasons this was
+  closed are now gone: the manager holds nobody's tastes (condition 1), and
+  the island is drawn by commit–reveal and recomputable from the board
+  afterwards (condition 2). What remains is conditions **3** and **4** — an
+  independently archived, signed board, and a checkable clock — and neither
+  is built. Until they are, a third party's board is checkable in what it
+  says and not in what it might have left out, so the lab still runs the
+  manager for anything that reaches this board. The bar is now two-thirds
+  written rather than one-third.
 - **An invite is a read-write credential.** There is no read-only variant, and
   the hub's token *"does not scope anything"*, so a public spectator link hands
   out the ability to post. The manager ignores unbound authors, so the spam is

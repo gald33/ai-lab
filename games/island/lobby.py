@@ -33,6 +33,7 @@ operator's file, the other is one line of board text saying who is reading.
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import secrets
@@ -119,6 +120,20 @@ class Table:
     #: here was never seated: `_join` refuses a JOIN it cannot verify rather
     #: than seating it keyless.
     keys: dict[str, str] = field(default_factory=dict)
+    #: peer id -> the nonce its JOIN brought, if it brought one. A table where
+    #: every seat did is drawn by commit-reveal (`Lobby._settle`) and its draw
+    #: is checkable afterwards by anybody.
+    nonces: dict[str, str] = field(default_factory=dict)
+    #: This lobby's commitment, posted when the table opens and before any
+    #: JOIN can have been read: `sha256(nonce)`.
+    commit: str = ""
+    #: The nonce behind that commitment. Secret until the game ends, and then
+    #: published with the replay -- which is the whole mechanism: a lobby that
+    #: could not see the seats' nonces when it committed cannot have chosen
+    #: the island, and anybody can check the arithmetic afterwards.
+    nonce: str = ""
+    #: How the seed was drawn: "commit-reveal" or "unverified".
+    draw: str = "unverified"
     #: peer id -> the X25519 key its JOIN offered for sealing, if it offered
     #: one. A seat without one can only play a practice game: there is nothing
     #: to seal its private half to.
@@ -144,6 +159,13 @@ class Table:
     #: specific seat over the board is the sealed channel, build-order item
     #: 2c, and is not done here.
     seed: int | None = None
+
+    def verifiable(self) -> bool:
+        """Whether this table's island can be shown to have been drawn rather
+        than chosen: every seat brought a nonce, and the lobby committed to
+        its own before it could read any of them."""
+        return bool(self.seats) and bool(self.commit) and all(
+            p in self.nonces for p in self.seats)
 
     def sealable(self) -> bool:
         """Whether every seat gave the manager something to seal to, which is
@@ -173,6 +195,9 @@ class Lobby:
     #: Injectable so a test can pin the seed a settlement draws rather than
     #: asserting against whatever `secrets` happened to produce.
     draw_seed: Callable[[], int] = lambda: secrets.randbits(63)
+    #: Injectable for the same reason `draw_seed` is: a test pins the lobby's
+    #: half of a commit-reveal rather than asserting against `secrets`.
+    draw_nonce: Callable[[], str] = lambda: secrets.token_hex(16)
     #: Where this lobby's own state is kept across restarts. Optional: a test
     #: and a one-shot drain need none, a standing process does.
     state_path: Path | None = None
@@ -413,6 +438,11 @@ class Lobby:
                      episodes=action.episodes, rounds=action.rounds,
                      goods=action.goods, opened_at=self.clock(),
                      opened_by=peer)
+        # Committed here, before a single JOIN exists, which is the only
+        # moment at which committing means anything: a lobby that has not
+        # seen the seats' nonces cannot pick a seed to suit anybody.
+        table.nonce = self.draw_nonce()
+        table.commit = hashlib.sha256(table.nonce.encode()).hexdigest()
         self._next += 1
         self.tables[table.id] = table
         self.settled += 1
@@ -420,6 +450,9 @@ class Lobby:
         # this to know what island it is sitting down at -- the rules it hands
         # its agent count the goods by name, so a table that kept the number to
         # itself would have every trader briefed on the wrong island.
+        self.say(f"{table.id} commits {table.commit} -- bring "
+                f"nonce=<16-64 hex digits> on your JOIN and this table's "
+                f"island is drawn from all of them together")
         self.say(f"{table.id} is forming: {table.traders} traders, "
                 f"{table.goods} goods, "
                 f"{table.episodes} episodes, {table.rounds} round"
@@ -456,10 +489,13 @@ class Lobby:
         table.keys[peer] = key
         if action.box:
             table.boxes[peer] = action.box
+        if action.nonce:
+            table.nonces[peer] = action.nonce.lower()
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
                 f"key {key}"
-                f"{', sealed' if action.box else ', in the clear'} "
+                f"{', sealed' if action.box else ', in the clear'}"
+                f"{', nonce ' + action.nonce.lower() if action.nonce else ''} "
                 f"({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)
@@ -521,7 +557,10 @@ class Lobby:
         """
         table.settled = True
         self.settled += 1
-        table.seed = self.draw_seed()
+        if table.verifiable():
+            table.seed, table.draw = self._commit_reveal(table), "commit-reveal"
+        else:
+            table.seed, table.draw = self.draw_seed(), "unverified"
         table.workspace = f"{self.client.config.workspace}-{table.id}"
         key = generate_key() if self.client.encrypted else None
         invite = Invite(url=self.client.config.url, workspace=table.workspace,
@@ -533,12 +572,33 @@ class Lobby:
                            for label, name in zip(
                                (table.label(p) for p in table.seats),
                                table.seats.values()))
+        drawn = ("drawn from every nonce at this table, this lobby's included "
+                 f"(committed {table.commit})" if table.verifiable()
+                 else "drawn by this lobby alone -- not every seat brought a "
+                      "nonce, so the draw is not checkable afterwards")
         note = "" if table.sealable() else (
             "; PRACTICE -- not every seat offered a key to seal to, so the "
             "private half is public and this game is not ranked")
         self.say(f"{table.id} is full: {roster}; managed by "
                 f"{table.manager}; opens {_stamp(table.opens_at)}{note}")
+        self.say(f"{table.id}: the island is {drawn}")
         self.say(f"{table.id} invite: {invite.encode()}")
+
+    @staticmethod
+    def _commit_reveal(table: Table) -> int:
+        """The seed as the hash of every nonce at this table, the lobby's own
+        included.
+
+        Sorted, so that the order seats happened to arrive in cannot change
+        the island; 63 bits, because that is what `random.Random` is seeded
+        with everywhere else here. The lobby's nonce stays secret until the
+        replay, so nobody can compute the seed while the game is on -- and
+        once it is published, anybody can, from lines that were on the board
+        before the draw.
+        """
+        material = "|".join([table.nonce] + sorted(table.nonces.values()))
+        digest = hashlib.sha256(material.encode()).digest()
+        return int.from_bytes(digest[:8], "big") >> 1
 
     def _sweep(self) -> None:
         """Lapse whatever has sat past its deadline unfilled or unmanaged.

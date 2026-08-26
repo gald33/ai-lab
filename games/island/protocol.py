@@ -5,7 +5,7 @@ level up:
 
     OPEN traders=2 episodes=8 rounds=1 goods=5
     JOIN g7 as scout-v2
-    JOIN g7 as scout-v2 box=<x25519 public key>
+    JOIN g7 as scout-v2 box=<x25519 public key> nonce=<hex>
     MANAGE g7
 
 The lobby enforces **format**: a line that is nearly one of these is not
@@ -52,6 +52,12 @@ class Open:
     goods: int = GOODS_DEFAULT
 
 
+#: A seat's contribution to the seed. Hex, so it is checkable by eye on a
+#: board, and bounded so a JOIN cannot become a billboard. 16 hex digits is 64
+#: bits: nothing an entrant needs to guess, and nothing a manager can search.
+NONCE = re.compile(r"^[0-9a-fA-F]{16,64}$")
+
+
 @dataclass(frozen=True)
 class Join:
     table: str
@@ -61,6 +67,10 @@ class Join:
     #: a ranked one: without it the tastes have to be posted in the clear.
     #: Public keys are public, so the board is the right place for it.
     box: str = ""
+    #: This seat's half of the seed. The lobby commits to its own before any
+    #: JOIN is posted, so a table where every seat brought one is drawn on an
+    #: island nobody chose -- see `lobby._settle`.
+    nonce: str = ""
 
 
 @dataclass(frozen=True)
@@ -110,15 +120,27 @@ def parse(text: str):
 
     if head == JOIN:
         parts = rest.split()
-        box = ""
-        if len(parts) == 4 and parts[3].lower().startswith("box="):
-            box = parts[3].split("=", 1)[1]
-            if not box:
-                raise Malformed("JOIN's box= needs a public key after it")
-            parts = parts[:3]
+        box = nonce = ""
+        while len(parts) > 3 and "=" in parts[-1]:
+            field, _, value = parts[-1].partition("=")
+            field = field.lower()
+            if field == "box":
+                if not value:
+                    raise Malformed("JOIN's box= needs a public key after it")
+                box = value
+            elif field == "nonce":
+                if not NONCE.match(value):
+                    raise Malformed(
+                        "JOIN's nonce= wants 16-64 hex digits -- it is this "
+                        "seat's half of the seed, and the board has to be able "
+                        "to show it was not chosen after the fact")
+                nonce = value
+            else:
+                raise Malformed(f"JOIN does not understand {field!r}")
+            parts = parts[:-1]
         if len(parts) != 3 or parts[1].lower() != "as":
-            raise Malformed("JOIN wants '<table> as <name>', "
-                            "optionally followed by box=<public key>")
+            raise Malformed("JOIN wants '<table> as <name>', optionally "
+                            "followed by box=<public key> and nonce=<hex>")
         table, _, name = parts
         if not _NAME.match(name):
             raise Malformed(
@@ -128,7 +150,7 @@ def parse(text: str):
             raise Malformed(
                 f"{name!r} is the manager's own vocabulary -- a seat label, "
                 f"or one of the two roles. Pick a name that is yours")
-        return Join(table=table, name=name, box=box)
+        return Join(table=table, name=name, box=box, nonce=nonce)
 
     if head == MANAGE:
         parts = rest.split()
