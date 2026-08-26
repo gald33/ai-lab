@@ -4,6 +4,50 @@ Decisions that have been made and must not be re-litigated or drifted from.
 If something here looks wrong, say so and get it changed here — do not quietly
 build the other thing.
 
+## A decision is written down in the same sitting it is made
+
+**Not at the end of the work, and not "once it settles."** A decision that
+lives only in a conversation is one this lab will make again from scratch, and
+it has: the entrant-SDK question was decided three times before anyone wrote
+`games/switchboard-what-an-entrant-already-holds.md`, and two of those times
+the answer was wrong.
+
+So, when a decision is reached in conversation:
+
+1. **Write it where the work is**, in the document that governs it — this file
+   for a standing decision, `games/island.md` for the island's design, an
+   experiment's own directory for anything about that experiment.
+2. **Write the reasoning that fixed it**, and the measurement if there was one,
+   with the command to re-check. A conclusion without its reason gets
+   re-derived; a measurement without its reproduction gets re-measured.
+3. **Keep the correction visible** when a decision reverses an earlier one.
+   Nothing here is edited to look as though it was always right — the
+   superseded reasoning is what stops the circle being walked a third time.
+4. **The write-down is part of the change**, not a follow-up: it goes in the
+   same commit and the same PR as the code it governs.
+
+If a conversation returns to a question this file or the documents it points
+to already answer, that is a defect in the writing, not in the person asking.
+Fix the writing.
+
+## The weaker thing is allowed, and never allowed to look like the stronger one
+
+Recurring, and the reason several of the island's rules take the shape they
+do. A table that cannot seal still plays, and **says on its own board** that it
+is a practice game. A seed not every seat helped draw still settles, and says
+the draw is not checkable. A round somebody who took no seat wrote in is still
+played out, and is recorded as one that had company. In each case the weaker
+game is **kept, counted, and never ranked** — never quietly scored, and never
+dropped from the denominator either, since dropping what went wrong is
+choosing a population after seeing the results.
+
+**Interference is not preventable and is therefore made visible.** A room key
+belongs to whoever holds it and can be handed on; no permission model is wanted
+here, and Switchboard should not grow one. What the record does instead is show
+it: the lobby witnessed each seat's key in public, every line says which key
+signed it, and a line from any other key is recorded, said out loud once, and
+costs the game its ranking. See `games/island.md`, "A key that was handed on".
+
 ## The board is the only surface
 
 **There are no primitives other than what Switchboard provides.**
