@@ -592,7 +592,11 @@ function settled(event, { anchors, goods, stock }) {
   c.update = (t) => {
     legs.forEach((l, i) => {
       const p = easeInOut(win(t, l.t0, l.t0 + 1.5));
-      l.box.visible = t > l.t0 - 0.01;
+      //: **It is standing in the maker's yard until it sets off.** This used
+      //: to hide the box until its own leg started, so for the first second of
+      //: an exchange the goods were simply gone from the ground and then
+      //: appeared in mid-air -- which is the one thing this whole layer exists
+      //: to stop. `p` is zero before `t0`, so it waits where it already was.
       l.box.position.lerpVectors(l.a, l.b, p);
       l.box.position.y = l.a.y + (l.b.y - l.a.y) * p + Math.sin(p * Math.PI) * 0.85;
       l.box.rotation.set(p * 5, p * 3.4, p * 2);

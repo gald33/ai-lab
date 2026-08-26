@@ -58,8 +58,23 @@ export const M = {
 
 //: The good slots, in the stylesheet's order, so a flag on the island is the
 //: colour of that good's chip in the legend and its bar on a shelf.
+/**
+ * A good's colour, in the model.
+ *
+ * **The same list as `--good-1..7` in `tokens.css`, and it has to be.** These
+ * had drifted apart from the fifth good on: the stylesheet said pink, green,
+ * purple and this said purple, pink, cyan, so on any island with five goods --
+ * which is the table default since fish -- a box standing on the ground was a
+ * different colour from the bar counting it on the card and the chip naming it
+ * in the legend. Nothing compared the two lists, because one is CSS and one is
+ * hex integers for three.js.
+ *
+ * `test_palette.py` compares them now. The stylesheet is the source: its
+ * colours are the ones `palette.py` runs the contrast and dichromacy gates
+ * against, so a colour that exists only here has passed nothing.
+ */
 export const GOOD_COLOURS = [0x3987e5, 0xd95926, 0x199e70, 0xc98500,
-                             0x8f6fd8, 0xd8578f, 0x51b6c2];
+                             0xd55181, 0x008300, 0x9085e9];
 
 //: Seat colours, and deliberately not the metric tokens the design reached for.
 //: `--util` and `--eff` name utility and efficiency, and both are drawn on the

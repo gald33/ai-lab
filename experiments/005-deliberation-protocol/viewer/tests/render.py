@@ -488,6 +488,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += turning(browser, base, boards[0], out)
             problems += uncovered(browser, base, boards[0], out)
             problems += stock(browser, base, out)
+            problems += carrying(browser, base, out)
             problems += island(browser, base, out)
             problems += mechanics(browser, base, out)
             for board in boards:
@@ -1304,12 +1305,150 @@ STOCK = """async ({goods, cases}) => {
       }
       if (Math.hypot(w.x, w.z) > 3.3) clash = `${b.name} off the meadow`;
     }
-    out.push({tally: st.stock.tally(), n: boxes.length, clash,
+    // What a box is actually painted with: the colour of its face, and how
+    // much of that face is not the flat colour -- which is the mark. A crate
+    // is a cube with one texture on all six sides, so this is what a viewer
+    // sees whichever way it is turned.
+    const faces = {};
+    for (const b of boxes) {
+      const good = b.name.replace(/^box_/, "");
+      if (faces[good] || !b.material.map?.image) continue;
+      const img = b.material.map.image;
+      const sc = document.createElement("canvas");
+      sc.width = img.width; sc.height = img.height;
+      const g2 = sc.getContext("2d");
+      g2.drawImage(img, 0, 0);
+      const px = g2.getImageData(0, 0, sc.width, sc.height).data;
+      // The flat colour, read off the middle of an edge: away from the lip
+      // drawn round the border and away from the mark in the centre.
+      const at = (x, y) => { const i = (y * sc.width + x) * 4;
+                             return [px[i], px[i + 1], px[i + 2]]; };
+      const base = at(Math.round(sc.width * 0.5), Math.round(sc.height * 0.12));
+      let marked = 0, seen = 0;
+      // The middle half of the face, which is where a mark is drawn and where
+      // the border lip is not.
+      for (let y = sc.height * 0.25; y < sc.height * 0.85; y += 2) {
+        for (let x = sc.width * 0.25; x < sc.width * 0.75; x += 2) {
+          const c = at(Math.round(x), Math.round(y));
+          seen++;
+          if (Math.abs(c[0] - base[0]) + Math.abs(c[1] - base[1])
+              + Math.abs(c[2] - base[2]) > 40) marked++;
+        }
+      }
+      faces[good] = { hex: "#" + base.map(v => v.toString(16).padStart(2, "0")).join(""),
+                      mark: +(marked / Math.max(1, seen)).toFixed(3) };
+    }
+    out.push({tally: st.stock.tally(), n: boxes.length, clash, faces,
               low: off.length ? Math.min(...off) : 0,
               high: off.length ? Math.max(...off) : 0});
   }
   return out;
 }"""
+
+
+#: An exchange driven frame by frame off-page, so a check can watch where every
+#: box is at every moment of it rather than at the two ends.
+CARRY = """async ({goods, give, want}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const { layout } = await import('./scene.js');
+  const cv = document.createElement('canvas');
+  cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
+  const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
+  st.pause();
+  const traders = ['T1', 'T2'];
+  st.build({traders, goods});
+  st.pause();
+  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.2])));
+  // Both sides holding plenty, so there is something to send either way.
+  const before = {T1: Object.fromEntries(goods.map(g => [g, 0.8])),
+                  T2: Object.fromEntries(goods.map(g => [g, 0.8]))};
+  st.showStock(before);
+  const was = [];
+  st.stock.root.traverse(o => { if (o.isMesh) was.push(o); });
+  const home = new Map(was.map(o => [o, o.getWorldPosition(new THREE.Vector3())]));
+  // What the board says after the exchange, and **only the traded goods move**.
+  // A fixture that changed every holding would have the yards reconciling
+  // goods no clip is carrying, which is the scrub cut doing its job and not
+  // this check's question.
+  const after = {T1: {...before.T1}, T2: {...before.T2}};
+  for (const [g, q] of Object.entries(give)) { after.T1[g] -= q; after.T2[g] += q; }
+  for (const [g, q] of Object.entries(want)) { after.T2[g] -= q; after.T1[g] += q; }
+  const event = {kind: 'settled', pid: 'p1', maker: 'T1', taker: 'T2', give, want, after};
+  st.showStock(event.after, event);
+  const c = st.fire(event);
+  if (!c) return {error: 'the exchange staged no clip at all'};
+  // Every tenth of a second of it: is any box that existed before the clip
+  // started invisible, or standing somewhere it did not walk to?
+  const trail = [];
+  for (let t = 0; t <= c.dur; t += 0.1) {
+    c.update(t);
+    const shot = [];
+    for (const o of was) {
+      const p = o.getWorldPosition(new THREE.Vector3());
+      shot.push({name: o.name, vis: o.visible && o.parent !== null,
+                 x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3)});
+    }
+    trail.push({t: +t.toFixed(1), shot});
+  }
+  c.restore();
+  return {n: was.length, trail,
+          home: was.map(o => {const p = home.get(o);
+                              return [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];})};
+}"""
+
+
+def carrying(browser, base: str, out: Path) -> list[str]:
+    """A box that changes hands walks there; it does not blink out and back.
+
+    **Reported by eye, and it was doing exactly that.** The clip hid each box
+    until its own leg of the exchange began, so for the first second the goods
+    were gone from the maker's yard and then appeared in mid-air on their way
+    to the taker's. That is the one thing the standing-stock layer exists to
+    stop, and no check would have caught it: the yards agree with the board at
+    both ends of the animation, and the counts never lie. It is only wrong
+    *while it is moving*.
+
+    So this drives an exchange a tenth of a second at a time and watches every
+    box that existed before it started: none may go invisible, and none may
+    move further in one step than a box can travel.
+    """
+    goods = ["bread", "cloth", "iron", "salt"]
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    seen = page.evaluate(CARRY, {"goods": goods,
+                                 "give": {"bread": 0.4, "cloth": 0.4},
+                                 "want": {"iron": 0.4}})
+    page.close()
+    bad = [f"carrying: {e}" for e in errs]
+    if seen.get("error"):
+        return bad + [f"carrying: {seen['error']}"]
+    if not seen["n"]:
+        return bad + ["carrying: nothing was standing on the island to carry"]
+    # Nothing blinks.
+    for step in seen["trail"]:
+        for box in step["shot"]:
+            if not box["vis"]:
+                bad.append(f"carrying: a {box['name']} standing before the "
+                           f"exchange is invisible at t={step['t']}s; it "
+                           f"vanished from the ground instead of walking")
+                break
+        if bad and "invisible" in bad[-1]:
+            break
+    # And nothing teleports: a box crosses the island in about a second and a
+    # half, so a tenth of a second can never move it most of the way there.
+    for a, b in zip(seen["trail"], seen["trail"][1:]):
+        for was, now in zip(a["shot"], b["shot"]):
+            jump = math.dist((was["x"], was["y"], was["z"]), (now["x"], now["y"], now["z"]))
+            if jump > 1.2:
+                bad.append(f"carrying: a {now['name']} moved {jump:.2f} between "
+                           f"t={a['t']}s and t={b['t']}s; it was put down "
+                           f"somewhere rather than carried there")
+                return bad
+    return bad
 
 
 def stock(browser, base: str, out: Path) -> list[str]:
@@ -1367,6 +1506,17 @@ def stock(browser, base: str, out: Path) -> list[str]:
     seen = page.evaluate(STOCK, {"goods": goods,
                                  "cases": [{"stocks": c["stocks"],
                                             "event": c.get("event")} for c in cases]})
+    # What the stylesheet says a good is, read off the page serving it.
+    css = page.evaluate("""(gs) => {
+      const s = getComputedStyle(document.documentElement);
+      const hex = (v) => {
+        const m = v.trim().match(/^#([0-9a-f]{6})$/i);
+        return m ? '#' + m[1].toLowerCase() : v.trim();
+      };
+      return Object.fromEntries(gs.map((g, i) =>
+        [g, hex(s.getPropertyValue('--good-' + (i + 1)))]));
+    }""", goods)
+
     page.screenshot(path=str(out / "island-stock.png"))
     page.close()
     bad = [f"stock: {e}" for e in errs]
@@ -1381,6 +1531,24 @@ def stock(browser, base: str, out: Path) -> list[str]:
                            f"the board says {want}")
         if got["clash"]:
             bad.append(f"{where}: {got['clash']}")
+        for good, face in (got.get("faces") or {}).items():
+            # The colour a box is painted, against the colour the card paints
+            # the bar counting it. These had drifted from the fifth good on and
+            # nothing compared them -- one list is CSS and the other is hex
+            # integers for three.js. `test_palette.py` compares the two
+            # sources; this compares the pixels a viewer sees.
+            if face["hex"] != css.get(good):
+                bad.append(f"{where}: a {good} box is painted {face['hex']} and "
+                           f"its bar is {css.get(good)}; one good, two colours")
+            #: A tenth of the face. The marks are drawn at 76px in a 128px
+            #: square, so one that rendered at all covers far more than this; a
+            #: face with none is a plain coloured cube, and colour alone does
+            #: not identify a good -- which is the whole reason the card's
+            #: shelf carries a glyph too.
+            if face["mark"] < 0.1:
+                bad.append(f"{where}: a {good} box carries no mark "
+                           f"({face['mark']:.0%} of its face); it is a coloured "
+                           f"cube and nothing else")
         #: Every box sitting on the ground under it, to within a hair. Half a
         #: box is 0.065, so this is the same question the flags answer.
         if got["n"] and not -0.04 <= got["low"] <= got["high"] <= 0.04:
