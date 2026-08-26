@@ -20,14 +20,29 @@
 //
 // ## How many boxes is a holding
 //
-// A box is a unit of the round's own largest holding of that good, so six of
-// them is the most anybody ever had. **Not capacity** -- which is what a first
-// reading of this asks for -- because capacity is private to a trader and the
-// page never has it live, and a denominator that exists in a replay and not on
-// a live board would make a box mean two different things. The round's biggest
-// settled holding is available in both, comes from settled state rather than
-// from anything an agent said, and is the same rule the card's own shelf scale
-// already uses.
+// **A box is a fixed quantity, and it is the same one on every board.**
+//
+// It was the round's own largest settled holding of that good, so six boxes
+// was whatever the biggest pile turned out to be. That reads well in a replay
+// and is wrong twice over. A denominator taken from how the round *ended* is
+// not known while it is running, so a live board has no scale at all and every
+// non-zero holding is one box; and even in a replay it makes a box mean a
+// different quantity on every board, so two rounds side by side cannot be
+// compared by looking at them.
+//
+// The scale comes from the **distribution**, which is fixed by the design and
+// therefore known before a single message is posted. `barter.economy`'s
+// `draw_island` gives every trader a capacity per good of `exp(0.8 * N(0,1))`
+// -- lognormal, `spread = 0.8`, the same for every island this game has ever
+// drawn. Its **ninetieth percentile is 2.79**, so six boxes is a pile at the
+// top of what one trader can make of one thing, and `UNIT` is a sixth of that.
+// `tests/test_box_unit.py` re-derives the number from `barter.economy` itself
+// and fails if `spread` ever moves, which is the only way this can go stale.
+//
+// Against the boards on disk that lands where it should: the median round's
+// biggest pile of a good is 0.75 and draws two boxes, the upper quartile 1.24
+// draws three, the ninetieth 2.01 draws four, and only the genuine extremes
+// (5.91 is the largest ever settled) saturate at six.
 //
 // Any non-zero holding is at least one box: a trader with a little of
 // something has some of it, and rounding that to an empty yard would say it
@@ -43,7 +58,14 @@ import { face } from "./good-face.js";
 //: A box's side, in island units. A hut is about 0.8 across at the scale the
 //: island draws it, so this is a crate a person could lift and a stack of six
 //: is a yard rather than a second building.
-const BOX = 0.13;
+//:
+//: **A little larger than it was**, because a box is worth about three times
+//: what it was worth: the scale used to be the round's own biggest pile, which
+//: put five or six crates in a yard on almost every board, and it is a fixed
+//: quantity now, which puts one to three there. Fewer crates on the ground can
+//: afford to be bigger ones, and a production of a typical size had dropped to
+//: the edge of what `render.py:mechanics` will call visible at all.
+const BOX = 0.15;
 //: The most boxes one good's pile ever shows. Six is two layers of a 2x2 and a
 //: bit -- enough that a big holding reads as bigger, few enough that a yard
 //: stays a yard.
@@ -53,7 +75,10 @@ const MOST = 6;
 //: it, so a yard any closer stacks crates through the thatch. It was set
 //: against the banner pole as well, which the hut no longer has -- kept as it
 //: is, because a yard tight against the wall reads as part of the building.
-const OUT = 0.86, PITCH = 0.3;
+const OUT = 0.86, PITCH = 0.34;
+//: What one box is worth, in the goods' own units. See the note above: the
+//: ninetieth percentile of `exp(0.8 * N(0,1))` is 2.788, and six boxes is that.
+export const UNIT = 2.788 / MOST;
 
 /**
  * Where the yard stands, and which way it runs.
@@ -92,27 +117,6 @@ function yardAt(home, centre, ground) {
 }
 
 /**
- * The goods a round ever put in one pair of hands, per good.
- *
- * One pass over the whole timeline, like the card's shelf scale: a ceiling
- * recomputed per frame would make a box mean something different from one
- * message to the next, and a stock that never moved would grow as its
- * neighbours shrank.
- */
-export function ceilings(timeline) {
-  const top = {};
-  for (const good of timeline.goods) top[good] = 0;
-  for (const frame of timeline.frames) {
-    for (const t of timeline.traders) {
-      for (const good of timeline.goods) {
-        top[good] = Math.max(top[good], frame.state.stocks?.[t]?.[good] || 0);
-      }
-    }
-  }
-  return top;
-}
-
-/**
  * The standing stock: a yard of boxes beside every hut.
  *
  * @param {THREE.Group} island
@@ -138,11 +142,6 @@ export function standing(island, { traders, goods, anchors, ground }) {
     for (const good of goods) yards[t].held[good] = [];
   }
 
-  //: Raised by the page from the timeline. Zero until then, which makes every
-  //: non-zero holding one box -- the honest reading when nothing has said how
-  //: big a big holding is on this island.
-  let top = Object.fromEntries(goods.map((g) => [g, 0]));
-
   /** Where the k-th box of a good stands in a trader's yard. */
   const slot = (t, good, k) => {
     const y = yards[t];
@@ -167,8 +166,7 @@ export function standing(island, { traders, goods, anchors, ground }) {
   /** How many boxes a quantity of a good is worth. */
   const want = (good, qty) => {
     if (!(qty > 1e-9)) return 0;
-    const unit = top[good] > 1e-9 ? top[good] / MOST : qty;
-    return Math.max(1, Math.min(MOST, Math.round(qty / unit)));
+    return Math.max(1, Math.min(MOST, Math.round(qty / UNIT)));
   };
 
   /** Put a trader's pile of one good back in its slots. */
@@ -183,10 +181,6 @@ export function standing(island, { traders, goods, anchors, ground }) {
   return {
     root,
     slot,
-    /** The round's ceiling per good, from the page's timeline. */
-    ceil(next) {
-      top = { ...top, ...next };
-    },
     count: (t, good) => yards[t]?.held[good].length ?? 0,
     want,
 

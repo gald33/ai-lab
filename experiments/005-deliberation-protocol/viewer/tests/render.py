@@ -935,10 +935,13 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
     unpainted.** Measured in three shapes, because the band only exists when
     the canvas and the viewBox disagree and a square window has none.
 
-    The band is also checked against the water inside the frame. They are the
-    same mesh under the same lights and so should be the same colour to within
-    rounding; a band painted from a second copy of the day's arithmetic drifted
-    half a stop at noon, which is a seam a viewer sees.
+    The corners are also checked against the water inside the frame. They are
+    the same mesh under the same lights and so should be the same colour to
+    within rounding; a band painted from a second copy of the day's arithmetic
+    drifted half a stop at noon, which is a seam a viewer sees. The corners and
+    not the edge midpoints: the island is a disc inscribed in the frame's short
+    side, so nothing is ever drawn in a corner -- while a cloud crossing the
+    island sits on the top edge on a tall window, which is weather, not a seam.
     """
     stem = board.name[len("board-"):-len(".json")]
     bad: list[str] = []
@@ -960,27 +963,45 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
           const px = g.getImageData(0, 0, s.width, s.height).data;
           let clear = 0;
           for (let i = 3; i < px.length; i += 4) if (px[i] < 250) clear++;
-          const at = (fx, fy) => [...g.getImageData(
-            Math.round((s.width - 1) * fx), Math.round((s.height - 1) * fy), 1, 1).data];
+          //: **The corners, and the median of a block of each.**
+          //:
+          //: A single sample at the top-middle of the frame caught a *cloud*
+          //: -- they fly at four and a half units and cross the island, so on
+          //: a tall window one sits on the frame's own top edge, which is not
+          //: a seam and not a fault. The corners are the one place nothing is
+          //: ever drawn: the island is a disc inscribed in the short side, so
+          //: it cannot reach them at any aspect, and neither can the weather
+          //: that crosses it. A median over a block shrugs off a stray pixel.
+          const block = (fx, fy) => {
+            const n = 12;
+            const x = Math.round((s.width - n) * fx), y = Math.round((s.height - n) * fy);
+            const d = g.getImageData(x, y, n, n).data;
+            const chan = (k) => {
+              const v = [];
+              for (let i = 0; i < d.length; i += 4) v.push(d[i + k]);
+              v.sort((a, b) => a - b);
+              return v[v.length >> 1];
+            };
+            return [chan(0), chan(1), chan(2)];
+          };
           return { clear, total: px.length / 4,
-                   // The four extreme edges, where a band is if there is one,
-                   // and the middle of each margin, which is open water.
-                   edges: [at(0, 0), at(1, 0), at(0, 1), at(1, 1),
-                           at(0.5, 0.002), at(0.5, 0.998), at(0.002, 0.5), at(0.998, 0.5)],
-                   inside: at(0.03, 0.5) };
+                   corners: [block(0, 0), block(1, 0), block(0, 1), block(1, 1)],
+                   //: A little inside the frame at half height, which is open
+                   //: water on every shape this is measured in.
+                   inside: block(0.02, 0.5) };
         }""")
         page.close()
         if seen["clear"]:
             bad.append(f"afloat {label}: {seen['clear']} of {seen['total']} pixels "
                        f"are unpainted; the island is standing in a void")
-        # Every edge is water, and the same water as the frame's own margin.
+        # Every corner is water, and the same water as the frame's own margin.
         inside = seen["inside"]
-        for k, e in enumerate(seen["edges"]):
+        for k, e in enumerate(seen["corners"]):
             gap = max(abs(e[i] - inside[i]) for i in range(3))
             if gap > 12:
-                bad.append(f"afloat {label}: edge {k} is rgb({e[0]},{e[1]},{e[2]}) "
-                           f"against the frame's own water rgb({inside[0]},"
-                           f"{inside[1]},{inside[2]}); the join shows")
+                bad.append(f"afloat {label}: corner {k} is rgb({e[0]},{e[1]},"
+                           f"{e[2]}) against the frame's own water rgb("
+                           f"{inside[0]},{inside[1]},{inside[2]}); the join shows")
     return bad
 
 
@@ -1381,11 +1402,6 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: `island-life` gives an island nobody has told the time to.
   st.setDay(0.45);
   st.life.update(0, st.ctx());
-  //: A round's ceiling per good, which the page always sets from its timeline.
-  //: Without one every non-zero holding is a single box, and a trader that
-  //: gives part of a holding away cannot lose one -- the arithmetic a
-  //: settlement does has nothing to work with.
-  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.0])));
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
@@ -1540,7 +1556,6 @@ STOCK = """async ({goods, cases}) => {
   const traders = ['T1', 'T2'];
   const made = st.build({traders, goods});
   st.pause();
-  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.2])));
   const out = [];
   for (const c of cases) {
     st.showStock(c.stocks, c.event ?? null);
@@ -1622,7 +1637,6 @@ CARRY = """async ({goods, give, want}) => {
   const traders = ['T1', 'T2'];
   st.build({traders, goods});
   st.pause();
-  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.2])));
   // Both sides holding plenty, so there is something to send either way.
   const before = {T1: Object.fromEntries(goods.map(g => [g, 0.8])),
                   T2: Object.fromEntries(goods.map(g => [g, 0.8]))};
@@ -1733,6 +1747,16 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     return bad
 
 
+#: What one box on the island is worth, in the goods' own units.
+#:
+#: The page's `island-stock.js:UNIT`, restated here because a check that read
+#: the number out of the module it is checking would agree with itself. The
+#: derivation -- the ninetieth percentile of `barter.economy`'s capacity draw,
+#: over six boxes -- is `tests/test_box_unit.py`, which computes it from
+#: `draw_island` rather than from either copy.
+BOX = 2.788 / 6
+
+
 def stock(browser, base: str, out: Path) -> list[str]:
     """What is standing on the island is what the board says is held.
 
@@ -1746,23 +1770,26 @@ def stock(browser, base: str, out: Path) -> list[str]:
 
     Asked of the model directly with holdings this check chose, because the
     interesting cases (a trader holding one good, holding none, holding more
-    than the round's ceiling) are not all on any board on disk.
+    than six boxes can show) are not all on any board on disk.
     """
     goods = ["bread", "cloth", "iron", "salt"]
-    #: `ceil` is 1.2 for every good above, and six boxes is the ceiling, so a
-    #: box is 0.2 of a good and these are the counts to expect.
+    #: A box is a fixed quantity on every board -- a sixth of the ninetieth
+    #: percentile of the capacity draw -- so these are quantities in the goods'
+    #: own units and the counts they have to come out as. Written as multiples
+    #: of the unit rather than as literals, so the two cannot drift apart
+    #: silently if the distribution is ever re-derived.
     cases = [
         {"name": "nobody has anything", "stocks": {"T1": {}, "T2": {}},
          "want": {"T1": {g: 0 for g in goods}, "T2": {g: 0 for g in goods}}},
         {"name": "one good each",
-         "stocks": {"T1": {"bread": 1.2}, "T2": {"salt": 0.4}},
+         "stocks": {"T1": {"bread": 6 * BOX}, "T2": {"salt": 2 * BOX}},
          "want": {"T1": {"bread": 6, "cloth": 0, "iron": 0, "salt": 0},
                   "T2": {"bread": 0, "cloth": 0, "iron": 0, "salt": 2}}},
         {"name": "a crumb is still a box",
          "stocks": {"T1": {"iron": 0.001}, "T2": {}},
          "want": {"T1": {"bread": 0, "cloth": 0, "iron": 1, "salt": 0},
                   "T2": {g: 0 for g in goods}}},
-        {"name": "more than the round ever saw",
+        {"name": "more than six boxes can show",
          "stocks": {"T1": {"cloth": 99}, "T2": {}},
          "want": {"T1": {"bread": 0, "cloth": 6, "iron": 0, "salt": 0},
                   "T2": {g: 0 for g in goods}}},
@@ -1772,7 +1799,8 @@ def stock(browser, base: str, out: Path) -> list[str]:
         # are left exactly as they were for the clip to empty. So this follows
         # a case that put goods on the ground, and asks that they are still
         # there after a paint whose board says everybody holds nothing.
-        {"name": "before the bell", "stocks": {"T1": {"bread": 1.2}, "T2": {"salt": 0.4}},
+        {"name": "before the bell",
+         "stocks": {"T1": {"bread": 6 * BOX}, "T2": {"salt": 2 * BOX}},
          "want": {"T1": {"bread": 6, "cloth": 0, "iron": 0, "salt": 0},
                   "T2": {"bread": 0, "cloth": 0, "iron": 0, "salt": 2}}},
         {"name": "the bell leaves the clip to it",
@@ -2040,25 +2068,35 @@ def island(browser, base: str, out: Path) -> list[str]:
 #: do. Each event below carries the holdings before it and after it, so it is
 #: fired at the island it would really happen on, and what it left behind is
 #: measured against the island it should really leave.
-HOLDING = {"T1": {"bread": 0.8, "cloth": 0.2, "salt": 0.5},
-           "T2": {"cloth": 0.6, "iron": 0.4}}
+#: A day's work, in the goods' own units.
+#:
+#: **Scaled up when a box stopped being round-relative.** These numbers were
+#: chosen when six boxes meant the round's own biggest pile, so 0.8 of a good
+#: was five crates. A box is a fixed quantity now -- a sixth of the ninetieth
+#: percentile of the capacity draw, `BOX` above -- and 0.8 is one crate and a
+#: bit, which is not "the day's work standing in the yard" and is not what the
+#: events below say they are showing. Same shape, same trades, at a size that
+#: is a good day on a real board: the largest pile ever settled on any board on
+#: disk is 5.91 and the median round's biggest is 0.75.
+HOLDING = {"T1": {"bread": 2.24, "cloth": 0.56, "salt": 1.4},
+           "T2": {"cloth": 1.68, "iron": 1.12}}
 EMPTY = {"T1": {}, "T2": {}}
 
 FIRED = [
     # Nothing made yet, and then the day's work is standing in the yard.
-    {"kind": "produced", "trader": "T1", "made": {"bread": 0.8, "salt": 0.5},
-     "pre": {"T1": {"cloth": 0.2}, "T2": {"cloth": 0.6, "iron": 0.4}},
+    {"kind": "produced", "trader": "T1", "made": {"bread": 2.24, "salt": 1.4},
+     "pre": {"T1": {"cloth": 0.56}, "T2": {"cloth": 1.68, "iron": 1.12}},
      "post": HOLDING},
     {"kind": "offer", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3},
+     "give": {"bread": 1.4}, "want": {"cloth": 0.84},
      "pre": HOLDING, "post": HOLDING},
     {"kind": "settled", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3},
+     "give": {"bread": 1.4}, "want": {"cloth": 0.84},
      "pre": HOLDING,
-     "after": {"T1": {"bread": 0.3, "cloth": 0.5, "salt": 0.5},
-               "T2": {"bread": 0.5, "cloth": 0.3, "iron": 0.4}},
-     "post": {"T1": {"bread": 0.3, "cloth": 0.5, "salt": 0.5},
-              "T2": {"bread": 0.5, "cloth": 0.3, "iron": 0.4}}},
+     "after": {"T1": {"bread": 0.84, "cloth": 1.4, "salt": 1.4},
+               "T2": {"bread": 1.4, "cloth": 0.84, "iron": 1.12}},
+     "post": {"T1": {"bread": 0.84, "cloth": 1.4, "salt": 1.4},
+              "T2": {"bread": 1.4, "cloth": 0.84, "iron": 1.12}}},
     {"kind": "refused", "trader": "T2", "reason": "uncommitted stock",
      "pre": HOLDING, "post": HOLDING},
     # The bell eats everything held, which is the one place a good may vanish.

@@ -692,7 +692,6 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
-import { ceilings } from "./island-stock.js";
 import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 
@@ -1198,9 +1197,6 @@ function mount(rows, { manager } = {}) {
   scene = new Scene($("island"), timeline, reveal, isPortrait(),
                     raise(timeline.traders, timeline.goods, isPortrait()),
                     frameAspect(), chromeBands());
-  // How big a holding this round ever got, per good, so a box on the ground
-  // means the same fraction of it from the first message to the last.
-  stage?.stock?.ceil(ceilings(timeline));
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
