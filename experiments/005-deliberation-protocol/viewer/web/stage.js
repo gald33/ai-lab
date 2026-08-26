@@ -21,6 +21,7 @@
 import * as THREE from "./vendor/three/three.module.js";
 import { buildIsland } from "./island3d.js";
 import { enliven } from "./island-life.js";
+import { stageEvent } from "./island-events.js";
 
 //: How much island the frame holds, in island units, measured on the short
 //: side of the viewBox.
@@ -93,6 +94,12 @@ export class Stage {
     this.island = null;
     this.anchors = {};
     this.life = null;
+    this.world = null;
+    //: Clips in flight. More than one at a time on purpose: a production and
+    //: an offer a second apart are two things that happened, and holding the
+    //: second until the first finished would be the page inventing an order
+    //: the board did not have.
+    this.clips = [];
     this.day = null;
     this.frame = null;
     this.t0 = 0;
@@ -116,10 +123,12 @@ export class Stage {
       this.scene.remove(this.island);
       dispose(this.island);
     }
+    this.clear();
     const made = buildIsland({ traders, goods, seats });
     this.island = made.island;
     this.anchors = made.anchors;
     this.ground = made.ground;
+    this.world = { island: made.island, anchors: made.anchors, traders, goods };
     this.life = enliven(this.island);
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
@@ -207,6 +216,51 @@ export class Stage {
     if (this.still) { this.life?.update(0, this.ctx()); this.render(); }
   }
 
+  /**
+   * Something happened on the board; show it on the island.
+   *
+   * Silently does nothing for an event the island has no clip for, and for a
+   * reader who asked for less motion. The page calls this for every event it
+   * paints, so "not everything is worth animating" has to be cheap.
+   */
+  fire(event) {
+    if (!this.world || this.still) return null;
+    const c = stageEvent(event, this.world);
+    if (!c) return null;
+    c.t0 = null;
+    this.island.add(c.root);
+    this.clips.push(c);
+    this.play();
+    return c;
+  }
+
+  /** Advance every clip in flight, and retire the ones that have run. */
+  step(t) {
+    for (let i = this.clips.length - 1; i >= 0; i--) {
+      const c = this.clips[i];
+      c.t0 ??= t;
+      const age = t - c.t0;
+      c.update(age);
+      if (age < c.dur) continue;
+      // A clip that moved the island's own nodes puts them back; one that only
+      // added its own props just goes.
+      c.restore?.();
+      this.island.remove(c.root);
+      disposeClip(c);
+      this.clips.splice(i, 1);
+    }
+  }
+
+  /** Every clip in flight, gone -- the island under them is being rebuilt. */
+  clear() {
+    for (const c of this.clips) {
+      c.restore?.();
+      this.island?.remove(c.root);
+      disposeClip(c);
+    }
+    this.clips = [];
+  }
+
   ctx() {
     return { day: this.day, key: this.key, ambient: this.ambient, fill: this.fill };
   }
@@ -218,6 +272,7 @@ export class Stage {
       const t = (now - this.t0) / 1000;
       this.aim(TURN + (t / TURN_SECONDS) * Math.PI * 2);
       this.life.update(t, this.ctx());
+      this.step(t);
       this.renderer.render(this.scene, this.camera);
       // The camera moved, so every settlement is somewhere else on screen and
       // the cards have to go with them. This is the whole reason the page hands
@@ -239,9 +294,22 @@ export class Stage {
 
   destroy() {
     this.pause();
+    this.clear();
     if (this.island) dispose(this.island);
     this.renderer.dispose();
   }
+}
+
+/**
+ * A finished clip, given back.
+ *
+ * Only what the clip made: its geometries, and the materials it cloned for
+ * itself. The model's own materials are shared across the island and disposing
+ * one here would take a face off every mesh using it.
+ */
+function disposeClip(c) {
+  c.root.traverse((n) => n.geometry?.dispose());
+  for (const m of c.mine) m.dispose?.();
 }
 
 /** Give the GPU back what a rebuilt island stopped using. */

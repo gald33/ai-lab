@@ -22,6 +22,7 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
+import { onMeadow, GRASS_Y, SAND_Y } from "./island3d.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
@@ -84,9 +85,9 @@ function cloud(i, scale = 1) {
   return g;
 }
 
-//: The island's own dimensions, from `island3d.js`. Read rather than guessed:
-//: everything added here has to land on the same ground the model built.
-const GRASS_Y = 0.70, SAND_Y = 0.40;
+//: The island's own dimensions come from `island3d.js` rather than being
+//: restated here: everything added on top has to land on the same ground the
+//: model built, and two copies of the ground's height is one of them wrong.
 
 /**
  * Put life on a built island, and return the thing that moves it.
@@ -221,22 +222,50 @@ export function enliven(island, { seed = 20260825 } = {}) {
   }));
 
   // — goats, on the meadow and out of everyone's way —
+  //
+  //: **A goat is the slowest thing on the island.** The clip ran its wander on
+  //: a diorama a metre across, and the same numbers on the real island sent
+  //: them at about a body length a second across a meadow six wide -- reading
+  //: as a chase, not a graze. `WANDER` is the seconds of one amble-and-graze
+  //: cycle and `ARC` how far round its little circuit a goat gets in one, and
+  //: between them they set the speed: a body length now takes some seconds.
+  const WANDER = 26, ARC = 1.7;
   const herd = [0, 1].map((i) => {
     const a = goat(i);
     a.scale.setScalar(1.15 - i * 0.15);
     island.add(a);
-    return { a, ph: i * 3.6, rad: 1.5 + i * 0.5, about: [-1.5, -1.9] };
+    // Their circuits are kept small and their centres well inside the grass:
+    // wandering off the beach and out over the water was the other half of
+    // running the diorama's numbers at island scale.
+    return { a, ph: i * 3.6, rad: 0.62 - i * 0.1, about: i ? [1.15, -1.35] : [-1.3, -1.1] };
   });
   parts.push((t) => herd.forEach(({ a, ph, rad, about }) => {
-    const cyc = ((t + ph) % 8) / 8;
-    const walking = cyc < 0.55;
-    const ang = ph + (walking ? cyc / 0.55 : 1) * 2.4;
-    a.position.set(about[0] + Math.cos(ang) * rad, GRASS_Y, about[1] + Math.sin(ang) * rad);
-    a.rotation.y = -ang + Math.PI / 2 + 1.57;
+    const cyc = ((t + ph) % WANDER) / WANDER;
+    // Out, graze, back, graze. The clip walked one way and snapped to its
+    // start when the loop came round, which at island scale is a goat
+    // teleporting a metre every time the cycle turns over; a circuit that
+    // closes has no seam in it.
+    const leg = cyc < 0.4 ? cyc / 0.4
+      : cyc < 0.5 ? 1
+      : cyc < 0.9 ? 1 - (cyc - 0.5) / 0.4
+      : 0;
+    const walking = cyc < 0.4 || (cyc >= 0.5 && cyc < 0.9);
+    const back = cyc >= 0.5 && cyc < 0.9;
+    const ang = ph + leg * ARC;
+    // Clamped even so, so that a change to the numbers above can make a goat
+    // wander somewhere silly but never into the sea.
+    const [x, z] = onMeadow(about[0] + Math.cos(ang) * rad,
+                            about[1] + Math.sin(ang) * rad, 0.25);
+    a.position.set(x, GRASS_Y, z);
+    a.rotation.y = -ang + Math.PI / 2 + 1.57 + (back ? Math.PI : 0);
+    // The legs swing with the walk rather than at a rate of their own: at the
+    // old eight radians a second a goat this slow was pedalling on the spot.
+    const pace = (ARC * rad) / (WANDER * 0.4);
     a.userData.legs.forEach((l, i) => {
-      l.rotation.x = walking ? Math.sin(t * 8 + i * 1.6) * 0.5 : 0;
+      l.rotation.x = walking ? Math.sin(t * pace * 26 + i * 1.6) * 0.4 : 0;
     });
-    const graze = walking ? 0 : Math.sin((cyc - 0.55) / 0.45 * Math.PI);
+    const graze = walking ? 0
+      : Math.sin((cyc < 0.5 ? (cyc - 0.4) : (cyc - 0.9)) / 0.1 * Math.PI);
     a.userData.head.rotation.z = -graze * 0.95;
     a.userData.head.position.y = 0.2 - graze * 0.07;
   }));
