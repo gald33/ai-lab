@@ -138,4 +138,65 @@ rewritten.
 
 ## Outcome
 
-*(appended after the read — empty until then)*
+### **Fresh container.** Read 2026-08-26 02:51:53Z, after 5h 59m of quiet.
+
+| | at fingerprint (20:43:09Z) | at read (02:51:53Z) |
+|---|---|---|
+| `boot_id` | `f1d1fbec-ce11-44b6-b0af-9915b69de759` | **`09de41c4-258d-4270-b1d8-21691443b9de`** |
+| `uptime` | 1982.85s | **25.14s** |
+| `pid1_start` | 1787289509 | **1787712692** |
+| hostname | `vm` | `vm` |
+
+Three independent signals agree, and the last one dates it: pid 1 started at
+**02:51:32Z**, four seconds after the trigger fired at 02:51:28Z. The container
+that ran all of yesterday's work was gone, and **the wake is what caused a new
+one to be built**. It did not find a machine and resume it; it started one.
+
+**Quiet gap actually observed: 5h 59m** (last activity 20:52Z, read 02:51Z).
+Uncontaminated — nothing touched the session in between, including the watched
+pull request.
+
+### The reading, as pre-registered
+
+This is the **fresh container** branch, and its pre-registered meaning stands
+without reinterpretation:
+
+> availability cannot be held by anything inside the agent. It is lent by the
+> runtime, and `agent-standby`'s central claim is false on this substrate.
+> That is the arc's outcome 2.
+
+Nothing inside the old container survived to fire anything. A process holding
+an alarm — the only way an in-container alarm can exist — died with the
+container, unremarked, at whatever moment the reclamation happened. Which is
+exactly the shape of the two failures on record: 8.3h late, then 17.4h late,
+both found dead rather than firing late.
+
+### And it explains probes 001 and 002 rather than contradicting them
+
+Their timers fired because the container was still there, and the container was
+still there because the session was in use — a turn in flight, a tracked task,
+an operator typing. That was the confound named at the end of 002, and this
+read is what confirms it was the whole effect. **A five-minute and a
+twenty-minute alarm both fired; a six-hour one had nothing left to fire in.**
+The ladder was measuring session activity the entire time.
+
+### One thing that did survive, and is its own finding
+
+**The scratchpad outlived the container.** Every file written yesterday —
+`probe003-fingerprint.txt` included, which is how this comparison was possible
+at all — is present on a machine that booted twenty-five seconds ago. So the
+*storage* is durable across reclamation while the *process* is not.
+
+That is worth stating precisely because it is the more useful half for anything
+built on this substrate: an agent here can leave a note for its successor, but
+it cannot leave a process. A promise written down survives; a promise being
+kept does not. Which is, almost word for word, the split the standby design
+already draws between its detector and its alarm — the half that works and the
+half that never has.
+
+### Denominator
+
+Probes armed: 3 (two contaminated by operator messages). **Read: 1.** One
+substrate, one read, n = 1: a Claude Code remote session, ~6h idle. It says
+nothing about a terminal or desktop session, which the item names as the
+cheapest untried candidate and which this does not test.
