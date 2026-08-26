@@ -65,12 +65,11 @@ export class Stage {
     this.renderer.setClearColor(0x000000, 0);
     this.scene = new THREE.Scene();
 
-    // Framed on the island, in the viewBox's aspect. Both halves of the page
-    // are then looking at the same rectangle.
-    const aspect = geo.w / geo.h;
-    const half = EXTENT;
-    this.camera = new THREE.OrthographicCamera(
-      -half * aspect, half * aspect, half, -half, -50, 100);
+    // Framed into the box the page left for it, which is no longer the whole
+    // frame: the trader cards stand in the margins now, and the island is what
+    // is between them.
+    this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -50, 100);
+    this.frame(geo.islandBox ?? { x: 0, y: 0, w: geo.w, h: geo.h });
     this.turn = TURN;
     this.aim(TURN);
 
@@ -101,7 +100,10 @@ export class Stage {
     //: the board did not have.
     this.clips = [];
     this.day = null;
-    this.frame = null;
+    //: The pending animation-frame handle. Named for what it is: `frame` was
+    //: taken by the framing below, and a rAF id stored under it made the
+    //: method vanish behind an integer.
+    this.raf = null;
     this.t0 = 0;
     // Somebody who asked for less motion gets a still island: everything the
     // loop does is atmosphere, and none of it carries a fact.
@@ -128,8 +130,9 @@ export class Stage {
     this.island = made.island;
     this.anchors = made.anchors;
     this.ground = made.ground;
-    this.world = { island: made.island, anchors: made.anchors, traders, goods };
-    this.life = enliven(this.island);
+    this.world = { island: made.island, anchors: made.anchors,
+                   ground: made.ground, traders, goods };
+    this.life = enliven(this.island, { ground: made.ground });
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
     // at a moment rather than one with its gulls at the origin.
@@ -137,6 +140,29 @@ export class Stage {
     this.render();
     this.play();
     return made;
+  }
+
+  /**
+   * Put the island inside a rectangle of the scene's viewBox.
+   *
+   * The camera still renders across the whole canvas -- what changes is the
+   * frustum, widened and pushed off-centre so that the island lands where the
+   * box is. Doing it here rather than by moving the canvas keeps `toViewBox()`
+   * and `groundAt()` correct without either of them knowing about the box:
+   * they project through this camera and map the result to the whole viewBox,
+   * which is exactly what the renderer does.
+   */
+  frame(box) {
+    this.box = box;
+    //: viewBox units per island unit, set so the island fits the box's short
+    //: side -- the same rule the whole-frame version used, on a smaller frame.
+    const s = Math.min(box.w, box.h) / (2 * EXTENT);
+    const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    Object.assign(this.camera, {
+      left: -cx / s, right: -cx / s + this.geo.w / s,
+      top: cy / s, bottom: cy / s - this.geo.h / s,
+    });
+    this.camera.updateProjectionMatrix();
   }
 
   /**
@@ -180,12 +206,34 @@ export class Stage {
     return [ndc.x + dir.x * t, ndc.z + dir.z * t];
   }
 
-  /** The canvas follows its box; the framing does not move. */
+  /**
+   * The canvas follows its box, and the model is drawn into the same rectangle
+   * the drawing is.
+   *
+   * **The `<svg>` letterboxes and the canvas does not.** Both cover the page,
+   * but the SVG fits its viewBox inside that box with `meet`, so on a window
+   * wider than the viewBox it leaves bars at the sides -- while the canvas
+   * filled the lot and the camera, built at the viewBox's aspect, was stretched
+   * across it. The two halves of the page were describing differently-shaped
+   * islands, which stayed invisible only while the cards sat on top of the
+   * huts and moved with them. Now that the cards stand in the margins, an
+   * island stretched into those margins is an island under the cards.
+   *
+   * So the renderer is given the same rectangle: the viewBox's aspect, fitted
+   * and centred, with everything outside it scissored away.
+   */
   resize() {
     const box = this.canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(box.width)), h = Math.max(1, Math.round(box.height));
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     this.renderer.setSize(w, h, false);
+    const k = Math.min(w / this.geo.w, h / this.geo.h);
+    const vw = this.geo.w * k, vh = this.geo.h * k;
+    const vx = (w - vw) / 2, vy = (h - vh) / 2;
+    // WebGL counts from the bottom; the page counts from the top.
+    this.renderer.setViewport(vx, h - vy - vh, vw, vh);
+    this.renderer.setScissor(vx, h - vy - vh, vw, vh);
+    this.renderer.setScissorTest(true);
     this.render();
   }
 
@@ -196,10 +244,7 @@ export class Stage {
    */
   reframe(geo) {
     this.geo = geo;
-    const aspect = geo.w / geo.h;
-    Object.assign(this.camera, {
-      left: -EXTENT * aspect, right: EXTENT * aspect, top: EXTENT, bottom: -EXTENT });
-    this.camera.updateProjectionMatrix();
+    this.frame(geo.islandBox ?? { x: 0, y: 0, w: geo.w, h: geo.h });
     this.resize();
   }
 
@@ -266,7 +311,7 @@ export class Stage {
   }
 
   play() {
-    if (this.frame !== null || this.still || !this.life || document.hidden) return;
+    if (this.raf !== null || this.still || !this.life || document.hidden) return;
     const tick = (now) => {
       this.t0 ||= now;
       const t = (now - this.t0) / 1000;
@@ -278,14 +323,14 @@ export class Stage {
       // the cards have to go with them. This is the whole reason the page hands
       // the stage a callback rather than the stage knowing about the scene.
       this.onFrame?.(this);
-      this.frame = requestAnimationFrame(tick);
+      this.raf = requestAnimationFrame(tick);
     };
-    this.frame = requestAnimationFrame(tick);
+    this.raf = requestAnimationFrame(tick);
   }
 
   pause() {
-    if (this.frame !== null) cancelAnimationFrame(this.frame);
-    this.frame = null;
+    if (this.raf !== null) cancelAnimationFrame(this.raf);
+    this.raf = null;
   }
 
   render() {

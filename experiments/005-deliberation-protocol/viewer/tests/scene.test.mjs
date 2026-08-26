@@ -49,6 +49,57 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
   });
 }
 
+for (const n of [1, 2, 3, 4, 5, 6, 8]) {
+  for (const portrait of [false, true]) {
+    test(`the cards leave the island alone with ${n} trader(s), `
+         + `${portrait ? "portrait" : "landscape"}`, () => {
+      // The whole point of the margins. A card standing on the island covers
+      // the market, a settlement, or whatever crossed the ground between them
+      // -- which is the picture the page exists to show.
+      const g = layout(n, portrait);
+      assert.equal(g.cards.length, n, "every trader has a card position");
+      assert.ok(g.islandBox.w > 0 && g.islandBox.h > 0, "the island has a box");
+      for (const [i, seat] of g.cards.entries()) {
+        assert.ok(!overlaps(cardBox(seat), g.islandBox),
+                  `card ${i} of ${n} stands on the island `
+                  + `(${JSON.stringify(cardBox(seat))} in `
+                  + `${JSON.stringify(g.islandBox)})`);
+      }
+    });
+
+    test(`no two cards overlap in the margins with ${n} trader(s), `
+         + `${portrait ? "portrait" : "landscape"}`, () => {
+      const boxes = layout(n, portrait).cards.map((s) => cardBox(s));
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          assert.ok(!overlaps(boxes[i], boxes[j]),
+                    `cards ${i} and ${j} overlap at n=${n}`);
+        }
+      }
+    });
+
+    test(`every card stays on the canvas with ${n} trader(s), `
+         + `${portrait ? "portrait" : "landscape"}`, () => {
+      const g = layout(n, portrait);
+      for (const [i, seat] of g.cards.entries()) {
+        const b = cardBox(seat);
+        assert.ok(b.x >= 0 && b.x + b.w <= g.w && b.y >= 0 && b.y + b.h <= g.h,
+                  `card ${i} of ${n} runs off the ${g.w}x${g.h} canvas`);
+      }
+    });
+  }
+}
+
+test("a wider window is spent on the island, never on the cards", () => {
+  // The viewBox only ever widens with the frame. On a landscape phone the
+  // fixed one letterboxed to a quarter of the screen and the rest was black.
+  const narrow = layout(2, false, 1.4), wide = layout(2, false, 2.4);
+  assert.equal(narrow.w, layout(2).w, "a window no wider changes nothing");
+  assert.ok(wide.w > narrow.w, "a wider window makes a wider canvas");
+  assert.ok(wide.islandBox.w - narrow.islandBox.w === wide.w - narrow.w,
+            "every unit of the extra width goes to the island");
+});
+
 test("more traders means a wider canvas, not a more crowded one", () => {
   // The page scales the SVG to its column, so growing the viewBox is what keeps
   // a six-hander legible rather than overlapping.

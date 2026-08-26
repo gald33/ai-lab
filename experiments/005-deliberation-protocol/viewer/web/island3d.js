@@ -325,6 +325,36 @@ function works(g) {
   return [0, 0, -0.42];
 }
 
+//: The parts of the island that are *ground* -- the things something can stand
+//: on. Not the rocks: a tree balanced on a boulder is not what anybody meant.
+const GROUND = /^(shore_shelf|beach|meadow|upland|ridge)$/;
+
+/**
+ * How high the island is at a point, measured off the island itself.
+ *
+ * **The terrain is not flat and nothing on it knew that.** Every scattered
+ * tree, every site and both goats were placed at one of three constants, so
+ * anything that happened to land on the upland -- which rises four tenths of a
+ * unit above the meadow -- stood buried up to its canopy in the hill, and
+ * anything on the meadow's bevelled rim sank into the slope.
+ *
+ * A raycast rather than a formula: the slabs are extruded with a bevel and a
+ * wobbled outline, the ridge is a squashed dome, and re-deriving the height
+ * they add up to would be a second model of the island that could disagree
+ * with the one on screen.
+ */
+function grounder(island) {
+  const meshes = island.children.filter((n) => GROUND.test(n.name));
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const from = new THREE.Vector3();
+  return (x, z, fallback = GRASS_Y) => {
+    ray.set(from.set(x, 12, z), down);
+    const hit = ray.intersectObjects(meshes, false)[0];
+    return hit ? hit.point.y : fallback;
+  };
+}
+
 /**
  * The island, for this round's traders and goods.
  *
@@ -355,10 +385,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   add(island, new THREE.DodecahedronGeometry(0.34), M.rock, "summit_rock", [-0.55, HILL_Y + 0.42, -0.5], [0.3, 0.6, 0.2]);
   add(island, new THREE.DodecahedronGeometry(0.2), M.rock, "summit_rock_2", [-0.15, HILL_Y + 0.34, -0.72], [0.5, 1.1, 0.3]);
 
+  // From here on, everything standing on the island asks the island how high it
+  // is rather than assuming one of three constants.
+  const ground = grounder(island);
+
   // — the market at the centre —
   const market = new THREE.Group();
   market.name = "market";
-  market.position.set(0.45, GRASS_Y, 0.55);
+  market.position.set(0.45, ground(0.45, 0.55), 0.55);
   add(market, new THREE.CylinderGeometry(0.95, 1.0, 0.06, 48), M.sand, "market_plaza", [0, 0.03, 0]);
   add(market, new THREE.CylinderGeometry(0.28, 0.3, 0.1, 32), M.rock, "market_stone", [0, 0.11, 0]);
   for (let i = 0; i < 6; i++) {
@@ -373,7 +407,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     M.thatchLit, "market_bell", [0.8, 0.52, -0.3], [Math.PI, 0, 0]);
   market.scale.setScalar(1.3);
   island.add(market);
-  anchors.market = new THREE.Vector3(0.45, GRASS_Y, 0.55);
+  anchors.market = market.position.clone();
 
   // — settlements, one per seat —
   const ring = (i, n, rad, turn = 0) => {
@@ -390,13 +424,13 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   traders.forEach((name, i) => {
     const [x, z] = homes[i];
     const g = hut(name, seatMat(name, i));
-    g.position.set(x, GRASS_Y, z);
+    g.position.set(x, ground(x, z), z);
     // Facing the market, which is what a settlement on an island with one
     // market would do.
     g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
     g.scale.setScalar(1.35);
     island.add(g);
-    anchors[name] = new THREE.Vector3(x, GRASS_Y, z);
+    anchors[name] = g.position.clone();
     placed.push([x, z, 0.95]);
   });
 
@@ -409,7 +443,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const wet = good === "salt" || good === "fish";
     const high = good === "iron";
     const [x, z] = ring(i, goods.length, wet ? 2.75 : high ? 1.7 : 2.15, 0.85);
-    site.position.set(x, wet ? SAND_Y - 0.02 : high ? HILL_Y : GRASS_Y, z);
+    // Wet work sits a little into the sand; everything else stands on top of
+    // whatever the island is at that point.
+    site.position.set(x, ground(x, z) - (wet ? 0.02 : 0), z);
     site.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
     const at = (SITES[good] || works)(site, r);
     const flag = marker(good, goodMat(good, i));
@@ -420,7 +456,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     // The site's own height, not the meadow's: salt is worked down on the wet
     // shelf and iron up on the ridge, and anything staged at a site has to
     // arrive where the site actually is.
-    anchors[`site_${good}`] = new THREE.Vector3(x, site.position.y, z);
+    anchors[`site_${good}`] = site.position.clone();
     placed.push([x, z, 1.0]);
   });
 
@@ -459,9 +495,10 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
       const k = s / 8;
       const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
       const onSand = Math.hypot(x, z) > 3.1;
+      const jx = x + (r() - 0.5) * 0.08, jz = z + (r() - 0.5) * 0.08;
       add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
         `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
-        [x + (r() - 0.5) * 0.08, (onSand ? SAND_Y : GRASS_Y) + 0.02, z + (r() - 0.5) * 0.08]);
+        [jx, ground(jx, jz) + 0.01, jz]);
     }
   }
   island.add(trail);
@@ -478,16 +515,22 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const onGrass = rad < 3.0 * wob;
     const g = onGrass ? tree(n, 1.0 + r() * 0.55) : palm(n);
     if (!onGrass) g.scale.setScalar(1.25);
-    g.position.set(x, onGrass ? GRASS_Y - 0.02 : SAND_Y - 0.02, z);
+    // Rooted a little into whatever is under it -- which on the upland is a
+    // third of a unit above the meadow, and on the meadow's rim is a slope.
+    g.position.set(x, ground(x, z) - 0.02, z);
     g.rotation.y = r() * Math.PI * 2;
     island.add(g);
     n++;
   }
   for (let i = 0; i < 6; i++) {
     const a = r() * Math.PI * 2, rad = 3.4 + r() * 1.0;
+    const rx = Math.cos(a) * rad, rz = Math.sin(a) * rad;
     add(island, new THREE.DodecahedronGeometry(0.1 + r() * 0.13), M.rock, `shore_rock_${i}`,
-      [Math.cos(a) * rad, 0.24, Math.sin(a) * rad], [r(), r(), r()]);
+      [rx, ground(rx, rz, 0.16) + 0.04, rz], [r(), r(), r()]);
   }
 
-  return { island, anchors, ground: GRASS_Y };
+  // The height function goes out with the island: anything added on top of it
+  // afterwards -- the life layer, a clip's props -- has the same question to
+  // ask, and asking it twice from two models is how they drift apart.
+  return { island, anchors, ground };
 }
