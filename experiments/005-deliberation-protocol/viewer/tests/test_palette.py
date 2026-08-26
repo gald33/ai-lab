@@ -121,3 +121,39 @@ def test_no_two_encoding_colours_are_identical() -> None:
     named = {n: TOKENS[n] for n in SERIES + METRICS}
     for (na, ca), (nb, cb) in itertools.combinations(named.items(), 2):
         assert ca != cb, f"{na} and {nb} are both {ca}"
+
+
+#: The model's copy of the series, in `island3d.js`. Hex integers for three.js
+#: rather than CSS, which is exactly why nothing compared the two lists.
+MODEL = HERE.parent / "web" / "island3d.js"
+
+
+def _model_series() -> list[str]:
+    """The colours `GOOD_COLOURS` hands the island, as `#rrggbb`."""
+    import re
+    body = MODEL.read_text()
+    block = re.search(r"export const GOOD_COLOURS = \[(.*?)\];", body, re.S)
+    assert block, "island3d.js no longer declares GOOD_COLOURS as a literal list"
+    return [f"#{int(h, 16):06x}" for h in re.findall(r"0x([0-9a-fA-F]{6})", block.group(1))]
+
+
+def test_the_island_draws_the_stylesheet_s_goods() -> None:
+    """A box on the ground is the colour of the bar that counts it.
+
+    **These had drifted, and nothing was looking.** From the fifth good on, the
+    stylesheet said pink, green, purple and the model said purple, pink, cyan —
+    so on any island with five goods, which is the table default since fish, a
+    crate standing in a trader's yard was a different colour from its bar on
+    the card and its chip in the legend. Reported by eye.
+
+    The stylesheet is the source: its colours are the ones the gates above are
+    run against, so a colour that exists only in the model has passed nothing.
+    """
+    model = _model_series()
+    css = [TOKENS[s] for s in SERIES]
+    assert len(model) == len(css), (
+        f"the model draws {len(model)} goods and the stylesheet names {len(css)}")
+    for i, (a, b) in enumerate(zip(css, model), start=1):
+        assert a == b, (
+            f"good {i} is {a} on the card and {b} on the island; a box and the "
+            f"bar counting it are the same good and must be the same colour")

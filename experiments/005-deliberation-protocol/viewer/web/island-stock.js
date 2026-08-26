@@ -77,13 +77,15 @@ function face(good, colour) {
   g.strokeStyle = "rgba(0,0,0,0.28)";
   g.lineWidth = 8;
   g.strokeRect(4, 4, 120, 120);
-  const mark = GLYPH[good];
-  if (mark) {
-    g.font = "76px serif";
-    g.textAlign = "center";
-    g.textBaseline = "middle";
-    g.fillText(mark, 64, 70);
-  }
+  //: **Always something.** A good the glyph table has never heard of -- the
+  //: eighth one somebody adds -- would otherwise get a plain coloured cube,
+  //: and colour alone does not identify. The card's shelf already falls back
+  //: to the same mark for the same reason.
+  g.font = "76px serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillStyle = "rgba(255,255,255,0.92)";
+  g.fillText(GLYPH[good] || "\u25aa", 64, 70);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   cache.set(key, tex);
