@@ -14,6 +14,7 @@ agents is a separate step and needs its own authorization.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -771,3 +772,49 @@ def test_the_runner_writes_the_lobby_page_because_nothing_else_can(monkeypatch, 
     lobby.stood_down = True
 
     assert page.read_text().startswith("<!doctype html>")
+
+
+def _finished_game(out, gid, workspace, when):
+    (out / f"{gid}.json").write_text(json.dumps(
+        {"rounds": [{"workspace": workspace}]}))
+    (out / f"board-{workspace}.json").write_text("{}")
+    (out / f"reveal-{workspace}.json").write_text("{}")
+    for name in (f"{gid}.json", f"board-{workspace}.json", f"reveal-{workspace}.json"):
+        os.utime(out / name, (when, when))
+
+
+def test_pruning_drops_the_bulk_of_old_games_and_keeps_the_newest(tmp_path):
+    """The board and replay of a finished game are the only thing here that
+    grows without limit, and a disk that fills stops the lobby."""
+    for i, gid in enumerate(("g1", "g2", "g3", "g4")):
+        _finished_game(tmp_path, gid, f"w{i}", 1_000_000 + i)
+
+    dropped = run_game.prune(tmp_path, keep=2)
+
+    left = sorted(p.name for p in tmp_path.iterdir())
+    assert left == ["board-w2.json", "board-w3.json", "g3.json", "g4.json",
+                    "reveal-w2.json", "reveal-w3.json"]
+    assert len(dropped) == 6
+
+
+def test_pruning_leaves_a_game_that_never_finished_alone(tmp_path):
+    """A board with no record beside it is a game that did not finish, not a
+    game to tidy away."""
+    _finished_game(tmp_path, "g1", "w1", 1_000_000)
+    (tmp_path / "board-w9.json").write_text("{}")
+
+    run_game.prune(tmp_path, keep=0)          # 0 keeps everything
+    assert (tmp_path / "g1.json").exists()
+
+    run_game.prune(tmp_path, keep=1)
+    assert (tmp_path / "board-w9.json").exists(), "an unfinished game is left"
+
+
+def test_pruning_never_touches_the_ledger(tmp_path):
+    """A pruned game is still counted and still in every denominator."""
+    _finished_game(tmp_path, "g1", "w1", 1_000_000)
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text('{"round_id": "r1"}\n')
+
+    run_game.prune(tmp_path, keep=1)
+    assert ledger.read_text() == '{"round_id": "r1"}\n'

@@ -528,9 +528,39 @@ _LEDGER = threading.Lock()
 MAX_CONCURRENT = 2
 
 
+def prune(out: Path, keep: int) -> list[Path]:
+    """Drop the raw output of all but the `keep` most recent games.
+
+    **The ledger row is never touched**, so a pruned game is still counted, is
+    still in every denominator, and still has its board digest on record. What
+    goes is the bulk: the record, the board and the reveal it points at, which
+    together are the only thing here that grows without limit.
+
+    Oldest first, by the record's own mtime, and only games that have one --
+    a board with no record beside it is a game that did not finish and is left
+    alone rather than tidied away.
+    """
+    if keep <= 0:
+        return []
+    records = sorted((p for p in out.glob("g*.json") if p.is_file()),
+                     key=lambda p: p.stat().st_mtime)
+    dropped: list[Path] = []
+    for record in records[:max(0, len(records) - keep)]:
+        try:
+            workspace = json.loads(record.read_text())["rounds"][0]["workspace"]
+        except (OSError, ValueError, KeyError, IndexError):
+            continue
+        for path in (record, out / f"board-{workspace}.json",
+                     out / f"reveal-{workspace}.json"):
+            if path.exists():
+                path.unlink()
+                dropped.append(path)
+    return dropped
+
+
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
-                ranked_only: bool = False) -> None:
+                ranked_only: bool = False, keep: int = 0) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
     Nothing it touches is shared except the ledger: the table is its own, the
@@ -555,6 +585,11 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         status = added[0]["status"] if added else "already recorded"
         print(f"{table.id}: wrote {path} and {sidecar.name}; "
               f"ledger says {status}", flush=True)
+        if keep:
+            dropped = prune(out, keep)
+            if dropped:
+                print(f"pruned {len(dropped)} file(s) from older games; their "
+                      f"ledger rows stand", flush=True)
     except Exception as exc:  # noqa: BLE001 - one table must not take the rest
         print(f"{table.id}: game failed -- {exc!r}", flush=True)
 
@@ -563,7 +598,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT,
-          page: Path | None = None) -> None:
+          page: Path | None = None, keep: int = 0) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
     **Each table plays in its own thread.** A game takes minutes, and two
@@ -632,7 +667,8 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 target=_play_table, args=(table, invite),
                 kwargs={"episode_seconds": episode_seconds,
                         "ack_seconds": ack_seconds, "out": out,
-                        "ledger": ledger, "ranked_only": ranked_only},
+                        "ledger": ledger, "ranked_only": ranked_only,
+                        "keep": keep},
                 name=f"game-{table.id}", daemon=True)
             games.append(thread)
             thread.start()
@@ -703,6 +739,12 @@ def main(argv: list[str] | None = None) -> int:
                          "page a person can look at. It belongs here rather "
                          "than on run_lobby because this process embeds the "
                          "only lobby its channel may have")
+    ap.add_argument("--keep", type=int, default=0,
+                    help="keep the raw output of only this many finished games, "
+                         "pruning oldest first. The ledger row always survives, "
+                         "so a pruned game is still counted and still in every "
+                         "denominator; what goes is the board and reveal it "
+                         "points at. 0 keeps everything (default)")
     ap.add_argument("--max-games", type=int, default=MAX_CONCURRENT,
                     help="how many tables to play at once. The lab pays for "
                          "the manager of every table that settles, and OPEN "
@@ -742,7 +784,7 @@ def main(argv: list[str] | None = None) -> int:
               ack_seconds=args.ack_seconds, out=args.out,
               ranked_only=args.ranked, ledger=args.ledger,
               manager=manager, channel=args.channel,
-              max_concurrent=args.max_games, page=args.page)
+              max_concurrent=args.max_games, page=args.page, keep=args.keep)
     except KeyboardInterrupt:
         print()
     return 0
