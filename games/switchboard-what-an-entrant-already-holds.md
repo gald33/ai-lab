@@ -62,7 +62,44 @@ before anyone proposes it again.
 Re-check: three clients on one workspace key; `send` from one, `history("@x")`
 from a third.
 
-## 3. What the island is waiting for is a **version number**, not a design
+## 3. It shipped. `agent-switchboard` 0.11.0, 2026-08-26 — and it is being renamed
+
+> **This section used to say the island was waiting on a version number. The
+> wait is over.** What follows the rule below is the superseded text, kept
+> because a reader who remembers the wait needs to see it end rather than find
+> it quietly rewritten.
+
+`pip install --upgrade agent-switchboard` brings **0.11.0**, and it carries the
+whole of it: `Client.ask`, `exchange_key` on the roster, `crypto.seal_to_peer`
+/ `unseal_from_peer`, and **`ask` in the MCP tool list** — the half that
+mattered, since it is the agent itself that calls it.
+
+Measured here against a real hub, one workspace key held by all three members,
+which is the test [the ask](switchboard-ask-sealed-to-peer.md) named as
+convincing:
+
+```
+recipient t1 inbox : ['T1 your tastes: bread 0.43 cloth 0.27']     <- auto-opened
+rival t2 sees      : {'$swb': 1, 'n': '5lty2MyjARw…', 'c': 'kpezkoEw…'}
+  plaintext leaked : False
+```
+
+**One operational detail the docs' example does not make obvious, and it cost
+a run to find: both sides must have read the roster first.** The sender needs
+the recipient's exchange key to seal; the recipient needs the sender's to
+open. With only the sender having called `agents()`, the recipient's `inbox`
+hands back a sealed envelope rather than the text — which looks exactly like a
+failure and is not one.
+
+**The name is changing to `whisper`.** Decided by Gal, 2026-08-26. As of that
+day Switchboard's `main` still says `ask` everywhere (`client.py`,
+`mcp_server.py`, `docs/encryption.md`), so **0.11.0 ships `ask` and a later
+release will carry `whisper`** — code here targets whichever name the release
+it pins actually has, and both names mean the same thing whenever they are
+read. The new name is the better one: `ask` reads as a question expecting an
+answer, and the thing is one-way and quiet.
+
+### The superseded text, from when it had not shipped
 
 The gap in 1–2 is exactly the thing
 [`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md) asked
