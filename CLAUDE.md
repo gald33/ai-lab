@@ -106,6 +106,26 @@ those would change what agents read and what the ledger records. So the
 transcript quotes the manager's word and the metric panel names the metric;
 everywhere the game speaks in its own voice it says day.
 
+## Switchboard is the only interface, and its agents are not helpless
+
+**An agent's tools do the cryptography. The model does none of it.** Through
+`switchboard-mcp` an agent holds `say`, `dm`, `inbox`, `history`, `roster`,
+`keygen`, `join_room`, `board_*` and more, and the CLI holds the same plus
+`invite`, `join`, `rooms`, `rendezvous`. Any argument beginning "an agent
+cannot do X25519, so it needs a wrapper" is wrong at the first clause, and
+**an entrant SDK is never the answer** — it is a second surface, which is the
+thing this repo refuses.
+
+Two measured facts to reason from, with reproductions in
+[`games/switchboard-what-an-entrant-already-holds.md`](games/switchboard-what-an-entrant-already-holds.md):
+a **`dm` is private from the hub and not from the room** (any member can read
+another's `@` channel), and a **signing key is per client, not per process**.
+
+What the island waits on is a **version number**: `ask` is built and merged on
+Switchboard's `main` and absent from 0.10.0. Nothing is to be designed, asked
+for, or built here in the meantime — games real agents play are practice games
+until that release lands.
+
 ## Metrics
 
 - **`eff_round`** — accumulated utility vector against the frontier of the
