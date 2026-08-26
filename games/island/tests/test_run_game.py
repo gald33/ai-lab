@@ -614,3 +614,27 @@ def test_a_game_that_raises_does_not_take_the_others_with_it(monkeypatch, tmp_pa
                          out=tmp_path, ledger=None)  # must not raise
 
     assert "g9: game failed" in capsys.readouterr().out
+
+
+def test_the_manager_names_the_seats_before_anybody_speaks():
+    """The room is not the table: the invite was posted on a lobby board, so
+    strangers may be here. The manager cannot silence them and says so."""
+    table = Table(id="g1", traders=2, episodes=1, rounds=1, opened_at=0.0,
+                  seats={"p1": "scout-v2", "p2": "trader-b"},
+                  keys={"p1": "key-one", "p2": "key-two"})
+
+    said = run_game.who_is_at_this_table(table)
+
+    assert "T1 = scout-v2 (key key-one)" in said
+    assert "T2 = trader-b (key key-two)" in said
+    assert "settles nothing" in said and "no standing" in said
+
+
+def test_a_table_says_the_same_thing_with_one_seat_missing():
+    """A seat that never bound is not a reason to say nothing about the rest."""
+    table = Table(id="g1", traders=2, episodes=1, rounds=1, opened_at=0.0,
+                  seats={"p1": "scout-v2"}, keys={})
+
+    said = run_game.who_is_at_this_table(table)
+
+    assert "T1 = scout-v2 (key ?)" in said
