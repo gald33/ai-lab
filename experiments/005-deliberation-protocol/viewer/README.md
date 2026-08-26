@@ -306,6 +306,33 @@ With a model up the card layer draws no parcel across the square at all. The
 boxes are already crossing; a parcel would be the page saying it twice, and the
 two would disagree the first time one was a frame behind.
 
+### Three things reported by watching it
+
+* **A traded box vanished and reappeared.** The clip hid each box until its own
+  leg of the exchange began, so for the first 850ms the goods were gone from
+  the maker's yard and then appeared in mid-air on the way to the taker's —
+  the one thing this whole layer exists to stop. No check would have caught it:
+  the yards agree with the board at *both ends* of the animation and the counts
+  never lie. It is only wrong while it is moving. `render.py:carrying` drives an
+  exchange a tenth of a second at a time and watches every box that existed
+  before it started — none may go invisible, none may move further in one step
+  than a box can travel.
+* **The island's palette and the card's had drifted.** From the fifth good on —
+  and five goods is the table default since fish — the stylesheet said pink,
+  green, purple and `GOOD_COLOURS` said purple, pink, cyan, so a crate standing
+  in a yard was a different colour from the bar counting it and the chip naming
+  it. Nothing compared them because one list is CSS and the other is hex
+  integers for three.js. The stylesheet is the source: its colours are the ones
+  `palette.py` runs the contrast and dichromacy gates against, so a colour that
+  exists only in the model has passed nothing. `test_palette.py` compares the
+  two lists; `render.py:stock` compares the **pixels** a box is painted against
+  the computed `--good-N`.
+* **A box could carry no mark.** A good absent from the glyph table got a plain
+  coloured cube, while the card's shelf already fell back to `▪` for the same
+  case. Colour alone does not identify — the palette clears adjacent pairs, not
+  all pairs, which is exactly why goods carry a glyph. The check reads a box's
+  own texture and fails below a tenth of the face covered.
+
 ### What a check can catch that could not exist before
 
 The island can now be *wrong* in ways it could not be as a prop layer: a box
