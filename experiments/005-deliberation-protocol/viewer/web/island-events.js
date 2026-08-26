@@ -23,7 +23,7 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { M, GRASS_Y, goodMat, seatMat, onMeadow } from "./island3d.js";
+import { M, goodMat, seatMat, onMeadow } from "./island3d.js";
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
@@ -106,7 +106,11 @@ function bannerPost(material, h = 1.35) {
  * materials are shared and must not be.
  */
 function clip(dur) {
-  return { root: new THREE.Group(), dur, mine: [], update() {} };
+  const c = {
+    root: new THREE.Group(), dur, mine: [], borrowed: [], update() {},
+    restore() { for (const put of c.borrowed) put(); },
+  };
+  return c;
 }
 
 /** A material this clip owns, and will dispose with itself. */
@@ -115,10 +119,37 @@ function own(c, material) {
   return material;
 }
 
-//: The market's plaza, and how far its roof reaches. Anything a clip lays on
-//: the ground at the centre starts outside this, because a ring that begins
-//: under the roof is a ring nobody sees begin.
-const MARKET = new THREE.Vector3(0.45, GRASS_Y, 0.55);
+/**
+ * A node of the island, borrowed.
+ *
+ * **Anything a clip moves that it did not build has to go through here.** The
+ * first cut of these clips restored the two that were obviously borrowed --
+ * the hut banners, the crates by a door -- and quietly kept the rest: after a
+ * single production the fields stayed cut and gold, the drying racks stayed
+ * up and the salt pans stayed dry, for the remainder of the round.
+ *
+ * What is snapshotted is the transform, and the material when the clip is
+ * going to recolour it -- in which case the clip gets a clone to scribble on
+ * and the island gets its own back at the end.
+ */
+function borrow(c, node, { material = false } = {}) {
+  const was = { p: node.position.clone(), r: node.rotation.clone(),
+                s: node.scale.clone(), m: node.material };
+  if (material && node.material) {
+    node.material = own(c, node.material.clone());
+  }
+  c.borrowed.push(() => {
+    node.position.copy(was.p);
+    node.rotation.copy(was.r);
+    node.scale.copy(was.s);
+    if (was.m) node.material = was.m;
+  });
+  return node;
+}
+
+//: How far the market's roof reaches. Anything a clip lays on the ground at
+//: the centre starts outside this, because a ring that begins under the roof
+//: is a ring nobody sees begin.
 const MARKET_R = 1.45;
 
 /**
@@ -129,12 +160,15 @@ const MARKET_R = 1.45;
  * market*, which is where the first cut of this put every offer and every
  * refusal -- under the plaza roof, invisible.
  */
-function beside(home, side = 1.15, out = 0.25) {
-  const away = new THREE.Vector3(MARKET.x - home.x, 0, MARKET.z - home.z).normalize();
+function beside(home, market, ground, side = 1.15, out = 0.25) {
+  const away = new THREE.Vector3(market.x - home.x, 0, market.z - home.z).normalize();
   const x = home.x + -away.z * side + away.x * out;
   const z = home.z + away.x * side + away.z * out;
   const [cx, cz] = onMeadow(x, z, 0.35);
-  return { at: new THREE.Vector3(cx, GRASS_Y, cz), face: Math.atan2(away.x, away.z) };
+  // On the island's own ground, not the meadow's: a post set down at a flat
+  // height on the upland stands with its foot buried in the hill.
+  return { at: new THREE.Vector3(cx, ground(cx, cz), cz),
+           face: Math.atan2(away.x, away.z) };
 }
 
 /**
@@ -166,7 +200,7 @@ export function stageEvent(event, world) {
  * a crate per good produced, which rises at the site and crosses the island to
  * the settlement that produced it.
  */
-function produced(event, { island, anchors, traders, goods }) {
+function produced(event, { island, anchors, goods }) {
   const made = Object.entries(event.made || {}).filter(([, q]) => q > 1e-9);
   const home = anchors[event.trader];
   if (!made.length || !home) return null;
@@ -198,13 +232,14 @@ function produced(event, { island, anchors, traders, goods }) {
     const box = crate(own(c, goodMat(good, goods.indexOf(good))), size);
     c.root.add(box);
     legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                from: from.clone().setY(from.y + 0.25), to: home.clone().setY(GRASS_Y + 0.2) });
+                from: from.clone().setY(from.y + 0.25),
+                to: home.clone().setY(home.y + 0.2) });
   }
   if (!legs.length) return null;
 
   const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
   const dust = mesh(new THREE.CircleGeometry(0.22 * PROP, 20), dustMat, "dust",
-    [home.x, GRASS_Y + 0.03, home.z], [-Math.PI / 2, 0, 0]);
+    [home.x, home.y + 0.03, home.z], [-Math.PI / 2, 0, 0]);
   c.root.add(dust);
 
   c.update = (t) => {
@@ -221,7 +256,8 @@ function produced(event, { island, anchors, traders, goods }) {
       wake(from, to, p, 0.75);
       const land = win(t, t0 + 1.8, t0 + 2.3);
       if (land > 0) {
-        box.position.y = GRASS_Y + 0.1 + Math.abs(Math.sin(land * Math.PI * 2)) * 0.14 * (1 - land);
+        box.position.y = home.y + 0.1
+          + Math.abs(Math.sin(land * Math.PI * 2)) * 0.14 * (1 - land);
         dustMat.opacity = Math.max(dustMat.opacity, 0.4 * (1 - land));
         dust.scale.setScalar(1 + land * 1.5);
       }
@@ -249,7 +285,7 @@ function siteWork(good, site, c) {
   if (good === "bread") {
     const green = new THREE.Color(0x55803f), gold = new THREE.Color(0xc9a86a);
     const plots = part(/^field_plot_/).map((p, i) => {
-      p.material = own(c, p.material.clone());
+      borrow(c, p, { material: true });
       return { p, k: i / 12, y0: p.position.y, s0: p.scale.y };
     });
     return [(t) => plots.forEach(({ p, k, y0, s0 }) => {
@@ -261,7 +297,10 @@ function siteWork(good, site, c) {
     })];
   }
   if (good === "cloth") {
-    const cloths = part(/_cloth$/).map((p, i) => ({ p, i, y0: p.position.y, s0: p.scale.y }));
+    const cloths = part(/_cloth$/).map((p, i) => {
+      borrow(c, p);
+      return { p, i, y0: p.position.y, s0: p.scale.y };
+    });
     return [(t) => cloths.forEach(({ p, i, y0, s0 }) => {
       const raise = easeOut(win(t, 0.15 + i * 0.3, 1.2 + i * 0.3));
       p.scale.y = s0 * Math.max(0.02, raise);
@@ -272,7 +311,11 @@ function siteWork(good, site, c) {
   }
   if (good === "iron") {
     const cart = named("quarry_cart");
-    const spoil = part(/^quarry_spoil_/).map((s, i) => ({ s, i, y0: s.position.y }));
+    if (cart) borrow(c, cart);
+    const spoil = part(/^quarry_spoil_/).map((s, i) => {
+      borrow(c, s);
+      return { s, i, y0: s.position.y };
+    });
     const x0 = cart?.position.x ?? 0;
     return [(t) => {
       if (cart) {
@@ -290,10 +333,11 @@ function siteWork(good, site, c) {
   if (good === "salt") {
     const brine = new THREE.Color(0x6fa8b8), crust = new THREE.Color(0xe9eef0);
     const pans = part(/_brine$/).map((b, i) => {
-      b.material = own(c, b.material.clone());
+      borrow(c, b, { material: true });
       return { b, k: i / 4, y0: b.position.y, s0: b.scale.y };
     });
     const heap = named("salt_heap");
+    if (heap) borrow(c, heap);
     const h0 = heap?.scale.x ?? 1;
     return [(t) => {
       pans.forEach(({ b, k, y0, s0 }) => {
@@ -307,6 +351,7 @@ function siteWork(good, site, c) {
   }
   if (good === "fish") {
     const nets = part(/_mesh$/);
+    for (const n of nets) borrow(c, n);
     return [(t) => nets.forEach((n, i) => {
       const haul = win(t, 0.2 + i * 0.3, 2.4);
       n.rotation.x = Math.sin(t * 2.6 + i) * 0.22 * haul;
@@ -315,6 +360,8 @@ function siteWork(good, site, c) {
   }
   // The plainly-built works: the kiln runs and the shed shakes with it.
   const kiln = named("works_kiln"), shed = named("works_shed");
+  if (kiln) borrow(c, kiln);
+  if (shed) borrow(c, shed);
   return [(t) => {
     const run = win(t, 0.2, 3.0) * (1 - win(t, 3.0, 3.8));
     if (kiln) kiln.scale.set(1 + Math.sin(t * 12) * 0.03 * run, 1, 1 + Math.sin(t * 12) * 0.03 * run);
@@ -323,11 +370,11 @@ function siteWork(good, site, c) {
 }
 
 /** An offer: a post goes up beside the maker's hut and a notice unrolls on it. */
-function offered(event, { anchors, traders }) {
+function offered(event, { anchors, traders, ground }) {
   const home = anchors[event.maker];
   if (!home) return null;
   const c = clip(3.0);
-  const spot = beside(home);
+  const spot = beside(home, anchors.market, ground);
   const post = bannerPost(own(c, seatMat(event.maker, traders.indexOf(event.maker))));
   post.position.copy(spot.at);
   post.rotation.y = spot.face;
@@ -339,7 +386,7 @@ function offered(event, { anchors, traders }) {
 
   const pulseMat = own(c, clone(M.glass, { transparent: true, opacity: 0.5 }));
   const pulse = ring(pulseMat, 0.42);
-  pulse.position.set(post.position.x, GRASS_Y + 0.05, post.position.z);
+  pulse.position.set(post.position.x, post.position.y + 0.05, post.position.z);
   c.root.add(pulse);
 
   c.update = (t) => {
@@ -369,7 +416,7 @@ function settled(event, { anchors, goods }) {
   const a = anchors[event.maker], b = anchors[event.taker];
   if (!a || !b) return null;
   const c = clip(4.2);
-  const from = a.clone().setY(GRASS_Y + 0.45), to = b.clone().setY(GRASS_Y + 0.45);
+  const from = a.clone().setY(a.y + 0.45), to = b.clone().setY(b.y + 0.45);
 
   const legs = [];
   const push = (bundle, src, dst, base) => {
@@ -389,7 +436,7 @@ function settled(event, { anchors, goods }) {
   const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
   const dust = legs.map((l) => {
     const d = mesh(new THREE.CircleGeometry(0.18 * PROP, 20), own(c, dustMat.clone()), "dust",
-      [l.b.x, GRASS_Y + 0.03, l.b.z], [-Math.PI / 2, 0, 0]);
+      [l.b.x, l.b.y - 0.42, l.b.z], [-Math.PI / 2, 0, 0]);
     c.root.add(d);
     return d;
   });
@@ -398,7 +445,7 @@ function settled(event, { anchors, goods }) {
   // market -- not at either hut, because it belongs to neither of them.
   const sealMat = own(c, clone(M.glass, { transparent: true, opacity: 0.6 }));
   const seal = ring(sealMat, MARKET_R);
-  seal.position.set(MARKET.x, GRASS_Y + 0.08, MARKET.z);
+  seal.position.set(anchors.market.x, anchors.market.y + 0.08, anchors.market.z);
   c.root.add(seal);
 
   c.update = (t) => {
@@ -406,12 +453,12 @@ function settled(event, { anchors, goods }) {
       const p = easeInOut(win(t, l.t0, l.t0 + 1.6));
       l.box.visible = t > l.t0 - 0.01;
       l.box.position.lerpVectors(l.a, l.b, p);
-      l.box.position.y = GRASS_Y + 0.45 + Math.sin(p * Math.PI) * 0.85;
+      l.box.position.y = l.a.y + (l.b.y - l.a.y) * p + Math.sin(p * Math.PI) * 0.85;
       l.box.rotation.set(p * 5, p * 3.4, p * 2);
       l.wake(l.a, l.b, p, 0.85);
       const land = win(t, l.t0 + 1.5, l.t0 + 2.0);
       if (land > 0) {
-        l.box.position.y = GRASS_Y + 0.2
+        l.box.position.y = l.b.y - 0.25
           + Math.abs(Math.sin(land * Math.PI * 2)) * 0.14 * (1 - land);
         dust[i].material.opacity = 0.42 * (1 - land);
         dust[i].scale.setScalar(1 + land * 1.6);
@@ -427,11 +474,11 @@ function settled(event, { anchors, goods }) {
 }
 
 /** A refusal: the notice is torn up where it was posted. */
-function refused(event, { anchors, traders }) {
+function refused(event, { anchors, traders, ground }) {
   const home = anchors[event.trader];
   if (!home) return null;
   const c = clip(3.0);
-  const spot = beside(home);
+  const spot = beside(home, anchors.market, ground);
   const post = bannerPost(own(c, seatMat(event.trader, traders.indexOf(event.trader))));
   post.position.copy(spot.at);
   post.rotation.y = spot.face;
@@ -447,7 +494,7 @@ function refused(event, { anchors, traders }) {
     transparent: true, opacity: 0, color: new THREE.Color(0xd03b3b),
     emissive: new THREE.Color(0xd03b3b), emissiveIntensity: 0.8 }));
   const flash = mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.01, 40), flashMat, "refusal_flash",
-    [post.position.x, GRASS_Y + 0.04, post.position.z]);
+    [post.position.x, post.position.y + 0.04, post.position.z]);
   c.root.add(flash);
 
   c.update = (t) => {
@@ -471,12 +518,13 @@ function refused(event, { anchors, traders }) {
 function belled(event, { island, anchors, traders }) {
   const c = clip(4.2);
   const bell = island.getObjectByName("market_bell");
+  if (bell) borrow(c, bell);
   const y0 = bell?.position.y ?? 0;
 
   const shockMat = own(c, clone(M.surf, { transparent: true, opacity: 0.55 }));
   const shocks = [0, 1, 2].map(() => {
     const s = ring(own(c, shockMat.clone()), MARKET_R);
-    s.position.set(MARKET.x, GRASS_Y + 0.09, MARKET.z);
+    s.position.set(anchors.market.x, anchors.market.y + 0.09, anchors.market.z);
     c.root.add(s);
     return s;
   });
@@ -484,7 +532,10 @@ function belled(event, { island, anchors, traders }) {
   // Every settlement's own banner goes up and away with the offers that
   // lapsed. Restored at the end -- these are the island's, not the clip's.
   const flags = traders.map((n) => island.getObjectByName(`hut_${n}_banner`))
-    .filter(Boolean).map((b) => ({ b, y0: b.position.y, r0: b.rotation.y }));
+    .filter(Boolean).map((b) => {
+      borrow(c, b);
+      return { b, y0: b.position.y, r0: b.rotation.y };
+    });
 
   c.update = (t) => {
     const swing = win(t, 0, 2.2);
@@ -504,10 +555,6 @@ function belled(event, { island, anchors, traders }) {
       b.rotation.y = r0 + ev * 3.2 * (1 - back);
     });
   };
-  c.restore = () => {
-    if (bell) { bell.rotation.z = 0; bell.position.y = y0; }
-    flags.forEach(({ b, y0: by, r0 }) => { b.position.y = by; b.rotation.y = r0; });
-  };
   return c;
 }
 
@@ -517,21 +564,27 @@ function opened(event, { island, anchors, traders }) {
   const stock = traders.flatMap((n, hi) => ["a", "b"]
     .map((k) => island.getObjectByName(`hut_${n}_crate_${k}`))
     .filter(Boolean)
-    .map((cr, i) => ({ cr, k: (hi * 2 + i) / Math.max(2, traders.length * 2),
-                       y0: cr.position.y, r0: cr.rotation.y })));
+    .map((cr, i) => {
+      borrow(c, cr);
+      return { cr, k: (hi * 2 + i) / Math.max(2, traders.length * 2),
+               y0: cr.position.y, r0: cr.rotation.y };
+    }));
 
   // The banners run back up their own poles. A floating bar over each hut was
   // the first cut of this and it read as two planks in the sky: the island has
   // a flag on a pole at every settlement already, and a flag going up is the
   // oldest way there is of saying a day has started.
   const flags = traders.map((n) => island.getObjectByName(`hut_${n}_banner`))
-    .filter(Boolean).map((b) => ({ b, y0: b.position.y }));
+    .filter(Boolean).map((b) => {
+      borrow(c, b);
+      return { b, y0: b.position.y };
+    });
 
   // And the day itself, crossing the island from the market outward. This is
   // the part that is actually large enough to notice at a glance.
   const dawnMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
   const sweep = ring(dawnMat, MARKET_R);
-  sweep.position.set(MARKET.x, GRASS_Y + 0.09, MARKET.z);
+  sweep.position.set(anchors.market.x, anchors.market.y + 0.09, anchors.market.z);
   c.root.add(sweep);
 
   c.update = (t) => {
@@ -553,17 +606,6 @@ function opened(event, { island, anchors, traders }) {
       b.position.y = y0 - 0.62 * (down - up);
       b.rotation.y = Math.sin(t * 4.4) * 0.2 * up * (1 - win(t, 3.8, 4.4));
     });
-  };
-  // Put back what was borrowed, exactly: the huts' crates are built at an
-  // angle each, and a restore that squared them up would leave the island
-  // slightly rearranged after every new day.
-  c.restore = () => {
-    stock.forEach(({ cr, y0, r0 }) => {
-      cr.scale.setScalar(1);
-      cr.position.y = y0;
-      cr.rotation.y = r0;
-    });
-    flags.forEach(({ b, y0 }) => { b.position.y = y0; b.rotation.y = 0; });
   };
   return c;
 }

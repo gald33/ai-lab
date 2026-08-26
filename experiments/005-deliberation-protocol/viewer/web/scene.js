@@ -149,7 +149,74 @@ export function closedPath(pts, tension = 0.5) {
  * changes, because everything is positioned from `seats`, `ly`, `rx`, `ry` and
  * `fire`. `fits()` is what holds the geometry honest either way.
  */
-export function layout(n, portrait = false) {
+/**
+ * Where the trader cards go, and what is left for the island.
+ *
+ * **The cards were standing on the island.** Each one hung under its own hut,
+ * and a hut is in the middle of the frame because that is where an island is,
+ * so between them two cards covered the market, both settlements and most of
+ * the meadow -- the picture the page exists to show. They are moved out to the
+ * frame's own margins and tied back to their huts with a line.
+ *
+ * Landscape has margins down the sides; portrait has none worth the name, so
+ * the island takes a band across the top and the cards a grid beneath it.
+ * Either way this returns the card positions and the box the island is then
+ * framed into, and the two do not overlap by construction.
+ */
+function cardPlan(n, w, h, cardH, portrait) {
+  const gap = 14;
+  const pitch = CARD_TOP + cardH + gap;
+  if (portrait) {
+    // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
+    // fit beside each other with a gutter and three do not.
+    const rows = Math.ceil(n / 2);
+    //: The island's band. Taller than it is wide so there is sky over the
+    //: island for the sun to cross -- the island itself fills the width and
+    //: sits in the middle of it.
+    const islandH = Math.round(w * 1.22);
+    //: Clearance under the last card for the transport, which floats over the
+    //: bottom of the window and would otherwise sit on top of it.
+    const below = 110;
+    const cards = Array.from({ length: n }, (_, i) => {
+      const row = Math.floor(i / 2);
+      // A row with one card in it sits in the middle rather than off to a side.
+      const alone = i === n - 1 && n % 2 === 1;
+      return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
+               y: islandH + 8 + row * pitch };
+    });
+    return { cards, islandBox: { x: 0, y: 0, w, h: islandH },
+             h: islandH + rows * pitch + below };
+  }
+  //: A column's width, from the card's own: the margin is as wide as what
+  //: stands in it and no wider, because every unit of it is island.
+  const col = CARD_W / 2 + 22;
+  const perSide = Math.ceil(n / 2);
+  const cards = Array.from({ length: n }, (_, i) => {
+    const right = i >= perSide;
+    const k = right ? i - perSide : i;
+    const of = right ? n - perSide : perSide;
+    const block = of * pitch - gap;
+    return { x: right ? w - col : col, y: (h - block) / 2 + k * pitch };
+  });
+  return { cards, islandBox: { x: col * 2, y: 0, w: w - col * 4, h }, h };
+}
+
+/**
+ * The viewBox's width, never narrower than the layout's own but widened to a
+ * window that is wider still.
+ *
+ * A fixed-width viewBox letterboxes inside a window of a different shape, and
+ * the bars are dead pixels: on a landscape phone -- 844 by 390 -- the island
+ * had a quarter of the screen and the rest was black. Widening spends them on
+ * the island, which is the only thing between the two card columns.
+ *
+ * It only ever widens. Narrowing would spend them the other way, on the cards,
+ * and there is no window where that is the trade to make.
+ */
+const widen = (base, h, aspect) =>
+  aspect ? Math.max(base, Math.round(Math.min(h * aspect, h * 3.4))) : base;
+
+export function layout(n, portrait = false, aspect = null) {
   if (portrait) {
     // One seat above another, far enough apart for a hut above each card. The
     // pitch is the seat's own extent -- hut, card and a gap -- rather than a
@@ -165,22 +232,29 @@ export function layout(n, portrait = false) {
     const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: first + i * pitch }));
     const bottom = first + pitch * (n - 1) + CARD_TOP + CARD_H_SCORED + 60;
     const ly = (sky + bottom) / 2;
+    const plan = cardPlan(n, w, bottom + 120, CARD_H_SCORED, true);
     return {
-      w, h: bottom + 120, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
+      w, h: plan.h, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
       // Beside the column rather than in it: a fire between two stacked huts
       // would sit underneath a card.
       fire: { x: w / 2, y: bottom + 46 },
+      ...plan,
     };
   }
   if (n <= 2) {
-    const g = { w: BASE_W, h: BASE_H, cx: BASE_W / 2, ly: 298, rx: 452, ry: 188 };
+    const w = widen(BASE_W, BASE_H, aspect);
+    const g = { w, h: BASE_H, cx: w / 2, ly: 298, rx: w / 2 - 48, ry: 188 };
     const seats = n === 2
-      ? [{ x: 250, y: 238 }, { x: BASE_W - 250, y: 238 }]
+      ? [{ x: w * 0.25, y: 238 }, { x: w * 0.75, y: 238 }]
       : [{ x: g.cx, y: 238 }];
-    return { ...g, seats, fire: { x: g.cx, y: g.ly + 52 } };
+    return { ...g, seats, fire: { x: g.cx, y: g.ly + 52 },
+             ...cardPlan(n, g.w, g.h, CARD_H_SCORED, false) };
   }
-  const w = 268 * n + 300;
-  const g = { w, h: 620, cx: w / 2, ly: 320, rx: w / 2 - 44, ry: 200 };
+  // Tall enough for the longer of the two card columns. A frame that only
+  // ever held one card per side ran the third off the bottom at five traders.
+  const h = Math.max(620, Math.ceil(n / 2) * (CARD_TOP + CARD_H_SCORED + 14) + 40);
+  const w = widen(268 * n + 300, h, aspect);
+  const g = { w, h, cx: w / 2, ly: h / 2 + 10, rx: w / 2 - 44, ry: h / 3 };
   const step = (w - 420) / (n - 1);
   return {
     ...g,
@@ -188,6 +262,7 @@ export function layout(n, portrait = false) {
     // In front of the huts rather than between them: with a line of traders
     // there is no between.
     fire: { x: g.cx, y: g.ly + 150 },
+    ...cardPlan(n, w, h, CARD_H_SCORED, false),
   };
 }
 
@@ -249,24 +324,22 @@ const CARD_TOP = 22;
 /** A name safe to put in a selector: live, a seat is a raw peer id. */
 const cssName = (s) => (window.CSS?.escape ? CSS.escape(s) : String(s));
 
-/** The box a trader's card occupies, in scene coordinates. */
 /**
- * A seat moved just enough to keep its card on the canvas.
- *
- * With a model underneath, a settlement stands where it makes sense on the
- * island and the card comes to it -- so the card's position is no longer
- * chosen by `layout()` and is no longer guaranteed to fit. `fits()` states the
- * same bounds for the layout's own seats; this is the nudge that makes an
- * arbitrary point obey them.
+ * Where a line leaving a card should leave it: the point on the card's own
+ * edge nearest whatever it is pointing at. A leader that starts inside the
+ * card it belongs to reads as a scratch across it.
  */
-export function fitSeat(seat, g, cardH = CARD_H_SCORED, pad = 10) {
-  const lo = CARD_W / 2 + pad, hi = g.w - CARD_W / 2 - pad;
-  return {
-    x: Math.max(lo, Math.min(hi, seat.x)),
-    y: Math.max(84 + pad, Math.min(g.h - CARD_TOP - cardH - pad, seat.y)),
-  };
+export function edgeToward(box, to) {
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  const dx = to.x - cx, dy = to.y - cy;
+  if (!dx && !dy) return { x: cx, y: cy };
+  // How far along the centre-to-target ray the box's own edge is.
+  const t = Math.min(dx ? (box.w / 2) / Math.abs(dx) : Infinity,
+                     dy ? (box.h / 2) / Math.abs(dy) : Infinity);
+  return { x: cx + dx * t, y: cy + dy * t };
 }
 
+/** The box a trader's card occupies, in scene coordinates. */
 export function cardBox(seat, cardH = CARD_H_SCORED) {
   return { x: seat.x - CARD_W / 2, y: seat.y + CARD_TOP, w: CARD_W, h: cardH };
 }
@@ -311,7 +384,8 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 }
 
 export class Scene {
-  constructor(root, timeline, reveal = null, portrait = false, placed = null) {
+  constructor(root, timeline, reveal = null, portrait = false, placed = null,
+              aspect = null) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -321,16 +395,23 @@ export class Scene {
     this.reveal = reveal;
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
     this.portrait = portrait;
-    this.geo = layout(this.traders.length, portrait);
+    this.aspect = aspect;
+    this.geo = layout(this.traders.length, portrait, aspect);
     // Where the settlements actually are, when there is a model underneath.
-    // The island decides; the card follows its hut rather than the other way
-    // round, which is why this arrives from outside instead of from `layout`.
-    this.placed = placed;
-    if (placed?.length === this.traders.length) {
-      this.geo = { ...this.geo, seats: placed.map((s) => fitSeat(s, this.geo, this.cardH)) };
-    }
+    // The island decides where its own huts stand; the cards stand in the
+    // frame's margins and a line ties each one back, which is why this arrives
+    // from outside instead of from `layout`.
+    this.placed = placed?.length === this.traders.length ? placed : null;
     this.utilityTop = this.utilityScale();
+    //: Whether there is a model of the island under this drawing. With one, the
+    //: cards stand out in the frame's margins and a line ties each back to its
+    //: settlement; without one, the drawing is the island and a card hangs
+    //: under its own drawn hut as it always did.
+    this.modelled = placed !== null;
     this.seats = {};
+    //: Where each settlement is on screen. The same as its card's seat when
+    //: there is no model; from the stage, every frame, when there is.
+    this.pins = {};
     this.bars = {};
     this.labels = {};
     this.build();
@@ -345,16 +426,18 @@ export class Scene {
    * the page can skip a repaint on a resize that did not cross the boundary
    * (every scroll on mobile Safari fires one).
    */
-  reflow(portrait) {
-    if (portrait === this.portrait) return false;
+  reflow(portrait, aspect = this.aspect) {
+    if (portrait === this.portrait && aspect === this.aspect) return false;
     this.portrait = portrait;
-    this.geo = layout(this.traders.length, portrait);
+    this.aspect = aspect;
+    this.geo = layout(this.traders.length, portrait, aspect);
     // The layout's own seats, for now. A caller with an island underneath
     // follows this with `replace()`, because the settlements have to be put
     // back on a frame of the new shape before the cards can find them.
     // Rebuilt from the new geometry rather than carried over: every one of
     // these is keyed to nodes `build()` is about to throw away.
     this.seats = {};
+    this.pins = {};
     this.bars = {};
     this.labels = {};
     this.top = undefined;
@@ -364,25 +447,19 @@ export class Scene {
   }
 
   /**
-   * The camera turned; the cards go with their huts.
+   * The camera turned; what points at the island follows it.
    *
-   * Cheaper than `replace()` on purpose, because this runs every frame while
-   * the island rotates: the hut groups move and the ropes between them are
-   * redrawn, and nothing else is rebuilt. A card is only meaningful standing
-   * under the settlement it belongs to, so if the island turns and the cards
-   * do not, the two halves of the page stop being about the same island.
+   * The cards do not move -- they stand in the margins, which do not turn.
+   * What has to keep up is everything drawn *at* a settlement: the line tying
+   * each card to its own hut, and the rope between two huts with an offer
+   * standing between them.
+   *
+   * Cheaper than `replace()` on purpose, because this runs every frame.
    */
   follow(placed) {
     if (placed?.length !== this.traders.length || !this.state) return;
-    this.traders.forEach((name, i) => {
-      const seat = fitSeat(placed[i], this.geo, this.cardH);
-      const hut = this.root.querySelector(`.hut[data-trader="${cssName(name)}"]`);
-      if (!hut) return;
-      hut.setAttribute("transform", `translate(${seat.x} ${seat.y})`);
-      this.seats[name] = seat;
-    });
-    // The ropes are drawn between seats, so they are the one other thing that
-    // has to be re-laid rather than left pointing where the huts used to be.
+    this.traders.forEach((name, i) => { this.pins[name] = placed[i]; });
+    this.layTethers();
     const open = this.state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
     const placedRopes = new Map();
@@ -396,11 +473,35 @@ export class Scene {
     this.shown = placedRopes;
   }
 
+  /**
+   * The line from each card to the settlement it is about.
+   *
+   * A card in the margin is a card that has stopped saying *whose* it is, so
+   * the line is not decoration: it is the only thing left connecting a number
+   * to a hut. Kept quiet -- thin, dim, under everything -- because it crosses
+   * the picture, and re-laid every frame because the island turns under it.
+   */
+  layTethers() {
+    if (!this.tethers) return;
+    if (!this.modelled) { this.tethers.replaceChildren(); return; }
+    this.tethers.replaceChildren(...this.traders.flatMap((name) => {
+      const seat = this.seats[name], pin = this.pins[name];
+      if (!seat || !pin) return [];
+      const from = edgeToward(cardBox(seat, this.cardH), pin);
+      const g = el("g", { class: "tether", "data-trader": name });
+      g.append(el("path", { class: "tether-line",
+                            d: `M ${from.x} ${from.y} L ${pin.x} ${pin.y}` }));
+      g.append(el("circle", { class: "tether-pin", cx: pin.x, cy: pin.y, r: 5.5 }));
+      return [g];
+    }));
+  }
+
   /** Take new settlement positions -- the island was reframed under us. */
   replace(placed) {
     if (placed?.length !== this.traders.length) return;
-    this.geo = { ...this.geo, seats: placed.map((s) => fitSeat(s, this.geo, this.cardH)) };
+    this.placed = placed;
     this.seats = {};
+    this.pins = {};
     this.bars = {};
     this.labels = {};
     this.top = undefined;
@@ -422,9 +523,18 @@ export class Scene {
     svg.append(this.water());
     svg.append(this.land());
 
-    g.seats.forEach((seat, i) => { this.seats[this.traders[i]] = seat; });
+    // The cards go where the layout put them; the settlements go where the
+    // model says, or -- with no model -- under their own drawn huts.
+    const cards = this.modelled && g.cards ? g.cards : g.seats;
+    cards.forEach((seat, i) => { this.seats[this.traders[i]] = seat; });
+    (this.placed ?? g.seats).forEach((p, i) => { this.pins[this.traders[i]] = p; });
     svg.append(this.square());
     svg.append(this.scenery());
+
+    // Under the ropes and the huts both: a line to a card is the quietest thing
+    // on the island and must never draw over what it points at.
+    this.tethers = el("g", { class: "tethers" });
+    svg.append(this.tethers);
 
     this.ropes = el("g", { class: "ropes" });
     svg.append(this.ropes);
@@ -432,6 +542,7 @@ export class Scene {
     const huts = el("g", { class: "huts" });
     this.traders.forEach((name) => huts.append(this.hut(name, this.seats[name])));
     svg.append(huts);
+    this.layTethers();
 
     this.flights = el("g", { class: "flights" });
     svg.append(this.flights);
@@ -1015,14 +1126,19 @@ export class Scene {
   }
 
   rope(p, fan = 0) {
-    const a = this.seats[p.maker], b = this.seats[p.taker];
+    // Between the *settlements*, not the cards. An offer is a thing happening
+    // on the island between two huts; drawn between two cards in the margins it
+    // would be a line across the whole frame, over everything, saying nothing
+    // about where it is happening.
+    const a = this.pins[p.maker], b = this.pins[p.taker];
     if (!a || !b) return el("g");
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 118 - fan * 44;
+    const lift = this.modelled ? 34 : 84;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - lift - 64 - fan * 44;
     const g = el("g", { class: "rope", "data-pid": p.pid });
     g.append(el("path", { class: "rope-shadow",
-                          d: `M ${a.x} ${a.y - 84} Q ${mx} ${my} ${b.x} ${b.y - 84}` }));
+                          d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}` }));
     g.append(el("path", { class: "rope-line",
-                          d: `M ${a.x} ${a.y - 84} Q ${mx} ${my} ${b.x} ${b.y - 84}` }));
+                          d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}` }));
     const chip = el("g", { class: "rope-chip", transform: `translate(${mx} ${my + 20})` });
     const text = `${bundleText(p.give)} → ${bundleText(p.want)}`;
     const width = Math.max(104, text.length * 8.4);

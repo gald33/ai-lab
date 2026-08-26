@@ -96,7 +96,11 @@ function cloud(i, scale = 1) {
  * through the episode the page's own clock says it is, so the light and the
  * drawn sun cannot disagree about the time.
  */
-export function enliven(island, { seed = 20260825 } = {}) {
+export function enliven(island, { ground = null, seed = 20260825 } = {}) {
+  //: How high the island is at a point, from the model that built it. Without
+  //: it everything here would stand at one flat height, which is how the goats
+  //: came to walk through the hill rather than over it.
+  const high = ground ?? (() => GRASS_Y);
   const r = rng(seed);
   const parts = [];
   const named = (re) => {
@@ -164,8 +168,10 @@ export function enliven(island, { seed = 20260825 } = {}) {
     });
     parts.push((t) => leaves.forEach(({ l, m, at, ph, spin, drift }) => {
       const p = ((t / 6) + ph) % 1;
+      // Off its own tree and down to its own tree's ground, not to the
+      // meadow's: a tree on the upland drops its leaves onto the upland.
       l.position.set(at.x + Math.sin(p * 7 + ph * 6) * 0.12 + drift * p,
-                     GRASS_Y + 0.95 - p * 0.9,
+                     at.y + 0.97 - p * 0.9,
                      at.z + drift * p * 0.6);
       l.rotation.set(p * spin * 3, p * spin * 2, p * spin);
       m.opacity = Math.min(1, (1 - p) * 3.2);
@@ -216,7 +222,8 @@ export function enliven(island, { seed = 20260825 } = {}) {
     const x = -6.4 + p * 12.8;
     cl.position.set(x, h, z);
     cl.userData.m.opacity = 0.9 * clamp01(Math.sin(Math.PI * p) * 2.2);
-    sh.position.set(x * 0.72, GRASS_Y + 0.02, z * 0.85);
+    const sx = x * 0.72, sz = z * 0.85;
+    sh.position.set(sx, high(sx, sz) + 0.03, sz);
     sh.material.opacity = 0.26 * clamp01(Math.sin(Math.PI * p) * 1.8)
       * (Math.hypot(x * 0.72, z * 0.85) < 3.0 ? 1 : 0.15);
   }));
@@ -256,7 +263,7 @@ export function enliven(island, { seed = 20260825 } = {}) {
     // wander somewhere silly but never into the sea.
     const [x, z] = onMeadow(about[0] + Math.cos(ang) * rad,
                             about[1] + Math.sin(ang) * rad, 0.25);
-    a.position.set(x, GRASS_Y, z);
+    a.position.set(x, high(x, z), z);
     a.rotation.y = -ang + Math.PI / 2 + 1.57 + (back ? Math.PI : 0);
     // The legs swing with the walk rather than at a rate of their own: at the
     // old eight radians a second a goat this slow was pedalling on the spot.

@@ -271,6 +271,15 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   /* The colour stays; only the pulse goes. It is information, not decoration. */
   .cell.blamed, .rope.blamed { animation: none; }
 }
+/* The line from a card in the margin to the settlement it is about.
+   Deliberately quiet: it crosses the whole picture, so it has to be findable
+   when looked for and invisible when not. */
+.tether-line { fill: none; stroke: var(--ink-3, #7d8b95); stroke-width: 1.6;
+  stroke-opacity: .42; stroke-dasharray: 5 6; stroke-linecap: round; }
+.tether-pin { fill: none; stroke: var(--ink-3, #7d8b95); stroke-width: 1.8;
+  stroke-opacity: .62; }
+.island.closed .tethers { opacity: .4; }
+
 .rope-shadow { fill: none; stroke: #000; stroke-opacity: .35; stroke-width: 5;
   transform: translateY(2px); }
 .rope-line { fill: none; stroke: var(--fire); stroke-width: 2.5; stroke-opacity: .85;
@@ -661,6 +670,11 @@ const $ = (id) => document.getElementById(id);
  * huts stack instead of standing in a row.
  */
 const isPortrait = () => innerHeight > innerWidth;
+//: The window's shape, for the layout to widen its viewBox to. Rounded to
+//: twentieths so that dragging a window edge does not rebuild the island on
+//: every pixel -- the scene reflows when this changes, and it should change
+//: when the frame's shape does, not when its size does.
+const frameAspect = () => Math.round((innerWidth / innerHeight) * 20) / 20;
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 
@@ -869,7 +883,7 @@ function raise(traders, goods, portrait) {
   const canvas = $("stage");
   const app = document.querySelector(".app");
   try {
-    const geo = layout(traders.length, portrait);
+    const geo = layout(traders.length, portrait, frameAspect());
     if (!stage) stage = new Stage(canvas, geo); else stage.reframe(geo);
     // Where the settlements go, chosen on the *screen* and then dropped onto
     // the island's ground. Placing them on a ring in island coordinates put
@@ -877,9 +891,12 @@ function raise(traders, goods, portrait) {
     // camera's happened to line up -- and a spectator does not care which
     // compass point a hut is on, only that two traders are not stacked. This
     // way the hut is under its card by construction rather than by luck.
-    const spots = seatSpots(traders.length, geo, portrait);
-    const { anchors } = stage.build({
-      traders, goods, seats: spots.map((s) => stage.groundAt(s.x, s.y)) });
+    // The island places its own settlements now. It used to be handed seats
+    // unprojected from wherever the page had put the cards -- which is how a
+    // hut ended up in the sea on a wide window, and how the cards ended up
+    // standing on the island in the first place. The cards are in the margins;
+    // the huts are where an island would put them.
+    const { anchors } = stage.build({ traders, goods });
     // While the island turns, the cards ride their own settlements. Set here
     // rather than inside the stage because the stage draws an island and knows
     // nothing about what is written on top of it.
@@ -895,27 +912,6 @@ function raise(traders, goods, portrait) {
     canvas.hidden = true;
     return null;
   }
-}
-
-/**
- * Where the settlements stand, in the scene's coordinates.
- *
- * Two traders face each other across the market; more stand round it. Kept
- * inside the middle of the frame so every hut lands on the meadow rather than
- * the beach, and clear of the top where the round's state and the counters are.
- */
-function seatSpots(n, geo, portrait) {
-  const mid = { x: geo.w / 2, y: geo.h * (portrait ? 0.5 : 0.46) };
-  if (n <= 2) {
-    const dx = geo.w * (portrait ? 0 : 0.2), dy = geo.h * (portrait ? 0.19 : 0);
-    return n === 1 ? [mid]
-      : [{ x: mid.x - dx, y: mid.y - dy }, { x: mid.x + dx, y: mid.y + dy }];
-  }
-  return Array.from({ length: n }, (_, i) => {
-    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    return { x: mid.x + Math.cos(a) * geo.w * 0.26,
-             y: mid.y + Math.sin(a) * geo.h * 0.20 };
-  });
 }
 
 let lastPaint = null;
@@ -1113,7 +1109,8 @@ function mount(rows, { manager } = {}) {
   // The island is built first: it decides where the settlements stand, and the
   // scene then puts each trader's card at its own hut.
   scene = new Scene($("island"), timeline, reveal, isPortrait(),
-                    raise(timeline.traders, timeline.goods, isPortrait()));
+                    raise(timeline.traders, timeline.goods, isPortrait()),
+                    frameAspect());
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -1273,7 +1270,7 @@ addEventListener("resize", () => {
     // Repainted from the last frame rather than through the player, because
     // live has no player at all and a rebuilt island would otherwise stay empty
     // until the next line arrived on the board.
-    if (scene?.reflow(isPortrait()) && lastPaint) {
+    if (scene?.reflow(isPortrait(), frameAspect()) && lastPaint) {
       // A rotated phone is a differently-shaped frame, so the island is reframed
       // and its settlements land somewhere else; the scene takes the new places.
       scene.replace(raise(scene.traders, scene.goods, isPortrait()));
