@@ -653,7 +653,9 @@ def test_tables_play_at_the_same_time_rather_than_in_turn(monkeypatch, tmp_path)
             break
         time.sleep(0.05)
     release.set()
-    lobby.stood_down = True          # let the watcher end with its test
+    lobby.stood_down = True
+    watcher.join(timeout=5)          # let the watcher end with its test
+    watcher.join(timeout=5)
 
     assert sorted(started) == ["g1", "g2"], "both tables started, neither waited"
 
@@ -731,6 +733,7 @@ def test_no_more_tables_play_at_once_than_the_cap(monkeypatch, tmp_path):
     assert len(running) == 2, f"the cap held: {running}"
     release.set()
     lobby.stood_down = True
+    watcher.join(timeout=5)
 
 
 class _StubLobby:
@@ -742,36 +745,48 @@ class _StubLobby:
     gets blamed on the next test.
     """
 
-    stood_down = False
-
-    def __init__(self, tables: dict) -> None:
+    def __init__(self, tables: dict, stop_after: int | None = None) -> None:
         self.tables = tables
+        self.stood_down = False
+        self._stop_after = stop_after
+        self._drains = 0
 
     def drain(self) -> None:
-        pass
+        self._drains += 1
+        if self._stop_after is not None and self._drains >= self._stop_after:
+            self.stood_down = True
 
 
 def test_the_runner_writes_the_lobby_page_because_nothing_else_can(monkeypatch, tmp_path):
     """`run_lobby --page` cannot be the answer: it would be a second lobby on
-    the channel, and one of the two would stand down."""
-    import threading
+    the channel, and one of the two would stand down.
 
-    lobby = _StubLobby({})
+    Driven synchronously -- the stub stands down after one drain, so `watch`
+    writes the page and returns. A thread here would be testing the scheduler.
+    """
     page = tmp_path / "lobby.html"
     monkeypatch.setattr(run_game, "write_page",
                         lambda lob, path: path.write_text("<!doctype html>rendered"))
-    watcher = threading.Thread(
-        target=run_game.watch, args=(lobby,),
-        kwargs={"every": 0.05, "episode_seconds": 1, "ack_seconds": 1,
-                "out": tmp_path, "page": page}, daemon=True)
-    watcher.start()
-    for _ in range(60):
-        if page.exists():
-            break
-        time.sleep(0.05)
-    lobby.stood_down = True
+
+    run_game.watch(_StubLobby({}, stop_after=1), every=0, episode_seconds=1,
+                   ack_seconds=1, out=tmp_path, page=page)
 
     assert page.read_text().startswith("<!doctype html>")
+
+
+def test_a_page_that_cannot_be_written_does_not_stop_the_runner(monkeypatch, tmp_path, capsys):
+    """A page is not a game. If rendering throws -- a full disk, a bad path --
+    the tables still play and the fault is said out loud."""
+    def boom(lobby, path):
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(run_game, "write_page", boom)
+
+    run_game.watch(_StubLobby({}, stop_after=1), every=0, episode_seconds=1,
+                   ack_seconds=1, out=tmp_path, page=tmp_path / "lobby.html")
+
+    assert "lobby page not written" in capsys.readouterr().out
+
 
 
 def _finished_game(out, gid, workspace, when):
