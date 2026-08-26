@@ -134,9 +134,14 @@ class Table:
     nonce: str = ""
     #: How the seed was drawn: "commit-reveal" or "unverified".
     draw: str = "unverified"
-    #: peer id -> the X25519 key its JOIN offered for sealing, if it offered
-    #: one. A seat without one can only play a practice game: there is nothing
-    #: to seal its private half to.
+    #: peer id -> the exchange key it had published when it sat down. Read off
+    #: this room's roster rather than taken from the JOIN line: a key an
+    #: entrant asserts about itself is not a key anybody can seal to.
+    #:
+    #: **Advisory only.** What decides whether a game is sealed is whether
+    #: every seat publishes one in the *table's* room, which the manager
+    #: checks at deal time (`run_game.sealable`). This is here so the
+    #: settlement line can tell an entrant what to expect.
     boxes: dict[str, str] = field(default_factory=dict)
     manager: str | None = None
     manager_peer: str | None = None
@@ -221,6 +226,7 @@ class Lobby:
     talk: int = 0
     refusals: list[dict] = field(default_factory=list)
     _names: dict[str, str] = field(default_factory=dict)
+    _exchange: dict[str, str] = field(default_factory=dict)
     _next: int = 1
 
     # --- holding the channel ---------------------------------------------
@@ -339,8 +345,13 @@ class Lobby:
         # The roster first, and not only for the names: fetching it is how the
         # client learns the keys it verifies signatures against, so a history
         # read before it would witness nothing and refuse every JOIN.
-        self._names = {a["agent_id"]: a["name"] for a in self.client.agents()
-                       if a.get("name")}
+        roster = self.client.agents()
+        self._names = {a["agent_id"]: a["name"] for a in roster if a.get("name")}
+        # What a seat can be sealed to, if it has published one. Read here
+        # rather than trusted from a JOIN line -- see `Table.boxes`.
+        self._exchange = {a["agent_id"]: a["exchange_key"] for a in roster
+                          if isinstance(a.get("exchange_key"), str)
+                          and a.get("exchange_key")}
         rows = sorted(self.client.history(self.channel, limit=WINDOW),
                       key=lambda r: r.get("seq", 0))
         if self._stand_down(rows):
@@ -487,14 +498,15 @@ class Lobby:
         key = self._witness(signature, "JOIN")
         table.seats[peer] = action.name
         table.keys[peer] = key
-        if action.box:
-            table.boxes[peer] = action.box
+        exchange = self._exchange.get(peer)
+        if exchange:
+            table.boxes[peer] = exchange
         if action.nonce:
             table.nonces[peer] = action.nonce.lower()
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
                 f"key {key}"
-                f"{', sealed' if action.box else ', in the clear'}"
+                f"{', sealed' if exchange else ', in the clear'}"
                 f"{', nonce ' + action.nonce.lower() if action.nonce else ''} "
                 f"({len(table.seats)}/{table.traders})")
         if table.ready():
@@ -577,8 +589,10 @@ class Lobby:
                  else "drawn by this lobby alone -- not every seat brought a "
                       "nonce, so the draw is not checkable afterwards")
         note = "" if table.sealable() else (
-            "; PRACTICE -- not every seat offered a key to seal to, so the "
-            "private half is public and this game is not ranked")
+            "; PRACTICE as things stand -- not every seat had an exchange key "
+            "published when it sat down, so the private half would be public "
+            "and the game not ranked. Register with a client that publishes "
+            "one and the manager will seal to it")
         self.say(f"{table.id} is full: {roster}; managed by "
                 f"{table.manager}; opens {_stamp(table.opens_at)}{note}")
         self.say(f"{table.id}: the island is {drawn}")

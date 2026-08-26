@@ -235,17 +235,24 @@ def test_the_manager_is_bound_to_the_keys_the_lobby_witnessed(settled, hub, tmp_
     assert not mgr.holders["T1"].produced
 
 
-def test_a_table_nobody_offered_a_key_for_cannot_be_ranked(settled):
-    """A seat that gave the manager nothing to seal to can only play in the
-    clear -- so the table is not sealable, its record says practice, and
-    `--ranked` skips it rather than quietly producing a row that claims more
-    than it can."""
-    _lobby, table, _seated, _key = settled
-    assert not table.sealable(), "these seats joined without a box key"
+def test_the_lobby_reads_sealability_off_the_roster_not_off_the_join(settled):
+    """What a seat can be sealed to is what its client published when it
+    registered -- not something it asserted on a JOIN line.
 
-    lines = [m["body"] for m in _lobby.client.history("lobby")]
-    assert any("PRACTICE" in b and "not ranked" in b
-               for b in lines if b.startswith("g1 is full"))
+    Since `ask` shipped, `register()` publishes an exchange key for every
+    ordinary client, so a seat that could be witnessed at all can normally be
+    sealed to. The lobby says so at settlement as a courtesy; the manager
+    checks it again in the table's own room, which is where it decides
+    anything (`run_game.sealable`).
+    """
+    lobby, table, _seated, _key = settled
+
+    assert table.sealable(), "registered seats publish an exchange key"
+    assert set(table.boxes) == set(table.seats)
+    lines = [m["body"] for m in lobby.client.history("lobby")]
+    full = next(b for b in lines if b.startswith("g1 is full"))
+    assert "PRACTICE" not in full
+    assert any("sealed" in b for b in lines if b.startswith("g1 seat"))
 
 
 def test_dealing_says_out_loud_that_it_is_public(settled, hub, tmp_path):
@@ -297,33 +304,39 @@ def test_the_replay_and_the_room_key_are_published_only_at_the_end(settled, hub,
     assert payload["round"]["seed"] == table.seed
 
 
-# --- the sealed round (item 2c) -------------------------------------------
+# --- the sealed round, through `ask` --------------------------------------
+#
+# Rewritten 2026-08-26. It used to drive `island/sealed.py`, a stopgap that
+# sealed to a key each seat posted on the lobby board with `box=`. Switchboard
+# released `ask`, so the key is the entrant's own published `exchange_key` and
+# the sealing is Switchboard's. The property under test did not change: no
+# taste and no share ever reaches the board.
 
 @pytest.fixture
 def sealed_table(hub, identities):
-    """A table where both seats offered a key to seal to."""
-    from island.sealed import BoxKey
+    """A settled table whose seats are ordinary registered clients.
 
+    Nothing is offered on the JOIN line any more -- publishing an exchange key
+    is what `register()` does, so a seat is sealable by being an ordinary
+    Switchboard client and nothing else. That is the whole improvement.
+    """
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))
     _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=1 rounds=1")
     lobby.drain()
 
-    boxes = {}
     for agent_id, name in (("t1", "scout-v2"), ("t2", "trader-b")):
-        box = BoxKey.generate()
-        boxes[name] = box
         client = _client(hub, agent_id, key)
         client.register(name=agent_id, kind="local", branch="main", task="")
-        client.post("lobby", f"JOIN g1 as {name} box={box.public}")
+        client.post("lobby", f"JOIN g1 as {name}")
     manager = _client(hub, "m", key)
     manager.register(name="lucille", kind="local", branch="main", task="")
     manager.post("lobby", "MANAGE g1")
     lobby.drain()
 
     table = lobby.tables["g1"]
-    assert table.settled and table.sealable()
-    return lobby, table, boxes
+    assert table.settled
+    return lobby, table
 
 
 def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_path):
@@ -331,45 +344,49 @@ def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_
 
     Nothing a spectator can read tells them a taste or a share -- and the
     capacity leak closes with them, because capacity is the receipt's quantity
-    divided by the share and the share is now sealed.
+    divided by the share and the share never reaches the board.
     """
     from island.dealer import GOODS, Dealer
-    from island.manager import MANAGER, SEALED_CONTEXT, Manager
-    from island.sealed import BoxKey, seal_to
+    from island.manager import MANAGER, Manager
 
-    lobby, table, boxes = sealed_table
+    lobby, table = sealed_table
     invite = run_game.pending_invite(lobby, table)
     room = {name: Client.from_invite(invite, agent_id=aid)
             for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
     for name, client in room.items():
         client.register(name=name, kind="local", branch="main", task="trading")
+        client.agents()          # both sides read the roster; see the ask docs
 
     dealer = Dealer.draw(table.seed, table.traders, GOODS)
-    mgr = Manager(capacity=dealer.capacity,
-                  client=Client.from_invite(invite, agent_id=MANAGER),
-                  channel="island", goods=dealer.goods, box=BoxKey.generate())
+    manager_client = Client.from_invite(invite, agent_id=MANAGER)
+    # The manager publishes an exchange key too: sealing is pairwise, and a
+    # seat opens what was sealed to it with the *sender's* key.
+    manager_client.register(name=MANAGER, kind="local", branch="main", task="")
+    for client in room.values():
+        client.agents()
+    mgr = Manager(capacity=dealer.capacity, client=manager_client,
+                  channel="island", goods=dealer.goods)
     assert run_game.bind_seats(mgr, table) == {"T1", "T2"}
+    assert run_game.sealable(mgr), "both seats published an exchange key"
 
-    run_game.deal(mgr, dealer, table)
+    assert run_game.deal(mgr, dealer, table) is True
 
-    # Each seat opens its own half; the other seat cannot.
-    lines = [m["body"] for m in mgr.client.history("island")]
-    mine = next(b for b in lines if b.startswith("@T1 (scout-v2) SEALED"))
-    blob = mine.split(" ", 2)[2]
-    assert boxes["scout-v2"].open(blob, run_game.PRIVATE_CONTEXT).startswith("You are T1.")
-    with pytest.raises(Exception):
-        boxes["trader-b"].open(blob, run_game.PRIVATE_CONTEXT)
+    # Each seat opens its own half out of its inbox; the other seat never sees
+    # it at all -- an `ask` is delivered to one peer's channel.
+    mine = [m["body"] for m in room["scout-v2"].inbox()]
+    assert any(isinstance(b, str) and b.startswith("You are T1") for b in mine)
+    theirs = [str(m.get("body")) for m in room["trader-b"].inbox()]
+    assert not any("You are T1" in b for b in theirs)
 
-    # A sealed PRODUCE settles, and the plan never reaches the board.
+    # A sealed PRODUCE settles: sent with `ask`, read out of the manager's
+    # inbox, and the plan never reaches the board.
     mgr.open_episode()
-    room["scout-v2"].post("island", seal_to(mgr.box.public,
-                                            "PRODUCE bread=0.5 iron=0.5",
-                                            SEALED_CONTEXT))
-    room["trader-b"].post("island", seal_to(mgr.box.public,
-                                            "PRODUCE cloth=1.0", SEALED_CONTEXT))
+    room["scout-v2"].ask(mgr.client.agent_id, "PRODUCE bread=0.5 iron=0.5")
+    room["trader-b"].ask(mgr.client.agent_id, "PRODUCE cloth=1.0")
     mgr.drain()
 
     assert mgr.refused == 0
+    assert mgr.sealed_in == 2
     assert mgr.holders["T1"].produced and mgr.holders["T2"].produced
 
     # Now the real assertion: read the whole board as a spectator would.
@@ -383,33 +400,74 @@ def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_
     assert "produced" in board and "labour unspent" in board
 
 
-def test_a_sealed_produce_is_refused_when_the_round_has_no_channel(hub):
-    """A manager with no box refuses a sealed line rather than counting it as
-    talk -- silence and unreadability are different events."""
+def test_a_practice_table_is_dealt_in_the_clear_and_says_so(hub, identities):
+    """A seat whose client publishes no exchange key cannot be sealed to, and
+    the table says that on its own board rather than quietly playing on."""
     from island.dealer import GOODS, Dealer
     from island.manager import MANAGER, Manager
-    from island.sealed import BoxKey, seal_to
 
     key = generate_key()
-    mgr = Manager(capacity=Dealer.draw(1, 2, GOODS).capacity,
-                  client=_client(hub, MANAGER, key), channel="island",
-                  goods=GOODS, names=("T1", "T2"))
-    trader = _client(hub, "t1", key)
-    mgr.bind(trader.agent_id, "T1")
-    mgr.open_episode()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=1 rounds=1")
+    lobby.drain()
+    for agent_id, name in (("t1", "scout-v2"), ("t2", "trader-b")):
+        c = _client(hub, agent_id, key)
+        c.register(name=agent_id, kind="local", branch="main", task="")
+        c.post("lobby", f"JOIN g1 as {name}")
+    m = _client(hub, "m", key)
+    m.register(name="lucille", kind="local", branch="main", task="")
+    m.post("lobby", "MANAGE g1")
+    lobby.drain()
+    table = lobby.tables["g1"]
+    invite = run_game.pending_invite(lobby, table)
 
-    trader.post("island", seal_to(BoxKey.generate().public,
-                                  "PRODUCE bread=1.0", "island.produce"))
-    mgr.drain()
+    # Only one seat turns up in the room, so `sealable` is empty.
+    only = Client.from_invite(invite, agent_id="t1")
+    only.register(name="scout-v2", kind="local", branch="main", task="")
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity,
+                  client=Client.from_invite(invite, agent_id=MANAGER),
+                  channel="island", goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
 
-    assert mgr.refused == 1
-    assert mgr.refusals[0]["kind"] == "sealed"
-    assert "no private channel" in mgr.refusals[0]["reason"]
-    # And the ciphertext is not copied into the record that gets published.
-    assert mgr.refusals[0]["line"] == "<sealed>"
+    assert run_game.deal(mgr, dealer, table) is False
+    board = " ".join(str(m["body"]) for m in mgr.client.history("island"))
+    assert "PRACTICE" in board and "Nothing here is ranked" in board
+
+def test_a_sealed_blob_posted_on_the_board_is_refused_with_the_way_to_send_it():
+    """Sealed payloads used to ride the board under a `SEALED` marker. They do
+    not any more -- `ask` delivers them to the manager's own channel -- so a
+    blob here settles nothing, and the refusal says what to do instead rather
+    than leaving an entrant to guess."""
+    from island.dealer import GOODS, Dealer
+    from island.manager import Manager
+
+    m = Manager(capacity=Dealer.draw(1, 2, GOODS).capacity,
+                client=_FakeRoom(), channel="island", goods=GOODS,
+                names=("T1", "T2"))
+    m.bind("peer-t1", "T1")
+    m.open_episode()
+
+    m._consider("T1", "SEALED abcdefghijklmnop")
+
+    assert m.refused == 1
+    assert m.refusals[0]["kind"] == "sealed"
+    assert m.refusals[0]["line"] == "<sealed>", "never keep the ciphertext"
+    assert "ask" in m.refusals[0]["reason"]
+    assert not m.holders["T1"].produced
 
 
-# --- two lobbies, one table (the failure that reads as nobody turning up) ---
+class _FakeRoom:
+    """The two calls a Manager makes when nothing is being drained."""
+
+    def __init__(self) -> None:
+        self.said: list[str] = []
+
+    def post(self, channel: str, body: str) -> None:
+        self.said.append(body)
+
+    def history(self, channel: str, **kw) -> list:
+        return []
 
 def test_a_table_settled_twice_is_refused_rather_than_played(settled, hub):
     """The seed is never on the board, so whoever settles a table is the only

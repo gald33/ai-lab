@@ -82,7 +82,6 @@ sys.path.insert(0, str(_ISLAND / "viewer"))
 from island import schedule  # noqa: E402
 from island.dealer import GOODS, Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
-from island.sealed import BoxKey, seal_to  # noqa: E402
 from island.score import trajectory_from  # noqa: E402
 
 import reveal as _reveal  # noqa: E402
@@ -137,41 +136,69 @@ def players(table: Table) -> dict[str, str]:
 
 #: What the manager seals a private half under. Distinct from the context a
 #: trader seals `PRODUCE` under, so neither can be replayed as the other.
-PRIVATE_CONTEXT = "island.private-half"
 
 
-def deal(mgr: Manager, dealer: Dealer, table: Table) -> None:
-    """Tell each trader its own half -- sealed to its seat, or in the clear.
+def sealable(mgr: Manager) -> dict[str, str]:
+    """Seat slot -> the agent id in *this room* to seal that seat's half to,
+    but only if every seat has one. Empty means this table plays in the clear.
 
-    Sealed when every seat offered a key at `JOIN`, which is what makes a game
-    rankable: the tastes never reach the board, and `PRODUCE` sealed the other
-    way keeps the shares off it too, which together close the capacity leak
-    (capacity is a public receipt's quantity divided by a share).
+    **Decided here rather than in the lobby**, and that is the change `ask`
+    made. A seat used to have to carry a `box=` key on its `JOIN`; now the
+    key is the entrant's own published `exchange_key`, which its client
+    publishes on `register()` and the manager reads off this room's roster
+    like any other. So the question "can this table be sealed?" is answered
+    where the sealing happens, by looking at who actually turned up, rather
+    than by what somebody wrote on a board one room earlier.
+    """
+    roster = {a.get("agent_id"): a for a in mgr.client.agents()}
+    by_slot: dict[str, str] = {}
+    for peer, slot in mgr.alias.items():
+        if slot == MANAGER:
+            continue
+        agent = roster.get(peer) or {}
+        if isinstance(agent.get("exchange_key"), str) and agent["exchange_key"]:
+            by_slot[slot] = peer
+    return by_slot if len(by_slot) == len(mgr.names) else {}
+
+
+def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
+    """Tell each trader its own half -- sealed to it alone, or in the clear.
+
+    Sealed when every seat published an exchange key in this room, which is
+    what makes a game rankable: the tastes never reach the board, and
+    `PRODUCE` sealed the other way keeps the shares off it too, which together
+    close the capacity leak (capacity is a public receipt's quantity divided
+    by a share).
 
     In the clear otherwise, and said out loud rather than glossed: a practice
     game hides nothing at all, and the record it produces is not ranked.
     """
     seated = players(table)
-    by_slot = {table.label(peer): box for peer, box in table.boxes.items()}
+    by_slot = sealable(mgr)
 
-    if not table.sealable():
+    if not by_slot:
         mgr.say("This is a PRACTICE game: each trader's capacities and tastes "
                 "are posted below in the clear, where every other trader can "
                 "read them. Nothing here is ranked.")
         for name in mgr.names:
             mgr.say(f"@{name} ({seated.get(name, '?')}) "
                     f"{dealer.private_state(name)}")
-        return
+        return False
 
-    mgr.say(f"Sealed round. Each trader's private half is sealed to the key it "
-            f"took its seat with and is readable by nobody else, including "
-            f"the other traders. Seal your PRODUCE back to the manager at "
-            f"box={mgr.box.public} -- a plan posted in the clear gives your "
-            f"capacity away, since the receipt states the quantity. PROPOSE "
-            f"and APPROVE stay public, and so does every receipt.")
+    mgr.say(f"SEALED round. Your private half is on its way to you alone -- "
+            f"read it with `inbox`, which opens what was sealed to you. Send "
+            f"your PRODUCE back the same way, with `ask` addressed to "
+            f"{mgr.client.agent_id}: a plan posted on this board in the clear "
+            f"gives your capacity away, since the receipt states the quantity. "
+            f"PROPOSE and APPROVE stay public, and so does every receipt -- "
+            f"what is hidden is the labour behind them, and nothing else.")
     for name in mgr.names:
-        mgr.say(f"@{name} ({seated.get(name, '?')}) "
-                f"{seal_to(by_slot[name], dealer.private_state(name), PRIVATE_CONTEXT)}")
+        # `private_state` already opens with "You are T1." -- naming the seat
+        # twice is how a briefing starts to read like a machine wrote it.
+        mgr.client.ask(by_slot[name],
+                       f"{dealer.private_state(name)} "
+                       f"You are seated here as {seated.get(name, '?')}.")
+    return True
 
 
 def _tick(tick: Callable[[], None] | None) -> None:
@@ -235,7 +262,8 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
 
 
 def play(table: Table, invite: Invite, *, episode_seconds: int,
-         ack_seconds: int, out: Path, tick: Callable[[], None] | None = None) -> dict:
+         ack_seconds: int, out: Path, tick: Callable[[], None] | None = None,
+         ranked_only: bool = False) -> dict | None:
     """One settled table, from its first bell to its record.
 
     ``tick`` is called on every drain of this room. `watch` no longer needs
@@ -245,17 +273,20 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     the last bell, and nothing lapses on time either.
     """
     client = Client.from_invite(invite, agent_id=MANAGER)
+    # **The manager registers too, and not only for the roster line.** Sealing
+    # is pairwise: a seat opens what was sealed to it by deriving a secret
+    # with the *sender's* exchange key, so a manager that never registered
+    # publishes no such key and every half it seals arrives unreadable. It
+    # cost a test to find, and it would have cost a game.
+    client.register(name=MANAGER, kind="local", branch="main",
+                    task=f"running {table.id}")
     # The first `table.goods` of the vocabulary. The table settled its own
     # count when it opened, and the entrants were briefed on that number -- so
     # this must follow the table rather than a default of its own.
     goods = GOODS[:table.goods]
     dealer = Dealer.draw(table.seed, table.traders, goods)
     mgr = Manager(capacity=dealer.capacity, client=client,
-                  channel="island", goods=dealer.goods,
-                  # Only when there is somebody to seal to. A manager with no
-                  # box refuses a sealed line rather than pretending to read
-                  # it, which is what a practice round wants.
-                  box=BoxKey.generate() if table.sealable() else None)
+                  channel="island", goods=dealer.goods)
 
     # The seats the lobby witnessed, bound to the keys it witnessed them
     # under. This is the whole point of the lobby having done that: a line
@@ -277,7 +308,19 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
                                    episode_seconds=episode_seconds,
                                    ack_seconds=ack_seconds))
     mgr.say(who_is_at_this_table(table))
-    deal(mgr, dealer, table)
+    # **Whether this table can seal is known here and not before.** It turns
+    # on every seat having published an exchange key *in this room*, which
+    # cannot be true until the entrants have registered in it -- so a runner
+    # asked for ranked games only finds out now, and stands the table down
+    # before anybody has produced rather than playing a round it will not
+    # record.
+    if ranked_only and not sealable(mgr):
+        mgr.say("Standing this table down: it was opened for a ranked game, "
+                "and not every seat published an exchange key in this room, "
+                "so its private half cannot be sealed. Nothing here is "
+                "recorded. Open another table to play in the clear.")
+        return None
+    sealed = deal(mgr, dealer, table)
 
     def until(deadline: float) -> None:
         while time.time() < deadline:
@@ -319,7 +362,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     mgr.drain()
 
     board = save_board(mgr, out)
-    return record(table, mgr, dealer, out, board=board,
+    return record(table, mgr, dealer, out, board=board, sealed=sealed,
                   seconds=round(time.time() - started, 1))
 
 
@@ -368,7 +411,7 @@ def save_board(mgr: Manager, out: Path) -> Path:
 
 
 def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
-           board: Path, seconds: float) -> dict:
+           board: Path, seconds: float, sealed: bool = False) -> dict:
     """The run record, in the shape `viewer/scores.py:ingest` already reads."""
     return {
         "experiment": "005-v3",
@@ -381,12 +424,13 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "players": players(table),
         # A practice game is kept and counted and never ranked: the private
         # half was public, so what it measures is not what the board ranks.
-        "practice": not table.sealable(),
+        "practice": not sealed,
         "rounds": [{
             "workspace": mgr.client.config.workspace,
             "seed": table.seed,
             "episodes": table.episodes,
-            "arm": "practice" if not table.sealable() else "sealed",
+            "arm": "sealed" if sealed else "practice",
+            "sealed_lines": mgr.sealed_in,
             "game": {"id": table.id, "rounds": table.rounds},
             "trajectory": trajectory_from(dealer.island, mgr.episode_log,
                                           list(mgr.names), list(mgr.goods)),
@@ -477,7 +521,8 @@ _LEDGER = threading.Lock()
 
 
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
-                ack_seconds: int, out: Path, ledger: Path | None) -> None:
+                ack_seconds: int, out: Path, ledger: Path | None,
+                ranked_only: bool = False) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
     Nothing it touches is shared except the ledger: the table is its own, the
@@ -487,7 +532,11 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
     """
     try:
         rec = play(table, invite, episode_seconds=episode_seconds,
-                   ack_seconds=ack_seconds, out=out)
+                   ack_seconds=ack_seconds, out=out, ranked_only=ranked_only)
+        if rec is None:
+            print(f"{table.id}: stood down -- opened for a ranked game and "
+                  f"cannot seal", flush=True)
+            return
         path = out / f"{table.id}.json"
         path.write_text(json.dumps(rec, indent=1) + "\n")
         sidecar = publish(table, invite, rec, out)
@@ -540,10 +589,6 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 print(f"{table.id}: already played -- {out / f'{table.id}.json'} "
                       f"is on disk", flush=True)
                 continue
-            if ranked_only and not table.sealable():
-                print(f"{table.id}: skipped -- not every seat offered a key to "
-                      f"seal to, so this table cannot be ranked", flush=True)
-                continue
             try:
                 invite = pending_invite(lobby, table)
             except SettledTwice as exc:
@@ -558,7 +603,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 target=_play_table, args=(table, invite),
                 kwargs={"episode_seconds": episode_seconds,
                         "ack_seconds": ack_seconds, "out": out,
-                        "ledger": ledger},
+                        "ledger": ledger, "ranked_only": ranked_only},
                 name=f"game-{table.id}", daemon=True)
             games.append(thread)
             thread.start()

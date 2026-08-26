@@ -146,13 +146,15 @@ def test_a_sealed_round_says_which_arithmetic_it_could_not_redo(tmp_path):
     """Sealing hides the shares on purpose, so the checker must report that
     rather than passing as though it had checked them."""
     board = _board()
-    board["messages"][0]["body"] = "SEALED abcdef"
-    board["messages"][2]["body"] = "SEALED 123456"
+    board["messages"].insert(0, _line(0, "manager", "SEALED round. Your private "
+                                     "half is on its way to you alone."))
+    del board["messages"][1], board["messages"][2]   # the two PRODUCE lines
 
     report = _run(tmp_path, board)
 
     assert report.passed
-    assert any("sealed PRODUCE line" in s for s in report.skipped)
+    assert any("this round was sealed" in s and "what sealing is for" in s
+               for s in report.skipped)
 
 
 def test_a_game_with_no_reveal_beside_it_cannot_be_checked_at_all(tmp_path):

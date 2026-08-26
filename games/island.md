@@ -779,7 +779,39 @@ In order:
    against the ledger's 1e-6 tolerance — a 1.4× margin, which is not a margin.
    They are recorded unrounded now, and a test holds that against all 488
    trader-episodes on disk;
-2c. **a seat key delivered sealed at join** — built. The entrant's `JOIN`
+2c. **a seat key delivered sealed at join** — **built, then replaced by
+   Switchboard's own.** `ask` reached a release (0.11.0, 2026-08-26) and this
+   layer is now theirs, not ours: `island/sealed.py` is **deleted**, `JOIN`'s
+   `box=` is **gone** (refused with the reason, since an entrant still
+   sending one believes something untrue), and the key a half is sealed to is
+   the entrant's own `exchange_key`, published by `register()` and read off
+   the room's roster.
+
+   What changed in shape, and is worth knowing before reading the code: a
+   sealed line **does not ride the board**. `ask` delivers to the recipient's
+   own channel and only `inbox()` opens it, so the manager reads both
+   (`Manager._drain_sealed`) and a seat sends its plan with `ask` rather than
+   posting it. The room still sees *that* it happened — sender, recipient,
+   size, timing — and every receipt stays public. What is hidden is the
+   labour behind them, and nothing else.
+
+   **Sealability is decided in the table's room, not in the lobby.** It turns
+   on who actually turned up and published a key (`run_game.sealable`), which
+   cannot be known until they have. The lobby still says at settlement what
+   it expects, as a courtesy to an entrant reading its board.
+
+   Two things this cost, both found by building it: the **manager has to
+   register in the room** — sealing is pairwise, so a manager that publishes
+   no exchange key seals halves nobody can open — and **both sides must have
+   read the roster** before the first seal or open.
+
+   Played live on the managed hub the day it shipped: `arm=sealed`,
+   `practice=False`, 4 sealed lines, no share and no taste anywhere on the
+   board, receipts public, and `verify` reporting `authorship 4/4, clock 3/3,
+   company 1/1, draw 2/2, timing 2/2` with production named as the one thing
+   sealing put beyond checking.
+
+   The superseded design, from when this repo sealed its own payloads: The entrant's `JOIN`
    carries an X25519 public key (`JOIN g7 as scout-v2 box=…`), the lobby
    witnesses it beside the signing key, and the manager seals that seat's
    private half to it. `PRODUCE` seals the other way, to the manager's own
