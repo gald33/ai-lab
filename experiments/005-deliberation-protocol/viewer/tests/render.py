@@ -28,6 +28,7 @@ import argparse
 import contextlib
 import http.server
 import json
+import math
 import socket
 import sys
 import threading
@@ -1222,7 +1223,11 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     const b = new THREE.Box3().setFromObject(o);
     decks[nm] = [b.min.y, b.max.y];
   }
-  return {traders, decks,
+  // Everything the island places on purpose, by name, so a check can ask
+  // whether any two of them are standing in the same spot.
+  const sited = Object.fromEntries(Object.entries(made.anchors)
+    .map(([k, v]) => [k, [v.x, v.z]]));
+  return {traders, decks, sited,
           seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
           card0: geo.cards.length ? geo.cards[0].y : null,
@@ -1327,6 +1332,21 @@ def island(browser, base: str, out: Path) -> list[str]:
                 bad.append(f"island {label}: {an} and {bn} both have a face at "
                            f"y={ay:.3f}; two flat surfaces on one plane fight "
                            f"for every pixel where they overlap")
+        # And nothing the island placed on purpose stands in anything else it
+        # placed on purpose. The settlements were separated from each other and
+        # from nothing else -- the good sites are laid on their own ring at
+        # their own radii, so a hut could come down on the salt pans, which is
+        # what "elements are drawn on top of one another" looked like from a
+        # seat. A market stall is about 0.9 across and a hut about 0.8, so a
+        # metre between centres is two of them not touching.
+        sited = built["sited"]
+        names = sorted(sited)
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                gap = math.dist(sited[a], sited[b])
+                if gap < 1.0:
+                    bad.append(f"island {label}: {a} and {b} are {gap:.2f} apart; "
+                               f"they are drawn standing in each other")
         for name, (x, z) in zip(built["traders"], seats):
             under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
             if under not in LAND:

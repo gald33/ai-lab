@@ -140,7 +140,15 @@ export function homeSite(x, z, margin = 0.55) {
  * *around* the island rather than in or out, so each keeps the distance from
  * the market the layout gave it.
  */
-function spaced(seats, min = 1.3, passes = 40) {
+/**
+ * @param {Array<[number, number]>} seats  what may be turned
+ * @param {Array<[number, number]>} fixed  what may not, and still pushes.
+ *   **The good sites, mainly.** A settlement that only avoided other
+ *   settlements still landed on the salt pans or inside the smithy: they are
+ *   laid on their own ring at their own radii and nothing was comparing the
+ *   two. Reported as things drawn on top of one another.
+ */
+function spaced(seats, fixed = [], min = 1.3, passes = 60) {
   const ang = seats.map(([x, z]) => Math.atan2(z, x));
   const rad = seats.map(([x, z]) => Math.hypot(x, z));
   const at = (i) => [Math.cos(ang[i]) * rad[i], Math.sin(ang[i]) * rad[i]];
@@ -159,6 +167,15 @@ function spaced(seats, min = 1.3, passes = 40) {
         const s = Math.sign(away);
         ang[i] += turn * s;
         ang[j] -= turn * s;
+      }
+      // The immovable ones push and are not pushed, so a seat goes round them.
+      for (const [fx, fz] of fixed) {
+        const a = at(i);
+        const d = Math.hypot(a[0] - fx, a[1] - fz);
+        if (d >= min) continue;
+        worst = Math.max(worst, min - d);
+        const away = Math.sin(ang[i] - Math.atan2(fz, fx)) || 1;
+        ang[i] += (min - d) / Math.max(rad[i], 0.8) * 0.6 * Math.sign(away);
       }
     }
     if (!worst) break;
@@ -450,12 +467,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   add(market, new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8), M.timber, "market_bell_post", [0.8, 0.31, -0.3]);
   add(market, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
     M.thatchLit, "market_bell", [0.8, 0.52, -0.3], [Math.PI, 0, 0]);
-  //: **Smaller than it was.** Every prop on the island was built at about a
-  //: third again its drawn size, and between them the market, two settlements,
-  //: four sites, the jetty and twenty-two trees left an island with no ground
-  //: showing on it. The scales below all came down together, because shrinking
-  //: one of them only makes the rest look bigger.
-  market.scale.setScalar(1.12);
+  //: **Smaller than it was, twice.** Every prop was built at about a third
+  //: again its drawn size, and between them the market, two settlements, four
+  //: sites, the jetty and twenty-two trees left an island with no ground
+  //: showing on it. The first cut took a fifth off and it was still reported
+  //: as crowded; this is the second, down to about three-quarters of what the
+  //: model shipped with. They all move together, because shrinking one of them
+  //: only makes the rest look bigger.
+  market.scale.setScalar(0.95);
   island.add(market);
   anchors.market = market.position.clone();
 
@@ -465,11 +484,24 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     return [Math.cos(a) * rad, Math.sin(a) * rad];
   };
   const placed = [];
+  //: Where the good sites will stand, worked out **before** the settlements so
+  //: that a settlement can be turned off one. Each good's own ring radius: the
+  //: wet work is out on the shelf, iron up on the upland, the rest on the
+  //: meadow -- the same arithmetic the loop below uses, and the one place it
+  //: is written.
+  const siteAt = goods.map((good, i) => ring(
+    i, goods.length,
+    good === "salt" || good === "fish" ? 2.75 : good === "iron" ? 1.7 : 2.15, 0.85));
   // Clamped and separated before any of them is built, because a seat arrives
   // from the page in screen coordinates and the island is the only thing that
   // knows where its own grass ends -- or that two of them landed in one place.
+  //
+  // Separated from the **sites** as well, which they were not: those are laid
+  // on their own ring at their own radii and nothing compared the two, so a
+  // hut could come down on the salt pans. Reported as elements drawn on top of
+  // one another.
   const homes = spaced(traders.map((_, i) =>
-    homeSite(...(seats?.[i] ?? ring(i, traders.length, 2.35, -0.6)))))
+    homeSite(...(seats?.[i] ?? ring(i, traders.length, 2.35, -0.6)))), siteAt, 1.5)
     .map(([x, z]) => homeSite(x, z));
   traders.forEach((name, i) => {
     const [x, z] = homes[i];
@@ -478,7 +510,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     // Facing the market, which is what a settlement on an island with one
     // market would do.
     g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
-    g.scale.setScalar(1.15);
+    g.scale.setScalar(0.95);
     island.add(g);
     anchors[name] = g.position.clone();
     placed.push([x, z, 0.95]);
@@ -491,8 +523,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     // Salt is worked on the wet shelf and iron cut out of the upland; the rest
     // sit on the meadow. Placed on a ring the settlements are not on.
     const wet = good === "salt" || good === "fish";
-    const high = good === "iron";
-    const [x, z] = ring(i, goods.length, wet ? 2.75 : high ? 1.7 : 2.15, 0.85);
+    const [x, z] = siteAt[i];
     // Wet work sits a little into the sand; everything else stands on top of
     // whatever the island is at that point.
     site.position.set(x, ground(x, z) - (wet ? 0.02 : 0), z);
@@ -501,7 +532,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const flag = marker(good, goodMat(good, i));
     flag.position.set(...at);
     site.add(flag);
-    site.scale.setScalar(wet ? 1.05 : 1.1);
+    site.scale.setScalar(wet ? 0.88 : 0.92);
     island.add(site);
     // The site's own height, not the meadow's: salt is worked down on the wet
     // shelf and iron up on the ridge, and anything staged at a site has to
@@ -530,7 +561,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     b.rotation.y = 0.22 - i * 0.57;
     dock.add(b);
   });
-  dock.scale.setScalar(1.12);
+  dock.scale.setScalar(0.95);
   island.add(dock);
   placed.push([2.9, 1.2, 0.9]);
 
@@ -568,8 +599,8 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     if (rad > 3.9 * wob) continue;
     if (keepOut.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr)) continue;
     const onGrass = rad < 3.0 * wob;
-    const g = onGrass ? tree(n, 0.78 + r() * 0.34) : palm(n);
-    if (!onGrass) g.scale.setScalar(1.0);
+    const g = onGrass ? tree(n, 0.62 + r() * 0.26) : palm(n);
+    if (!onGrass) g.scale.setScalar(0.82);
     //: A canopy is about 0.3 across at scale 1, so this is two of them: they
     //: can lean together and they cannot share a trunk.
     keepOut.push([x, z, 0.62]);

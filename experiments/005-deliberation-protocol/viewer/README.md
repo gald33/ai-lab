@@ -601,12 +601,26 @@ none of them is a defect a still screenshot shows.
   held what the island had placed on purpose and nothing else — so two trees a
   tenth of a unit apart shared a trunk. The scales came down together (shrinking
   one only makes the rest look bigger) and every tree planted joins the keep-out
-  list.
-* **Too many shockwaves.** Five clips fired expanding rings, and a production of
-  four goods put four up at once with an offer's and a bell's arriving on top at
-  4×. A ring that expands is a claim that something is *spreading*: an offer, a
-  bell and a dawn are addressed to the island and keep theirs; production and a
-  settled deal happen in one place and now say only that.
+  list. Taken down twice: a fifth off was still reported as crowded, and the
+  props stand at about three-quarters of what the model shipped with.
+
+  The second half of that was worse and no screenshot showed it. **The
+  settlements were separated from each other and from nothing else** — the good
+  sites are laid on their own ring at their own radii and nothing compared the
+  two, so a hut came down 0.63 units from the fish site, well inside it.
+  `spaced()` takes fixed obstacles now, and `island()` asks whether *any* two
+  things the island placed on purpose are within a metre of each other; against
+  the old placement it reports 25.
+* **The shockwaves are gone.** Five clips fired expanding rings, and a
+  production of four goods put four up at once with an offer's and a bell's
+  arriving on top at 4×. Cut to three first, then to none: the second report
+  said simply that they were too distracting to read past. What replaced them
+  is a **patch of light lying on the ground** at the place the thing happened —
+  the same area a ring covered, all of it at once, and it never moves, so
+  several at once read as several places rather than as a pile. `mechanics()`
+  is what kept this honest: the three clips that lost a ring fell straight
+  through its visibility floor, which said out loud that the ring had been the
+  only thing carrying them.
 
 **One mark per good.** The legend's glyph rides *on* its colour rather than
 beside it, because that is the chip that appears on a shelf and on a parcel in
