@@ -1032,6 +1032,34 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
     return bad
 
 
+#: Does the offer's dashed line actually travel, and which way.
+ROPE_DASH = """async () => {
+  const pick = () => document.querySelector('.rope .rope-line');
+  const line = pick();
+  if (!line) return {has: false};
+  const g = line.closest('.rope');
+  const label = g.querySelector('.chip-pid')?.textContent || '';
+  const maker = (label.split('\u00b7').pop() || '').split('\u2192')[0].trim();
+  const nums = (line.getAttribute('d') || '').match(/-?[\d.]+/g)?.map(Number) || [];
+  // Each tether's group carries its trader; the pin inside it is where that
+  // settlement is drawn this frame.
+  const dot = document.querySelector(`.tether[data-trader="${maker}"] .tether-pin`);
+  const pin = dot ? [+dot.getAttribute('cx'), +dot.getAttribute('cy')] : null;
+  const off = () => parseFloat(getComputedStyle(pick()).strokeDashoffset) || 0;
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const before = off();
+  let rebuilt = 0;
+  for (let k = 0; k < 6; k++) {
+    await new Promise(r => setTimeout(r, 100));
+    if (pick() !== line) rebuilt++;
+  }
+  const after = off();
+  return {has: true, before, after, rebuilt,
+          moved: Math.abs(after - before) > 0.5,
+          fromMaker: pin ? dist(nums.slice(0, 2), pin) < dist(nums.slice(-2), pin) : null};
+}"""
+
+
 def turning(browser, base: str, board: Path, out: Path) -> list[str]:
     """The camera goes round the island, and what points at it goes round too.
 
@@ -1111,6 +1139,30 @@ def turning(browser, base: str, board: Path, out: Path) -> list[str]:
             bad.append(f"{where}: the island turned under somebody who asked for "
                        f"less motion (a tether moved {moved:.1f})")
         if not still:
+            # **The offer's line crawls toward the trader it is addressed to.**
+            #
+            # Two things have to hold and neither shows in a screenshot. The
+            # dashes are a CSS animation, so the rope has to be the *same node*
+            # from one frame to the next -- `follow` runs on every frame the
+            # camera turns and used to rebuild every rope, which restarted the
+            # animation sixty times a second and left the line sitting still.
+            # And the path has to be written from the maker to the taker,
+            # because a negative dash offset advances along it.
+            dash = page.evaluate(ROPE_DASH)
+            if dash and dash.get("has"):
+                if not dash["moved"]:
+                    bad.append(f"{where}: the offer's dashes did not move in "
+                               f"600ms ({dash['before']:.2f} -> "
+                               f"{dash['after']:.2f}); the line is being rebuilt "
+                               f"under its own animation")
+                if dash["rebuilt"]:
+                    bad.append(f"{where}: the offer's rope was replaced "
+                               f"{dash['rebuilt']} time(s) while the camera "
+                               f"turned; a fresh node restarts the crawl")
+                if dash["fromMaker"] is False:
+                    bad.append(f"{where}: the rope is drawn from the taker to "
+                               f"the maker, so its dashes crawl back toward the "
+                               f"trader making the offer")
             #: In viewBox units, over four seconds of a 150-second revolution.
             #: Small on purpose -- this asks whether the tethers are being moved
             #: at all, not how fast.
@@ -1159,6 +1211,11 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
   const made = st.build({traders, goods});
   st.pause();
+  //: A round's ceiling per good, which the page always sets from its timeline.
+  //: Without one every non-zero holding is a single box, and a trader that
+  //: gives part of a holding away cannot lose one -- the arithmetic a
+  //: settlement does has nothing to work with.
+  st.stock.ceil(Object.fromEntries(goods.map(g => [g, 1.0])));
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
@@ -1438,15 +1495,34 @@ def carrying(browser, base: str, out: Path) -> list[str]:
                 break
         if bad and "invisible" in bad[-1]:
             break
-    # And nothing teleports: a box crosses the island in about a second and a
-    # half, so a tenth of a second can never move it most of the way there.
+    # And nothing teleports.
+    #
+    # **Against its own journey, not against a fixed distance.** A box crosses
+    # the island in about a second and a half, and how far that is depends on
+    # where the two yards happen to sit -- a real carry between the widest pair
+    # of settlements steps a whole unit in a tenth of a second at the fastest
+    # part of its arc, which is most of a fixed threshold and none of a
+    # relative one. A teleport is the *whole* journey in one step.
+    #: **By position in the shot, not by name.** Six boxes of bread are all
+    #: called `box_bread`, so a dictionary keyed by name collapses them and
+    #: compares a box that crossed the island against a journey belonging to
+    #: one that never left the yard. Every shot lists the same boxes in the
+    #: same order, so the index is the identity.
+    at = lambda b: (b["x"], b["y"], b["z"])
+    trips = [math.dist(at(f), at(l))
+             for f, l in zip(seen["trail"][0]["shot"], seen["trail"][-1]["shot"])]
     for a, b in zip(seen["trail"], seen["trail"][1:]):
-        for was, now in zip(a["shot"], b["shot"]):
-            jump = math.dist((was["x"], was["y"], was["z"]), (now["x"], now["y"], now["z"]))
-            if jump > 1.2:
-                bad.append(f"carrying: a {now['name']} moved {jump:.2f} between "
-                           f"t={a['t']}s and t={b['t']}s; it was put down "
-                           f"somewhere rather than carried there")
+        for i, (was, now) in enumerate(zip(a["shot"], b["shot"])):
+            jump = math.dist(at(was), at(now))
+            trip = trips[i]
+            # A box that changed hands: no step may be most of the journey.
+            # A box that stayed where it was: it may settle, and no more.
+            limit = trip * 0.45 if trip > 0.5 else 0.35
+            if jump > limit:
+                bad.append(f"carrying: a {now['name']} moved {jump:.2f} in a "
+                           f"tenth of a second between t={a['t']}s and "
+                           f"t={b['t']}s, on a {trip:.2f} journey; it was put "
+                           f"down somewhere rather than carried there")
                 return bad
     return bad
 
@@ -1575,7 +1651,7 @@ def island(browser, base: str, out: Path) -> list[str]:
     bad: list[str] = []
     #: Where a settlement may stand. Not the beach: a hut on sand is a hut
     #: nobody put there on purpose.
-    LAND = {"meadow", "upland", "market_plaza", "ridge"}
+    LAND = {"meadow", "upland", "hearth_ground", "ridge"}
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     page.goto(f"{base}/")
     page.wait_for_timeout(600)
@@ -1721,7 +1797,7 @@ def island(browser, base: str, out: Path) -> list[str]:
         }
       }
       return {n: goats.length, fastest,
-              off: seen.filter(s => !['meadow', 'upland', 'market_plaza', 'ridge'].includes(s[3]))
+              off: seen.filter(s => !['meadow', 'upland', 'hearth_ground', 'ridge'].includes(s[3]))
                        .slice(0, 3)};
     }""")
     if not walk["n"]:
@@ -1741,15 +1817,39 @@ def island(browser, base: str, out: Path) -> list[str]:
 
 #: One of each kind the island has a clip for, with enough of a payload that
 #: the clip has something to carry.
+#: What everybody is holding when these events happen.
+#:
+#: **A settlement moves goods that exist and the bell eats goods that exist.**
+#: This harness used to fire both at an island whose yards were empty, which is
+#: a state no board can be in: the clips had nothing to carry and nothing to
+#: consume, and what they were measured on was whatever else they happened to
+#: do. Each event below carries the holdings before it and after it, so it is
+#: fired at the island it would really happen on, and what it left behind is
+#: measured against the island it should really leave.
+HOLDING = {"T1": {"bread": 0.8, "cloth": 0.2, "salt": 0.5},
+           "T2": {"cloth": 0.6, "iron": 0.4}}
+EMPTY = {"T1": {}, "T2": {}}
+
 FIRED = [
-    {"kind": "produced", "trader": "T1", "made": {"bread": 0.8, "salt": 0.5}},
+    # Nothing made yet, and then the day's work is standing in the yard.
+    {"kind": "produced", "trader": "T1", "made": {"bread": 0.8, "salt": 0.5},
+     "pre": {"T1": {"cloth": 0.2}, "T2": {"cloth": 0.6, "iron": 0.4}},
+     "post": HOLDING},
     {"kind": "offer", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
+     "give": {"bread": 0.5}, "want": {"cloth": 0.3},
+     "pre": HOLDING, "post": HOLDING},
     {"kind": "settled", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
-    {"kind": "refused", "trader": "T2", "reason": "uncommitted stock"},
-    {"kind": "bell", "episode": 1, "lapsed": 2},
-    {"kind": "open", "episode": 2, "of": 3},
+     "give": {"bread": 0.5}, "want": {"cloth": 0.3},
+     "pre": HOLDING,
+     "after": {"T1": {"bread": 0.3, "cloth": 0.5, "salt": 0.5},
+               "T2": {"bread": 0.5, "cloth": 0.3, "iron": 0.4}},
+     "post": {"T1": {"bread": 0.3, "cloth": 0.5, "salt": 0.5},
+              "T2": {"bread": 0.5, "cloth": 0.3, "iron": 0.4}}},
+    {"kind": "refused", "trader": "T2", "reason": "uncommitted stock",
+     "pre": HOLDING, "post": HOLDING},
+    # The bell eats everything held, which is the one place a good may vanish.
+    {"kind": "bell", "episode": 1, "lapsed": 2, "pre": HOLDING, "post": EMPTY},
+    {"kind": "open", "episode": 2, "of": 3, "pre": EMPTY, "post": EMPTY},
 ]
 
 
@@ -1781,10 +1881,16 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
     page.wait_for_timeout(600)
     page.evaluate(STAGE, {"w": 900, "h": 560, "n": 2, "portrait": False,
                           "goods": ["bread", "cloth", "iron", "salt", "fish"]})
-    seen = page.evaluate("""({events}) => {
+    seen = page.evaluate("""({events, holding}) => {
       const st = window.__st;
+      //: **The clip, then the ambient layer, then draw** -- the order the
+      //: stage's own loop runs in. This used to advance the life layer inside
+      //: `shot`, which is after everything, so a clip asking the island for a
+      //: brighter fire was spent before the pixels were read and the bell
+      //: measured as not happening at all. The layer is advanced at one fixed
+      //: moment so the ambient motion is the same in every shot and only the
+      //: clip differs.
       const shot = () => {
-        st.life.update(3, st.ctx());
         st.renderer.render(st.scene, st.camera);
         const s = document.createElement('canvas');
         s.width = 300; s.height = 187;
@@ -1804,10 +1910,23 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
               + Math.abs(a[i+2] - b[i+2]) > 18) n++;
         return n / Math.max(1, ground);
       };
-      const bare = shot();
-      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
+      st.life.update(3, st.ctx());
+      st.stock.rest(holding);
+      const lit = shot();
+      for (let i = 3; i < lit.length; i += 4) if (lit[i] > 24) ground++;
       return events.map((e) => {
+        // The island with this event's own goods standing on it and nothing
+        // happening -- which is what its clip has to be visible *against*.
         st.clear();
+        st.life.update(3, st.ctx());
+        st.stock.rest(e.pre ?? holding);
+        const bare = shot();
+        st.clear();
+        // Put the island back to what everybody holds *before* this one: a
+        // clip that carries goods needs goods to carry, and the one before it
+        // may have moved or eaten them.
+        st.stock.rest(e.pre ?? holding);
+        st.showStock(e.pre ?? holding, e);
         const c = st.fire(e);
         st.pause();
         if (!c) return {kind: e.kind, clip: false};
@@ -1815,15 +1934,30 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         for (let t = 0.1; t <= c.dur; t += 0.1) {
           c.t0 = 0;
           st.step(t);
+          st.life.update(3, st.ctx());
           peak = Math.max(peak, diff(bare, shot()));
         }
         // Past the end, which is what the stage's own loop does.
         c.t0 = 0;
         st.step(c.dur + 0.5);
-        const after = diff(bare, shot());
+        st.life.update(3, st.ctx());
+        const done = shot();
+        // **What it left behind, against what the event legitimately changed.**
+        // Goods are permanent now: a settlement really does move boxes from
+        // one yard to the other and the bell really does eat them, so
+        // comparing the finished island with the island *before* the event
+        // reports the feature as litter. The baseline is the island rested at
+        // the holdings the board says come next, with no clip involved -- so
+        // what is measured is only the difference a clip made and did not put
+        // back.
+        st.clear();
+        st.life.update(3, st.ctx());
+        st.stock.rest(e.post ?? holding);
+        const settled = shot();
+        const after = diff(settled, done);
         return {kind: e.kind, clip: true, peak, after, live: st.clips.length};
       });
-    }""", {"events": FIRED})
+    }""", {"events": FIRED, "holding": HOLDING})
     for r in seen:
         where = f"mechanics {r['kind']}"
         if not r.get("clip"):
@@ -1843,10 +1977,16 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
     # which is what a rebuild does to whatever was in flight. Left alone, a
     # bell interrupted mid-swing leaves every settlement's banner hanging in
     # the air over the island for the rest of the round.
-    cut = page.evaluate("""() => {
+    cut = page.evaluate("""(holding) => {
       const st = window.__st;
+      //: **The clip, then the ambient layer, then draw** -- the order the
+      //: stage's own loop runs in. This used to advance the life layer inside
+      //: `shot`, which is after everything, so a clip asking the island for a
+      //: brighter fire was spent before the pixels were read and the bell
+      //: measured as not happening at all. The layer is advanced at one fixed
+      //: moment so the ambient motion is the same in every shot and only the
+      //: clip differs.
       const shot = () => {
-        st.life.update(3, st.ctx());
         st.renderer.render(st.scene, st.camera);
         const s = document.createElement('canvas');
         s.width = 300; s.height = 187;
@@ -1863,20 +2003,37 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         return n / Math.max(1, ground);
       };
       st.clear();
-      const bare = shot();
-      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
+      st.life.update(3, st.ctx());
+      st.stock.rest(holding);
+      const lit = shot();
+      for (let i = 3; i < lit.length; i += 4) if (lit[i] > 24) ground++;
       const out = [];
-      for (const e of [{kind: 'bell', episode: 1, lapsed: 2},
-                       {kind: 'open', episode: 2, of: 3}]) {
+      // The bell eats what is held; a dawn happens on an island holding
+      // nothing. Both are the state their clip really runs in.
+      for (const e of [{kind: 'bell', episode: 1, lapsed: 2,
+                        pre: holding, post: {T1: {}, T2: {}}},
+                       {kind: 'open', episode: 2, of: 3,
+                        pre: {T1: {}, T2: {}}, post: {T1: {}, T2: {}}}]) {
+        st.clear();
+        st.stock.rest(e.pre);
         const c = st.fire(e);
         st.pause();
         c.t0 = 0;
         st.step(c.dur * 0.5);           // half way through, and then pulled
+        st.life.update(3, st.ctx());
         st.clear();
-        out.push([e.kind, diff(bare, shot())]);
+        st.life.update(3, st.ctx());
+        const cutShot = shot();
+        // **Against the island the event should leave**, not the one before
+        // it: goods are permanent now, so a bell cut off half way still ate
+        // what was held and comparing with the pre-bell island reports that
+        // as litter.
+        st.stock.rest(e.post);
+        st.life.update(3, st.ctx());
+        out.push([e.kind, diff(shot(), cutShot)]);
       }
       return out;
-    }""")
+    }""", HOLDING)
     for kind, left in cut:
         if left > 0.0015:
             bad.append(f"mechanics {kind}: cut off half way and {left * 100:.2f}% "

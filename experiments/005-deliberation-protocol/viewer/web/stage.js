@@ -168,6 +168,10 @@ export class Stage {
     //: traded, and between those it is simply there.
     this.stock = standing(this.island, this.world);
     this.world.stock = this.stock;
+    //: So a clip can lean on the island's own fire rather than building a
+    //: second one: the bell makes it flare and the dawn lets it die, and both
+    //: have to move the light it throws, not just the cones.
+    this.world.life = this.life;
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
     // at a moment rather than one with its gulls at the origin.
@@ -335,14 +339,23 @@ export class Stage {
       const c = this.clips[i];
       c.t0 ??= t;
       const age = t - c.t0;
+      //: **A clip that has run out is not advanced one last time.** It used to
+      //: get an `update` past its own duration and then be retired in the same
+      //: pass -- harmless while everything a clip did was to props it owned,
+      //: and not harmless once a clip could ask the island for a brighter fire
+      //: or a darker sky: the bell's last call set nightfall and the layer
+      //: spent it on a frame with no bell in it, leaving the island dark.
+      //: What a clip leaves behind for good is `settle`'s job, below.
+      if (age >= c.dur) {
+        // A clip that moved the island's own nodes puts them back; one that
+        // only added its own props just goes.
+        c.restore?.();
+        this.island.remove(c.root);
+        disposeClip(c);
+        this.clips.splice(i, 1);
+        continue;
+      }
       c.update(age);
-      if (age < c.dur) continue;
-      // A clip that moved the island's own nodes puts them back; one that only
-      // added its own props just goes.
-      c.restore?.();
-      this.island.remove(c.root);
-      disposeClip(c);
-      this.clips.splice(i, 1);
     }
   }
 
@@ -373,8 +386,14 @@ export class Stage {
       this.t0 ||= now;
       const t = (now - this.t0) / 1000;
       this.aim(TURN + (t / TURN_SECONDS) * Math.PI * 2);
-      this.life.update(t, this.ctx());
+      //: **Clips first, then the ambient layer, then draw.** A clip that wants
+      //: the fire up or the light down says so through `life.flare` and
+      //: `life.hold`, and those are contributions for the frame the clip is
+      //: in -- so they have to be set before the layer that spends them. The
+      //: other way round applied each contribution one frame late, which left
+      //: the island dark for a frame after a bell finished.
       this.step(t);
+      this.life.update(t, this.ctx());
       this.renderer.render(this.scene, this.camera);
       // The camera moved, so every settlement is somewhere else on screen and
       // the cards have to go with them. This is the whole reason the page hands

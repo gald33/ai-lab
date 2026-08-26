@@ -95,13 +95,13 @@ function face(good, colour) {
 /**
  * Where the yard stands, and which way it runs.
  *
- * Behind the hut as seen from the market: the door and the banner face the
- * market because that is where a settlement on an island with one market
- * looks, and a stack of crates across the front of it would cover the only
- * side of the hut that says whose it is.
+ * Behind the hut as seen from the fire: the door and the banner face the
+ * middle of the island because that is where a settlement with one fire in
+ * front of it looks, and a stack of crates across the front would cover the
+ * only side of the hut that says whose it is.
  */
-function yardAt(home, market, ground) {
-  const away = new THREE.Vector3(home.x - market.x, 0, home.z - market.z);
+function yardAt(home, centre, ground) {
+  const away = new THREE.Vector3(home.x - centre.x, 0, home.z - centre.z);
   if (!away.lengthSq()) away.set(1, 0, 0);
   away.normalize();
   const flank = new THREE.Vector3(-away.z, 0, away.x);
@@ -168,7 +168,7 @@ export function standing(island, { traders, goods, anchors, ground }) {
   });
   for (const t of traders) {
     if (!anchors[t]) continue;
-    yards[t] = { ...yardAt(anchors[t], anchors.market, ground), held: {} };
+    yards[t] = { ...yardAt(anchors[t], anchors.fire, ground), held: {} };
     for (const good of goods) yards[t].held[good] = [];
   }
 

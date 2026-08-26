@@ -62,40 +62,14 @@ function land_(box, at) {
 //: something a spectator would ever notice crossing the ground.
 const PROP = 1.7;
 
-/**
- * A flat ring on the ground: a mark where something happened.
- *
- * **Nothing built with this expands any more.** Five clips used to grow one
- * out of a settlement or the market, a four-good production put four up at
- * once, and at 4x they arrived stacked -- reported by somebody watching, twice,
- * the second time as too distracting to read past. What is left are the two
- * that never travelled anywhere: a patch of light at the site that produced,
- * and a seal pressed onto the plaza where a deal closed.
- *
- * Fat on purpose. A ring is the cheapest thing on the island that covers real
- * area, and a hairline one at a third opacity -- which is what the diorama
- * used -- is a few dozen pixels nobody will ever catch.
- */
-function ring(material, radius = 0.3, y = 0.05) {
-  return mesh(new THREE.TorusGeometry(radius, 0.1, 8, 56), material,
-    "ring", [0, y, 0], [Math.PI / 2, 0, 0]);
-}
-
-/**
- * A patch of light lying on the ground, at a size and staying there.
- *
- * **What replaced the shockwaves.** A clip has to cover real area or nobody
- * sees it -- `mechanics` holds every one of them to a share of the drawn
- * island, and the three that lost a ring fell straight through it -- and an
- * expanding ring was the cheap way to get that area. This is the honest way:
- * the same area, all of it at once, in the one place the thing happened. It
- * fades up and down and it never moves, so several at once read as several
- * places rather than as a pile of waves.
- */
-function patch(material, radius, y = 0.05) {
-  return mesh(new THREE.CircleGeometry(radius, 40), material,
-    "patch", [0, y, 0], [-Math.PI / 2, 0, 0]);
-}
+//: **There are no ground marks left on this island.** There was a ring under
+//: every event, then -- when those were reported as shockwaves -- a patch of
+//: light in the same places instead. Both were reported again, and by then the
+//: reading was the right one: a coloured disc on the grass is not a thing that
+//: happened, it is a caption for one, and the island already shows what
+//: happened. Goods are made and carried by boxes that stand there afterwards;
+//: the bell is the fire coming up and the light going. A ring said none of it
+//: and covered the ground that did.
 
 /** A few puffs behind something crossing the island, so the path reads. */
 function trail(c, material, n = 5) {
@@ -186,21 +160,16 @@ function borrow(c, node, { material = false } = {}) {
   return node;
 }
 
-//: How far the market's roof reaches. Anything a clip lays on the ground at
-//: the centre starts outside this, because a ring that begins under the roof
-//: is a ring nobody sees begin.
-const MARKET_R = 1.45;
-
 /**
  * A spot beside a settlement, on the grass.
  *
- * Along the hut's own side rather than on the line to the market: a prop set
+ * Along the hut's own side rather than on the line to the fire: a prop set
  * out toward the middle from a hut two and a half units out lands *on the
- * market*, which is where the first cut of this put every offer and every
- * refusal -- under the plaza roof, invisible.
+ * fire*, which is where the first cut of this put every offer and every
+ * refusal -- standing in the flames, or under the roof that used to be there.
  */
-function beside(home, market, ground, side = 1.15, out = 0.25) {
-  const away = new THREE.Vector3(market.x - home.x, 0, market.z - home.z).normalize();
+function beside(home, centre, ground, side = 1.15, out = 0.25) {
+  const away = new THREE.Vector3(centre.x - home.x, 0, centre.z - home.z).normalize();
   const x = home.x + -away.z * side + away.x * out;
   const z = home.z + away.x * side + away.z * out;
   const [cx, cz] = onMeadow(x, z, 0.35);
@@ -288,26 +257,9 @@ function produced(event, { island, anchors, goods, stock }) {
     const from = anchors[`site_${good}`];
     if (!from) continue;
     works.push(...siteWork(good, site, c));
-    // A patch of light on the ground where the work happened. The site's own
-    // parts move, but a rack or a field plot is small and half behind a tree:
-    // this is what says *here*.
-    //
-    //: **It does not travel.** It used to be a ring that grew out of the site
-    //: like every other ring on this island -- and a production of four goods
-    //: put four of them up at once, with an offer's and a bell's arriving on
-    //: top at four times speed. Somebody watching reported the island as a lot
-    //: of shockwaves and no sense of which was which. A ring that expands is
-    //: a claim that something is spreading; production does not spread, it
-    //: happens in one place, and this now says only that.
-    const glow = own(c, clone(goodMat(good, goods.indexOf(good)),
-      { transparent: true, opacity: 0 }));
-    const mark = ring(glow, 0.62);
-    mark.position.set(from.x, from.y + 0.08, from.z);
-    c.root.add(mark);
-    works.push((t) => {
-      const p = win(t, 0.1, 2.4);
-      glow.opacity = 0.55 * Math.sin(Math.PI * p) ** 0.8;
-    });
+    // What says *here* is the site's own parts working and the crates coming
+    // out of it. There used to be a ring on the ground as well; see the note
+    // on `ring` for why there is not.
     // How many boxes this receipt is worth: what the yard should hold after it,
     // less what it holds now. A production too small to move the count by a
     // whole box still works its site -- the receipt happened -- it just does
@@ -474,11 +426,11 @@ function siteWork(good, site, c) {
 }
 
 /** An offer: a post goes up beside the maker's hut and a notice unrolls on it. */
-function offered(event, { anchors, traders, ground }) {
+function offered(event, { anchors, traders, ground, stock }) {
   const home = anchors[event.maker];
   if (!home) return null;
   const c = clip(3.0);
-  const spot = beside(home, anchors.market, ground);
+  const spot = beside(home, anchors.fire, ground);
   const post = bannerPost(own(c, seatMat(event.maker, traders.indexOf(event.maker))));
   post.position.copy(spot.at);
   post.rotation.y = spot.face;
@@ -498,14 +450,36 @@ function offered(event, { anchors, traders, ground }) {
   //: the second time as simply too distracting to read. A lamp on the post and
   //: the light it throws on the ground say the same thing and say it *in one
   //: place*, which is where the offer actually is.
+  //: **The boxes it is offering lift off the pile.** A post and a notice are a
+  //: metre of timber on an island eight across, and with the ring gone they
+  //: were most of what an offer had -- a clip nobody can see is not an
+  //: animation. These are the crates the trader is putting on the table, they
+  //: are already standing in its yard, and they are the biggest thing the
+  //: event has any business touching. They settle back at the end: an offer is
+  //: a proposal, and nothing has moved yet.
+  const offered = Object.keys(event.give || {}).flatMap((good) => {
+    const pile = stock?.take(event.maker, good, stock.want(good, event.give[good])) ?? [];
+    return pile.map((box) => ({ box, at: box.position.clone(), turn: box.rotation.y }));
+  });
+  if (offered.length) {
+    c.settle.push(() => {
+      for (const { box, at, turn } of offered) { land_(box, at); box.rotation.y = turn; }
+      for (const good of Object.keys(event.give || {})) {
+        stock.put(event.maker, good, offered.filter((o) => o.box.name === `box_${good}`)
+          .map((o) => o.box));
+      }
+    });
+  }
   const lampMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
   const lamp = mesh(new THREE.SphereGeometry(0.11, 16, 12), lampMat, "offer_lamp",
                     [0, 1.32, 0.1]);
   post.add(lamp);
-  const litMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
-  const lit = patch(litMat, 1.15);
-  lit.position.set(spot.at.x, spot.at.y + 0.04, spot.at.z);
-  c.root.add(lit);
+  //: And the light it throws. A lamp that lights nothing is a decal -- the
+  //: same argument the fire is built on -- and this is what carries an offer
+  //: out to somebody watching the whole island now that the ring is gone.
+  const beam = new THREE.PointLight(0xffc978, 0, 2.6, 2);
+  beam.position.set(spot.at.x, spot.at.y + 1.1, spot.at.z);
+  c.root.add(beam);
 
   c.update = (t) => {
     const rise = easeOut(win(t, 0, 0.5));
@@ -518,9 +492,16 @@ function offered(event, { anchors, traders, ground }) {
     scroll.rotation.y = Math.sin(t * 4.2) * 0.1 * flut;
     post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
     const p = win(t, 0.6, 2.8);
-    lampMat.opacity = 0.85 * Math.sin(Math.PI * p) ** 0.6;
-    lampMat.emissiveIntensity = 0.4 + Math.sin(Math.PI * p) * 1.6;
-    litMat.opacity = 0.42 * Math.sin(Math.PI * p) ** 0.7;
+    const shine = Math.sin(Math.PI * p) ** 0.6;
+    lampMat.opacity = 0.85 * shine;
+    lampMat.emissiveIntensity = 0.4 + shine * 1.6;
+    beam.intensity = shine * 4.2;
+    offered.forEach(({ box, at, turn }, k) => {
+      const up = Math.sin(Math.PI * win(t, 0.35 + k * 0.1, 2.9)) ** 0.6;
+      box.position.y = at.y + up * 0.42;
+      box.rotation.y = turn + up * 1.6;
+      box.scale.setScalar(1 + up * 0.12);
+    });
     // Taken down at the end rather than left standing: the rope on the card is
     // what says an offer is still open, and two things saying it disagree the
     // moment one of them is a second behind.
@@ -531,7 +512,7 @@ function offered(event, { anchors, traders, ground }) {
 }
 
 /** A settlement: the goods actually cross the island, both ways. */
-function settled(event, { anchors, goods, stock }) {
+function settled(event, { island, anchors, goods, stock, life }) {
   const a = anchors[event.maker], b = anchors[event.taker];
   if (!a || !b || !stock) return null;
   const c = clip(4.2);
@@ -545,10 +526,14 @@ function settled(event, { anchors, goods, stock }) {
   const push = (bundle, giver, taker, base) => {
     Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
       .forEach(([good, q], i) => {
-        const move = Math.min(
-          stock.count(giver, good),
-          Math.max(1, stock.count(giver, good)
-                      - stock.want(good, event.after?.[giver]?.[good] ?? 0)));
+        //: Exactly what the giver's pile loses, which is what the taker's
+        //: gains. **Not a forced minimum of one**: a trader that gives part of
+        //: a holding and keeps the rest may still be owed the same number of
+        //: boxes afterwards, and moving one anyway left its yard a box short
+        //: of what the board says -- which the next paint then put back, out
+        //: of nowhere, in front of the viewer.
+        const move = Math.max(0, stock.count(giver, good)
+                      - stock.want(good, event.after?.[giver]?.[good] ?? 0));
         const boxes = stock.take(giver, good, move);
         if (!boxes.length) return;
         const rest = stock.put(taker, good, boxes);
@@ -577,17 +562,10 @@ function settled(event, { anchors, goods, stock }) {
     return d;
   });
 
-  // The seal goes down where the deal was struck, which on this island is the
-  // market -- not at either hut, because it belongs to neither of them.
-  //
-  //: **A stamp, and it no longer travels.** It used to grow out of the market
-  //: like every other ring on this island, and a settlement is not something
-  //: that spreads -- it is a deal closing in one place. It presses down onto
-  //: the plaza at the size the plaza is and fades there.
-  const sealMat = own(c, clone(M.glass, { transparent: true, opacity: 0.6 }));
-  const seal = ring(sealMat, MARKET_R);
-  seal.position.set(anchors.market.x, anchors.market.y + 0.08, anchors.market.z);
-  c.root.add(seal);
+  // Where the deal was struck, the fire flares once: it belongs to neither
+  // trader, it is at the centre both of them face, and it is already the thing
+  // this island lights up with. The ground mark that used to be here is gone
+  // -- see the note on `ring`.
 
   c.update = (t) => {
     legs.forEach((l, i) => {
@@ -613,12 +591,7 @@ function settled(event, { anchors, goods, stock }) {
         dust[i].scale.setScalar(1 + down * 1.6);
       } else dust[i].material.opacity = 0;
     });
-    const s = win(t, 2.0, 3.8);
-    // Down onto the ground, not out across it: a shade under full size at the
-    // moment it lands and settling to it.
-    const press = 0.94 + easeOut(Math.min(1, s * 4)) * 0.06;
-    seal.scale.set(press, press, 1);
-    sealMat.opacity = 0.85 * (1 - s ** 2);
+    life?.flare(Math.sin(Math.PI * win(t, 1.9, 3.6)) ** 0.7 * 0.55);
   };
   return c;
 }
@@ -628,7 +601,7 @@ function refused(event, { anchors, traders, ground }) {
   const home = anchors[event.trader];
   if (!home) return null;
   const c = clip(3.0);
-  const spot = beside(home, anchors.market, ground);
+  const spot = beside(home, anchors.fire, ground);
   const post = bannerPost(own(c, seatMat(event.trader, traders.indexOf(event.trader))));
   post.position.copy(spot.at);
   post.rotation.y = spot.face;
@@ -664,8 +637,16 @@ function refused(event, { anchors, traders, ground }) {
   return c;
 }
 
-/** The bell: the market's own bell rings, and the island hears it. */
-function belled(event, { island, anchors, traders, stock }) {
+/**
+ * The bell: **night falls and the fire comes up.**
+ *
+ * The bell itself is a plum-sized thing on a post and it was carrying the
+ * whole event. What a day ending actually looks like on this island is the
+ * light going and the campfire taking over, and both of those are the size of
+ * the island. The bell still swings -- it is what rang -- but it is the detail
+ * now and not the animation.
+ */
+function belled(event, { island, anchors, traders, stock, life }) {
   const c = clip(4.2);
   //: **The one place a good is allowed to stop existing.** Everything held at
   //: the bell is consumed -- that is the rule the manager settles by -- so the
@@ -678,7 +659,7 @@ function belled(event, { island, anchors, traders, stock }) {
     if (!stock) return;
     for (const t of traders) stock.clear(t);
   });
-  const bell = island.getObjectByName("market_bell");
+  const bell = island.getObjectByName("bell");
   if (bell) borrow(c, bell);
   const y0 = bell?.position.y ?? 0;
 
@@ -688,18 +669,15 @@ function belled(event, { island, anchors, traders, stock }) {
   //: swings, every banner comes down, and the whole island goes to night on
   //: the same beat. It was never the ring carrying the bell.
   //
-  //: What is left standing in for it is the market's own lantern, which is
-  //: lit at dusk anyway: it flares as the bell swings and goes back to the
-  //: day's own value afterwards, so nothing about it is a thing that travels.
-  const lantern = island.getObjectByName("market_lantern");
-  if (lantern) borrow(c, lantern, { material: true });
-  const lit0 = lantern?.material.emissiveIntensity ?? 0;
-  //: And the plaza under it, because a lantern is a marble on an island eight
-  //: across. This is the area the shockwave used to cover, held in one place.
-  const tollMat = own(c, clone(M.surf, { transparent: true, opacity: 0 }));
-  const toll = patch(tollMat, MARKET_R * 1.15);
-  toll.position.set(anchors.market.x, anchors.market.y + 0.05, anchors.market.z);
-  c.root.add(toll);
+  //: What stands in for it is the **fire**, which is coming up at this exact
+  //: moment anyway: it flares as the bell swings and settles back to the day's
+  //: own value afterwards, so nothing about it is a thing that travels.
+  //: **The fire, through the layer that owns it.** The bell is nightfall and
+  //: the campfire taking over, and both are the size of the island where the
+  //: bell itself is a plum on a post. Asked for rather than done by hand: the
+  //: cones and the light they throw belong to `island-life`, and a clip that
+  //: set them directly would be overwritten by the layer on the next frame or
+  //: would have to be undone by a restore that might never run.
 
   // Every settlement's own banner goes up and away with the offers that
   // lapsed. Restored at the end -- these are the island's, not the clip's.
@@ -716,11 +694,10 @@ function belled(event, { island, anchors, traders, stock }) {
       bell.position.y = y0 + Math.sin(t * 26) * 0.006 * (1 - swing);
     }
     const p = win(t, 0.05, 2.6);
-    if (lantern) {
-      lantern.material.emissiveIntensity = lit0 + 2.4 * Math.sin(Math.PI * p) ** 0.7;
-      lantern.scale.setScalar(1 + 0.5 * Math.sin(Math.PI * p) ** 0.7);
-    }
-    tollMat.opacity = 0.5 * Math.sin(Math.PI * p) ** 0.6;
+    // Night, drawn down over the island. At a real bell the page's own clock
+    // has already put the day here, and `hold` never pulls it back.
+    life?.hold(easeInOut(win(t, 0, 2.4)));
+    life?.flare(Math.sin(Math.PI * p) ** 0.7 * 0.95);
     eaten.forEach(({ box, y0, turn }, i) => {
       const go = easeIn(win(t, 0.6 + (i % 6) * 0.12, 2.8 + (i % 6) * 0.12));
       box.position.y = y0 - go * 0.34;
@@ -737,9 +714,17 @@ function belled(event, { island, anchors, traders, stock }) {
   return c;
 }
 
-/** A new day: last day's stock goes, and the flags run back up. */
-function opened(event, { island, anchors, traders }) {
+/**
+ * A new day: **the night lifts and last night's fire goes out.**
+ *
+ * The mirror of the bell, and for the same reason: a dawn is the light coming
+ * back over the whole island, not two banners going up a pole. The fire that
+ * burned all night falls with it.
+ */
+function opened(event, { island, anchors, traders, life }) {
   const c = clip(4.4);
+  //: **The night lifts and last night's fire goes out.** The mirror of the
+  //: bell and asked for the same way -- see the note there.
   const stock = traders.flatMap((n, hi) => ["a", "b"]
     .map((k) => island.getObjectByName(`hut_${n}_crate_${k}`))
     .filter(Boolean)
@@ -759,22 +744,23 @@ function opened(event, { island, anchors, traders }) {
       return { b, y0: b.position.y };
     });
 
-  //: **The dawn used to cross the island from the market outward**, and that
+  //: **The dawn used to cross the island from the centre outward**, and that
   //: ring is gone with the rest of them. What a new day looks like is already
   //: on screen and is bigger than any ring: the night lifts off the whole
   //: frame, the light comes back up on the model, and every banner runs back
   //: up its pole. A ring going out from the middle was a fourth thing saying
   //: it, and the one a viewer called distracting.
   //
-  //: What stands where it stood is the first light on the plaza: the same
-  //: area, arriving all at once and staying where the market is.
-  const dawnMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
-  const first = patch(dawnMat, MARKET_R * 1.15);
-  first.position.set(anchors.market.x, anchors.market.y + 0.05, anchors.market.z);
-  c.root.add(first);
 
   c.update = (t) => {
-    dawnMat.opacity = 0.5 * Math.sin(Math.PI * win(t, 0.1, 2.6)) ** 0.6;
+    const out = easeInOut(win(t, 0.2, 2.8));
+    //: The night's fire going out takes its light with it, which is the
+    //: largest thing on screen at dawn. It **falls to** the new day's value
+    //: rather than being pushed under it: the day resets to zero at an
+    //: episode boundary, so the curve already says the fire is out and a clip
+    //: subtracting from that would animate nothing at all.
+    life?.hold(1 - out);
+    life?.flare((1 - out) * 0.95);
     stock.forEach(({ cr, k, y0, r0 }) => {
       const drain = easeIn(win(t, 0.1 + k * 0.5, 1.7 + k * 0.5));
       const back = easeOut(win(t, 2.6 + k * 0.4, 4.0 + k * 0.4));

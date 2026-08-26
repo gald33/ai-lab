@@ -252,6 +252,84 @@ because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
 
+## The fire at the centre
+
+**The market had no purpose.** A roofed stall with six posts and a plaza stood
+in the middle of the island because a barter game sounds like it should have
+one — but nothing on the board ever happens there. A trade is struck between
+two traders and settled by the manager; nobody walks to a stall. So the biggest
+building on the island was a label for a thing that does not exist.
+
+A fire is what the middle of this island is actually for. It is the point every
+settlement faces and every trail runs to, it is the one thing with something to
+say at the bell — it comes up as the light goes — and the drawn island the
+model replaced had a campfire there all along. The bell keeps its post beside
+it: the bell is the island's clock, and it was only hanging in the stall
+because the stall was there.
+
+**Fireflies** come out over the meadow once the light has gone, a little behind
+the fire, which is banked before dusk and built up as it arrives. They are
+nothing at midday on purpose: a bright drifting dot in daylight already means a
+good in flight on this island.
+
+### There are no ground marks left
+
+There was a ring under every event. Reported as shockwaves, they became a patch
+of light in the same places instead — and that was reported too, and by then the
+reading was the right one. **A coloured disc on the grass is not a thing that
+happened, it is a caption for one**, and the island already shows what happened:
+goods are made and carried by boxes that stand there afterwards, and the bell is
+the fire coming up and the light going. A ring said none of it and covered the
+ground that did.
+
+What each clip carries itself now:
+
+| clip | what a viewer sees |
+|---|---|
+| a production | the site works, and boxes are made there and hop home |
+| an offer | a post and a lit notice beside the maker's hut, and **the boxes it is offering lift off the pile** |
+| a settlement | the boxes cross the island, and the fire flares once |
+| the bell | **nightfall**, and the campfire taking over |
+| a new day | **the night lifting**, and last night's fire going out |
+
+### A clip asks the island; it does not reach into it
+
+The bell is not a bell swinging. It is the light going and the fire coming up —
+both the size of the island, where the bell itself is a plum on a post. Dawn is
+the mirror. Neither of those is a prop a clip can own, so a clip **asks**
+`island-life` for them: `flare` for the fire, `hold` for the light.
+
+Both are **contributions for one frame**, spent by the layer that reads them.
+A clip that ends, is cut off half way, or is thrown away with the island under
+it stops contributing by saying nothing — there is no state left holding the
+island at midnight because a restore did not run. That was the first shape of
+this and it left the island dark after every bell.
+
+Two orderings fall out of that and both were wrong before:
+
+* the stage steps its **clips first**, then the ambient layer, then draws —
+  a contribution has to be set before the layer that spends it, and the other
+  way round applied everything a frame late;
+* a clip that has run out is **not advanced one last time**. `step()` used to
+  call `update()` past a clip's duration and retire it in the same pass, which
+  was harmless while a clip only touched props it owned and not harmless once
+  one could set nightfall: the bell's final call darkened a frame with no bell
+  in it. What a clip leaves behind for good is `settle`'s job.
+
+### The offer's line travels
+
+The dashes crawl from the trader making the offer toward the one it is
+addressed to — the path is written maker-to-taker and a negative dash offset
+advances along it, so a line built the other way round would animate the goods
+flowing backwards.
+
+They were not moving at all. `follow()` runs on every frame the camera turns,
+and it rebuilt every rope node each time; **a fresh node restarts its CSS
+animation**, so the crawl was reset sixty times a second and the line sat
+still. Ropes are moved in place now and rebuilt only when the set of offers
+changes. `turning()` holds both halves: the node has to survive the camera
+turning, and the path has to start at the maker's end.
+
 ## The goods stand on the island
 
 **Nothing pops or vanishes except when it is created or consumed.**
