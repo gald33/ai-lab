@@ -624,7 +624,12 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
 
 #: Phone viewports the page has to work at: a common portrait, a small one,
 #: and the same phone turned on its side.
-PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390)]
+PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390),
+          #: A phone with the browser's own bars showing, which is what a
+          #: shared link actually opens into: the window is a hundred and more
+          #: points shorter than the device, and everything the page floats
+          #: over the bottom of the island moves up with it.
+          ("safari", 393, 660)]
 
 #: The chrome that floats over the island. Any two of these overlapping is the
 #: bug this exists to hold shut -- it happened twice while the breakpoints were
@@ -878,7 +883,14 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
     stem = board.name[len("board-"):-len(".json")]
     bad: list[str] = []
     for label, w, h in (("desktop", 1400, 860), ("laptop", 1200, 750),
-                        ("wide", 1700, 720), ("phone", 430, 880)):
+                        ("wide", 1700, 720), ("phone", 430, 880),
+                        # A phone with the browser's own bars showing, which is
+                        # what a shared link opens into and where the cards were
+                        # found sitting behind the transport.
+                        ("safari", 393, 660), ("small", 360, 640),
+                        # A phone on its side: the shortest frame there is, and
+                        # where a card column has the legend to miss.
+                        ("landscape", 844, 390)):
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=15_000)
@@ -910,6 +922,33 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             return { name, over: on / (bw * bh), off: false };
           });
         }""")
+        over = page.evaluate("""(chrome) => {
+          const boxes = chrome.map(s => document.querySelector(s))
+            .filter(n => n && !n.hidden)
+            .map(n => ({ s: n.id ? '#' + n.id : n.className, r: n.getBoundingClientRect() }))
+            .filter(b => b.r.width && b.r.height)
+            // Grown by a margin, so "the card's last pixel row is not quite
+            // under the transport" does not count as clear of it.
+            .map(b => ({ s: b.s, r: { x: b.r.x - 10, y: b.r.y - 10,
+                                      width: b.r.width + 20, height: b.r.height + 20 } }));
+          return [...document.querySelectorAll('.hut')].map(hut => {
+            const c = hut.querySelector('.card-bg').getBoundingClientRect();
+            const hit = boxes.filter(b => b.r.x < c.x + c.width && b.r.x + b.r.width > c.x
+                                       && b.r.y < c.y + c.height && b.r.y + b.r.height > c.y);
+            return { name: hut.getAttribute('data-trader'),
+                     under: hit.map(b => b.s),
+                     // How much of the card is off the bottom of the window,
+                     // which is where a card too tall for the frame goes.
+                     below: Math.max(0, (c.y + c.height - innerHeight) / c.height) };
+          });
+        }""", CHROME)
+        for r in over:
+            if r["under"]:
+                bad.append(f"uncovered {label}: {r['name']}'s card is behind "
+                           f"{', '.join(r['under'])}")
+            if r["below"] > 0.01:
+                bad.append(f"uncovered {label}: {r['below'] * 100:.0f}% of "
+                           f"{r['name']}'s card is off the bottom of the window")
         for r in seen:
             if r["off"]:
                 bad.append(f"uncovered {label}: {r['name']}'s card is off the canvas")
@@ -1761,21 +1800,34 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
           // This also catches the render that produced nothing at all, which a
           // bounding box cannot: a canvas of the right size, and empty.
           const cv = document.getElementById('stage');
-          let drawn = null;
+          let drawn = null, span = null;
           if (document.querySelector('.app').classList.contains('has-3d') && cv) {
+            const cr = cv.getBoundingClientRect();
             const s = document.createElement('canvas');
-            s.width = 160; s.height = Math.max(1, Math.round(160 * cv.height / cv.width));
+            s.width = 200; s.height = Math.max(1, Math.round(200 * cr.height / cr.width));
             const g = s.getContext('2d');
             g.drawImage(cv, 0, 0, s.width, s.height);
             const px = g.getImageData(0, 0, s.width, s.height).data;
-            let lit = 0;
-            for (let i = 3; i < px.length; i += 4) if (px[i] > 24) lit++;
+            let lit = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+            for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
+              if (px[(y * s.width + x) * 4 + 3] <= 24) continue;
+              lit++;
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }
             drawn = lit / (s.width * s.height);
+            if (lit) {
+              // How big the island actually draws, against the shorter side of
+              // the window -- which is the side it is fitted to.
+              const bw = (x1 - x0 + 1) / s.width * cr.width;
+              const bh = (y1 - y0 + 1) / s.height * cr.height;
+              span = Math.max(bw, bh) / Math.min(innerWidth, innerHeight);
+            }
           }
           return {
             scrollW: document.documentElement.scrollWidth, winW: innerWidth,
             winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
-            land: lb ? { w: lb.width, h: lb.height } : null, drawn,
+            land: lb ? { w: lb.width, h: lb.height } : null, drawn, span,
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
               .map(n => { const r = n.getBoundingClientRect();
@@ -1795,15 +1847,28 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
                 if (a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"]
                         and a["y"] < b["y"] + b["h"] and a["y"] + a["h"] > b["y"]):
                     bad.append(f"{where}: {a['s']} and {b['s']} overlap")
-        # Fitted to width in a tall window, the island covered about a sixth of
-        # the screen. A third is not a design target so much as the line below
-        # which the cards stop being readable at all.
-        share = (seen["drawn"] if seen["drawn"] is not None
-                 else (seen["land"]["w"] * seen["land"]["h"]) / (seen["winW"] * seen["winH"])
-                 if seen["land"] else None)
-        if share is not None and share < 0.30:
-            bad.append(f"{where}: the island covers {share:.0%} of the screen; "
-                       f"the picture is the page and this is a band in it")
+        # Fitted to width in a tall window, the island was a thin band with dead
+        # sky above and dead sea below.
+        #
+        # Measured as *how big the island draws*, not as its share of the
+        # screen's area. Area was the right proxy while the island had the whole
+        # frame; now that the cards stand in the margins and the transport has
+        # its own room, a phone spends a third of its height on things that are
+        # not island by design, and area cannot tell that apart from the band
+        # this exists to catch. The span can: a band is a third of the short
+        # side, and an island is most of it.
+        if seen["drawn"] is not None and not seen["drawn"]:
+            bad.append(f"{where}: the model drew nothing at all")
+        elif seen["span"] is not None and seen["span"] < 0.72:
+            bad.append(f"{where}: the island draws at {seen['span']:.0%} of the "
+                       f"screen's short side; the picture is the page and this "
+                       f"is a band in it")
+        elif seen["drawn"] is None and seen["land"]:
+            # No model: the drawn island is a path, and its own box is the size.
+            share = max(seen["land"]["w"], seen["land"]["h"]) / min(seen["winW"], seen["winH"])
+            if share < 0.72:
+                bad.append(f"{where}: the drawn island is {share:.0%} of the "
+                           f"screen's short side")
         for name, height in seen["taps"]:
             bad.append(f"{where}: {name!r} is {height:.0f}px tall, under a fingertip")
         if tag == "portrait":
