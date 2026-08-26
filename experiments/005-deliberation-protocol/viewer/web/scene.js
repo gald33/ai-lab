@@ -182,53 +182,93 @@ const ISLAND_ACROSS = 8.7;
 //: camera or the sea cannot leave these behind.
 const ISLAND_UP = 4.27, ISLAND_DOWN = 3.21;
 
-function cardPlan(n, w, h, cardH, portrait) {
+//: Where the island's lowest drawn point falls inside a square box of side
+//: `D`, as a fraction of `D`. The stage fits the island to the box's short
+//: side, so the island is `D` wide and centred in it, and its foot is
+//: `D/2 + ISLAND_DOWN * D / ISLAND_ACROSS` down from the box's top.
+//:
+//: The top is the mirror of it -- `0.5 - ISLAND_UP / ISLAND_ACROSS`, which is
+//: within a hundredth of zero, so the island starts where its box does.
+const ISLAND_FOOT = 0.5 + ISLAND_DOWN / ISLAND_ACROSS;
+const ISLAND_TOP = 0.5 - ISLAND_UP / ISLAND_ACROSS;
+
+//: The smallest island worth drawing, in viewBox units of box side. A frame
+//: with no room left after its chrome and its cards gets a small island rather
+//: than a negative one.
+const ISLAND_MIN = 200;
+
+function cardPlan(n, w, h, cardH, portrait, frame) {
   const gap = 14;
   const pitch = CARD_TOP + cardH + gap;
   if (portrait) {
     // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
     // fit beside each other with a gutter and three do not.
     const rows = Math.ceil(n / 2);
-    //: The island's band: square, so the island fills the width of the frame
-    //: and nothing of the band is spent on nothing.
-    const islandH = w;
-    //: Clearance under the last card for the transport, which floats over the
-    //: bottom of the window.
+    const cardsH = rows * pitch;
+    //: **The frame is the window's own shape**, so the viewBox does not
+    //: letterbox and a band measured in units is the same band in pixels.
     //:
-    //: **Measured, not guessed.** The transport is about 130 points tall
-    //: whatever the phone, but a point is worth more of this viewBox the
-    //: shorter the window is -- 157 units on a roomy frame and 196 on a phone
-    //: showing the browser's own bars, which is what a shared link opens into.
-    //: The first cut of this reserved 110 and the cards' bottom halves --
-    //: quantities, utility, the autarky mark -- sat behind the controls on
-    //: every real phone.
-    const below = 260;
-    //: The scale the island ends up drawn at: its box is square, so the fit is
-    //: by width and the island is as wide as the frame is.
-    const scale = w / ISLAND_ACROSS;
-    //: Room above the island for the part of it that does not fit its own box.
-    //: The trees on the far shore reach higher than the box does, and on a
-    //: phone showing the browser's bars the island was cut flat across its own
-    //: shore with the land running off the top of the frame.
-    const spill = Math.max(0, Math.round(ISLAND_UP * scale - islandH / 2)) + 14;
-    //: Where the island actually ends, which is well above where its box does.
+    //: That equality is the whole reason the chrome's band can be reserved
+    //: at all. A viewBox of some other shape fits inside the window with `meet`
+    //: and is *centred* in whichever direction is slack, so a band at the top
+    //: of the viewBox lands somewhere in the middle of the window and reserves
+    //: the wrong strip. `frameAspect` rounds down in portrait for the same
+    //: reason: erring tall leaves the slack across the width, where a few
+    //: pixels of sea cost nothing, instead of down the height, where they
+    //: would move every band.
+    //: A floor under the frame, for when the cards alone are most of the
+    //: window. Three traders on a 393x660 phone is two rows of them, and the
+    //: chrome's bands take a further 47% of the height: the island's box came
+    //: out at nothing and the frame grew past the window's shape to hold the
+    //: cards -- at which point the bands, taken as fractions of a frame that
+    //: had grown, no longer landed where the chrome is and the island was back
+    //: under the pills. Solved for instead: whatever height leaves the island
+    //: its minimum once the chrome and the cards have theirs. The frame is
+    //: then taller than the window and the slack falls across the *width*,
+    //: which is the direction this has been spending slack in all along.
+    const floorH = Math.ceil((ISLAND_MIN * ISLAND_FOOT + 16 + cardsH)
+                             / Math.max(0.2, 1 - frame.top - frame.foot));
+    const H = Math.max(720, Math.round(w / frame.aspect), floorH);
+    //: The chrome's two bands, in units. Declared in the stylesheet next to
+    //: the rules that put the chrome there, and arriving here as fractions of
+    //: the window's height so that this does not need to know how many pixels
+    //: tall the window is.
+    const above = Math.round(H * frame.top);
+    const below = Math.round(H * frame.foot);
+    //: What is left is the island's, and it takes all of it. The cards are
+    //: fixed -- they carry every number on the page and shrinking them is how
+    //: the phone view was unreadable to begin with -- so the island is the
+    //: term that gives.
+    //:
+    //: On a tall phone that leaves the island the full width of the frame. On
+    //: a short one -- 393 by 660, which is what a shared link opens into with
+    //: the browser's own bars showing -- the chrome and one row of cards are
+    //: near half the height between them and the island is drawn small. That
+    //: is the trade, and it is the deliberate side of it: the island was
+    //: bigger before because it was drawn *underneath* the chrome.
+    const room = H - above - below - cardsH - 16;
+    const D = Math.max(ISLAND_MIN, Math.min(w, Math.floor(room / ISLAND_FOOT)));
+    //: Where the island actually stops, which is above where its box does.
     //: Kept separate from where the cards start, so that a check comparing the
     //: two is asking a question rather than restating one number twice.
-    const islandFoot = Math.round(spill + islandH / 2 + ISLAND_DOWN * scale);
+    const islandFoot = above + Math.round(ISLAND_FOOT * D);
     const foot = islandFoot + 16;
-    const cards = Array.from({ length: n }, (_, i) => {
-      const row = Math.floor(i / 2);
-      // A row with one card in it sits in the middle rather than off to a side.
-      const alone = i === n - 1 && n % 2 === 1;
-      return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-               y: foot + row * pitch };
-    });
-    return { cards, islandBox: { x: 0, y: spill, w, h: islandH },
-             //: Where the island stops drawing, which is above where its box
-             //: stops. The cards start just below it, and a check re-measures
-             //: it against what the model actually draws.
-             islandFoot,
-             h: foot + rows * pitch + below };
+    return {
+      cards: Array.from({ length: n }, (_, i) => {
+        const row = Math.floor(i / 2);
+        // A row with one card in it sits in the middle rather than off to a side.
+        const alone = i === n - 1 && n % 2 === 1;
+        return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
+                 y: foot + row * pitch };
+      }),
+      islandBox: { x: Math.round((w - D) / 2), y: above, w: D, h: D },
+      //: Where the island starts drawing, a hair below its box's own top.
+      islandTop: above + Math.round(ISLAND_TOP * D),
+      islandFoot,
+      //: The window's height, or more if the cards need it. Any slack falls
+      //: past the last card, below the transport's own band, where it is sea.
+      h: Math.max(H, foot + cardsH + below),
+    };
   }
   //: A column's width, from the card's own: the margin is as wide as what
   //: stands in it and no wider, because every unit of it is island.
@@ -259,7 +299,16 @@ function cardPlan(n, w, h, cardH, portrait) {
 const widen = (base, h, aspect) =>
   aspect ? Math.max(base, Math.round(Math.min(h * aspect, h * 3.4))) : base;
 
-export function layout(n, portrait = false, aspect = null) {
+/**
+ * @param {number} n        how many traders
+ * @param {boolean} portrait  which way up the frame is
+ * @param {?number} aspect  the window's shape, wide over tall
+ * @param {?{top:number, foot:number}} chrome  the bands the floating chrome
+ *   stands on, as fractions of the window's height. Read off the stylesheet by
+ *   the page; **zero here means the island is drawn under the pills**, which
+ *   is what it did before these existed.
+ */
+export function layout(n, portrait = false, aspect = null, chrome = null) {
   if (portrait) {
     // One seat above another, far enough apart for a hut above each card. The
     // pitch is the seat's own extent -- hut, card and a gap -- rather than a
@@ -275,7 +324,10 @@ export function layout(n, portrait = false, aspect = null) {
     const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: first + i * pitch }));
     const bottom = first + pitch * (n - 1) + CARD_TOP + CARD_H_SCORED + 60;
     const ly = (sky + bottom) / 2;
-    const plan = cardPlan(n, w, bottom + 120, CARD_H_SCORED, true);
+    const plan = cardPlan(n, w, bottom + 120, CARD_H_SCORED, true,
+                          // A phone held upright, for a caller that did not say.
+                          { aspect: aspect ?? 0.46,
+                            top: chrome?.top ?? 0, foot: chrome?.foot ?? 0 });
     return {
       w, h: plan.h, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
       // Beside the column rather than in it: a fire between two stacked huts
@@ -428,7 +480,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 
 export class Scene {
   constructor(root, timeline, reveal = null, portrait = false, placed = null,
-              aspect = null) {
+              aspect = null, chrome = null) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -439,7 +491,12 @@ export class Scene {
     this.cardH = reveal ? CARD_H_SCORED : CARD_H;
     this.portrait = portrait;
     this.aspect = aspect;
-    this.geo = layout(this.traders.length, portrait, aspect);
+    //: The bands the page's floating chrome stands on. Kept so that a reflow
+    //: can tell a window that only changed shape from one whose chrome now
+    //: takes a different share of it -- a phone's pill rows are a fixed number
+    //: of pixels, so a shorter window is a bigger band at the same aspect.
+    this.chrome = chrome;
+    this.geo = layout(this.traders.length, portrait, aspect, chrome);
     // Where the settlements actually are, when there is a model underneath.
     // The island decides where its own huts stand; the cards stand in the
     // frame's margins and a line ties each one back, which is why this arrives
@@ -469,11 +526,15 @@ export class Scene {
    * the page can skip a repaint on a resize that did not cross the boundary
    * (every scroll on mobile Safari fires one).
    */
-  reflow(portrait, aspect = this.aspect) {
-    if (portrait === this.portrait && aspect === this.aspect) return false;
+  reflow(portrait, aspect = this.aspect, chrome = this.chrome) {
+    const same = (a, b) => (a?.top ?? 0) === (b?.top ?? 0)
+                        && (a?.foot ?? 0) === (b?.foot ?? 0);
+    if (portrait === this.portrait && aspect === this.aspect
+        && same(chrome, this.chrome)) return false;
     this.portrait = portrait;
     this.aspect = aspect;
-    this.geo = layout(this.traders.length, portrait, aspect);
+    this.chrome = chrome;
+    this.geo = layout(this.traders.length, portrait, aspect, chrome);
     // The layout's own seats, for now. A caller with an island underneath
     // follows this with `replace()`, because the settlements have to be put
     // back on a frame of the new shape before the cards can find them.

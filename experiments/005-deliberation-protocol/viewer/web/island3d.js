@@ -38,8 +38,14 @@ export const M = {
   surf: mat("surf", 0xcfe6ef, 0.5),
   sand: mat("sand", 0xddbe83, 0.95),
   sandWet: mat("sand_wet", 0x96793f, 0.9),
-  grass: mat("grass", 0x55803f, 0.92),
-  grassDark: mat("grass_dark", 0x3f6330, 0.95),
+  //: **Green, not olive.** These were 0x55803f and 0x3f6330, both around a
+  //: hue of 100 degrees -- a third of the way from green to yellow before any
+  //: light touched them. Under a key that is warm all day and frankly orange
+  //: by the bell, the island read as a yellow one. Moved to 120-130 degrees,
+  //: which is a leaf: the warmth in the picture is then the light's, and it
+  //: still goes gold at dusk because the light does.
+  grass: mat("grass", 0x4c8049, 0.92),
+  grassDark: mat("grass_dark", 0x35633c, 0.95),
   rock: mat("rock", 0x6d757a, 0.85),
   thatch: mat("thatch", 0x7a4a34, 0.9),
   thatchLit: mat("thatch_lit", 0x96654a, 0.9),
@@ -201,6 +207,36 @@ function slab(radius, depth, bevel, wobble, phase, baseY, material, name) {
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = name;
   mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/**
+ * A rope of water round the island, following the same wobbled outline the
+ * land does.
+ *
+ * A torus is a circle, and the coast is not one: the surf ring used to run
+ * along the sand on one bearing and sit a good half-unit out to sea on the
+ * next. This is the shore's own silhouette, swept.
+ */
+function shoreRing(radius, wobble, phase, thickness, y, material, name) {
+  const edge = silhouette(radius, wobble, phase);
+  const N = 96;
+  const pts = Array.from({ length: N }, (_, i) => {
+    const t = (i / N) * Math.PI * 2;
+    const r = edge(t);
+    // The same mapping `slab` gets from its rotation: the shape's second axis
+    // is the world's *negative* z, which is what `meadowEdge` reads back.
+    return new THREE.Vector3(Math.cos(t) * r, 0, -Math.sin(t) * r);
+  });
+  const geo = new THREE.TubeGeometry(
+    new THREE.CatmullRomCurve3(pts, true), N * 2, thickness, 8, true);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.position.y = y;
+  // Flattened, as the torus was: surf lies on the water, it does not float
+  // above it as a pipe.
+  mesh.scale.y = 0.5;
   mesh.receiveShadow = true;
   return mesh;
 }
@@ -370,9 +406,18 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   const anchors = {};
 
   // — sea and shelf —
-  add(island, new THREE.CylinderGeometry(4.95, 4.95, 0.12, 96), M.seaDeep, "sea", [0, -0.06, 0]);
-  add(island, new THREE.CylinderGeometry(4.62, 4.62, 0.09, 96), M.sea, "shallows", [0, -0.005, 0]);
-  add(island, new THREE.TorusGeometry(4.22, 0.075, 8, 120), M.surf, "surf_ring", [0, 0.055, 0], [Math.PI / 2, 0, 0], [1, 1, 0.5]);
+  //: **The deep sea's top used to sit at exactly y=0, and so does the shore
+  //: shelf's underside.** Two coplanar faces, one of them blue, fought for
+  //: every pixel where they overlap -- which is the whole coast -- and the
+  //: fight only shows while the camera moves, so it read as blue flickering
+  //: round the island rather than as anything a still screenshot could catch.
+  //: Dropped clear of it.
+  add(island, new THREE.CylinderGeometry(4.95, 4.95, 0.12, 96), M.seaDeep, "sea", [0, -0.10, 0]);
+  //: The water follows the coast rather than a circle. A round shallows and a
+  //: round line of surf against a wobbled shore put the white water a long way
+  //: out on one bearing and up on the sand at another.
+  island.add(slab(4.62, 0.09, 0.05, 0.10, 0.7, -0.05, M.sea, "shallows"));
+  island.add(shoreRing(4.30, 0.10, 0.7, 0.075, 0.05, M.surf, "surf_ring"));
 
   // — land —
   island.add(slab(4.15, 0.14, 0.14, 0.10, 0.7, 0.0, M.sandWet, "shore_shelf"));
@@ -405,7 +450,12 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   add(market, new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8), M.timber, "market_bell_post", [0.8, 0.31, -0.3]);
   add(market, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
     M.thatchLit, "market_bell", [0.8, 0.52, -0.3], [Math.PI, 0, 0]);
-  market.scale.setScalar(1.3);
+  //: **Smaller than it was.** Every prop on the island was built at about a
+  //: third again its drawn size, and between them the market, two settlements,
+  //: four sites, the jetty and twenty-two trees left an island with no ground
+  //: showing on it. The scales below all came down together, because shrinking
+  //: one of them only makes the rest look bigger.
+  market.scale.setScalar(1.12);
   island.add(market);
   anchors.market = market.position.clone();
 
@@ -428,7 +478,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     // Facing the market, which is what a settlement on an island with one
     // market would do.
     g.rotation.y = Math.atan2(0.45 - x, 0.55 - z);
-    g.scale.setScalar(1.35);
+    g.scale.setScalar(1.15);
     island.add(g);
     anchors[name] = g.position.clone();
     placed.push([x, z, 0.95]);
@@ -451,7 +501,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     const flag = marker(good, goodMat(good, i));
     flag.position.set(...at);
     site.add(flag);
-    site.scale.setScalar(wet ? 1.25 : 1.3);
+    site.scale.setScalar(wet ? 1.05 : 1.1);
     island.add(site);
     // The site's own height, not the meadow's: salt is worked down on the wet
     // shelf and iron up on the ridge, and anything staged at a site has to
@@ -480,7 +530,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     b.rotation.y = 0.22 - i * 0.57;
     dock.add(b);
   });
-  dock.scale.setScalar(1.3);
+  dock.scale.setScalar(1.12);
   island.add(dock);
   placed.push([2.9, 1.2, 0.9]);
 
@@ -504,17 +554,25 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   island.add(trail);
 
   // — scattered planting, off everything that carries meaning —
+  //: **And off each other.** The keep-out list held what the island had put
+  //: down on purpose and nothing else, so two trees drawn a tenth of a unit
+  //: apart stood inside one another -- which is what a canopy sphere at 0.3
+  //: does at that distance. Every tree planted joins the list, so the next one
+  //: has to find room rather than a gap in the meaning.
   const keepOut = [[0.45, 0.55, 1.3], ...placed];
   let n = 0;
-  for (let i = 0; i < 600 && n < 22; i++) {
+  for (let i = 0; i < 900 && n < 16; i++) {
     const a = r() * Math.PI * 2, rad = 0.9 + r() * 3.1;
     const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
     const wob = 1 + 0.12 * Math.sin(3 * a + 1.9) + 0.07 * Math.sin(5 * a - 3.2);
     if (rad > 3.9 * wob) continue;
     if (keepOut.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr)) continue;
     const onGrass = rad < 3.0 * wob;
-    const g = onGrass ? tree(n, 1.0 + r() * 0.55) : palm(n);
-    if (!onGrass) g.scale.setScalar(1.25);
+    const g = onGrass ? tree(n, 0.78 + r() * 0.34) : palm(n);
+    if (!onGrass) g.scale.setScalar(1.0);
+    //: A canopy is about 0.3 across at scale 1, so this is two of them: they
+    //: can lean together and they cannot share a trunk.
+    keepOut.push([x, z, 0.62]);
     // Rooted a little into whatever is under it -- which on the upland is a
     // third of a unit above the meadow, and on the meadow's rim is a slope.
     g.position.set(x, ground(x, z) - 0.02, z);
@@ -525,7 +583,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   for (let i = 0; i < 6; i++) {
     const a = r() * Math.PI * 2, rad = 3.4 + r() * 1.0;
     const rx = Math.cos(a) * rad, rz = Math.sin(a) * rad;
-    add(island, new THREE.DodecahedronGeometry(0.1 + r() * 0.13), M.rock, `shore_rock_${i}`,
+    add(island, new THREE.DodecahedronGeometry(0.08 + r() * 0.1), M.rock, `shore_rock_${i}`,
       [rx, ground(rx, rz, 0.16) + 0.04, rz], [r(), r(), r()]);
   }
 

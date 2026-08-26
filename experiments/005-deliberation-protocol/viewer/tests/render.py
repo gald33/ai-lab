@@ -171,7 +171,7 @@ def empty_slots(page, where: str) -> list[str]:
     Checked wherever the page happens to be, so it costs nothing when no slot
     is empty and speaks up at the stop where one is.
     """
-    slots = page.evaluate("""() => [...document.querySelectorAll('.hut .cell')]
+    read = """() => [...document.querySelectorAll('.hut .cell')]
       .filter(c => c.classList.contains('empty'))
       .map(c => {
         const q = c.querySelector('.qty');
@@ -179,7 +179,20 @@ def empty_slots(page, where: str) -> list[str]:
         return { good: c.dataset.good, text: q ? q.textContent : null,
                  flagged: q ? q.classList.contains('none') : false,
                  mark: zero ? getComputedStyle(zero).opacity : null };
-      })""")
+      })"""
+    slots = page.evaluate(read)
+    #: The mark fades in over 0.3s, and this reads the *computed* opacity --
+    #: so a sample taken while the transition is still running is a number
+    #: about how loaded the machine is. It flaked exactly that way: three
+    #: slots at opacity 0 in one run and none in the next, on the same commit.
+    #:
+    #: Waited out rather than loosened. A transition that has finished does
+    #: not go back down, so a second read after longer than its own duration
+    #: is the settled value, and a mark that is genuinely never shown is still
+    #: at zero when it arrives.
+    if any(s["mark"] is not None and float(s["mark"]) < 0.5 for s in slots):
+        page.wait_for_timeout(500)
+        slots = page.evaluate(read)
     bad = []
     for s in slots:
         if not (s["text"] or "").strip():
@@ -867,7 +880,16 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
 
 
 def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
-    """No trader card stands on the island.
+    """Nothing the page floats stands on the island -- no card, and no pill.
+
+    The chrome half was reported by eye, twice. The pills stack into four rows
+    on a phone because there is no width to put them side by side, and all four
+    sat over the island's top edge: the round's state, the counts and the goods
+    key, across the shore and the hill. The layout reserves a band for them now
+    (`--chrome-top` in the stylesheet, spent by `cardPlan`), and this is what
+    says the band is the right size -- measured off the model's own pixels
+    rather than off the two numbers agreeing, because a band that matches a
+    stylesheet it no longer describes agrees with itself.
 
     The cards used to hang under their own huts, which put them in the middle
     of the frame -- between them they covered the market, both settlements and
@@ -922,6 +944,38 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             return { name, over: on / (bw * bh), off: false };
           });
         }""")
+        pills = page.evaluate("""(chrome) => {
+          const cv = document.getElementById('stage');
+          const cr = cv.getBoundingClientRect();
+          const s = document.createElement('canvas');
+          s.width = cv.width; s.height = cv.height;
+          s.getContext('2d').drawImage(cv, 0, 0);
+          const g = s.getContext('2d');
+          const sx = cv.width / cr.width, sy = cv.height / cr.height;
+          // What the island covers of the canvas, to divide by: a pill over a
+          // tenth of a *frame* means nothing, and a pill over a tenth of the
+          // island means the island is being hidden. Counted at the same
+          // sampling as the pills so the two are the same measurement.
+          let world = 0;
+          {
+            const px = g.getImageData(0, 0, s.width, s.height).data;
+            for (let i = 3; i < px.length; i += 4) if (px[i] > 40) world++;
+          }
+          return { world, pills: chrome.map(sel => {
+            const n = document.querySelector(sel);
+            if (!n || n.hidden) return null;
+            const r = n.getBoundingClientRect();
+            const x = Math.max(0, Math.round((r.x - cr.x) * sx));
+            const y = Math.max(0, Math.round((r.y - cr.y) * sy));
+            const bw = Math.min(s.width - x, Math.round(r.width * sx));
+            const bh = Math.min(s.height - y, Math.round(r.height * sy));
+            if (bw <= 0 || bh <= 0) return null;
+            const px = g.getImageData(x, y, bw, bh).data;
+            let on = 0;
+            for (let i = 3; i < px.length; i += 4) if (px[i] > 40) on++;
+            return { sel, on };
+          }).filter(Boolean) };
+        }""", CHROME)
         over = page.evaluate("""(chrome) => {
           const boxes = chrome.map(s => document.querySelector(s))
             .filter(n => n && !n.hidden)
@@ -942,6 +996,16 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
                      below: Math.max(0, (c.y + c.height - innerHeight) / c.height) };
           });
         }""", CHROME)
+        #: A fortieth of the island, per pill. Not zero: the sea disc is
+        #: soft-edged and a pill in a corner catches the outermost ring of it,
+        #: and on a desktop the legend sits in the bottom corner where there is
+        #: open water. A pill over more of the island than that is standing on
+        #: the land the page exists to show.
+        for r in pills["pills"]:
+            share = r["on"] / max(1, pills["world"])
+            if share > 0.025:
+                bad.append(f"uncovered {label}: {r['sel']} covers "
+                           f"{share * 100:.0f}% of the drawn island")
         for r in over:
             if r["under"]:
                 bad.append(f"uncovered {label}: {r['name']}'s card is behind "
@@ -962,374 +1026,6 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
                            f"it is drawn world")
         page.screenshot(path=str(out / f"{stem}-{label}-cards.png"))
         page.close()
-    return bad
-
-
-#: A stage built off-page, so a check can ask the model questions the page
-#: has no reason to expose. The same modules the viewer loads, driven directly.
-STAGE = """async ({w, h, n, portrait, goods}) => {
-  const THREE = await import('./vendor/three/three.module.js');
-  const { Stage } = await import('./stage.js');
-  const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h; document.body.appendChild(cv);
-  const { layout } = await import('./scene.js');
-  const geo = layout(n, portrait, w / h);
-  const st = new Stage(cv, geo);
-  st.pause();
-  st.setDay(0.45);
-  const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
-  const made = st.build({traders, goods});
-  st.pause();
-  // What is directly under a point, ignoring anything standing on the ground
-  // rather than being it.
-  const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_|banner_|post$|notice)/;
-  const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
-  window.__under = (x, z) => {
-    ray.set(new THREE.Vector3(x, 8, z), down);
-    const hit = ray.intersectObject(made.island, true)
-      .filter(h => !chain(h.object).some(nm => SKIP.test(nm)))[0];
-    return hit ? hit.object.name : 'nothing';
-  };
-  window.__st = st;
-  window.__made = made;
-  // Where the island's own silhouette lands in the scene's coordinates.
-  //
-  // Everything but the weather: clouds, gulls and falling leaves are over the
-  // island rather than part of it, and one of them at the top of the frame is
-  // not the island being cut. Everything else counts, and the trees do most of
-  // the work -- the camera is tilted, so a tree on the far shore projects well
-  // above the water it stands beside.
-  //
-  // Its actual vertices, not a bounding box round them: the box's top corner
-  // is where the tallest tree's height meets the widest sea's radius, and
-  // nothing is there. Sampled every few vertices, which is plenty for a
-  // silhouette made of hundreds.
-  //
-  // **At every bearing, not the one it was built at.** The camera goes round
-  // the island, and the silhouette is a different shape from each side -- the
-  // hill is on one side of it and the dock on another. Measured at the bearing
-  // it happens to start from, the island looks clear of the frame and then
-  // rises out of it a minute later.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_)/;
-  const meshes = [];
-  for (const part of made.island.children) {
-    if (WEATHER.test(part.name)) continue;
-    part.updateWorldMatrix(true, true);
-    part.traverse((node) => {
-      if (node.geometry && node.geometry.attributes.position) meshes.push(node);
-    });
-  }
-  const v = new THREE.Vector3();
-  const was = st.turn;
-  let top = Infinity, bottom = -Infinity;
-  for (let k = 0; k < 12; k++) {
-    st.aim(was + (k / 12) * Math.PI * 2);
-    for (const node of meshes) {
-      const pos = node.geometry.attributes.position;
-      for (let i = 0; i < pos.count; i += 7) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(node.matrixWorld);
-        const p = st.toViewBox(v);
-        if (p.y < top) top = p.y;
-        if (p.y > bottom) bottom = p.y;
-      }
-    }
-  }
-  st.aim(was);
-  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
-          geo: {w: geo.w, h: geo.h}, portrait,
-          card0: geo.cards.length ? geo.cards[0].y : null,
-          seaTop: top, seaBottom: bottom};
-}"""
-
-
-def island(browser, base: str, out: Path) -> list[str]:
-    """Nothing stands in the sea, and the goats do not run.
-
-    **Both of these were reported by somebody watching, not by a test**, which
-    is the argument for this one existing. The seats come from the page in
-    screen coordinates and are unprojected onto the island, and how much island
-    a screen fraction covers depends on the frame's shape -- so on a wide
-    window both settlements landed in the water, and on a narrow one two of
-    four landed on the market roof. The goats ran the delivered clip's numbers
-    at island scale, which is a metre a second across a meadow six wide, out
-    over the beach and off into the sea.
-
-    Asked of the model by raycast rather than of the picture by eye: what is
-    under this hut is a question with an exact answer.
-    """
-    bad: list[str] = []
-    #: Where a settlement may stand. Not the beach: a hut on sand is a hut
-    #: nobody put there on purpose.
-    LAND = {"meadow", "upland", "market_plaza", "ridge"}
-    page = browser.new_page(viewport={"width": 1200, "height": 800})
-    page.goto(f"{base}/")
-    page.wait_for_timeout(600)
-    shapes = [("desktop", 1200, 750, 2, False), ("wide", 1600, 700, 2, False),
-              ("tall", 900, 1100, 2, False), ("phone", 430, 780, 2, True),
-              ("desktop/4", 1200, 750, 4, False), ("phone/4", 430, 900, 4, True),
-              ("desktop/5", 1400, 800, 5, False),
-              # The frames a shared link opens into on a phone: the browser's
-              # own bars take a hundred points and more off the window, and
-              # everything the layout reserved is worth less of it.
-              ("safari", 393, 660, 2, True), ("small", 360, 640, 2, True),
-              ("safari/3", 393, 660, 3, True)]
-    for label, w, h, n, portrait in shapes:
-        built = page.evaluate(STAGE, {"w": w, "h": h, "n": n, "portrait": portrait,
-                                      "goods": ["bread", "cloth", "iron", "salt", "fish"]})
-        seats = built["seats"]
-        # The island cut across its own shore by the top of the frame.
-        #
-        # Asked of the model rather than of the picture: the topmost drawn pixel
-        # cannot tell the island's shore from a cloud sitting over it, and with
-        # motion stilled the clouds sit wherever they started. This projects the
-        # sea's own disc and asks where its edge lands.
-        #
-        # Only in portrait. A frame wider than it is tall has no room to give
-        # the sea, and there the cut falls in open water where nothing reads it;
-        # in portrait the island was sliced flat with the land going over the
-        # edge, which is what a phone showing the browser's bars looked like.
-        # And the dead band under it. The island is a disc under a tilted
-        # camera, so it is not as tall as it is wide, and the layout starts the
-        # cards where it actually ends rather than where its square box does --
-        # from two numbers that were measured off the model. This is what keeps
-        # them honest: change the tilt or the sea and the band opens back up
-        # here, on a phone, where every unit of it is island the reader lost.
-        if portrait and built["card0"] is not None:
-            gap = built["card0"] - built["seaBottom"]
-            if not 0 <= gap <= 48:
-                bad.append(f"island {label}: {gap:.0f} between the island's foot "
-                           f"and the first card; the layout and the model "
-                           f"disagree about how tall the island is")
-        #: A little clear of it, not merely inside: an island whose shore is
-        #: flush with the frame's first row already reads as running off it.
-        if portrait and built["seaTop"] < 8:
-            bad.append(f"island {label}: the island's silhouette reaches "
-                       f"{built['seaTop']:.0f} in the frame at its worst bearing; "
-                       f"it is cut off at the top")
-        for name, (x, z) in zip(built["traders"], seats):
-            under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
-            if under not in LAND:
-                bad.append(f"island {label}: {name}'s settlement stands on "
-                           f"{under!r} at ({x:.2f}, {z:.2f})")
-        # And not on top of each other: a frame narrow enough collapses the
-        # layout's ring, and two huts in one place is one hut with a spare card.
-        for i in range(len(seats)):
-            for j in range(i + 1, len(seats)):
-                d = ((seats[i][0] - seats[j][0]) ** 2 + (seats[i][1] - seats[j][1]) ** 2) ** 0.5
-                if d < 1.2:
-                    bad.append(f"island {label}: two settlements {d:.2f} apart, "
-                               f"which is inside a hut's own width")
-
-    # And the case the layout can actually produce but these shapes happen not
-    # to: two seats at the same point. Asked of the model directly, because a
-    # viewport that collapses the ring is a moving target and this is the
-    # property that has to hold whatever produced it.
-    twins = page.evaluate("""async () => {
-      const { buildIsland } = await import('./island3d.js');
-      const same = [[2.2, 1.1], [2.2, 1.1], [2.21, 1.09]];
-      const made = buildIsland({traders: ['A', 'B', 'C'],
-                                goods: ['bread', 'cloth'], seats: same});
-      return ['A', 'B', 'C'].map(n => [made.anchors[n].x, made.anchors[n].z]);
-    }""")
-    for i in range(len(twins)):
-        for j in range(i + 1, len(twins)):
-            d = ((twins[i][0] - twins[j][0]) ** 2 + (twins[i][1] - twins[j][1]) ** 2) ** 0.5
-            if d < 1.2:
-                bad.append(f"island: three seats at one point built settlements "
-                           f"{d:.2f} apart; they were not moved off each other")
-
-    # The herd, over three minutes of its own clock.
-    walk = page.evaluate("""() => {
-      const st = window.__st, made = window.__made;
-      const goats = made.island.children.filter(o => /^goat_/.test(o.name));
-      const seen = [], step = 0.25;
-      let fastest = 0;
-      const last = new Map();
-      for (let t = 0; t < 200; t += step) {
-        st.life.update(t, st.ctx());
-        for (const g of goats) {
-          const p = [g.position.x, g.position.z];
-          seen.push([g.name, p[0], p[1], window.__under(p[0], p[1])]);
-          const was = last.get(g.name);
-          if (was) fastest = Math.max(fastest, Math.hypot(p[0] - was[0], p[1] - was[1]) / step);
-          last.set(g.name, p);
-        }
-      }
-      return {n: goats.length, fastest,
-              off: seen.filter(s => !['meadow', 'upland', 'market_plaza', 'ridge'].includes(s[3]))
-                       .slice(0, 3)};
-    }""")
-    if not walk["n"]:
-        bad.append("island: no goats to check")
-    if walk["off"]:
-        where = ", ".join(f"{g[0]} on {g[3]!r} at ({g[1]:.1f}, {g[2]:.1f})" for g in walk["off"])
-        bad.append(f"island: a goat left the grass -- {where}")
-    #: Island units a second. A goat is about 0.35 long, so this is roughly a
-    #: body length per second -- an outer bound on "ambling", not a target.
-    if walk["fastest"] > 0.35:
-        bad.append(f"island: the goats move at {walk['fastest']:.2f} units/s, "
-                   f"which at this scale is a run, not a graze")
-    page.screenshot(path=str(out / "island-model.png"))
-    page.close()
-    return bad
-
-
-#: One of each kind the island has a clip for, with enough of a payload that
-#: the clip has something to carry.
-FIRED = [
-    {"kind": "produced", "trader": "T1", "made": {"bread": 0.8, "salt": 0.5}},
-    {"kind": "offer", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
-    {"kind": "settled", "pid": "p1", "maker": "T1", "taker": "T2",
-     "give": {"bread": 0.5}, "want": {"cloth": 0.3}},
-    {"kind": "refused", "trader": "T2", "reason": "uncommitted stock"},
-    {"kind": "bell", "episode": 1, "lapsed": 2},
-    {"kind": "open", "episode": 2, "of": 3},
-]
-
-
-def mechanics(browser, base: str, out: Path) -> list[str]:
-    """Every event the island has a clip for actually shows, and then goes.
-
-    Three things, and the first is the one that matters: **a clip that runs but
-    cannot be seen is not an animation.** The delivered clips were watched one
-    at a time in a frame two units across; the island is eight and half of it
-    is behind the cards, so at their own scale the crates were a handful of
-    pixels and the rings were hairlines under the market roof. This measures
-    the canvas against the same island with nothing happening on it, and asks
-    for a share of the frame to have changed.
-
-    The second: it has to end. A clip that leaves a crate standing is a page
-    that accumulates litter over a long replay.
-
-    The third: it has to put back what it borrowed. Several of these move the
-    island's own nodes -- the hut banners, the crates beside a door -- and
-    those are not the clip's to keep.
-    """
-    bad: list[str] = []
-    page = browser.new_page(viewport={"width": 1000, "height": 700})
-    errs: list[str] = []
-    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
-    page.on("console", lambda m: errs.append(f"console error: {m.text}")
-            if m.type == "error" else None)
-    page.goto(f"{base}/")
-    page.wait_for_timeout(600)
-    page.evaluate(STAGE, {"w": 900, "h": 560, "n": 2, "portrait": False,
-                          "goods": ["bread", "cloth", "iron", "salt", "fish"]})
-    seen = page.evaluate("""({events}) => {
-      const st = window.__st;
-      const shot = () => {
-        st.life.update(3, st.ctx());
-        st.renderer.render(st.scene, st.camera);
-        const s = document.createElement('canvas');
-        s.width = 300; s.height = 187;
-        const g = s.getContext('2d');
-        g.drawImage(st.canvas, 0, 0, s.width, s.height);
-        return g.getImageData(0, 0, s.width, s.height).data;
-      };
-      // Changed pixels as a share of the *island's* own, not of the frame's.
-      // How much of the frame is island is a layout decision -- the cards took
-      // the margins and it halved -- and a clip does not become less visible
-      // because the page put something else beside the island.
-      let ground = 0;
-      const diff = (a, b) => {
-        let n = 0;
-        for (let i = 0; i < a.length; i += 4)
-          if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
-              + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / Math.max(1, ground);
-      };
-      const bare = shot();
-      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
-      return events.map((e) => {
-        st.clear();
-        const c = st.fire(e);
-        st.pause();
-        if (!c) return {kind: e.kind, clip: false};
-        let peak = 0;
-        for (let t = 0.1; t <= c.dur; t += 0.1) {
-          c.t0 = 0;
-          st.step(t);
-          peak = Math.max(peak, diff(bare, shot()));
-        }
-        // Past the end, which is what the stage's own loop does.
-        c.t0 = 0;
-        st.step(c.dur + 0.5);
-        const after = diff(bare, shot());
-        return {kind: e.kind, clip: true, peak, after, live: st.clips.length};
-      });
-    }""", {"events": FIRED})
-    for r in seen:
-        where = f"mechanics {r['kind']}"
-        if not r.get("clip"):
-            bad.append(f"{where}: the island has nothing to show for it")
-            continue
-        #: Share of the island. Small, because most of an island is ground --
-        #: but an order of magnitude above the hairlines this replaced.
-        if r["peak"] < 0.012:
-            bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the island ever "
-                       f"changed; whatever it did cannot be seen")
-        if r["live"]:
-            bad.append(f"{where}: {r['live']} clip(s) still running after the end")
-        if r["after"] > 0.0015:
-            bad.append(f"{where}: {r['after'] * 100:.2f}% of the island is still "
-                       f"changed once it finished; it left something behind")
-    # And the case `restore` actually exists for: a clip cut off part-way,
-    # which is what a rebuild does to whatever was in flight. Left alone, a
-    # bell interrupted mid-swing leaves every settlement's banner hanging in
-    # the air over the island for the rest of the round.
-    cut = page.evaluate("""() => {
-      const st = window.__st;
-      const shot = () => {
-        st.life.update(3, st.ctx());
-        st.renderer.render(st.scene, st.camera);
-        const s = document.createElement('canvas');
-        s.width = 300; s.height = 187;
-        const g = s.getContext('2d');
-        g.drawImage(st.canvas, 0, 0, s.width, s.height);
-        return g.getImageData(0, 0, s.width, s.height).data;
-      };
-      let ground = 0;
-      const diff = (a, b) => {
-        let n = 0;
-        for (let i = 0; i < a.length; i += 4)
-          if (Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1])
-              + Math.abs(a[i+2] - b[i+2]) > 18) n++;
-        return n / Math.max(1, ground);
-      };
-      st.clear();
-      const bare = shot();
-      for (let i = 3; i < bare.length; i += 4) if (bare[i] > 24) ground++;
-      const out = [];
-      for (const e of [{kind: 'bell', episode: 1, lapsed: 2},
-                       {kind: 'open', episode: 2, of: 3}]) {
-        const c = st.fire(e);
-        st.pause();
-        c.t0 = 0;
-        st.step(c.dur * 0.5);           // half way through, and then pulled
-        st.clear();
-        out.push([e.kind, diff(bare, shot())]);
-      }
-      return out;
-    }""")
-    for kind, left in cut:
-        if left > 0.0015:
-            bad.append(f"mechanics {kind}: cut off half way and {left * 100:.2f}% "
-                       f"of the island stayed changed; it kept what it borrowed")
-
-    # A kind the island says nothing about must stay silent rather than throw.
-    quiet = page.evaluate("""() => {
-      const st = window.__st;
-      return [{kind: 'said', author: 'T1'}, {kind: 'tick', left: 30}, {kind: 'over'}]
-        .map(e => [e.kind, st.fire(e) === null]);
-    }""")
-    for kind, silent in quiet:
-        if not silent:
-            bad.append(f"mechanics {kind}: the island invented something to show")
-    bad += [f"mechanics: {e}" for e in errs]
-    page.screenshot(path=str(out / "mechanics.png"))
-    page.close()
     return bad
 
 
@@ -1445,7 +1141,15 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
   const { layout } = await import('./scene.js');
-  const geo = layout(n, portrait, w / h);
+  // The same bands the page reserves, read the same way the page reads them.
+  // A stage built without them frames the island where nothing on the real
+  // page ever frames it, and every question asked of it is then about a
+  // layout nobody sees.
+  const css = getComputedStyle(document.documentElement);
+  const band = (nm) => Math.min(0.35, (parseFloat(css.getPropertyValue(nm)) || 0) / h);
+  const chrome = { top: band('--chrome-top'), foot: band('--chrome-foot') };
+  const geo = layout(n, portrait, portrait ? Math.floor(w / h * 100) / 100 : w / h,
+                     chrome);
   const st = new Stage(cv, geo);
   st.pause();
   st.setDay(0.45);
@@ -1508,9 +1212,25 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     }
   }
   st.aim(was);
-  return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
+  // Where each of the island's big horizontal surfaces starts and stops, so a
+  // check can ask whether two of them share a plane. Names, not everything:
+  // these are the ones that overlap each other across the whole coast.
+  const decks = {};
+  for (const nm of ['sea', 'shallows', 'shore_shelf', 'beach', 'meadow', 'upland']) {
+    const o = made.island.getObjectByName(nm);
+    if (!o) continue;
+    const b = new THREE.Box3().setFromObject(o);
+    decks[nm] = [b.min.y, b.max.y];
+  }
+  return {traders, decks,
+          seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
           card0: geo.cards.length ? geo.cards[0].y : null,
+          // The band the *stylesheet* declares, in this frame's units -- not
+          // where the layout put the island's box. Read off `islandBox.y` it
+          // would be the layout agreeing with itself, and a layout that
+          // ignored the declaration entirely would pass.
+          band: Math.round(geo.h * chrome.top),
           seaTop: top, seaBottom: bottom};
 }"""
 
@@ -1547,6 +1267,14 @@ def island(browser, base: str, out: Path) -> list[str]:
               ("safari", 393, 660, 2, True), ("small", 360, 640, 2, True),
               ("safari/3", 393, 660, 3, True)]
     for label, w, h, n, portrait in shapes:
+        # The window is put into the shape being asked about before the stage
+        # is built, because the stage reads the chrome's bands off the page's
+        # own stylesheet and those are declared inside a media query. Asked at
+        # a desktop viewport they come back as zero -- which is a frame nobody
+        # has, and every question about the band is then a question about a
+        # band of nothing. (Found by neutering: a layout that ignored the
+        # declaration outright still passed this.)
+        page.set_viewport_size({"width": w, "height": h})
         built = page.evaluate(STAGE, {"w": w, "h": h, "n": n, "portrait": portrait,
                                       "goods": ["bread", "cloth", "iron", "salt", "fish"]})
         seats = built["seats"]
@@ -1573,12 +1301,32 @@ def island(browser, base: str, out: Path) -> list[str]:
                 bad.append(f"island {label}: {gap:.0f} between the island's foot "
                            f"and the first card; the layout and the model "
                            f"disagree about how tall the island is")
-        #: A little clear of it, not merely inside: an island whose shore is
-        #: flush with the frame's first row already reads as running off it.
-        if portrait and built["seaTop"] < 8:
+        #: **Below the band the chrome reserved**, not merely inside the
+        #: frame. The frame's own top row stopped being the thing to clear the
+        #: moment the layout admitted that four rows of pills stand across it:
+        #: an island that starts at the frame's first row starts underneath the
+        #: goods key. This is the same number the stylesheet declares, arriving
+        #: through the layout, so the two cannot drift apart without failing.
+        if portrait and built["seaTop"] < built["band"]:
             bad.append(f"island {label}: the island's silhouette reaches "
-                       f"{built['seaTop']:.0f} in the frame at its worst bearing; "
-                       f"it is cut off at the top")
+                       f"{built['seaTop']:.0f} in the frame at its worst bearing, "
+                       f"above the band the chrome has at {built['band']:.0f}; "
+                       f"it is drawn under the pills")
+        # Two horizontal faces at exactly one height, both of them wide enough
+        # to cover the coast, is z-fighting -- and z-fighting only shows while
+        # the camera moves, so a still screenshot cannot catch it and nothing
+        # here could. It was reported as blue flickering round the island: the
+        # deep sea's top face and the shore shelf's underside were both at
+        # y=0. Asked of the model, where it is a question about two numbers.
+        decks = built["decks"]
+        planes = [(nm, y) for nm, span in decks.items() for y in span]
+        for i, (an, ay) in enumerate(planes):
+            for bn, by in planes[i + 1:]:
+                if an == bn or abs(ay - by) > 0.008:
+                    continue
+                bad.append(f"island {label}: {an} and {bn} both have a face at "
+                           f"y={ay:.3f}; two flat surfaces on one plane fight "
+                           f"for every pixel where they overlap")
         for name, (x, z) in zip(built["traders"], seats):
             under = page.evaluate("([x, z]) => window.__under(x, z)", [x, z])
             if under not in LAND:
@@ -1960,7 +1708,7 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
           // This also catches the render that produced nothing at all, which a
           // bounding box cannot: a canvas of the right size, and empty.
           const cv = document.getElementById('stage');
-          let drawn = null, span = null;
+          let drawn = null, span = null, drawnBox = null;
           if (document.querySelector('.app').classList.contains('has-3d') && cv) {
             const cr = cv.getBoundingClientRect();
             const s = document.createElement('canvas');
@@ -1981,17 +1729,29 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             }
             drawn = lit / (s.width * s.height);
             if (lit) {
-              // How big the island actually draws, against the shorter side of
-              // the window -- which is the side it is fitted to.
-              const bw = (x1 - x0 + 1) / s.width * cr.width;
-              const bh = (y1 - y0 + 1) / s.height * cr.height;
-              span = Math.max(bw, bh) / Math.min(innerWidth, innerHeight);
+              // How big the island actually draws, in the window's own pixels.
+              drawnBox = { x: cr.x + x0 / s.width * cr.width,
+                           y: cr.y + y0 / s.height * cr.height,
+                           w: (x1 - x0 + 1) / s.width * cr.width,
+                           h: (y1 - y0 + 1) / s.height * cr.height };
+              span = Math.max(drawnBox.w, drawnBox.h) / Math.min(innerWidth, innerHeight);
             }
           }
+          // The band the island was given: from the bottom of the chrome's own
+          // reservation to the top of the first card. Read off the stylesheet
+          // and the cards rather than off the layout, so this is the room a
+          // person sees rather than the room the code meant to leave.
+          const css = getComputedStyle(document.documentElement);
+          const chromeTop = parseFloat(css.getPropertyValue('--chrome-top')) || 0;
+          const cards = [...document.querySelectorAll('.card-bg')]
+            .map(n => n.getBoundingClientRect()).filter(r => r.width && r.height);
+          const cardTop = cards.length ? Math.min(...cards.map(r => r.y)) : innerHeight;
           return {
             scrollW: document.documentElement.scrollWidth, winW: innerWidth,
             winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
             land: lb ? { w: lb.width, h: lb.height } : null, drawn, span,
+            box: drawnBox,
+            chromeTop, cardTop,
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
               .map(n => { const r = n.getBoundingClientRect();
@@ -2014,19 +1774,39 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
         # Fitted to width in a tall window, the island was a thin band with dead
         # sky above and dead sea below.
         #
-        # Measured as *how big the island draws*, not as its share of the
-        # screen's area. Area was the right proxy while the island had the whole
-        # frame; now that the cards stand in the margins and the transport has
-        # its own room, a phone spends a third of its height on things that are
-        # not island by design, and area cannot tell that apart from the band
-        # this exists to catch. The span can: a band is a third of the short
-        # side, and an island is most of it.
+        # **Against the band the island was given, not against the window.**
+        # Its share of the screen was the right question while the island had
+        # the whole frame. It stopped being one when the cards took the margins
+        # and the chrome took a reserved strip at either end: on a 393x660
+        # phone -- a shared link opened with the browser's own bars showing --
+        # the pills and one row of cards are near half the height between them,
+        # so the island is small there *by arithmetic*, and a threshold on the
+        # window would be a threshold on the phone rather than on the layout.
+        #
+        # What it asks instead is whether the island took what was left, which
+        # is the thing that can actually go wrong: the defect this was written
+        # for is dead sky above the island and dead sea below it inside its own
+        # band, and that is exactly what fails here.
         if seen["drawn"] is not None and not seen["drawn"]:
             bad.append(f"{where}: the model drew nothing at all")
-        elif seen["span"] is not None and seen["span"] < 0.72:
-            bad.append(f"{where}: the island draws at {seen['span']:.0%} of the "
-                       f"screen's short side; the picture is the page and this "
-                       f"is a band in it")
+        elif seen["box"]:
+            band = seen["cardTop"] - seen["chromeTop"]
+            fill = seen["box"]["h"] / band if band > 0 else 0
+            if band <= 0:
+                bad.append(f"{where}: the cards start at {seen['cardTop']:.0f} and "
+                           f"the chrome's band ends at {seen['chromeTop']:.0f}; "
+                           f"there is no island band at all")
+            elif fill < 0.85:
+                bad.append(f"{where}: the island fills {fill:.0%} of the "
+                           f"{band:.0f}px band between the chrome and the cards; "
+                           f"the rest is dead sky and dead sea")
+            #: A drawn island narrower than this has stopped being the picture
+            #: whatever the arithmetic says, and the answer then is to take
+            #: room back off the chrome rather than to move this number.
+            elif seen["box"]["w"] < 0.45 * seen["winW"]:
+                bad.append(f"{where}: the island draws {seen['box']['w']:.0f}px "
+                           f"wide in a {seen['winW']}px window")
+
         elif seen["drawn"] is None and seen["land"]:
             # No model: the drawn island is a path, and its own box is the size.
             share = max(seen["land"]["w"], seen["land"]["h"]) / min(seen["winW"], seen["winH"])

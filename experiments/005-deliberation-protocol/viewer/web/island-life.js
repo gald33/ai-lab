@@ -340,14 +340,35 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
      * @param {object} ctx   `{ day, key, ambient }` -- `day` from the page's
      *                       clock, so the light and the drawn sun agree.
      */
-    update(t, { day = null, key = null, ambient = null, fill = null } = {}) {
+    update(t, { day = null, turn = 0, key = null, ambient = null,
+                fill = null } = {}) {
       for (const part of parts) part(t);
       if (day === null) return;
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
       const a = Math.PI * (0.08 + clamp01(day) * 0.84);
       if (key) {
-        key.position.set(Math.cos(a) * 7, Math.max(0.6, Math.sin(a) * 7), 3.0);
+        /*
+         * Where the light stands, **reckoned from the camera and not from the
+         * island**.
+         *
+         * The island's shadows are what tells a viewer the time now -- the
+         * drawn sun is hidden the moment there is a model to light -- and the
+         * camera goes right round the island every hundred and fifty seconds.
+         * A key at a fixed world bearing would hold its shadow due north-west
+         * all day and let the camera sweep it across the frame, so the shadow
+         * a person sees would be reading the bearing rather than the hour.
+         *
+         * So the day owns the angle *to the camera*: the light comes over one
+         * shoulder at the open, stands behind the viewer and high at midday --
+         * where the shadows are shortest, which is the other half of what a
+         * time of day looks like -- and is over the far shoulder and long by
+         * the bell. `turn` is the camera's own bearing and is added straight
+         * back in, which is what cancels the revolution.
+         */
+        const swing = turn + (0.5 - clamp01(day)) * 2.2;
+        const high = 1.1 + Math.sin(Math.PI * clamp01(day)) * 8.0;
+        key.position.set(Math.sin(swing) * 7.5, high, Math.cos(swing) * 7.5);
         // A floor under it: the island still has to be readable at dusk, and
         // the cards standing on it are the part that matters most then.
         key.intensity = 0.75 + Math.sin(a) * 1.55;

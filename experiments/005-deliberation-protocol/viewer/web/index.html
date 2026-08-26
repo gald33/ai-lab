@@ -9,6 +9,21 @@
 /* palette and shared primitives: tokens.css */
 
 
+/* How much of the frame the floating chrome stands on, top and bottom.
+   **The layout reserves these bands and keeps the island out of them.** The
+   pills used to float over the picture, and on a phone -- where they stack
+   into four rows because there is no width to put them side by side -- they
+   covered the island's whole top edge: the round's state, the counts and the
+   goods key, all of them over the shore and the hill.
+
+   They are declared here, next to the rules that put the chrome where it is,
+   because the layout needs the number and a copy of it in the script would be
+   a second place to change. `scene.js` reads them and gives the island what is
+   left; `render.py`'s `uncovered` checks the declaration against where the
+   chrome actually lands, so a band that stops covering its own pills fails
+   rather than quietly cropping the island. */
+:root { --chrome-top: 0px; --chrome-foot: 0px; }
+
 /* The island is the page. Nothing sits beside it; everything sits on it. */
 html, body { height: 100%; overflow: hidden; background: var(--sea-far); }
 .app { position: fixed; inset: 0; }
@@ -341,6 +356,16 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .sun-halo { opacity: .8; }
 .sun { transition: opacity 1.2s ease; }
 .island.closed .sun { opacity: 0; }
+/* With a model underneath, the island says what time it is with its shadows
+   and the disc goes. A drawn sun over a lit island is the picture saying it
+   twice, and the drawing was the half that could disagree.
+
+   `visibility`, not `display`: the sun is still the page's clock -- it is the
+   only one the fallback island has -- and it stays where it stands so that
+   both paths are one path with one arc in it. `daylight` and `alive` read its
+   position from here, which is the same thing a viewer of the fallback reads
+   it from. */
+.has-3d .sun { visibility: hidden; }
 
 .night { pointer-events: none; opacity: 0;
   transition: opacity 2.4s cubic-bezier(.4,0,.4,1); }
@@ -479,6 +504,14 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
    go is the pair of explanatory notes under the legend, which are a caption for
    a picture there is barely room to draw. */
 @media (max-width: 700px) {
+  /* What the four stacked rows below come to, plus a gap, and what the
+     transport comes to at the other end. **Measured, not guessed** -- the
+     control row runs 10..50, the round's state 62..94, the counts 96..128 and
+     the goods key 132..154, and the transport is 130 tall standing 16 off the
+     bottom. `uncovered` re-measures both against the chrome every run, so a
+     row that grows or moves fails here rather than eating the shore. */
+  :root { --chrome-top: 162px; --chrome-foot: 146px; }
+
   /* A picker, four buttons and a title do not fit across 390px, and of those
      the title is the only thing that is not a control. It goes: the page is
      named in the browser tab, and the board in the picker. What is left of the
@@ -670,11 +703,45 @@ const $ = (id) => document.getElementById(id);
  * huts stack instead of standing in a row.
  */
 const isPortrait = () => innerHeight > innerWidth;
-//: The window's shape, for the layout to widen its viewBox to. Rounded to
-//: twentieths so that dragging a window edge does not rebuild the island on
-//: every pixel -- the scene reflows when this changes, and it should change
-//: when the frame's shape does, not when its size does.
-const frameAspect = () => Math.round((innerWidth / innerHeight) * 20) / 20;
+/**
+ * The window's shape, for the layout to fit its viewBox to.
+ *
+ * Rounded, so that dragging a window edge does not rebuild the island on every
+ * pixel -- the scene reflows when this changes, and it should change when the
+ * frame's shape does, not when its size does.
+ *
+ * **Finer in portrait, and rounded down.** There the layout sizes its own
+ * height from this number so that the viewBox and the window are the same
+ * shape and nothing letterboxes, which is what lets it reserve a band at the
+ * top for the chrome. Rounding to twentieths would leave up to 5% of the frame
+ * as a bar; rounding *down* puts what is left across the width, where it is a
+ * few pixels of sea, rather than down the height, where it would be split
+ * above and below and move every band.
+ */
+const frameAspect = () => {
+  const a = innerWidth / innerHeight;
+  return a < 1 ? Math.floor(a * 100) / 100 : Math.round(a * 20) / 20;
+};
+/**
+ * The bands the floating chrome stands on, as fractions of the window's
+ * height.
+ *
+ * The stylesheet declares them in pixels beside the rules that put the chrome
+ * there -- see `--chrome-top` -- because that is the one place that knows how
+ * tall four stacked rows of pills come to. This turns them into something the
+ * layout can use without knowing the window's size.
+ */
+const chromeBands = () => {
+  const css = getComputedStyle(document.documentElement);
+  const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
+  const h = Math.max(1, innerHeight);
+  //: Never more than half the frame between them. A stylesheet that declared
+  //: a band taller than the window would otherwise leave the island a
+  //: negative box.
+  const top = Math.min(0.35, px("--chrome-top") / h);
+  const foot = Math.min(0.35, px("--chrome-foot") / h);
+  return { top, foot };
+};
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 
@@ -883,7 +950,7 @@ function raise(traders, goods, portrait) {
   const canvas = $("stage");
   const app = document.querySelector(".app");
   try {
-    const geo = layout(traders.length, portrait, frameAspect());
+    const geo = layout(traders.length, portrait, frameAspect(), chromeBands());
     if (!stage) stage = new Stage(canvas, geo); else stage.reframe(geo);
     // Where the settlements go, chosen on the *screen* and then dropped onto
     // the island's ground. Placing them on a ring in island coordinates put
@@ -1110,7 +1177,7 @@ function mount(rows, { manager } = {}) {
   // scene then puts each trader's card at its own hut.
   scene = new Scene($("island"), timeline, reveal, isPortrait(),
                     raise(timeline.traders, timeline.goods, isPortrait()),
-                    frameAspect());
+                    frameAspect(), chromeBands());
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -1270,7 +1337,7 @@ addEventListener("resize", () => {
     // Repainted from the last frame rather than through the player, because
     // live has no player at all and a rebuilt island would otherwise stay empty
     // until the next line arrived on the board.
-    if (scene?.reflow(isPortrait(), frameAspect()) && lastPaint) {
+    if (scene?.reflow(isPortrait(), frameAspect(), chromeBands()) && lastPaint) {
       // A rotated phone is a differently-shaped frame, so the island is reframed
       // and its settlements land somewhere else; the scene takes the new places.
       scene.replace(raise(scene.traders, scene.goods, isPortrait()));

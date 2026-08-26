@@ -63,6 +63,15 @@ export class Stage {
     this.renderer = new THREE.WebGLRenderer({
       canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
     this.renderer.setClearColor(0x000000, 0);
+    //: **Shadows, because they are how the island tells the time now.** The
+    //: page used to draw a sun -- a disc with a halo, crossing the sky behind
+    //: the land -- and the model was lit by a key that moved with it but cast
+    //: nothing. A picture with a sun in it and no shadows under anything is
+    //: the wrong way round: the shadows are what a person reads a time of day
+    //: off, and the disc was doing the job badly on their behalf. So the disc
+    //: goes (`.has-3d .sun` in the stylesheet) and the light does it.
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
 
     // Framed into the box the page left for it, which is no longer the whole
@@ -81,6 +90,23 @@ export class Stage {
     this.scene.add(this.ambient);
     this.key = new THREE.DirectionalLight(0xffd9a8, 2.1);
     this.key.position.set(4, 7, 3);
+    this.key.castShadow = true;
+    //: Orthographic, like the camera, and sized to the island rather than to
+    //: the frame: everything that casts is inside a disc five units across, so
+    //: a box six either way holds the lot with none of the map spent on empty
+    //: sea. `near`/`far` are generous because the key swings from one horizon
+    //: to the other and its distance to the island changes with it.
+    Object.assign(this.key.shadow.camera,
+      { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 40 });
+    //: 1024, not 2048. The light moves with the camera, so the map is redrawn
+    //: every frame and its cost is paid sixty times a second on a phone --
+    //: and at this scale, an island six units across in a map six units wide,
+    //: a quarter of the pixels is still about a centimetre of island each.
+    this.key.shadow.mapSize.set(1024, 1024);
+    //: Off the surface it is cast on, or every lit face shadows itself in
+    //: stripes. Small, because a large one detaches a shadow from its own tree.
+    this.key.shadow.bias = -0.0012;
+    this.key.shadow.normalBias = 0.02;
     this.scene.add(this.key);
     // The fill is kept too, and for the same reason: at dusk the key comes in
     // almost horizontally and lights nothing the camera can see, so whatever
@@ -307,7 +333,14 @@ export class Stage {
   }
 
   ctx() {
-    return { day: this.day, key: this.key, ambient: this.ambient, fill: this.fill };
+    //: `turn` goes with the rest of it because the island's shadows are how it
+    //: says what time it is, and **the camera is going round**. A key fixed in
+    //: the world would put a shadow to the north-west all day and let the
+    //: camera swing it across the frame -- so a viewer would read the bearing
+    //: and think it was the hour. The day owns the light's angle *to the
+    //: camera*; the camera's own revolution is taken back out here.
+    return { day: this.day, turn: this.turn, key: this.key,
+             ambient: this.ambient, fill: this.fill };
   }
 
   play() {

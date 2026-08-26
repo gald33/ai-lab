@@ -213,18 +213,25 @@ function produced(event, { island, anchors, goods }) {
     const from = anchors[`site_${good}`];
     if (!from) continue;
     works.push(...siteWork(good, site, c));
-    // A ring on the ground where the work happened. The site's own parts move,
-    // but a rack or a field plot is small and half behind a tree: this is what
-    // says *here*, and it is the cheapest area on the island.
+    // A patch of light on the ground where the work happened. The site's own
+    // parts move, but a rack or a field plot is small and half behind a tree:
+    // this is what says *here*.
+    //
+    //: **It does not travel.** It used to be a ring that grew out of the site
+    //: like every other ring on this island -- and a production of four goods
+    //: put four of them up at once, with an offer's and a bell's arriving on
+    //: top at four times speed. Somebody watching reported the island as a lot
+    //: of shockwaves and no sense of which was which. A ring that expands is
+    //: a claim that something is spreading; production does not spread, it
+    //: happens in one place, and this now says only that.
     const glow = own(c, clone(goodMat(good, goods.indexOf(good)),
       { transparent: true, opacity: 0 }));
-    const mark = ring(glow, 0.75);
+    const mark = ring(glow, 0.62);
     mark.position.set(from.x, from.y + 0.08, from.z);
     c.root.add(mark);
     works.push((t) => {
       const p = win(t, 0.1, 2.4);
-      mark.scale.set(0.6 + easeOut(p) * 0.9, 0.6 + easeOut(p) * 0.9, 1);
-      glow.opacity = 0.75 * Math.sin(Math.PI * p) ** 0.8;
+      glow.opacity = 0.55 * Math.sin(Math.PI * p) ** 0.8;
     });
     // Bigger the more was made, but only a little: this says which good and
     // roughly how much, and a crate the size of a hut would say neither.
@@ -388,8 +395,15 @@ function offered(event, { anchors, traders, ground }) {
   // timber on an island eight across, and on their own they were a twentieth
   // of what every other event puts on screen. The ring is what carries it out
   // to where somebody watching the whole island will catch it.
+  //
+  //: **The one that is still allowed to travel**, along with the bell's and
+  //: the dawn's. An offer is addressed to the rest of the island, so a ring
+  //: going out from it is what it means; production and a settled deal are
+  //: not, and theirs were taken away. Quieter than it was, because with four
+  //: kinds of ring on screen at once the loudest one was competing rather
+  //: than carrying.
   const pulseMat = own(c, clone(M.glass, { transparent: true, opacity: 0.5 }));
-  const pulse = ring(pulseMat, 1.0);
+  const pulse = ring(pulseMat, 0.9);
   pulse.position.set(post.position.x, post.position.y + 0.05, post.position.z);
   c.root.add(pulse);
 
@@ -404,8 +418,8 @@ function offered(event, { anchors, traders, ground }) {
     scroll.rotation.y = Math.sin(t * 4.2) * 0.1 * flut;
     post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
     const p = win(t, 0.6, 2.8);
-    pulse.scale.set(0.5 + easeOut(p) * 1.8, 0.5 + easeOut(p) * 1.8, 1);
-    pulseMat.opacity = 0.8 * (1 - p ** 2);
+    pulse.scale.set(0.5 + easeOut(p) * 1.15, 0.5 + easeOut(p) * 1.15, 1);
+    pulseMat.opacity = 0.5 * (1 - p ** 2);
     // Taken down at the end rather than left standing: the rope on the card is
     // what says an offer is still open, and two things saying it disagree the
     // moment one of them is a second behind.
@@ -447,6 +461,9 @@ function settled(event, { anchors, goods }) {
 
   // The seal goes down where the deal was struck, which on this island is the
   // market -- not at either hut, because it belongs to neither of them.
+  //
+  //: A stamp rather than a wave: see the note on `produced`'s mark. A deal
+  //: closes in one place too.
   const sealMat = own(c, clone(M.glass, { transparent: true, opacity: 0.6 }));
   const seal = ring(sealMat, MARKET_R);
   seal.position.set(anchors.market.x, anchors.market.y + 0.08, anchors.market.z);
@@ -525,8 +542,12 @@ function belled(event, { island, anchors, traders }) {
   if (bell) borrow(c, bell);
   const y0 = bell?.position.y ?? 0;
 
+  //: **One, where there were three.** A bell ringing out over the island is
+  //: the clearest thing a ring can mean and it keeps its ring; three of them
+  //: chasing each other, over an offer's and a production's, is the pile
+  //: somebody watching called confusing.
   const shockMat = own(c, clone(M.surf, { transparent: true, opacity: 0.55 }));
-  const shocks = [0, 1, 2].map(() => {
+  const shocks = [0].map(() => {
     const s = ring(own(c, shockMat.clone()), MARKET_R);
     s.position.set(anchors.market.x, anchors.market.y + 0.09, anchors.market.z);
     c.root.add(s);
