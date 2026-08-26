@@ -289,8 +289,12 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 /* The line from a card in the margin to the settlement it is about.
    Deliberately quiet: it crosses the whole picture, so it has to be findable
    when looked for and invisible when not. */
-.tether-pin { fill: none; stroke: var(--ink-3, #7d8b95); stroke-width: 1.8;
-  stroke-opacity: .62; }
+/* Undrawn on purpose: `.tether-pin` is where a rope hangs from and the goods
+   fly between, kept in the DOM at the settlement's own point for
+   `viewer/tests/render.py`'s turning check to read -- but the ring itself,
+   drawn on every hut whether or not a card even points there, was reported as
+   a stray leftover mark rather than something the line's own endpoint needed. */
+.tether-pin { fill: none; stroke: none; }
 .island.closed .tethers { opacity: .4; }
 
 .rope-shadow { fill: none; stroke: #000; stroke-opacity: .35; stroke-width: 5;

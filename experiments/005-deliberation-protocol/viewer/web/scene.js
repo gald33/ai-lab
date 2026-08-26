@@ -616,6 +616,14 @@ export class Scene {
    * The mark stays because it is what a rope hangs from and what the goods
    * fly between, and because a settlement with nothing on it is a hut.
    * Re-laid every frame because the island turns under it.
+   *
+   * **Drawn stroke removed (2026-08-26).** The circle read as a gray ring
+   * left sitting on every hut whether or not a card even pointed there --
+   * a leftover mark from the line above, once that line was cut, rather
+   * than something its own endpoint needed. The `.tether-pin` element still
+   * carries the settlement's own point (`index.html` draws it stroke:none),
+   * because `viewer/tests/render.py`'s turning check reads it to confirm the
+   * mark follows the island as the camera turns.
    */
   layTethers() {
     if (!this.tethers) return;

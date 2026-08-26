@@ -16,6 +16,7 @@ Claim before starting: `roadmap claim <key>`
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
+- `next` **`005-viewer-flickering-shadow-rectangle`** — Find and fix the flickering shadow-like rectangle reported mid-island
 - `next` **`006-standby-alarm-has-never-rung`** — Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock
 - `next` **`007-replicate-the-control`** — Replicate the bare control so the lab's best difference rests on more than one draw
 - `next` **`007-third-pass-on-ruin`** — A third ladder pass, to separate the ruin reduction from the control's own movement
@@ -48,6 +49,7 @@ graph TD
   005_render_precision_fix["Stop the instrument handing every agent the same printed number"]
   005_rerun_at_twenty_one_rounds["Re-run 005's four cells at twenty-one rounds"]
   005_transport_retry_audit["Confirm a silent transport retry cannot mask a model refusing the format"]
+  005_viewer_flickering_shadow_rectangle["Find and fix the flickering shadow-like rectangle reported mid-island"]
   005_word_cap_fits_the_protocol["Establish whether the 60-word cap can physically hold the protocol's five steps"]
   006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
   007_replicate_the_control["Replicate the bare control so the lab's best difference rests on more than one draw"]
@@ -366,6 +368,50 @@ graph TD
 >
 > What claim 5 may say: that no content-retry rate stands on a moving
 > denominator. Not that the harness-failure count of zero is complete.
+
+</details>
+
+### `005-viewer-flickering-shadow-rectangle`
+
+- **title:** Find and fix the flickering shadow-like rectangle reported mid-island
+- **status:** ready
+- **arc:** deliberation-protocol
+- **priority:** next
+- **refs:**
+  - `experiments/005-deliberation-protocol/viewer/web/stage.js`
+  - `experiments/005-deliberation-protocol/viewer/web/island-life.js`
+
+<details><summary>evidence</summary>
+
+> Reported 2026-08-26, from a screenshot of the 3D island: a dark, soft-edged
+> rectangular patch sitting in the middle of the scene, distinct from any
+> drawn prop, and seen flickering rather than sitting still.
+>
+> Not yet root-caused, but the likely mechanism is already on record in the
+> code the rectangle's shape points at. `stage.js`'s key light casts a real
+> shadow from an **orthographic** camera sized to a fixed box (`left: -6,
+> right: 6, top: 6, bottom: -6`, `stage.js` around `Object.assign(this.key.shadow.camera, ...)`)
+> -- an orthographic shadow frustum is exactly a rectangle, and its bias is
+> tuned deliberately small ("small, because a large one detaches a shadow
+> from its own tree"). `island-life.js:534` moves that light's position every
+> frame as the sun swings across the day (`key.position.set(Math.sin(swing) *
+> 7.5, high, Math.cos(swing) * 7.5)`), which moves the shadow camera's box
+> with it -- a light re-aimed every frame is a shadow map redrawn every frame,
+> which is exactly where a small bias produces visible shadow acne or a
+> detached edge that would read as flicker rather than as a still artifact.
+>
+> That reasoning is offered as the first thing to check, not a diagnosis: it
+> has not been reproduced against the actual screenshot, and the shape could
+> equally be something else layered in the same area (a clip's ground patch,
+> e.g. the "patch of light lying on the ground" `viewer/README.md`'s
+> "Notes on the drawing" describes replacing the old shockwave rings with, or
+> a z-fighting plane). Rule those out before touching the shadow camera.
+>
+> Done when the rectangle is identified against a running board (which node,
+> drawn by which code) and either fixed or, if it turns out to be an
+> intentional mark misread as an artifact, written up as such in
+> `viewer/README.md`'s "Notes on the drawing" the way this experiment's other
+> visual decisions already are.
 
 </details>
 
