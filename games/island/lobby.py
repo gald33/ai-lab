@@ -7,10 +7,11 @@ not choose partners, does not choose islands, and does not rank anybody.
 
 **It hands out an invite and a time, and then it is done.** It never launches
 an entrant's agent, and it never starts the island manager for the table it
-just settled -- that is for whoever claimed `MANAGE` to do, out of band. This
-module is the lobby's settlement only; the standing island-manager process
-that would actually run a settled table is separate, unbuilt work (build-order
-item 2 onward in `games/island.md`).
+just settled. This module is the lobby's settlement only; the process that
+picks a settled table up and actually deals it is `run_game.py`, which embeds
+a lobby of its own for the reason its docstring gives -- the seed is drawn at
+settlement and never posted, so whoever settles a table is the only party who
+can deal it.
 
 A seat is claimed by a Switchboard peer, not by the name typed after `as` --
 the name is what a `JOIN` line is addressed by and what the settlement shows,
@@ -31,7 +32,9 @@ operator's file, the other is one line of board text saying who is reading.
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import secrets
 import time
 from dataclasses import asdict, dataclass, field
@@ -76,6 +79,12 @@ HOLD = "LOBBY holding this channel: "
 #: settling or lapsing a table frees the slot, so a busy honest opener is
 #: never held back for long.
 MAX_FORMING_PER_PEER = 2
+
+#: How many messages one drain reads. The hub keeps a board for about an hour,
+#: and this is the slice of it a poll takes; a board busier than this between
+#: two polls loses its middle, which `Lobby._window` notices out loud rather
+#: than letting it pass as quiet.
+WINDOW = 500
 
 
 def _stamp(ts: float) -> str:
@@ -167,11 +176,19 @@ class Lobby:
     #: Where this lobby's own state is kept across restarts. Optional: a test
     #: and a one-shot drain need none, a standing process does.
     state_path: Path | None = None
+    #: The open handle carrying this process's flock on the state file.
+    _lock: object | None = None
     #: This process's holder token, once `hold()` has claimed the channel.
     holder: str | None = None
     #: Set when a newer lobby took the channel over. A stood-down lobby reads
     #: nothing and settles nothing; it does not compete for the board.
     stood_down: bool = False
+    #: The highest `seq` this lobby has read. Kept to notice a board that
+    #: outran the window rather than to order anything -- see `_window`.
+    last_seq: int = 0
+    #: How many times that has happened. In the state file, so a restart does
+    #: not report a clean board it never had.
+    missed: int = 0
     seen: set[str] = field(default_factory=set)
     tables: dict[str, Table] = field(default_factory=dict)
     settled: int = 0
@@ -215,6 +232,37 @@ class Lobby:
 
     # --- state across restarts --------------------------------------------
 
+    def lock(self) -> None:
+        """Take an exclusive lock on the state file, for this process's life.
+
+        `hold()` keeps two lobbies off one board; this keeps two off one file.
+        They are different failures: the board is where the second lobby is
+        visible, and the state file is where it is not -- two writers simply
+        interleave, and the loser's seeds are gone with no line anywhere
+        saying so.
+
+        Advisory and process-scoped, which is what `flock` gives and all that
+        is wanted: a lock file left behind by a killed process is not a lock,
+        so a restart is never blocked by its own corpse.
+        """
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        path = self.state_path.with_suffix(self.state_path.suffix + ".lock")
+        handle = path.open("w")
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            raise Held(
+                f"another lobby already holds {path} -- two processes writing "
+                f"one state file interleave their seeds, and the one that "
+                f"loses says nothing. Point this one at its own --state, or "
+                f"stop the other.") from None
+        handle.write(f"{os.getpid()}\n")
+        handle.flush()
+        self._lock = handle
+
     def save(self) -> None:
         """Write what the board does not carry: the seeds, and which messages
         have already been acted on.
@@ -228,6 +276,7 @@ class Lobby:
             return
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"next": self._next, "seen": sorted(self.seen),
+                   "last_seq": self.last_seq, "missed": self.missed,
                    "tables": {tid: asdict(t) for tid, t in self.tables.items()}}
         tmp = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
         tmp.write_text(json.dumps(payload, indent=1) + "\n")
@@ -240,6 +289,8 @@ class Lobby:
             return
         payload = json.loads(self.state_path.read_text())
         self._next = payload.get("next", self._next)
+        self.last_seq = payload.get("last_seq", 0)
+        self.missed = payload.get("missed", 0)
         self.seen = set(payload.get("seen", ()))
         self.tables = {tid: Table(**row)
                        for tid, row in payload.get("tables", {}).items()}
@@ -265,10 +316,11 @@ class Lobby:
         # read before it would witness nothing and refuse every JOIN.
         self._names = {a["agent_id"]: a["name"] for a in self.client.agents()
                        if a.get("name")}
-        rows = sorted(self.client.history(self.channel, limit=500),
+        rows = sorted(self.client.history(self.channel, limit=WINDOW),
                       key=lambda r: r.get("seq", 0))
         if self._stand_down(rows):
             return
+        self._window(rows)
         for msg in rows:
             mid = str(msg.get("id"))
             if mid in self.seen:
@@ -284,10 +336,37 @@ class Lobby:
         self._sweep()
         self.save()
 
+    def _window(self, rows: list[dict]) -> None:
+        """Say so when the board outran the window between two drains.
+
+        The lobby reads the last `WINDOW` messages each time. If more than
+        that arrive in one interval, the oldest of them fall out before they
+        are ever read -- an `OPEN` nobody answered, a `JOIN` that was never
+        seated, and no sign anywhere that anything was dropped.
+
+        `seq` is a hub-wide autoincrement, so a gap between consecutive rows
+        is ordinary and proves nothing. What does prove it is the *window no
+        longer reaching back to where this lobby got to*: if the oldest row
+        now sits above the highest seq already read, everything between the
+        two is gone. Said out loud on the board, because a lobby that missed
+        somebody should not look like a lobby nobody wrote to.
+        """
+        if not rows:
+            return
+        seqs = [int(r.get("seq", 0)) for r in rows]
+        oldest, newest = seqs[0], seqs[-1]
+        if self.last_seq and oldest > self.last_seq + 1:
+            self.missed += 1
+            self.say(f"lines were posted here that this lobby never read: the "
+                    f"board moved from seq {self.last_seq} to {oldest} between "
+                    f"reads, past a {WINDOW}-message window. Anything asked in "
+                    f"between went unanswered -- please post it again.")
+        self.last_seq = max(self.last_seq, newest)
+
     def _forget(self, rows: list[dict]) -> None:
         """Drop message ids that have fallen out of the window we read.
 
-        A message older than the last 500 on this channel is never delivered
+        A message older than the last `WINDOW` on this channel is never delivered
         here again, so remembering it forever is only a file that grows. Skip
         a window that came back empty rather than treating it as evidence.
         """
@@ -485,3 +564,7 @@ class Lobby:
 
 class Refused(Exception):
     """A well-formed line the lobby will not settle, with a reason."""
+
+
+class Held(Exception):
+    """Another process holds this lobby's state file."""

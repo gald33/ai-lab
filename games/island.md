@@ -151,13 +151,30 @@ or dot, and never a seat label or a role, because `g7 seat T1 = T2` is a line
 nobody can read twice the same way. Refused, not renamed -- the lobby repairs
 nothing.
 
-**And it no longer goes deaf while a game is on.** `run_game` embeds the only
-lobby on its channel and a table takes minutes, so every `OPEN` and `JOIN`
-posted during a game used to wait for the last bell, and nothing lapsed on
-time either -- a lobby that looks dead to everybody not already at a table.
-The lobby's drain now runs on the game's own tick (`play(..., tick=)`), and a
-lobby that throws is said out loud rather than allowed to end the round: the
-game is the thing with a clock on it.
+**And it no longer goes deaf while a game is on, or plays one table at a
+time.** `run_game` embeds the only lobby on its channel and a table takes
+minutes, so every `OPEN` and `JOIN` posted during a game used to wait for the
+last bell, nothing lapsed on time, and a table that settled a minute after
+another sat unplayed for the length of somebody else's game -- having been
+told a time. **Each table now plays in its own thread** and the lobby keeps
+reading on the main one. Nothing is shared between games but the ledger, whose
+write is serialised, and a game that raises dies alone and says so: a table is
+not the process. A caller that still plays a table in-line passes
+`play(..., tick=lobby.drain)` and keeps the lobby alive that way.
+
+**Two lobbies, two locks.** `HOLD` keeps a second lobby off the board; a
+`flock` on the state file keeps one off the file (`Lobby.lock`). They are
+different failures -- on the board the second lobby is visible, and in the
+file it is not: two writers interleave and the loser's seeds are gone with no
+line anywhere saying so.
+
+**And a board that outruns the window says so.** A drain reads the last 500
+messages; if more arrive between two polls, the middle is gone -- an `OPEN`
+nobody answered and no sign it was ever posted. `Lobby._window` notices, not
+by looking for gaps in `seq` (a hub-wide autoincrement, where gaps are
+ordinary) but by noticing the window no longer reaches back to where the lobby
+got to, and says so on the board so a missed line looks like a missed line
+rather than like silence.
 
 ### What the lobby must never become
 

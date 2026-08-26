@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 from switchboard.invite import Invite
 
+from games.island import lobby as lobby_module
 from games.island.lobby import Lobby
 
 WORKSPACE = "w_lobby-test"
@@ -512,3 +515,57 @@ def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub):
     lobby.drain()
 
     assert "g4" in lobby.tables and lobby.tables["g4"].opened_by
+
+
+def test_two_lobbies_cannot_hold_one_state_file(hub, tmp_path):
+    """`hold` keeps a second lobby off the board; this keeps one off the file,
+    where a second writer is invisible rather than merely wrong."""
+    from games.island.lobby import Held
+
+    key = generate_key()
+    first = Lobby(client=_client(hub, "lobby", key), state_path=tmp_path / "s.json")
+    first.lock()
+    second = Lobby(client=_client(hub, "lobby-2", key), state_path=tmp_path / "s.json")
+
+    with pytest.raises(Held) as exc:
+        second.lock()
+
+    assert "another lobby already holds" in str(exc.value)
+    # A different file is a different lobby, and is fine.
+    Lobby(client=_client(hub, "lobby-3", key), state_path=tmp_path / "t.json").lock()
+
+
+def test_a_board_that_outran_the_window_is_said_out_loud(hub, monkeypatch):
+    """A missed line must not look like a line nobody wrote."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    talker = _client(hub, "talker", key)
+    talker.post("lobby", "hello")
+    lobby.drain()
+    assert lobby.missed == 0
+
+    # More arrives than one window holds, so the oldest of it falls out before
+    # this lobby ever reads it. Shrinking the window is how a three-message
+    # test reproduces what a busy board does to a 500-message one.
+    talker.post("lobby", "chatter")
+    talker.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    monkeypatch.setattr(lobby_module, "WINDOW", 1)
+    lobby.drain()
+
+    assert lobby.missed == 1
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any("never read" in b for b in said)
+    # And it still settled the line it *did* read.
+    assert list(lobby.tables) == ["g1"]
+
+
+def test_an_ordinary_drain_reports_nothing_missed(hub):
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    talker = _client(hub, "talker", key)
+    for _ in range(3):
+        talker.post("lobby", "chatter")
+        lobby.drain()
+
+    assert lobby.missed == 0 and lobby.last_seq > 0

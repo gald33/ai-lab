@@ -59,6 +59,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -67,7 +68,7 @@ from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
-from .lobby import Lobby, Table
+from .lobby import Held, Lobby, Table
 
 # The island economy this game runs, from 005's tree. A code dependency is not
 # grounding -- 005's own CLAUDE.md says exactly that about its import of 002 --
@@ -193,12 +194,11 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path, tick: Callable[[], None] | None = None) -> dict:
     """One settled table, from its first bell to its record.
 
-    ``tick`` is called on every drain of this room, and is how the lobby keeps
-    reading while a game is on. A table takes minutes, and this runner embeds
-    the only lobby on its channel: without it, every OPEN and JOIN posted
-    during a game goes unanswered until the last bell, and nothing lapses on
-    time either. A lobby that goes deaf whenever it is busy is a lobby that
-    looks dead to everybody who was not already at a table.
+    ``tick`` is called on every drain of this room. `watch` no longer needs
+    it -- it plays each table in its own thread and keeps draining the lobby
+    on its own -- but a caller that plays a table in-line still does, or the
+    lobby goes deaf for the length of the game: every OPEN and JOIN waits for
+    the last bell, and nothing lapses on time either.
     """
     client = Client.from_invite(invite, agent_id=MANAGER)
     # The first `table.goods` of the vocabulary. The table settled its own
@@ -380,16 +380,55 @@ def claim(manager: Client, lobby: Lobby, channel: str,
         print(f"{table.id}: offering to manage it", flush=True)
 
 
+#: One game finishing writes a row; two finishing together would write two
+#: into the same ledger at once. The ledger is append-only and its own reader,
+#: so the write is serialised here rather than being made to cope.
+_LEDGER = threading.Lock()
+
+
+def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
+                ack_seconds: int, out: Path, ledger: Path | None) -> None:
+    """One table, start to ledger row. Runs in its own thread -- see `watch`.
+
+    Nothing it touches is shared except the ledger: the table is its own, the
+    room is its own, and the `Manager` and its `Client` are built inside
+    `play`. A game that raises says so and dies alone; the lobby and every
+    other table go on, because a table is not the process.
+    """
+    try:
+        rec = play(table, invite, episode_seconds=episode_seconds,
+                   ack_seconds=ack_seconds, out=out)
+        path = out / f"{table.id}.json"
+        path.write_text(json.dumps(rec, indent=1) + "\n")
+        sidecar = publish(table, invite, rec, out)
+        with _LEDGER:
+            added, _ = _scores.ingest(
+                path, players=rec["players"],
+                **({"ledger": ledger} if ledger is not None else {}))
+        status = added[0]["status"] if added else "already recorded"
+        print(f"{table.id}: wrote {path} and {sidecar.name}; "
+              f"ledger says {status}", flush=True)
+    except Exception as exc:  # noqa: BLE001 - one table must not take the rest
+        print(f"{table.id}: game failed -- {exc!r}", flush=True)
+
+
 def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby") -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
+    **Each table plays in its own thread.** A game takes minutes, and two
+    tables can settle a minute apart: playing them in turn means the second
+    one's traders sit in a room where nothing happens, for the length of
+    somebody else's game, having been told a time. The lobby keeps reading on
+    this thread throughout, which is why `play` no longer needs to drain it.
+
     Never returns on its own.
     """
     played: set[str] = set()
     claimed: set[str] = set()
+    games: list[threading.Thread] = []
     while True:
         lobby.drain()
         if lobby.stood_down:
@@ -425,17 +464,15 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 continue
             print(f"{table.id}: playing seed={table.seed} "
                   f"workspace={table.workspace}", flush=True)
-            rec = play(table, invite, episode_seconds=episode_seconds,
-                       ack_seconds=ack_seconds, out=out, tick=lobby.drain)
-            path = out / f"{table.id}.json"
-            path.write_text(json.dumps(rec, indent=1) + "\n")
-            sidecar = publish(table, invite, rec, out)
-            added, _ = _scores.ingest(
-                path, players=rec["players"],
-                **({"ledger": ledger} if ledger is not None else {}))
-            status = added[0]["status"] if added else "already recorded"
-            print(f"{table.id}: wrote {path} and {sidecar.name}; "
-                  f"ledger says {status}", flush=True)
+            thread = threading.Thread(
+                target=_play_table, args=(table, invite),
+                kwargs={"episode_seconds": episode_seconds,
+                        "ack_seconds": ack_seconds, "out": out,
+                        "ledger": ledger},
+                name=f"game-{table.id}", daemon=True)
+            games.append(thread)
+            thread.start()
+        games = [t for t in games if t.is_alive()]
         time.sleep(every)
 
 
@@ -511,6 +548,11 @@ def main(argv: list[str] | None = None) -> int:
 
     state = args.state or args.out / f"lobby-{args.workspace}-{args.channel}.json"
     lobby = Lobby(client=_client("lobby"), channel=args.channel, state_path=state)
+    try:
+        lobby.lock()
+    except Held as exc:
+        print(exc)
+        return 1
     lobby.load()
     lobby.hold()
     # The claimant, separate from the lobby that witnesses it -- see `claim`.

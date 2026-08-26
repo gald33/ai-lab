@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -551,3 +552,58 @@ def test_a_lobby_that_throws_mid_game_does_not_stop_the_game(capsys):
     run_game._tick(boom)  # must not raise
 
     assert "continuing" in capsys.readouterr().out
+
+
+def test_tables_play_at_the_same_time_rather_than_in_turn(monkeypatch, tmp_path):
+    """Two tables settling a minute apart must not mean the second one's
+    traders sit in a silent room for the length of somebody else's game."""
+    import threading
+    started, release = [], threading.Event()
+
+    def slow_play(table, invite, **kw):
+        started.append(table.id)
+        release.wait(5)
+        return {"players": {}, "rounds": []}
+
+    monkeypatch.setattr(run_game, "play", slow_play)
+    monkeypatch.setattr(run_game, "publish", lambda *a, **k: tmp_path / "x.json")
+    monkeypatch.setattr(run_game._scores, "ingest", lambda *a, **k: ([], None))
+
+    tables = {f"g{i}": Table(id=f"g{i}", traders=2, episodes=1, rounds=1,
+                             opened_at=0.0, settled=True, seed=1,
+                             workspace=f"w{i}") for i in (1, 2)}
+
+    class StubLobby:
+        stood_down = False
+        def __init__(self, tables): self.tables = tables
+        def drain(self): pass
+
+    monkeypatch.setattr(run_game, "pending_invite", lambda lobby, table: "invite")
+    watcher = threading.Thread(
+        target=run_game.watch,
+        args=(StubLobby(tables),),
+        kwargs={"every": 0.05, "episode_seconds": 1, "ack_seconds": 1,
+                "out": tmp_path},
+        daemon=True)
+    watcher.start()
+    for _ in range(100):
+        if len(started) == 2:
+            break
+        time.sleep(0.05)
+    release.set()
+
+    assert sorted(started) == ["g1", "g2"], "both tables started, neither waited"
+
+
+def test_a_game_that_raises_does_not_take_the_others_with_it(monkeypatch, tmp_path, capsys):
+    def boom(table, invite, **kw):
+        raise RuntimeError("the hub blinked")
+
+    monkeypatch.setattr(run_game, "play", boom)
+    table = Table(id="g9", traders=2, episodes=1, rounds=1, opened_at=0.0,
+                  settled=True, seed=1, workspace="w9")
+
+    run_game._play_table(table, "invite", episode_seconds=1, ack_seconds=1,
+                         out=tmp_path, ledger=None)  # must not raise
+
+    assert "g9: game failed" in capsys.readouterr().out
