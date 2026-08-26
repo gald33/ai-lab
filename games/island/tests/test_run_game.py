@@ -638,15 +638,11 @@ def test_tables_play_at_the_same_time_rather_than_in_turn(monkeypatch, tmp_path)
                              opened_at=0.0, settled=True, seed=1,
                              workspace=f"w{i}") for i in (1, 2)}
 
-    class StubLobby:
-        stood_down = False
-        def __init__(self, tables): self.tables = tables
-        def drain(self): pass
-
+    lobby = _StubLobby(tables)
     monkeypatch.setattr(run_game, "pending_invite", lambda lobby, table: "invite")
     watcher = threading.Thread(
         target=run_game.watch,
-        args=(StubLobby(tables),),
+        args=(lobby,),
         kwargs={"every": 0.05, "episode_seconds": 1, "ack_seconds": 1,
                 "out": tmp_path},
         daemon=True)
@@ -656,6 +652,7 @@ def test_tables_play_at_the_same_time_rather_than_in_turn(monkeypatch, tmp_path)
             break
         time.sleep(0.05)
     release.set()
+    lobby.stood_down = True          # let the watcher end with its test
 
     assert sorted(started) == ["g1", "g2"], "both tables started, neither waited"
 
@@ -696,3 +693,58 @@ def test_a_table_says_the_same_thing_with_one_seat_missing():
     said = run_game.who_is_at_this_table(table)
 
     assert "T1 = scout-v2 (key ?)" in said
+
+
+def test_no_more_tables_play_at_once_than_the_cap(monkeypatch, tmp_path):
+    """The lab pays for the manager of every table that settles, and OPEN is
+    free to whoever writes it. Without a cap the bill is set by strangers."""
+    import threading
+    running, release = [], threading.Event()
+
+    def slow_play(table, invite, **kw):
+        running.append(table.id)
+        release.wait(5)
+        return {"players": {}, "rounds": []}
+
+    monkeypatch.setattr(run_game, "play", slow_play)
+    monkeypatch.setattr(run_game, "publish", lambda *a, **k: tmp_path / "x.json")
+    monkeypatch.setattr(run_game._scores, "ingest", lambda *a, **k: ([], None))
+    monkeypatch.setattr(run_game, "pending_invite", lambda lobby, table: "invite")
+
+    tables = {f"g{i}": Table(id=f"g{i}", traders=2, episodes=1, rounds=1,
+                             opened_at=0.0, settled=True, seed=1,
+                             workspace=f"w{i}") for i in (1, 2, 3, 4)}
+
+    lobby = _StubLobby(tables)
+    watcher = threading.Thread(
+        target=run_game.watch, args=(lobby,),
+        kwargs={"every": 0.05, "episode_seconds": 1, "ack_seconds": 1,
+                "out": tmp_path, "max_concurrent": 2}, daemon=True)
+    watcher.start()
+    for _ in range(60):
+        if len(running) >= 2:
+            break
+        time.sleep(0.05)
+    time.sleep(0.5)
+
+    assert len(running) == 2, f"the cap held: {running}"
+    release.set()
+    lobby.stood_down = True
+
+
+class _StubLobby:
+    """A lobby with tables and nothing else, and a way to stop the watcher.
+
+    `watch` never returns on its own, so a test that starts one has to be able
+    to end it -- a thread left running outlives its own test and reaches into
+    the next one's unpatched code, which is exactly the kind of failure that
+    gets blamed on the next test.
+    """
+
+    stood_down = False
+
+    def __init__(self, tables: dict) -> None:
+        self.tables = tables
+
+    def drain(self) -> None:
+        pass
