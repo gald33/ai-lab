@@ -487,6 +487,8 @@ def run(out: Path, headed: bool = False) -> int:
             problems += alive(browser, base, boards[0], out)
             problems += turning(browser, base, boards[0], out)
             problems += uncovered(browser, base, boards[0], out)
+            problems += afloat(browser, base, boards[0], out)
+            problems += nightfall(browser, base, out)
             problems += stock(browser, base, out)
             problems += carrying(browser, base, out)
             problems += island(browser, base, out)
@@ -780,11 +782,45 @@ def vocabulary(browser, base: str, board: Path) -> list[str]:
     return bad
 
 
+#: What counts as *island* in a canvas that is now sea from edge to edge.
+#:
+#: This used to be "any opaque pixel": the model drew on a transparent canvas
+#: and the only thing on it was the island and a disc of water a little wider
+#: than its shore, so opacity and island were the same question. The sea now
+#: runs to the corners of the frame -- open water rather than a void was asked
+#: for, and it is what a spectator gets -- and under the old rule every pixel
+#: on the page is island, which makes "the card is standing on the island" true
+#: of every card and the check worthless.
+#:
+#: So it is asked by colour, of the two things the island is actually made of.
+#: The water is the only strongly blue surface a spectator sees a lot of
+#: (`sea` #36718f, `sea_deep` #244a63, and both stay blue under every hour's
+#: light because the fill is the sea's own colour); grass, sand, rock, thatch
+#: and surf are all warm or neutral. A blue *crate* is read as water, which
+#: only ever makes this more forgiving, never less.
+#:
+#: A card over open sea is fine and always was -- the cards live in the frame's
+#: margins, and the margins are water. What is not fine is a card over the
+#: land, which is the picture the page exists to show.
+LAND_JS = """
+  const LAND = (px, i) => px[i + 3] > 40
+    && !(px[i + 2] > px[i] + 16 && px[i + 2] > px[i + 1] + 4);
+"""
+
+
 #: Reading the model's own pixels. Everything the life layer does is in the
 #: canvas and none of it is in the DOM, so the alternative was a test handle on
 #: the shipped page -- and a check that measures what a viewer sees is better
 #: than one that measures what the page exposes to be measured.
-SAMPLE = """() => {
+#:
+#: **The land, not the water.** This used to average every opaque pixel, which
+#: was the island and the disc of sea a little wider than its shore. The sea
+#: now runs to the corners of the frame, and it is the one surface on the page
+#: that goes *bluer* as the sun sets -- the fill is the sea's own colour and
+#: dusk turns it indigo -- so an average over the whole canvas is mostly water
+#: fighting the thing being measured, and the island's warming at dusk came out
+#: as no change at all. `LAND_JS` is the same classifier the card checks use.
+SAMPLE = """() => {""" + LAND_JS + """
   const cv = document.getElementById('stage');
   const s = document.createElement('canvas');
   s.width = 96; s.height = Math.max(1, Math.round(96 * cv.height / cv.width));
@@ -793,7 +829,7 @@ SAMPLE = """() => {
   const px = g.getImageData(0, 0, s.width, s.height).data;
   let lum = 0, warm = 0, lit = 0;
   for (let i = 0; i < px.length; i += 4) {
-    if (px[i + 3] < 24) continue;
+    if (!LAND(px, i)) continue;
     lit++;
     lum += (px[i] + px[i + 1] + px[i + 2]) / 3;
     warm += px[i] - px[i + 2];          // red over blue: how warm the light is
@@ -882,6 +918,136 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
     return bad
 
 
+def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The frame is water to its edges -- there is no void round the island.
+
+    The renderer draws into the letterboxed rectangle the `<svg>` fits its
+    viewBox into, and for a long time the bands beside or above that rectangle
+    were simply not drawn: the page's dark backing showed through them, and on
+    any window whose shape did not match the viewBox's, the island sat in a
+    hole with a strip of it above and below. Reported by eye, twice -- once as
+    "the whole background beyond the island should just be the sea", and once
+    as a frozen bar across the top with clouds cut in half in it, which was the
+    same band keeping a strip of an older frame because a scissored clear only
+    clears inside the scissor.
+
+    Both are the same fact and this is the fact: **no pixel of the canvas is
+    unpainted.** Measured in three shapes, because the band only exists when
+    the canvas and the viewBox disagree and a square window has none.
+
+    The band is also checked against the water inside the frame. They are the
+    same mesh under the same lights and so should be the same colour to within
+    rounding; a band painted from a second copy of the day's arithmetic drifted
+    half a stop at noon, which is a seam a viewer sees.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    for label, w, h in (("wide", 1600, 700), ("tall", 820, 1100), ("desktop", 1300, 860)):
+        page = browser.new_page(viewport={"width": w, "height": h})
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(2000)
+        if not page.evaluate("() => document.querySelector('.app')"
+                             ".classList.contains('has-3d')"):
+            page.close()
+            continue
+        seen = page.evaluate("""() => {
+          const cv = document.getElementById('stage');
+          const s = document.createElement('canvas');
+          s.width = cv.width; s.height = cv.height;
+          s.getContext('2d').drawImage(cv, 0, 0);
+          const g = s.getContext('2d');
+          const px = g.getImageData(0, 0, s.width, s.height).data;
+          let clear = 0;
+          for (let i = 3; i < px.length; i += 4) if (px[i] < 250) clear++;
+          const at = (fx, fy) => [...g.getImageData(
+            Math.round((s.width - 1) * fx), Math.round((s.height - 1) * fy), 1, 1).data];
+          return { clear, total: px.length / 4,
+                   // The four extreme edges, where a band is if there is one,
+                   // and the middle of each margin, which is open water.
+                   edges: [at(0, 0), at(1, 0), at(0, 1), at(1, 1),
+                           at(0.5, 0.002), at(0.5, 0.998), at(0.002, 0.5), at(0.998, 0.5)],
+                   inside: at(0.03, 0.5) };
+        }""")
+        page.close()
+        if seen["clear"]:
+            bad.append(f"afloat {label}: {seen['clear']} of {seen['total']} pixels "
+                       f"are unpainted; the island is standing in a void")
+        # Every edge is water, and the same water as the frame's own margin.
+        inside = seen["inside"]
+        for k, e in enumerate(seen["edges"]):
+            gap = max(abs(e[i] - inside[i]) for i in range(3))
+            if gap > 12:
+                bad.append(f"afloat {label}: edge {k} is rgb({e[0]},{e[1]},{e[2]}) "
+                           f"against the frame's own water rgb({inside[0]},"
+                           f"{inside[1]},{inside[2]}); the join shows")
+    return bad
+
+
+def nightfall(browser, base: str, out: Path) -> list[str]:
+    """A new round does not open in the last round's dark.
+
+    The key, the ambient and the fill belong to the stage and outlive the
+    island, so a round watched to its bell leaves them at dusk. `day` is
+    `null` on a board whose schedule line the page cannot read, and the rule
+    for `null` is to leave the light alone -- not knowing the hour is not the
+    same as it being dawn. Between them: a second replay that played from its
+    first frame to its last in the previous round's night.
+
+    Reported by eye as "daylight hasn't changed" on a second replay. The rule
+    is kept, and narrowed: an island that has *never* been told the hour gets
+    the middle of the day, and only one that has been told holds what it was
+    told.
+    """
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 900, "height": 600})
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    page.evaluate(STAGE, {"w": 900, "h": 600, "n": 2, "portrait": False,
+                          "goods": ["bread", "cloth", "iron", "salt"]})
+    seen = page.evaluate("""(goods) => {
+      const st = window.__st;
+      const lum = () => {
+        st.render();
+        const s = document.createElement('canvas');
+        s.width = 90; s.height = 60;
+        const g = s.getContext('2d');
+        g.drawImage(st.canvas, 0, 0, 90, 60);
+        const px = g.getImageData(0, 0, 90, 60).data;
+        let sum = 0;
+        for (let i = 0; i < px.length; i += 4) sum += (px[i] + px[i+1] + px[i+2]) / 3;
+        return sum / (px.length / 4);
+      };
+      // A round played to its bell.
+      st.setDay(1);
+      st.life.update(1, st.ctx());
+      const dusk = lum();
+      // The next round, on a board whose clock this page cannot read.
+      st.build({ traders: ['T1', 'T2'], goods });
+      st.setDay(null);
+      st.life.update(2, st.ctx());
+      const next = lum();
+      // And the round after that, whose clock it can: the hold still holds.
+      st.setDay(1);
+      st.life.update(3, st.ctx());
+      const told = lum();
+      st.setDay(null);
+      st.life.update(4, st.ctx());
+      return { dusk, next, told, held: lum() };
+    }""", ["bread", "cloth", "iron", "salt"])
+    page.close()
+    if not (seen["next"] > seen["dusk"] + 12):
+        bad.append(f"nightfall: a new round opened at {seen['next']:.0f} against "
+                   f"the last one's dusk at {seen['dusk']:.0f}; it inherited the "
+                   f"night it was built on top of")
+    if abs(seen["held"] - seen["told"]) > 4:
+        bad.append(f"nightfall: an island that was told the hour did not hold it "
+                   f"when the clock went quiet ({seen['told']:.0f} -> "
+                   f"{seen['held']:.0f}); a dropped poll should not move the sun")
+    return bad
+
+
+
 def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
     """Nothing the page floats stands on the island -- no card, and no pill.
 
@@ -923,7 +1089,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
         if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
             page.close()
             continue
-        seen = page.evaluate("""() => {
+        seen = page.evaluate("""() => {""" + LAND_JS + """
           const cv = document.getElementById('stage');
           const cr = cv.getBoundingClientRect();
           const s = document.createElement('canvas');
@@ -941,13 +1107,11 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             if (bw <= 0 || bh <= 0) return { name, over: 0, off: true };
             const px = g.getImageData(x, y, bw, bh).data;
             let on = 0;
-            // The island is drawn on a transparent canvas, so anything opaque
-            // behind a card *is* the island.
-            for (let i = 3; i < px.length; i += 4) if (px[i] > 40) on++;
+            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) on++;
             return { name, over: on / (bw * bh), off: false };
           });
         }""")
-        pills = page.evaluate("""(chrome) => {
+        pills = page.evaluate("""(chrome) => {""" + LAND_JS + """
           const cv = document.getElementById('stage');
           const cr = cv.getBoundingClientRect();
           const s = document.createElement('canvas');
@@ -962,7 +1126,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
           let world = 0;
           {
             const px = g.getImageData(0, 0, s.width, s.height).data;
-            for (let i = 3; i < px.length; i += 4) if (px[i] > 40) world++;
+            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) world++;
           }
           return { world, pills: chrome.map(sel => {
             const n = document.querySelector(sel);
@@ -975,7 +1139,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             if (bw <= 0 || bh <= 0) return null;
             const px = g.getImageData(x, y, bw, bh).data;
             let on = 0;
-            for (let i = 3; i < px.length; i += 4) if (px[i] > 40) on++;
+            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) on++;
             return { sel, on };
           }).filter(Boolean) };
         }""", CHROME)
@@ -1207,10 +1371,16 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
                      chrome);
   const st = new Stage(cv, geo);
   st.pause();
-  st.setDay(0.45);
   const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
   const made = st.build({traders, goods});
   st.pause();
+  //: **After the build, which is the order the page does it in.** `build()`
+  //: forgets the hour on purpose -- a new round must not open in the last
+  //: one's dark -- and it lights the island once before returning, so a day
+  //: set before it is thrown away and the still shots come out at whatever
+  //: `island-life` gives an island nobody has told the time to.
+  st.setDay(0.45);
+  st.life.update(0, st.ctx());
   //: A round's ceiling per good, which the page always sets from its timeline.
   //: Without one every non-zero holding is a single box, and a trader that
   //: gives part of a holding away cannot lose one -- the arithmetic a
@@ -1247,7 +1417,15 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // hill is on one side of it and the dock on another. Measured at the bearing
   // it happens to start from, the island looks clear of the frame and then
   // rises out of it a minute later.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_)/;
+  //: `sea` is excluded with the weather, and for the same reason: **it is not
+  //: the island.** It used to be the outermost thing the model drew -- a disc
+  //: of water a little wider than the shore -- so its edge was a fair stand-in
+  //: for the island's own outline. It is sixteen units across now, wider than
+  //: any frame this page has, because open water to the edge of the picture is
+  //: what a spectator asked for instead of a void. Left in, it makes the
+  //: "silhouette" the whole canvas and every question below unanswerable.
+  //: What is left is the coast: shallows, surf, shelf, beach, and the land.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|sea$)/;
   const meshes = [];
   for (const part of made.island.children) {
     if (WEATHER.test(part.name)) continue;
@@ -1345,7 +1523,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
           // would be the layout agreeing with itself, and a layout that
           // ignored the declaration entirely would pass.
           band: Math.round(geo.h * chrome.top),
-          seaTop: top, seaBottom: bottom};
+          shoreTop: top, shoreBottom: bottom};
 }"""
 
 
@@ -1722,7 +1900,7 @@ def island(browser, base: str, out: Path) -> list[str]:
         # them honest: change the tilt or the sea and the band opens back up
         # here, on a phone, where every unit of it is island the reader lost.
         if portrait and built["card0"] is not None:
-            gap = built["card0"] - built["seaBottom"]
+            gap = built["card0"] - built["shoreBottom"]
             if not 0 <= gap <= 48:
                 bad.append(f"island {label}: {gap:.0f} between the island's foot "
                            f"and the first card; the layout and the model "
@@ -1733,9 +1911,9 @@ def island(browser, base: str, out: Path) -> list[str]:
         #: an island that starts at the frame's first row starts underneath the
         #: goods key. This is the same number the stylesheet declares, arriving
         #: through the layout, so the two cannot drift apart without failing.
-        if portrait and built["seaTop"] < built["band"]:
+        if portrait and built["shoreTop"] < built["band"]:
             bad.append(f"island {label}: the island's silhouette reaches "
-                       f"{built['seaTop']:.0f} in the frame at its worst bearing, "
+                       f"{built['shoreTop']:.0f} in the frame at its worst bearing, "
                        f"above the band the chrome has at {built['band']:.0f}; "
                        f"it is drawn under the pills")
         # Two horizontal faces at exactly one height, both of them wide enough
@@ -1926,12 +2104,28 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       //: measured as not happening at all. The layer is advanced at one fixed
       //: moment so the ambient motion is the same in every shot and only the
       //: clip differs.
+      //: **Only the rectangle the island is drawn into.**
+      //:
+      //: The renderer letterboxes: it draws into the rect the `<svg>` fits its
+      //: viewBox into and the bands beside it are a separate pass. Those bands
+      //: used to be transparent, so "opaque" and "inside the frame" were the
+      //: same question and the denominator below could be counted off the
+      //: alpha channel. They are open water now -- a spectator asked not to
+      //: have a void round the island -- and counting alpha made the
+      //: denominator the whole canvas, which cut every clip's measured share
+      //: by the ratio of the two and failed the smallest one. Cropping to the
+      //: frame gives back exactly the old denominator, and the bands cannot
+      //: contribute to a difference either.
+      const r = st.renderer.getPixelRatio();
+      const [vx, vyGL, vw, vh] = st.view;
+      // WebGL counts from the bottom of the canvas; a 2D context from the top.
+      const src = [vx * r, st.canvas.height - (vyGL + vh) * r, vw * r, vh * r];
       const shot = () => {
         st.renderer.render(st.scene, st.camera);
         const s = document.createElement('canvas');
         s.width = 300; s.height = 187;
         const g = s.getContext('2d');
-        g.drawImage(st.canvas, 0, 0, s.width, s.height);
+        g.drawImage(st.canvas, ...src, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
       // Changed pixels as a share of the *island's* own, not of the frame's.
@@ -1949,7 +2143,9 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       st.life.update(3, st.ctx());
       st.stock.rest(holding);
       const lit = shot();
-      for (let i = 3; i < lit.length; i += 4) if (lit[i] > 24) ground++;
+      //: Every pixel of the crop is the island's frame, which is what this
+      //: counted before the water reached the edge of the canvas.
+      ground = lit.length / 4;
       return events.map((e) => {
         // The island with this event's own goods standing on it and nothing
         // happening -- which is what its clip has to be visible *against*.
@@ -2022,12 +2218,28 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       //: measured as not happening at all. The layer is advanced at one fixed
       //: moment so the ambient motion is the same in every shot and only the
       //: clip differs.
+      //: **Only the rectangle the island is drawn into.**
+      //:
+      //: The renderer letterboxes: it draws into the rect the `<svg>` fits its
+      //: viewBox into and the bands beside it are a separate pass. Those bands
+      //: used to be transparent, so "opaque" and "inside the frame" were the
+      //: same question and the denominator below could be counted off the
+      //: alpha channel. They are open water now -- a spectator asked not to
+      //: have a void round the island -- and counting alpha made the
+      //: denominator the whole canvas, which cut every clip's measured share
+      //: by the ratio of the two and failed the smallest one. Cropping to the
+      //: frame gives back exactly the old denominator, and the bands cannot
+      //: contribute to a difference either.
+      const r = st.renderer.getPixelRatio();
+      const [vx, vyGL, vw, vh] = st.view;
+      // WebGL counts from the bottom of the canvas; a 2D context from the top.
+      const src = [vx * r, st.canvas.height - (vyGL + vh) * r, vw * r, vh * r];
       const shot = () => {
         st.renderer.render(st.scene, st.camera);
         const s = document.createElement('canvas');
         s.width = 300; s.height = 187;
         const g = s.getContext('2d');
-        g.drawImage(st.canvas, 0, 0, s.width, s.height);
+        g.drawImage(st.canvas, ...src, 0, 0, s.width, s.height);
         return g.getImageData(0, 0, s.width, s.height).data;
       };
       let ground = 0;
@@ -2042,7 +2254,9 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
       st.life.update(3, st.ctx());
       st.stock.rest(holding);
       const lit = shot();
-      for (let i = 3; i < lit.length; i += 4) if (lit[i] > 24) ground++;
+      //: Every pixel of the crop is the island's frame, which is what this
+      //: counted before the water reached the edge of the canvas.
+      ground = lit.length / 4;
       const out = [];
       // The bell eats what is held; a dawn happens on an island holding
       // nothing. Both are the state their clip really runs in.

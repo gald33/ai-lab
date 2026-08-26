@@ -134,9 +134,9 @@ export const meadowEdge = (x, z) =>
   silhouette(MEADOW.radius, MEADOW.wobble, MEADOW.phase)(Math.atan2(-z, x));
 
 //: Inside this, the island is the fire and the hill: a settlement dropped
-//: there stands on the plaza roof or sinks into the upland. Measured from the
-//: two of them -- the fire's cleared ground reaches 2.01 from the centre, the
-//: upland's outline 1.92.
+//: there stands in the hearth or sinks into the upland. It is the upland that
+//: sets it now -- its outline reaches 1.92 from the centre, and the fire's
+//: clearing, since it stopped being a market's plaza, only 1.34.
 const HOME_IN = 2.15;
 
 /**
@@ -286,9 +286,19 @@ function hut(id, traderMat) {
   add(g, new THREE.CylinderGeometry(0.34, 0.38, 0.42, 24), M.cloth, `hut_${id}_wall`, [0, 0.21, 0]);
   add(g, new THREE.ConeGeometry(0.52, 0.42, 24), M.thatch, `hut_${id}_roof`, [0, 0.63, 0]);
   add(g, new THREE.SphereGeometry(0.05, 12, 10), M.thatchLit, `hut_${id}_finial`, [0, 0.86, 0]);
-  add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), M.timber, `hut_${id}_door`, [0, 0.12, 0.379]);
-  add(g, new THREE.CylinderGeometry(0.022, 0.022, 1.0, 10), M.timber, `hut_${id}_pole`, [0.5, 0.5, 0.12]);
-  add(g, new THREE.BoxGeometry(0.02, 0.26, 0.3), traderMat, `hut_${id}_banner`, [0.5, 0.82, 0.28]);
+  //: **The hut had a flag and does not any more.** With a flag over every good
+  //: site as well, a four-trader seven-good island carried eleven of them, and
+  //: a flag stopped meaning anything: it was just what this island's skyline
+  //: was made of. The rule is now that a flag says *which good is made here*
+  //: and nothing else says anything with a flag.
+  //:
+  //: A hut still has to say whose it is, so the trader's colour moved onto the
+  //: hut itself -- the door it faces the fire with, and a painted band under
+  //: the eaves that is visible from any bearing the camera swings to. That is
+  //: more of the colour than the banner ever showed, on a shape a viewer is
+  //: already looking at, and it costs the island a pole and a scrap of cloth.
+  add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), traderMat, `hut_${id}_door`, [0, 0.12, 0.379]);
+  add(g, new THREE.CylinderGeometry(0.385, 0.4, 0.055, 24), traderMat, `hut_${id}_band`, [0, 0.41, 0]);
   add(g, new THREE.SphereGeometry(0.05, 12, 10), M.glass, `hut_${id}_lantern`, [-0.3, 0.42, 0.3]);
   add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, `hut_${id}_crate_a`, [-0.42, 0.08, -0.2], [0, 0.4, 0]);
   add(g, new THREE.BoxGeometry(0.13, 0.13, 0.13), M.timber, `hut_${id}_crate_b`, [-0.5, 0.2, -0.28], [0, 0.9, 0]);
@@ -493,7 +503,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: fight only shows while the camera moves, so it read as blue flickering
   //: round the island rather than as anything a still screenshot could catch.
   //: Dropped clear of it.
-  add(island, new THREE.CylinderGeometry(4.95, 4.95, 0.12, 96), M.seaDeep, "sea", [0, -0.10, 0]);
+  //: **Wider than the frame, on every frame.** The disc used to stop at 4.95,
+  //: which is a little past the shore and a long way short of the corners: on
+  //: a wide window the camera's frustum reaches past the water and the page's
+  //: own background shows through, so the island sat in a void with a round
+  //: blue puddle under it. Reported as exactly that. Sixteen units covers the
+  //: long side of any viewport this frames, and it is one flat disc that casts
+  //: nothing and receives nothing, so the whole cost is the fill.
+  add(island, new THREE.CylinderGeometry(16, 16, 0.12, 128), M.seaDeep, "sea", [0, -0.10, 0]);
   //: The water follows the coast rather than a circle. A round shallows and a
   //: round line of surf against a wobbled shore put the white water a long way
   //: out on one bearing and up on the sand at another.
@@ -532,37 +549,44 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   const fire = new THREE.Group();
   fire.name = "fire";
   fire.position.set(0.45, ground(0.45, 0.55), 0.55);
+  //: **The fire is a fire, not a plaza.** It inherited the market's footprint
+  //: when it replaced it -- a two-unit sand disc with a two-foot ring of ash
+  //: in the middle of it, on an island whose huts are eight-tenths of a unit
+  //: across -- so the thing that was meant to be a campfire read as the
+  //: largest structure on the island, which is the complaint the market got.
+  //: The clearing is now about a hut and a half wide and the hearth inside it
+  //: is something four people could sit round.
   // The cleared ground round it, which is where the trails end.
-  add(fire, new THREE.CylinderGeometry(0.95, 1.0, 0.06, 48), M.sand, "hearth_ground", [0, 0.03, 0]);
-  add(fire, new THREE.CylinderGeometry(0.42, 0.46, 0.05, 24), M.sandWet, "hearth_ash", [0, 0.07, 0]);
+  add(fire, new THREE.CylinderGeometry(0.62, 0.66, 0.06, 48), M.sand, "hearth_ground", [0, 0.03, 0]);
+  add(fire, new THREE.CylinderGeometry(0.22, 0.24, 0.05, 24), M.sandWet, "hearth_ash", [0, 0.06, 0]);
   // A ring of stones, set by hand rather than drawn as a torus: a hearth is
   // stones somebody carried, and a smooth ring reads as masonry.
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 2 + 0.3;
-    add(fire, new THREE.DodecahedronGeometry(0.1 + (i % 3) * 0.02), M.rock,
-      `hearth_stone_${i}`, [Math.cos(a) * 0.5, 0.09, Math.sin(a) * 0.5],
+    add(fire, new THREE.DodecahedronGeometry(0.055 + (i % 3) * 0.011), M.rock,
+      `hearth_stone_${i}`, [Math.cos(a) * 0.27, 0.06, Math.sin(a) * 0.27],
       [i * 0.7, i * 1.3, i * 0.4]);
   }
   // Logs, leaning in.
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + 0.6;
-    add(fire, new THREE.CylinderGeometry(0.045, 0.055, 0.6, 8), M.timber,
-      `hearth_log_${i}`, [Math.cos(a) * 0.13, 0.2, Math.sin(a) * 0.13],
+    add(fire, new THREE.CylinderGeometry(0.026, 0.032, 0.33, 8), M.timber,
+      `hearth_log_${i}`, [Math.cos(a) * 0.072, 0.11, Math.sin(a) * 0.072],
       [Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5]);
   }
   // The flames. Named so the life layer can find them: they are the one thing
   // on this island that is brighter the later it gets, and it owns the day.
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2;
-    add(fire, new THREE.ConeGeometry(0.13 - i * 0.02, 0.34 + i * 0.1, 8), M.flame,
-      `flame_${i}`, [Math.cos(a) * 0.06, 0.3 + i * 0.05, Math.sin(a) * 0.06]);
+    add(fire, new THREE.ConeGeometry(0.075 - i * 0.012, 0.19 + i * 0.055, 8), M.flame,
+      `flame_${i}`, [Math.cos(a) * 0.035, 0.17 + i * 0.028, Math.sin(a) * 0.035]);
   }
   // The bell keeps its post beside the fire. It is the island's clock, not the
   // market's -- it was only ever hanging there because the stall was.
-  add(fire, new THREE.CylinderGeometry(0.02, 0.025, 0.72, 8), M.timber, "bell_post", [0.78, 0.4, -0.32]);
-  add(fire, new THREE.BoxGeometry(0.36, 0.02, 0.02), M.timber, "bell_arm", [0.62, 0.74, -0.32]);
+  add(fire, new THREE.CylinderGeometry(0.02, 0.025, 0.72, 8), M.timber, "bell_post", [0.52, 0.4, -0.3]);
+  add(fire, new THREE.BoxGeometry(0.3, 0.02, 0.02), M.timber, "bell_arm", [0.39, 0.74, -0.3]);
   add(fire, new THREE.SphereGeometry(0.075, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
-    M.thatchLit, "bell", [0.48, 0.68, -0.32], [Math.PI, 0, 0]);
+    M.thatchLit, "bell", [0.28, 0.68, -0.3], [Math.PI, 0, 0]);
   //: **Smaller than it was, twice.** Every prop was built at about a third
   //: again its drawn size, and between them the market, two settlements, four
   //: sites, the jetty and twenty-two trees left an island with no ground

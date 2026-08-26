@@ -153,6 +153,15 @@ the revolution. What is left is the day: over one shoulder and long at the open,
 behind the viewer and high at midday where the shadows are shortest, over the
 far shoulder and long again by the bell.
 
+**A cloud's shadow goes with the light.** The clouds cross the meadow on their
+own loop and drop a dark patch under themselves, and that patch used to be the
+same darkness at the bell as at midday — while the key had swung almost to the
+horizon and every other shadow on the island had gone long and soft, so the one
+hard dark patch left on screen was the only thing still claiming it was noon.
+It now fades out with the sun and comes back with it, on `sin(π·day)` rather
+than on `day`, because "the sun is up" and "it is late" are not the same curve:
+the sun is up at dawn too, and casts almost nothing.
+
 The disc is hidden with `visibility`, not `display`. It is still the clock the
 **fallback** island has — the one drawn in SVG when there is no WebGL — so it
 stays where it stands and both paths remain one path with one arc in it.
@@ -267,10 +276,66 @@ model replaced had a campfire there all along. The bell keeps its post beside
 it: the bell is the island's clock, and it was only hanging in the stall
 because the stall was there.
 
+**It is a fire, not a plaza.** It inherited the market's footprint when it
+replaced it — a two-unit sand disc with a wide ring of ash in it, on an island
+whose huts are eight-tenths of a unit across — so the thing meant to be a
+campfire read as the largest structure on the island, which is the complaint
+the market got. Reported by eye. The clearing is about a hut and a half wide
+now and the hearth inside it is something four people could sit round.
+
 **Fireflies** come out over the meadow once the light has gone, a little behind
 the fire, which is banked before dusk and built up as it arrives. They are
 nothing at midday on purpose: a bright drifting dot in daylight already means a
-good in flight on this island.
+good in flight on this island. They are also **kept clear of the fire** — they
+were seeded on a ring about the island's centre, which the fire is very nearly
+at, so the densest part of the swarm hung in the smoke, and beside small warm
+flames a firefly is not a firefly, it is a spark coming off the fire.
+
+## The sea reaches the edge of the frame
+
+The renderer letterboxes: it draws into the rectangle the `<svg>` fits its
+viewBox into, because that mapping is what puts a hut under its card. Two
+separate reports came out of the bands beside and above that rectangle.
+
+**The island stood in a void.** The sea was a disc a little wider than the
+shore, and everything past it was the page's own dark backing. The disc is
+sixteen units across now, and the bands are painted by a **first pass** that
+draws the sea alone, through the same camera, at a viewport the full width of
+the canvas — so what lands in them is open water. Two passes rather than a
+clear colour chosen to look like water: it is the same mesh under the same
+lights, so it goes down with the day and through every colour the sea passes
+through without a second copy of that arithmetic being kept in step. The first
+attempt did keep one and it was half a stop out at noon.
+
+**A frozen bar across the top, with clouds cut in half in it.** A scissored
+clear only clears inside the scissor, so the moment the rectangle changed shape
+— a resize, a phone rotating, a second round with a different number of traders
+— a strip of the previous frame was stranded outside the new one and nothing
+ever drew there again. The clear runs with the scissor off now. The animation
+loop was also calling the renderer directly and so skipping the clear
+altogether; it goes through `render()` like everything else.
+
+`render.py:afloat` asks for **no unpainted pixel anywhere on the canvas**, in
+three window shapes, and compares each edge against the water inside the frame.
+
+## Flags say which good is made where, and nothing else
+
+Every settlement used to fly one too, so a four-trader seven-good island carried
+eleven flags and a flag stopped meaning anything — it was just what the skyline
+was made of. Reported by eye. A hut still has to say whose it is, so the
+trader's colour moved **onto the hut**: the door it faces the fire with, and a
+painted band under the eaves that is visible from any bearing the camera swings
+to. That is more of the colour than the banner ever showed, on a shape a viewer
+is already looking at.
+
+The bell and the new day used to run those banners down and back up their poles.
+Both keep the larger half they always had — nightfall over the whole frame, the
+fire taking over, the night lifting, every trader's crates draining and coming
+back — and neither needs a scrap of cloth on a stick to say it.
+
+The offer and the refusal still raise a **post with a notice on it** beside the
+maker's hut. That is a notice board, not a flag, and it is the only thing on the
+island that says an offer stands.
 
 ### There are no ground marks left
 
@@ -434,6 +499,32 @@ two would disagree the first time one was a frame behind.
   case. Colour alone does not identify — the palette clears adjacent pairs, not
   all pairs, which is exactly why goods carry a glyph. The check reads a box's
   own texture and fails below a tenth of the face covered.
+
+### A second replay played in the first one's night
+
+Reported by eye: *"first replay was fine, second replay showed many bugs —
+daylight hasn't changed."*
+
+The key, the ambient and the fill belong to the **stage** and outlive the
+island, so a round watched to its bell leaves them at dusk. `day` is the page's,
+set on every paint, and it is `null` on a board whose schedule line the page
+cannot read — and the rule for `null` is to leave the light where it is, because
+not knowing the hour is not the same as it being dawn. Between them: a second
+round that played from its first frame to its last in the previous round's dark.
+
+The rule is kept and narrowed. `Stage.build()` forgets the hour, so a new island
+is **untold**; `island-life.js` gives an untold island the middle of the day, and
+only an island that has been told the hour holds what it was told. Both halves
+are needed and both are neutered in `render.py:nightfall`, which drives a stage
+to a bell, builds the next round on top of it, and asks for daylight — and then
+asks a *told* island to hold its hour when the clock goes quiet, so the fix
+cannot be "always daylight".
+
+A second thing fell out of chasing it: **the animation loop asked for its next
+frame last**, so one exception anywhere in it meant no frame was ever requested
+again and the island froze exactly as it stood — sun, clouds and camera — with
+the canvas still showing the last thing drawn. It asks first now, and a frame
+that throws says so once instead of sixty times a second.
 
 ### What a check can catch that could not exist before
 
@@ -712,6 +803,18 @@ shelf cell per good, plays a receipt at the scene to confirm the **event
 animations actually run**, and renders a four-trader board, which no saved
 replay is. It **skips** when Playwright or Chromium is absent, so a checkout
 never has to install a browser to run the free suites.
+
+**Measured on the land, not on the canvas.** Several of these checks used to
+ask "is this pixel opaque?" and mean "is this the island?", which was true while
+the model drew on a transparent canvas with a disc of water a little wider than
+the shore. The sea reaches the frame's edge now, so opacity answers *yes*
+everywhere and those questions stopped being questions. Two answers, depending
+on what is being asked: `uncovered` and `alive` classify by colour — water is
+the only strongly blue surface a spectator sees much of, and it stays blue under
+every hour's light because the fill is the sea's own colour — and `mechanics`
+crops its shots to the rectangle the island is drawn into, which is exactly the
+denominator it had before. A card over open sea was always fine; the cards live
+in the margins and the margins are water.
 
 And on the live side: `rowsFromState` against `tests/fixtures/snapshot-sample.json`,
 a real snapshot from a real hub rather than a shape assumed by hand — this is
