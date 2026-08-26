@@ -113,7 +113,14 @@ def test_a_settled_table_plays_through_and_lands_on_the_scoreboard(settled, hub,
     saved = json.loads(board.read_text())
     assert saved["workspace"] == table.workspace
     assert saved["channel"] == "island"
-    assert {"seq", "at", "author", "body"} == set(saved["messages"][0])
+    assert {"seq", "at", "author", "body", "signature"} == set(saved["messages"][0])
+    # The manager's reading of each line's signature travels with the board:
+    # it is not re-verifiable, and `verify.py` says so, but it is what lets a
+    # later reader check that a seat's lines carry the seat's witnessed key.
+    signed = [m for m in saved["messages"] if m["author"].startswith("T")]
+    assert signed and all(m["signature"]["status"] == "verified" and
+                          m["signature"]["key"] in table.keys.values()
+                          for m in signed)
     authors = {m["author"] for m in saved["messages"]}
     assert "manager" in authors and "T1" in authors, (
         "the board names seats, the way every saved board already does")

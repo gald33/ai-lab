@@ -257,8 +257,13 @@ document said anyone could, on the grounds that a board is checkable against the
 seed. That was wrong, and the correction is worth keeping rather than quietly
 editing away.
 
-What *is* checkable holds up. A board is verifiable against the seed that drew
-the island:
+What *is* checkable holds up — and is now a program rather than an argument.
+`python -m games.island.verify <board.json>` reads a published board and the
+reveal sidecar beside it and recomputes what can be recomputed, printing
+denominators for everything and naming what it could not check. On the live
+game played on 2026-08-26 it reports `draw 2/2, authorship 10/10, production
+12/12, exchange 2/2, timing 2/2`. A board is verifiable against the seed that
+drew the island:
 
 - **production** — a receipt must equal `share × capacity`, and capacity comes
   from the seed;
@@ -266,6 +271,22 @@ the island:
 - **timing** — the bells are on the board, in absolute UTC;
 - **refusal** — the grammar is public and the state is reconstructable, so a
   well-formed line that should have settled and did not is visible.
+
+Two things the checker does **not** do, said in its own docstring rather than
+left for somebody to assume:
+
+- **signatures are not re-verifiable from a saved board.** This document said
+  publishing the room key "makes authorship independently checkable by anyone
+  afterwards". It does not, and could not: the Switchboard client verifies at
+  read time and hands its caller a *verdict*, so the bytes never reach the
+  saved file. The board now carries that verdict — the status and the key each
+  line was verified under — and the checker uses it for the check that is
+  worth most: a line attributed to a seat must carry the key the **lobby**
+  witnessed for that seat, in public, before the round. That catches a
+  misattributed line. It does not catch a manager that forged the verdicts,
+  and nothing inside one party's copy ever could.
+- **omission** is invisible here, which is condition 3 and is why condition 3
+  exists.
 
 Two things that argument never reached. One of them has since been fixed; the
 other is why the lab still runs this.

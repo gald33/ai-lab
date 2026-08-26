@@ -289,6 +289,15 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
                   seconds=round(time.time() - started, 1))
 
 
+def _verdict(signature: dict | None) -> dict:
+    """The manager's reading of one line's signature, kept small on purpose."""
+    block = signature or {}
+    kept = {"status": block.get("status", "unsigned")}
+    if isinstance(block.get("key"), str):
+        kept["key"] = block["key"]
+    return kept
+
+
 def save_board(mgr: Manager, out: Path) -> Path:
     """The channel as a file, in the shape the viewer and the ledger read.
 
@@ -304,7 +313,17 @@ def save_board(mgr: Manager, out: Path) -> Path:
                  "author": names.get(str(m.get("from") or ""),
                                      MANAGER if str(m.get("from")) == mgr.client.agent_id
                                      else str(m.get("from") or "?")),
-                 "body": m.get("body")}
+                 "body": m.get("body"),
+                 # What the manager's own client made of the signature when it
+                 # read the line, and the key it verified under. **Not a
+                 # signature**: the client verifies at read time and hands its
+                 # caller a verdict, so the bytes never reach here and a later
+                 # reader cannot re-verify -- see `verify.py`, which says so
+                 # rather than implying otherwise. What it does buy is the
+                 # check that matters most: a line attributed to a seat has to
+                 # carry the key the lobby witnessed for that seat, in public,
+                 # before the round.
+                 "signature": _verdict(m.get("signature"))}
                 for m in rows if isinstance(m.get("body"), str)]
     path = out / f"board-{mgr.client.config.workspace}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -374,6 +393,8 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     # here, the seed becomes recomputable by anybody from lines that were on
     # the lobby's board before the draw -- which is what stops a manager
     # re-rolling an island until it suited somebody.
+    payload["seat_keys"] = {table.label(peer): key
+                            for peer, key in table.keys.items()}
     payload["draw"] = {
         "method": table.draw,
         "commit": table.commit,
