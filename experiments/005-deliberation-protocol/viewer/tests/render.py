@@ -1038,6 +1038,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   st.aim(was);
   return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
+          card0: geo.cards.length ? geo.cards[0].y : null,
           seaTop: top, seaBottom: bottom};
 }"""
 
@@ -1088,6 +1089,18 @@ def island(browser, base: str, out: Path) -> list[str]:
         # the sea, and there the cut falls in open water where nothing reads it;
         # in portrait the island was sliced flat with the land going over the
         # edge, which is what a phone showing the browser's bars looked like.
+        # And the dead band under it. The island is a disc under a tilted
+        # camera, so it is not as tall as it is wide, and the layout starts the
+        # cards where it actually ends rather than where its square box does --
+        # from two numbers that were measured off the model. This is what keeps
+        # them honest: change the tilt or the sea and the band opens back up
+        # here, on a phone, where every unit of it is island the reader lost.
+        if portrait and built["card0"] is not None:
+            gap = built["card0"] - built["seaBottom"]
+            if not 0 <= gap <= 48:
+                bad.append(f"island {label}: {gap:.0f} between the island's foot "
+                           f"and the first card; the layout and the model "
+                           f"disagree about how tall the island is")
         #: A little clear of it, not merely inside: an island whose shore is
         #: flush with the frame's first row already reads as running off it.
         if portrait and built["seaTop"] < 8:
@@ -1497,6 +1510,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   st.aim(was);
   return {traders, seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
+          card0: geo.cards.length ? geo.cards[0].y : null,
           seaTop: top, seaBottom: bottom};
 }"""
 
@@ -1547,6 +1561,18 @@ def island(browser, base: str, out: Path) -> list[str]:
         # the sea, and there the cut falls in open water where nothing reads it;
         # in portrait the island was sliced flat with the land going over the
         # edge, which is what a phone showing the browser's bars looked like.
+        # And the dead band under it. The island is a disc under a tilted
+        # camera, so it is not as tall as it is wide, and the layout starts the
+        # cards where it actually ends rather than where its square box does --
+        # from two numbers that were measured off the model. This is what keeps
+        # them honest: change the tilt or the sea and the band opens back up
+        # here, on a phone, where every unit of it is island the reader lost.
+        if portrait and built["card0"] is not None:
+            gap = built["card0"] - built["seaBottom"]
+            if not 0 <= gap <= 48:
+                bad.append(f"island {label}: {gap:.0f} between the island's foot "
+                           f"and the first card; the layout and the model "
+                           f"disagree about how tall the island is")
         #: A little clear of it, not merely inside: an island whose shore is
         #: flush with the frame's first row already reads as running off it.
         if portrait and built["seaTop"] < 8:

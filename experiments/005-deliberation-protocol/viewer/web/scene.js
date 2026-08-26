@@ -163,6 +163,25 @@ export function closedPath(pts, tension = 0.5) {
  * Either way this returns the card positions and the box the island is then
  * framed into, and the two do not overlap by construction.
  */
+//: Island units across the frame the stage fits the island into. The same
+//: number as `EXTENT * 2` in `stage.js`, which cannot be imported here because
+//: it brings three.js with it.
+const ISLAND_ACROSS = 8.7;
+
+//: How far the island reaches above and below its own centre once drawn, in
+//: multiples of the scale it is framed at.
+//:
+//: **It is not as tall as it is wide.** It is a disc under a tilted camera, so
+//: its width is the sea's full diameter and its height is that diameter
+//: foreshortened -- and only its top is given back, by the trees and the hill
+//: standing on it. A square band round it reserves a sixth of its own height
+//: with nothing in it, which on a phone is space the island could have had.
+//:
+//: Measured off the model rather than derived from the tilt, and `island()`
+//: re-measures it every run against the card below it, so a change to the
+//: camera or the sea cannot leave these behind.
+const ISLAND_UP = 4.27, ISLAND_DOWN = 3.21;
+
 function cardPlan(n, w, h, cardH, portrait) {
   const gap = 14;
   const pitch = CARD_TOP + cardH + gap;
@@ -184,24 +203,32 @@ function cardPlan(n, w, h, cardH, portrait) {
     //: quantities, utility, the autarky mark -- sat behind the controls on
     //: every real phone.
     const below = 260;
+    //: The scale the island ends up drawn at: its box is square, so the fit is
+    //: by width and the island is as wide as the frame is.
+    const scale = w / ISLAND_ACROSS;
     //: Room above the island for the part of it that does not fit its own box.
-    //:
-    //: The sea disc is wider than the frame the island is fitted to -- 4.95
-    //: island units against 4.35 -- so it overhangs the box by about a
-    //: fourteenth of the box's height at each end. Below, that overhang falls
-    //: into the gap over the cards and reads as more sea. Above, it fell off
-    //: the top of the frame: on a phone showing the browser's bars the island
-    //: was cut flat across its own shore, with the land running off the edge.
-    const spill = Math.round(islandH * 0.07) + 12;
+    //: The trees on the far shore reach higher than the box does, and on a
+    //: phone showing the browser's bars the island was cut flat across its own
+    //: shore with the land running off the top of the frame.
+    const spill = Math.max(0, Math.round(ISLAND_UP * scale - islandH / 2)) + 14;
+    //: Where the island actually ends, which is well above where its box does.
+    //: Kept separate from where the cards start, so that a check comparing the
+    //: two is asking a question rather than restating one number twice.
+    const islandFoot = Math.round(spill + islandH / 2 + ISLAND_DOWN * scale);
+    const foot = islandFoot + 16;
     const cards = Array.from({ length: n }, (_, i) => {
       const row = Math.floor(i / 2);
       // A row with one card in it sits in the middle rather than off to a side.
       const alone = i === n - 1 && n % 2 === 1;
       return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-               y: spill + islandH + 8 + row * pitch };
+               y: foot + row * pitch };
     });
     return { cards, islandBox: { x: 0, y: spill, w, h: islandH },
-             h: spill + islandH + rows * pitch + below };
+             //: Where the island stops drawing, which is above where its box
+             //: stops. The cards start just below it, and a check re-measures
+             //: it against what the model actually draws.
+             islandFoot,
+             h: foot + rows * pitch + below };
   }
   //: A column's width, from the card's own: the margin is as wide as what
   //: stands in it and no wider, because every unit of it is island.
