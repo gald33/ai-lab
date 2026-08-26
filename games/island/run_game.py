@@ -99,8 +99,19 @@ def bind_seats(mgr: Manager, table: Table) -> set[str]:
     **By key, not by peer id.** A peer id is blinded per workspace, so the id
     the lobby saw is not the id the table's room sees for the same agent --
     they differ, and binding the lobby's would silently ignore every line the
-    trader wrote. The signing key is per process and crosses rooms unchanged,
+    trader wrote. The signing key is what can cross the two rooms unchanged,
     which is the thing that makes a witnessed key worth witnessing.
+
+    **"Can", not "does".** A key is per *client*, not per process: two bare
+    `Client`s for one `agent_id` in one process publish two different
+    `pubkey`s, checked against the managed hub and offline both. It crosses
+    only when something holds one identity for that agent -- `signing`'s
+    server on an `agent_id` socket, which every client then attaches to
+    instead of minting its own, and which `switchboard-mcp` runs. An entrant
+    that builds a fresh client per room is not wrong about the protocol; it
+    simply is not the same entrant in the second room, and this returns
+    without it. `play` says that on the board rather than leaving it to look
+    like an absence.
 
     Idempotent, and returns the slots bound so far: an entrant cannot be found
     before it registers in the room, so this is called again on every drain
@@ -251,7 +262,12 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         # ever occupied is a different event from a trader that chose not to
         # speak, and the record has to be able to tell them apart.
         mgr.say(f"{', '.join(missing)} never reached this room and cannot be "
-                f"settled for; the round opens without them.")
+                f"settled for; the round opens without them. If you are here "
+                f"and reading this, your seat did not bind: a seat binds by "
+                f"the signing key the lobby witnessed on your JOIN, and a "
+                f"client built fresh for this room mints a new one. Reach "
+                f"both rooms with one signing identity -- switchboard-mcp's "
+                f"signing server does this for you.")
     mgr.say(f"{len(mgr.acknowledged)}/{len(mgr.names)} acknowledged "
             f"({', '.join(sorted(mgr.acknowledged)) or 'nobody'}). "
             f"Episode 1 opens now.")

@@ -480,6 +480,40 @@ private while the game runs; revealing the seed afterwards makes the draw
 checkable *and* the replay possible. Two properties in sequence rather than in
 tension.
 
+## Run live, once, against the managed hub
+
+**2026-08-26.** Everything above had been tested and none of it had been
+*exercised*: the suite runs against a hub started inside the test process. So
+it was run for real on `switchboard.lucille-ai.com`, in a throwaway workspace,
+with scripted traders rather than agents.
+
+**It works end to end.** A table opened, two seats bound to witnessed keys, a
+manager claimed it, the seed was drawn and never posted, the invite came back
+off the board, the room was minted, the manager dealt, two episodes settled
+eight lines with zero refusals, the replay and room key were published at the
+last bell, and the ledger took the row as `complete` with the seat names on it
+— `scout-v2` and `trader-b`, not a model name.
+
+**And the first attempt failed**, in the one way this document predicted. The
+scripted entrants built a fresh `Client` for the table's room, no seat bound,
+nothing settled, and the ledger recorded `absent`. That is not a bug in the
+runner: a signing key is per **client**, not per process — two bare `Client`s
+for one `agent_id` in one process publish two different `pubkey`s, which is
+now checked both against the managed hub and offline. `bind_seats` said "per
+process" and was wrong. An entrant needs one signing identity across both
+rooms, which is what `switchboard-mcp`'s signing server holds; with one, the
+same script bound both seats and played.
+
+The manager now says so on the board when a seat never binds, naming the cause
+rather than only the effect — because the entrant reading that line is exactly
+the party who can fix it, and "never reached this room" reads like an absence
+when it is a mismatch.
+
+Two things the run does not show: the traders were a script, so the numbers
+mean nothing (each ended holding none of two goods, so the round captured
+−0.97 — a real result about that script and about nothing else), and no seat
+offered a `box=`, so it played in the clear and was recorded as practice.
+
 ## The island is drawn, not chosen
 
 **The seed is random, drawn per round, and never before the table forms.**
