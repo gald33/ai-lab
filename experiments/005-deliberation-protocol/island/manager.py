@@ -59,6 +59,23 @@ MANAGER = "manager"
 #: payloads. Kept only to recognise one on an **old** board: sealing is
 #: Switchboard's `whisper` now, which never puts a body on the channel at all.
 SEALED_MARKER = "SEALED "
+
+#: The heads this manager settles, plus the acknowledgement. Used to tell a
+#: move apart from chatter when it arrives from a key that took no seat: the
+#: first gets a receipt every time, the second gets one line per key.
+_MOVES = ("PRODUCE", "PROPOSE", "APPROVE", "ACK")
+
+
+def _is_a_move(text: str) -> bool:
+    """Is this somebody trying to play, rather than talking?
+
+    Deliberately loose -- it reads the first word and nothing else. A line
+    that is *nearly* a move is exactly the line whose author most needs
+    telling, and this decides who gets an answer rather than what settles.
+    Nothing here repairs or accepts anything: `parse` still governs that.
+    """
+    head = text.strip().split(" ", 1)[0].strip().upper() if text.strip() else ""
+    return head.rstrip(".:,") in _MOVES
 _EPS = 1e-9
 
 
@@ -135,6 +152,10 @@ class Manager:
     #: one": the lobby is what witnesses this key today; nothing here draws
     #: it from anywhere but its caller.
     keys: dict[str, str] = field(default_factory=dict)
+
+    #: Seats already told, this episode, that something is waiting privately.
+    #: Cleared at every bell -- see `_point_at_inbox`.
+    _pointed: set[str] = field(default_factory=set)
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -275,11 +296,12 @@ class Manager:
             if msg.get("unreadable"):
                 self._refuse(author, "sealed",
                             "this was sealed to somebody else, or to a key "
-                            "this manager does not hold", "<sealed>")
+                            "this manager does not hold", "<sealed>",
+                            private=True)
                 continue
             body, _forecast = unwrap_forecast(msg.get("body"))
             self._consider(author, body if isinstance(body, str) else "",
-                           msg.get("signature"))
+                           msg.get("signature"), private=True)
 
     def _intrusion(self, peer: str, msg: dict) -> None:
         """Somebody in this room who is not at this table has written in it.
@@ -300,8 +322,25 @@ class Manager:
         was not**, which is what lets a ruined game be kept, counted and left
         unranked instead of quietly scored.
 
-        Said out loud **once per key**, not once per line: a stranger writing
-        ten lines should not make the manager write ten more.
+        Said out loud **once per key** for chatter -- a stranger writing ten
+        lines should not make the manager write ten more.
+
+        **But a well-formed move is answered every time**, because the two are
+        not the same event. Somebody writing `PRODUCE salt=0.70 iron=0.30` is
+        not loitering; they are playing, and their move has just vanished.
+        Found by the first entrant to play here (2026-08-27), who whispered a
+        correctly formed PRODUCE three times, was never told it settled
+        nothing, and reported afterwards that a per-message receipt "would
+        have saved the entire g1 round". They were right: the once-per-key
+        line had gone out three episodes earlier and read as a note about
+        somebody else.
+
+        This is the same asymmetry the refusals already fix in the other
+        direction. A malformed line from a bound seat is refused by name, with
+        the reason, every time. A well-formed line from a seat that never
+        bound was the one case that got silence -- which is the worst place in
+        this design to put it, because everything looks correct from the
+        author's side.
         """
         signature = msg.get("signature") or {}
         key = signature.get("key") if signature.get("status") == "verified" else None
@@ -323,9 +362,30 @@ class Manager:
                     f"this table. It settles nothing and has no standing. "
                     f"This round is recorded as one that had company, and a "
                     f"round with company is not ranked.")
+        if _is_a_move(text):
+            # Every time, and to the writer rather than the room: this is
+            # somebody's move disappearing and they cannot see why. Whispered
+            # if they can be reached at all -- an unbound writer often cannot
+            # be, which is why the board is the fallback rather than the
+            # default.
+            head = text.strip().split()[0].upper()
+            note = (f"that was a well-formed {head} and it settled nothing, "
+                    f"because this key took no seat at this table. Your seat "
+                    f"is bound to the signing key the lobby witnessed on your "
+                    f"JOIN, and you are writing under a different one. Check "
+                    f"that your signing identity here is the same one the "
+                    f"lobby saw -- a second client, or a second install of it, "
+                    f"mints a new key and silently signs as itself. Nothing "
+                    f"you send will settle until they match.")
+            try:
+                self.client.whisper(peer, note)
+                return
+            except Exception:      # noqa: BLE001 -- fall through to the board
+                pass
+            self.say(f"@{mark} {note}")
 
     def _consider(self, author: str, text: str,
-                 signature: dict | None = None) -> None:
+                 signature: dict | None = None, *, private: bool = False) -> None:
         if author not in self.holders:
             return
         self.spoke.add(author)
@@ -370,8 +430,28 @@ class Manager:
         except Refused as exc:
             self._refuse(author, type(action).__name__.lower(), str(exc), text)
 
-    def _refuse(self, author: str, kind: str, reason: str, text: str) -> None:
-        """Say no, and keep why. The reason is the diagnostic, not the count."""
+    def _refuse(self, author: str, kind: str, reason: str, text: str,
+                *, private: bool = False) -> None:
+        """Say no, and keep why. The reason is the diagnostic, not the count.
+
+        **Answered on the channel it arrived on.** A line whispered to this
+        manager is refused by whisper; a line said on the board is refused on
+        the board. Both halves of that matter and both were got wrong at
+        first:
+
+        - *Delivery.* A trader that whispered is watching its inbox. A receipt
+          posted to the board is a receipt where the sender may not be
+          looking, and an entrant has already read a board it was not
+          watching as a manager that had gone quiet.
+        - *Privacy.* A sealed round exists so a plan stays off the board.
+          Refusing it in public announces that this seat sent one and why it
+          failed, which is a slice of the thing the sealing was for.
+
+        If the whisper cannot be delivered -- no exchange key on the roster,
+        a registration that has expired -- it falls back to the board without
+        the reason, naming only that something private did not settle. Silence
+        is the one option that is never right.
+        """
         self.refused += 1
         # A sealed line is kept as the marker alone. Recording the ciphertext
         # would put a plan the trader paid to hide into the run record, which
@@ -381,7 +461,86 @@ class Manager:
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
                               "line": kept})
+        if self._whisper_to(author, f"not settled: {reason}"):
+            self._point_at_inbox(author)
+            return
+        if private:
+            # Reached nobody, and the line was private. Say that much and no
+            # more: the reason belongs to the trader, and the board is not
+            # where it was sent.
+            self.say(f"@{author} something you sent privately did not settle, "
+                    f"and this manager could not reach you to say why -- "
+                    f"register in this room so it can.")
+            return
         self.say(f"@{author} not settled: {reason}")
+
+    def _point_at_inbox(self, author: str) -> str | None:
+        """Say on the board that a private note is waiting, and nothing else.
+
+        **Because a whisper announces itself to some agents and not others.**
+        Switchboard's MCP layer bumps presence on every tool call and returns
+        `unread_dms` with the result, so an agent holding those tools watches
+        a counter rise even if it never opens its inbox. The CLI does not:
+        `say` hands back the message record and no count. Both entrants who
+        played here used the CLI, so a refusal sent only by whisper would have
+        been *less* visible to them than the board line it replaced -- which
+        would make this whole change a regression dressed as a fix.
+
+        So the reason goes privately and a pointer stays public. The pointer
+        carries no reason, no line and no quantity: it says a named seat has
+        something waiting. That leaks the fact of a refusal, which the board
+        already showed, and none of its content, which the board never should
+        have.
+
+        Once per seat per episode -- enough that nobody misses it, not so much
+        that a trader having a bad episode fills the board.
+        """
+        if author in self._pointed:
+            return None
+        self._pointed.add(author)
+        self.say(f"@{author} something you sent did not settle. The reason is "
+                f"waiting for you privately -- read your inbox. (If you are on "
+                f"the CLI, `inbox` or `checkin`: unlike the MCP tools, it does "
+                f"not tell you an unread note is there.)")
+        return None
+
+    def _peer_of(self, author: str) -> str | None:
+        """The agent id behind a seat label, off the alias this manager built."""
+        for peer, slot in self.alias.items():
+            if slot == author:
+                return peer
+        return None
+
+    def _whisper_to(self, author: str, text: str) -> bool:
+        """Seal a line back to one trader. False if it could not be delivered.
+
+        **Everything the manager says to one trader goes this way**; only
+        announcements to the room are said on the board. A refusal is
+        addressed to whoever wrote the line, so it is theirs -- the board does
+        not need it, and in a sealed round it is a slice of exactly what the
+        sealing was for.
+
+        Never raises. A manager that dies trying to explain a refusal has
+        turned a bad line into a lost round, and delivery here depends on
+        things outside its control: an exchange key on the roster, and a
+        registration that has not expired.
+
+        **Delivered is not the same as readable.** Sealing is pairwise, so a
+        trader that read the roster before this manager was on it holds no key
+        to open what this seals -- and receives the envelope rather than the
+        reason, while `whisper` reports success. `play` registers the manager
+        before any trader can arrive, which is what makes this safe in
+        practice; the public pointer in `_point_at_inbox` is what makes it
+        survivable when it is not.
+        """
+        peer = self._peer_of(author)
+        if not peer:
+            return False
+        try:
+            self.client.whisper(peer, text)
+            return True
+        except Exception:      # noqa: BLE001 -- see the docstring
+            return False
 
     # --- settling ----------------------------------------------------------
 
@@ -491,6 +650,9 @@ class Manager:
     def open_episode(self) -> None:
         """Ring the episode in. Nothing settles until this has been called."""
         self.episode_open = True
+        # A new episode is a new chance to be told, so the pointer to a
+        # private reason is offered again rather than once per round.
+        self._pointed.clear()
 
     def close_episode(self) -> dict[str, dict[str, float]]:
         """The bell. Open proposals lapse, holdings are eaten, labour returns.

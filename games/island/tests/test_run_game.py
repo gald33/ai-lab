@@ -924,3 +924,122 @@ def test_the_archivist_in_the_room_does_not_cost_a_table_its_ranking(settled, hu
     run_game.bind_seats(mgr, table)
 
     assert run_game.sealable(mgr), "and still sealable with it watching"
+
+
+def test_a_vanishing_move_is_answered_every_time(settled, hub, tmp_path):
+    """The gap the first real entrant fell into, reported in their own words.
+
+    They whispered a correctly formed PRODUCE three times from a client whose
+    key their seat was not bound to. Each one settled nothing and each one got
+    silence: the once-per-key notice had gone out three episodes earlier and
+    read as a note about somebody else. Chatter still gets one line per key --
+    a stranger writing ten lines must not make the manager write ten more --
+    but a move is answered every time, because a move vanishing is the thing
+    its author cannot see.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    stranger = Client.from_invite(invite, agent_id="not-a-seat")
+    stranger.register(name="not-a-seat", kind="local", branch="m", task="")
+
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="")
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    mgr.open_episode()
+
+    def said():
+        return [str(m.get("body", "")) for m in mgr.client.history("island", limit=200)]
+
+    # Chatter: one notice, and no more however often it repeats.
+    stranger.post("island", "hello, is this the island?")
+    stranger.post("island", "hello again")
+    mgr.drain()
+    assert sum("took no seat" in b for b in said()) == 1
+
+    # A move: answered on its own terms, every single time -- and answered to
+    # the writer rather than to the room, because a refusal is addressed to
+    # whoever wrote the line and the board does not need it.
+    stranger.agents()          # both sides read the roster before sealing
+    mgr.client.agents()
+    stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
+    mgr.drain()
+    stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
+    mgr.drain()
+
+    got = [str(m.get("body", "")) for m in stranger.inbox()]
+    receipts = [b for b in got if "settled nothing" in b]
+    assert len(receipts) == 2, "a move that vanished is answered each time"
+    assert "PRODUCE" in receipts[0]
+    # And it says what to do, not merely that something is wrong.
+    assert "the same one the lobby saw" in receipts[0]
+    # The board carries the company notice and nothing else about it.
+    assert not [b for b in said() if "settled nothing" in b], (
+        "a receipt addressed to one writer does not belong on the board")
+
+
+def test_a_private_refusal_leaves_a_public_pointer_and_no_reason(settled, hub, tmp_path):
+    """A whisper announces itself to some agents and not others.
+
+    Switchboard's MCP layer bumps presence on every tool call and returns
+    `unread_dms`, so an agent holding those tools sees a counter rise without
+    ever opening its inbox. The CLI returns the message record and no count --
+    and both entrants who played here used the CLI. So the reason goes
+    privately and a pointer stays public: the fact of a refusal, which the
+    board already showed, and none of its content, which it never should have.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+
+    # **The manager registers first, as `play` does.** Sealing is pairwise: a
+    # trader that reads the roster before the manager is on it cannot open
+    # what the manager seals, and receives an envelope rather than a reason.
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="")
+
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, c in room.items():
+        c.register(name=name, kind="local", branch="main", task="trading")
+        c.agents()
+    client.agents()
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    mgr.open_episode()
+
+    room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")   # over budget
+    mgr.drain()
+
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=50)]
+    pointer = [b for b in board if "read your inbox" in b]
+    assert len(pointer) == 1, "the board says something is waiting"
+    assert "T1" in pointer[0]
+
+    # The reason itself never reaches the board.
+    private = [str(m.get("body", "")) for m in room["scout-v2"].inbox()]
+    assert any("not settled" in b for b in private), "the reason is whispered"
+    reason = next(b for b in private if "not settled" in b)
+    assert reason.split("not settled: ", 1)[1][:20] not in " ".join(board)
+
+    # Once per seat per episode, not once per line.
+    room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")
+    mgr.drain()
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=50)]
+    assert len([b for b in board if "read your inbox" in b]) == 1
+
+    # A new episode offers the pointer again.
+    mgr.close_episode(); mgr.open_episode()
+    room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")
+    mgr.drain()
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=50)]
+    assert len([b for b in board if "read your inbox" in b]) == 2

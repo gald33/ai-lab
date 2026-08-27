@@ -42,9 +42,10 @@ marked `unreadable` with the reason rather than as content.
 `exchange_key` on the roster, `crypto.seal_to_peer` / `unseal_from_peer`, and
 an MCP tool the agent calls itself. Verified against a real hub — a third member of
 the room, holding the same workspace key, gets an envelope it cannot open. The
-tool **was renamed to `whisper`, and 1.0.0 carries that name**, which is now
-the only one: the old alias has since been removed upstream too, so `whisper`
-is the single name on both surfaces. See
+tool **was renamed to `whisper`, and 1.0.0 carries that name** as the only one
+on the MCP surface an entrant holds. The library alias is being removed
+upstream too, though not in a release yet — 1.0.0 still has it — so this repo
+says `whisper` everywhere, which holds either way. See
 [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
 §3 for the measurement, the rename, and the roster read both sides need first.
 

@@ -47,3 +47,23 @@ def test_the_page_says_which_reader_each_half_is_for():
     # The brief must come before the sections that merely explain it, or a
     # person hands over the explanation instead of the instructions.
     assert text.index("## The brief") < text.index("## What to post")
+
+
+def test_the_brief_states_the_grammar_rather_than_promising_it_elsewhere():
+    """Found by watching the first real game, 2026-08-27.
+
+    The brief used to say the manager announces the grammar on the board and
+    to follow that rather than guessing. **It does not** -- `schedule_text`
+    announces the bells, the traders and the acknowledgement deadline, and
+    names PRODUCE/PROPOSE/APPROVE without ever giving their shapes. So an
+    entrant was sent to an authority that did not exist, guessed, and wrote
+    `PROPOSE give salt=2.0 get cloth=0.6` -- no `to=`, `get` for `want`, `=`
+    for `:` -- eight times, settling nothing each time.
+    """
+    brief = _text().split("## The brief", 1)[1].split("## What to post", 1)[0]
+
+    assert "PRODUCE bread=0.5" in brief
+    assert "PROPOSE to=T2 give=iron:0.4 want=salt:0.3" in brief
+    assert "APPROVE p3" in brief
+    # The colon is the part that was actually got wrong, so it is called out.
+    assert "colon" in brief
