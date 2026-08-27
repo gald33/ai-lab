@@ -453,12 +453,20 @@ function offered(event, { anchors, stock }) {
     }
   });
 
+  //: **Held up, not nudged.** The lift was 0.42 of a unit with a twelfth of a
+  //: scale on it, which is what it was when it was the third thing an offer
+  //: did behind a post and a notice. With those gone it is the whole of the
+  //: offer on the island, and `render.py:mechanics` measured it at 0.17% of
+  //: the island's frame -- under its own floor, which is the check saying a
+  //: viewer could not see it. It is a crate lifted over the yard now: about
+  //: twice the height, a third again the size, and every box up together
+  //: rather than stepped a tenth of a second apart.
   c.update = (t) => {
     offered.forEach(({ box, at, turn }, k) => {
-      const up = Math.sin(Math.PI * win(t, 0.35 + k * 0.1, 2.9)) ** 0.6;
-      box.position.y = at.y + up * 0.42;
+      const up = Math.sin(Math.PI * win(t, 0.3 + k * 0.05, 2.9)) ** 0.6;
+      box.position.y = at.y + up * 0.85;
       box.rotation.y = turn + up * 1.6;
-      box.scale.setScalar(1 + up * 0.12);
+      box.scale.setScalar(1 + up * 0.32);
     });
   };
   return c;

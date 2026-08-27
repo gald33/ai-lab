@@ -540,6 +540,18 @@ is not asked to show. Measured on the way here — a refusal was 3.20% of the
 island's frame with its ground disc and 0.27% with only the post, so what was
 dropped is the smaller half of something already carried elsewhere.
 
+**The offer's lift is bigger than it was, because it is now the whole of the
+offer on the island.** It was 0.42 of a unit with a twelfth of a scale on it —
+tuned when it was the third thing an offer did, behind a post and a notice — and
+with those gone `mechanics` measured the whole event at **0.17%** of the
+island's frame, under its own 0.2% floor. That is the check saying a viewer
+could not see it, and it was caught by the browser suite after the change was
+merged rather than before it: the run that would have said so was written off as
+an environment failure on a flaky first load. It is a crate held up over the
+yard now — twice the height, a third again the size, every box up together
+rather than stepped a tenth of a second apart — and the suite passes with no
+floor moved.
+
 ### The water casts no shadow
 
 Reported by eye: a dark, soft-edged **rectangle** sitting on the meadow,
