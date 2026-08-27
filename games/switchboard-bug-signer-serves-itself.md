@@ -4,6 +4,20 @@
 a real game on the managed hub; it made both players unable to write a single
 line. Reproduced in a unit test, cause identified, one-line fix suggested.*
 
+> **Still open at 1.0.0**, re-checked 2026-08-27 by reading the wheel rather
+> than assuming. Both halves of the mechanism below are unchanged:
+> `client.py:614` still does `self.signing = signing.attach(local)`, so a
+> second process holds a `RemoteSigningIdentity`; `mcp_server.py:1302` still
+> serves whatever that is with no test for which it is; and
+> `SigningServer.start()` still **unlinks any socket already at the path**
+> before binding its own, so an existing signer is replaced rather than
+> deferred to. `run_entrant.hold_signer` remains the workaround and remains
+> load-bearing.
+>
+> Re-check: `pip download agent-switchboard -d /tmp/x --no-deps`, unzip, and
+> read those three places. This is the second thing this lab has recorded
+> about a release without checking the release; it is checked now.
+
 ## What happens
 
 An agent whose signing key is held by **another process** cannot sign anything.
