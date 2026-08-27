@@ -1686,7 +1686,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_)/;
+  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|labour_)/;
   const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
   window.__under = (x, z) => {
     ray.set(new THREE.Vector3(x, 8, z), down);
