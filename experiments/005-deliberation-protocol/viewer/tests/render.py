@@ -116,6 +116,17 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
       // in the DOM, and 'is there an island path' is not the question.
       land: [...document.querySelectorAll('.land')]
         .filter(n => n.getBoundingClientRect().width > 0).length,
+      //: The whole drawn world, not one class of it. `.shallows` was left out
+      //: of the stylesheet's hide rule and drew a pale ring over the model for
+      //: as long as there has been a model, because this asked about `.land`
+      //: alone -- one member of the group it belongs to.
+      ghosts: Object.fromEntries(['land', 'wet', 'square', 'water', 'sea-fill', 'surf', 'shallows',
+         'grain-fill', 'fire', 'firelight', 'hut-shadow', 'roof',
+         'roof-thatch', 'wall', 'window', 'door', 'hut-rim']
+        .map(c => [c, [...document.querySelectorAll('.' + c)]
+          .filter(n => n.getBoundingClientRect().width > 0
+                    && getComputedStyle(n).display !== 'none').length])
+        .filter(([, n]) => n)),
       palms: [...document.querySelectorAll('.palm')].map(p => {
         const b = p.getBBox(); return [b.x, b.y, b.width, b.height];
       }),
@@ -141,7 +152,8 @@ def check(page, expect_traders: int, expect_goods: int, where: str) -> list[str]
         # world must be gone rather than merely covered up, and the palm-vs-card
         # check below has nothing left to measure. What replaces it is
         # `painted()`: that the model actually drew.
-        for ghost, n in (("land", counts["land"]), ("palms", counts["palmCount"])):
+        ghosts = dict(counts["ghosts"], palms=counts["palmCount"])
+        for ghost, n in sorted(ghosts.items()):
             if n:
                 bad.append(f"{where}: the model is up and the drawn {ghost} is still "
                            f"there ({n}); two islands on one page")
