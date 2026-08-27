@@ -1451,43 +1451,118 @@ In the rail (the ▤ drawer, shut until asked for):
 ## The island can be heard, if you ask
 
 A speaker button (🔇/🔊) in the top-right chrome, **off by default and
-remembered**. Six voices, one per event the island already animates: a crate
-knocking down for a production, two notes rising for an offer, a chord that
-agrees for a settlement, one short falling note for a refusal, a struck bell
-with a long decay for the bell, and a slow three-note dawn for a day opening.
+remembered**. What it turns on is the island: surf and wind on their own slow
+swells, gulls at the hours gulls call, the fire at the centre, dolphins going
+past now and then, and **each site audibly at work** when a production receipt
+for that good lands — the ovens and kneading for bread, strikes and a cart at
+the quarry, nets going in for fish, brine and a rake at the salt pans.
 
-**Sound is never the only place something is said.** The card, the transcript
-line and the clip on the ground already carry every event; a listener who never
-turns this on loses nothing, and one who does is told the same thing a fourth
-way. That is the constraint the voices are written to — it is why a refusal is
-one quiet falling note and not a buzzer. A refusal is an ordinary thing to
-happen on this island and the page should not scold anybody for it.
+**The first version of this was one chime per board event over silence, and
+that was the wrong thing.** Kept as the superseded reasoning, because the
+mistake is an easy one to make again: it treated sound as a fourth channel for
+content the page already carries three times, so it had to be sparse, and
+sparse-over-silence is a notification noise on a picture. A spectator who
+leaves a replay running between offers heard *nothing*, on an island with a sea
+round it. The event voices survive at **42% of their old level** (`ACCENT` in
+`island-sound.js`) as accents under the bed, which is the level they should
+always have had.
 
-**Synthesised, not sampled** (`web/island-sound.js`). The only other assets in
-this viewer are `vendor/three`, and a folder of audio files would be the first
-binaries in the repository — for six noises that are a few oscillators and an
-envelope each. Nothing is fetched, so nothing can fail to load and nothing can
-fall out of step with a deploy.
+### What responds to what
+
+| heard | driven by |
+|---|---|
+| sea, wind | always, swelling on their own slow clocks |
+| gulls | the hour — most at dawn, none once the light has gone |
+| the fire at the centre | always, and up at the bell as the light goes |
+| dolphins | nothing at all |
+| a site at work | a production receipt for that good, for 6.5s |
+| an event accent | the event, at 42% |
+
+The hour comes from `scene.dayProgress()` — the same clock as the drawn sun and
+the model's shadows, because three suns keeping separate time would be worse
+than two. The dolphins answer to nobody, and that is deliberate: everything
+else here is the board or the clock, and a spectator who hears them twice in a
+round and cannot work out what caused them has understood it correctly.
+
+**A site's work is not a caption.** What a receipt buys is the sound of that
+trade being done while the clip carries the crate home, gone a few seconds
+later. Three traders making bread is one busier bakery, not three bakeries —
+re-triggering a sounding site puts its clock back rather than stacking a copy.
+
+### Still synthesised, and what that costs
+
+Decided again by Gal, 2026-08-27, choosing synthesis over recordings with the
+trade-off stated. The standing reason is unchanged — a folder of audio files
+would be the first binaries in the repository, each one a thing to license,
+ship and keep in step with a deploy — and the cost is real and worth writing
+down rather than discovering later: **this is an impression of surf and a gull
+and a dolphin, not a recording of one.** Filtered noise with a swell reads as
+sea; a swept sine with a fast vibrato reads as a dolphin whistle, which is the
+one animal synthesis is genuinely good at; a chisel is a bandpassed click and
+anyone who knows quarries will not be fooled.
+
+Nothing here is a loop of a file, so **nothing here repeats**: every gull cry,
+crackle and chisel strike is scheduled individually a beat ahead on the audio
+clock (`AHEAD`, `TICK_MS`), which is why the bed can run for an hour without
+the seam a four-second loop would have. It is also why a stalled frame cannot
+make the sea stutter — none of it is on the frame clock.
+
+### The levels are measured, not chosen
+
+`tests/audio.py` renders the real `island-ambience.js` through an
+`OfflineAudioContext` in a real browser and measures what came out:
+
+    python viewer/tests/audio.py --verbose
+
+The measurement is the reason the design changed. At the level the sites were
+first written to, a **whole site at work moved the mix by 7%, and salt by
+nothing at all** — inaudible, and it would have shipped, because by ear
+under a bed everything sounds like it is probably there. `WORK_GAIN` is 8
+because 8 is what put every site clearly over the bed without the peaks
+getting near the ceiling; 11 put the quarry's strikes at 0.99 before the master
+gain.
+
+Each site, as a multiple of the bed alone over the same window (bed as
+control, 12s render, `--verbose` prints this table):
+
+| site | over the bed |
+|---|---|
+| bread | ×2.29 |
+| fish | ×1.86 |
+| iron | ×1.77 |
+| cloth | ×1.76 |
+| salt | ×1.92 |
+| grain | ×1.70 |
+| timber | ×1.63 |
+| a good with no site of its own | ×1.75 |
+
+The spread is not a defect: an oven is louder than brine drying, and the check
+asserts a floor (×1.35), not a level. It also asserts that nothing clips at the
+master gain the page actually applies, that the bed is present but quiet, and
+that the sea does not stop at night.
+
+### The rest of the shape
 
 **Off by default, and the button is the gesture.** A page that starts making
 noise is a page somebody closes, and browsers agree: an `AudioContext` will not
-start before a user gesture. So the context is built on the first press, which
-is also the moment there is a gesture to unlock it — and a browser with no
-WebAudio at all leaves the button off rather than pretending, because `set()`
-returns what it actually managed and the button follows that.
+start before a user gesture, so the context is built on the first press. A
+browser with no WebAudio leaves the button off rather than pretending — `set()`
+returns what it actually managed and the button follows that. A hidden tab
+stops the bed: surf coming out of a page nobody is looking at is worse than
+silence.
 
 **Not tied to `prefers-reduced-motion`.** A reader who wants the island to hold
 still has said nothing about hearing it. `stage.fire()` is silent under that
-setting, so the sound is fired from `paint()` beside the clip rather than from
-inside it, and a still island can still be heard.
+setting, so sound is fired from `paint()` beside the clip rather than inside
+it.
 
-**Two throttles, and they are the reason a scrub is bearable.** At 16× a scrub
-pushes events through in a few frames: without a floor between two soundings of
-the same voice (90 ms) and a ceiling on all voices at once (6 in 700 ms), the
-bell rings forty times in a second, which a listener reads as the page being
-broken rather than the board being busy. `tests/sound.test.mjs` holds both
-shut against a fake `AudioContext`, along with off-by-default, every animated
-event kind having a voice, and nothing else having one.
+**Two throttles on the accents.** At 16× a scrub pushes events through in a few
+frames; without a floor between two soundings of the same voice (90 ms) and a
+ceiling on all voices at once (6 in 700 ms), the bell rings forty times in a
+second. `tests/sound.test.mjs` and `tests/ambience.test.mjs` hold those, the
+off-by-default, the hidden-tab stop, one voice per animated event kind and one
+site sound per good the island can draw — all against a fake `AudioContext`, so
+neither needs a browser.
 
 ## Deploying
 
@@ -1783,7 +1858,8 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the three feeds, and the replay clock |
 | `web/index.html` | the page: the island, and the chrome floating over it |
-| `web/island-sound.js` | the island heard: one synthesised voice per event, off until asked |
+| `web/island-sound.js` | the master, the button's state, and one accent per event |
+| `web/island-ambience.js` | the bed: sea, wind, gulls, fire, dolphins, and each site at work |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
 | `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
@@ -1795,7 +1871,9 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/board.mjs` | reading a saved board, packed or not |
 | `palette.py` | the contrast and colour-blindness gates `tokens.css` describes |
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
-| `tests/sound.test.mjs` | the voices, against a fake `AudioContext` — off by default, and throttled |
+| `tests/sound.test.mjs` | the voices and the button, against a fake `AudioContext` |
+| `tests/ambience.test.mjs` | the bed's hours, its scheduler, and one site sound per good |
+| `tests/audio.py` | the levels, rendered offline in a real browser; skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |

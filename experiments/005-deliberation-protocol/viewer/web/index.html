@@ -1164,6 +1164,10 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
   const closed = state.phase === "closed" || state.phase === "over";
   stage?.setDay(closed ? 1 : scene.dayProgress(state),
                 closed ? null : scene.dayAhead(state, until), hold);
+  // The bed is on the same clock as the sun and the model's light: gulls at
+  // dawn, the wind down with the light, the fire the loudest thing left after
+  // the bell. Three suns keeping separate time would be worse than two.
+  sound.setDay(closed ? 1 : scene.dayProgress(state), closed);
   //: A read-only handle on the island, for `render.py` and for a console. It
   //: is the stage the page is already drawing -- nothing here is built for the
   //: harness -- and it is what lets a check ask where the light *is* rather
@@ -1524,6 +1528,10 @@ const soundButton = () => {
 };
 $("t-sound").onclick = () => { sound.toggle(); soundButton(); };
 soundButton();
+// A hidden tab is somebody reading something else, and a bed left running
+// behind one is surf coming out of a page they cannot see.
+document.addEventListener("visibilitychange",
+                          () => sound.visible(!document.hidden));
 
 const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");

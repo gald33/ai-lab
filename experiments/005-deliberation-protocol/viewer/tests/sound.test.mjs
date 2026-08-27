@@ -17,6 +17,9 @@ class FakeParam {
   constructor(v = 0) { this.value = v; }
   setValueAtTime() { return this; }
   exponentialRampToValueAtTime() { return this; }
+  linearRampToValueAtTime() { return this; }
+  setTargetAtTime() { return this; }
+  cancelScheduledValues() { return this; }
 }
 const node = (extra = {}) => Object.assign({
   connect(next) { return next; },
@@ -39,9 +42,12 @@ class FakeCtx {
   }
   createBufferSource() {
     const self = this;
-    return node({ buffer: null, start() { self.started++; } });
+    return node({ buffer: null, loop: false, start() { self.started++; } });
   }
-  createBuffer(_ch, n) { const d = new Float32Array(n); return { getChannelData: () => d }; }
+  createBuffer(_ch, n, rate) {
+    const d = new Float32Array(n);
+    return { getChannelData: () => d, duration: n / rate, length: n };
+  }
   createBiquadFilter() { return node({ type: "", frequency: new FakeParam(1), Q: new FakeParam(1) }); }
   createDynamicsCompressor() {
     return node({ threshold: new FakeParam(0), ratio: new FakeParam(1),
@@ -85,6 +91,35 @@ test("every event the island animates has a voice, and nothing else does", () =>
   s.last.clear(); s.recent = [];
   assert.equal(s.play({ kind: "note" }), false, "a message with no clip makes no noise");
   assert.equal(s.play(null), false, "and neither does nothing at all");
+});
+
+test("the world comes with it, and goes with it", () => {
+  const s = armed();
+  assert.ok(s.bed, "a bed was built with the context");
+  assert.equal(s.bed.running, true, "and turning the sound on starts it");
+  s.visible(false);
+  assert.equal(s.bed.running, false, "a hidden tab is not making surf noises");
+  s.visible(true);
+  assert.equal(s.bed.running, true, "and it comes back when the tab does");
+  s.set(false);
+  assert.equal(s.bed.running, false, "one button, and the bed is most of it");
+  s.bed.dispose();
+});
+
+test("a production is heard at its site, and the bell takes the fire up", () => {
+  const s = armed();
+  let worked = null, flared = 0;
+  s.bed.working = (good) => { worked = good; return true; };
+  s.bed.flare = () => { flared++; };
+  s.play({ kind: "produced", made: { bread: 2 } });
+  assert.equal(worked, "bread", "the site that made it is the site heard");
+  s.last.clear(); s.recent = [];
+  s.play({ kind: "bell" });
+  assert.equal(flared, 1, "and the bell is the fire coming up");
+  s.last.clear(); s.recent = [];
+  s.play({ kind: "offer", made: {} });
+  assert.equal(flared, 1, "an offer touches neither");
+  s.bed.dispose();
 });
 
 test("a voice will not sound twice in the same instant", () => {
