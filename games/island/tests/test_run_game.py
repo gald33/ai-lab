@@ -1031,15 +1031,77 @@ def test_a_private_refusal_leaves_a_public_pointer_and_no_reason(settled, hub, t
     reason = next(b for b in private if "not settled" in b)
     assert reason.split("not settled: ", 1)[1][:20] not in " ".join(board)
 
-    # Once per seat per episode, not once per line.
+    # **Per failure, not once per episode.** g3 showed why: a trader spent its
+    # one pointer early, then approved against stock the bell had consumed,
+    # and the board said nothing -- so it went on negotiating from a holding
+    # it never received.
+    from island.manager import POINTERS_PER_EPISODE
+
     room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")
     mgr.drain()
-    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=50)]
-    assert len([b for b in board if "read your inbox" in b]) == 1
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=80)]
+    assert len([b for b in board if "read your inbox" in b]) == 2, (
+        "a second failure in one episode is told about")
 
-    # A new episode offers the pointer again.
+    # Capped, so a stranger writing ten lines cannot make the manager write ten.
+    for _ in range(4):
+        room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")
+        mgr.drain()
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=80)]
+    assert len([b for b in board if "read your inbox" in b]) == POINTERS_PER_EPISODE
+
+    # A new episode restores the allowance.
     mgr.close_episode(); mgr.open_episode()
     room["scout-v2"].post("island", "PRODUCE bread=9.0 iron=9.0")
     mgr.drain()
-    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=50)]
-    assert len([b for b in board if "read your inbox" in b]) == 2
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=80)]
+    assert len([b for b in board if "read your inbox" in b]) == POINTERS_PER_EPISODE + 1
+
+
+def test_the_manager_stays_on_the_roster_for_the_whole_round(settled, hub, tmp_path):
+    """Reported by the trader in g3, who blamed its own setup for it.
+
+    Registration lapses in about two minutes and a round runs eight. A manager
+    that registers once is absent from the roster for most of its own game --
+    and a peer that is not on the roster cannot be whispered to, because
+    sealing needs its exchange key from there. So every sealed PRODUCE after
+    the first couple of minutes had nowhere to go, which is exactly what they
+    saw: "one early whisper worked and later ones failed".
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="")
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+
+    beats: list[bool] = []
+
+    class _Counting:
+        def __getattr__(self, name):
+            return getattr(client, name)
+
+        def heartbeat(self, **kw):
+            beats.append(kw.get("renew_leases"))
+            return client.heartbeat(**kw)
+
+    run_game._stay_present(_Counting())
+    run_game._stay_present(_Counting())
+
+    assert len(beats) == 2, "presence is refreshed every drain, not once"
+    assert beats == [False, False], (
+        "and never renews leases: an unrelated op renewing every held lease "
+        "would be a real behaviour change, per Switchboard's own reasoning")
+
+
+def test_a_manager_that_cannot_reach_the_hub_keeps_playing(settled, hub, tmp_path):
+    """A failed heartbeat may cost reachability. A raised one costs the round."""
+    class _Broken:
+        def heartbeat(self, **kw):
+            raise RuntimeError("hub blinked")
+
+    run_game._stay_present(_Broken())      # must not raise
