@@ -1108,6 +1108,41 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
 The colour is the answer and stays under `prefers-reduced-motion`; only the
 blinking goes.
 
+### A live poll must not build a new island
+
+Reported from a live game: the animation froze every three seconds, and every
+offer's pill started its slide again after each freeze.
+
+Both were `mount()`, which runs on **every poll** and built a whole new `Scene`
+— every SVG node torn down and rebuilt, on top of re-reducing the entire board
+history. And with the old Scene went the two maps a pill's motion lives in:
+`travel`, when it started down its rope, and `spot`, where it had got to. So
+each pill jumped back to its maker's hut and slid again, once per poll, for as
+long as its offer stayed open.
+
+The cast is what a Scene is built around — a hut per trader, a shelf slot per
+good — so while that is unchanged the same Scene is kept and told the new
+timeline. A trader or a good appearing is a different island and still builds
+one. Measured on a live board, four polls over twelve seconds:
+
+| | before | after |
+|---|---|---|
+| biggest single-frame pill move | 955 units, once per poll | 14 (its own flight) |
+| island nodes added / removed | 148 / 144 | 0 / 0 |
+
+**And a poll that brought nothing does nothing.** Most of them bring nothing —
+three seconds is short and a board is quiet for most of a round — and each of
+those re-reduced the history and repainted every card, bar, rope and pile to
+arrive at the picture already on screen. The sun does not need it either:
+`sky` is aimed at the bell and travels there on its own clock.
+
+**That skip was nearly worse than the bug it fixed.** The first version
+compared row *counts*, and `hubFeed` snapshots with `limit: 200` — so on a
+board that has said more than that, the count is pinned at 200 while the game
+carries on underneath it, and the page would have stopped updating for the rest
+of the round. It compares the last row's seq as well now, and the check that
+holds it is a windowed feed whose count never changes: offers still arrive.
+
 ### A pill only ever flies
 
 **Nothing moves a pill by putting it somewhere else** (2026-08-27, Gal's ask).
