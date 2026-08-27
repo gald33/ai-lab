@@ -1804,7 +1804,7 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"            # the page: 48
+node --test "viewer/tests/*.test.mjs"            # the page: 162
 python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
 python viewer/tests/render.py                    # the drawing, in a real browser
 ```
@@ -1914,6 +1914,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/ambience.test.mjs` | the bed's hours, its scheduler, and one site sound per good |
 | `tests/audio.py` | the levels, rendered offline in a real browser; skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
+| `tests/clips.test.mjs` | what an event clip borrows off the island, and gives back |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |
 | `tests/fixtures/snapshot-sample.json` | that snapshot — a real hub, captured once |

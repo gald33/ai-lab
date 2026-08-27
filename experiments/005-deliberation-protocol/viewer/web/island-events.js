@@ -145,10 +145,36 @@ function own(c, material) {
  * and the island gets its own back at the end.
  */
 function borrow(c, node, { material = false } = {}) {
-  const was = { p: node.position.clone(), r: node.rotation.clone(),
-                s: node.scale.clone(), m: node.material };
+  //: **What goes back is the island's own rest state, not whatever the node
+  //: happened to hold when this clip picked it up.** Two clips can borrow the
+  //: same node at once -- one settlement producing bread twice inside five
+  //: seconds is enough -- and the first cut snapshotted the live values, so
+  //: the second clip's snapshot *was the first clip's scribble*: its material
+  //: clone, already gold, and already disposed with the clip that made it.
+  //: Restoring that put the fields back to gold for good. Reported by eye as
+  //: plots that started green, went yellow in the middle of the first day and
+  //: never came back.
+  //:
+  //: The rest state is taken once, the first time anything borrows the node,
+  //: and every clip restores to that. Restoring twice to the same values is
+  //: harmless; restoring to a half-played frame is not.
+  let was = node.userData.__rest;
+  if (!was) {
+    was = node.userData.__rest = {
+      p: node.position.clone(), r: node.rotation.clone(),
+      s: node.scale.clone(), m: node.material,
+    };
+  }
+  //: And the node is put back to rest *now*, before this clip reads a thing
+  //: off it: a clip that starts mid-way through another one's play would
+  //: otherwise take a half-grown scale for its own baseline and grow from
+  //: there. Both clips write every frame regardless, so the one already in
+  //: flight loses nothing by it.
+  node.position.copy(was.p);
+  node.rotation.copy(was.r);
+  node.scale.copy(was.s);
   if (material && node.material) {
-    node.material = own(c, node.material.clone());
+    node.material = own(c, was.m.clone());
   }
   c.borrowed.push(() => {
     node.position.copy(was.p);
