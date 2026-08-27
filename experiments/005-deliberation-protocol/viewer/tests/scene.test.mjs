@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          DWELL, dwellFor, CARRY, carriedBy,
-         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, sunAt, SET } from "../web/scene.js";
+         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -477,6 +477,28 @@ test("pills waiting on one hut stack, oldest at the bottom", () => {
                    [["p1", 3], ["p2", 3], ["p3", 1], ["p4", 3]]);
   assert.deepEqual([...stacking([])], []);
   assert.deepEqual([...stacking(undefined)], []);
+});
+
+
+test("a pill closes the gap to its target, and never in one step", () => {
+  const was = { x: 0, y: 0 }, target = { x: 0, y: 38 };
+  // A frame's worth of animation moves part of the way, not all of it.
+  const one = glideTo(was, target, 16);
+  assert.ok(one.y > 0 && one.y < 38 * 0.25, `one frame moved ${one.y}`);
+  // Successive steps converge without overshooting.
+  let at = was;
+  for (let i = 0; i < 40; i++) at = glideTo(at, target, 16);
+  assert.ok(Math.abs(at.y - 38) < 0.5, `forty frames landed at ${at.y}`);
+  assert.ok(at.y <= 38, "never past the target");
+  // **The regression this exists for.** A pill sitting still is not being
+  // stepped, so when its pile changes under it the gap since the last step is
+  // however long it sat there. Measured before the clamp: the whole 38 units
+  // in one frame -- a jump wearing an ease.
+  const idle = glideTo(was, target, 9000);
+  assert.ok(idle.y < 38 * 0.4, `after a long idle moved ${idle.y}`);
+  assert.deepEqual(idle, glideTo(was, target, 48), "capped at one slow frame");
+  // Nothing moves in no time.
+  assert.deepEqual(glideTo(was, target, 0), was);
 });
 
 
