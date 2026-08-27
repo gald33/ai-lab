@@ -18,9 +18,13 @@ kept here has a URL that keeps working. It shows up in the page's own
 dropdown by its label, and can be linked to directly by path -- `?board=`
 takes a path, not a label, and wants its sidecar beside it:
 
-    https://gald33.github.io/ai-lab/
+    https://gald33.github.io/ai-lab/island/
       ?board=replays/board-island-game-001d-g1.json
       &reveal=replays/reveal-island-game-001d-g1.json
+
+The game moved under `island/` because the root is a games index and the
+island is one game. The root still redirects and keeps the query string, so
+a link written against the old root resolves.
 
 ## What a reveal sidecar contains, said out loud
 

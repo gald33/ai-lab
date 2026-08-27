@@ -2,7 +2,20 @@ name: Deploy the island viewer (GitHub Pages)
 
 # Publishes experiments/005-deliberation-protocol/viewer -- the spectator
 # page, its saved replays, and its scoreboard -- to
-# https://gald33.github.io/ai-lab/.
+# https://gald33.github.io/ai-lab/island/.
+#
+# **Under `island/`, not at the root, because the island is one game and there
+# will be others.** The root is a games index, and a game that owns the whole
+# site is a site that has to be rearranged the first time a second game wants
+# a page. Everything in `web/` fetches by relative path, so the tree moves
+# whole and nothing inside it changes.
+#
+# The root also **redirects** to `island/`, because
+# https://gald33.github.io/ai-lab/ is already written down in places that are
+# records rather than documents -- games/runs/001 and 002 each cite it as
+# where a finished game's replay outlives its Switchboard room. Those records
+# are not edited to match a later decision; the redirect is what keeps them
+# true.
 #
 # Same origin switchboard's own published viewer uses (gald33.github.io),
 # just a different path, which is why the managed hub's existing
@@ -65,21 +78,56 @@ jobs:
 
       - name: Stage the site
         run: |
-          mkdir -p "$RUNNER_TEMP/site"
-          cp -r viewer/web/. "$RUNNER_TEMP/site/"
-          cp -r results "$RUNNER_TEMP/site/results"
+          mkdir -p "$RUNNER_TEMP/site/island"
+          cp -r viewer/web/. "$RUNNER_TEMP/site/island/"
+          cp -r results "$RUNNER_TEMP/site/island/results"
           # Game replays kept on purpose, from outside this experiment's tree.
           # One prefix per root in serve.py's ROOTS, which is what freeze_static
           # writes into api/boards -- so the copy and the listing cannot
           # disagree about where a board lives.
           if [ -d ../../games/replays ]; then
-            cp -r ../../games/replays "$RUNNER_TEMP/site/replays"
+            cp -r ../../games/replays "$RUNNER_TEMP/site/island/replays"
           fi
           # 007's exported rounds, under the prefix serve.py gives them.
           if [ -d ../007-execution-ceiling/replays ]; then
-            cp -r ../007-execution-ceiling/replays "$RUNNER_TEMP/site/ceiling"
+            cp -r ../007-execution-ceiling/replays "$RUNNER_TEMP/site/island/ceiling"
           fi
-          python viewer/freeze_static.py "$RUNNER_TEMP/site/api"
+          python viewer/freeze_static.py "$RUNNER_TEMP/site/island/api"
+
+      # The root: what the site is, and where the games are. One game so far,
+      # so it also sends a browser straight there rather than making somebody
+      # click through a list of one -- while the older links that name the
+      # root keep resolving. `?` and `#` survive the hop, because a live feed
+      # arrives as `?invite=…` or `?workspace=…&key=…` on exactly these links.
+      - name: Stage the games index
+        run: |
+          cat > "$RUNNER_TEMP/site/index.html" <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Gal's AI Lab — games</title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <link rel="canonical" href="https://gald33.github.io/ai-lab/island/">
+          <style>
+            :root { color-scheme: dark; }
+            body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+                   background: #171d21; color: #dfe7ec;
+                   font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+            main { padding: 2rem; max-width: 32rem; }
+            h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 .5rem; }
+            p { margin: 0 0 1rem; color: #9fb0ba; }
+            a { color: #86a8e0; }
+          </style>
+          <main>
+            <h1>Gal's AI Lab — games</h1>
+            <p>Agents play, a manager settles, and the board is the only surface.</p>
+            <p><a href="island/">The island</a> — trade on a drawn island; watch a
+               live table or a saved replay.</p>
+            <p><noscript>JavaScript is off, so follow the link above.</noscript></p>
+          </main>
+          <script>
+            location.replace("island/" + location.search + location.hash);
+          </script>
+          HTML
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
