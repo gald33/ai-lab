@@ -1398,6 +1398,20 @@ none of them is a defect a still screenshot shows.
   through its visibility floor, which said out loud that the ring had been the
   only thing carrying them.
 
+* **A pale ellipse circled the island, and rode over it.** Reported by eye, and
+  it was not in the model at all: `.shallows` is the *drawn* island's outer
+  glow — a 26px stroke of the SVG coastline at 4.5% opacity, which is what
+  stands in for scattered light in the shallows on a browser with no WebGL.
+  When the model loads, `.has-3d` hides the drawn world, and that rule listed
+  `.land`, `.wet`, `.surf`, `.water`, `.sea-fill` and the hut's parts — but not
+  `.shallows`, and not `.grain-fill` either. So a 2D coastline kept drawing
+  over the 3D scene at the 2D island's size and place, which are not the
+  model's: it sat out to sea on one bearing and up over the sand on the next.
+  The same shape the surf ring used to have, arrived at from the other side.
+  Both classes are in the hide rule now. The check that would have caught it is
+  the one `check()` already does for `.land` — *visible*, not merely present —
+  and it was asked about one class out of the group it belongs to.
+
 **One mark per good.** The legend's glyph rides *on* its colour rather than
 beside it, because that is the chip that appears on a shelf and on a parcel in
 flight; two marks side by side are a pairing the reader has to learn.
