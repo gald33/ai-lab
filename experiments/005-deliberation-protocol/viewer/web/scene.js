@@ -26,6 +26,19 @@ export const GLYPH = {
 const SLOT = ["--good-1", "--good-2", "--good-3", "--good-4",
               "--good-5", "--good-6", "--good-7"];
 
+//: Whose an offer is, in the seat's own colour -- the same six the island
+//: paints a hut and a boat with, so the pill sliding off a roof wears the
+//: colour of the roof it left. Named in `tokens.css` and mirrored in
+//: `island3d.js` as hex integers for three.js; `test_palette.py` compares the
+//: two lists, because the goods drifted apart exactly this way once already.
+const SEAT = ["--seat-1", "--seat-2", "--seat-3",
+              "--seat-4", "--seat-5", "--seat-6"];
+
+//: How long the pill takes to travel the rope, in ms, and how long the rope
+//: then takes to go. The fade is CSS (`.rope.delivered`), and this only has to
+//: outlast it so a rope is not still fading when its pill is asked to move.
+const SLIDE = 1100;
+
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -648,6 +661,12 @@ export class Scene {
     this.yards = {};
     this.bars = {};
     this.labels = {};
+    //: When each open offer's pill started down its rope, by pid. Kept across
+    //: rebuilds -- `follow()` and `paint()` both throw the rope nodes away and
+    //: a pill that restarted its slide on every camera frame would never
+    //: arrive -- and pruned in `paint()` when the offer stops being open, so
+    //: scrubbing back over a proposal plays it again.
+    this.travel = new Map();
     this.build();
   }
 
@@ -1460,6 +1479,12 @@ export class Scene {
       this.fray(p, was.get(p.pid));
     }
     this.shown = placed;
+    //: A pill's clock lives as long as its offer is open. Dropping it when the
+    //: offer closes is what lets a viewer scrub backwards over a proposal and
+    //: watch it travel again -- and stops the map growing for the whole round.
+    for (const pid of [...this.travel.keys()]) {
+      if (!placed.has(pid)) this.travel.delete(pid);
+    }
     // Kept so a refusal played straight after this paint can find what was
     // open at the moment it happened.
     this.state = state;
@@ -1468,7 +1493,10 @@ export class Scene {
 
   /** One rope, going slack and fading, after the bell took the offer with it. */
   fray(p, fan) {
-    const node = this.rope(p, fan);
+    //: Arrived, not travelling: a rope only lapses after its pill has landed,
+    //: and a pill that started its slide again on the way out would leave the
+    //: hut it had been waiting over.
+    const node = this.rope(p, fan, 1);
     node.classList.add("lapsing");
     this.flights.append(node);
     const anim = node.animate(
@@ -1489,7 +1517,83 @@ export class Scene {
     if (!a || !b) return null;
     const lift = this.modelled ? 34 : 84;
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - lift - 64 - fan * 44;
-    return { d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}`, mx, my };
+    return { d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}`,
+             mx, my, a, b, lift, fan };
+  }
+
+  /**
+   * The seat's colour, for whoever is named.
+   *
+   * A trader's index in `traders` is the same index the island picks its hut's
+   * colour by, so an offer's pill is the colour of the hut that made it.
+   */
+  seatColour(name) {
+    const i = this.traders.indexOf(name);
+    return `var(${SEAT[(i < 0 ? 0 : i) % SEAT.length]})`;
+  }
+
+  /**
+   * How far down its rope an offer's pill has got: 0 at the maker, 1 arrived.
+   *
+   * The clock starts the first time the pill is drawn and is kept by pid, not
+   * by node -- the rope is rebuilt whenever the set of open offers changes and
+   * on every reflow, and a slide restarted by a rebuild is a pill that never
+   * lands. A viewer who asked for less motion gets it arrived.
+   */
+  progress(pid, force = null) {
+    if (force !== null) return force;
+    if (still()) return 1;
+    let t0 = this.travel.get(pid);
+    if (t0 === undefined) { t0 = performance.now(); this.travel.set(pid, t0); }
+    return Math.max(0, Math.min(1, (performance.now() - t0) / SLIDE));
+  }
+
+  /**
+   * Where the pill sits, given how far along it is.
+   *
+   * On the way: the point at `t` of the same quadratic the rope is drawn as, so
+   * the pill rides the line rather than crossing the frame beside it. Arrived:
+   * over the *taker's* hut, which is the whole content of the picture -- an
+   * offer that has been delivered is a thing waiting on the trader it is
+   * addressed to, and it stays there until that trader answers it or the bell
+   * takes it away.
+   */
+  chipAt(at, prog) {
+    if (prog >= 1) return { x: at.b.x, y: at.b.y - at.lift - 58 - at.fan * 40 };
+    // Ease out: it leaves the maker's roof quickly and settles onto the
+    // taker's, rather than arriving at full speed and stopping dead.
+    const t = 1 - (1 - prog) * (1 - prog);
+    const ax = at.a.x, ay = at.a.y - at.lift, bx = at.b.x, by = at.b.y - at.lift;
+    const k = 1 - t;
+    return { x: k * k * ax + 2 * k * t * at.mx + t * t * bx,
+             y: k * k * ay + 2 * k * t * at.my + t * t * by + 20 };
+  }
+
+  /**
+   * Keep every pill still in flight moving, frame by frame.
+   *
+   * Its own loop rather than a CSS or WAAPI animation, because the rope moves
+   * under the pill: the camera turns the island continuously, so a set of
+   * keyframes sampled when the offer opened would walk a path that is no
+   * longer where the huts are. One loop for all of them, stopped as soon as the
+   * last one lands.
+   */
+  ride() {
+    if (this.riding) return;
+    this.riding = true;
+    const step = () => {
+      let flying = false;
+      for (const p of this.state?.proposals ?? []) {
+        if (p.status !== "open") continue;
+        const node = this.ropes?.querySelector(`.rope[data-pid="${p.pid}"]`);
+        if (!node) continue;
+        if (this.progress(p.pid) < 1) flying = true;
+        this.aimRope(node, p, this.shown?.get(p.pid) ?? 0);
+      }
+      if (flying) requestAnimationFrame(step);
+      else this.riding = false;
+    };
+    requestAnimationFrame(step);
   }
 
   /**
@@ -1502,35 +1606,53 @@ export class Scene {
    * perfectly still: an offer that is supposed to show goods heading for the
    * trader they are offered to showed a static dashed line instead.
    */
-  aimRope(g, p, fan) {
+  aimRope(g, p, fan, force = null) {
     const at = this.ropePath(p, fan);
     if (!at) return;
     for (const path of g.querySelectorAll(".rope-shadow, .rope-line")) {
       path.setAttribute("d", at.d);
     }
+    const prog = this.progress(p.pid, force);
+    // Arrived: the rope has said what it had to say -- who sent this to whom --
+    // and goes, leaving the offer standing over the trader it is addressed to.
+    g.classList.toggle("delivered", prog >= 1);
+    const spot = this.chipAt(at, prog);
     g.querySelector(".rope-chip")?.setAttribute(
-      "transform", `translate(${at.mx} ${at.my + 20})`);
+      "transform", `translate(${spot.x.toFixed(2)} ${spot.y.toFixed(2)})`);
   }
 
-  rope(p, fan = 0) {
+  rope(p, fan = 0, force = null) {
     // Between the *settlements*, not the cards. An offer is a thing happening
     // on the island between two huts; drawn between two cards in the margins it
     // would be a line across the whole frame, over everything, saying nothing
     // about where it is happening.
     const at = this.ropePath(p, fan);
     if (!at) return el("g");
-    const { d, mx, my } = at;
-    const g = el("g", { class: "rope", "data-pid": p.pid });
+    const { d } = at;
+    //: The maker's colour, on the group, so everything in the pill can wear it
+    //: and `.rope.lapsing` can still take it back with a plain rule.
+    const g = el("g", { class: "rope", "data-pid": p.pid,
+                        style: `--seat: ${this.seatColour(p.maker)}` });
     g.append(el("path", { class: "rope-shadow", d }));
     g.append(el("path", { class: "rope-line", d }));
-    const chip = el("g", { class: "rope-chip", transform: `translate(${mx} ${my + 20})` });
+    const prog = this.progress(p.pid, force);
+    const spot = this.chipAt(at, prog);
+    const chip = el("g", { class: "rope-chip",
+                           transform: `translate(${spot.x.toFixed(2)} ${spot.y.toFixed(2)})` });
     const text = `${bundleText(p.give)} → ${bundleText(p.want)}`;
     const width = Math.max(104, text.length * 8.4);
     chip.append(el("rect", { x: -width / 2, y: -16, width, height: 32, rx: 16,
                              class: "chip-bg" }));
-    chip.append(el("text", { x: 0, y: 5, class: "chip-text" }, text));
+    //: A dot of the maker's colour inside the pill as well as around it. The
+    //: border alone is two pixels of colour at the size this is drawn, and the
+    //: palette does not clear all-pairs at that width -- the dot is the part a
+    //: viewer can actually match to a roof.
+    chip.append(el("circle", { class: "chip-seat", cx: -width / 2 + 13, cy: -0.5, r: 4.5 }));
+    chip.append(el("text", { x: 7, y: 5, class: "chip-text" }, text));
     chip.append(el("text", { x: 0, y: 28, class: "chip-pid" }, `${p.pid} · ${p.maker}→${p.taker}`));
     g.append(chip);
+    if (prog >= 1) g.classList.add("delivered");
+    else this.ride();
     return g;
   }
 

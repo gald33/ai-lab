@@ -51,7 +51,8 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | four bars, fixed order | stock, from production and settled trades |
 | the pale part of a bar | promised to an open offer, so not offerable again |
 | the labour wheel | share of this episode's labour spent, from the receipt |
-| a rope across the square | an open proposal, with what it offers for what |
+| a pill sliding down a rope | an offer being carried from the trader who made it to the trader it is addressed to |
+| a pill waiting over a hut | an open proposal, with what it offers for what, standing on the trader who has to answer it |
 | goods in flight | a settled exchange, both directions at once |
 | a red card outline | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
@@ -631,6 +632,62 @@ together they cover no more than 48% of the meadow. The old "two settlements at
 least 1.2 apart" is gone — the right question asked against a constant, from
 when a hut was always the same size. Neutered to a constant size, the new one
 reports 51%, 56% and 62% and two overlaps.
+
+### An offer is delivered, and then it waits on the trader it is addressed to
+
+**Decided by Gal, 2026-08-27.** The rope was the whole picture of an offer: a
+line between two huts with a label hanging at its midpoint, its dashes crawling
+toward the taker. Two things it did not say, and both are the offer's content.
+
+**Whose it is.** The label named the maker in 10px monospace beside the pid,
+and that is the only place on the frame an offer said who made it — a spectator
+reading the square had to read text to answer the first question they have. The
+pill now wears the **maker's seat colour**, as its border and as a dot inside
+it: the same six the island has painted its huts and boats with since it was
+modelled, so a pill leaving a roof is the colour of the roof it left. Named in
+`tokens.css` as `--seat-1..6` and mirrored in `island3d.js` as hex integers for
+three.js, with `test_palette.py` comparing the two lists — the goods drifted
+apart across exactly that seam once already, from the fifth good on, and
+nothing was looking.
+
+The seats are held to **byte-distinctness** from every good and metric rather
+than to the series' contrast floors. A seat is never the only thing saying
+whose an offer is — the pill carries `maker→taker` in text under it — so it is
+not asked to be tellable apart at a glance the way two bars on one shelf are.
+What it must not be is the *same colour* as something that already means a good
+or a score on the same frame.
+
+**Where it is going.** The rope's direction was carried only by the crawl of
+its dashes, which is a thing a viewer has to already know to read. The pill now
+**slides the rope**, from the maker's hut to the taker's, and then the **rope
+fades** and the pill **stays over the taker** until that trader answers it or
+the bell takes it away. An offer is a thing waiting on somebody, and it now
+looks like one: the line was the *delivery*, and once the delivery has happened
+a line across the picture is saying something already said.
+
+Three details that are the design, not the implementation:
+
+* **The pill rides the rope's own curve**, sampled from the same quadratic the
+  path is drawn as, and it is driven by a per-frame loop rather than by a CSS
+  or WAAPI animation. The camera turns the island continuously, so keyframes
+  sampled when the offer opened would walk a path that is no longer where the
+  huts are. `scene.js:ride`.
+* **The slide's clock is kept by pid, not by node.** `follow()` and `paint()`
+  both throw the rope nodes away — on every camera frame when the set of open
+  offers changes — and a slide restarted by a rebuild is a pill that never
+  arrives. Kept in `scene.travel` and dropped when the offer stops being open,
+  which is also what lets a viewer scrub backwards and watch it delivered
+  again. This is the same defect the dashes' crawl had, and it is the reason
+  `render.py:turning` reads the animation's own clock.
+* **The faded rope is still in the DOM, at its own two settlements.** That is
+  what `turning` reads to check the ropes are re-laid as the camera goes round,
+  and the crawl still runs under the fade. A blamed offer — a refusal for goods
+  the trader has already promised away — brings its rope back at full opacity,
+  because that refusal is a statement about *which* line on the square is the
+  problem and it cannot make it invisibly.
+
+A viewer who asked for less motion gets the pill arrived and the rope gone at
+once: the picture is where the offer is standing, not the travelling.
 
 ### There are no ground marks left, and now no lights either
 

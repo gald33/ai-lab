@@ -128,13 +128,18 @@ def test_no_two_encoding_colours_are_identical() -> None:
 MODEL = HERE.parent / "web" / "island3d.js"
 
 
-def _model_series() -> list[str]:
-    """The colours `GOOD_COLOURS` hands the island, as `#rrggbb`."""
+def _model_list(name: str) -> list[str]:
+    """The colours a literal list in `island3d.js` hands the island, as `#rrggbb`."""
     import re
     body = MODEL.read_text()
-    block = re.search(r"export const GOOD_COLOURS = \[(.*?)\];", body, re.S)
-    assert block, "island3d.js no longer declares GOOD_COLOURS as a literal list"
+    block = re.search(rf"export const {name} = \[(.*?)\];", body, re.S)
+    assert block, f"island3d.js no longer declares {name} as a literal list"
     return [f"#{int(h, 16):06x}" for h in re.findall(r"0x([0-9a-fA-F]{6})", block.group(1))]
+
+
+def _model_series() -> list[str]:
+    """The colours `GOOD_COLOURS` hands the island, as `#rrggbb`."""
+    return _model_list("GOOD_COLOURS")
 
 
 def test_the_island_draws_the_stylesheet_s_goods() -> None:
@@ -157,3 +162,44 @@ def test_the_island_draws_the_stylesheet_s_goods() -> None:
         assert a == b, (
             f"good {i} is {a} on the card and {b} on the island; a box and the "
             f"bar counting it are the same good and must be the same colour")
+
+
+#: The seats, which the island has painted its huts and boats with since it was
+#: modelled and which the SVG layer now draws an offer's pill in.
+SEATS = [f"--seat-{i}" for i in range(1, 7)]
+
+
+def test_the_island_draws_the_stylesheet_s_seats() -> None:
+    """A pill is the colour of the hut that made the offer on it.
+
+    The same failure the goods had, one list along: `SEAT_COLOURS` is hex
+    integers for three.js and `--seat-1..6` is CSS, and until an offer's pill
+    wore a seat colour nothing needed both. Now the hut standing on the island
+    and the pill sliding off its roof are the same trader, so they are held to
+    the same colour, and the stylesheet is the source.
+    """
+    model = _model_list("SEAT_COLOURS")
+    css = [TOKENS[s] for s in SEATS]
+    assert len(model) == len(css), (
+        f"the model paints {len(model)} seats and the stylesheet names {len(css)}")
+    for i, (a, b) in enumerate(zip(css, model), start=1):
+        assert a == b, (
+            f"seat {i} is {a} on the pill and {b} on the hut; an offer and the "
+            f"trader who made it are the same seat and must be the same colour")
+
+
+def test_no_seat_is_a_good_or_a_metric() -> None:
+    """A pill's colour must not read as a good or a score.
+
+    Byte-distinctness, not the series' contrast floors: a seat is never the
+    only thing saying whose an offer is -- the pill carries `maker→taker` in
+    text -- so it is not held to being tellable apart at a glance the way two
+    bars on one shelf are. What it must not be is *the same colour* as
+    something that already means a good or a metric on the same frame.
+    """
+    for seat in SEATS:
+        for other in SERIES + METRICS:
+            assert TOKENS[seat] != TOKENS[other], (
+                f"{seat} is byte-identical to {other} ({TOKENS[other]})")
+    for a, b in itertools.combinations(SEATS, 2):
+        assert TOKENS[a] != TOKENS[b], f"{a} and {b} are both {TOKENS[a]}"

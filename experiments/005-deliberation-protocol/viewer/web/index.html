@@ -306,9 +306,31 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .rope.settling .rope-line { stroke: var(--good); animation: snap .5s ease-out;
   stroke-dasharray: none; }
 @keyframes snap { 0% { stroke-width: 6; filter: brightness(1.9); } 100% { stroke-width: 2.5; } }
+/* The rope has one job -- carrying the offer from the hut that made it to the
+   hut it is addressed to -- and once the pill has arrived it is a line across
+   the picture saying something already said. So it goes, and what stays is the
+   offer itself, waiting over the trader who has to answer it.
+
+   Faded, not removed: the path is still there at its own two settlements, which
+   is what `viewer/tests/render.py:turning` reads to check the ropes are re-laid
+   as the camera goes round, and the crawl is still running on its own clock. */
+.rope .rope-line, .rope .rope-shadow { transition: stroke-opacity .55s ease-in; }
+.rope.delivered .rope-line, .rope.delivered .rope-shadow { stroke-opacity: 0; }
+/* A blamed offer is the one thing that brings its rope back: a refusal for
+   goods this offer has already promised away is a statement about *which* line
+   on the square is the problem, and it cannot make it invisibly. After the
+   fade rule, because both are two classes deep and the later one wins. */
+.rope.blamed .rope-line { stroke: var(--critical); stroke-opacity: 1; }
 .rope.lapsing .rope-line { stroke: var(--muted); animation: none; }
 .rope.lapsing .chip-bg { stroke: var(--muted); }
-.chip-bg { fill: #0e1519; fill-opacity: .96; stroke: var(--line); }
+.rope.lapsing .chip-seat { fill: var(--muted); }
+/* Whose offer this is, in the seat's own colour: the border of the pill and a
+   dot inside it, both from `--seat` on the rope's group (`scene.js:rope`). Two
+   pixels of border is not a colour a viewer can match to a roof across the
+   frame; the dot is. */
+.chip-bg { fill: #0e1519; fill-opacity: .96; stroke: var(--seat, var(--line));
+  stroke-width: 2; }
+.chip-seat { fill: var(--seat, var(--muted)); }
 .chip-text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
 .chip-pid { fill: var(--muted); font-size: 10px; text-anchor: middle;
   font-family: ui-monospace, monospace; }
@@ -410,6 +432,9 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   }
   .bar, .bar-held, .score-fill, .wheel-fill, .bar-zero, .night, .sun, .vignette,
   .sky-burn, .island.closed .water { transition: none; }
+  /* The delivered rope still goes -- that is what the picture says, not how it
+     moves -- it just goes at once, like the pill that arrives at once. */
+  .rope .rope-line, .rope .rope-shadow { transition: none; }
   .fire .ember { opacity: 0; }
 }
 
