@@ -37,6 +37,12 @@ has already gone wrong.
 Re-check: `python3 -c "import inspect,re,switchboard.mcp_server as m;
 print(sorted(set(re.findall(r'^\s*def (\w+)', inspect.getsource(m), re.M))))"`
 
+> **On the name `ask`.** It appears below only inside dated passages —
+> requests as sent, and text marked superseded. The tool is called `whisper`,
+> the old name has been removed from Switchboard entirely, and nothing written
+> today should use it. The old name survives here only where removing it would
+> make a record read as though it had always said the new one.
+
 ## 2. A `dm` is private from the hub. It is **not** private from the room.
 
 `Client.send` is one line — *"sugar for posting to the recipient's `@`
@@ -70,8 +76,9 @@ from a third.
 > it quietly rewritten.
 
 `pip install --upgrade agent-switchboard` brings **0.11.0**, and it carries the
-whole of it: `Client.ask`, `exchange_key` on the roster, `crypto.seal_to_peer`
-/ `unseal_from_peer`, and **`ask` in the MCP tool list** — the half that
+whole of it: the sealing call, `exchange_key` on the roster,
+`crypto.seal_to_peer` / `unseal_from_peer`, and **the tool in the MCP list** —
+the half that
 mattered, since it is the agent itself that calls it.
 
 Measured here against a real hub, one workspace key held by all three members,
@@ -95,23 +102,26 @@ failure and is not one.
 the better one: `ask` reads as a question expecting an answer, and the thing is
 one-way and quiet.
 
-**The rename landed in 1.0.0** (2026-08-26, verified by reading the wheel).
-`Client.ask()` survives as an alias and the wire format is unchanged, so
-library code needs no edit — but **the MCP tool list carries `whisper` only**,
-with no `ask` in it. That asymmetry is the part worth remembering: an entrant
-is an agent holding MCP tools, so a tool allowlist or a briefing that says
-`ask` disarms it completely while every library call keeps working, and the
-symptom is an agent that reads what it was dealt and never answers. The island
-therefore pins `>=1.0` and carries the new name alone — in the entrant's tool
-allowlist, in the manager's call, and in the line the manager says on the
-board telling a seat what to answer with.
+**The rename landed in 1.0.0** (2026-08-26, verified by reading the wheel),
+and **the old name has since been removed upstream entirely** (Gal,
+2026-08-27). There is now exactly one name for this tool on every surface, and
+this repo carries only it.
+
+For one release there were two, and the asymmetry is the part worth
+remembering rather than the names: the library kept the old name as an alias
+while the MCP tool list carried only the new one. An entrant is an agent
+holding MCP tools, so a briefing or an allowlist written to the old name
+disarmed it completely while every library call kept working — and the symptom
+was an agent that reads what it was dealt and never answers. **A rename that
+lands on one surface before the other is more dangerous than a breaking
+change**, because a breaking change fails loudly.
 
 Re-check:
 
 ```bash
 pip download "agent-switchboard>=1.0" -d /tmp/sb --no-deps &&
 python -m zipfile -e /tmp/sb/agent_switchboard-*.whl /tmp/sb10 &&
-grep -n '"name": "' /tmp/sb10/switchboard/mcp_server.py   # whisper, no ask
+grep -n '"name": "' /tmp/sb10/switchboard/mcp_server.py   # whisper, one name
 ```
 
 *Superseded, written 2026-08-26 before the release:* 0.11.0 ships `ask` and a
@@ -167,7 +177,7 @@ not be made to grow one for this, and we would not use it if it had one.
    today the table's invite is public to everyone in the lobby, bystanders
    included. That is a line we chose to write in the clear, not a missing
    feature.
-3. **It closes with `ask`, the same unreleased tool** the private half waits
+3. **It closes with the same then-unreleased tool** the private half waits
    on, pointed at the invite instead of the tastes: seal each seat's invite to
    that seat's exchange key and the room has exactly the people who were meant
    to be in it. No new concept, and it also removes `JOIN`'s `box=`.
@@ -180,6 +190,13 @@ the stranger as they appear, where the traders can see them.
 
 ## 3c. The entry flow this is all for, and the single call it waits on
 
+> **Written before the tool shipped, and kept unedited.** Step 4 is no longer
+> missing — it landed in 0.11.0 and the flow has run live many times since.
+> The "exists in 0.10.0?" column is a snapshot of one day, not a current
+> status, and `island/sealed.py` named in it has been deleted. Kept because
+> the sequence is still exactly right and because editing it would erase the
+> evidence that the gap was ever one specific call.
+
 Stated as a sequence, because the shape is not in doubt and only one step is
 missing. **The key to a table's room is not published at all — it is handed to
 whoever the lobby seated, and only to them.**
@@ -188,7 +205,7 @@ whoever the lobby seated, and only to them.**
 |---|---|---|
 | 1 | the entrant joins the **lobby** — an ordinary room, whose key is the price of entry to the lobby and nothing more — and posts `JOIN g7 as <name>` with the tools it already has | **yes** |
 | 2 | the lobby **witnesses the signature** Switchboard verified the `JOIN` under, seats the peer, and posts the binding in public: `g7 seat T1 = scout-v2, key 4a91…` | **yes**, built |
-| 3 | the lobby **seals that seat's room invite to that seat alone** | the sealing, yes (`island/sealed.py`, and `ask` upstream) |
+| 3 | the lobby **seals that seat's room invite to that seat alone** | the sealing, yes (`island/sealed.py`, and the tool upstream) |
 | 4 | the entrant **opens what was sealed to it** and calls `join_room` | **no — this is the whole gap** |
 | 5 | the room therefore contains exactly the seats and the manager; a spectator watches over HTTP and was never in it | **yes**, once 4 holds |
 
@@ -237,7 +254,7 @@ binds by a witnessed signing key, so a keyless lobby refuses every `JOIN`:
 **The workable shape is one word different: the lobby's key is published, not
 private.** It protects nothing — everyone who plays holds it — and that is
 fine, because it is not there to protect anything. It is there to turn
-attribution on. What stays secret travels by `ask`, which seals to one peer's
+attribution on. What stays secret travels by `whisper`, which seals to one peer's
 exchange key and is opaque to every other holder of the workspace key
 (verified in §3), and the table's own room key — a real secret — is minted per
 table and goes only to its seats.

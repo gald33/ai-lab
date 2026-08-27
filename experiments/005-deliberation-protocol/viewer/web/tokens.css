@@ -107,6 +107,22 @@
   --below:    #e66767;
   --neutral:  #383835;
 
+  /* Seat accents. Not encoding colours: a seat's colour says whose hut and
+     whose card this is, and nothing is ever read off it as a quantity -- which
+     is why they are held to legibility on the surface and to being distinct
+     from each other, and not to the series gates.
+
+     Deliberately not --util or --eff: both are drawn *on* the card these tint,
+     and a third thing on screen wearing a metric's colour would be one that
+     means something else. The same list as SEAT_COLOURS in `island3d.js`, and
+     `test_palette.py` compares them -- the goods drifted exactly this way. */
+  --seat-1: #e8a13d;
+  --seat-2: #6fc2a0;
+  --seat-3: #c98bd8;
+  --seat-4: #d9694f;
+  --seat-5: #86a8e0;
+  --seat-6: #d3c463;
+
   --good:     #0ca30c;
   --warning:  #fab219;
   --critical: #d03b3b;

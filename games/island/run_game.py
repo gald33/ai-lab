@@ -47,8 +47,8 @@ needs X25519, and an entrant's agent has `say`, `history`, `inbox` and `sleep`
 -- so every sealed round exercised here is driven by scripted clients calling
 `sealed.seal_to` directly. Switchboard has since shipped the tool that fixes
 this: `whisper` seals to one recipient's published `exchange_key`, and `inbox`
-opens what was sealed to you. **That release landed** -- 0.11.0 carrying it as
-`ask`, 1.0.0 under the name it keeps -- so `island/sealed.py` is gone, this
+opens what was sealed to you. **That release landed**, so `island/sealed.py` is
+gone, this
 module deals through `whisper`, and a game real agents play is a practice game
 only when a seat turns up without an exchange key to seal to.
 """

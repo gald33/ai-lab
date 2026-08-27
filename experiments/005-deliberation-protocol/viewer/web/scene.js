@@ -50,11 +50,66 @@ const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
  *
  * A kind that is not here is a frame with nothing to watch, and is not held.
  */
+/**
+ * The exchange's middle leg, in milliseconds from the moment the frame paints:
+ * when a bundle's boxes set off across the island, and when they are standing
+ * in the new owner's yard.
+ *
+ * **One schedule, read by both engines.** The boxes are three.js and the
+ * symbols that fly off them are SVG, and the two were keeping separate copies
+ * of the same choreography in different units -- `island-events.js` in seconds
+ * off its own clip clock, `hands()` in milliseconds off a `CROSS` constant.
+ * They disagreed, and the disagreement was visible: the symbols left for the
+ * gaining card **30ms before the boxes touched down** and a full half-second
+ * before they had finished settling onto the pile, so a card filled from goods
+ * that were still in the air. Reported by eye.
+ *
+ * `island-events.js` imports this and divides by a thousand. That is the same
+ * arrangement `feeds.js` already has with `DWELL` -- the durations are named
+ * once, where the animation that spends them is written, and everything that
+ * has to keep step with them reads them rather than mirroring them.
+ */
+export const CARRY = {
+  off: 850,      // the boxes set off, the losing card having emptied into them
+  step: 300,     // and the next good's boxes follow this much later
+  spread: 240,   // one good's boxes leave across this window, however many
+  cross: 1500,   // over the island
+  land: 420,     // and the hop onto the new owner's pile
+  rest: 160,     // a beat standing there before the symbols rise off them
+  back: 200,     // the return bundle sets off this much after the first
+};
+
+/**
+ * When the `i`-th good of a bundle is certainly standing in the new yard.
+ *
+ * **Exact, and that is the point.** The boxes of one good are spread across
+ * `CARRY.spread` however many there are -- `k / (n - 1)` of it, and a lone box
+ * takes the whole of it -- so the *last* box of a good always leaves at
+ * `spread`, whether that good came to one box or six. The card's symbols do
+ * not know how many boxes a quantity came to, and counting them would put the
+ * stock's arithmetic inside the drawing.
+ *
+ * `CARRY.rest` is why this is not the landing itself. Cued at the instant the
+ * last box stopped, the symbol left on the same frame the hop finished, which
+ * reads as the two being one motion rather than one following the other.
+ */
+export const carriedBy = (i, back = false) =>
+  (back ? CARRY.back : 0) + CARRY.off + i * CARRY.step + CARRY.spread
+  + CARRY.cross + CARRY.land + CARRY.rest;
+
+//: The arriving boxes emptying into the gaining card: the third leg.
+const IN_LEG = 820;
+
 export const DWELL = {
   //: Three legs now, not one: the losing card empties into its own boxes, the
   //: boxes cross the island, and the arriving boxes fill the gaining card. It
   //: was 2100 when the whole exchange was parcels crossing the square.
-  settled: 3600,
+  //:
+  //: **The floor, for one good each way.** A real bundle is measured by
+  //: `dwellFor`, which knows how many goods are in it: holding every exchange
+  //: for the worst case a board allows -- seven goods, 7.6s -- would spend that
+  //: on every two-good trade as well.
+  settled: carriedBy(0, true) + IN_LEG,
   produced: 2600,  // the hut works, then a sheaf per good lands on the shelf
   refused: 1500,   // one badge, rising
   said: 1300,      // one bubble, rising
@@ -80,6 +135,16 @@ export const DWELL = {
 export function dwellFor(event, isStill = false) {
   if (isStill || !event) return 0;
   if (event.kind === "said" && event.attempt) return 0;
+  //: Measured off the bundle rather than taken off the table: the last leg of
+  //: an exchange starts when the last of its boxes has landed, and that is
+  //: `CARRY.step` later for every good in it.
+  if (event.kind === "settled") {
+    const wide = (b) => Object.values(b || {}).filter((q) => q > 1e-9).length;
+    return Math.max(DWELL.settled, ...[[wide(event.give), false],
+                                       [wide(event.want), true]]
+      .filter(([n]) => n > 0)
+      .map(([n, back]) => carriedBy(n - 1, back) + IN_LEG));
+  }
   return DWELL[event.kind] || 0;
 }
 
@@ -1190,6 +1255,20 @@ export class Scene {
   hut(name, seat) {
     const g = el("g", { class: "hut", transform: `translate(${seat.x} ${seat.y})`,
                         "data-trader": name });
+    //: **Whose hut, and whose card.** The model already paints a trader's
+    //: colour on its door and the band under its roof; the drawn hut and the
+    //: card hanging under it carried none of it, so with the island turned to
+    //: cards a viewer had identical dark rectangles and a name to read on each.
+    //: The accent is set once on the settlement group and inherited by both,
+    //: which is what keeps the hut and the card that belongs to it wearing one
+    //: colour.
+    //:
+    //: **From the ring, not from `--seat-${(i % 6) + 1}`.** The stylesheet
+    //: names six and a table is not capped at six, so that wrapped the seventh
+    //: trader's hut and card onto the first trader's colour -- the same defect
+    //: the island had, in a second place. `seats.js` answers for any count, and
+    //: the island is asked the same question, so the two still agree.
+    g.style.setProperty("--seat", this.seatColour(name));
     // The dwelling, then the card. The hut says whose this is; the card is the
     // only part carrying information, and it gets a dark ground of its own --
     // a number written straight onto sand cannot be read at any size.
@@ -1234,6 +1313,13 @@ export class Scene {
                                class: "card-name" }, shortName(name));
     label.append(el("title", {}, name));
     card.append(label);
+
+    //: The card's half of the accent: a rule down its inside edge, in the same
+    //: colour as the door of the hut above it. Inset rather than laid on the
+    //: card's own border, which is rounded at 13 and would show a straight
+    //: stripe overhanging both corners.
+    card.append(el("rect", { class: "card-accent", x: -CARD_W / 2 + 5.5, y: CARD_TOP + 13,
+                             width: 3.5, height: Math.max(0, tall - 26), rx: 1.75 }));
 
     // Labour: filled by what this trader spent this episode, and empty until a
     // production receipt says otherwise -- nobody has told this page anything
@@ -1955,19 +2041,25 @@ export class Scene {
    * bar changes until something has arrived to change it.
    */
   hands(e) {
-    const OUT = still() ? 1 : 820;      // card -> its own boxes
-    const CROSS = still() ? 0 : 1500;   // the island's own leg, not drawn here
-    const IN = still() ? 1 : 900;       // arriving boxes -> card
-    const move = (owner, taker, bundle, base) => {
+    //: The losing card has to be empty before its boxes leave, so this ends a
+    //: beat short of `CARRY.off` rather than running up against it.
+    const OUT = still() ? 1 : CARRY.off - 40;
+    const IN = still() ? 1 : IN_LEG;
+    const move = (owner, taker, bundle, back) => {
       Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
         .forEach(([good, qty], i) => {
-          const delay = base + (still() ? 0 : i * 180);
-          this.hand(owner, good, qty, "out", delay, OUT);
-          this.hand(taker, good, qty, "in", delay + OUT + CROSS, IN);
+          const out = still() ? 0 : (back ? CARRY.back : 0) + i * CARRY.step;
+          this.hand(owner, good, qty, "out", out, OUT);
+          //: **After the boxes are standing in the yard, not while they fly.**
+          //: This used to be `delay + OUT + CROSS` against a `CROSS` of 1500,
+          //: which put it 30ms before the boxes touched down and 530ms before
+          //: they had finished settling -- the gaining bar filled from goods
+          //: that were still in the air.
+          this.hand(taker, good, qty, "in", still() ? 2 : carriedBy(i, back), IN);
         });
     };
-    move(e.maker, e.taker, e.give, 0);
-    move(e.taker, e.maker, e.want, still() ? 0 : 220);
+    move(e.maker, e.taker, e.give, false);
+    move(e.taker, e.maker, e.want, true);
     const rope = this.ropes.querySelector(`.rope[data-pid="${e.pid}"]`);
     if (rope) rope.classList.add("settling");
   }

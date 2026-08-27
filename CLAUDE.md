@@ -169,9 +169,14 @@ another's `@` channel), and a **signing key is per client, not per process**.
 sealed-to-one-peer tool — verified here: a third member of the room holding
 the same workspace key gets an unopenable envelope. **It was renamed from
 `ask` to `whisper`** (Gal, 2026-08-26), and **1.0.0 carries the new name**:
-`Client.ask()` remains an alias upstream, but the MCP tool an agent holds is
-`whisper` and only `whisper`, so **this repo pins `>=1.0` and says `whisper`
-everywhere** — the old name is not carried on either side. Both sides must read the roster before it works, which is not obvious from the
+**The old name has since been removed from Switchboard entirely** (Gal,
+2026-08-27), so there is exactly one name on every surface and **this repo
+pins `>=1.0` and says `whisper` everywhere**. For one release there were two —
+the library aliased the old name while the MCP tool list carried only the new
+one — and that asymmetry is the lesson worth keeping: **a rename that lands on
+one surface before the other is more dangerous than a breaking change**,
+because a breaking change fails loudly and this one disarmed entrants in
+silence. Both sides must read the roster before it works, which is not obvious from the
 example. What it unblocks — ranked games, deleting `island/sealed.py`, dropping
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.

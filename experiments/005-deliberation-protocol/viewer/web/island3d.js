@@ -318,7 +318,7 @@ function hut(id, traderMat) {
   g.name = `settlement_${id}`;
   add(g, new THREE.CylinderGeometry(0.34, 0.38, 0.42, 24), M.cloth, `hut_${id}_wall`, [0, 0.21, 0]);
   add(g, new THREE.ConeGeometry(0.52, 0.42, 24), M.thatch, `hut_${id}_roof`, [0, 0.63, 0]);
-  add(g, new THREE.SphereGeometry(0.05, 12, 10), M.thatchLit, `hut_${id}_finial`, [0, 0.86, 0]);
+  add(g, new THREE.SphereGeometry(0.055, 12, 10), traderMat, `hut_${id}_finial`, [0, 0.86, 0]);
   //: **The hut had a flag and does not any more.** With a flag over every good
   //: site as well, a four-trader seven-good island carried eleven of them, and
   //: a flag stopped meaning anything: it was just what this island's skyline
@@ -326,12 +326,35 @@ function hut(id, traderMat) {
   //: and nothing else says anything with a flag.
   //:
   //: A hut still has to say whose it is, so the trader's colour moved onto the
-  //: hut itself -- the door it faces the fire with, and a painted band under
-  //: the eaves that is visible from any bearing the camera swings to. That is
-  //: more of the colour than the banner ever showed, on a shape a viewer is
-  //: already looking at, and it costs the island a pole and a scrap of cloth.
-  add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), traderMat, `hut_${id}_door`, [0, 0.12, 0.379]);
-  add(g, new THREE.CylinderGeometry(0.385, 0.4, 0.055, 24), traderMat, `hut_${id}_band`, [0, 0.41, 0]);
+  //: hut itself -- the door it faces the fire with, and a painted band on the
+  //: roof, visible from any bearing the camera swings to. That is more of the
+  //: colour than the banner ever showed, on a shape a viewer is already
+  //: looking at, and it costs the island a pole and a scrap of cloth.
+  //: **The band was under the eaves and could not be seen from anywhere.**
+  //: Reported by eye -- "I don't see the door and band" -- and then measured:
+  //: `viewer/tests/render.py:whose` raycasts the camera at every point on each
+  //: accent and counts the ones nothing else covers. The band scored **0 of
+  //: 148**, on both huts, at every bearing. The geometry says why without a
+  //: picture: the roof is a cone of radius 0.52 whose rim sits at y = 0.42,
+  //: and the band was a ring of radius 0.40 at y = 0.41 -- entirely inside the
+  //: overhang, so the only camera that could ever have seen it is one below
+  //: the eaves, and this island is watched from above. "Visible from any
+  //: bearing the camera swings to", which is what the note above claimed, was
+  //: true of the bearings and false of the elevation.
+  //:
+  //: So the band moved **onto the roof**, where the camera is already looking:
+  //: a ring hugging the cone's own slope between y = 0.47 and y = 0.55, its
+  //: radii the cone's radius at those heights (r = 0.52 (0.84 - y) / 0.42)
+  //: plus 0.006 to keep it off the surface it lies on. Open-ended, so it is a
+  //: painted stripe rather than a lid. The finial takes the colour too: it is
+  //: the highest thing on the hut and the last to be occluded by anything.
+  //:
+  //: The door is 0.19 by 0.28 rather than 0.14 by 0.24 -- it was 12 of 24
+  //: points and about five pixels across on a desktop frame, which is a door
+  //: that is technically visible and practically not.
+  add(g, new THREE.BoxGeometry(0.19, 0.28, 0.02), traderMat, `hut_${id}_door`, [0, 0.14, 0.379]);
+  add(g, new THREE.CylinderGeometry(0.365, 0.464, 0.08, 24, 1, true), traderMat,
+      `hut_${id}_band`, [0, 0.51, 0]);
   //: **The hut had a lantern and does not any more.** A 0.05 emissive sphere
   //: by the door, ramped up as the day went (`island-life.js`), on the
   //: argument that it was the one thing brighter at dusk than at noon. Cut as
@@ -624,8 +647,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: the deep water, so it does not need to receive one either. The shallows,
   //: the shelf and the beach still do both, which is where the coast's own
   //: shadows are.
+  //: **Dropped again, for the swell.** The life layer lays a moving surface
+  //: over this disc, and its troughs go a tenth of a unit below the still
+  //: water line -- so with the disc's top at -0.04 every trough sank *into*
+  //: it and the open sea got a ring of intersection lines where the two
+  //: surfaces cut. The disc is the deep colour behind the swell; it only has
+  //: to be below the lowest trough, and this is well below it.
   const sea = add(island, new THREE.CylinderGeometry(16, 16, 0.12, 128), M.seaDeep,
-    "sea", [0, -0.10, 0]);
+    "sea", [0, -0.30, 0]);
   sea.castShadow = false;
   sea.receiveShadow = false;
   //: The water follows the coast rather than a circle. A round shallows and a
@@ -983,15 +1012,61 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   // — the trail: the fire to each settlement, each site, and the dock head —
   const trail = new THREE.Group();
   trail.name = "trails";
-  const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z]),
-                ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z]),
-                [2.75, 1.15]];
-  for (const [ex, ez] of ends) {
+  //: **A trail stops at the door; it does not run under the hut.** The steps
+  //: were laid at eighths of the way from the fire to whatever the trail runs
+  //: to, so the last one sat a *fraction* of the distance short -- and for a
+  //: settlement on the near ring that fraction is about a third of a unit,
+  //: which is less than the hut's own half-footprint. The stone landed inside
+  //: the walls and showed as a **yellow disc lying under the hut**, reported
+  //: by eye and reading as exactly the thing that was taken off the campfire
+  //: two commits earlier (`hearth_ground`, above). The far-ring sites hid it
+  //: better and had it too.
+  //:
+  //: So each end carries the clearance it needs and the steps are laid over
+  //: what is left. The clearance is the widest thing that end draws -- the
+  //: hut's roof, which is a cone wider than its wall and the part that would
+  //: cover a stone from above; a site's own half-footprint, `RSITE`, the one
+  //: the spacing rule uses -- plus the stone's radius and the jitter it can
+  //: take, since a step that clears the eaves by its middle still puts its rim
+  //: under them. The dock head is a plank the trail is meant to reach.
+  const STONE = 0.11 + 0.04;
+  const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z,
+                                       0.52 * 0.95 * room + STONE]),
+                ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z,
+                                     RSITE + STONE]),
+                [2.75, 1.15, STONE]];
+  //: **And no stone lies inside anything else on the way, either.** Clearing
+  //: the end a trail runs to is not enough on a crowded island: a trail to the
+  //: far side of the fire passes straight through whatever stands between, and
+  //: at seven traders and five goods it laid stones inside four settlements and
+  //: three sites -- the same yellow disc under a hut, arrived at from a
+  //: different direction. Measured by `render.py:island`, which fails on every
+  //: one of them.
+  //:
+  //: A stone inside a footprint is simply not laid. That leaves a gap in the
+  //: trail where it passes behind a hut, which is what a path behind a hut
+  //: looks like; it is not the same as a trail that stops short of its own
+  //: destination, which is why the clearance above exists as well.
+  island.updateMatrixWorld(true);
+  const solid = [...traders.map((n) => `settlement_${n}`),
+                 ...goods.map((g) => `site_${g}`)]
+    .map((n) => island.getObjectByName(n)).filter(Boolean)
+    .map((o) => new THREE.Box3().setFromObject(o));
+  const buried = (x, z, rad) => solid.some((b) =>
+    x + rad > b.min.x && x - rad < b.max.x && z + rad > b.min.z && z - rad < b.max.z);
+  for (const [ex, ez, clear] of ends) {
+    //: Compressed rather than truncated: the same seven steps, laid over the
+    //: span that is left, ending on the clearance. A trail with stones dropped
+    //: off its end is a trail that peters out, which says the walking stopped
+    //: rather than that it arrived.
+    const span = Math.hypot(ex - 0.45, ez - 0.55);
+    const reach = Math.max(0.35, span - clear) / span;
     for (let s = 1; s <= 7; s++) {
-      const k = s / 8;
+      const k = (s / 7) * reach;
       const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
       const onSand = Math.hypot(x, z) > 3.1;
       const jx = x + (r() - 0.5) * 0.08, jz = z + (r() - 0.5) * 0.08;
+      if (buried(jx, jz, 0.11)) continue;
       add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
         `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
         [jx, ground(jx, jz) + 0.01, jz]);

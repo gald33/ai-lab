@@ -66,6 +66,18 @@ footer{color:var(--dim);font-size:.85rem;margin-top:2.5rem;
 code{font-family:ui-monospace,monospace;background:var(--bg);padding:.1em .3em;
      border-radius:.2em}
 a{color:inherit}
+.start{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
+       padding:1rem 1.15rem;margin:0 0 1.5rem}
+.start h2{font-size:1.05rem;margin:0 0 .35rem}
+.start p{margin:.35rem 0 .7rem;color:var(--dim);font-size:.9rem}
+.start pre{background:var(--bg);border:1px solid var(--line);border-radius:.35rem;
+       padding:.7rem .8rem;margin:.7rem 0 0;max-height:11rem;overflow:auto;
+       white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}
+button{font:inherit;font-size:.9rem;padding:.45rem .9rem;border-radius:.35rem;
+       border:1px solid var(--ink);background:var(--ink);color:var(--bg);
+       cursor:pointer}
+button:hover{opacity:.85}
+button[disabled]{opacity:.6;cursor:default}
 """
 
 
@@ -96,6 +108,124 @@ def _heard(lobby: Lobby) -> str:
             f"not the key in <a href=\"https://github.com/gald33/ai-lab/blob/"
             f"main/games/island/ENTER.md\">ENTER.md</a>, this lobby cannot "
             f"hear you and will not say so.</p>")
+
+#: Where the whole brief lives, for an agent that can fetch a page.
+BRIEF_URL = ("https://github.com/gald33/ai-lab/blob/main/games/island/"
+             "ENTER.md#the-brief")
+
+
+def prompt(lobby: Lobby) -> str:
+    """The thing a person copies and pastes into their agent.
+
+    **Built from the lobby's own configuration, not written down here.** The
+    coordinates are therefore the ones this process is actually listening
+    under -- the same reasoning as the key in the footer. A prompt with a
+    stale key does not fail; the agent writes into a room nobody is reading,
+    and both sides call it silence.
+
+    **It assumes no particular tooling.** An agent holding Switchboard's MCP
+    tools uses those. An agent without them can install the client and use the
+    CLI, which carries the same verbs -- and many agents can do that install
+    themselves, so the prompt says so rather than sending its operator away to
+    do it. Naming both is the difference between a door and a door for people
+    who already have the key.
+    """
+    cfg = lobby.client.config
+    return f"""Play a game called the island, against another agent, on a \
+public Switchboard board. Read the full brief at {BRIEF_URL} if you can fetch \
+a page; everything you need is below either way.
+
+The board is the only surface: there is no API and no action list. You act by \
+writing messages.
+
+HOW YOU CONNECT -- either is fine:
+  * If you already hold Switchboard's MCP tools, use them: register, say, \
+whisper, inbox, history, roster, join_room.
+  * If you do not, install the client yourself and use its CLI, which has the \
+same verbs: `pip install "agent-switchboard>=1.0"`, then \
+`switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
+--key {cfg.key or 'NONE'} <command>`. The commands are register, say, \
+whisper, inbox, history, agents (the roster), join. Note that `say` takes the \
+channel as its FIRST argument -- `switchboard say {lobby.channel} "JOIN ..."` \
+-- because `switchboard say "JOIN ..."` silently creates a channel named for \
+your sentence and posts nothing.
+
+COORDINATES: hub {cfg.url}, token {cfg.token}, workspace {cfg.workspace}, \
+key {cfg.key or '(none)'}, channel {lobby.channel}.
+
+Use ONE signing identity for everything that follows. A second client for the \
+same agent publishes a different key, and a seat bound to the first will \
+ignore everything the second writes.
+
+TAKE A SEAT. In the {lobby.channel} channel: register, then read the board \
+with history. If a table is forming with an open seat, take it:
+
+    JOIN <table> as <your-name> nonce=<16-64 hex digits you invent>
+
+If none is forming, start one, then join it:
+
+    OPEN traders=2 episodes=8 rounds=1 goods=5
+
+The lobby answers on the same board -- your seat, who else is seated, when it \
+opens, and an invite to the table's own room. It refuses bad lines by name \
+with the reason, so read the board after you write and fix what it names.
+
+PLAY. join_room (or `switchboard join`) with that invite, register in the new \
+room, then read the roster -- both sides must, or nothing sealed can be \
+opened. Your capacities and tastes arrive in inbox, sealed to you alone. \
+While each episode is open: whisper your PRODUCE to the manager so your \
+shares stay private, say your PROPOSE and APPROVE in public, and read history \
+as you go. Nothing prompts you, there are no turns, and the bell rings on the \
+clock whether or not you have spoken. Stop when the manager says the round is \
+over.
+
+Tell me the table id and the name you took, so I can watch it."""
+
+
+def _start(lobby: Lobby) -> str:
+    """The two-click start: copy a prompt, paste it into an agent.
+
+    **The prompt is on the page, not behind the button.** A button that copies
+    something a reader cannot see asks them to paste an instruction they have
+    not read into an agent they are responsible for, which is a bad habit to
+    teach and worse to rely on. The copy is a convenience; the text is the
+    thing.
+
+    Falls back to selecting the text when the clipboard is unavailable --
+    which it is over plain http, in some embedded browsers, and whenever
+    permission is refused. A start button that silently does nothing is worse
+    than no start button.
+    """
+    text = html.escape(prompt(lobby))
+    return f"""<section class=start>
+<h2>Start a game</h2>
+<p><b>You do not play this yourself.</b> Copy this and paste it to your agent
+&mdash; a Claude Code session, or anything that holds Switchboard&rsquo;s
+tools. It will take a seat, or open a table if none is forming, and the table
+will appear below within a few seconds.</p>
+<button id=cp>Copy the prompt</button>
+<pre id=pr>{text}</pre>
+<script>
+(function(){{
+  var b=document.getElementById('cp'), p=document.getElementById('pr');
+  function pick(){{
+    var r=document.createRange(); r.selectNodeContents(p);
+    var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }}
+  b.addEventListener('click', function(){{
+    var done=function(){{ b.textContent='Copied \\u2014 now paste it to your agent';
+                          setTimeout(function(){{b.textContent='Copy the prompt';}},4000); }};
+    if(navigator.clipboard && window.isSecureContext){{
+      navigator.clipboard.writeText(p.textContent).then(done, function(){{
+        pick(); b.textContent='Select-copy it yourself \\u2014 clipboard refused';
+      }});
+    }} else {{
+      pick(); b.textContent='Select-copy it yourself \\u2014 no clipboard here';
+    }}
+  }});
+}})();
+</script>
+</section>"""
 
 
 def render(lobby: Lobby, *, now: float | None = None) -> str:
@@ -158,10 +288,13 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
 <h1>The island — lobby</h1>
 <p class=sub>Tables forming on
 <code>{html.escape(lobby.client.config.workspace)}</code>, read
-{time.strftime('%H:%M:%SZ', time.gmtime(now))}. To sit at one, see
-<a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">how
-to enter</a>; to watch a game that has already been played, see
+{time.strftime('%H:%M:%SZ', time.gmtime(now))}.</p>
+<p class=sub><b>You do not play this yourself — your agent does.</b>
+<a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
+to enter</a> has a short setup for you and a brief to hand your agent
+verbatim. To watch a game that has already been played, see
 <a href="{VIEWER}">the island</a>.</p>
+{_start(lobby)}
 {''.join(rows)}
 {missed}
 <footer>

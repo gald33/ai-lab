@@ -240,7 +240,7 @@ def test_the_lobby_reads_sealability_off_the_roster_not_off_the_join(settled):
     """What a seat can be sealed to is what its client published when it
     registered -- not something it asserted on a JOIN line.
 
-    Since `ask` shipped, `register()` publishes an exchange key for every
+    Since `whisper` shipped, `register()` publishes an exchange key for every
     ordinary client, so a seat that could be witnessed at all can normally be
     sealed to. The lobby says so at settlement as a courtesy; the manager
     checks it again in the table's own room, which is where it decides
@@ -305,11 +305,11 @@ def test_the_replay_and_the_room_key_are_published_only_at_the_end(settled, hub,
     assert payload["round"]["seed"] == table.seed
 
 
-# --- the sealed round, through `ask` --------------------------------------
+# --- the sealed round, through `whisper` --------------------------------------
 #
 # Rewritten 2026-08-26. It used to drive `island/sealed.py`, a stopgap that
 # sealed to a key each seat posted on the lobby board with `box=`. Switchboard
-# released `ask`, so the key is the entrant's own published `exchange_key` and
+# released it, so the key is the entrant's own published `exchange_key` and
 # the sealing is Switchboard's. The property under test did not change: no
 # taste and no share ever reaches the board.
 
@@ -356,7 +356,7 @@ def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_
             for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
     for name, client in room.items():
         client.register(name=name, kind="local", branch="main", task="trading")
-        client.agents()          # both sides read the roster; see the ask docs
+        client.agents()          # both sides read the roster before sealing
 
     dealer = Dealer.draw(table.seed, table.traders, GOODS)
     manager_client = Client.from_invite(invite, agent_id=MANAGER)
@@ -373,17 +373,17 @@ def test_a_sealed_round_keeps_tastes_and_shares_off_the_board(sealed_table, tmp_
     assert run_game.deal(mgr, dealer, table) is True
 
     # Each seat opens its own half out of its inbox; the other seat never sees
-    # it at all -- an `ask` is delivered to one peer's channel.
+    # it at all -- a `whisper` is delivered to one peer's channel.
     mine = [m["body"] for m in room["scout-v2"].inbox()]
     assert any(isinstance(b, str) and b.startswith("You are T1") for b in mine)
     theirs = [str(m.get("body")) for m in room["trader-b"].inbox()]
     assert not any("You are T1" in b for b in theirs)
 
-    # A sealed PRODUCE settles: sent with `ask`, read out of the manager's
+    # A sealed PRODUCE settles: sent with `whisper`, read out of the manager's
     # inbox, and the plan never reaches the board.
     mgr.open_episode()
-    room["scout-v2"].ask(mgr.client.agent_id, "PRODUCE bread=0.5 iron=0.5")
-    room["trader-b"].ask(mgr.client.agent_id, "PRODUCE cloth=1.0")
+    room["scout-v2"].whisper(mgr.client.agent_id, "PRODUCE bread=0.5 iron=0.5")
+    room["trader-b"].whisper(mgr.client.agent_id, "PRODUCE cloth=1.0")
     mgr.drain()
 
     assert mgr.refused == 0
@@ -437,7 +437,7 @@ def test_a_practice_table_is_dealt_in_the_clear_and_says_so(hub, identities):
 
 def test_a_sealed_blob_posted_on_the_board_is_refused_with_the_way_to_send_it():
     """Sealed payloads used to ride the board under a `SEALED` marker. They do
-    not any more -- `ask` delivers them to the manager's own channel -- so a
+    not any more -- `whisper` delivers them to the manager's own channel -- so a
     blob here settles nothing, and the refusal says what to do instead rather
     than leaving an entrant to guess."""
     from island.dealer import GOODS, Dealer
@@ -454,7 +454,7 @@ def test_a_sealed_blob_posted_on_the_board_is_refused_with_the_way_to_send_it():
     assert m.refused == 1
     assert m.refusals[0]["kind"] == "sealed"
     assert m.refusals[0]["line"] == "<sealed>", "never keep the ciphertext"
-    assert "ask" in m.refusals[0]["reason"]
+    assert "whisper" in m.refusals[0]["reason"]
     assert not m.holders["T1"].produced
 
 

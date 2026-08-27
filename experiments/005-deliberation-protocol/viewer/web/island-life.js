@@ -85,6 +85,49 @@ function cloud(i, scale = 1) {
   return g;
 }
 
+/**
+ * A dolphin, side-on: it is only ever seen in silhouette against the water, so
+ * it is built along +x and steered by `rotation.y` like the gulls are.
+ */
+function dolphin(i) {
+  const g = new THREE.Group();
+  g.name = `dolphin_${i}`;
+  const skin = new THREE.MeshStandardMaterial({ color: 0x51707f, roughness: 0.35 });
+  const belly = new THREE.MeshStandardMaterial({ color: 0xc8d4d8, roughness: 0.45 });
+  //: Fusiform rather than a capsule: an ellipsoid for the head and shoulders
+  //: with a cone tapering off the back of it. A capsule is a tube with two
+  //: round ends and reads as a torpedo at any size -- the taper from a thick
+  //: shoulder down to a thin peduncle is what says dolphin in silhouette, and
+  //: silhouette is all there is at this scale.
+  g.add(mesh(new THREE.SphereGeometry(0.1, 16, 12), skin, "body",
+             [0.04, 0, 0], [0, 0, 0], [1.55, 0.9, 0.72]));
+  g.add(mesh(new THREE.ConeGeometry(0.088, 0.3, 14), skin, "flank",
+             [-0.09, 0, 0], [0, 0, Math.PI / 2], [1, 1, 0.74]));
+  g.add(mesh(new THREE.SphereGeometry(0.075, 12, 10), belly, "belly",
+             [0.03, -0.032, 0], [0, 0, 0], [1.5, 0.55, 0.66]));
+  //: The beak is long and thin, and it is the whole difference between a
+  //: dolphin and a fish at this size: the head is the only end of the
+  //: silhouette a viewer can tell apart at forty pixels.
+  g.add(mesh(new THREE.ConeGeometry(0.036, 0.17, 12), skin, "beak",
+             [0.25, -0.012, 0], [0, 0, -Math.PI / 2], [1, 1, 0.8]));
+  g.add(mesh(new THREE.ConeGeometry(0.045, 0.12, 4), skin, "dorsal",
+             [-0.01, 0.075, 0], [0, Math.PI / 4, -0.8], [1, 1, 0.22]));
+  g.add(mesh(new THREE.ConeGeometry(0.036, 0.11, 4), skin, "flipper",
+             [0.08, -0.05, 0.04], [0.6, 0, 1.2], [1, 1, 0.2]));
+  // The tail is its own group so the stroke swings the flukes and not the fish.
+  const tail = new THREE.Group();
+  tail.position.set(-0.22, 0, 0);
+  tail.add(mesh(new THREE.ConeGeometry(0.028, 0.1, 6), skin, "peduncle",
+                [-0.04, 0, 0], [0, 0, Math.PI / 2], [1, 1, 0.7]));
+  //: Flat and horizontal -- flukes, not a fish's tail fin. A dolphin's tail is
+  //: the one thing about it that is unmistakable from above.
+  tail.add(mesh(new THREE.ConeGeometry(0.085, 0.14, 4), skin, "flukes",
+                [-0.1, 0, 0], [Math.PI / 2, 0, Math.PI / 2], [1, 1, 0.13]));
+  g.add(tail);
+  g.userData = { tail };
+  return g;
+}
+
 //: The island's own dimensions come from `island3d.js` rather than being
 //: restated here: everything added on top has to land on the same ground the
 //: model built, and two copies of the ground's height is one of them wrong.
@@ -130,6 +173,129 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       ring.position.y = 0.055 + Math.sin(p * Math.PI) * 0.02;
     }));
   }
+
+  //: **The open sea used to be a flat blue disc.** Sixteen units of it, one
+  //: colour, perfectly still, with all the motion in the picture crowded into
+  //: the two surf rings at the shore -- so the island read as sitting on a
+  //: painted floor, and the further from the coast a pixel was the more
+  //: obviously it was not water. The swell is that disc's surface: an annulus
+  //: starting clear of the shallows, displaced by three sine trains crossing
+  //: at different bearings and speeds, with the normals recomputed so the
+  //: crests actually take the day's light and go gold with it at the bell.
+  //:
+  //: It is a *surface over* the deep disc rather than a replacement for it:
+  //: the disc still covers the corners of any window, and this only has to
+  //: reach as far as the camera ever frames. Transparent, so the deep colour
+  //: is what shows through the troughs -- and so a dolphin under it is a shape
+  //: in the water rather than nothing at all.
+  const SEA_Y = -0.02;
+  const swellGeo = new THREE.RingGeometry(4.4, 17, 128, 16);
+  swellGeo.rotateX(-Math.PI / 2);
+  const swellRest = swellGeo.attributes.position.array.slice();
+  const swell = mesh(swellGeo, new THREE.MeshStandardMaterial({
+    color: 0x2d5d79, roughness: 0.3, metalness: 0.06,
+    transparent: true, opacity: 0.9, side: THREE.DoubleSide }), "swell",
+    [0, SEA_Y, 0]);
+  //: Same reason the deep disc neither casts nor receives: water in a shadow
+  //: map this wide is the flickering rectangle all over again.
+  swell.castShadow = false;
+  swell.receiveShadow = false;
+  island.add(swell);
+  //: How high the water is at a point, for anything that has to float, swim or
+  //: break the surface. One definition of the sea, read by everyone who needs
+  //: it -- two copies of this is one of them out of phase with the water.
+  const seaAt = (x, z, t) =>
+    SEA_Y + fade(x, z) * (Math.sin(x * 0.62 + t * 0.85) * 0.07
+                          + Math.sin(z * 0.48 - t * 0.62) * 0.058
+                          + Math.sin((x + z) * 0.95 + t * 1.35) * 0.03);
+  //: Flat where it meets the shore and full height out at sea: swell running
+  //: up under the surf rings would put the open ocean over the beach. The
+  //: sheet's inner edge is tucked *under* the shallows slab rather than left
+  //: in the gap beside it, so there is no seam between the two to catch.
+  function fade(x, z) {
+    return clamp01((Math.hypot(x, z) - 4.75) / 1.9);
+  }
+  parts.push((t) => {
+    const pos = swellGeo.attributes.position;
+    const a = pos.array;
+    for (let i = 0; i < a.length; i += 3) {
+      a[i + 1] = seaAt(swellRest[i], swellRest[i + 2], t) - SEA_Y;
+    }
+    pos.needsUpdate = true;
+    //: Without this the crests are lit as though the sheet were still flat,
+    //: which is a flat blue disc that happens to have bumps in its outline.
+    swellGeo.computeVertexNormals();
+  });
+
+  // — dolphins, once in a while, out past the surf —
+  //
+  //: **Occasional, and that is the whole design.** A pod circling the island
+  //: all day is scenery and stops being seen by the second minute; a pod that
+  //: crosses the frame every so often and is gone is something a spectator
+  //: catches. So a pass is a chord across the open water lasting `PASS`
+  //: seconds out of every `POD_CYCLE`, on a bearing that is different each
+  //: time round, and between passes the pod is not in the scene at all.
+  //:
+  //: They porpoise rather than swim flat: the arc out of the water and back
+  //: into it is the read, and the pitch follows the arc's own slope rather
+  //: than being animated separately, so a dolphin never enters the water nose
+  //: up. Below the surface they stay drawn -- the swell is transparent, and a
+  //: shape moving under the water between leaps is what joins one leap to the
+  //: next.
+  const POD_CYCLE = 52, PASS = 13, POD_R = 5.8;
+  const pod = [0, 1, 2].map((i) => {
+    const d = dolphin(i);
+    d.visible = false;
+    island.add(d);
+    // Strung out along the line of travel and offset across it, so they read
+    // as a pod travelling together rather than as one dolphin drawn three
+    // times; the phase offset is what makes them break the surface in turn.
+    return { d, lag: i * 0.055, across: (i - 1) * 0.55, ph: i * 0.42,
+             size: 1 - i * 0.12 };
+  });
+  parts.push((t) => {
+    const cycle = Math.floor(t / POD_CYCLE);
+    const u = (t % POD_CYCLE) / PASS;
+    if (u > 1) { pod.forEach(({ d }) => { d.visible = false; }); return; }
+    //: A different bearing every cycle, from the cycle number rather than from
+    //: `Math.random()`: the island is seeded, and a pass that cannot be
+    //: reproduced cannot be looked at twice.
+    const bearing = (cycle * 2.399963) % (Math.PI * 2);
+    const cos = Math.cos(bearing), sin = Math.sin(bearing);
+    pod.forEach(({ d, lag, across, ph, size }) => {
+      const p = clamp01(u - lag);
+      d.visible = p > 0 && p < 1;
+      if (!d.visible) return;
+      // Along the chord, and offset across it. The chord passes at POD_R from
+      // the middle of the island -- a little over a unit outside the surf
+      // ring, so the pod is in open water and still inside the frame on the
+      // narrowest window this page is framed for.
+      const along = -11 + p * 22;
+      const off = POD_R + across;
+      const x = cos * along - sin * off;
+      const z = sin * along + cos * off;
+      // One leap per LEAP seconds of the pass, as a raised sine: above zero it
+      // is out of the water, below it the dolphin is under it.
+      const LEAP = 2.6;
+      const leap = Math.sin(((t / LEAP) + ph) * Math.PI * 2);
+      const rise = leap > 0 ? leap ** 0.85 : leap * 0.35;
+      const sea = seaAt(x, z, t);
+      d.position.set(x, sea + rise * 0.5 + 0.02, z);
+      //: A dolphin is built along +x, and `rotation.y` of `-bearing` is what
+      //: sends that axis along the chord: the gulls' `-a + PI/2` is a *tangent*
+      //: to a circle and putting it here swam the pod broadside, nose to the
+      //: camera, for a whole pass.
+      d.rotation.y = -bearing;
+      // The slope of the arc it is on, so the nose leads.
+      d.rotation.z = Math.cos(((t / LEAP) + ph) * Math.PI * 2) * 0.85;
+      d.userData.tail.rotation.z = Math.sin(t * 6 + ph) * 0.4;
+      // Small at both ends of the pass and full size across the middle of it,
+      // so a dolphin is never seen to appear: with no perspective to shrink
+      // one, coming up the chord *is* how the pod arrives from far off.
+      const near = Math.min(1, Math.min(p, 1 - p) * 6);
+      d.scale.setScalar(size * (0.55 + near * 0.45));
+    });
+  });
 
   // — palms in the wind —
   const palms = named(/^palm_\d+$/).map((p, i) => ({

@@ -507,6 +507,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += stock(browser, base, out)
             problems += carrying(browser, base, out)
             problems += island(browser, base, out)
+            problems += whose(browser, base, out)
             problems += mechanics(browser, base, out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
@@ -1685,7 +1686,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_)/;
+  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|labour_)/;
   const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
   window.__under = (x, z) => {
     ray.set(new THREE.Vector3(x, 8, z), down);
@@ -1721,7 +1722,14 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: what a spectator asked for instead of a void. Left in, it makes the
   //: "silhouette" the whole canvas and every question below unanswerable.
   //: What is left is the coast: shallows, surf, shelf, beach, and the land.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|sea$)/;
+  //: **`swell` and the dolphins go with it, for the same reason.** The swell
+  //: is the sea's own surface -- seventeen units of it, wider than any frame
+  //: -- and a pod passing out in the open water is no more the island's
+  //: outline than a gull over it is. Left in, they put the "silhouette" at the
+  //: edge of the picture and every question below is unanswerable again: the
+  //: check reported the island drawn under the chrome on four frame shapes,
+  //: measuring water.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|dolphin_|sea$|swell$)/;
   const meshes = [];
   for (const part of made.island.children) {
     if (WEATHER.test(part.name)) continue;
@@ -1870,11 +1878,22 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     }
   }
 
+  //: Where the trail's stones lie, with the radius each is drawn at. A step
+  //: is a flat sand disc, and a flat sand disc inside a hut's footprint is the
+  //: thing the campfire's clearing was removed for -- see `island3d.js`.
+  //: In world coordinates, like the boxes above, and with the radius carried
+  //: through whatever the island itself is scaled to. Local numbers compared
+  //: against world boxes is a check that passes for the wrong reason.
+  const steps = made.island.getObjectByName('trails').children.map(o => {
+    const w = o.getWorldPosition(new THREE.Vector3());
+    return [+w.x.toFixed(3), +w.z.toFixed(3), +(0.11 * made.island.scale.x).toFixed(3)];
+  });
+
   // Everything the island places on purpose, by name, so a check can ask
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot, sunk,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -1896,7 +1915,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
 STOCK = """async ({goods, cases}) => {
   const THREE = await import('./vendor/three/three.module.js');
   const { Stage } = await import('./stage.js');
-  const { layout } = await import('./scene.js');
+  const { layout, CARRY, carriedBy } = await import('./scene.js');
   const cv = document.createElement('canvas');
   cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
   const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
@@ -1974,10 +1993,10 @@ STOCK = """async ({goods, cases}) => {
 
 #: An exchange driven frame by frame off-page, so a check can watch where every
 #: box is at every moment of it rather than at the two ends.
-CARRY = """async ({goods, give, want}) => {
+CARRY = """async ({goods, give, want, hold}) => {
   const THREE = await import('./vendor/three/three.module.js');
   const { Stage } = await import('./stage.js');
-  const { layout } = await import('./scene.js');
+  const { layout, CARRY, carriedBy } = await import('./scene.js');
   const cv = document.createElement('canvas');
   cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
   const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
@@ -1986,8 +2005,8 @@ CARRY = """async ({goods, give, want}) => {
   st.build({traders, goods});
   st.pause();
   // Both sides holding plenty, so there is something to send either way.
-  const before = {T1: Object.fromEntries(goods.map(g => [g, 0.8])),
-                  T2: Object.fromEntries(goods.map(g => [g, 0.8]))};
+  const before = {T1: Object.fromEntries(goods.map(g => [g, hold])),
+                  T2: Object.fromEntries(goods.map(g => [g, hold]))};
   st.showStock(before);
   const was = [];
   st.stock.root.traverse(o => { if (o.isMesh) was.push(o); });
@@ -2003,6 +2022,29 @@ CARRY = """async ({goods, give, want}) => {
   st.showStock(event.after, event);
   const c = st.fire(event);
   if (!c) return {error: 'the exchange staged no clip at all'};
+  //: Which boxes carry which good, so the moment *that good* comes to rest can
+  //: be compared against the moment its symbols are told to leave. By name,
+  //: which is what a box is called after the good inside it.
+  const of = {};
+  for (const o of was) for (const g of goods) if (o.name.includes(g)) (of[g] ||= []).push(o);
+  const place = (o) => { const p = o.getWorldPosition(new THREE.Vector3());
+    return `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`; };
+  const seen = {}, stops = {};
+  for (let t = 0; t <= c.dur + 0.2; t += 0.02) {
+    c.update(t);
+    for (const [g, ms] of Object.entries(of)) {
+      const now = ms.map(place).join('|');
+      if (seen[g] !== undefined && now !== seen[g]) stops[g] = Math.round(t * 1000);
+      seen[g] = now;
+    }
+  }
+  //: What `hands()` schedules the symbols at, from the page's own table.
+  const cue = {};
+  Object.keys(give).forEach((g, i) => { cue[g] = carriedBy(i, false); });
+  Object.keys(want).forEach((g, i) => { cue[g] = carriedBy(i, true); });
+  c.restore();
+  c.update(0);
+
   // Every tenth of a second of it: is any box that existed before the clip
   // started invisible, or standing somewhere it did not walk to?
   const trail = [];
@@ -2017,7 +2059,7 @@ CARRY = """async ({goods, give, want}) => {
     trail.push({t: +t.toFixed(1), shot});
   }
   c.restore();
-  return {n: was.length, trail,
+  return {n: was.length, trail, stops, cue, rest: CARRY.rest,
           home: was.map(o => {const p = home.get(o);
                               return [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];})};
 }"""
@@ -2037,6 +2079,23 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     So this drives an exchange a tenth of a second at a time and watches every
     box that existed before it started: none may go invisible, and none may
     move further in one step than a box can travel.
+
+    **And the symbols wait for them.** Also reported by eye: the item symbols
+    left the arriving boxes for the gaining card before the boxes had touched
+    down. The two engines were keeping separate copies of the same schedule --
+    three.js in seconds off its clip clock, SVG in milliseconds off a `CROSS`
+    constant -- and the copies had drifted apart by half a second, so a bar
+    filled from goods that were still in the air. They read one table now
+    (`scene.js:CARRY`), and this measures the thing the table claims: for
+    **each good**, the moment its own boxes stop moving against the moment
+    `hands()` is told to send its symbols up.
+
+    Bounded on both sides, and tightly. Early is the defect. The gap is
+    `CARRY.rest` by construction -- the last box of *any* good lands at exactly
+    `carriedBy(i) - rest`, whether that good came to one box or six -- so late
+    by more than a beat means the two schedules have drifted apart again, and a
+    table could otherwise be made to pass by holding the symbols for a second
+    after the island had gone still.
     """
     goods = ["bread", "cloth", "iron", "salt"]
     page = browser.new_page(viewport={"width": 1200, "height": 800})
@@ -2044,9 +2103,15 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
     page.wait_for_timeout(600)
-    seen = page.evaluate(CARRY, {"goods": goods,
-                                 "give": {"bread": 0.4, "cloth": 0.4},
-                                 "want": {"iron": 0.4}})
+    #: **A bundle of several boxes per good, not one.** It used to hold 0.8 of
+    #: everything and move 0.4, which at `BOX` = 0.465 is a single box changing
+    #: hands per good -- and a single box is the one case where `CARRY.spread`
+    #: does nothing at all, so the rule that says the boxes of one good leave
+    #: across a fixed window could not be made to fail. Six boxes each, five of
+    #: them moving.
+    seen = page.evaluate(CARRY, {"goods": goods, "hold": 2.8,
+                                 "give": {"bread": 2.4, "cloth": 2.4},
+                                 "want": {"iron": 2.4}})
     page.close()
     bad = [f"carrying: {e}" for e in errs]
     if seen.get("error"):
@@ -2076,6 +2141,21 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     #: compares a box that crossed the island against a journey belonging to
     #: one that never left the yard. Every shot lists the same boxes in the
     #: same order, so the index is the identity.
+    # The symbols leave after their own boxes are down -- and not long after.
+    for good, cue in sorted(seen["cue"].items()):
+        stops = seen["stops"].get(good)
+        if stops is None:
+            bad.append(f"carrying: no box of {good} moved at all, so there is "
+                       f"nothing for its symbols to have waited for")
+            continue
+        if cue < stops:
+            bad.append(f"carrying: {good}'s symbols are sent to the card at "
+                       f"{cue}ms and its boxes are still moving at {stops}ms; "
+                       f"the bar fills from goods that are in the air")
+        elif cue - stops > seen["rest"] + 60:
+            bad.append(f"carrying: {good}'s boxes come to rest at {stops}ms and "
+                       f"its symbols are not sent until {cue}ms, {cue - stops}ms "
+                       f"later; the two schedules have drifted apart")
     at = lambda b: (b["x"], b["y"], b["z"])
     trips = [math.dist(at(f), at(l))
              for f, l in zip(seen["trail"][0]["shot"], seen["trail"][-1]["shot"])]
@@ -2382,6 +2462,25 @@ def island(browser, base: str, out: Path) -> list[str]:
                     bad.append(f"island {label}: {one['name']} and {two['name']} "
                                f"overlap by {-gap:.2f} on the ground; they are "
                                f"drawn against each other")
+        #: And no stone of the trail lies under anything the trail runs to.
+        #: The steps were laid at eighths of the way out, so the last one fell
+        #: short by a fraction of the distance rather than by the size of what
+        #: it was walking to -- and under a settlement on the near ring that is
+        #: a sand disc lying inside the hut. Reported by eye, as a yellow disc
+        #: below a hut, which is the same complaint that took the campfire's
+        #: clearing off the island one commit earlier. Measured against the
+        #: drawn footprint for the same reason the pair check above is: a hut
+        #: is its roof, not its anchor.
+        for sx, sz, sr in built.get("steps") or []:
+            for one in feet:
+                a = one["box"]
+                gap = max(max(a[0] - (sx + sr), (sx - sr) - a[2]),
+                          max(a[1] - (sz + sr), (sz - sr) - a[3]))
+                if gap <= 0:
+                    bad.append(f"island {label}: a trail step at "
+                               f"({sx:.2f}, {sz:.2f}) lies inside "
+                               f"{one['name']} by {-gap:.2f}; it is a sand "
+                               f"disc drawn under a prop")
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
         #: A share, not an area: what "crowded" means is how much of the grass
@@ -3532,6 +3631,135 @@ def ring(browser, base: str, out: Path) -> list[str]:
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]
     page.close()
+    return bad
+
+
+WHOSE = """async ({w, h, n, goods, turns}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const { layout } = await import('./scene.js');
+  //: The seat's colour from `seats.js`, which is what the island paints with:
+  //: it was `SEAT_COLOURS[i % 6]` in `island3d.js` until a seventh trader was
+  //: found wearing the first one's colour, and this check reads whatever the
+  //: island is actually painting so it cannot go stale against it.
+  const { seatRing } = await import('./seats.js');
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h; document.body.appendChild(cv);
+  const st = new Stage(cv, layout(n, false, w / h, {top: 0, foot: 0}));
+  st.pause();
+  const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
+  const made = st.build({traders, goods});
+  st.pause(); st.setDay(0.45); st.life.update(0, st.ctx());
+
+  const ray = new THREE.Raycaster();
+  //: A mesh's *unoccluded* screen area. Points on its own surface, each
+  //: raycast from the camera: a point counts only when nothing else in the
+  //: scene stands between. This is the whole question -- the band that could
+  //: not be seen was drawn, lit, and in the frame, and every check that asked
+  //: whether it existed passed.
+  const seen = (mesh, cam) => {
+    const pos = mesh.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 200));
+    let shown = 0, total = 0;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < pos.count; i += step) {
+      const p = new THREE.Vector3().fromBufferAttribute(pos, i);
+      mesh.localToWorld(p);
+      total++;
+      const dir = p.clone().sub(cam.position);
+      const far = dir.length();
+      ray.set(cam.position, dir.normalize());
+      const hit = ray.intersectObject(made.island, true)[0];
+      if (!hit || (hit.object !== mesh && hit.distance < far - 0.02)) continue;
+      shown++;
+      const s = p.clone().project(cam);
+      const sx = (s.x + 1) / 2 * w, sy = (1 - s.y) / 2 * h;
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx);
+      y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+    }
+    return {shown, total, w: shown ? x1 - x0 : 0, h: shown ? y1 - y0 : 0};
+  };
+
+  const out = [];
+  for (const spin of turns) {
+    //: Round the island, because the accents are on a hut that faces the fire
+    //: and the camera does not stay behind it. `spin` is the same turn the
+    //: page's own camera makes with time. `aim` is what the page calls.
+    st.aim(spin);
+    st.camera.updateMatrixWorld(true);
+    made.island.updateMatrixWorld(true);
+    const at = {spin, huts: []};
+    const ring = seatRing(n);
+    traders.forEach((t, i) => {
+      const row = {trader: t, colour: ring[i]};
+      for (const part of ['door', 'band', 'finial']) {
+        const m = made.island.getObjectByName(`hut_${t}_${part}`);
+        row[part] = m ? seen(m, st.camera) : null;
+      }
+      at.huts.push(row);
+    });
+    out.push(at);
+  }
+  return out;
+}
+"""
+
+
+def whose(browser, base: str, out: Path) -> list[str]:
+    """A hut says whose it is, to a camera that is actually looking at it.
+
+    **The band was drawn where nothing could see it, and every check passed.**
+    Reported by eye -- *"I don't see the door and band"* -- of an accent that
+    had been in the model for weeks with a comment claiming it was "visible
+    from any bearing the camera swings to". It was: the failure was in
+    elevation, not bearing. The roof is a cone of radius 0.52 whose rim sits at
+    y = 0.42, and the band was a ring of radius 0.40 at y = 0.41, so the only
+    camera that could ever have seen it was one standing under the eaves. This
+    island is watched from above. Measured before the fix: **0 of 148 sample
+    points**, on both huts, at every bearing.
+
+    Existence is not visibility, which is why nothing here counts meshes. Each
+    accent's own surface is sampled and each sample raycast from the camera; a
+    point counts only when the accent is the first thing the ray meets.
+    """
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    turns = [0, 2.5, 5.0, 7.5]
+    rounds = page.evaluate(WHOSE, {"w": 1200, "h": 800, "n": 3, "turns": turns,
+                                   "goods": ["bread", "cloth", "iron", "salt"]})
+    page.screenshot(path=str(out / "island-whose.png"))
+    page.close()
+    bad = [f"whose: {e}" for e in errs]
+
+    #: What a spectator has to be able to see. The band is the one held to a
+    #: size, because it is the accent that has to work from every bearing: the
+    #: door faces the fire and goes edge-on as the camera comes round, which is
+    #: exactly why the colour is not left to the door alone. 24 pixels is
+    #: roughly the width of a good's chip in the legend.
+    BAND_PX = 24
+    for at in rounds:
+        for hut in at["huts"]:
+            where = f"whose {hut['trader']} at spin {at['spin']}"
+            band = hut["band"]
+            if band is None:
+                bad.append(f"{where}: the hut has no band at all")
+                continue
+            if not band["shown"]:
+                bad.append(f"{where}: none of the band's {band['total']} points "
+                           f"is unoccluded -- the colour is drawn where nothing "
+                           f"can see it")
+            elif band["w"] < BAND_PX:
+                bad.append(f"{where}: the band shows {band['w']:.0f}px across, "
+                           f"under the {BAND_PX}px floor")
+            seen_any = [k for k in ("door", "band", "finial")
+                        if hut[k] and hut[k]["shown"]]
+            if len(seen_any) < 2:
+                bad.append(f"{where}: only {seen_any or 'nothing'} of the hut's "
+                           f"accents can be seen; one mark is one occlusion "
+                           f"from a hut that says nothing")
     return bad
 
 

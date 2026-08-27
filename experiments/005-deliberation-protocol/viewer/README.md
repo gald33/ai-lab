@@ -518,6 +518,59 @@ painted band under the eaves that is visible from any bearing the camera swings
 to. That is more of the colour than the banner ever showed, on a shape a viewer
 is already looking at.
 
+**The band was drawn where nothing could see it** (2026-08-27). Reported by
+eye — *"I don't see the door and band"* — of an accent that had been in the
+model for weeks under a comment claiming it was "visible from any bearing the
+camera swings to". The bearings were never the problem; the elevation was. The
+roof is a cone of radius 0.52 whose rim sits at y = 0.42, and the band was a
+ring of radius 0.40 at y = 0.41 — wholly inside the overhang, so the only
+camera that could ever have seen it is one standing below the eaves, and this
+island is watched from above. Measured: **0 of 148 sample points unoccluded**,
+on every hut, at every bearing.
+
+The band is on the **roof** now, where the camera is already looking: a ring
+hugging the cone's own slope between y = 0.47 and y = 0.55, its radii the
+cone's radius at those heights (`r = 0.52 (0.84 − y) / 0.42`) plus 0.006 to
+keep it off the surface it lies on, open-ended so it is a stripe and not a lid.
+It measures **38–40 of 50 points and about 69px across** on a 1200×800 frame.
+The finial takes the colour as well — it is the highest thing on the hut and
+the last to be occluded by anything — and the door went from 0.14 × 0.24 to
+0.19 × 0.28, having been about five pixels across.
+
+`render.py:whose` is the check, and it asks about *visibility*, not existence:
+each accent's own surface is sampled and every sample raycast from the camera,
+counting a point only when the accent is the first thing the ray meets, at four
+bearings. Every check the old band passed was a check that it existed. Neutered
+against the old geometry, it reports 0 of 148 at all four bearings.
+
+**The drawn hut and the card wore none of it** (2026-08-27). That colour lived
+only in the model: `SEAT_COLOURS` in `island3d.js`, painted on the door and the
+band. The SVG hut — which is what a page with no model behind it draws, and
+what a viewer sees before three.js is up — had a brown door and a thatch rim
+like every other hut, and the card hanging under it was a dark rectangle with a
+name on it, identical for all six. So the one place a trader is named for the
+whole episode said whose it was in text alone.
+
+Now the settlement group carries `--seat` (set once, in `scene.js`, from the
+trader's index) and the hut and its card both inherit it: the drawn hut's door
+and roof rim, the card's border, and a rule down the card's inside edge — kept
+on the glance card, where it is the cheapest mark that says whose card this is.
+The stripe is inset rather than laid on the card's own border, which is rounded
+at 13 and would show a straight stripe overhanging both corners. Starvation
+still outranks identity: a starved card's border goes back to `--critical`.
+
+`--seat-1..6` are in `tokens.css`, and were the same list as `SEAT_COLOURS` in
+`island3d.js` — not a coincidence to be trusted, since the goods drifted in
+exactly this way, so `test_palette.py` compared the two.
+
+**Superseded the same day, and by the defect both lists shared:** each picked
+its colour with `% 6`, so a seventh trader's hut, card and offers all wore the
+first trader's colour. There is one list now — `web/seats.js`, which answers for
+any seat count and which both layers import — and the accent set on the
+settlement group comes from it rather than from `var(--seat-N)`. The stylesheet
+still names the six, because that is where the palette's gates are run. See "A
+seat's colour is a function of the seat *and how many seats there are*" below.
+
 The bell and the new day used to run those banners down and back up their poles.
 Both keep the larger half they always had — nightfall over the whole frame, the
 fire taking over, the night lifting, every trader's crates draining and coming
@@ -951,6 +1004,53 @@ still. Ropes are moved in place now and rebuilt only when the set of offers
 changes. `turning()` holds both halves: the node has to survive the camera
 turning, and the path has to start at the maker's end.
 
+### The sea moves, and there are dolphins in it
+
+The open water was a flat disc: one colour, perfectly still, with every moving
+thing in the picture crowded into the two surf rings at the shore. The further
+from the coast a pixel was, the more plainly it was a painted floor.
+
+**The swell** is that disc's surface. `island-life.js` lays a ring of geometry
+over it, from just under the shallows out past anything the camera frames, and
+displaces it with three sine trains crossing at different bearings and speeds.
+The normals are recomputed each frame, which is the part that matters: without
+it the crests are lit as though the sheet were flat and the whole thing is a
+blue disc with a bumpy outline. Lit rather than tinted, so it goes gold at dusk
+because the light does, and nobody keeps a second copy of that arithmetic.
+
+The deep disc stayed, and **moved down**. Its top used to sit at `-0.04`, and
+the swell's troughs reach a tenth of a unit below the still water line, so
+every trough cut into it and the sea got a ring of intersection lines. It is
+the colour behind the swell now; it only has to be below the lowest trough.
+
+**The dolphins are occasional, and that is the design.** A pod circling the
+island all day is scenery and stops being seen by the second minute. A pass is
+a chord across the open water lasting thirteen seconds out of every fifty-two,
+on a bearing taken from the cycle number — so it is different each time round
+and still reproducible — and between passes the pod is not in the scene. They
+porpoise: the pitch follows the slope of the arc rather than being animated
+apart from it, so a dolphin never enters the water nose up.
+
+Two things had to be got right and neither is guessable from the code that
+draws them.
+
+**A dolphin is built along `+x`, so its yaw is `-bearing`.** The gulls' own
+`-a + PI/2` is the tangent to a circle, and borrowing it here swam the whole
+pod broadside, nose to the camera, for a full pass.
+
+**They belong to the backdrop pass, not the framed one.** `Stage.render()`
+draws the sea across the whole canvas on layer `WATER` and then the island
+again, scissored to its own rectangle. Anything on layer 0 alone stops existing
+outside that rectangle: the swell ended at the edge of the box with flat water
+beyond it, and a pod passing wide was cut off mid-leap at a line down the
+frame. `stage.js` enables `WATER` on the swell and on each dolphin — and on
+their child meshes, because layers are per object and are not inherited, so
+marking the group alone renders nothing at all.
+
+Neither is caught by a structural check; both were found by looking, with
+`python viewer/tests/render.py --out /tmp/after` and a browser on
+`viewer/serve.py`.
+
 ## The goods stand on the island
 
 **Nothing pops or vanishes except when it is created or consumed.**
@@ -1099,6 +1199,63 @@ most of the way to the meadow's rim, so for some seats the ground *behind* the
 hut is sea, and the clamp that keeps a yard on the grass pulled the whole thing
 back on top of the hut it was meant to stand beside. A yard picks the first
 bearing with room now — behind, then either flank, then in front.
+
+## The symbols wait for the boxes
+
+The exchange is three legs, and they run in order:
+
+1. the **losing** bar unfills and its symbols fall to its own pile;
+2. the boxes cross the island;
+3. the symbols rise off the **arriving** boxes and the gaining bar fills.
+
+Leg 3 was starting **30ms before the boxes touched down**, and 590ms before
+they had finished settling onto the new owner's pile — so a bar filled from
+goods that were still in the air. Reported by eye.
+
+The cause is the shape of the thing: the boxes are three.js and the symbols are
+SVG, and the two engines were keeping **separate copies of the same
+choreography in different units** — `island-events.js` in seconds off its clip
+clock, `hands()` in milliseconds off a `CROSS` constant. They had drifted apart,
+and nothing could have noticed, because neither one was wrong about itself.
+
+`scene.js:CARRY` is the one table now, and `island-events.js` imports it and
+divides by a thousand. It is the same arrangement `feeds.js` already has with
+`DWELL`: the durations are named once, where the animation that spends them is
+written.
+
+| | ms |
+|---|---|
+| `off` | the boxes set off, the losing card having emptied into them |
+| `step` | and the next good's boxes follow this much later |
+| `spread` | one good's boxes leave across this window, however many |
+| `cross` | over the island |
+| `land` | and the hop onto the new owner's pile |
+| `rest` | a beat standing there before the symbols rise off them |
+| `back` | the return bundle sets off this much after the first |
+
+**`spread` is what makes the cue computable.** The boxes of one good used to
+leave a fixed 120ms apart, so a good that came to six boxes was 600ms slower off
+the ground than one that came to one — and the card's symbols, which do not know
+how many boxes a quantity came to, had no landing time to follow. Spread across
+a fixed window at `k / (n - 1)` of it, the *last* box of a good always leaves at
+`spread`; a lone box takes the whole window rather than none of it, so that is
+true of every good and not only of the crowded ones. `carriedBy(i, back)` is
+then exact, and both engines compute it.
+
+`DWELL.settled` stopped being a literal. `dwellFor` measures the bundle it is
+given — a two-good exchange runs 300ms longer than a one-good one — because
+holding every trade for the worst case a board allows (seven goods, 7.6s) would
+spend that on every two-good trade as well.
+
+`carrying()` measures the claim rather than the table: for **each good**, the
+moment its own boxes stop moving against the moment `hands()` is told to send
+its symbols. Bounded on both sides — early is the defect, and later than a beat
+means the two schedules have drifted apart again.
+
+Its fixture had to change to say anything. It held 0.8 of everything and moved
+0.4, which at `BOX` = 0.465 is a **single box** changing hands per good — and a
+single box is the one case where `spread` does nothing at all, so the rule it
+exists for could not be made to fail. Six boxes each now, five of them moving.
 
 ## Utilities and efficiency
 

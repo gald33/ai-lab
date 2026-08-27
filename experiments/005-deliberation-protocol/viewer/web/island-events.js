@@ -13,9 +13,10 @@
  * exist, in the right places, belonging to the right traders -- so a clip that
  * brought its own would be a second set standing inside the first. What is
  * kept is the *motion*, re-aimed at the island's own nodes; what is spawned is
- * only what genuinely appears and then goes: the crate a production yields,
- * the dust where a crate lands, the puffs behind something crossing the
- * island.
+ * only what genuinely appears and then goes: the crate a production yields
+ * and the puffs behind something crossing the island. (The dust where a crate
+ * landed was the last of the flat ground marks and went with them; see
+ * `produced`.)
  *
  * That change is also what makes them mean anything. A crate that leaves the
  * bread fields and lands at the settlement that produced it says who made it;
@@ -23,7 +24,12 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { M, goodMat } from "./island3d.js";
+import { goodMat } from "./island3d.js";
+//: The exchange's schedule, in milliseconds, named beside the dwell it has to
+//: fit inside. This is the boxes' half of it; `scene.js:hands` runs the cards'
+//: half off the same numbers, which is the point -- the two were separate
+//: copies in different units and they had drifted apart by half a second.
+import { CARRY } from "./scene.js";
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
@@ -54,13 +60,6 @@ function land_(box, at) {
   box.scale.setScalar(1);
   box.visible = true;
 }
-
-//: Everything a clip spawns is bigger than the delivered clip drew it.
-//: The clips were watched one at a time in a frame about two units across;
-//: the island is eight, and half of it is behind the traders' cards. A crate
-//: the size the diorama used is four pixels on a phone -- present, but not
-//: something a spectator would ever notice crossing the ground.
-const PROP = 1.7;
 
 //: **There are no ground marks left on this island.** There was a ring under
 //: every event, then -- when those were reported as shockwaves -- a patch of
@@ -268,11 +267,19 @@ function produced(event, { island, anchors, goods, stock }) {
     return c;
   }
 
-  const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
-  const dust = mesh(new THREE.CircleGeometry(0.22 * PROP, 20), dustMat, "dust",
-    [home.x, home.y + 0.03, home.z], [-Math.PI / 2, 0, 0]);
-  c.root.add(dust);
-
+  //: **The dust is gone**, and with it the last of the flat sand discs. It was
+  //: a `CircleGeometry` in `M.sand` that faded up and grew to two and a half
+  //: times its size as a crate landed -- and it was drawn at `home`, the
+  //: settlement's own anchor, rather than where any box came down, so what a
+  //: spectator saw was a **yellow disc growing and fading under the hut**.
+  //: Reported by eye, and reported as the thing that had just been removed:
+  //: the campfire's clearing (`hearth_ground`) and the ground marks before it
+  //: went for the same reason a coloured circle on the grass did -- it is a
+  //: caption for something that happened, not the thing happening. See `ring`
+  //: below, and the same cut in `exchanged`.
+  //:
+  //: What says a crate landed is the crate: it hops, and then it is standing
+  //: in the yard. That was always the part carrying the event.
   c.update = (t) => {
     for (const w of works) w(t);
     legs.forEach(({ box, wake, from, to }, i) => {
@@ -294,11 +301,8 @@ function produced(event, { island, anchors, goods, stock }) {
         box.position.y = to.y + Math.abs(Math.sin(land * Math.PI * 2)) * 0.12 * (1 - land);
         box.rotation.set(0, 0, 0);
         box.scale.setScalar(1);
-        dustMat.opacity = Math.max(dustMat.opacity, 0.4 * (1 - land));
-        dust.scale.setScalar(1 + land * 1.5);
       }
     });
-    if (t < 0.9) dustMat.opacity = 0;
   };
   // Scrubbed away mid-flight, the boxes are still the trader's: the receipt
   // happened. Put them down in the slots they were already promised.
@@ -476,7 +480,10 @@ function offered(event, { anchors, stock }) {
 function settled(event, { island, anchors, goods, stock, life }) {
   const a = anchors[event.maker], b = anchors[event.taker];
   if (!a || !b || !stock) return null;
-  const c = clip(4.2);
+  //: A placeholder. The real length is the longest leg's, and that is not known
+  //: until the bundles have been walked -- but the walk needs a clip to hang
+  //: its trails and its cloned materials off, so `c.dur` is set below.
+  const c = clip(0);
 
   const legs = [];
   //: **The same boxes, moved.** They used to be crates conjured at one hut and
@@ -484,7 +491,10 @@ function settled(event, { island, anchors, goods, stock, life }) {
   //: re-created rather than changing hands. These come off the maker's own
   //: pile and go onto the taker's, and the count in each yard is the count the
   //: board says after the exchange.
-  const push = (bundle, giver, taker, base) => {
+  //: `CARRY` is in milliseconds because that is what a card's animation takes;
+  //: a clip's clock is in seconds.
+  const S = (ms) => ms / 1000;
+  const push = (bundle, giver, taker, back) => {
     Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
       .forEach(([good, q], i) => {
         //: Exactly what the giver's pile loses, which is what the taker's
@@ -498,30 +508,42 @@ function settled(event, { island, anchors, goods, stock, life }) {
         const boxes = stock.take(giver, good, move);
         if (!boxes.length) return;
         const rest = stock.put(taker, good, boxes);
+        //: Started when the losing card has finished emptying into these
+        //: boxes. This is the middle of three legs -- symbols down to the pile,
+        //: pile across the island, symbols up to the other card -- and a box
+        //: that set off first would be carrying goods the bar it came from
+        //: still showed.
+        const start = S((back ? CARRY.back : 0) + CARRY.off + i * CARRY.step);
         boxes.forEach((box, k) => {
+          //: **Across a fixed window, not a fixed step each.** They used to
+          //: leave 120ms apart, so a good that came to six boxes took 600ms
+          //: longer to be off the ground than one that came to one -- and the
+          //: card's symbols, which do not know how many boxes a quantity came
+          //: to, had no landing time to follow. Spread over `CARRY.spread`
+          //: however many there are, the last one always leaves at `spread`
+          //: and `carriedBy` is a number both engines can compute.
+          //:
+          //: A lone box takes the whole window rather than none of it, so that
+          //: "the last box leaves at `spread`" is true of every good and not
+          //: only of the ones that came to more than one.
+          const lag = boxes.length > 1
+            ? (k / (boxes.length - 1)) * S(CARRY.spread) : S(CARRY.spread);
           legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                      a: box.position.clone(), b: rest[k],
-                      t0: base + i * 0.3 + k * 0.12 });
+                      a: box.position.clone(), b: rest[k], t0: start + lag });
         });
       });
   };
-  //: Started when the losing card has finished emptying into these boxes.
-  //: `scene.js` runs that leg in 820ms and this is the middle of the three:
-  //: symbols down to the pile, pile across the island, symbols up to the other
-  //: card. A box that set off first would be carrying goods the bar it came
-  //: from still showed.
-  push(event.give, event.maker, event.taker, 0.85);
-  push(event.want, event.taker, event.maker, 1.05);
+  push(event.give, event.maker, event.taker, false);
+  push(event.want, event.taker, event.maker, true);
   if (!legs.length) return null;
+  //: As long as its longest leg, rather than a constant that has to be kept
+  //: above one. A bundle of four goods runs a second past a hard-coded 4.2.
+  c.dur = Math.max(...legs.map((l) => l.t0)) + S(CARRY.cross + CARRY.land) + 0.3;
   c.settle.push(() => { for (const { box, b: at } of legs) land_(box, at); });
 
-  const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
-  const dust = legs.map((l) => {
-    const d = mesh(new THREE.CircleGeometry(0.18 * PROP, 20), own(c, dustMat.clone()), "dust",
-      [l.b.x, l.b.y - 0.06, l.b.z], [-Math.PI / 2, 0, 0]);
-    c.root.add(d);
-    return d;
-  });
+  //: The dust went from here too, for the reason it went from `produced`: a
+  //: flat sand disc that grows and fades is a ground mark, and this island
+  //: stopped drawing those. The hop below is the landing.
 
   // Where the deal was struck, the fire flares once: it belongs to neither
   // trader, it is at the centre both of them face, and it is already the thing
@@ -530,7 +552,7 @@ function settled(event, { island, anchors, goods, stock, life }) {
 
   c.update = (t) => {
     legs.forEach((l, i) => {
-      const p = easeInOut(win(t, l.t0, l.t0 + 1.5));
+      const p = easeInOut(win(t, l.t0, l.t0 + S(CARRY.cross)));
       //: **It is standing in the maker's yard until it sets off.** This used
       //: to hide the box until its own leg started, so for the first second of
       //: an exchange the goods were simply gone from the ground and then
@@ -540,7 +562,8 @@ function settled(event, { island, anchors, goods, stock, life }) {
       l.box.position.y = l.a.y + (l.b.y - l.a.y) * p + Math.sin(p * Math.PI) * 0.85;
       l.box.rotation.set(p * 5, p * 3.4, p * 2);
       l.wake(l.a, l.b, p, 0.85);
-      const down = win(t, l.t0 + 1.5, l.t0 + 2.0);
+      const down = win(t, l.t0 + S(CARRY.cross),
+                       l.t0 + S(CARRY.cross + CARRY.land));
       if (down > 0) {
         // The hop as it settles onto the new owner's pile -- and then it is
         // simply standing there. Nothing vanishes: the good did not stop
@@ -548,9 +571,7 @@ function settled(event, { island, anchors, goods, stock, life }) {
         land_(l.box, l.b);
         l.box.position.y = l.b.y
           + Math.abs(Math.sin(down * Math.PI * 2)) * 0.12 * (1 - down);
-        dust[i].material.opacity = 0.42 * (1 - down);
-        dust[i].scale.setScalar(1 + down * 1.6);
-      } else dust[i].material.opacity = 0;
+      }
     });
     life?.flare(Math.sin(Math.PI * win(t, 1.9, 3.6)) ** 0.7 * 0.55);
   };
