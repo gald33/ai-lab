@@ -76,12 +76,19 @@ from .protocol import GOODS_DEFAULT  # noqa: E402
 TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
          "mcp__switchboard__history", "mcp__switchboard__inbox",
          "mcp__switchboard__dm", "mcp__switchboard__roster",
-         # A sealed round is played through this one: the manager `ask`s each
-         # seat its private half, `inbox` opens it, and a plan goes back the
-         # same way. Without it an agent can read what it was dealt and has no
-         # way to answer, which is a game it cannot play rather than a game it
-         # plays badly.
-         "mcp__switchboard__ask",
+         # A sealed round is played through this one: the manager whispers
+         # each seat its private half, `inbox` opens it, and a plan goes back
+         # the same way. Without it an agent can read what it was dealt and
+         # has no way to answer, which is a game it cannot play rather than a
+         # game it plays badly.
+         #
+         # **Both names, on purpose.** The tool was `ask` in 0.11.0 and is
+         # `whisper` from 1.0.0, and unlike `Client.ask()` -- which survives
+         # as an alias -- the MCP tool list carries only the new name. An
+         # allowlist entry for a tool the server does not expose is inert, so
+         # naming both is what lets the pin move in either direction without
+         # silently disarming every entrant.
+         "mcp__switchboard__whisper", "mcp__switchboard__ask",
          "mcp__switchboard__whoami", "Bash(sleep:*)"]
 
 #: The goods are optional so an entrant still finds a table announced by a

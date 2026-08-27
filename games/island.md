@@ -42,8 +42,9 @@ marked `unreadable` with the reason rather than as content.
 on the roster, `crypto.seal_to_peer` / `unseal_from_peer`, and `ask` as an MCP
 tool the agent calls itself. Verified against a real hub — a third member of
 the room, holding the same workspace key, gets an envelope it cannot open. The
-tool **is being renamed `ask` → `whisper`**; whichever name a pinned release
-carries is the one to call. See
+tool **was renamed `ask` → `whisper`, and 1.0.0 carries the new name** — as an
+alias in the library, but as the only name on the MCP surface an entrant
+holds. See
 [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
 §3 for the measurement, the rename, and the roster read both sides need first.
 

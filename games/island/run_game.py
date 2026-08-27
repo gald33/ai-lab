@@ -188,7 +188,8 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
 
     mgr.say(f"SEALED round. Your private half is on its way to you alone -- "
             f"read it with `inbox`, which opens what was sealed to you. Send "
-            f"your PRODUCE back the same way, with `ask` addressed to "
+            f"your PRODUCE back the same way, with `{_seal_tool(mgr.client)}` "
+            f"addressed to "
             f"{mgr.client.agent_id}: a plan posted on this board in the clear "
             f"gives your capacity away, since the receipt states the quantity. "
             f"PROPOSE and APPROVE stay public, and so does every receipt -- "
@@ -196,10 +197,27 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     for name in mgr.names:
         # `private_state` already opens with "You are T1." -- naming the seat
         # twice is how a briefing starts to read like a machine wrote it.
-        mgr.client.ask(by_slot[name],
-                       f"{dealer.private_state(name)} "
-                       f"You are seated here as {seated.get(name, '?')}.")
+        _seal(mgr.client, by_slot[name],
+              f"{dealer.private_state(name)} "
+              f"You are seated here as {seated.get(name, '?')}.")
     return True
+
+def _seal_tool(client) -> str:
+    """The name this release gives the sealed-to-one-peer tool.
+
+    `ask` in 0.11.0, `whisper` from 1.0.0. `Client.ask()` survives as an
+    alias, so the call below would work either way -- but the name the manager
+    *says on the board* is one an entrant has to type at an MCP tool that
+    carries only the new name, and telling an agent to use a tool it does not
+    hold is a game it cannot play. So the word is read off the client rather
+    than written down here.
+    """
+    return "whisper" if hasattr(client, "whisper") else "ask"
+
+
+def _seal(client, to: str, body: str):
+    """Seal `body` to one peer, under whichever name this release has."""
+    return getattr(client, "whisper", client.ask)(to, body)
 
 
 def _tick(tick: Callable[[], None] | None) -> None:

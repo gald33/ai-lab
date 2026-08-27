@@ -77,3 +77,28 @@ def test_the_page_is_written_atomically(hub, tmp_path):
 
     assert out.read_text().startswith("<!doctype html>")
     assert not list(out.parent.glob("*.tmp")), "no half-written file left behind"
+
+
+def test_the_page_names_the_key_the_lobby_is_listening_under(hub):
+    """The one failure no other signal catches.
+
+    A lobby holding the wrong workspace key stays up, keeps rewriting its
+    page, runs as exactly one process, and hears nobody -- a key that does not
+    match is silence rather than an error. So the key goes on the page, where
+    anyone can compare it against ENTER.md.
+    """
+    key = generate_key()
+    lobby = _settled(hub, key)
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert key in page
+    assert "ENTER.md" in page
+
+
+def test_a_keyless_lobby_says_it_can_witness_nothing(hub):
+    lobby = Lobby(client=_client(hub, "lobby", None))
+
+    page = lobby_page.render(lobby)
+
+    assert "no key" in page
