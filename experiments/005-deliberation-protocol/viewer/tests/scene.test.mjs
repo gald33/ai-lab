@@ -469,7 +469,12 @@ test("pills waiting on one hut stack, oldest at the bottom", () => {
   ];
   // By taker, not by pair: three different makers offering T4 used to land on
   // that one roof on top of each other, all of them at pair fan 0.
-  assert.deepEqual([...stacking(open)], [["p1", 0], ["p2", 1], ["p3", 0], ["p4", 2]]);
+  assert.deepEqual([...stacking(open)].map(([pid, s]) => [pid, s.i]),
+                   [["p1", 0], ["p2", 1], ["p3", 0], ["p4", 2]]);
+  // How tall the pile is, on every member of it: the fifth of five and the
+  // fifth of nine sit at different heights once the pile has to fit the frame.
+  assert.deepEqual([...stacking(open)].map(([pid, s]) => [pid, s.of]),
+                   [["p1", 3], ["p2", 3], ["p3", 1], ["p4", 3]]);
   assert.deepEqual([...stacking([])], []);
   assert.deepEqual([...stacking(undefined)], []);
 });

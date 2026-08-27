@@ -1109,6 +1109,24 @@ bottom. Two details it needs:
   fans and the count, and one offer lapsing as another opens leaves both
   identical. `aimRope()` re-reads the stack every frame, so the reused branch is
   correct either way.
+* **The pile stops at a ceiling and compresses instead of growing through it.**
+  A pile that grew freely put its top pills off the top of the picture, which is
+  the one place a spectator counting what a trader has been asked cannot count
+  them; overlapping pills can still be counted. So every pill knows how tall its
+  own pile is, and the spacing is the smaller of a pill-and-a-gap and what the
+  room allows.
+
+**The ceiling is measured off the drawing, not derived from the layout**, and
+the first version got this wrong by deriving it: a frame whose shape is not the
+window's is fitted inside it with `meet` and *centred*, so in landscape there is
+real picture above `y = 0` — a sixth of a 1500×1000 window at the frame this
+draws — and a ceiling taken from `islandBox.y` squeezed piles of three that had
+room to stand at full spacing. What actually cuts a pill off is the `svg`'s own
+box, which clips, and the floating chrome, which is opaque and stands on top.
+Both are on the page, so `ceiling()` asks them. Measured on a 1500×1000 window:
+six offers on one hut stand 34.6 units apart against a 38 maximum, the top one
+115 units above the frame's own top edge and inside the window with a pill's
+height to spare.
 
 ### The pill says whose without writing it down
 

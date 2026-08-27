@@ -1658,7 +1658,42 @@ export class Scene {
     //: other -- exactly where a spectator counts what a trader has to answer.
     return { d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}`,
              mx, my, a, b, lift, fan,
-             stack: this.stack?.get(p.pid) ?? this.wasStack?.get(p.pid) ?? fan };
+             top: this.ceiling(),
+             stack: this.stack?.get(p.pid) ?? this.wasStack?.get(p.pid)
+                    ?? { i: fan, of: fan + 1 } };
+  }
+
+  /**
+   * The height a pile of pills is not allowed through, in viewBox units.
+   *
+   * **Measured off the drawing rather than derived from the layout**, because
+   * the answer is not a property of the viewBox: a frame whose shape is not the
+   * window's is fitted inside it with `meet` and centred, so in landscape there
+   * is real picture above `y = 0` -- a third of a 1500x1000 window, at the
+   * frame this draws -- and a ceiling taken from the layout alone squeezed
+   * piles that had room to stand. What actually cuts a pill off is the `svg`'s
+   * own box, which clips, and the floating chrome, which is opaque and sits on
+   * top; both are on the page and can simply be asked.
+   *
+   * Falls back to the top of the island's own band, which is what the layout
+   * knows on its own, if the drawing has no size yet.
+   */
+  ceiling() {
+    const box = this.root?.viewBox?.baseVal;
+    const r = this.root?.getBoundingClientRect();
+    if (!box?.height || !r?.height || !r?.width) {
+      return (this.geo?.islandBox?.y ?? 0) + PILL_H;
+    }
+    const scale = Math.min(r.width / box.width, r.height / box.height);
+    if (!(scale > 0)) return (this.geo?.islandBox?.y ?? 0) + PILL_H;
+    //: Where the top of the window falls, in the units this is drawn in --
+    //: negative wherever the frame is letterboxed.
+    const top = box.y - (r.height - box.height * scale) / 2 / scale;
+    const chrome = parseFloat(getComputedStyle(document.documentElement)
+      .getPropertyValue("--chrome-top")) || 0;
+    //: A whole pill clear of it, not half: half puts the topmost pill's edge
+    //: flush against the window's, which reads as cut off whether or not it is.
+    return top + chrome / scale + PILL_H;
   }
 
   /**
@@ -1722,10 +1757,18 @@ export class Scene {
    * takes it away.
    */
   chipAt(at, prog) {
-    //: One pill-and-a-gap apart, so a hut with three waiting on it reads as a
-    //: pile of three rather than one pill with something behind it. 32 is the
-    //: pill's own height; the rest is the gap.
-    if (prog >= 1) return { x: at.b.x, y: at.b.y - at.lift - 58 - at.stack * 38 };
+    if (prog >= 1) {
+      const foot = at.b.y - at.lift - 58;
+      //: One pill-and-a-gap apart -- so a hut with three waiting on it reads as
+      //: a pile of three rather than one pill with something behind it --
+      //: **until the pile would leave the frame**, and then as far apart as
+      //: what is left allows. A pile that grew freely put its top pills off the
+      //: top of the picture, where a spectator counting what a trader has been
+      //: asked cannot count them at all; overlapping pills can still be counted.
+      const room = Math.max(0, foot - at.top);
+      const step = Math.min(PILL_STEP, room / Math.max(1, at.stack.of - 1));
+      return { x: at.b.x, y: foot - at.stack.i * step };
+    }
     // Ease out: it leaves the maker's roof quickly and settles onto the
     // taker's, rather than arriving at full speed and stopping dead.
     const t = 1 - (1 - prog) * (1 - prog);
@@ -2326,10 +2369,20 @@ export function stacking(open) {
   for (const p of open || []) {
     const n = high.get(p.taker) || 0;
     high.set(p.taker, n + 1);
-    at.set(p.pid, n);
+    at.set(p.pid, { i: n });
   }
+  //: **How many are in this pile, on every member of it.** The pile has to fit
+  //: between the hut and the top of the frame, so a pill cannot be placed
+  //: knowing only its own place in the queue -- the fifth of five and the fifth
+  //: of nine sit at different heights.
+  for (const p of open || []) at.get(p.pid).of = high.get(p.taker);
   return at;
 }
+
+//: The pill's own height, and how far apart two of them stand in a pile: the
+//: height plus a gap, so a stack of them reads as separate things.
+export const PILL_H = 32;
+export const PILL_STEP = 38;
 
 export const NAME_MAX = 14;
 
