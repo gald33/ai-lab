@@ -1,12 +1,17 @@
 /**
- * The island, heard. One voice per event, and silence until somebody asks.
+ * The island, heard. The world it is in, the work going on in it, and one
+ * quiet accent per event underneath both -- and silence until somebody asks.
  *
- * The page already says what happened three times over -- the card, the
- * transcript line, the clip on the ground -- so sound here is not another
- * channel for the same content and must never be the only place something is
- * said. It is the island's *presence*: a crate lands with a knock, a deal
- * closes with two notes that agree, the bell is a bell. A spectator who never
- * turns it on loses nothing.
+ * **The accents used to be the whole of it, and that was the wrong thing.**
+ * One chime per board event over silence is a notification sound on a picture:
+ * a spectator who leaves a replay running between offers heard nothing at all,
+ * which is exactly backwards for a place with a sea round it. What you hear
+ * now is `island-ambience.js` -- surf, wind, gulls at the right hours, the
+ * fire, dolphins going past, and each site audibly at work when a receipt for
+ * that good lands. The voices below survive at **less than half** their old
+ * level, because the page already says what happened three times over (the
+ * card, the transcript line, the clip on the ground) and sound must never be
+ * the only place something is said.
  *
  * **Synthesised, not sampled.** Every other asset this viewer needs is in the
  * repository (`vendor/three`), and a set of audio files would be the first
@@ -26,11 +31,19 @@
  * rather than from inside it, and a still island can still be heard.
  */
 
+import { Ambience } from "./island-ambience.js";
+
 const KEY = "island:sound";
 
-//: Peak of the master gain, well under 1: six voices can overlap on a busy
-//: settlement and the sum, not the loudest, is what clips.
+//: Peak of the master gain, well under 1: the bed, a site at work and several
+//: voices can overlap on a busy settlement, and the sum -- not the loudest --
+//: is what clips.
 const MASTER = 0.32;
+
+//: What an event voice keeps now that there is a world under it. Set by
+//: listening: at full level the accents sat on top of the bed and the island
+//: went back to being a picture with chimes over it.
+const ACCENT = 0.42;
 
 //: A floor between two soundings of the same voice. At 16x a scrub pours
 //: events through in a few frames, and without this the bell rings forty
@@ -63,11 +76,31 @@ export class Sound {
    */
   set(want) {
     this.on = !!want && this.wake();
+    //: The island is either heard or it is not. One button, and the bed is
+    //: the bulk of what it turns on.
+    if (this.on) this.bed?.start(); else this.bed?.stop();
     try { localStorage.setItem(KEY, this.on ? "on" : "off"); } catch { /* private mode */ }
     return this.on;
   }
 
   toggle() { return this.set(!this.on); }
+
+  /**
+   * The hour, from the page's own clock -- the same day progress the drawn sun
+   * and the model's light are on. The bed mixes to it: gulls at dawn and
+   * through the day and none at night, the wind dropping with the light, the
+   * fire the loudest thing left once it has gone.
+   */
+  setDay(day, closed = false) { this.bed?.setDay(day, closed); }
+
+  /**
+   * The page went away, or came back. A bed left running behind a hidden tab
+   * is a browser tab making surf noises at somebody reading something else.
+   */
+  visible(shown) {
+    if (!this.on) return;
+    if (shown) this.bed?.start(); else this.bed?.stop();
+  }
 
   /** The context, built on the gesture that asked for it. */
   wake() {
@@ -85,6 +118,13 @@ export class Sound {
       squeeze.threshold.value = -14;
       squeeze.ratio.value = 8;
       this.master.connect(squeeze).connect(this.ctx.destination);
+      //: The voices go through their own gain rather than being written
+      //: quieter one by one: their levels are set against each other, and a
+      //: single bus is what keeps that balance while moving all of them.
+      this.accent = this.ctx.createGain();
+      this.accent.gain.value = ACCENT;
+      this.accent.connect(this.master);
+      this.bed = new Ambience(this.ctx, this.master);
       return true;
     } catch { this.ctx = null; return false; }
   }
@@ -114,7 +154,16 @@ export class Sound {
     if (!this.ctx && !this.wake()) return false;
     if (this.ctx.state === "suspended") this.ctx.resume?.();
     if (!this.allowed(event.kind)) return false;
-    try { voice(this.ctx, this.master, this.ctx.currentTime); return true; }
+    //: A production is the one event that reaches the world rather than only
+    //: being remarked on: the site that made it can be heard working for a few
+    //: seconds afterwards. The bell takes the fire up with it, as the drawn
+    //: island already does.
+    if (event.kind === "produced") {
+      for (const good of Object.keys(event.made || {})) this.bed?.working(good);
+    } else if (event.kind === "bell") {
+      this.bed?.flare();
+    }
+    try { voice(this.ctx, this.accent, this.ctx.currentTime); return true; }
     catch (err) { console.warn("the island went quiet", err); return false; }
   }
 }
