@@ -1129,15 +1129,16 @@ function raise(traders, goods, portrait) {
     // While the island turns, the cards ride their own settlements. Set here
     // rather than inside the stage because the stage draws an island and knows
     // nothing about what is written on top of it.
-    // Every frame: where each settlement is on screen, and where each trader's
-    // yard of a given good is. The second is what lets a symbol fly between a
+    // Every frame: where each settlement is on screen, and where the top box
+    // of each trader's pile of a given good is -- the crate a symbol leaves
+    // from or falls into, not the empty slot after it. The second is what lets a symbol fly between a
     // box standing on the island and the bar on the card that counts it --
     // the two halves of the page are drawn by different engines and this is
     // the one place they are put in the same coordinates.
     stage.onFrame = (st) => scene?.follow(
       traders.map((n) => st.toViewBox(anchors[n])),
       st.stock && Object.fromEntries(traders.flatMap((n) => goods.map((g) =>
-        [`${n}:${g}`, st.toViewBox(st.stock.next(n, g))]))));
+        [`${n}:${g}`, st.toViewBox(st.stock.top(n, g))]))));
     canvas.hidden = false;
     app.classList.add("has-3d");
     return traders.map((n) => stage.toViewBox(anchors[n]));
