@@ -24,6 +24,11 @@
 
 import * as THREE from "./vendor/three/three.module.js";
 import { M, goodMat } from "./island3d.js";
+//: The exchange's schedule, in milliseconds, named beside the dwell it has to
+//: fit inside. This is the boxes' half of it; `scene.js:hands` runs the cards'
+//: half off the same numbers, which is the point -- the two were separate
+//: copies in different units and they had drifted apart by half a second.
+import { CARRY } from "./scene.js";
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
@@ -476,7 +481,10 @@ function offered(event, { anchors, stock }) {
 function settled(event, { island, anchors, goods, stock, life }) {
   const a = anchors[event.maker], b = anchors[event.taker];
   if (!a || !b || !stock) return null;
-  const c = clip(4.2);
+  //: A placeholder. The real length is the longest leg's, and that is not known
+  //: until the bundles have been walked -- but the walk needs a clip to hang
+  //: its trails and its cloned materials off, so `c.dur` is set below.
+  const c = clip(0);
 
   const legs = [];
   //: **The same boxes, moved.** They used to be crates conjured at one hut and
@@ -484,7 +492,10 @@ function settled(event, { island, anchors, goods, stock, life }) {
   //: re-created rather than changing hands. These come off the maker's own
   //: pile and go onto the taker's, and the count in each yard is the count the
   //: board says after the exchange.
-  const push = (bundle, giver, taker, base) => {
+  //: `CARRY` is in milliseconds because that is what a card's animation takes;
+  //: a clip's clock is in seconds.
+  const S = (ms) => ms / 1000;
+  const push = (bundle, giver, taker, back) => {
     Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
       .forEach(([good, q], i) => {
         //: Exactly what the giver's pile loses, which is what the taker's
@@ -498,21 +509,37 @@ function settled(event, { island, anchors, goods, stock, life }) {
         const boxes = stock.take(giver, good, move);
         if (!boxes.length) return;
         const rest = stock.put(taker, good, boxes);
+        //: Started when the losing card has finished emptying into these
+        //: boxes. This is the middle of three legs -- symbols down to the pile,
+        //: pile across the island, symbols up to the other card -- and a box
+        //: that set off first would be carrying goods the bar it came from
+        //: still showed.
+        const start = S((back ? CARRY.back : 0) + CARRY.off + i * CARRY.step);
         boxes.forEach((box, k) => {
+          //: **Across a fixed window, not a fixed step each.** They used to
+          //: leave 120ms apart, so a good that came to six boxes took 600ms
+          //: longer to be off the ground than one that came to one -- and the
+          //: card's symbols, which do not know how many boxes a quantity came
+          //: to, had no landing time to follow. Spread over `CARRY.spread`
+          //: however many there are, the last one always leaves at `spread`
+          //: and `carriedBy` is a number both engines can compute.
+          //:
+          //: A lone box takes the whole window rather than none of it, so that
+          //: "the last box leaves at `spread`" is true of every good and not
+          //: only of the ones that came to more than one.
+          const lag = boxes.length > 1
+            ? (k / (boxes.length - 1)) * S(CARRY.spread) : S(CARRY.spread);
           legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                      a: box.position.clone(), b: rest[k],
-                      t0: base + i * 0.3 + k * 0.12 });
+                      a: box.position.clone(), b: rest[k], t0: start + lag });
         });
       });
   };
-  //: Started when the losing card has finished emptying into these boxes.
-  //: `scene.js` runs that leg in 820ms and this is the middle of the three:
-  //: symbols down to the pile, pile across the island, symbols up to the other
-  //: card. A box that set off first would be carrying goods the bar it came
-  //: from still showed.
-  push(event.give, event.maker, event.taker, 0.85);
-  push(event.want, event.taker, event.maker, 1.05);
+  push(event.give, event.maker, event.taker, false);
+  push(event.want, event.taker, event.maker, true);
   if (!legs.length) return null;
+  //: As long as its longest leg, rather than a constant that has to be kept
+  //: above one. A bundle of four goods runs a second past a hard-coded 4.2.
+  c.dur = Math.max(...legs.map((l) => l.t0)) + S(CARRY.cross + CARRY.land) + 0.3;
   c.settle.push(() => { for (const { box, b: at } of legs) land_(box, at); });
 
   const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
@@ -530,7 +557,7 @@ function settled(event, { island, anchors, goods, stock, life }) {
 
   c.update = (t) => {
     legs.forEach((l, i) => {
-      const p = easeInOut(win(t, l.t0, l.t0 + 1.5));
+      const p = easeInOut(win(t, l.t0, l.t0 + S(CARRY.cross)));
       //: **It is standing in the maker's yard until it sets off.** This used
       //: to hide the box until its own leg started, so for the first second of
       //: an exchange the goods were simply gone from the ground and then
@@ -540,7 +567,8 @@ function settled(event, { island, anchors, goods, stock, life }) {
       l.box.position.y = l.a.y + (l.b.y - l.a.y) * p + Math.sin(p * Math.PI) * 0.85;
       l.box.rotation.set(p * 5, p * 3.4, p * 2);
       l.wake(l.a, l.b, p, 0.85);
-      const down = win(t, l.t0 + 1.5, l.t0 + 2.0);
+      const down = win(t, l.t0 + S(CARRY.cross),
+                       l.t0 + S(CARRY.cross + CARRY.land));
       if (down > 0) {
         // The hop as it settles onto the new owner's pile -- and then it is
         // simply standing there. Nothing vanishes: the good did not stop

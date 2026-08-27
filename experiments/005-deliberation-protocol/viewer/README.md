@@ -993,6 +993,63 @@ hut is sea, and the clamp that keeps a yard on the grass pulled the whole thing
 back on top of the hut it was meant to stand beside. A yard picks the first
 bearing with room now — behind, then either flank, then in front.
 
+## The symbols wait for the boxes
+
+The exchange is three legs, and they run in order:
+
+1. the **losing** bar unfills and its symbols fall to its own pile;
+2. the boxes cross the island;
+3. the symbols rise off the **arriving** boxes and the gaining bar fills.
+
+Leg 3 was starting **30ms before the boxes touched down**, and 590ms before
+they had finished settling onto the new owner's pile — so a bar filled from
+goods that were still in the air. Reported by eye.
+
+The cause is the shape of the thing: the boxes are three.js and the symbols are
+SVG, and the two engines were keeping **separate copies of the same
+choreography in different units** — `island-events.js` in seconds off its clip
+clock, `hands()` in milliseconds off a `CROSS` constant. They had drifted apart,
+and nothing could have noticed, because neither one was wrong about itself.
+
+`scene.js:CARRY` is the one table now, and `island-events.js` imports it and
+divides by a thousand. It is the same arrangement `feeds.js` already has with
+`DWELL`: the durations are named once, where the animation that spends them is
+written.
+
+| | ms |
+|---|---|
+| `off` | the boxes set off, the losing card having emptied into them |
+| `step` | and the next good's boxes follow this much later |
+| `spread` | one good's boxes leave across this window, however many |
+| `cross` | over the island |
+| `land` | and the hop onto the new owner's pile |
+| `rest` | a beat standing there before the symbols rise off them |
+| `back` | the return bundle sets off this much after the first |
+
+**`spread` is what makes the cue computable.** The boxes of one good used to
+leave a fixed 120ms apart, so a good that came to six boxes was 600ms slower off
+the ground than one that came to one — and the card's symbols, which do not know
+how many boxes a quantity came to, had no landing time to follow. Spread across
+a fixed window at `k / (n - 1)` of it, the *last* box of a good always leaves at
+`spread`; a lone box takes the whole window rather than none of it, so that is
+true of every good and not only of the crowded ones. `carriedBy(i, back)` is
+then exact, and both engines compute it.
+
+`DWELL.settled` stopped being a literal. `dwellFor` measures the bundle it is
+given — a two-good exchange runs 300ms longer than a one-good one — because
+holding every trade for the worst case a board allows (seven goods, 7.6s) would
+spend that on every two-good trade as well.
+
+`carrying()` measures the claim rather than the table: for **each good**, the
+moment its own boxes stop moving against the moment `hands()` is told to send
+its symbols. Bounded on both sides — early is the defect, and later than a beat
+means the two schedules have drifted apart again.
+
+Its fixture had to change to say anything. It held 0.8 of everything and moved
+0.4, which at `BOX` = 0.465 is a **single box** changing hands per good — and a
+single box is the one case where `spread` does nothing at all, so the rule it
+exists for could not be made to fail. Six boxes each now, five of them moving.
+
 ## Utilities and efficiency
 
 Both need tastes, so both are replay-only, and the live page says so rather than
