@@ -65,6 +65,30 @@ def _client(hub, agent_id, key, workspace=WORKSPACE):
                                workspace=workspace, key=key), agent_id=agent_id)
 
 
+def _witnessed(lobby, client, *, timeout=5):
+    """Wait until the lobby could witness a line from this peer.
+
+    **The lobby learns a key by fetching the roster, and it does that once per
+    drain** (`lobby.drain`, "the roster first"), so a peer that registers and
+    posts in the same breath can have its line read by a drain whose roster was
+    fetched before the registration existed -- and the lobby refuses it with
+    "no signing key known for you yet". `run_entrant.claim` never sees this
+    because it waits for the lobby's own FORMING line before it JOINs, which is
+    a round trip through exactly that drain; a test that posts straight after
+    registering has no such round trip and raced. It failed in CI once and
+    passed six runs locally, which is what this shape of race looks like.
+
+    `_names` is set from the same roster fetch that teaches the client the key,
+    so the peer appearing there is the lobby having drained *after* the
+    registration. That is the state the wait is for -- not a sleep.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline and client.agent_id not in lobby._names:
+        time.sleep(0.05)
+    assert client.agent_id in lobby._names, (
+        "the lobby never saw this peer on the roster; it cannot witness it")
+
+
 def _entrant(hub, key, name="scout-v2"):
     client = _client(hub, name, key)
     client.register(name=name, kind="local", branch="main", task="")
@@ -155,9 +179,11 @@ def test_the_invite_arrives_once_the_table_settles(running_lobby, hub, signer):
                       deadline=time.time() + 10)
     second = _client(hub, "trader-b", key)
     second.register(name="trader-b", kind="local", branch="main", task="")
+    _witnessed(lobby, second)
     second.post("lobby", "JOIN g1 as trader-b")
     manager = _client(hub, "m", key)
     manager.register(name="lucille", kind="local", branch="main", task="")
+    _witnessed(lobby, manager)
     manager.post("lobby", "MANAGE g1")
 
     invite = run_entrant.wait_for_invite(first, "lobby", "g1", every=0.05,
