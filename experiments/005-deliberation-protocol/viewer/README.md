@@ -522,9 +522,23 @@ Both keep the larger half they always had — nightfall over the whole frame, th
 fire taking over, the night lifting, every trader's crates draining and coming
 back — and neither needs a scrap of cloth on a stick to say it.
 
-The offer and the refusal still raise a **post with a notice on it** beside the
-maker's hut. That is a notice board, not a flag, and it is the only thing on the
-island that says an offer stands.
+The offer and the refusal used to raise a **post with a notice on it** beside
+the maker's hut. **Both posts are gone (2026-08-27, Gal)**, and with them the
+last post or flag on this island that is not a production site's marker. A flag
+here says which good is made where; nothing else says anything with a post or a
+scrap of cloth.
+
+Neither event loses its picture, because neither was carried by the post. An
+offer is **the rope** across the frame — labelled with what is on the table, its
+dashes crawling toward the trader it is addressed to — and, on the island
+itself, the crates the maker is offering lifting off its own pile and settling
+back, since an offer is a proposal and nothing has moved yet. A refusal is the
+**bubble over the hut** with a cross in it and the red outline round the card,
+and it now has nothing of its own on the island at all: `render.py:overhead` is
+what holds it to that job, and `mechanics` names it as the one event the island
+is not asked to show. Measured on the way here — a refusal was 3.20% of the
+island's frame with its ground disc and 0.27% with only the post, so what was
+dropped is the smaller half of something already carried elsewhere.
 
 ### The water casts no shadow
 
@@ -747,9 +761,14 @@ reason the fireflies are held a clearing's width off the fire.
 That line used to end "the material stays, for an offer's lit notice, which is a
 mark that fires once for a reason rather than a light that is simply on." **The
 offer's lamp is gone too (2026-08-27)** — see *"no ground marks left, and now no
-lights either"* — so there is no lantern anywhere on this island, and `M.glass`
-is unused. It is kept as a material because the next thing that genuinely glows
-should be this colour, and deleting it is how a palette drifts.
+lights either"* — so there is no lantern anywhere on this island.
+
+`M.glass` survived that cut, unused, on the argument that the next thing which
+genuinely glows should be this colour and that deleting it is how a palette
+drifts. **It is deleted now (2026-08-27, Gal)**, with the last of the posts and
+the notice it was kept for: a palette entry nothing draws is not a palette, it
+is a note, and the note is the one in `island3d.js` — it was `0xffd79a` at
+roughness 0.4, emissive `0xffb45e`.
 
 ### One face per good, wherever the island draws one
 

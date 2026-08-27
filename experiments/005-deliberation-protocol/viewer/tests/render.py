@@ -1673,7 +1673,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_|banner_|post$|notice)/;
+  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_)/;
   const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
   window.__under = (x, z) => {
     ray.set(new THREE.Vector3(x, 8, z), down);
@@ -2678,10 +2678,20 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         return {kind: e.kind, clip: true, peak, after, live: st.clips.length};
       });
     }""", {"events": FIRED, "holding": HOLDING})
+    #: **A refusal has no clip at all any more, and is not asked for one.**
+    #: What it had on the island was a post beside the hut with a notice
+    #: tearing in two on it, and every post and flag on this island bar a
+    #: production site's marker was cut on 2026-08-27. Its whole picture is
+    #: the bubble over the hut and the red outline round the card, which
+    #: `overhead` below is what holds to the job -- so this asks that check
+    #: exists rather than asking the island to move. Any other event with
+    #: nothing to show is still a failure.
+    ISLAND_SAYS_NOTHING = {"refused"}
     for r in seen:
         where = f"mechanics {r['kind']}"
         if not r.get("clip"):
-            bad.append(f"{where}: the island has nothing to show for it")
+            if r["kind"] not in ISLAND_SAYS_NOTHING:
+                bad.append(f"{where}: the island has nothing to show for it")
             continue
         #: Share of the island. Small, because most of an island is ground --
         #: but an order of magnitude above the hairlines this replaced.
@@ -2695,12 +2705,14 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
         #:
         #: That is a **decision**, not a threshold being relaxed to fit: the
         #: lamp on the offer's post and the red disc under the refusal were the
-        #: last two ground-lights on the island and both were cut on report.
-        #: Measured before and after -- an offer went 1.75% -> 0.36% and a
-        #: refusal 3.20% -> 0.27% -- so the island's own share of them is small
-        #: on purpose. What is still required of it is that something happens
-        #: there at all: a post rising and a notice unrolling, a post shaking
-        #: and a notice tearing in two, an order of magnitude above nothing.
+        #: last two ground-lights on the island and both were cut on report;
+        #: the posts themselves went after them, with every other post and flag
+        #: bar a production site's marker. Measured before and after -- an
+        #: offer went 1.75% -> 0.36% and a refusal 3.20% -> 0.27% -- so the
+        #: island's own share of them is small on purpose. An offer is still
+        #: required to do something there: the crates it is putting on the
+        #: table lift off the maker's pile, an order of magnitude above
+        #: nothing. A refusal is not; see `ISLAND_SAYS_NOTHING` above.
         #:
         #: `carries` names who does hold each of them to its job, and the
         #: assertion below is that those checks are still in the suite. Without

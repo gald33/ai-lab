@@ -56,7 +56,13 @@ export const M = {
   cloth: mat("cloth", 0xe8e2d4, 0.85),
   salt: mat("salt_crust", 0xe9eef0, 0.7),
   wheat: mat("wheat", 0xc9a86a, 0.9),
-  glass: mat("lantern", 0xffd79a, 0.4, 0.0, 0xffb45e),
+  //: **There is no lantern material, because there is no lantern.** The huts
+  //: lost theirs first, then the offer's lit notice, and `M.glass` sat here
+  //: unused on the argument that the next thing which genuinely glows should
+  //: be this colour. Deleted (2026-08-27, Gal) with the last of the posts and
+  //: flags: a palette entry nothing draws is not a palette, it is a note, and
+  //: the note is this one. It was `0xffd79a` at roughness 0.4, emissive
+  //: `0xffb45e`.
   //: The fire's own. Emissive from the start and driven by the life layer,
   //: which turns it up as the day goes -- the one thing on this island that is
   //: brighter at the bell than at noon.
@@ -328,7 +334,9 @@ function hut(id, traderMat) {
   //: unnecessary: the campfire already carries nightfall, and a second warm
   //: dot per hut is a light that says nothing the fire has not said -- while
   //: on this island a small bright dot already means a good in flight, which
-  //: is the same reason the fireflies are held clear of the fire below.
+  //: is the same reason the fireflies are held clear of the fire below. The
+  //: last lantern anywhere went with the offer's notice, and the material
+  //: with it -- see `M` above.
   //: **The two crates by the door are gone.** They were scenery from before
   //: goods stood on the island at all -- a hut with some things outside it --
   //: and they became a lie the moment a trader's holdings became crates in a

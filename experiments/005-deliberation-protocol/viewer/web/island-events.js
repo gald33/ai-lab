@@ -14,8 +14,8 @@
  * brought its own would be a second set standing inside the first. What is
  * kept is the *motion*, re-aimed at the island's own nodes; what is spawned is
  * only what genuinely appears and then goes: the crate a production yields,
- * the notice on an offer, the dust where a crate lands, the ring the bell
- * sends out.
+ * the dust where a crate lands, the puffs behind something crossing the
+ * island.
  *
  * That change is also what makes them mean anything. A crate that leaves the
  * bread fields and lands at the settlement that produced it says who made it;
@@ -23,7 +23,7 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { M, goodMat, seatMat, onMeadow } from "./island3d.js";
+import { M, goodMat } from "./island3d.js";
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
@@ -91,16 +91,16 @@ function trail(c, material, n = 5) {
   });
 }
 
-/** A post with a cloth on it, which is how this island says "an offer". */
-function bannerPost(material, h = 1.35) {
-  const g = new THREE.Group();
-  g.name = "banner_post";
-  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.042, h, 10), M.timber, "post", [0, h / 2, 0]));
-  const banner = mesh(new THREE.BoxGeometry(0.03, 0.42, 0.48), material, "banner", [0, h * 0.78, 0.24]);
-  g.add(banner);
-  g.userData = { banner };
-  return g;
-}
+//: **There are no posts on this island, and no flags but the site markers.**
+//: An offer and a refusal each used to raise a post beside the maker's hut,
+//: with a cloth banner in the trader's colour and a notice unrolled on it, and
+//: `bannerPost` built them both. Cut whole (2026-08-27, Gal): a flag on this
+//: island says which good is made where and nothing else says anything with a
+//: post or a scrap of cloth. The huts lost theirs first, then their lanterns;
+//: this is the last of both.
+//:
+//: Nothing about what an offer or a refusal *is* was carried by the post --
+//: see the notes in `offered` and `refused` for what carries each of them now.
 
 /**
  * A clip, ready to be advanced.
@@ -158,25 +158,6 @@ function borrow(c, node, { material = false } = {}) {
     if (was.m) node.material = was.m;
   });
   return node;
-}
-
-/**
- * A spot beside a settlement, on the grass.
- *
- * Along the hut's own side rather than on the line to the fire: a prop set
- * out toward the middle from a hut two and a half units out lands *on the
- * fire*, which is where the first cut of this put every offer and every
- * refusal -- standing in the flames, or under the roof that used to be there.
- */
-function beside(home, centre, ground, side = 1.15, out = 0.25) {
-  const away = new THREE.Vector3(centre.x - home.x, 0, centre.z - home.z).normalize();
-  const x = home.x + -away.z * side + away.x * out;
-  const z = home.z + away.x * side + away.z * out;
-  const [cx, cz] = onMeadow(x, z, 0.35);
-  // On the island's own ground, not the meadow's: a post set down at a flat
-  // height on the upland stands with its foot buried in the hill.
-  return { at: new THREE.Vector3(cx, ground(cx, cz), cz),
-           face: Math.atan2(away.x, away.z) };
 }
 
 /**
@@ -425,90 +406,60 @@ function siteWork(good, site, c) {
   }];
 }
 
-/** An offer: a post goes up beside the maker's hut and a notice unrolls on it. */
-function offered(event, { anchors, traders, ground, stock }) {
+/**
+ * An offer: **the boxes it is offering lift off the pile.**
+ *
+ * **It was a ring, then a lamp, then a post, and now it is none of them.**
+ * Every expanding ring on this island went the same way: five clips fired one,
+ * a four-good production put four up at once, and at 4x they arrived on top of
+ * each other -- reported twice, the second time as simply too distracting to
+ * read. The lamp replaced the ring and went the same way itself, measured on
+ * the way out: an offer changed 1.75% of the island's frame with the lamp and
+ * 0.36% without, because the light on the ground was most of what it changed.
+ *
+ * **The post and its notice are gone too** (2026-08-27, Gal), with every other
+ * post and flag on the island bar a production site's marker. What is left is
+ * what the offer always actually was on the ground: the crates the trader is
+ * putting on the table lifting off its own pile. They are already standing in
+ * its yard, they are the biggest thing the event has any business touching,
+ * and they settle back at the end -- an offer is a proposal, and nothing has
+ * moved yet.
+ *
+ * **What carries an offer is the rope**, and always did: a line across the
+ * island from the maker to the taker, labelled with what is being offered for
+ * what, its dashes crawling toward the trader it is addressed to. That is
+ * drawn in SVG over the canvas, so the island's own share of an offer is small
+ * on purpose. `render.py:turning` is what holds the rope to its job.
+ *
+ * So an offer of goods the maker is not holding raises nothing here and is
+ * `null`, where it used to raise a post over an empty yard. The rope still
+ * carries it, and the island does not draw crates that are not there.
+ */
+function offered(event, { anchors, stock }) {
   const home = anchors[event.maker];
-  if (!home) return null;
+  if (!home || !stock) return null;
   const c = clip(3.0);
-  const spot = beside(home, anchors.fire, ground);
-  const post = bannerPost(own(c, seatMat(event.maker, traders.indexOf(event.maker))));
-  post.position.copy(spot.at);
-  post.rotation.y = spot.face;
-  c.root.add(post);
 
-  const scrollMat = own(c, clone(M.cloth));
-  const scroll = mesh(new THREE.BoxGeometry(0.03, 0.5, 0.56), scrollMat, "notice", [0, 0.95, 0.28]);
-  post.add(scroll);
-
-  //: **It was a ring, then a lamp, and now it is neither.** Every expanding
-  //: ring on this island went the same way: five clips fired one, a four-good
-  //: production put four up at once, and at 4x they arrived on top of each
-  //: other -- reported twice, the second time as simply too distracting to
-  //: read. The lamp replaced the ring and then went the same way itself. What
-  //: an offer has on the island is the post, the notice, and the crates; what
-  //: an offer *is*, a viewer reads off the rope.
-  //:
-  //: **The boxes it is offering lift off the pile.** A post and a notice are a
-  //: metre of timber on an island eight across, and with the ring gone they
-  //: were most of what an offer had -- a clip nobody can see is not an
-  //: animation. These are the crates the trader is putting on the table, they
-  //: are already standing in its yard, and they are the biggest thing the
-  //: event has any business touching. They settle back at the end: an offer is
-  //: a proposal, and nothing has moved yet.
   const offered = Object.keys(event.give || {}).flatMap((good) => {
-    const pile = stock?.take(event.maker, good, stock.want(good, event.give[good])) ?? [];
+    const pile = stock.take(event.maker, good, stock.want(good, event.give[good])) ?? [];
     return pile.map((box) => ({ box, at: box.position.clone(), turn: box.rotation.y }));
   });
-  if (offered.length) {
-    c.settle.push(() => {
-      for (const { box, at, turn } of offered) { land_(box, at); box.rotation.y = turn; }
-      for (const good of Object.keys(event.give || {})) {
-        stock.put(event.maker, good, offered.filter((o) => o.box.name === `box_${good}`)
-          .map((o) => o.box));
-      }
-    });
-  }
-  //: **The lamp is gone, and the light it threw with it.**
-  //:
-  //: It was the last lantern on the island -- the huts lost theirs first -- and
-  //: it was put here to replace the ring that used to go out from the post,
-  //: which was cut for being distracting. Cut in turn on the same reading, and
-  //: the cost is known and was measured before the cut: an offer changed 1.75%
-  //: of the island's frame with it and 0.36% without, because the light on the
-  //: ground was most of what it changed. Doubling the notice instead gets
-  //: 0.61%, so nothing standing on the post buys that back.
-  //:
-  //: **What carries an offer is the rope**, and always did: a line across the
-  //: island from the maker to the taker, labelled with what is being offered
-  //: for what, its dashes crawling toward the trader it is addressed to. That
-  //: is drawn in SVG over the canvas, so the island's own share of an offer is
-  //: small on purpose now -- the post rising, the notice unrolling, and the
-  //: crates it is offering lifting off the pile. `render.py:turning` is what
-  //: holds the rope to its job.
+  if (!offered.length) return null;
+  c.settle.push(() => {
+    for (const { box, at, turn } of offered) { land_(box, at); box.rotation.y = turn; }
+    for (const good of Object.keys(event.give || {})) {
+      stock.put(event.maker, good, offered.filter((o) => o.box.name === `box_${good}`)
+        .map((o) => o.box));
+    }
+  });
 
   c.update = (t) => {
-    const rise = easeOut(win(t, 0, 0.5));
-    post.scale.y = Math.max(0.02, rise);
-    const unroll = easeOut(win(t, 0.45, 1.3));
-    scroll.scale.y = Math.max(0.001, unroll);
-    scroll.position.y = 1.2 - 0.25 * unroll;
-    scroll.visible = unroll > 0.01;
-    const flut = win(t, 1.2, 3.0);
-    scroll.rotation.y = Math.sin(t * 4.2) * 0.1 * flut;
-    post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
-    const p = win(t, 0.6, 2.8);
-    const shine = Math.sin(Math.PI * p) ** 0.6;
     offered.forEach(({ box, at, turn }, k) => {
       const up = Math.sin(Math.PI * win(t, 0.35 + k * 0.1, 2.9)) ** 0.6;
       box.position.y = at.y + up * 0.42;
       box.rotation.y = turn + up * 1.6;
       box.scale.setScalar(1 + up * 0.12);
     });
-    // Taken down at the end rather than left standing: the rope on the card is
-    // what says an offer is still open, and two things saying it disagree the
-    // moment one of them is a second behind.
-    const down = win(t, 2.6, 3.0);
-    post.scale.y = Math.max(0.02, rise) * (1 - down);
   };
   return c;
 }
@@ -598,49 +549,25 @@ function settled(event, { island, anchors, goods, stock, life }) {
   return c;
 }
 
-/** A refusal: the notice is torn up where it was posted. */
-function refused(event, { anchors, traders, ground }) {
-  const home = anchors[event.trader];
-  if (!home) return null;
-  const c = clip(3.0);
-  const spot = beside(home, anchors.fire, ground);
-  const post = bannerPost(own(c, seatMat(event.trader, traders.indexOf(event.trader))));
-  post.position.copy(spot.at);
-  post.rotation.y = spot.face;
-  c.root.add(post);
-
-  const noticeMat = own(c, clone(M.cloth));
-  const half = new THREE.BoxGeometry(0.03, 0.5, 0.27);
-  const left = mesh(half, noticeMat, "notice_l", [0, 0.95, 0.15]);
-  const right = mesh(half, noticeMat, "notice_r", [0, 0.95, 0.43]);
-  post.add(left, right);
-
-  //: **The red disc on the ground is gone.** It is the last of the rings: a
-  //: three-unit circle of light thrown across the grass, which survived the
-  //: purge that took the other five because it was called a flash rather than
-  //: a ring. It is the same thing, and it was cut for the same reason -- a
-  //: coloured disc on the grass is not a thing that happened, it is a caption
-  //: for one.
-  //:
-  //: **What carries a refusal is the bubble over the hut**, with a cross in
-  //: it, and the red outline round the trader's card. Both are drawn over the
-  //: canvas, so what is left here is the post shaking and the notice tearing
-  //: in two, which is the refusal itself rather than a light about it.
-  //: `render.py:overhead` is what holds the bubble to its job.
-
-  c.update = (t) => {
-    const shake = win(t, 0.1, 0.8);
-    post.rotation.z = Math.sin(t * 44) * (1 - shake) * 0.06;
-    const tear = easeIn(win(t, 0.8, 2.4));
-    left.position.set(-Math.sin(tear * 1.2) * 0.07, 0.95 - tear * 1.05, 0.15 - tear * 0.35);
-    right.position.set(Math.sin(tear * 1.2) * 0.07, 0.95 - tear * 0.98, 0.43 + tear * 0.4);
-    left.rotation.set(tear * 1.4, tear * 0.6, tear * 2.2);
-    right.rotation.set(-tear * 1.1, -tear * 0.5, -tear * 1.9);
-    const fl = win(t, 0.3, 2.4);
-    const down = win(t, 2.5, 3.0);
-    post.scale.y = 1 - down;
-  };
-  return c;
+/**
+ * A refusal: **the island shows nothing, and is not asked to.**
+ *
+ * It had a post beside the hut, shaking, with the notice tearing in two on it,
+ * and before that a red disc thrown across the grass. The disc went with the
+ * other ground marks -- a coloured circle on the grass is not a thing that
+ * happened, it is a caption for one -- and the post has now gone with every
+ * other post and flag on the island (2026-08-27, Gal), which leaves a refusal
+ * with nothing of its own to raise.
+ *
+ * That is the whole picture already: **the bubble over the hut** with a cross
+ * in it, and the red outline round the trader's card. Both are drawn in SVG
+ * over the canvas, and `render.py:overhead` is what holds them to the job.
+ * Measured on the way here: a refusal was 3.20% of the island's frame with the
+ * disc and 0.27% with only the post, so what is dropped here is the smaller
+ * half of a thing that was already carried elsewhere.
+ */
+function refused() {
+  return null;
 }
 
 /**
