@@ -72,7 +72,7 @@ def test_join_carries_a_nonce():
 
 def test_a_join_still_offering_box_is_told_it_is_gone():
     """Refused rather than ignored: an entrant still sending one believes
-    something about this game that stopped being true when `ask` shipped."""
+    something about this game that stopped being true when sealing shipped."""
     with pytest.raises(Malformed) as exc:
         parse("JOIN g7 as scout-v2 box=abc")
 

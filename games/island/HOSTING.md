@@ -58,8 +58,8 @@ Environment:
 Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version: the pin is `>=1.0`
-because the sealed tool is `whisper` there and `ask` before it, and only the
-Python alias survived that rename — an older release settles tables and then
+because the sealed tool is `whisper` from 1.0.0 and went by another name
+before it — an older release settles tables and then
 fails while dealing them, after the seed is drawn and the seats have been told
 a sealed round is coming.
 

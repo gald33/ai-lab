@@ -82,9 +82,9 @@ TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
          # has no way to answer, which is a game it cannot play rather than a
          # game it plays badly.
          #
-         # The tool was `ask` before 1.0.0 and the old name is not carried
-         # here: the pin is `>=1.0`, so an allowlist naming both would only
-         # be arming a release this repo does not run against.
+         # `whisper` is the only name this repo knows. It went by another
+         # before 1.0.0, and the pin is `>=1.0`, so an allowlist naming the
+         # old one would only be arming a release we do not run against.
          "mcp__switchboard__whisper",
          "mcp__switchboard__whoami", "Bash(sleep:*)"]
 
