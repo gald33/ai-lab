@@ -1546,39 +1546,64 @@ clock (`AHEAD`, `TICK_MS`), which is why the bed can run for an hour without
 the seam a four-second loop would have. It is also why a stalled frame cannot
 make the sea stutter — none of it is on the frame clock.
 
-### The levels are measured, not chosen
+### The levels are measured, and measurement is not enough
 
 `tests/audio.py` renders the real `island-ambience.js` through an
 `OfflineAudioContext` in a real browser and measures what came out:
 
     python viewer/tests/audio.py --verbose
 
-The measurement is the reason the design changed. At the level the sites were
-first written to, a **whole site at work moved the mix by 7%, and salt by
-nothing at all** — inaudible, and it would have shipped, because by ear
-under a bed everything sounds like it is probably there. `WORK_GAIN` is 8
-because 8 is what put every site clearly over the bed without the peaks
-getting near the ceiling; 11 put the quarry's strikes at 0.99 before the master
-gain.
+**It caught one mistake and let the opposite one straight through, and both
+are worth keeping written down.**
 
-Each site, as a multiple of the bed alone over the same window (bed as
-control, 12s render, `--verbose` prints this table):
+*The quiet mistake.* At the level the sites were first written to, a whole
+site at work moved the mix by 7%, and salt by nothing at all — inaudible, and
+it would have shipped, because by ear under a bed everything sounds like it is
+probably there. That is what the audibility floor exists for.
 
-| site | over the bed |
-|---|---|
-| bread | ×2.29 |
-| fish | ×1.86 |
-| iron | ×1.77 |
-| cloth | ×1.76 |
-| salt | ×1.92 |
-| grain | ×1.70 |
-| timber | ×1.63 |
-| a good with no site of its own | ×1.75 |
+*The loud mistake, found by ear on 2026-08-27 and reported as "the production
+sound is so annoying".* Chasing that floor with RMS produced a `strike()` that
+was **a square wave at 2.4–3kHz with no attack envelope, fired twelve times at
+one pitch and one level** — odd harmonics the whole way up, a discontinuity
+instead of an onset, and a machine stamping rather than somebody working.
+Every check passed. **RMS is blind to this by construction: harsh transient
+content is exactly what it rewards**, so a level set by measurement alone
+walks straight into it.
 
-The spread is not a defect: an oven is louder than brine drying, and the check
-asserts a floor (×1.35), not a level. It also asserts that nothing clips at the
-master gain the page actually applies, that the bed is present but quiet, and
-that the sea does not stop at night.
+So the check grew a second measurement. `bright` is the share of a window's
+energy above roughly 4kHz, and a site at work must not be more than 4× the
+brightness of the bed it sits in. The rewrite (a filtered-noise contact, a
+damped triangle body under a lowpass, a few ms of attack on both, and every
+hit varied in pitch and weight) reads as this:
+
+| site | over the bed | brightness, work / bed |
+|---|---|---|
+| bread | ×1.82 | 0.073 / 0.160 |
+| salt | ×1.74 | 0.175 / 0.159 |
+| fish | ×1.51 | 0.098 / 0.160 |
+| timber | ×1.47 | 0.092 / 0.161 |
+| grain | ×1.47 | 0.161 / 0.161 |
+| cloth | ×1.44 | 0.106 / 0.160 |
+| iron | ×1.44 | 0.092 / 0.162 |
+| a good with no site | ×1.39 | 0.090 / 0.159 |
+
+Every struck site now sits **at or below the brightness of the sea around
+it** while staying clearly audible. `WORK_GAIN` went 8 → 4.2 → 9 across this:
+the first number was RMS chasing audibility, the second was over-correcting
+for the complaint by turning it down (which made every site inaudible again —
+the wrong knob), and 9 is where the *rewritten* strike sits, louder in level
+and gentler in character. **Turning the harsh thing down would have lost the
+work; changing what it was made of kept both.**
+
+The spread in the first column is not a defect — an oven is louder than brine
+drying — so the check asserts a floor (×1.35), not a level. Cloth and timber
+were raised to clear it rather than the floor being lowered to admit them.
+
+The other thing that changed with it: the `produced` accent in
+`island-sound.js` is quieter and lower (`peak` 0.28 → 0.13, and its knock
+dropped from 780Hz to 430Hz), because it fires in the same instant the site
+starts working and two onsets stacked were most of what made a production
+unpleasant. A production window is 5s now, not 6.5.
 
 ### The rest of the shape
 

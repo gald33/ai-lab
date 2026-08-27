@@ -219,9 +219,14 @@ function knock(ctx, out, { at, dur = 0.12, peak = 0.3, freq = 900, q = 1.2 }) {
 const VOICES = {
   //: Something was made and it is standing in a yard: a crate put down on
   //: ground, which is a knock and the thud under it.
+  //: **Quieter and lower than it was**, because it no longer arrives alone:
+  //: the site it came from starts working in the same instant, and the two
+  //: onsets together were most of what made a production unpleasant. The
+  //: accent is now the crate touching down under the work, not a second
+  //: announcement of it.
   produced(ctx, out, t) {
-    knock(ctx, out, { at: t, dur: 0.1, freq: 780, peak: 0.28 });
-    tone(ctx, out, { freq: 160, to: 96, at: t, dur: 0.16, peak: 0.22, type: "triangle" });
+    knock(ctx, out, { at: t, dur: 0.12, freq: 430, peak: 0.13 });
+    tone(ctx, out, { freq: 130, to: 84, at: t, dur: 0.2, peak: 0.14, type: "sine" });
   },
 
   //: An offer is a question. Two notes up, and it stops on the second rather
