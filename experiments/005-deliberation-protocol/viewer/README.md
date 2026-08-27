@@ -1512,6 +1512,30 @@ Three things follow from open being a *moment*:
   meant to release had gone. Production has no `carriedBy`, and giving it one
   means retiming `DWELL.produced` around the walk home. That is its own change.
 
+**`render.py:emerging` is the check for all of it**, and it is a check of the
+card layer's *keyframes*, not of a rendered frame: it drives a real exchange,
+catches each symbol on the frame it is created, and asks three things of the
+animation it was built with.
+
+* **Its crate end is on a crate.** Which end that is depends on the direction:
+  `in` rises out of a box and lands on a bar, `out` leaves a bar and drops into
+  one. The first draft measured both at birth, which is the wrong end for half
+  of them, and it reported a symbol leaving its own bar as 362px from a crate.
+* **It is opaque there.** Held transparent for more than a tenth of the way
+  from the crate, it appears out of clear air however exactly it was aimed.
+  `computedOffset`, not `offset` — an unspelled first or last keyframe comes
+  back as `offset: null`, and reading those as 0 and 1 the wrong way round put
+  the crate end of an `out` symbol at 58% of its own flight.
+* **It flies as soon as it is built.** This is the defect itself. A distance
+  measured at birth would have passed on the broken page too — the keyframes
+  matched the yard *at cue time*; what was wrong was the 3.4s between cue and
+  flight, with the island turning throughout. Zero wait and a crate-end
+  distance of zero are together the whole claim.
+
+Neutered both ways, it says so: bake the keyframes at cue time again and it
+reports symbols built 3170ms and 3370ms before they fly; put the old fade back
+and it reports them still transparent 42% of the way from the crate.
+
 `render.py`'s yard checks take the crates by name (`box_`) rather than every
 mesh under `yards`: a flap sits a box-height above the grass by construction,
 and the clearance check exists to catch a crate that floats.
