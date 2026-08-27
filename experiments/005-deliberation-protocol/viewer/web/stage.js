@@ -48,6 +48,11 @@ const WATER = 1;
 //: more overhead view.
 const TILT = 0.68;
 
+//: The sea's own radius in `island3d.js`, which `flood()` scales up from. Read
+//: here rather than imported because the model file does not export it; the
+//: island check re-measures the mesh, so the two cannot drift apart silently.
+const SEA_R = 16;
+
 //: Where the camera starts, and how long it takes to go round once. Slow on
 //: purpose: this is a place being watched, not a turntable, and a spectator
 //: reading a card should never feel hurried by the ground moving under it.
@@ -205,6 +210,10 @@ export class Stage {
     //: The disc of deep water, marked for the backdrop pass. It keeps layer 0
     //: as well, so the framed pass still draws it in its place.
     made.island.getObjectByName("sea")?.layers.enable(WATER);
+    //: The camera was framed before there was an island to flood, in the
+    //: constructor and on every reframe. This is the one call that happens
+    //: after the sea exists.
+    this.flood();
     this.scene.add(this.island);
     // Placed at t=0 before anything is shown, so a still island is an island
     // at a moment rather than one with its gulls at the origin.
@@ -235,6 +244,40 @@ export class Stage {
       top: cy / s, bottom: cy / s - this.geo.h / s,
     });
     this.camera.updateProjectionMatrix();
+    this.flood();
+  }
+
+  /**
+   * Grow the sea until it cannot run out inside the frame.
+   *
+   * **The sea is a disc, and a disc has an edge.** It is 32 units across, which
+   * covered every frame it was ever measured in -- and `afloat` measured three,
+   * all of them desktop-shaped. A phone in portrait is not: the frame is tall
+   * and the island's box is a fraction of it, so the frustum is `8.7 * geo.h /
+   * D` island units deep, which on a 393x660 window is **29 units** and at a
+   * card focus 36. Past 16 there was nothing to draw and the corners came back
+   * black -- the void this page has been told twice it must not have, arriving
+   * a third time through the one shape nothing measured.
+   *
+   * Solved rather than padded. A horizontal disc of radius `R` under an
+   * orthographic camera at elevation `TILT` projects to an ellipse with
+   * semi-axes `R` across and `R * sin(TILT)` down, so a frustum corner at
+   * `(x, y)` is covered when `hypot(x, y / sin(TILT)) <= R`. This takes the
+   * furthest corner and scales the mesh to reach it, which means a change to
+   * the tilt, the frame or the island's box carries the sea with it instead of
+   * leaving a constant behind.
+   */
+  flood() {
+    const sea = this.island?.getObjectByName("sea");
+    if (!sea) return;
+    const c = this.camera;
+    const need = Math.max(...[[c.left, c.top], [c.right, c.top],
+                              [c.left, c.bottom], [c.right, c.bottom]]
+      .map(([x, y]) => Math.hypot(x, y / Math.sin(TILT))));
+    //: A twentieth over, for the shore's own foam and for the slab being a
+    //: little below the plane the corners were computed on.
+    sea.scale.set(Math.max(1, (need * 1.05) / SEA_R), 1,
+                  Math.max(1, (need * 1.05) / SEA_R));
   }
 
   /**
@@ -488,9 +531,17 @@ export class Stage {
     //: shape does not match the viewBox's.
     //:
     //: So there are two passes. The first is the sea alone, across the whole
-    //: canvas, through the same camera at a viewport the full width of it: the
-    //: disc is far wider than the frame, so what lands in the bands is open
-    //: water. The second is the island, in its own rectangle, scissored.
+    //: canvas, through the same camera at a viewport the full width of it; the
+    //: second is the island, in its own rectangle, scissored.
+    //:
+    //: **This used to say "the disc is far wider than the frame", and that was
+    //: an assumption, not a fact.** It held on every shape anybody measured --
+    //: all of them desktop-shaped, where the island's box is most of the frame
+    //: -- and failed on a phone, where the box is a fraction of a tall frame
+    //: and the frustum runs 29 island units deep against a disc 32 across. The
+    //: corners came back black: the void, a third time, through the one shape
+    //: nothing looked at. `flood()` sizes the disc to the frustum now, so this
+    //: pass has something to draw wherever the frame reaches.
     //:
     //: Two passes rather than a clear colour chosen to look like water,
     //: because it is the *same mesh under the same lights* -- it goes down

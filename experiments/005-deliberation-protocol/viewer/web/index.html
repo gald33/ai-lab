@@ -508,15 +508,14 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    re-measures every one of these against a real phone. */
 .card.mini .qty, .card.mini .wheel-text, .card.mini > .card-sub,
 .card.mini .score-floor-tag { display: none; }
-.card.mini .card-name { font-size: 26px; }
-.card.mini .glyph { font-size: 22px; }
-.card.mini .score-value { font-size: 20px; }
-/* The one caption that stays. `labour` goes because the dial beside it is
-   already a dial, but a bare 0.000 under a shelf with nothing naming it is the
-   thing this file keeps calling a number that looks like it is telling you
-   something. Direct-child selector above so that hiding one does not hide it:
-   `labour` hangs off the card, `utility` off the score row. */
-.card.mini .score .card-sub { font-size: 17px; }
+/* Divided by the scale the group is about to be multiplied by, so each of
+   these lands at the size it is on a full card whatever the scale is.
+   `--card-scale` is set on the group by `scene.js`; the fallback is the scale
+   the glance card was first drawn at, for a card that somehow has none. */
+.card.mini .card-name { font-size: calc(15px / var(--card-scale, .55)); }
+.card.mini .glyph { font-size: calc(14px / var(--card-scale, .55)); }
+.card.mini .score-value { font-size: calc(12px / var(--card-scale, .55)); }
+.card.mini .score .card-sub { font-size: calc(9.5px / var(--card-scale, .55)); }
 .score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 /* --- a narrow window ------------------------------------------------------
@@ -570,6 +569,35 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .legend { left: 10px; right: 10px; bottom: auto; top: 132px; max-width: none;
     min-width: 0; gap: 6px 10px; }
   .legend span.sub { display: none; }
+
+  /* --- what the chrome gives back ----------------------------------------
+     The island cannot be screen-wide while the chrome holds 47% of the height.
+     Arithmetic, on a 393x660 window: the island needs 452 units of a 881-unit
+     frame to be 520 across, the gap to the cards takes 16, and the two bands
+     leave 469 -- so the cards would have to be **one unit tall**. No card is
+     small enough. The room has to come off the chrome or not at all, which is
+     what the size check has said all along: "the answer then is to take room
+     back off the chrome rather than to move this number."
+
+     So at the island's focus two of the four rows stand down, and the band
+     they took goes to the island. The two are the ones that are about the
+     round's bookkeeping rather than about the place: the counters, and the
+     goods key. The key is the real cost -- it is what names the colours of the
+     boxes standing in the yards -- and it is paid because the glance card
+     carries the same glyphs on its own shelf, and because one tap brings both
+     rows back.
+
+     What stays is the controls and the round's own state: which day it is and
+     whether the market is open, which is a caption on the island rather than a
+     tally beside it.
+
+     Scoped to portrait as well as to width, so that a phone turned sideways
+     while the island holds the screen gets its counters back -- landscape puts
+     the cards in margins and has no focus to honour. */
+  @media (orientation: portrait) {
+    :root.focus-island { --chrome-top: 96px; }
+    .focus-island .counts, .focus-island .legend { display: none; }
+  }
 
   /* A drawer is the whole screen at this width; half of one is neither. */
   .drawer.side { width: 100%; border-width: 0; }
@@ -1433,6 +1461,11 @@ addEventListener("resize", () => {
  */
 function refocus(next) {
   focus = next;
+  //: **Before the bands are read, not after.** `--chrome-top` is declared in
+  //: the stylesheet and this class is what changes it, so a `chromeBands()`
+  //: taken first would hand the layout the old band and put the island back
+  //: under the pills for one paint.
+  document.documentElement.classList.toggle("focus-island", next === "island");
   if (!scene?.reflow(isPortrait(), frameAspect(), chromeBands(), focus)) return;
   // The same path a rotated phone takes: the frame is re-divided, so the island
   // is reframed, its settlements land somewhere else and the scene takes the

@@ -281,15 +281,15 @@ Measured on 393×660, two traders:
 
 | focus | card scale | card, drawn | island, drawn | of the window |
 |---|---|---|---|---|
-| `island` | 0.58 | 85px | **275px** | 70% |
-| `even` | 1.00 | 147px | 198px | 50% |
+| `island` | 0.55 | 81 × 46px | **385px** | 98% |
+| `even` | 1.00 | 147 × 139px | 198px | 50% |
 | `cards` | 1.19 | **174px** | 165px | 42% |
 
-**The asymmetry is the frame's, not a choice.** The island gains 39% and the
-cards 19%, because the cards run out of *width* long before the island runs out
-of *height*: two to a row on a 520-unit frame allows `1.19×`, while the height
-freed by taking the island all the way down to `ISLAND_TINY` would allow
-`1.63×`. A card focus that shrank the island further would buy nothing at all.
+**The asymmetry is the frame's, not a choice.** The cards run out of *width*
+long before the island runs out of *height*: two to a row on a 520-unit frame
+allows `1.19×`, while the height freed by taking the island all the way down to
+`ISLAND_TINY` would allow `1.63×`. A card focus that shrank the island further
+would buy nothing at all.
 
 Two things fall out of that arithmetic and are worth stating, because both look
 like bugs from the outside:
@@ -304,6 +304,46 @@ like bugs from the outside:
   frame's *shape*, and the shape is the whole reason the chrome's bands land
   where the chrome is — so a tap on a card would have walked the pills back over
   the island. A tap re-divides the band; it never resizes it.
+
+#### Screen wide, and where the room came from
+
+The first version of this reached **70%** of the window and called it a gain,
+which it was. It was not what was asked for. And no card is small enough to
+close the gap: on a 393×660 window the island needs 452 units of an 881-unit
+frame to be 520 across, the gap to the cards takes 16, and the two chrome bands
+leave 469 — so the cards would have to be **one unit tall**. Shrinking them
+further was never going to do it.
+
+The room has to come off the chrome or not at all, which is what the size check
+had been saying all along: *"the answer then is to take room back off the chrome
+rather than to move this number."* So at the island's focus two of the four
+stacked rows stand down — the counters, and the goods key — and `--chrome-top`
+drops from 162px to 96px. What stays is the controls and the round's own state,
+which is a caption on the island rather than a tally beside it.
+
+**The goods key is the real cost**, because it is what names the colours of the
+boxes standing in the yards. It is paid because the glance card carries the same
+glyphs on its own shelf, and because one tap brings both rows back.
+
+The card gave up its **score row** at the same time, and the earlier reasoning
+for keeping it is left in `CARD_H_GLANCE` because it was not wrong: the utility
+is the one number a round is scored on, and a bare figure under a shelf is worse
+than a named one. What changed is what the tap is *for*. 186 units of card is 74
+more than the shelf needs, and those 74 units are band the island cannot have
+while a number nobody tapped for is standing in it.
+
+Together: **98% of the window on all three portrait phones**, from 50%.
+
+The glance card's surviving type is now `calc(15px / var(--card-scale))` rather
+than a literal `26px` paired with a literal `0.58`. Two constants that had to
+agree, one edit apart from a name that shrinks with its card.
+
+`focusing` gained the two checks that guard this: that the island **actually
+reaches the frame** — a check watching only the cards would have called 70% a
+pass — and that the chrome left standing is still clear of the island, counted
+in model pixels behind each pill the way `uncovered` counts them. The second is
+the risk the first one creates: a band declared shorter than the pills left in
+it puts them back on the island, which is the defect reported by eye twice.
 
 The block of island-then-cards is now **centred** in the band rather than pinned
 to its top. Slack dumped below the last card is invisible, and on a tall phone —
@@ -408,8 +448,8 @@ viewBox into, because that mapping is what puts a hut under its card. Two
 separate reports came out of the bands beside and above that rectangle.
 
 **The island stood in a void.** The sea was a disc a little wider than the
-shore, and everything past it was the page's own dark backing. The disc is
-sixteen units across now, and the bands are painted by a **first pass** that
+shore, and everything past it was the page's own dark backing. The disc was
+widened to sixteen units, and the bands are painted by a **first pass** that
 draws the sea alone, through the same camera, at a viewport the full width of
 the canvas — so what lands in them is open water. Two passes rather than a
 clear colour chosen to look like water: it is the same mesh under the same
@@ -425,8 +465,47 @@ ever drew there again. The clear runs with the scissor off now. The animation
 loop was also calling the renderer directly and so skipping the clear
 altogether; it goes through `render()` like everything else.
 
-`render.py:afloat` asks for **no unpainted pixel anywhere on the canvas**, in
-three window shapes, and compares each edge against the water inside the frame.
+### And then a third time, through the shape nothing measured
+
+**The corners came back black on a phone.** Reported as "the sea could fill the
+whole background", which is the same sentence as the first report and was the
+same defect underneath — with a different cause.
+
+The first pass draws the sea *disc*, and a disc has an edge. Sixteen units of
+radius covered every frame this had ever been pointed at, and all three were
+desktop-shaped, where the island's box is most of the frame. A phone in portrait
+is not: the box is a fraction of a tall frame, so the frustum runs
+`8.7 × geo.h / D` island units deep — **29 on a 393×660 window**, 36 at a card
+focus. Past 16 there was nothing to draw.
+
+`stage.js:flood()` sizes the disc to the frustum instead of assuming. A
+horizontal disc of radius `R` under an orthographic camera at elevation `TILT`
+projects to an ellipse with semi-axes `R` across and `R·sin(TILT)` down, so a
+frustum corner at `(x, y)` is covered when `hypot(x, y / sin TILT) ≤ R`. It
+takes the furthest corner and scales the mesh to reach it, which carries the sea
+along with any change to the tilt, the frame, or the island's box.
+
+`afloat` measures **five** shapes now, two of them phones, and asks three
+questions instead of two:
+
+- **no unpainted pixel anywhere on the canvas** — which could not have caught
+  this: a corner cleared to black is painted;
+- **every corner is sea** — by the same classifier the rest of the suite reads
+  land with, which calls black *land*, and so fails on it;
+- **and where there is a letterbox band, it is the same water as the frame.**
+  That is the seam a band painted from a second copy of the day's arithmetic
+  showed. It is asked **at the band** now, which is the only place the seam can
+  be. It used to compare the corners against a point 2% in at half height and
+  call that open water — which stopped being true the moment a phone could draw
+  the island the full width of the frame, and the check failed on a correct
+  page, sampling the shore shelf.
+
+The seam's tolerance came down from 12 per channel to **4**, and that too was
+measured rather than inherited: the shipped gap is *exactly zero* on both shapes
+that have a band, while a backdrop pass mis-tinted 30% brighter gives a gap of
+11 — a visible line down the side of the screen, which twelve was calling clean.
+Two of five shapes have a band, and `afloat` now fails if *none* of them does,
+because a seam rule with nothing to look at is a rule that has stopped asking.
 
 ## Flags say which good is made where, and nothing else
 
