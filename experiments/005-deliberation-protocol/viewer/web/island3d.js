@@ -659,10 +659,16 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: in the middle of it, on an island whose huts are eight-tenths of a unit
   //: across -- so the thing that was meant to be a campfire read as the
   //: largest structure on the island, which is the complaint the market got.
-  //: The clearing is now about a hut and a half wide and the hearth inside it
-  //: is something four people could sit round.
-  // The cleared ground round it, which is where the trails end.
-  add(fire, new THREE.CylinderGeometry(0.62, 0.66, 0.06, 48), M.sand, "hearth_ground", [0, 0.03, 0]);
+  //: The hearth is now something four people could sit round.
+  //:
+  //: **And the clearing under it is gone entirely** (Gal, 2026-08-27). What
+  //: was left of the market's footprint was a sand disc a hut and a half wide
+  //: sitting flat on the grass -- a yellow circle round the fire that said
+  //: nothing the fire had not already said. The ash, the stone ring and the
+  //: trails running in already mark the middle of the island as trodden
+  //: ground; the disc only made the fire read as a structure again. The
+  //: trails still end here -- they are stepped from the fire's own centre and
+  //: never needed the disc to land on.
   add(fire, new THREE.CylinderGeometry(0.22, 0.24, 0.05, 24), M.sandWet, "hearth_ash", [0, 0.06, 0]);
   // A ring of stones, set by hand rather than drawn as a torus: a hearth is
   // stones somebody carried, and a smooth ring reads as masonry.
