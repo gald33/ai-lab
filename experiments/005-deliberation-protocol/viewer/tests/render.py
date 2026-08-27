@@ -1408,16 +1408,27 @@ ROPE_DASH = """async () => {
   const dot = document.querySelector(`.tether[data-trader="${maker}"] .tether-pin`);
   const pin = dot ? [+dot.getAttribute('cx'), +dot.getAttribute('cy')] : null;
   const off = () => parseFloat(getComputedStyle(pick()).strokeDashoffset) || 0;
+  //: **The animation's own clock, not the dash offset.** `stroke-dashoffset`
+  //: is a *painted* value: Chromium throttles the paint when the machine is
+  //: busy, so on a loaded box the offset crawled 0.31 in six hundred
+  //: milliseconds against a floor of 0.5 and the check failed for being run
+  //: alongside the rest of the suite. `currentTime` tracks the document
+  //: timeline instead, so it advances whether or not a frame was drawn -- and
+  //: it still catches the bug this exists for, because a rope rebuilt under
+  //: its own animation gets a *fresh* animation whose clock starts at zero.
+  const clock = () => pick()?.getAnimations()[0]?.currentTime ?? null;
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const before = off();
+  const t0 = clock();
   let rebuilt = 0;
   for (let k = 0; k < 6; k++) {
     await new Promise(r => setTimeout(r, 100));
     if (pick() !== line) rebuilt++;
   }
   const after = off();
-  return {has: true, before, after, rebuilt,
-          moved: Math.abs(after - before) > 0.5,
+  const t1 = clock();
+  return {has: true, before, after, rebuilt, t0, t1,
+          moved: t0 !== null && t1 !== null && t1 - t0 > 200,
           fromMaker: pin ? dist(nums.slice(0, 2), pin) < dist(nums.slice(-2), pin) : null};
 }"""
 
@@ -1513,10 +1524,11 @@ def turning(browser, base: str, board: Path, out: Path) -> list[str]:
             dash = page.evaluate(ROPE_DASH)
             if dash and dash.get("has"):
                 if not dash["moved"]:
-                    bad.append(f"{where}: the offer's dashes did not move in "
-                               f"600ms ({dash['before']:.2f} -> "
-                               f"{dash['after']:.2f}); the line is being rebuilt "
-                               f"under its own animation")
+                    bad.append(f"{where}: the offer's crawl did not advance in "
+                               f"600ms (its own clock went {dash['t0']} -> "
+                               f"{dash['t1']}, the offset {dash['before']:.2f} "
+                               f"-> {dash['after']:.2f}); the line is being "
+                               f"rebuilt under its own animation")
                 if dash["rebuilt"]:
                     bad.append(f"{where}: the offer's rope was replaced "
                                f"{dash['rebuilt']} time(s) while the camera "

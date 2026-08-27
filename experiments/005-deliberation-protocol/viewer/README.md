@@ -439,6 +439,46 @@ What each clip carries itself now:
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
 
+### The offer's crawl is measured on its own clock
+
+`stroke-dashoffset` is a **painted** value, and Chromium throttles the paint
+when the machine is busy: run alongside the rest of the suite, the offer's
+dashes crawled 0.31 in six hundred milliseconds against a floor of 0.5, and
+`turning` failed for being run in company. Run alone it passed. That is a check
+whose answer depends on the load.
+
+It reads the animation's `currentTime` now, which tracks the document timeline
+and advances whether or not a frame was drawn. It still catches the bug it
+exists for — a rope rebuilt under its own animation gets a *fresh* animation
+whose clock starts at zero — and neutered (ropes replaced every frame) it
+reports the clock at 0 → 0 alongside six replacements.
+
+### A crate on this island is a good, and nothing else is
+
+Asked by name — *"what are the brown boxes?"* — which is the question a shape
+gets when it looks like something it is not.
+
+Two of them stood by every hut's door, and one at the generic works site. They
+are scenery from before goods stood on the island at all: a hut with some things
+outside it. They became a lie the moment a trader's holdings became **crates in
+a yard beside that same hut**. A brown cube with no colour and no glyph, next to
+a stack of coloured ones that each say what they are, is a good a viewer cannot
+identify.
+
+The door crates are gone. The works site's crate is a barrel — it is only drawn
+for a sixth good and no table has been that wide, which is exactly why it would
+still have been a crate when one was.
+
+The same rule as the flags: **a shape on this island means one thing.** A flag
+says which good is made where; a crate says a quantity of a good somebody holds.
+
+The quarry's cart was the third of them — a 0.2 timber cube, reported as not
+recognisable, and it was a crate in everything but name. It is a cart now: a
+tipped body, two stone wheels and a shaft, and half again the size it was. A
+cart is a quarter of a unit long on an island eight across — about twenty pixels
+on a laptop — so what makes it readable at that size is its silhouette and the
+contrast of the wheels against the body, not its parts.
+
 ### A bubble belongs over the hut
 
 The two things a trader does that leave no goods behind — refusing an offer, and
