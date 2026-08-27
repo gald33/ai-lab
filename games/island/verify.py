@@ -195,10 +195,10 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
     if not traders:
         report.skip("production: the reveal names no capacities")
         return
-    # A sealed round puts no plan on the board at all -- `ask` delivers it to
-    # the manager's own channel. So sealing is recognised by what the manager
+    # A sealed round puts no plan on the board at all -- `whisper` delivers it
+    # to the manager's own channel. So sealing is recognised by what the manager
     # announced, not by counting markers: the marker was this repo's stopgap
-    # and stopped existing when `ask` shipped.
+    # and stopped existing when the sealing tool shipped.
     sealed = any(str(m.get("body", "")).startswith("SEALED round")
                  for m in board["messages"] if m.get("author") == "manager")
     pending: dict[str, dict[str, float]] = {}

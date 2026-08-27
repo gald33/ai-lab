@@ -31,7 +31,7 @@ a seat here binds by a witnessed signing key -- so a keyless lobby refuses
 every `JOIN` it receives. The key is what turns attribution on; publishing it
 is what lets strangers in. It protects nothing and is not meant to.
 
-What must stay private travels sealed to one peer (`ask`), which is unaffected
+What must stay private travels sealed to one peer (`whisper`), unaffected
 either way: it seals to the recipient's exchange key, so every other holder of
 the workspace key -- which here is everybody -- still cannot open it. And the
 table's own room always gets a key of its own (`_settle`), which is a real

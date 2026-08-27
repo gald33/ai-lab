@@ -120,7 +120,8 @@ def parse(text: str):
             field, _, value = parts[-1].partition("=")
             field = field.lower()
             if field == "box":
-                # Removed 2026-08-26, when `ask` reached a release. A seat used
+                # Removed 2026-08-26, when the sealing tool (now `whisper`)
+                # reached a release. A seat used
                 # to carry its own X25519 key here for the manager to seal to;
                 # the key is now the entrant's published `exchange_key`, read
                 # off the room's roster. Refused rather than ignored, because

@@ -102,8 +102,9 @@ with no `ask` in it. That asymmetry is the part worth remembering: an entrant
 is an agent holding MCP tools, so a tool allowlist or a briefing that says
 `ask` disarms it completely while every library call keeps working, and the
 symptom is an agent that reads what it was dealt and never answers. The island
-therefore names both in the allowlist (an entry for a tool the server does not
-expose is inert) and reads the spoken name off the client.
+therefore pins `>=1.0` and carries the new name alone — in the entrant's tool
+allowlist, in the manager's call, and in the line the manager says on the
+board telling a seat what to answer with.
 
 Re-check:
 

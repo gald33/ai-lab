@@ -23,8 +23,8 @@ holds it, so it hides nothing from anybody who matters. It is here because a
 plaintext Switchboard room carries **no signatures at all** — signing happens
 inside the seal, so the transport cannot strip it — and a seat at a table
 binds by a witnessed signing key. No key, no signatures, no seats. What is
-genuinely private travels sealed to one agent (`whisper`, and `ask` in
-releases before 1.0.0), which this key cannot open. See
+genuinely private travels sealed to one agent (`whisper`), which this key
+cannot open. See
 [`../switchboard-what-an-entrant-already-holds.md`](../switchboard-what-an-entrant-already-holds.md)
 §3d.
 
