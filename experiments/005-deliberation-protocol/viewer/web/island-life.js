@@ -619,6 +619,11 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: reading of "this board does not say" and is what the drawn island did
   //: before there was a clock at all.
   let told = false;
+  //: The last hour the page's own clock gave, which is what the shadows point
+  //: at. `null` until an island is told one. Kept apart from the light level
+  //: so that a clip holding a night does not also move the sun -- see
+  //: `update`.
+  let hour = null;
   const NOON = 0.42;
 
   return {
@@ -646,10 +651,26 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
      */
     update(t, { day = null, turn = 0, key = null, ambient = null,
                 fill = null } = {}) {
-      // A clip holding the light wins over the clock, and never goes backwards
-      // from it: at a real bell the page has already put the day at dusk, and
-      // a clip that pulled it back would fight its own page.
-      if (held !== null) day = day === null ? held : Math.max(day, held);
+      //: **A hold is a level of night, not a time of day.**
+      //:
+      //: A clip holding the light wins over the clock and never goes backwards
+      //: from it: at a real bell the page has already put the day at dusk, and
+      //: a clip that pulled it back would fight its own page. But `hold` used
+      //: to *be* the day for as long as it ran, and the day owns the key's
+      //: bearing as well as its brightness -- so the dawn clip, which holds a
+      //: night that is lifting (`1` down to `0` over four seconds), dragged the
+      //: sun backwards through a whole day and swept every shadow across the
+      //: island at the moment a new day opened. Reported as shadows crossing
+      //: the island at the start of a day, in the dark.
+      //:
+      //: So the hold is spent on the light *level* -- how bright, how warm,
+      //: how high the fire -- and the bearing stays on the clock. The bell
+      //: loses nothing by it: the day is already at dusk when it rings, so the
+      //: shadow is where the hold would have put it anyway. The dawn gains the
+      //: thing the drawn sun has always had -- a jump, made under cover of the
+      //: night that is still being drawn over it, rather than a rewind.
+      let lit = day;
+      if (held !== null) lit = day === null ? held : Math.max(day, held);
       const lift = flare;
       // Spent. Whoever wants them next frame has to ask again.
       held = null;
@@ -660,16 +681,22 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       //: what time it is -- but the one that does read the sun has to read
       //: *this* frame's, not the last one's, or a bell leaves a shadow behind
       //: for a frame.
-      if (day === null && !told) day = NOON;
-      if (day !== null) {
+      if (lit === null && !told) lit = NOON;
+      if (lit !== null) {
         told = true;
-        sunUp = clamp01((Math.sin(Math.PI * clamp01(day)) - 0.1) / 0.45);
+        sunUp = clamp01((Math.sin(Math.PI * clamp01(lit)) - 0.1) / 0.45);
       }
+      //: The hour the shadows point at. Only the clock moves it, and a frame
+      //: whose clock has gone quiet keeps the last one -- a dropped poll is
+      //: not an island turning back to morning.
+      if (day !== null) hour = clamp01(day);
       for (const part of parts) part(t);
-      if (day === null) return;
+      if (lit === null) return;
+      lit = clamp01(lit);
+      const bear = hour === null ? lit : hour;
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
-      const a = Math.PI * (0.08 + clamp01(day) * 0.84);
+      const a = Math.PI * (0.08 + lit * 0.84);
       if (key) {
         /*
          * Where the light stands, **reckoned from the camera and not from the
@@ -689,24 +716,24 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
          * the bell. `turn` is the camera's own bearing and is added straight
          * back in, which is what cancels the revolution.
          */
-        const swing = turn + (0.5 - clamp01(day)) * 2.2;
-        const high = 1.1 + Math.sin(Math.PI * clamp01(day)) * 8.0;
+        const swing = turn + (0.5 - bear) * 2.2;
+        const high = 1.1 + Math.sin(Math.PI * bear) * 8.0;
         key.position.set(Math.sin(swing) * 7.5, high, Math.cos(swing) * 7.5);
         // A floor under it: the island still has to be readable at dusk, and
         // the cards standing on it are the part that matters most then.
         key.intensity = 0.75 + Math.sin(a) * 1.55;
-        key.color.copy(day < 0.5 ? dawn.clone().lerp(noon, day / 0.5)
-                                 : noon.clone().lerp(dusk, (day - 0.5) / 0.5));
+        key.color.copy(lit < 0.5 ? dawn.clone().lerp(noon, lit / 0.5)
+                                 : noon.clone().lerp(dusk, (lit - 0.5) / 0.5));
       }
       if (ambient) {
         ambient.intensity = 0.62 + Math.sin(a) * 0.7;
-        ambient.color.copy(day < 0.5 ? skyDawn.clone().lerp(skyNoon, day / 0.5)
-                                     : skyNoon.clone().lerp(skyDusk, (day - 0.5) / 0.5));
+        ambient.color.copy(lit < 0.5 ? skyDawn.clone().lerp(skyNoon, lit / 0.5)
+                                     : skyNoon.clone().lerp(skyDusk, (lit - 0.5) / 0.5));
       }
       if (fill) {
         fill.intensity = 0.75 * (0.55 + Math.sin(a) * 0.45);
-        fill.color.copy(day < 0.5 ? seaDusk.clone().lerp(seaDay, day / 0.5)
-                                  : seaDay.clone().lerp(seaDusk, (day - 0.5) / 0.5));
+        fill.color.copy(lit < 0.5 ? seaDusk.clone().lerp(seaDay, lit / 0.5)
+                                  : seaDay.clone().lerp(seaDusk, (lit - 0.5) / 0.5));
       }
       //: The same sum the renderer does for a flat surface facing up, done
       //: once: the material's colour under the ambient, plus what the key and
@@ -723,9 +750,21 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         water.g = Math.min(1, water.g);
         water.b = Math.min(1, water.b);
       }
-      // The fire, on the same clock and a little ahead of it: it is banked all
-      // day and built up before the light has quite gone.
-      const burn = clamp01(clamp01((day - 0.52) / 0.3) + lift);
+      //: **The fire is the bell, so it does not light at lunchtime.**
+      //:
+      //: It used to rise from `0.52` and stand at full by `0.82` -- from just
+      //: past midday, and full while the island was still producing and still
+      //: settling trades, which is exactly what a spectator reported seeing.
+      //: The viewer's own glossary says the bell *is* nightfall and the
+      //: campfire taking over, and a fire lit halfway through the day says the
+      //: day is ending when it is not. Decided by Gal, 2026-08-27; the
+      //: reasoning is in `viewer/README.md`, "The fire is the bell".
+      //:
+      //: It is still banked all day -- the embers are the `0.35` floor below --
+      //: and still comes up a little before the light has quite gone, which is
+      //: what the last stretch of the day buys. Full is the bell itself, where
+      //: the bell clip's own hold and flare carry it the rest of the way.
+      const burn = clamp01(clamp01((lit - 0.86) / 0.14) + lift);
       for (const { f, y0, s0 } of flames) {
         f.material.emissiveIntensity = 0.35 + burn * 2.6;
         // Flicker, which is what makes a cone read as flame at all.
@@ -737,7 +776,7 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       //: **Only after dark**, and out over the meadow. `night` runs a little
       //: behind the fire: the fire is built before the light goes and the
       //: fireflies come once it has.
-      const night = clamp01((day - 0.7) / 0.22);
+      const night = clamp01((lit - 0.92) / 0.08);
       for (const { m } of sparks) {
         m.material.opacity = night * 0.95;
         m.material.emissiveIntensity = night * 2.4;

@@ -143,6 +143,9 @@ export class Stage {
     //: the board did not have.
     this.clips = [];
     this.day = null;
+    //: The day's travel between one board event and the next, or `null` when
+    //: the light is simply where it was put. See `setDay`.
+    this.glide = null;
     //: The pending animation-frame handle. Named for what it is: `frame` was
     //: taken by the framing below, and a rAF id stored under it made the
     //: method vanish behind an integer.
@@ -196,6 +199,7 @@ export class Stage {
     //: it the update at the foot of this method tells the new island the old
     //: hour before the page ever gets a paint in.
     this.day = null;
+    this.glide = null;
     this.life = enliven(this.island, { ground: made.ground });
     //: What every trader is holding, standing on the ground beside its hut.
     //: Built with the island rather than by a clip, because it outlives every
@@ -388,9 +392,36 @@ export class Stage {
    * this page could not read -- and the light then holds where it is rather
    * than snapping to dawn.
    */
-  setDay(day) {
+  setDay(day, until = null, ms = 0) {
     this.day = day;
+    //: **The same glide the drawn sun gets, because on a 3D board this is the
+    //: only clock there is.** The page hands both of them where the day is now
+    //: and where it will be when the next line lands, and `scene.sky` animated
+    //: the disc across that while the model's light was set once per event and
+    //: then froze -- so on a board with a quiet stretch in it the shadows
+    //: walked to wherever the last event fell and stopped dead, and the disc
+    //: that would have shown the rest of the day is hidden the moment there is
+    //: a model to light. Reported as shadows that reach the middle of the day
+    //: and stay there while the island goes on trading.
+    //:
+    //: Never backwards, for the same reason `scene.sky` refuses to travel
+    //: back: a new day is a jump, not a rewind.
+    this.glide = (!this.still && day !== null && ms > 0
+                  && typeof until === "number" && until > day)
+      ? { from: day, to: until, t0: performance.now(), ms } : null;
     if (this.still) { this.life?.update(0, this.ctx()); this.render(); }
+  }
+
+  /**
+   * The hour to light this frame by: the day the page last set, carried
+   * whatever distance the glide has covered since it was set.
+   */
+  dayNow() {
+    const g = this.glide;
+    if (!g) return this.day;
+    const p = Math.min(1, (performance.now() - g.t0) / g.ms);
+    if (p >= 1) { this.glide = null; this.day = g.to; return g.to; }
+    return g.from + (g.to - g.from) * p;
   }
 
   /**
@@ -469,7 +500,7 @@ export class Stage {
     //: camera swing it across the frame -- so a viewer would read the bearing
     //: and think it was the hour. The day owns the light's angle *to the
     //: camera*; the camera's own revolution is taken back out here.
-    return { day: this.day, turn: this.turn, key: this.key,
+    return { day: this.dayNow(), turn: this.turn, key: this.key,
              ambient: this.ambient, fill: this.fill };
   }
 
