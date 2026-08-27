@@ -210,6 +210,18 @@ export class Stage {
     //: The disc of deep water, marked for the backdrop pass. It keeps layer 0
     //: as well, so the framed pass still draws it in its place.
     made.island.getObjectByName("sea")?.layers.enable(WATER);
+    //: **And everything else that is out at sea**, which is the moving surface
+    //: over that disc and the dolphins crossing it. The framed pass is
+    //: scissored to the island's own rectangle, so a node on layer 0 alone
+    //: simply stops existing outside it: the swell ended at the edge of the
+    //: box with flat water beyond it, and a pod passing wide of the island was
+    //: cut off mid-leap at a line down the frame. They belong to the backdrop
+    //: the same way the water they are in does.
+    //: Layers are per object and not inherited, so a dolphin's own meshes are
+    //: enabled with it -- marking the group alone renders nothing.
+    this.island.traverse((n) => {
+      if (/^(swell|dolphin_)/.test(n.name)) n.traverse((m) => m.layers.enable(WATER));
+    });
     //: The camera was framed before there was an island to flood, in the
     //: constructor and on every reframe. This is the one call that happens
     //: after the sea exists.

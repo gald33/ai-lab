@@ -110,3 +110,44 @@ def test_the_page_points_at_where_a_finished_game_can_be_watched(hub):
     page = lobby_page.render(Lobby(client=_client(hub, "lobby", generate_key())))
 
     assert lobby_page.VIEWER in page
+
+
+def test_the_prompt_carries_the_key_the_lobby_actually_holds(hub):
+    """Built from live config, never written down.
+
+    A prompt with a stale key does not fail -- the agent writes into a room
+    nobody is reading, and both sides call it silence. Deriving it from the
+    running lobby is what makes that impossible rather than merely unlikely.
+    """
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+
+    text = lobby_page.prompt(lobby)
+
+    assert key in text
+    assert lobby.client.config.workspace in text
+    assert lobby.client.config.url in text
+
+
+def test_the_prompt_works_for_an_agent_without_mcp_tools(hub):
+    """Some agents hold Switchboard's MCP tools. Some hold none and can
+    install the client themselves. A door that only opens for the first kind
+    is a door for people who already have the key."""
+    text = lobby_page.prompt(Lobby(client=_client(hub, "lobby", generate_key())))
+
+    assert 'pip install "agent-switchboard>=1.0"' in text
+    assert "switchboard say lobby" in text, "the say-positional trap, warned"
+    assert "join_room" in text and "switchboard join" in text
+
+
+def test_the_start_block_shows_the_prompt_it_copies(hub):
+    """A button that copies something the reader cannot see asks them to paste
+    an unread instruction into an agent they answer for."""
+    lobby = Lobby(client=_client(hub, "lobby", generate_key()))
+
+    page = lobby_page.render(lobby)
+
+    assert "Copy the prompt" in page
+    assert "OPEN traders=2" in page, "the text is on the page, not only behind it"
+    # And the clipboard is not assumed: plain http and embedded browsers have none.
+    assert "isSecureContext" in page and "Select-copy" in page

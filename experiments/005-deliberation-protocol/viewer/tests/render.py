@@ -1722,7 +1722,14 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: what a spectator asked for instead of a void. Left in, it makes the
   //: "silhouette" the whole canvas and every question below unanswerable.
   //: What is left is the coast: shallows, surf, shelf, beach, and the land.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|sea$)/;
+  //: **`swell` and the dolphins go with it, for the same reason.** The swell
+  //: is the sea's own surface -- seventeen units of it, wider than any frame
+  //: -- and a pod passing out in the open water is no more the island's
+  //: outline than a gull over it is. Left in, they put the "silhouette" at the
+  //: edge of the picture and every question below is unanswerable again: the
+  //: check reported the island drawn under the chrome on four frame shapes,
+  //: measuring water.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|dolphin_|sea$|swell$)/;
   const meshes = [];
   for (const part of made.island.children) {
     if (WEATHER.test(part.name)) continue;
@@ -1897,7 +1904,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
 STOCK = """async ({goods, cases}) => {
   const THREE = await import('./vendor/three/three.module.js');
   const { Stage } = await import('./stage.js');
-  const { layout } = await import('./scene.js');
+  const { layout, CARRY, carriedBy } = await import('./scene.js');
   const cv = document.createElement('canvas');
   cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
   const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
@@ -1975,10 +1982,10 @@ STOCK = """async ({goods, cases}) => {
 
 #: An exchange driven frame by frame off-page, so a check can watch where every
 #: box is at every moment of it rather than at the two ends.
-CARRY = """async ({goods, give, want}) => {
+CARRY = """async ({goods, give, want, hold}) => {
   const THREE = await import('./vendor/three/three.module.js');
   const { Stage } = await import('./stage.js');
-  const { layout } = await import('./scene.js');
+  const { layout, CARRY, carriedBy } = await import('./scene.js');
   const cv = document.createElement('canvas');
   cv.width = 1200; cv.height = 750; document.body.appendChild(cv);
   const st = new Stage(cv, layout(2, false, 1.6, {top: 0, foot: 0}));
@@ -1987,8 +1994,8 @@ CARRY = """async ({goods, give, want}) => {
   st.build({traders, goods});
   st.pause();
   // Both sides holding plenty, so there is something to send either way.
-  const before = {T1: Object.fromEntries(goods.map(g => [g, 0.8])),
-                  T2: Object.fromEntries(goods.map(g => [g, 0.8]))};
+  const before = {T1: Object.fromEntries(goods.map(g => [g, hold])),
+                  T2: Object.fromEntries(goods.map(g => [g, hold]))};
   st.showStock(before);
   const was = [];
   st.stock.root.traverse(o => { if (o.isMesh) was.push(o); });
@@ -2004,6 +2011,29 @@ CARRY = """async ({goods, give, want}) => {
   st.showStock(event.after, event);
   const c = st.fire(event);
   if (!c) return {error: 'the exchange staged no clip at all'};
+  //: Which boxes carry which good, so the moment *that good* comes to rest can
+  //: be compared against the moment its symbols are told to leave. By name,
+  //: which is what a box is called after the good inside it.
+  const of = {};
+  for (const o of was) for (const g of goods) if (o.name.includes(g)) (of[g] ||= []).push(o);
+  const place = (o) => { const p = o.getWorldPosition(new THREE.Vector3());
+    return `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`; };
+  const seen = {}, stops = {};
+  for (let t = 0; t <= c.dur + 0.2; t += 0.02) {
+    c.update(t);
+    for (const [g, ms] of Object.entries(of)) {
+      const now = ms.map(place).join('|');
+      if (seen[g] !== undefined && now !== seen[g]) stops[g] = Math.round(t * 1000);
+      seen[g] = now;
+    }
+  }
+  //: What `hands()` schedules the symbols at, from the page's own table.
+  const cue = {};
+  Object.keys(give).forEach((g, i) => { cue[g] = carriedBy(i, false); });
+  Object.keys(want).forEach((g, i) => { cue[g] = carriedBy(i, true); });
+  c.restore();
+  c.update(0);
+
   // Every tenth of a second of it: is any box that existed before the clip
   // started invisible, or standing somewhere it did not walk to?
   const trail = [];
@@ -2018,7 +2048,7 @@ CARRY = """async ({goods, give, want}) => {
     trail.push({t: +t.toFixed(1), shot});
   }
   c.restore();
-  return {n: was.length, trail,
+  return {n: was.length, trail, stops, cue, rest: CARRY.rest,
           home: was.map(o => {const p = home.get(o);
                               return [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];})};
 }"""
@@ -2038,6 +2068,23 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     So this drives an exchange a tenth of a second at a time and watches every
     box that existed before it started: none may go invisible, and none may
     move further in one step than a box can travel.
+
+    **And the symbols wait for them.** Also reported by eye: the item symbols
+    left the arriving boxes for the gaining card before the boxes had touched
+    down. The two engines were keeping separate copies of the same schedule --
+    three.js in seconds off its clip clock, SVG in milliseconds off a `CROSS`
+    constant -- and the copies had drifted apart by half a second, so a bar
+    filled from goods that were still in the air. They read one table now
+    (`scene.js:CARRY`), and this measures the thing the table claims: for
+    **each good**, the moment its own boxes stop moving against the moment
+    `hands()` is told to send its symbols up.
+
+    Bounded on both sides, and tightly. Early is the defect. The gap is
+    `CARRY.rest` by construction -- the last box of *any* good lands at exactly
+    `carriedBy(i) - rest`, whether that good came to one box or six -- so late
+    by more than a beat means the two schedules have drifted apart again, and a
+    table could otherwise be made to pass by holding the symbols for a second
+    after the island had gone still.
     """
     goods = ["bread", "cloth", "iron", "salt"]
     page = browser.new_page(viewport={"width": 1200, "height": 800})
@@ -2045,9 +2092,15 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
     page.wait_for_timeout(600)
-    seen = page.evaluate(CARRY, {"goods": goods,
-                                 "give": {"bread": 0.4, "cloth": 0.4},
-                                 "want": {"iron": 0.4}})
+    #: **A bundle of several boxes per good, not one.** It used to hold 0.8 of
+    #: everything and move 0.4, which at `BOX` = 0.465 is a single box changing
+    #: hands per good -- and a single box is the one case where `CARRY.spread`
+    #: does nothing at all, so the rule that says the boxes of one good leave
+    #: across a fixed window could not be made to fail. Six boxes each, five of
+    #: them moving.
+    seen = page.evaluate(CARRY, {"goods": goods, "hold": 2.8,
+                                 "give": {"bread": 2.4, "cloth": 2.4},
+                                 "want": {"iron": 2.4}})
     page.close()
     bad = [f"carrying: {e}" for e in errs]
     if seen.get("error"):
@@ -2077,6 +2130,21 @@ def carrying(browser, base: str, out: Path) -> list[str]:
     #: compares a box that crossed the island against a journey belonging to
     #: one that never left the yard. Every shot lists the same boxes in the
     #: same order, so the index is the identity.
+    # The symbols leave after their own boxes are down -- and not long after.
+    for good, cue in sorted(seen["cue"].items()):
+        stops = seen["stops"].get(good)
+        if stops is None:
+            bad.append(f"carrying: no box of {good} moved at all, so there is "
+                       f"nothing for its symbols to have waited for")
+            continue
+        if cue < stops:
+            bad.append(f"carrying: {good}'s symbols are sent to the card at "
+                       f"{cue}ms and its boxes are still moving at {stops}ms; "
+                       f"the bar fills from goods that are in the air")
+        elif cue - stops > seen["rest"] + 60:
+            bad.append(f"carrying: {good}'s boxes come to rest at {stops}ms and "
+                       f"its symbols are not sent until {cue}ms, {cue - stops}ms "
+                       f"later; the two schedules have drifted apart")
     at = lambda b: (b["x"], b["y"], b["z"])
     trips = [math.dist(at(f), at(l))
              for f, l in zip(seen["trail"][0]["shot"], seen["trail"][-1]["shot"])]

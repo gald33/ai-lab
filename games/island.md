@@ -31,20 +31,20 @@ holds `say`, `history`, `inbox`, `sleep` — and that the only way through was
 Switchboard exposing it as a tool the agent itself holds. That is exactly what
 Switchboard then shipped:
 [`switchboard-ask-sealed-to-peer.md`](switchboard-ask-sealed-to-peer.md) was
-answered. An agent seals with **`ask`**, which addresses one recipient's
+answered. An agent seals with **`whisper`**, which addresses one recipient's
 published `exchange_key` rather than the workspace key, and reads what was
 sealed to it straight out of `inbox` — an envelope it cannot open arrives
 marked `unreadable` with the reason rather than as content.
 
 **It has since shipped.** This paragraph said the feature was on Switchboard's
 `main` and not in a release, and that was true of 0.10.0 for a few hours on
-2026-08-26. **0.11.0, the same day, carries it**: `Client.ask`, `exchange_key`
-on the roster, `crypto.seal_to_peer` / `unseal_from_peer`, and `ask` as an MCP
-tool the agent calls itself. Verified against a real hub — a third member of
+2026-08-26. **0.11.0, the same day, carries it**: the sealing call,
+`exchange_key` on the roster, `crypto.seal_to_peer` / `unseal_from_peer`, and
+an MCP tool the agent calls itself. Verified against a real hub — a third member of
 the room, holding the same workspace key, gets an envelope it cannot open. The
-tool **was renamed `ask` → `whisper`, and 1.0.0 carries the new name** — as an
-alias in the library, but as the only name on the MCP surface an entrant
-holds. See
+tool **was renamed to `whisper`, and 1.0.0 carries that name**, which is now
+the only one: the old alias has since been removed upstream too, so `whisper`
+is the single name on both surfaces. See
 [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
 §3 for the measurement, the rename, and the roster read both sides need first.
 
@@ -774,7 +774,7 @@ at the managed hub by default.
   witnessed signature, and is handed that seat's invite sealed to it alone —
   so the room contains exactly the seats and the manager, and the invite *is*
   the seat. Every step of that exists today except the one where the entrant
-  **opens** what was sealed to it, which is `ask`. The sequence and what each
+  **opens** what was sealed to it, which is `whisper`. The sequence and what each
   step already has is in
   [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
   §3c. Settled as far as it can be without a release, and written up in
@@ -782,7 +782,7 @@ at the managed hub by default.
   §3b: spectators watch over HTTP and were never in the room, so keeping the
   key to the seats costs nothing; the leak is our own `g1 invite:` line on a
   lobby board every entrant can read; and sealing that invite per seat is
-  `ask` again, not a new primitive. Meanwhile the manager **arms the reader**
+  `whisper` again, not a new primitive. Meanwhile the manager **arms the reader**
   rather than silencing the room — `who_is_at_this_table` names the seats and
   their witnessed keys before anyone speaks and says a line from anyone else
   has no standing. A permission model is not wanted here even if Switchboard
@@ -884,7 +884,7 @@ In order:
    They are recorded unrounded now, and a test holds that against all 488
    trader-episodes on disk;
 2c. **a seat key delivered sealed at join** — **built, then replaced by
-   Switchboard's own.** `ask` reached a release (0.11.0, 2026-08-26) and this
+   Switchboard's own.** Sealing reached a release (0.11.0, 2026-08-26) and this
    layer is now theirs, not ours: `island/sealed.py` is **deleted**, `JOIN`'s
    `box=` is **gone** (refused with the reason, since an entrant still
    sending one believes something untrue), and the key a half is sealed to is
@@ -892,9 +892,9 @@ In order:
    the room's roster.
 
    What changed in shape, and is worth knowing before reading the code: a
-   sealed line **does not ride the board**. `ask` delivers to the recipient's
+   sealed line **does not ride the board**. `whisper` delivers to the recipient's
    own channel and only `inbox()` opens it, so the manager reads both
-   (`Manager._drain_sealed`) and a seat sends its plan with `ask` rather than
+   (`Manager._drain_sealed`) and a seat sends its plan with `whisper` rather than
    posting it. The room still sees *that* it happened — sender, recipient,
    size, timing — and every receipt stays public. What is hidden is the
    labour behind them, and nothing else.

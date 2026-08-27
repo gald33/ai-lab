@@ -17,7 +17,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         DWELL, dwellFor, shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt, SET } from "../web/scene.js";
+         DWELL, dwellFor, CARRY, carriedBy,
+         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt, SET } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -287,6 +288,44 @@ test("nothing is held for a viewer who asked for less motion", () => {
   for (const kind of Object.keys(DWELL)) {
     assert.equal(dwellFor({ kind }, true), 0, `${kind} still holds under reduce`);
   }
+});
+
+test("the symbols wait for the boxes, and the frame waits for the symbols", () => {
+  // `carriedBy` is what `hands()` cues the gaining card's symbols at and what
+  // `island-events.js` lands the boxes by. Two engines, one table; these are
+  // the properties both of them lean on.
+  for (const back of [false, true]) {
+    for (let i = 1; i < 6; i++) {
+      assert.ok(carriedBy(i, back) > carriedBy(i - 1, back),
+                `good ${i} is cued no later than the one before it`);
+      assert.equal(carriedBy(i, back) - carriedBy(i - 1, back), CARRY.step,
+                   `good ${i} is cued off a different step than the table's`);
+    }
+    // The boxes are down, and standing there a beat, before anything rises.
+    //
+    // **Strictly later than the landing**, which is the whole assertion: with
+    // the beat at zero this reads `>=` against its own definition and cannot
+    // fail, and the symbol leaves on the same frame the hop finishes -- which
+    // is the two reading as one motion rather than one following the other.
+    assert.ok(carriedBy(0, back) > CARRY.off + CARRY.spread + CARRY.cross
+                                   + CARRY.land,
+              "the symbols are cued no later than the boxes stop moving");
+  }
+  // The return bundle follows the first, by the table's own number.
+  assert.equal(carriedBy(0, true) - carriedBy(0, false), CARRY.back);
+
+  // And the frame is held past the last symbol setting off -- otherwise the
+  // replay steps on while a bar is still filling.
+  const bundle = (n) => Object.fromEntries(
+    ["bread", "cloth", "iron", "salt"].slice(0, n).map((g) => [g, 1]));
+  for (let n = 1; n <= 4; n++) {
+    const e = { kind: "settled", give: bundle(n), want: bundle(n) };
+    assert.ok(dwellFor(e) > carriedBy(n - 1, true),
+              `a ${n}-good exchange is let go before its last symbols leave`);
+  }
+  // A settle the reducer gave no bundle to still gets the table's own floor,
+  // rather than nothing.
+  assert.equal(dwellFor({ kind: "settled" }), DWELL.settled);
 });
 
 test("speed compresses the waiting, not the events", () => {

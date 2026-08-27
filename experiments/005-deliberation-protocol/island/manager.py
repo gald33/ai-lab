@@ -57,7 +57,7 @@ MANAGER = "manager"
 #: the AEAD, so a sealed private half cannot be replayed as a plan.
 #: The marker a board line used to carry when this repo sealed its own
 #: payloads. Kept only to recognise one on an **old** board: sealing is
-#: Switchboard's `ask` now, which never puts a body on the channel at all.
+#: Switchboard's `whisper` now, which never puts a body on the channel at all.
 SEALED_MARKER = "SEALED "
 _EPS = 1e-9
 
@@ -241,7 +241,8 @@ class Manager:
     def _drain_sealed(self) -> None:
         """Read what was sealed to this manager alone.
 
-        A sealed `PRODUCE` cannot ride the channel: Switchboard's `ask` seals
+        A sealed `PRODUCE` cannot ride the channel: Switchboard's `whisper`
+        seals
         to one peer's published exchange key and delivers to that peer's own
         `@` channel, and **only `inbox()` opens it** -- `history()` hands back
         the envelope. So the manager reads both, and a line that arrives here
@@ -338,13 +339,13 @@ class Manager:
                 return
         if text.strip().startswith(SEALED_MARKER):
             # This repo used to seal its own payloads and post them here. It
-            # does not any more -- `ask` delivers a sealed line to the
+            # does not any more -- `whisper` delivers a sealed line to the
             # manager's own channel and `_drain_sealed` reads it. A blob on
             # the board is therefore either an old client or a mistake, and
             # either way it settles nothing.
             self._refuse(author, "sealed",
                         "sealed payloads do not ride this board any more -- "
-                        "send it with `ask` addressed to the manager and it "
+                        "send it with `whisper` addressed to the manager and it "
                         "will be opened and settled", "<sealed>")
             return
         upper = text.strip().upper()
