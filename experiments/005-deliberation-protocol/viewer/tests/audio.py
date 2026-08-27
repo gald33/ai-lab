@@ -71,9 +71,24 @@ async ([secs, good, day, closed]) => {
   };
   let peak = 0;
   for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+  // How much of the work window lives above roughly 4kHz, as a one-pole
+  // difference. This is the thing RMS is blind to: a square-wave click and a
+  // struck body can measure the same loudness and one of them is a headache.
+  const bright = (from, to) => {
+    const a0 = Math.floor(from * 44100), a1 = Math.min(d.length, Math.floor(to * 44100));
+    let sum = 0, all = 0, prev = d[a0] || 0;
+    for (let i = a0; i < a1; i++) {
+      const hp = d[i] - prev;                 // ~+6dB/oct above the corner
+      prev = d[i];
+      sum += hp * hp;
+      all += d[i] * d[i];
+    }
+    return all ? Math.sqrt(sum / all) : 0;
+  };
   // The work window is the first six seconds (WORK_MS is 6.5); the bed alone
   // is what is left once the site has faded.
-  return { work: rms(0.5, 6), bed: rms(8, secs), peak };
+  return { work: rms(0.5, 6), bed: rms(8, secs), peak,
+           bright: bright(0.5, 6), bedBright: bright(8, secs) };
 }
 """
 
@@ -138,10 +153,14 @@ def main(argv: list[str] | None = None) -> int:
             for name, r in rows:
                 if args.verbose:
                     print(f"{name:32} work {r['work']:.4f}  bed {r['bed']:.4f}  "
-                          f"peak {r['peak'] * MASTER:.3f}")
+                          f"peak {r['peak'] * MASTER:.3f}  bright {r['bright']:.3f}"
+                          f" / {r['bedBright']:.3f}")
                 if r["peak"] * MASTER >= 0.99:
                     problems.append(f"{name} clips at the master gain "
                                     f"({r['peak'] * MASTER:.2f})")
+                if r.get("bright", 0) > 4 * max(r.get("bedBright", 0), 1e-6):
+                    problems.append(f"{name} is harsh next to the bed it sits in "
+                                    f"(bright {r['bright']:.2f} against {r['bedBright']:.2f})")
                 if r["bed"] < 0.004:
                     problems.append(f"{name}: the bed is silent ({r['bed']:.4f})")
             if control["bed"] > 0.08:

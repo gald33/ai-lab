@@ -51,13 +51,18 @@ const BED = 0.5;
 //: outlast the clip that carries the crate home (`CARRY` in `scene.js` is
 //: under two seconds), short enough that a busy day is not every site at once
 //: forever.
-const WORK_MS = 6500;
+const WORK_MS = 5000;
 
-//: How loud a working site stands against the bed, at its peak. Set by
-//: measuring rather than by taste -- see the reproduction in the README: at 1
-//: the whole of a site's work moved the mix by 7% and salt by nothing at all,
-//: which is a site you cannot hear working.
-export const WORK_GAIN = 8;
+//: How loud a working site stands against the bed, at its peak.
+//:
+//: **Measurement set this to 8 and the ear sent it back.** At 1 a whole site
+//: at work moved the mix by 7% and salt by nothing, which is inaudible; 8
+//: cleared that by a mile and was reported as annoying, because loudness is
+//: not the same question as harshness and RMS only answers the first. It sits
+//: between the two now, with the sites rewritten to be worth hearing rather
+//: than merely audible. The floor in `tests/audio.py` came down with it: a
+//: check that forbids the quiet mistake must not mandate the loud one.
+export const WORK_GAIN = 9;
 
 //: The scheduler's horizon and how often it runs. Everything intermittent --
 //: gulls, crackle, dolphins -- is placed on the audio clock this far ahead, so
@@ -402,28 +407,61 @@ export class Ambience {
 // brightness far more than by timbre. A quarry is sparse, hard and irregular; a
 // loom is fast, wooden and even.
 
-/** A struck thing: a click with a body under it. */
+/**
+ * A struck thing: a short transient with a body ringing under it.
+ *
+ * **This was a square wave with no attack, and it was the worst thing on the
+ * island.** Reported as the production sound being annoying, and it was: a
+ * square at 2.4-3kHz carries odd harmonics the whole way up, an instant
+ * `setValueAtTime` on the gain is a click rather than a strike, and twelve of
+ * them at one pitch and one level is a machine stamping. The RMS check could
+ * not see any of it -- harsh transient content is exactly what RMS rewards,
+ * which is why a level set by measurement alone came out unlistenable.
+ *
+ * What replaces it is how a struck thing actually sounds: a filtered noise
+ * transient for the contact, a damped body under it, a few milliseconds of
+ * attack on both so neither starts as a discontinuity, and **every hit a
+ * little different in pitch and weight**, because two hammer blows never are.
+ */
 function strike(a, at, gain, { freq = 2400, body = 180, peak = 0.09, ring = 0.09 }) {
   const ctx = a.ctx;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = "square";
-  o.frequency.setValueAtTime(freq, at);
-  o.frequency.exponentialRampToValueAtTime(freq * 0.4, at + ring);
-  g.gain.setValueAtTime(peak, at);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + ring);
-  o.connect(g).connect(gain);
-  o.start(at); o.stop(at + ring + 0.02);
+  //: No two hits alike. Without this the site is one sample retriggered, and
+  //: a listener hears the retrigger rather than the work.
+  const vary = 0.85 + a.rng() * 0.3;
+  const loud = peak * (0.7 + a.rng() * 0.6);
 
+  //: The contact: noise, not an oscillator. A pitched click is a beep; the
+  //: moment a tool meets stone is broadband and over in 20ms.
+  const src = ctx.createBufferSource();
+  src.buffer = a.bed;
+  const nf = ctx.createBiquadFilter();
+  nf.type = "bandpass";
+  nf.frequency.value = freq * vary;
+  nf.Q.value = 1.4;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, at);
+  ng.gain.exponentialRampToValueAtTime(loud * 0.9, at + 0.003);
+  ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.03 + ring * 0.2);
+  src.connect(nf).connect(ng).connect(gain);
+  src.start(at, a.rng() * (a.bed.duration - 0.2), 0.12);
+  src.stop(at + 0.14);
+
+  //: The body, which is what says whether the thing struck was stone, wood or
+  //: a loom. A triangle under a lowpass rather than a square: the harmonics
+  //: above the fourth were never carrying anything except the irritation.
   const b = ctx.createOscillator();
+  const bf = ctx.createBiquadFilter();
   const bg = ctx.createGain();
-  b.type = "sine";
-  b.frequency.setValueAtTime(body, at);
-  b.frequency.exponentialRampToValueAtTime(body * 0.6, at + 0.12);
-  bg.gain.setValueAtTime(peak * 1.1, at);
-  bg.gain.exponentialRampToValueAtTime(0.0001, at + 0.12);
-  b.connect(bg).connect(gain);
-  b.start(at); b.stop(at + 0.14);
+  b.type = "triangle";
+  b.frequency.setValueAtTime(body * vary, at);
+  b.frequency.exponentialRampToValueAtTime(body * vary * 0.55, at + ring + 0.05);
+  bf.type = "lowpass";
+  bf.frequency.value = body * 6;
+  bg.gain.setValueAtTime(0.0001, at);
+  bg.gain.exponentialRampToValueAtTime(loud, at + 0.006);
+  bg.gain.exponentialRampToValueAtTime(0.0001, at + ring + 0.06);
+  b.connect(bf).connect(bg).connect(gain);
+  b.start(at); b.stop(at + ring + 0.08);
 }
 
 /** A swept-noise gesture: a swish, a splash, a shovel through brine. */
@@ -478,8 +516,8 @@ export const WORK = {
   //: The roar is the loudest continuous thing any site has, because an oven is.
   bread(a, t, until, gain) {
     under(a, t, until, gain, { freq: 320, peak: 0.06 });
-    scatter(a, t, until, 7, (at) =>
-      strike(a, at, gain, { freq: 320, body: 110, peak: 0.05, ring: 0.06 }));
+    scatter(a, t, until, 5, (at) =>
+      strike(a, at, gain, { freq: 320, body: 110, peak: 0.06, ring: 0.07 }));
     scatter(a, t, until, 14, (at) => a.crackle(at, 1.1));
   },
 
@@ -488,8 +526,8 @@ export const WORK = {
   cloth(a, t, until, gain) {
     let at = t + 0.1;
     while (at < until - 0.3) {
-      strike(a, at, gain, { freq: 1500, body: 240, peak: 0.085, ring: 0.05 });
-      at += 0.22 + a.rng() * 0.06;
+      strike(a, at, gain, { freq: 1400, body: 240, peak: 0.15, ring: 0.08 });
+      at += 0.23 + a.rng() * 0.08;
     }
     scatter(a, t, until, 7, (x) =>
       wash(a, x, gain, { dur: 0.2, freq: 2600, sweep: 0.6, peak: 0.06 }));
@@ -498,8 +536,8 @@ export const WORK = {
   //: The quarry: hard strikes, sparse and irregular, over the cart's rumble.
   iron(a, t, until, gain) {
     under(a, t, until, gain, { freq: 150, peak: 0.05 });
-    scatter(a, t, until, 12, (at) =>
-      strike(a, at, gain, { freq: 3000, body: 190, peak: 0.075, ring: 0.11 }));
+    scatter(a, t, until, 7, (at) =>
+      strike(a, at, gain, { freq: 2600, body: 190, peak: 0.085, ring: 0.13 }));
   },
 
   //: The pans: brine moving in a shallow tray, and a rake dragged through it.
@@ -531,18 +569,18 @@ export const WORK = {
 
   //: The axe: deeper than the quarry's chisel and slower, with the tree in it.
   timber(a, t, until, gain) {
-    scatter(a, t, until, 11, (at) =>
-      strike(a, at, gain, { freq: 900, body: 90, peak: 0.085, ring: 0.16 }));
+    scatter(a, t, until, 10, (at) =>
+      strike(a, at, gain, { freq: 850, body: 90, peak: 0.14, ring: 0.22 }));
     scatter(a, t, until, 4, (at) =>
-      wash(a, at, gain, { dur: 0.9, freq: 600, sweep: 0.25, peak: 0.07, q: 0.5 }));
+      wash(a, at, gain, { dur: 0.9, freq: 600, sweep: 0.25, peak: 0.085, q: 0.5 }));
   },
 
   //: A good this island has no site for still gets worked at. `island3d.js`
   //: draws a generic works for one; this is what a generic works sounds like.
   works(a, t, until, gain) {
     under(a, t, until, gain, { freq: 260, peak: 0.035 });
-    scatter(a, t, until, 9, (at) =>
-      strike(a, at, gain, { freq: 1800, body: 200, peak: 0.075, ring: 0.08 }));
+    scatter(a, t, until, 6, (at) =>
+      strike(a, at, gain, { freq: 1700, body: 200, peak: 0.08, ring: 0.1 }));
   },
 };
 
