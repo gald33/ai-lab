@@ -507,6 +507,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += stock(browser, base, out)
             problems += carrying(browser, base, out)
             problems += island(browser, base, out)
+            problems += whose(browser, base, out)
             problems += mechanics(browser, base, out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
@@ -3600,6 +3601,131 @@ def ring(browser, base: str, out: Path) -> list[str]:
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]
     page.close()
+    return bad
+
+
+WHOSE = """async ({w, h, n, goods, turns}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const { layout } = await import('./scene.js');
+  const { SEAT_COLOURS } = await import('./island3d.js');
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h; document.body.appendChild(cv);
+  const st = new Stage(cv, layout(n, false, w / h, {top: 0, foot: 0}));
+  st.pause();
+  const traders = Array.from({length: n}, (_, i) => `T${i + 1}`);
+  const made = st.build({traders, goods});
+  st.pause(); st.setDay(0.45); st.life.update(0, st.ctx());
+
+  const ray = new THREE.Raycaster();
+  //: A mesh's *unoccluded* screen area. Points on its own surface, each
+  //: raycast from the camera: a point counts only when nothing else in the
+  //: scene stands between. This is the whole question -- the band that could
+  //: not be seen was drawn, lit, and in the frame, and every check that asked
+  //: whether it existed passed.
+  const seen = (mesh, cam) => {
+    const pos = mesh.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 200));
+    let shown = 0, total = 0;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < pos.count; i += step) {
+      const p = new THREE.Vector3().fromBufferAttribute(pos, i);
+      mesh.localToWorld(p);
+      total++;
+      const dir = p.clone().sub(cam.position);
+      const far = dir.length();
+      ray.set(cam.position, dir.normalize());
+      const hit = ray.intersectObject(made.island, true)[0];
+      if (!hit || (hit.object !== mesh && hit.distance < far - 0.02)) continue;
+      shown++;
+      const s = p.clone().project(cam);
+      const sx = (s.x + 1) / 2 * w, sy = (1 - s.y) / 2 * h;
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx);
+      y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+    }
+    return {shown, total, w: shown ? x1 - x0 : 0, h: shown ? y1 - y0 : 0};
+  };
+
+  const out = [];
+  for (const spin of turns) {
+    //: Round the island, because the accents are on a hut that faces the fire
+    //: and the camera does not stay behind it. `spin` is the same turn the
+    //: page's own camera makes with time. `aim` is what the page calls.
+    st.aim(spin);
+    st.camera.updateMatrixWorld(true);
+    made.island.updateMatrixWorld(true);
+    const at = {spin, huts: []};
+    traders.forEach((t, i) => {
+      const row = {trader: t,
+                   colour: '#' + SEAT_COLOURS[i % SEAT_COLOURS.length].toString(16).padStart(6, '0')};
+      for (const part of ['door', 'band', 'finial']) {
+        const m = made.island.getObjectByName(`hut_${t}_${part}`);
+        row[part] = m ? seen(m, st.camera) : null;
+      }
+      at.huts.push(row);
+    });
+    out.push(at);
+  }
+  return out;
+}
+"""
+
+
+def whose(browser, base: str, out: Path) -> list[str]:
+    """A hut says whose it is, to a camera that is actually looking at it.
+
+    **The band was drawn where nothing could see it, and every check passed.**
+    Reported by eye -- *"I don't see the door and band"* -- of an accent that
+    had been in the model for weeks with a comment claiming it was "visible
+    from any bearing the camera swings to". It was: the failure was in
+    elevation, not bearing. The roof is a cone of radius 0.52 whose rim sits at
+    y = 0.42, and the band was a ring of radius 0.40 at y = 0.41, so the only
+    camera that could ever have seen it was one standing under the eaves. This
+    island is watched from above. Measured before the fix: **0 of 148 sample
+    points**, on both huts, at every bearing.
+
+    Existence is not visibility, which is why nothing here counts meshes. Each
+    accent's own surface is sampled and each sample raycast from the camera; a
+    point counts only when the accent is the first thing the ray meets.
+    """
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    turns = [0, 2.5, 5.0, 7.5]
+    rounds = page.evaluate(WHOSE, {"w": 1200, "h": 800, "n": 3, "turns": turns,
+                                   "goods": ["bread", "cloth", "iron", "salt"]})
+    page.screenshot(path=str(out / "island-whose.png"))
+    page.close()
+    bad = [f"whose: {e}" for e in errs]
+
+    #: What a spectator has to be able to see. The band is the one held to a
+    #: size, because it is the accent that has to work from every bearing: the
+    #: door faces the fire and goes edge-on as the camera comes round, which is
+    #: exactly why the colour is not left to the door alone. 24 pixels is
+    #: roughly the width of a good's chip in the legend.
+    BAND_PX = 24
+    for at in rounds:
+        for hut in at["huts"]:
+            where = f"whose {hut['trader']} at spin {at['spin']}"
+            band = hut["band"]
+            if band is None:
+                bad.append(f"{where}: the hut has no band at all")
+                continue
+            if not band["shown"]:
+                bad.append(f"{where}: none of the band's {band['total']} points "
+                           f"is unoccluded -- the colour is drawn where nothing "
+                           f"can see it")
+            elif band["w"] < BAND_PX:
+                bad.append(f"{where}: the band shows {band['w']:.0f}px across, "
+                           f"under the {BAND_PX}px floor")
+            seen_any = [k for k in ("door", "band", "finial")
+                        if hut[k] and hut[k]["shown"]]
+            if len(seen_any) < 2:
+                bad.append(f"{where}: only {seen_any or 'nothing'} of the hut's "
+                           f"accents can be seen; one mark is one occlusion "
+                           f"from a hut that says nothing")
     return bad
 
 

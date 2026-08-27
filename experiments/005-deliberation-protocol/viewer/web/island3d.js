@@ -314,7 +314,7 @@ function hut(id, traderMat) {
   g.name = `settlement_${id}`;
   add(g, new THREE.CylinderGeometry(0.34, 0.38, 0.42, 24), M.cloth, `hut_${id}_wall`, [0, 0.21, 0]);
   add(g, new THREE.ConeGeometry(0.52, 0.42, 24), M.thatch, `hut_${id}_roof`, [0, 0.63, 0]);
-  add(g, new THREE.SphereGeometry(0.05, 12, 10), M.thatchLit, `hut_${id}_finial`, [0, 0.86, 0]);
+  add(g, new THREE.SphereGeometry(0.055, 12, 10), traderMat, `hut_${id}_finial`, [0, 0.86, 0]);
   //: **The hut had a flag and does not any more.** With a flag over every good
   //: site as well, a four-trader seven-good island carried eleven of them, and
   //: a flag stopped meaning anything: it was just what this island's skyline
@@ -322,12 +322,35 @@ function hut(id, traderMat) {
   //: and nothing else says anything with a flag.
   //:
   //: A hut still has to say whose it is, so the trader's colour moved onto the
-  //: hut itself -- the door it faces the fire with, and a painted band under
-  //: the eaves that is visible from any bearing the camera swings to. That is
-  //: more of the colour than the banner ever showed, on a shape a viewer is
-  //: already looking at, and it costs the island a pole and a scrap of cloth.
-  add(g, new THREE.BoxGeometry(0.14, 0.24, 0.02), traderMat, `hut_${id}_door`, [0, 0.12, 0.379]);
-  add(g, new THREE.CylinderGeometry(0.385, 0.4, 0.055, 24), traderMat, `hut_${id}_band`, [0, 0.41, 0]);
+  //: hut itself -- the door it faces the fire with, and a painted band on the
+  //: roof, visible from any bearing the camera swings to. That is more of the
+  //: colour than the banner ever showed, on a shape a viewer is already
+  //: looking at, and it costs the island a pole and a scrap of cloth.
+  //: **The band was under the eaves and could not be seen from anywhere.**
+  //: Reported by eye -- "I don't see the door and band" -- and then measured:
+  //: `viewer/tests/render.py:whose` raycasts the camera at every point on each
+  //: accent and counts the ones nothing else covers. The band scored **0 of
+  //: 148**, on both huts, at every bearing. The geometry says why without a
+  //: picture: the roof is a cone of radius 0.52 whose rim sits at y = 0.42,
+  //: and the band was a ring of radius 0.40 at y = 0.41 -- entirely inside the
+  //: overhang, so the only camera that could ever have seen it is one below
+  //: the eaves, and this island is watched from above. "Visible from any
+  //: bearing the camera swings to", which is what the note above claimed, was
+  //: true of the bearings and false of the elevation.
+  //:
+  //: So the band moved **onto the roof**, where the camera is already looking:
+  //: a ring hugging the cone's own slope between y = 0.47 and y = 0.55, its
+  //: radii the cone's radius at those heights (r = 0.52 (0.84 - y) / 0.42)
+  //: plus 0.006 to keep it off the surface it lies on. Open-ended, so it is a
+  //: painted stripe rather than a lid. The finial takes the colour too: it is
+  //: the highest thing on the hut and the last to be occluded by anything.
+  //:
+  //: The door is 0.19 by 0.28 rather than 0.14 by 0.24 -- it was 12 of 24
+  //: points and about five pixels across on a desktop frame, which is a door
+  //: that is technically visible and practically not.
+  add(g, new THREE.BoxGeometry(0.19, 0.28, 0.02), traderMat, `hut_${id}_door`, [0, 0.14, 0.379]);
+  add(g, new THREE.CylinderGeometry(0.365, 0.464, 0.08, 24, 1, true), traderMat,
+      `hut_${id}_band`, [0, 0.51, 0]);
   //: **The hut had a lantern and does not any more.** A 0.05 emissive sphere
   //: by the door, ramped up as the day went (`island-life.js`), on the
   //: argument that it was the one thing brighter at dusk than at noon. Cut as
