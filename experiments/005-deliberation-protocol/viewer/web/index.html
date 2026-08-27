@@ -349,7 +349,7 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    (`scene.js:verdict`) that lives just long enough to be read. */
 .rope.answered .rope-line { stroke-dasharray: none; stroke-width: 3.5;
   stroke-opacity: 1; }
-.rope.answered .chip-text, .rope.answered .chip-pid { fill: var(--ink); }
+.rope.answered .chip-text { fill: var(--ink); }
 .rope.approved .rope-line { stroke: var(--good); animation: blink-yes .34s steps(1) 4; }
 .rope.approved .chip-bg { stroke: var(--good); }
 .rope.approved .chip-seat { fill: var(--good); }
@@ -376,8 +376,6 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   stroke-width: 2; }
 .chip-seat { fill: var(--seat, var(--muted)); }
 .chip-text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
-.chip-pid { fill: var(--muted); font-size: 10px; text-anchor: middle;
-  font-family: ui-monospace, monospace; }
 
 .parcel-bg { fill: var(--c); }
 .parcel-trail { fill: var(--c); opacity: .5; }

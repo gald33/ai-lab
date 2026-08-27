@@ -797,6 +797,7 @@ export class Scene {
     this.layTethers();
     const open = this.state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
+    this.stack = this.stacking(open);
     const want = new Map();
     for (const p of open) {
       const pair = [p.maker, p.taker].sort().join("~");
@@ -810,6 +811,11 @@ export class Scene {
     //: dashes crawling toward the trader an offer is addressed to were reset
     //: sixty times a second and the line sat still. The same ropes are now
     //: moved to where the settlements went; new ones are built once.
+    //: The height of the pile a pill sits in is part of how the rope is drawn,
+    //: so a changed pile counts as changed offers even when every pair fan and
+    //: the count are the same -- which is what one offer lapsing as another
+    //: opens looks like. `aimRope` re-reads `this.stack`, so the reused branch
+    //: is right either way; this only decides whether the nodes are kept.
     const same = this.shown.size === want.size
       && [...want].every(([pid, fan]) => this.shown.get(pid) === fan);
     if (same) {
@@ -1555,6 +1561,7 @@ export class Scene {
     // hide each other -- and "how many are open" is exactly what a spectator is
     // reading the square for. Fan them by pair.
     const open = state.proposals.filter((p) => p.status === "open");
+    this.stack = this.stacking(open);
     const rank = new Map();
     const placed = new Map();
     this.ropes.replaceChildren(...open.map((p) => {
@@ -1644,8 +1651,32 @@ export class Scene {
     if (!a || !b) return null;
     const lift = this.modelled ? 34 : 84;
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - lift - 64 - fan * 44;
+    //: **The arc is fanned by pair and the pill is stacked by taker**, which
+    //: are two different numbers. Fanning the arcs keeps two offers between the
+    //: *same* two huts off one curve; but three traders offering the same hut
+    //: all sit at fan 0, and their pills landed on that one roof on top of each
+    //: other -- exactly where a spectator counts what a trader has to answer.
     return { d: `M ${a.x} ${a.y - lift} Q ${mx} ${my} ${b.x} ${b.y - lift}`,
-             mx, my, a, b, lift, fan };
+             mx, my, a, b, lift, fan,
+             stack: this.stack?.get(p.pid) ?? this.wasStack?.get(p.pid) ?? fan };
+  }
+
+  /**
+   * How high each arrived pill sits on the hut it is waiting over.
+   *
+   * By **taker**, and in the order the offers were made, so the pile on a hut
+   * is the queue that hut has to answer, oldest at the bottom. Kept as a map on
+   * the scene rather than passed down because `ropePath` is reached from four
+   * places -- `paint`, `follow`, `fray` and `verdict` -- and only one of them
+   * knows what else is open.
+   */
+  stacking(open) {
+    //: The frame before is kept because a pill on its way out is drawn *after*
+    //: the offer stopped being open: `fray` and `verdict` build their copy from
+    //: a proposal this map no longer carries, and it has to leave the pile from
+    //: the height it was sitting at rather than dropping to the roof first.
+    this.wasStack = this.stack;
+    return stacking(open);
   }
 
   /**
@@ -1691,7 +1722,10 @@ export class Scene {
    * takes it away.
    */
   chipAt(at, prog) {
-    if (prog >= 1) return { x: at.b.x, y: at.b.y - at.lift - 58 - at.fan * 40 };
+    //: One pill-and-a-gap apart, so a hut with three waiting on it reads as a
+    //: pile of three rather than one pill with something behind it. 32 is the
+    //: pill's own height; the rest is the gap.
+    if (prog >= 1) return { x: at.b.x, y: at.b.y - at.lift - 58 - at.stack * 38 };
     // Ease out: it leaves the maker's roof quickly and settles onto the
     // taker's, rather than arriving at full speed and stopping dead.
     const t = 1 - (1 - prog) * (1 - prog);
@@ -1764,6 +1798,7 @@ export class Scene {
     //: The maker's colour, on the group, so everything in the pill can wear it
     //: and `.rope.lapsing` can still take it back with a plain rule.
     const g = el("g", { class: "rope", "data-pid": p.pid,
+                        "data-maker": p.maker, "data-taker": p.taker,
                         style: `--seat: ${this.seatColour(p.maker)}` });
     g.append(el("path", { class: "rope-shadow", d }));
     g.append(el("path", { class: "rope-line", d }));
@@ -1781,7 +1816,11 @@ export class Scene {
     //: viewer can actually match to a roof.
     chip.append(el("circle", { class: "chip-seat", cx: -width / 2 + 13, cy: -0.5, r: 4.5 }));
     chip.append(el("text", { x: 7, y: 5, class: "chip-text" }, text));
-    chip.append(el("text", { x: 0, y: 28, class: "chip-pid" }, `${p.pid} · ${p.maker}→${p.taker}`));
+    //: **No `p2 · T1→T4` under the pill.** The pid is a manager's word for the
+    //: ledger, and the arrow repeated what the pill's colour and the rope it
+    //: hangs from already say: whose offer this is, and which hut it is
+    //: addressed to. It is on the group as `data-pid`/`data-maker` for
+    //: `viewer/tests/render.py`, which is where a name nobody reads belongs.
     g.append(chip);
     if (prog >= 1) g.classList.add("delivered");
     else this.ride();
@@ -2277,6 +2316,20 @@ export function refused(proposals, who, reason = "") {
 
 //: The one approval refusal that names a good rather than a proposal.
 export const ASKS = /you have ([\d.]+) (\w+) uncommitted, not the ([\d.]+) it asks for/;
+
+/**
+ * How high each arrived pill sits on the hut it is waiting over: by taker, in
+ * the order the offers were made, oldest at the bottom of the pile.
+ */
+export function stacking(open) {
+  const high = new Map(), at = new Map();
+  for (const p of open || []) {
+    const n = high.get(p.taker) || 0;
+    high.set(p.taker, n + 1);
+    at.set(p.pid, n);
+  }
+  return at;
+}
 
 export const NAME_MAX = 14;
 
