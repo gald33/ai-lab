@@ -1,12 +1,12 @@
-"""The sealed-to-one-peer tool is `whisper`, and only half of the rename is an alias.
+"""The sealed-to-one-peer tool is `whisper`, and that is the only name here.
 
-`ask` before 1.0.0, `whisper` from it. `Client.ask()` survives as an alias, so
-every library call kept working across that release -- but the MCP tool list
-carries `whisper` only. An entrant is an agent holding MCP tools, so the half
-that is not aliased is precisely the half entrants live on: a briefing or an
-allowlist that says `ask` leaves an agent able to read what it was dealt and
-unable to answer, with nothing failing loudly anywhere. This repo pins `>=1.0`
-and uses the new name alone, on both sides.
+It went by another before 1.0.0. For one release the library kept the old name
+as an alias while the MCP tool list carried only the new one -- which is the
+asymmetry that made the rename dangerous, because every library call kept
+working while an entrant briefed with the old name could read what it was
+dealt and had no way to answer, with nothing failing loudly anywhere. The
+alias has since been removed upstream as well, so there is now exactly one
+name and this repo carries only it.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def test_the_manager_whispers_and_says_so():
 
     assert "mgr.client.whisper(" in src
     assert "`whisper`" in src, "the name it tells a seat to answer with"
-    assert ".ask(" not in src and "`ask`" not in src
+    assert ".ask(" not in src and "`ask`" not in src, "one name only"
 
 
 def test_an_entrant_holds_whisper_and_not_the_old_name():
