@@ -329,8 +329,15 @@ function hut(id, traderMat) {
   //: dot per hut is a light that says nothing the fire has not said -- while
   //: on this island a small bright dot already means a good in flight, which
   //: is the same reason the fireflies are held clear of the fire below.
-  add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, `hut_${id}_crate_a`, [-0.42, 0.08, -0.2], [0, 0.4, 0]);
-  add(g, new THREE.BoxGeometry(0.13, 0.13, 0.13), M.timber, `hut_${id}_crate_b`, [-0.5, 0.2, -0.28], [0, 0.9, 0]);
+  //: **The two crates by the door are gone.** They were scenery from before
+  //: goods stood on the island at all -- a hut with some things outside it --
+  //: and they became a lie the moment a trader's holdings became crates in a
+  //: yard beside that same hut. A brown cube with no colour and no glyph, next
+  //: to a stack of coloured ones that each say what they are, is a good a
+  //: viewer cannot identify. Asked about by name: "what are the brown boxes?"
+  //:
+  //: The same rule as the flags. A shape on this island means one thing, and a
+  //: crate means a quantity of a good somebody is holding.
   return g;
 }
 
@@ -440,7 +447,29 @@ const SITES = {
     }
     add(g, new THREE.DodecahedronGeometry(0.14), M.rock, "quarry_spoil_a", [0.5, 0.06, 0.34], [0.4, 0.2, 0.7]);
     add(g, new THREE.DodecahedronGeometry(0.1), M.rock, "quarry_spoil_b", [0.62, 0.03, 0.2], [0.9, 0.5, 0.1]);
-    add(g, new THREE.BoxGeometry(0.2, 0.16, 0.2), M.timber, "quarry_cart", [-0.5, 0.08, 0.3], [0, 0.6, 0]);
+    //: **A cart, not a cube.** It was a 0.2 box of timber called `quarry_cart`
+    //: and it read as a crate, which is the one thing it must not read as --
+    //: the island is full of crates now and they are the goods. Reported as
+    //: not recognisable. Four parts is enough for a cart at this size: a
+    //: tipped body, two wheels, and the shaft you pull it by.
+    const cart = new THREE.Group();
+    cart.name = "quarry_cart";
+    cart.position.set(-0.5, 0.0, 0.3);
+    cart.rotation.y = 0.6;
+    //: Half again the size of the box it replaces, and the wheels in stone
+    //: rather than timber. A cart is a quarter of a unit long on an island
+    //: eight across -- about twenty pixels on a laptop -- and at that size a
+    //: shape is read by its silhouette and its contrast, not by its parts.
+    add(cart, new THREE.BoxGeometry(0.38, 0.2, 0.26), M.timber, "cart_body",
+      [0, 0.22, 0], [0.2, 0, 0]);
+    add(cart, new THREE.BoxGeometry(0.34, 0.03, 0.22), M.rock, "cart_load", [0, 0.31, 0.03]);
+    for (const [i, z] of [[0, -0.15], [1, 0.15]]) {
+      add(cart, new THREE.CylinderGeometry(0.11, 0.11, 0.035, 14), M.rock,
+        `cart_wheel_${i}`, [0, 0.11, z], [0, 0, Math.PI / 2]);
+    }
+    add(cart, new THREE.CylinderGeometry(0.018, 0.018, 0.4, 6), M.timber, "cart_shaft",
+      [-0.28, 0.2, 0], [0, 0, Math.PI / 2.4]);
+    g.add(cart);
     return [-0.15, 0.02, 0.42];
   },
   salt(g) {                                      // the pans
@@ -470,7 +499,13 @@ function works(g) {
   add(g, new THREE.BoxGeometry(0.7, 0.34, 0.5), M.timber, "works_shed", [0, 0.17, 0]);
   add(g, new THREE.BoxGeometry(0.78, 0.06, 0.58), M.thatch, "works_roof", [0, 0.37, 0]);
   add(g, new THREE.CylinderGeometry(0.09, 0.11, 0.3, 12), M.rock, "works_kiln", [0.5, 0.15, 0.24]);
-  add(g, new THREE.BoxGeometry(0.16, 0.16, 0.16), M.timber, "works_crate", [-0.48, 0.08, 0.26], [0, 0.5, 0]);
+  //: A barrel, not a crate. This is the site a good with no workshop of its
+  //: own gets, and it carried a plain timber cube -- the same shape a trader's
+  //: holdings are drawn as, in the one colour that says nothing. It is only
+  //: drawn for a sixth good and nobody has run a table that wide, which is
+  //: exactly why it would still have been there when somebody did.
+  add(g, new THREE.CylinderGeometry(0.1, 0.1, 0.22, 12), M.timber, "works_barrel",
+    [-0.48, 0.11, 0.26]);
   return [0, 0, -0.42];
 }
 

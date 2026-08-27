@@ -417,6 +417,40 @@ least 1.2 apart" is gone — the right question asked against a constant, from
 when a hut was always the same size. Neutered to a constant size, the new one
 reports 51%, 56% and 62% and two overlaps.
 
+### There are no ground marks left, and now no lights either
+
+**The last two are gone (2026-08-27).** The lamp on an offer's post and the red
+disc under a refusal outlived the ring purge — one because it replaced a ring,
+the other because it was called a flash rather than a ring. Cut on the same
+reading: a light on the grass is not a thing that happened, it is a caption for
+one.
+
+The cost was measured before the cut, not discovered after it. An offer changed
+**1.75%** of the island's frame with its lamp and **0.36%** without; a refusal
+**3.20%** with its disc and **0.27%** without. Doubling the notice instead of
+the lamp gets 0.61%, so nothing standing on the post buys it back — the light
+on the ground *was* the change.
+
+That is fine, because neither event was ever carried by the island:
+
+* an **offer** is the **rope** — a line across the frame from the maker to the
+  taker, labelled with what is on the table, its dashes crawling toward the
+  trader it is addressed to;
+* a **refusal** is the **bubble over the hut** with a cross in it, and the red
+  outline round the trader's card.
+
+Both are SVG over the canvas. So `mechanics` — which drives a bare stage with
+no scene on it, and cannot see either — lets those two off its 1.2% floor and
+holds them to a real but small one instead: something has to happen on the
+island, a post rising and a notice unrolling, a post shaking and a notice
+tearing in two.
+
+**That is a handover, not an exemption, and the difference is asserted.**
+`mechanics` reads this file's own source and fails if `turning` (the rope) or
+`overhead` (the bubble) has stopped being run — otherwise the day somebody
+deletes one, the event goes quiet everywhere at once and nothing says so.
+Neutered — `turning` dropped from `run` — it reports exactly that.
+
 ### There are no ground marks left
 
 There was a ring under every event. Reported as shockwaves, they became a patch
@@ -432,12 +466,52 @@ What each clip carries itself now:
 | clip | what a viewer sees |
 |---|---|
 | a production | the site works, and boxes are made there and hop home |
-| an offer | a post and a lit notice beside the maker's hut, and **the boxes it is offering lift off the pile** |
+| an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
 | a settlement | the boxes cross the island, and the fire flares once |
-| a refusal | **a bubble over the hut, with a cross in it** |
+| a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
 | a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
+
+### The offer's crawl is measured on its own clock
+
+`stroke-dashoffset` is a **painted** value, and Chromium throttles the paint
+when the machine is busy: run alongside the rest of the suite, the offer's
+dashes crawled 0.31 in six hundred milliseconds against a floor of 0.5, and
+`turning` failed for being run in company. Run alone it passed. That is a check
+whose answer depends on the load.
+
+It reads the animation's `currentTime` now, which tracks the document timeline
+and advances whether or not a frame was drawn. It still catches the bug it
+exists for — a rope rebuilt under its own animation gets a *fresh* animation
+whose clock starts at zero — and neutered (ropes replaced every frame) it
+reports the clock at 0 → 0 alongside six replacements.
+
+### A crate on this island is a good, and nothing else is
+
+Asked by name — *"what are the brown boxes?"* — which is the question a shape
+gets when it looks like something it is not.
+
+Two of them stood by every hut's door, and one at the generic works site. They
+are scenery from before goods stood on the island at all: a hut with some things
+outside it. They became a lie the moment a trader's holdings became **crates in
+a yard beside that same hut**. A brown cube with no colour and no glyph, next to
+a stack of coloured ones that each say what they are, is a good a viewer cannot
+identify.
+
+The door crates are gone. The works site's crate is a barrel — it is only drawn
+for a sixth good and no table has been that wide, which is exactly why it would
+still have been a crate when one was.
+
+The same rule as the flags: **a shape on this island means one thing.** A flag
+says which good is made where; a crate says a quantity of a good somebody holds.
+
+The quarry's cart was the third of them — a 0.2 timber cube, reported as not
+recognisable, and it was a crate in everything but name. It is a cart now: a
+tipped body, two stone wheels and a shaft, and half again the size it was. A
+cart is a quarter of a unit long on an island eight across — about twenty pixels
+on a laptop — so what makes it readable at that size is its silhouette and the
+contrast of the wheels against the body, not its parts.
 
 ### A bubble belongs over the hut
 
@@ -481,9 +555,12 @@ nightfall, and a warm dot per hut says nothing the fire has not — while a smal
 bright dot on this island already means a good in flight, which is the same
 reason the fireflies are held a clearing's width off the fire.
 
-The material stays: `island-events.js` still clones it for an offer's lit notice,
-which is a mark that fires once for a reason rather than a light that is simply
-on.
+That line used to end "the material stays, for an offer's lit notice, which is a
+mark that fires once for a reason rather than a light that is simply on." **The
+offer's lamp is gone too (2026-08-27)** — see *"no ground marks left, and now no
+lights either"* — so there is no lantern anywhere on this island, and `M.glass`
+is unused. It is kept as a material because the next thing that genuinely glows
+should be this colour, and deleting it is how a palette drifts.
 
 ### One face per good, wherever the island draws one
 
