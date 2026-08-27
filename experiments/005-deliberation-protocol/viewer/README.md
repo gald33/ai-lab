@@ -517,6 +517,31 @@ painted band under the eaves that is visible from any bearing the camera swings
 to. That is more of the colour than the banner ever showed, on a shape a viewer
 is already looking at.
 
+**The band was drawn where nothing could see it** (2026-08-27). Reported by
+eye — *"I don't see the door and band"* — of an accent that had been in the
+model for weeks under a comment claiming it was "visible from any bearing the
+camera swings to". The bearings were never the problem; the elevation was. The
+roof is a cone of radius 0.52 whose rim sits at y = 0.42, and the band was a
+ring of radius 0.40 at y = 0.41 — wholly inside the overhang, so the only
+camera that could ever have seen it is one standing below the eaves, and this
+island is watched from above. Measured: **0 of 148 sample points unoccluded**,
+on every hut, at every bearing.
+
+The band is on the **roof** now, where the camera is already looking: a ring
+hugging the cone's own slope between y = 0.47 and y = 0.55, its radii the
+cone's radius at those heights (`r = 0.52 (0.84 − y) / 0.42`) plus 0.006 to
+keep it off the surface it lies on, open-ended so it is a stripe and not a lid.
+It measures **38–40 of 50 points and about 69px across** on a 1200×800 frame.
+The finial takes the colour as well — it is the highest thing on the hut and
+the last to be occluded by anything — and the door went from 0.14 × 0.24 to
+0.19 × 0.28, having been about five pixels across.
+
+`render.py:whose` is the check, and it asks about *visibility*, not existence:
+each accent's own surface is sampled and every sample raycast from the camera,
+counting a point only when the accent is the first thing the ray meets, at four
+bearings. Every check the old band passed was a check that it existed. Neutered
+against the old geometry, it reports 0 of 148 at all four bearings.
+
 **The drawn hut and the card wore none of it** (2026-08-27). That colour lived
 only in the model: `SEAT_COLOURS` in `island3d.js`, painted on the door and the
 band. The SVG hut — which is what a page with no model behind it draws, and
