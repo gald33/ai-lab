@@ -833,6 +833,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
       <p class="verdict" id="closing-verdict"></p>
       <div id="closing-traders"></div>
       <p class="note" id="closing-traffic"></p>
+      <!-- Only live, and only once the seed is out: the round somebody just
+           watched, played back with the half that was hidden while it ran. -->
+      <button class="wide" id="closing-replay" hidden>▶ watch the replay</button>
     </div>
   </div>
 </div>
@@ -912,6 +915,10 @@ let focus = "even";
 //: into play clears it, so the card returns when the ending does.
 let dismissed = false;
 let mode = "replay";
+//: A live game's handover, once its manager has published one: where this
+//: page fetched the board from, which reveal it has already taken, and the
+//: replay it can offer of the round it just watched. See `island/live.py:finish`.
+let liveFrom = null, tookReveal = null, replayOf = null;
 
 // --- chrome ----------------------------------------------------------------
 
@@ -1078,6 +1085,7 @@ function closing(state) {
        which is zero utility however much of the rest they had.` : "") +
     `<br>The full reveal — tastes, capacities, efficiency per day — is under
      <b>▤</b>, and the scored board is under <b>🏆</b>.`;
+  $("closing-replay").hidden = !replayOf;
   box.hidden = false;
 }
 
@@ -1379,6 +1387,7 @@ function mount(rows, { manager } = {}) {
 
 async function startReplay(boardUrl, revealUrl) {
   mode = "replay";
+  liveFrom = null; tookReveal = null; replayOf = null;
   $("transport").style.display = "";
   live?.stop();
   player?.stop();
@@ -1418,6 +1427,7 @@ async function startReplay(boardUrl, revealUrl) {
 
 function startLive(url, channel) {
   mode = "live";
+  liveFrom = url; tookReveal = null; replayOf = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1437,6 +1447,9 @@ function startLive(url, channel) {
 // `?hub=&workspace=&key=&token=` params `boot()` reads below.
 function startHub(config, channel) {
   mode = "live";
+  // A room read straight from a hub has no manager writing files beside it,
+  // so there is no handover to wait for: this one ends and stays ended.
+  liveFrom = null; tookReveal = null; replayOf = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1462,7 +1475,7 @@ function startHub(config, channel) {
 // shared so `startLive` and `startHub` differ only in which feed they poll.
 function liveHandlers(statusWhenOk, statusOnError) {
   return {
-    update: ({ rows, sealed, hub, notes }) => {
+    update: ({ rows, sealed, hub, notes, raw }) => {
       $("where").textContent =
         `live · ${hub?.workspace || "?"} · ${rows.length} messages` +
         (sealed.length ? ` · ${sealed.length} sealed` : "");
@@ -1489,9 +1502,46 @@ function liveHandlers(statusWhenOk, statusOnError) {
         scene.play(f.event);
         sound.play(f.event);
       }, i * 420));
+      // The game is over and its seed is out: take the hidden half now, so
+      // the ending this page draws is the scored one rather than the one that
+      // says it cannot know. `mount` above rebuilds the cards with it on the
+      // next poll, and the file keeps its pointer, so this is idempotent.
+      if (raw?.finished) takeHandover(raw.finished);
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },
   };
+}
+
+/**
+ * A live game's manager published its reveal: read it, unlock the hidden half,
+ * and offer the replay.
+ *
+ * Paths in `finished` are relative to the live file, because the manager wrote
+ * them beside it and knows nothing about the URL a spectator reached it by.
+ * Fetched once -- `tookReveal` -- since the pointer stays on the file for
+ * every poll after the last bell.
+ */
+async function takeHandover(finished) {
+  if (!liveFrom || !finished?.reveal || tookReveal === finished.reveal) return;
+  tookReveal = finished.reveal;
+  const base = new URL(liveFrom, location.href);
+  const revealUrl = new URL(finished.reveal, base).href;
+  try {
+    const answer = await fetch(revealUrl, { cache: "no-store" });
+    if (!answer.ok) throw new Error(String(answer.status));
+    reveal = await answer.json();
+  } catch {
+    // Nothing is claimed on a fetch that failed: the page stays the live one
+    // that says it has no score, and the next poll tries again.
+    tookReveal = null;
+    return;
+  }
+  drawReveal(reveal);
+  legend(timeline.goods, true);
+  if (finished.board) {
+    replayOf = { board: new URL(finished.board, base).href, reveal: revealUrl };
+  }
+  if (timeline) closing(timeline.final);
 }
 
 // --- the two drawers -------------------------------------------------------
@@ -1544,6 +1594,16 @@ function shutClosing() {
   $("closing").hidden = true;
 }
 $("closing-shut").addEventListener("click", shutClosing);
+
+// The round somebody just watched, from the top and with the hidden half in
+// it. The live poll stops here: the game is over, so there is nothing left to
+// read from it, and the replay is the same board with a transport on it.
+$("closing-replay").addEventListener("click", () => {
+  if (!replayOf) return;
+  const { board, reveal: sidecar } = replayOf;
+  shutClosing();
+  startReplay(board, sidecar);
+});
 
 // Rotating the phone rebuilds the island the other way up. Debounced, and a
 // no-op unless the boundary was actually crossed: mobile browsers fire `resize`

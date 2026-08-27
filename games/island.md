@@ -745,6 +745,32 @@ must keep following:
   seed's tastes and capacities, so a replay goes public **only when its game is
   finished** — and a seed still in play is not replayable by anyone.
 
+**The disclosure is handed to whoever was watching, on the file they already
+hold.** Decided 2026-08-27. The three rules above left a hole at the exact
+moment a spectator cares most: the bell rings, the seed is disclosed, and the
+page that watched the whole round still says it cannot know what any of it was
+worth — because the reveal was written into `--out`, which is not served,
+under a filename nobody watching was given. The scores existed and were
+unreachable from the only surface a spectator had.
+
+So at the last bell the manager copies that game's board and its reveal beside
+its live file and writes a `finished` block into the live file naming them
+(`island/live.py:finish`, called from `run_game._play_table`). The viewer's
+live poll sees it, fetches the reveal, unlocks the hidden half, redraws the
+ending with each trader's multiple of playing alone, and offers a button that
+replays the round just watched. **Nothing is published a moment earlier than
+it already was** — the same call that writes the sidecar writes the handover,
+so "a seed still in play is not replayable by anyone" is untouched; what
+changed is only that the disclosure is now reachable from where the watching
+happened. The copies go before the pointer, so a poll landing mid-handover
+sees a game still running rather than a link to a file that is not there.
+
+Two things this deliberately does not do. It does not put the seed on the
+board — the board is the traders' surface and the disclosure is the
+spectator's. And it does not reach a room read straight from a hub
+(`?invite=`, `hubFeed`): there is no manager writing files beside that, so
+such a page ends as it always did, and says so.
+
 The wrapper stays a separate project that plugs into the published viewer for
 its data stream rather than living inside Switchboard, and a hosted game points
 at the managed hub by default.

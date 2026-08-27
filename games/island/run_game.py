@@ -69,6 +69,7 @@ from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
 from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
+from .live import finish as finish_live
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
@@ -656,10 +657,10 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
             print(f"{table.id}: no archivist -- {exc!r}; the game goes on "
                   f"and its board will have one copy only", flush=True)
             archivist = None
+        live_path = (live_dir / f"{table.id}.json") if live_dir else None
         rec = play(table, invite, episode_seconds=episode_seconds,
                    ack_seconds=ack_seconds, out=out, ranked_only=ranked_only,
-                   archivist=archivist,
-                   live=(live_dir / f"{table.id}.json") if live_dir else None)
+                   archivist=archivist, live=live_path)
         if rec is None:
             print(f"{table.id}: stood down -- opened for a ranked game and "
                   f"cannot seal", flush=True)
@@ -667,6 +668,20 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         path = out / f"{table.id}.json"
         path.write_text(json.dumps(rec, indent=1) + "\n")
         sidecar = publish(table, invite, rec, out)
+        # The spectator's handover: whoever was watching this live is told, on
+        # the one file they were given, that the game is over and where its
+        # seed and its replay now are. It is a copy beside the live file
+        # because `--out` is not served and must not be -- it holds the seeds
+        # of games that are *still running*. Watching costs a game nothing, so
+        # a copy that fails is said out loud and the record stands.
+        if live_path is not None:
+            try:
+                finish_live(live_path,
+                            board=out / f"board-{table.workspace}.json",
+                            reveal=sidecar)
+            except Exception as exc:      # noqa: BLE001 -- see above
+                print(f"{table.id}: live handover not written: {exc!r}",
+                      flush=True)
         # **Published now, with the reveal.** Holding it back protects
         # nothing: the seed is revealed at this point anyway, and every line
         # in it was public to the room when it was written. What publishing
@@ -857,7 +872,11 @@ def main(argv: list[str] | None = None) -> int:
                          "It is what lets a person watch a game in progress "
                          "without being handed a room key -- the viewer reads "
                          "it with ?live=<url>. Serve it; it carries only what "
-                         "is on the board, never the sealed half")
+                         "is on the board, never the sealed half. At the last "
+                         "bell each game's board and reveal are copied in "
+                         "beside its live file and the live file points at "
+                         "them, so whoever watched the round sees its scores "
+                         "and can replay it -- published then and not before")
     ap.add_argument("--keep", type=int, default=0,
                     help="keep the raw output of only this many finished games, "
                          "pruning oldest first. The ledger row always survives, "

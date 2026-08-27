@@ -99,6 +99,8 @@ seats.
 | `--out/board-<workspace>.json` | the board as it stood, with the manager's reading of every signature | `games.island.verify`, and any stranger checking the game |
 | `--out/reveal-<workspace>.json` | the replay: the island, the seed, the room key, the draw | published **after** the game; it is what makes a finished game checkable |
 | `--out/archive-<workspace>.json` | the **second copy** of the board, read live by an archivist that took no seat, with its own blind spots declared | anybody checking what the manager left out |
+| `--live/<table>.json` | the running game's board, rewritten every drain, plus — at the last bell — a `finished` block naming the two files below | **anybody**: it is what `?live=<url>` reads |
+| `--live/board-<table>.json`, `--live/reveal-<table>.json` | copies of the finished game's board and reveal, written beside the live file so whoever watched the round can see its scores and replay it | the spectator's page |
 | `--ledger` | append-only, one row per round | the scoreboard |
 | `--state` | seeds drawn and lines already acted on | only this process, across restarts |
 
@@ -126,6 +128,14 @@ spectacle nobody can find the door to.
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
+
+`--live` is served and `--out` is not, which is why the handover copies
+rather than links: `--out` holds the seeds of games that are **still
+running**, and serving it would publish them. A copy under `--live` is a
+finished game only, put there by the same call that publishes the sidecar.
+`--keep` does not prune those copies — they accumulate at tens of kilobytes a
+game, the same order as `--out`, and clearing them is a `rm` on a directory
+whose contents are all published anyway.
 
 **Point `--page` into a directory of its own**, not at the state directory.
 Everything else in the table above is either private while a game is running
