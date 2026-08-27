@@ -1096,6 +1096,19 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
     return bad
 
 
+#: How far the letterbox band may be from the water inside the frame, per
+#: channel, before it reads as a seam.
+#:
+#: **Measured, not inherited.** It was 12, carried over from when the band was
+#: painted by a clear colour and could plausibly be a stop out. The band is the
+#: same mesh under the same lights now, and the shipped gap is *exactly zero* on
+#: both shapes that have one -- rgb(32,63,82) against rgb(32,63,82). Twelve was
+#: loose enough to pass a deliberately mis-tinted band: tinting the backdrop
+#: pass 30% brighter gives rgb(37,72,93), a gap of 11, which is a visible line
+#: down the side of the screen and was being called clean.
+SEAM = 4
+
+
 def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
     """The frame is water to its edges -- there is no void round the island.
 
@@ -1110,20 +1123,46 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
     clears inside the scissor.
 
     Both are the same fact and this is the fact: **no pixel of the canvas is
-    unpainted.** Measured in three shapes, because the band only exists when
+    unpainted.** Measured in five shapes, because the band only exists when
     the canvas and the viewBox disagree and a square window has none.
 
-    The corners are also checked against the water inside the frame. They are
-    the same mesh under the same lights and so should be the same colour to
-    within rounding; a band painted from a second copy of the day's arithmetic
-    drifted half a stop at noon, which is a seam a viewer sees. The corners and
+    **Two of the five are phones, and they are here because the void came back
+    a third time through the shape nothing measured.** The sea is a disc 32
+    units across, which covered every frame this had ever been pointed at --
+    all three of them desktop-shaped, where the island's box is most of the
+    frame. A phone in portrait is not: the box is a fraction of a tall frame,
+    so the frustum is `8.7 * geo.h / D` island units deep, which on a 393x660
+    window is 29 and at a card focus 36. Past 16 there was nothing to draw and
+    the corners came back black -- and the alpha rule could not see it, because
+    a corner cleared to black is painted. The colour rule is what catches it,
+    and is why the corners are compared against the frame's own water rather
+    than only counted.
+
+    Two colour rules on top of that, and they are different questions.
+
+    **Every corner is sea.** Not "is painted" -- a corner cleared to black is
+    painted, which is how the void got past the alpha rule -- but *is water*, by
+    the same classifier the rest of the suite reads land with. The corners and
     not the edge midpoints: the island is a disc inscribed in the frame's short
-    side, so nothing is ever drawn in a corner -- while a cloud crossing the
-    island sits on the top edge on a tall window, which is weather, not a seam.
+    side, so nothing is ever drawn in a corner, while a cloud crossing the
+    island sits on the top edge on a tall window, which is weather.
+
+    **And where there is a letterbox band, it is the same water as the frame.**
+    That is the seam a band painted from a second copy of the day's arithmetic
+    showed, drifting half a stop at noon. It is asked *at the band*, which is
+    the only place the seam can be: this used to compare the corners against a
+    point 2% in at half height and call it open water, which stopped being true
+    the moment a phone could draw the island the full width of the frame -- the
+    point landed on the shore shelf and the check failed on a page that was
+    correct. Where the canvas and the viewBox are the same shape there is no
+    band and nothing to compare, and this says so rather than passing quietly.
     """
     stem = board.name[len("board-"):-len(".json")]
     bad: list[str] = []
-    for label, w, h in (("wide", 1600, 700), ("tall", 820, 1100), ("desktop", 1300, 860)):
+    #: The shapes with no letterbox band, so that "all of them" can be caught.
+    bands: list[str] = []
+    for label, w, h in (("wide", 1600, 700), ("tall", 820, 1100), ("desktop", 1300, 860),
+                        ("phone", 393, 660), ("phone-tall", 390, 844)):
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=15_000)
@@ -1132,7 +1171,7 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
                              ".classList.contains('has-3d')"):
             page.close()
             continue
-        seen = page.evaluate("""() => {
+        seen = page.evaluate("""() => {""" + LAND_JS + """
           const cv = document.getElementById('stage');
           const s = document.createElement('canvas');
           s.width = cv.width; s.height = cv.height;
@@ -1162,24 +1201,63 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
             };
             return [chan(0), chan(1), chan(2)];
           };
-          return { clear, total: px.length / 4,
-                   corners: [block(0, 0), block(1, 0), block(0, 1), block(1, 1)],
-                   //: A little inside the frame at half height, which is open
-                   //: water on every shape this is measured in.
-                   inside: block(0.02, 0.5) };
+          //: Water, by the classifier the rest of the suite reads land with.
+          //: Black is *land* to it -- blue is what it excludes -- which is
+          //: exactly why a corner cleared to black fails this and passed the
+          //: alpha rule above.
+          const wet = (c) => !LAND([c[0], c[1], c[2], 255], 0);
+          //: The letterbox band, if the canvas and the viewBox disagree about
+          //: their shape. Computed from the two of them rather than read off
+          //: the stage, which a real replay page does not expose.
+          const vb = document.getElementById('island').getAttribute('viewBox')
+            .split(/\s+/).map(Number);
+          const k = Math.min(s.width / vb[2], s.height / vb[3]);
+          const side = (s.width - vb[2] * k) / 2, cap = (s.height - vb[3] * k) / 2;
+          let band = null;
+          if (side >= 8) {
+            band = { out: block(0, 0.5),
+                     in: [Math.round(side + 6), Math.round(s.height / 2) - 6] };
+          } else if (cap >= 8) {
+            band = { out: block(0.5, 0), in: [Math.round(s.width / 2) - 6,
+                                              Math.round(cap + 6)] };
+          }
+          if (band) {
+            const d = g.getImageData(band.in[0], band.in[1], 12, 12).data;
+            const chan = (kk) => { const v = [];
+              for (let i = 0; i < d.length; i += 4) v.push(d[i + kk]);
+              v.sort((a, b) => a - b); return v[v.length >> 1]; };
+            band.inside = [chan(0), chan(1), chan(2)];
+          }
+          const corners = [block(0, 0), block(1, 0), block(0, 1), block(1, 1)];
+          return { clear, total: px.length / 4, corners, band,
+                   dry: corners.map(wet) };
         }""")
         page.close()
         if seen["clear"]:
             bad.append(f"afloat {label}: {seen['clear']} of {seen['total']} pixels "
                        f"are unpainted; the island is standing in a void")
-        # Every corner is water, and the same water as the frame's own margin.
-        inside = seen["inside"]
-        for k, e in enumerate(seen["corners"]):
-            gap = max(abs(e[i] - inside[i]) for i in range(3))
-            if gap > 12:
+        for k, ok in enumerate(seen["dry"]):
+            if not ok:
+                e = seen["corners"][k]
                 bad.append(f"afloat {label}: corner {k} is rgb({e[0]},{e[1]},"
-                           f"{e[2]}) against the frame's own water rgb("
-                           f"{inside[0]},{inside[1]},{inside[2]}); the join shows")
+                           f"{e[2]}), which is not sea; the frame runs out of "
+                           f"water before it runs out of frame")
+        b = seen["band"]
+        if b:
+            gap = max(abs(b["out"][i] - b["inside"][i]) for i in range(3))
+            if gap > SEAM:
+                bad.append(f"afloat {label}: the letterbox band is rgb("
+                           f"{b['out'][0]},{b['out'][1]},{b['out'][2]}) against "
+                           f"the frame's own water rgb({b['inside'][0]},"
+                           f"{b['inside'][1]},{b['inside'][2]}); the join shows")
+        else:
+            bands.append(label)
+    #: Said rather than passed over. The seam rule only has something to look at
+    #: where the canvas and the viewBox disagree about their shape, and a suite
+    #: in which that is true of *every* shape has stopped asking the question.
+    if len(bands) == 5:
+        bad.append(f"afloat: no shape measured has a letterbox band "
+                   f"({', '.join(bands)}); the seam rule looked at nothing")
     return bad
 
 
@@ -3043,9 +3121,17 @@ FOCUS_GAIN = 1.12
 #: at even focus. It also cannot go stale: change a font size and this follows.
 FOCUS_KEPT = 0.85
 
-#: The marks a glance card must not print at all, because at 0.58 they are
-#: numbers nobody can read: 4.8 device pixels for a shelf's quantities.
-FOCUS_DROPPED = (".qty", ".wheel-text")
+#: The marks a glance card must not print at all, because at its scale they are
+#: numbers nobody can read: 4.6 device pixels for a shelf's quantities at 0.55.
+FOCUS_DROPPED = (".qty", ".wheel-text", ".score-value")
+
+#: How much of the window's width the island must draw across once a viewer has
+#: asked for it. **The claim is "screen wide"** and it is met to 98% on all
+#: three portrait phones -- not 100%, because the frame is `520` units and the
+#: island's box lands a few short of it after the band is divided. Set below the
+#: measurement with room, and far enough above the 50% it draws at `even` that
+#: it is a different claim and not a restatement.
+FOCUS_WIDE = 0.90
 
 
 def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
@@ -3063,12 +3149,26 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     * a tap on a card does the reverse;
     * a second tap on the same thing puts the frame back **exactly** where it
       was -- a toggle that drifts is a toggle nobody dares press twice;
-    * the small card has stopped printing what it cannot draw. At 0.58 a
-      shelf's quantities are 4.8 device pixels and its captions 4.2, so they go
+    * the small card has stopped printing what it cannot draw. At 0.55 a
+      shelf's quantities are 4.6 device pixels and its captions 4.0, so they go
       and what stays is declared larger to land at the size it always was. This
       re-measures every surviving mark in **device pixels**, because the whole
       claim is about what an eye can resolve and a unit in a viewBox is not
       that.
+
+    And two more that came with "screen wide":
+
+    * **the island actually reaches the frame.** The room for that could not
+      come from the cards -- the arithmetic is in the stylesheet beside the
+      rule that spends it -- so it comes off the chrome, which stands two of
+      its four rows down at this focus. A card small enough to buy the last
+      15% does not exist, so a check that only watched the cards would have
+      called a 70% island a pass.
+    * **and the chrome that stayed is still clear of it.** That is the whole
+      risk of the row above: a band declared shorter than the pills left
+      standing in it puts them back on the island, which is the defect
+      `uncovered` exists for and which was reported by eye twice. Counted the
+      same way it counts -- model pixels behind each pill, not boxes.
     """
     stem = board.name[len("board-"):-len(".json")]
     bad: list[str] = []
@@ -3101,6 +3201,25 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
         if (x < x0) x0 = x; if (x > x1) x1 = x;
         if (y < y0) y0 = y; if (y > y1) y1 = y;
       }
+      //: Model pixels behind each piece of chrome still standing, the way
+      //: `uncovered` counts them: a box test would call the transport guilty
+      //: the moment the island is drawn the full width of the frame.
+      const sx = s.width / cr.width, sy = s.height / cr.height;
+      const pills = CHROME.map((sel) => {
+        const n = document.querySelector(sel);
+        if (!n || n.hidden || !n.offsetParent) return null;
+        const r = n.getBoundingClientRect();
+        const bx = Math.max(0, Math.round((r.x - cr.x) * sx));
+        const by = Math.max(0, Math.round((r.y - cr.y) * sy));
+        const bw = Math.min(s.width - bx, Math.round(r.width * sx));
+        const bh = Math.min(s.height - by, Math.round(r.height * sy));
+        if (bw <= 0 || bh <= 0) return null;
+        const q = document.createElement('canvas').getContext('2d');
+        let on = 0;
+        const d = g.getImageData(bx, by, bw, bh).data;
+        for (let i = 0; i < d.length; i += 4) if (LAND(d, i)) on++;
+        return { sel, on };
+      }).filter(Boolean);
       const cards = [...document.querySelectorAll('.card-bg')]
         .map((n) => n.getBoundingClientRect()).filter((r) => r.width);
       //: Every mark still drawn on the first card, by how tall it actually
@@ -3117,24 +3236,26 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
       return {
         island: lit ? { w: (x1 - x0 + 1) / s.width * cr.width,
                         h: (y1 - y0 + 1) / s.height * cr.height } : null,
+        lit, pills, win: innerWidth,
         cardW: cards.length ? Math.max(...cards.map((r) => r.width)) : 0,
         mini: !!document.querySelector('.card.mini'),
         marks, viewBox: document.getElementById('island').getAttribute('viewBox'),
         note: document.getElementById('focus-note').textContent.trim(),
-        lit: !!document.querySelector('#focus-note.on'),
+        said: !!document.querySelector('#focus-note.on'),
       };
     }"""
+    look = look.replace("() => {", "(CHROME) => {", 1)
     at_card = """() => { const n = document.querySelector('.card-bg');
       const b = n.getBoundingClientRect();
       return [b.x + b.width / 2, b.y + b.height / 2]; }"""
 
     def read(tag: str):
         page.screenshot(path=str(out / f"{stem}-focus-{tag}.png"), full_page=False)
-        return page.evaluate(look)
+        return page.evaluate(look, CHROME)
 
     def tap(where: str):
         if where == "island":
-            seen = page.evaluate(look)
+            seen = page.evaluate(look, CHROME)
             page.mouse.click(393 / 2, seen["island"]["h"] / 2 + 200)
         else:
             page.mouse.click(*page.evaluate(at_card))
@@ -3166,9 +3287,22 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     if not isle["mini"]:
         bad.append(f"{stem} @focus: the island's focus drew a full card at "
                    f"{isle['cardW']:.0f}px rather than a glance card")
-    if not isle["lit"] or "island" not in isle["note"]:
+    if not isle["said"] or "island" not in isle["note"]:
         bad.append(f"{stem} @focus: nothing on the page said what the tap did "
                    f"(the caption reads {isle['note']!r})")
+    # Screen wide, which the cards alone could never have bought.
+    if isle["island"]["w"] < FOCUS_WIDE * isle["win"]:
+        bad.append(f"{stem} @focus: the island the viewer asked for draws "
+                   f"{isle['island']['w']:.0f}px in a {isle['win']}px window, "
+                   f"{isle['island']['w'] / isle['win']:.0%} of it")
+    # And the chrome left standing is still clear of it. Same rule and same
+    # fraction as `uncovered`: a fortieth of the drawn island, per pill.
+    for r in isle["pills"]:
+        share = r["on"] / max(1, isle["lit"])
+        if share > 0.025:
+            bad.append(f"{stem} @focus: {r['sel']} covers {share:.0%} of the "
+                       f"island the viewer just asked for; the band the chrome "
+                       f"declares is shorter than the chrome standing in it")
     # A number too small to read is worse than no number, so it must be gone --
     # and what stays has to be the size it was, not a shrunk copy of it.
     for sel, height in isle["marks"].items():
@@ -3222,14 +3356,14 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     #: that says a tap was taken.
     page.set_viewport_size({"width": 660, "height": 393})
     page.wait_for_timeout(700)
-    wide = page.evaluate(look)
+    wide = page.evaluate(look, CHROME)
     page.mouse.click(*page.evaluate(at_card))
     page.wait_for_timeout(700)
-    after = page.evaluate(look)
+    after = page.evaluate(look, CHROME)
     if after["viewBox"] != wide["viewBox"] or abs(after["cardW"] - wide["cardW"]) > 1:
         bad.append(f"{stem} @focus: a tap on a landscape phone moved the frame "
                    f"from {wide['viewBox']!r} to {after['viewBox']!r}")
-    if after["lit"]:
+    if after["said"]:
         bad.append(f"{stem} @focus: a tap on a landscape phone was taken -- the "
                    f"caption reads {after['note']!r} -- and rebuilt the scene "
                    f"for a layout that ignores the focus")

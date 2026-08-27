@@ -253,7 +253,7 @@ const FOCUS = {
   //: something. So the small card stops being a shrunk card and becomes a
   //: glance card: whose it is, the coloured bars, and what the shelf came to.
   //: The rules are in the stylesheet, on `.card.mini`.
-  island: { card: 0.58, floor: ISLAND_MIN, mini: true },
+  island: { card: 0.55, floor: ISLAND_MIN, mini: true },
   cards: { card: null, floor: ISLAND_TINY },
 };
 
@@ -320,12 +320,16 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
     //: the cards; the island is still the residual and still takes all of it.
     const band = H - above - below;
     const want = FOCUS[focus] ?? FOCUS.even;
-    const pitchAt = (s) => s * (CARD_TOP + cardH) + gap;
+    //: A glance card is a shorter card, not only a smaller one -- see
+    //: `CARD_H_GLANCE`. The height is settled here rather than by the scene so
+    //: that the band this reserves and the box the scene draws are one number.
+    const tall = want.mini ? CARD_H_GLANCE : cardH;
+    const pitchAt = (s) => s * (CARD_TOP + tall) + gap;
     //: The largest card that still leaves the island the floor this focus put
     //: under it. Never below 1: a viewer who asked for the cards is not told
     //: that the answer is smaller cards.
     const byHeight = ((band - 16 - want.floor * ISLAND_FOOT) / rows - gap)
-                     / (CARD_TOP + cardH);
+                     / (CARD_TOP + tall);
     const scale = want.card
       ?? Math.max(1, Math.min(CARD_WIDEST(w) / CARD_W, byHeight));
     const cardsH = Math.round(rows * pitchAt(scale));
@@ -359,6 +363,10 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
       islandFoot,
       cardScale: scale,
       cardMini: !!want.mini,
+      //: Only when this branch has an opinion. A live board draws a shorter
+      //: card than the layout plans for -- `CARD_H` against `CARD_H_SCORED` --
+      //: and overriding that here would grow every live card by 46 units.
+      cardH: want.mini ? CARD_H_GLANCE : null,
       //: The window's height, or more if the cards need it. Any slack falls
       //: past the last card, below the transport's own band, where it is sea.
       h: Math.max(H, foot + cardsH + below),
@@ -380,7 +388,7 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
   //: focus to re-divide. `cardScale` is declared anyway rather than left
   //: undefined, so the scene has one number to read either way up.
   return { cards, islandBox: { x: col * 2, y: 0, w: w - col * 4, h }, h,
-           cardScale: 1, cardMini: false };
+           cardScale: 1, cardMini: false, cardH: null };
 }
 
 /**
@@ -516,6 +524,18 @@ const BASE = 104;
 //: carry an empty score row: a blank number reads as a number that failed,
 //: rather than as one nobody on this island is allowed to know.
 const CARD_H = 140, CARD_H_SCORED = 186;
+//: And what is left of one when a viewer has given the screen to the island: a
+//: name, a labour dial and the shelf, ending just under the glyphs that name
+//: the goods. **The score row goes with the height.**
+//:
+//: It was kept at first, and the reasoning is left here because it was not
+//: wrong: the utility is the one number the round is scored on, and a shelf
+//: with a bare number under it is worse than one with a named number. What
+//: changed is what the tap is *for*. A viewer who tapped the island asked for
+//: the island, and 186 units of card is 74 more than the shelf needs -- 74
+//: units of band that the island cannot have while a number nobody tapped for
+//: is standing in it. One tap brings the whole card back.
+const CARD_H_GLANCE = 112;
 //: The card hangs below the seat, clear of the hut rather than pasted onto it.
 const CARD_TOP = 22;
 //: How far above a settlement a bubble floats, in viewBox units. The model
@@ -887,6 +907,11 @@ export class Scene {
     return this.modelled ? (this.geo.cardScale ?? 1) : 1;
   }
 
+  /** How tall a card's own box is: the layout's, when it has an opinion. */
+  cardBoxH() {
+    return (this.modelled && this.geo.cardH) || this.cardH;
+  }
+
   /**
    * Where one good's bar stands, in scene coordinates.
    *
@@ -1171,11 +1196,19 @@ export class Scene {
       class: this.cardScale() !== 1 && this.geo.cardMini ? "card mini" : "card" });
     if (this.cardScale() !== 1) {
       card.setAttribute("transform", `scale(${this.cardScale()})`);
+      //: The scale, handed to the stylesheet. A glance card holds its marks at
+      //: the size they are on a full card by declaring them `1/scale` larger
+      //: inside a group about to be scaled by `scale` -- and that only works
+      //: while the two numbers agree. They were a literal `26px` against a
+      //: literal `0.58`, which is one edit away from a name that shrinks with
+      //: its card and a check that has to be told the new number.
+      card.style.setProperty("--card-scale", String(this.cardScale()));
     }
+    const tall = this.cardBoxH();
     card.append(el("rect", { class: "card-shadow", x: -CARD_W / 2 + 3, y: CARD_TOP + 5,
-                             width: CARD_W, height: this.cardH, rx: 13 }));
+                             width: CARD_W, height: tall, rx: 13 }));
     card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: CARD_TOP,
-                             width: CARD_W, height: this.cardH, rx: 13 }));
+                             width: CARD_W, height: tall, rx: 13 }));
     // Clamped, with the whole of it on hover. A seat is `T1` on a saved board,
     // but live an author is a peer id and an entrant picks its own name -- so
     // this has to survive `ai-lab:claude/island-economy-game-wrapper-pcm5s6`,
@@ -1240,7 +1273,7 @@ export class Scene {
     card.append(el("line", { class: "plank", x1: -CARD_W / 2 + 9, y1: BASE + 2,
                              x2: CARD_W / 2 - 9, y2: BASE + 2 }));
 
-    if (this.reveal) {
+    if (this.reveal && !this.geo.cardMini) {
       // What this shelf is worth to the trader who owns it. Computed here from
       // the revealed tastes and the receipts -- the manager's own scored
       // trajectory is in the rail, and `audit()` holds the two together.
@@ -1370,17 +1403,22 @@ export class Scene {
         b.cell.classList.toggle("empty", none);
       }
       const spent = state.labour[name];
-      const wheel = this.labels[name];
+      // Named for what it holds -- every writable node on this card -- rather
+      // than for the first one that was needed. The score row below reads off
+      // the same object and shadowed it with a second `const label`, which is
+      // how a guard written against `label` came to be a ReferenceError.
+      const label = this.labels[name];
       const arc = 2 * Math.PI * 12;
       const used = spent === null ? 0 : Math.max(0, Math.min(1, 1 - spent));
-      wheel.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
-      wheel.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
-      if (this.reveal) {
+      label.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
+      label.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
+      // `label.score` and not `this.reveal`: a glance card has no score row to
+      // write into, and the card is what decides that, not the board.
+      if (this.reveal && label.score) {
         // After the bell the shelf is empty and a live reading would say zero,
         // which is true and useless: what the episode was worth is what it
         // closed holding. Hold that until the next episode opens.
         const u = utilityOf(this.reveal, name, shelf);
-        const label = this.labels[name];
         const w = CARD_W - 26;
         label.score.setAttribute("width",
           (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
