@@ -1031,6 +1031,25 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
                 ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z,
                                      RSITE + STONE]),
                 [2.75, 1.15, STONE]];
+  //: **And no stone lies inside anything else on the way, either.** Clearing
+  //: the end a trail runs to is not enough on a crowded island: a trail to the
+  //: far side of the fire passes straight through whatever stands between, and
+  //: at seven traders and five goods it laid stones inside four settlements and
+  //: three sites -- the same yellow disc under a hut, arrived at from a
+  //: different direction. Measured by `render.py:island`, which fails on every
+  //: one of them.
+  //:
+  //: A stone inside a footprint is simply not laid. That leaves a gap in the
+  //: trail where it passes behind a hut, which is what a path behind a hut
+  //: looks like; it is not the same as a trail that stops short of its own
+  //: destination, which is why the clearance above exists as well.
+  island.updateMatrixWorld(true);
+  const solid = [...traders.map((n) => `settlement_${n}`),
+                 ...goods.map((g) => `site_${g}`)]
+    .map((n) => island.getObjectByName(n)).filter(Boolean)
+    .map((o) => new THREE.Box3().setFromObject(o));
+  const buried = (x, z, rad) => solid.some((b) =>
+    x + rad > b.min.x && x - rad < b.max.x && z + rad > b.min.z && z - rad < b.max.z);
   for (const [ex, ez, clear] of ends) {
     //: Compressed rather than truncated: the same seven steps, laid over the
     //: span that is left, ending on the clearance. A trail with stones dropped
@@ -1043,6 +1062,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
       const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
       const onSand = Math.hypot(x, z) > 3.1;
       const jx = x + (r() - 0.5) * 0.08, jz = z + (r() - 0.5) * 0.08;
+      if (buried(jx, jz, 0.11)) continue;
       add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
         `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
         [jx, ground(jx, jz) + 0.01, jz]);
