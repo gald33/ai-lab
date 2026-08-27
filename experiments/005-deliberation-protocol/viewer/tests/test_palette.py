@@ -157,3 +157,55 @@ def test_the_island_draws_the_stylesheet_s_goods() -> None:
         assert a == b, (
             f"good {i} is {a} on the card and {b} on the island; a box and the "
             f"bar counting it are the same good and must be the same colour")
+
+
+#: The seat accents. Not encoding colours -- a seat's colour says whose hut and
+#: whose card, never how much of anything -- so they are held to being legible
+#: on the surface and distinct from each other, not to the series gates.
+SEATS = [f"--seat-{i}" for i in range(1, 7)]
+
+
+def _model_seats() -> list[str]:
+    """The colours `SEAT_COLOURS` hands the island, as `#rrggbb`."""
+    import re
+    body = MODEL.read_text()
+    block = re.search(r"export const SEAT_COLOURS = \[(.*?)\];", body, re.S)
+    assert block, "island3d.js no longer declares SEAT_COLOURS as a literal list"
+    return [f"#{int(h, 16):06x}" for h in re.findall(r"0x([0-9a-fA-F]{6})", block.group(1))]
+
+
+def test_the_island_draws_the_stylesheet_s_seats() -> None:
+    """A hut and the card hanging under it are one trader and one colour.
+
+    The same drift the goods had: the model painted a trader's door and roof
+    band from `SEAT_COLOURS` while the drawn hut and the card wore none of it,
+    and now that both read `--seat-N` the two lists have to agree or a
+    modelled hut and its own card disagree on whose they are.
+    """
+    model = _model_seats()
+    css = [TOKENS[s] for s in SEATS]
+    assert len(model) == len(css), (
+        f"the model draws {len(model)} seats and the stylesheet names {len(css)}")
+    for i, (a, b) in enumerate(zip(css, model), start=1):
+        assert a == b, f"seat {i} is {a} on the card and {b} on the island"
+
+
+@pytest.mark.parametrize("name", SEATS)
+def test_a_seat_accent_carries_on_the_surface(name: str) -> None:
+    got = palette.contrast(TOKENS[name], TOKENS[palette.SURFACE])
+    assert got >= CONTRAST_FLOOR, f"{name} is {got:.2f}:1 on {palette.SURFACE}"
+
+
+@pytest.mark.parametrize("metric", METRICS)
+@pytest.mark.parametrize("seat", SEATS)
+def test_a_seat_accent_is_never_a_metric(metric: str, seat: str) -> None:
+    # Both are drawn on the same card: the accent down its edge and the scores
+    # written on it. Byte-identical is the case that shipped for --util.
+    assert TOKENS[seat] != TOKENS[metric], (
+        f"{seat} is byte-identical to {metric}")
+
+
+def test_no_two_seats_are_the_same_colour() -> None:
+    named = {n: TOKENS[n] for n in SEATS}
+    for (na, ca), (nb, cb) in itertools.combinations(named.items(), 2):
+        assert ca != cb, f"{na} and {nb} are both {ca}"

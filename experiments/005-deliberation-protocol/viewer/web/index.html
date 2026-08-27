@@ -198,9 +198,15 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .hut .roof { fill: var(--thatch); }
 .hut .roof-thatch { fill: url(#thatch); opacity: .5; }
 .thatch-line { fill: none; stroke: #4d2c1c; stroke-width: 1; stroke-opacity: .55; }
-.hut .hut-rim { fill: none; stroke: var(--thatch-lit); stroke-width: 1.6; stroke-opacity: .8; }
+.hut .hut-rim { fill: none; stroke: var(--seat, var(--thatch-lit)); stroke-width: 1.6;
+  stroke-opacity: .85; }
 .hut .wall { fill: #e3d5b8; }
-.hut .door { fill: #5d4632; }
+/* Whose hut this is. The model paints the same colour on the door and the band
+   under the roof (SEAT_COLOURS, island3d.js); the drawn hut is the fallback
+   with no model behind the page and had nothing but a name on the card below
+   it. --seat is set on the settlement group by scene.js and inherited by the
+   card too, so a hut and its card wear one colour. */
+.hut .door { fill: var(--seat, #5d4632); }
 /* Lit while they have spoken. "Nobody is home" is carried by the building, not
    only by fading the whole hut out. */
 .hut .window { fill: var(--glass); opacity: .85; }
@@ -208,8 +214,15 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .hut.quiet .window { fill: #2a2118; opacity: 1; }
 
 .card-shadow { fill: #000; opacity: .3; }
-.card-bg { fill: #0b1116; fill-opacity: .95; stroke: var(--line); }
-.hut.starved .card-bg { stroke: var(--critical); stroke-width: 1.8; }
+.card-bg { fill: #0b1116; fill-opacity: .95; stroke: var(--seat, var(--line));
+  stroke-opacity: .5; }
+/* Starvation outranks identity: whose card this is matters less than that this
+   trader is holding none of something. */
+.hut.starved .card-bg { stroke: var(--critical); stroke-opacity: 1; stroke-width: 1.8; }
+/* The rule down the card's inside edge. Kept on a glance card -- it is the
+   cheapest thing on the card that says whose it is, and the one a viewer reads
+   without focusing. */
+.card-accent { fill: var(--seat, var(--line)); }
 .card-name { fill: var(--ink); font-size: 15px; font-weight: 650;
   font-family: ui-monospace, monospace; }
 .card-sub { fill: var(--muted); font-size: 9.5px; letter-spacing: .05em;

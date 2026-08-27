@@ -517,6 +517,28 @@ painted band under the eaves that is visible from any bearing the camera swings
 to. That is more of the colour than the banner ever showed, on a shape a viewer
 is already looking at.
 
+**The drawn hut and the card wore none of it** (2026-08-27). That colour lived
+only in the model: `SEAT_COLOURS` in `island3d.js`, painted on the door and the
+band. The SVG hut — which is what a page with no model behind it draws, and
+what a viewer sees before three.js is up — had a brown door and a thatch rim
+like every other hut, and the card hanging under it was a dark rectangle with a
+name on it, identical for all six. So the one place a trader is named for the
+whole episode said whose it was in text alone.
+
+Now the settlement group carries `--seat` (set once, in `scene.js`, from the
+trader's index) and the hut and its card both inherit it: the drawn hut's door
+and roof rim, the card's border, and a rule down the card's inside edge — kept
+on the glance card, where it is the cheapest mark that says whose card this is.
+The stripe is inset rather than laid on the card's own border, which is rounded
+at 13 and would show a straight stripe overhanging both corners. Starvation
+still outranks identity: a starved card's border goes back to `--critical`.
+
+`--seat-1..6` are in `tokens.css` and are the same list as `SEAT_COLOURS`, which
+is not a coincidence to be trusted — the goods drifted in exactly this way, so
+`test_palette.py` compares the two lists, checks each accent carries on the
+surface, and checks none of them is `--util` or `--eff`, both of which are drawn
+on the card the accent tints.
+
 The bell and the new day used to run those banners down and back up their poles.
 Both keep the larger half they always had — nightfall over the whole frame, the
 fire taking over, the night lifting, every trader's crates draining and coming

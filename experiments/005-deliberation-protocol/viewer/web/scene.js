@@ -26,6 +26,11 @@ export const GLYPH = {
 const SLOT = ["--good-1", "--good-2", "--good-3", "--good-4",
               "--good-5", "--good-6", "--good-7"];
 
+//: How many seat accents the stylesheet names, and the length of
+//: `SEAT_COLOURS` in `island3d.js` -- a seventh trader wraps onto the first
+//: colour on both sides, so the drawn hut and the modelled one agree.
+const SEAT_SLOTS = 6;
+
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -819,7 +824,7 @@ export class Scene {
     svg.append(this.ropes);
 
     const huts = el("g", { class: "huts" });
-    this.traders.forEach((name) => huts.append(this.hut(name, this.seats[name])));
+    this.traders.forEach((name, i) => huts.append(this.hut(name, this.seats[name], i)));
     svg.append(huts);
     this.layTethers();
 
@@ -1170,9 +1175,17 @@ export class Scene {
     return g;
   }
 
-  hut(name, seat) {
+  hut(name, seat, i = 0) {
     const g = el("g", { class: "hut", transform: `translate(${seat.x} ${seat.y})`,
                         "data-trader": name });
+    //: **Whose hut, and whose card.** The model already paints a trader's
+    //: colour on its door and the band under its roof (`SEAT_COLOURS` in
+    //: `island3d.js`); the drawn hut and the card hanging under it carried
+    //: none of it, so with the island turned to cards a viewer had six
+    //: identical dark rectangles and a name to read on each. The accent is set
+    //: once on the settlement group and inherited by both, which is what keeps
+    //: the hut and the card that belongs to it wearing one colour.
+    g.style.setProperty("--seat", `var(--seat-${(i % SEAT_SLOTS) + 1})`);
     // The dwelling, then the card. The hut says whose this is; the card is the
     // only part carrying information, and it gets a dark ground of its own --
     // a number written straight onto sand cannot be read at any size.
@@ -1217,6 +1230,13 @@ export class Scene {
                                class: "card-name" }, shortName(name));
     label.append(el("title", {}, name));
     card.append(label);
+
+    //: The card's half of the accent: a rule down its inside edge, in the same
+    //: colour as the door of the hut above it. Inset rather than laid on the
+    //: card's own border, which is rounded at 13 and would show a straight
+    //: stripe overhanging both corners.
+    card.append(el("rect", { class: "card-accent", x: -CARD_W / 2 + 5.5, y: CARD_TOP + 13,
+                             width: 3.5, height: Math.max(0, tall - 26), rx: 1.75 }));
 
     // Labour: filled by what this trader spent this episode, and empty until a
     // production receipt says otherwise -- nobody has told this page anything
