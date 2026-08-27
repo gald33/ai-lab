@@ -107,7 +107,11 @@ export const carriedBy = (i, back = false) =>
   + CARRY.cross + CARRY.land + CARRY.rest;
 
 //: The arriving boxes emptying into the gaining card: the third leg.
-const IN_LEG = 820;
+//: Exported for the same reason `CARRY` is -- the boxes hold their lids open
+//: for exactly as long as the symbols are climbing out of them, and a second
+//: copy of this number in `island-events.js` is the drift this file already
+//: had once.
+export const IN_LEG = 820;
 
 export const DWELL = {
   //: Three legs now, not one: the losing card empties into its own boxes, the

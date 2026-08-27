@@ -903,7 +903,7 @@ What each clip carries itself now:
 |---|---|
 | a production | the site works, and boxes are made there and hop home |
 | an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
-| a settlement | the boxes cross the island, and the fire flares once |
+| a settlement | the boxes cross the island and **open where they land**, and the fire flares once |
 | a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
 | a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
@@ -1319,8 +1319,8 @@ something arrives to change it:
 1. the **losing** bar empties and its symbols fall to its own boxes (820ms);
 2. the boxes cross the island (1500ms) — the only thing that moves between the
    two settlements;
-3. the symbols rise off the arriving boxes and the **gaining** bar fills as
-   they land (900ms).
+3. the arriving boxes **open**, the symbols rise out of them and the
+   **gaining** bar fills as they land (900ms).
 
 With a model up the card layer draws no parcel across the square at all. The
 boxes are already crossing; a parcel would be the page saying it twice, and the
@@ -1438,6 +1438,48 @@ then exact, and both engines compute it.
 given — a two-good exchange runs 300ms longer than a one-good one — because
 holding every trade for the worst case a board allows (seven goods, 7.6s) would
 spend that on every two-good trade as well.
+
+### A crate that has arrived opens, and the symbols come out of it
+
+Asked for by eye: leg 3 had the symbols climbing **out of a sealed cube**. The
+box was the right place for them to come from — that is what leg 3 is for, and
+it is why the card's bar fills off the pile it counts rather than out of the top
+of its own card — but nothing on the box said so, so what a spectator saw was a
+symbol passing in front of a crate rather than coming out of one.
+
+Every box carries a lid now: a thin slab hinged on the back edge of its top
+face, a child of the box, so every carry, hop and tumble the box already does
+carries the lid with it and nothing is kept in step by hand. `island-stock.js`
+builds it and `openLid(box, p)` is how far open it stands; `island-events.js`
+is what knows when a box has arrived, because that is a thing that happened and
+the stock only owns what a box *is*.
+
+**Open is exactly leg 3 and nothing else.** The lid swings up across the landing
+hop (`CARRY.land`), stands open through `CARRY.rest` and the whole of `IN_LEG`
+— which is precisely the window `carriedBy` sends the card's symbols in — and
+falls shut afterwards. So a box is open only while something is coming out of
+it. `IN_LEG` is exported from `scene.js` for the reason `CARRY` is: a second
+copy of that number in the other engine is the drift this pair has had once
+already, and it cost half a second and was invisible to every check.
+
+Three things follow from open being a *moment*:
+
+* **A box standing in a yard is shut.** `tidy()` shuts every lid it puts down,
+  so a scrub — which has no journey in it and therefore no beat to be open for
+  — lands on closed crates.
+* **A clip cut short shuts the lid**, the same way it puts the box down:
+  `land_` does both, so no box is left standing open with nothing coming to
+  empty it.
+* **A production's crates land shut.** Not an exemption: `scene.js:produce`
+  fills the shelf off its own clock — its symbols leave the yard inside the
+  first second and the boxes are still walking home at two and a half — so a
+  lid swung up on landing would open on an empty beat, after everything it was
+  meant to release had gone. Production has no `carriedBy`, and giving it one
+  means retiming `DWELL.produced` around the walk home. That is its own change.
+
+`render.py`'s yard checks take the crates by name (`box_`) rather than every
+mesh under `yards`: a flap sits a box-height above the grass by construction,
+and the clearance check exists to catch a crate that floats.
 
 `carrying()` measures the claim rather than the table: for **each good**, the
 moment its own boxes stop moving against the moment `hands()` is told to send
