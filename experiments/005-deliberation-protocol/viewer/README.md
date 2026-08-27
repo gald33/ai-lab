@@ -1118,6 +1118,41 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
 The colour is the answer and stays under `prefers-reduced-motion`; only the
 blinking goes.
 
+### A live poll must not build a new island
+
+Reported from a live game: the animation froze every three seconds, and every
+offer's pill started its slide again after each freeze.
+
+Both were `mount()`, which runs on **every poll** and built a whole new `Scene`
+— every SVG node torn down and rebuilt, on top of re-reducing the entire board
+history. And with the old Scene went the two maps a pill's motion lives in:
+`travel`, when it started down its rope, and `spot`, where it had got to. So
+each pill jumped back to its maker's hut and slid again, once per poll, for as
+long as its offer stayed open.
+
+The cast is what a Scene is built around — a hut per trader, a shelf slot per
+good — so while that is unchanged the same Scene is kept and told the new
+timeline. A trader or a good appearing is a different island and still builds
+one. Measured on a live board, four polls over twelve seconds:
+
+| | before | after |
+|---|---|---|
+| biggest single-frame pill move | 955 units, once per poll | 14 (its own flight) |
+| island nodes added / removed | 148 / 144 | 0 / 0 |
+
+**And a poll that brought nothing does nothing.** Most of them bring nothing —
+three seconds is short and a board is quiet for most of a round — and each of
+those re-reduced the history and repainted every card, bar, rope and pile to
+arrive at the picture already on screen. The sun does not need it either:
+`sky` is aimed at the bell and travels there on its own clock.
+
+**That skip was nearly worse than the bug it fixed.** The first version
+compared row *counts*, and `hubFeed` snapshots with `limit: 200` — so on a
+board that has said more than that, the count is pinned at 200 while the game
+carries on underneath it, and the page would have stopped updating for the rest
+of the round. It compares the last row's seq as well now, and the check that
+holds it is a windowed feed whose count never changes: offers still arrive.
+
 ### A pill only ever flies
 
 **Nothing moves a pill by putting it somewhere else** (2026-08-27, Gal's ask).
@@ -1490,6 +1525,48 @@ Three things follow from open being a *moment*:
 `render.py`'s yard checks take the crates by name (`box_`) rather than every
 mesh under `yards`: a flap sits a box-height above the grass by construction,
 and the clearance check exists to catch a crate that floats.
+
+### The symbols were not coming out of the boxes
+
+Reported by eye after the lids went on, and the lid was not the half that was
+wrong. Three things were, and each of them on its own is enough to make leg 3
+read as a symbol passing *in front of* a crate rather than out of one.
+
+**1. The flight started 55px off the crate.** Measured on a 1400px page, by
+driving a real exchange and comparing each symbol's first keyframe against
+where the page itself says that trader's top crate is. The gaining bar is cued
+**3.4 seconds** after the losing one — leg 1, the crossing, the landing,
+`CARRY.rest` — and the island turns for all of it, so a start point baked at
+cue time is a start point from a third of a revolution ago. The rope and the
+overhead bubbles are re-pinned every frame for exactly this reason; a WAAPI
+keyframe cannot be re-pinned, so the symbol is now **built at the moment it
+flies** and reads the yard then. Same measurement after: **11px**, which is the
+camera's drift across the flight itself — the same drift a bubble lives with.
+
+`hand()` therefore only *schedules*; `fly_` is what draws. A scheduled symbol
+carries the `gen` of the card layer it was scheduled on and is dropped if the
+layer has been rebuilt under it, and each exchange cancels anything the last
+one left pending — otherwise a symbol would arrive at a bar that had moved on.
+
+**2. It was invisible where it mattered.** Both ends started at `opacity: 0`
+and reached 1 at three tenths of the way across, so the symbol faded up in open
+air a third of the way to the card — the one moment it is meant to be read as
+coming out of the box was the one moment it could not be seen. The fade is a
+beat at the crate end now: small in the mouth of the box, full size and clear
+of it by a tenth of the flight. `out` runs the same motion backwards and
+shrinks *into* the crate rather than snapping out at full size on top of it.
+
+**3. The pin was the wrong slot.** `yards` was `stock.next()` — where the
+*next* box would land, which after an arrival is the empty slot after the
+crates that just came: a row across, a tier up, or bare grass. It is
+`stock.top()` now, the position of the top box of the pile, which is both where
+the arriving crates are standing and where a departing bundle is taken from.
+
+**And the departing crates open too.** A symbol falling into a sealed box on
+leg 1 is the same defect at the other end, so the maker's crates open as its
+bar starts emptying and are shut again a lid-fall before they are carried off.
+Each box's two open windows never overlap: open to be loaded, shut across the
+island, open where it lands.
 
 `carrying()` measures the claim rather than the table: for **each good**, the
 moment its own boxes stop moving against the moment `hands()` is told to send

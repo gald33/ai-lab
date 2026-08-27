@@ -930,6 +930,11 @@ export class Scene {
 
     this.flights = el("g", { class: "flights" });
     svg.append(this.flights);
+    //: Anything waiting to be drawn belongs to the layer it was scheduled on.
+    //: `gen` says which; a symbol whose generation has gone is a symbol for a
+    //: board nobody is looking at any more.
+    this.gen = (this.gen ?? 0) + 1;
+    this.unpend_();
 
     // Dusk rather than a black rectangle: the bell is the most dramatic thing
     // that happens in an episode and it was being drawn as a power cut.
@@ -2265,7 +2270,16 @@ export class Scene {
    * So a good is in exactly one place at every moment of the exchange, and no
    * bar changes until something has arrived to change it.
    */
+  /** Drop anything scheduled and not yet drawn. */
+  unpend_() {
+    for (const id of this.pending ?? []) clearTimeout(id);
+    this.pending = [];
+  }
+
   hands(e) {
+    //: The exchange on screen is this one. A symbol still waiting to leave a
+    //: crate for the last one would arrive at a bar that has moved on.
+    this.unpend_();
     //: The losing card has to be empty before its boxes leave, so this ends a
     //: beat short of `CARRY.off` rather than running up against it.
     const OUT = still() ? 1 : CARRY.off - 40;
@@ -2300,13 +2314,36 @@ export class Scene {
   hand(name, good, qty, way, delay, span) {
     const seat = this.seats[name], slot = this.bars[name]?.[good];
     if (!seat || !slot) return;
-    const yard = this.yards[`${name}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
-    const { x, y: at } = this.barAt(seat, slot);
     // Held at what it was until the symbol lands, the same way `produce()`
     // holds a shelf: a bar that moved on its own would win the race and the
     // symbol would arrive at a bar that had already finished changing.
     slot.holding = true;
     if (way === "in") this.setBar(slot, slot.was.qty, slot.was.free);
+    //: **Where the crate is when the symbol leaves it, not where it was when
+    //: the exchange began.** A gaining bar is cued 3.4s after the losing one --
+    //: leg 1, the crossing, the landing, `CARRY.rest` -- and the island turns
+    //: the whole time. Baked at cue time, the flight's first keyframe was
+    //: **55px off the crate it was supposed to come out of**, measured on a
+    //: 1400px page: far enough that the symbol rose out of open grass. The
+    //: rope and the overhead bubbles are re-pinned every frame for exactly
+    //: this reason; a WAAPI keyframe cannot be, so the symbol is *built* at
+    //: the moment it flies and reads the yard then. The camera moves a few
+    //: pixels across the flight itself, which is the drift a bubble already
+    //: lives with.
+    const gen = this.gen;
+    if (delay > 1) {
+      (this.pending ??= []).push(setTimeout(() => {
+        if (gen === this.gen) this.fly_(name, good, qty, way, span, seat, slot);
+      }, delay));
+      return;
+    }
+    this.fly_(name, good, qty, way, span, seat, slot);
+  }
+
+  /** The symbol itself, built at the instant it leaves. */
+  fly_(name, good, qty, way, span, seat, slot) {
+    const yard = this.yards[`${name}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
+    const { x, y: at } = this.barAt(seat, slot);
     const mark = el("g", { class: `sheaf ${way}` });
     mark.append(el("circle", { class: "sheaf-puff", r: 13 }));
     mark.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
@@ -2316,12 +2353,32 @@ export class Scene {
     const size = 0.6 + 0.5 * Math.min(1, qty / (this.top || 1));
     const A = way === "out" ? { x, y: at } : yard;
     const B = way === "out" ? yard : { x, y: at };
+    //: **It is visible at the crate.** Both ends used to start at `opacity: 0`
+    //: and reach 1 at three tenths of the way across, which -- with the lid
+    //: open underneath it -- meant the one moment the symbol is supposed to be
+    //: read as coming *out of the box* was the moment it could not be seen at
+    //: all: it faded up a third of the way to the card, in open air. Reported
+    //: by eye, as "the items do not come out of the boxes".
+    //:
+    //: So the fade is a beat at the crate end and nothing more: small in the
+    //: mouth of the box, up to full size clear of it by a tenth of the flight.
+    //: `out` is the same motion run the other way -- it shrinks back into the
+    //: crate rather than snapping out at full size on top of it.
     const anim = mark.animate([
-      { transform: `translate(${A.x}px, ${A.y}px) scale(${size * .7})`, opacity: 0 },
+      { transform: `translate(${A.x}px, ${A.y}px) scale(${size * (way === "in" ? .34 : .8)})`,
+        opacity: way === "in" ? 0 : 1 },
+      //: Out of the mouth and standing above it, before it has gone anywhere.
+      //: This is the frame that says where the goods came from.
+      { transform: `translate(${A.x * .96 + B.x * .04}px, ` +
+                   `${A.y * .96 + B.y * .04 - (way === "in" ? 15 : 6)}px) ` +
+                   `scale(${size * (way === "in" ? .85 : .95)})`,
+        opacity: 1, offset: .1 },
       { transform: `translate(${A.x * .7 + B.x * .3}px, ` +
-                   `${(A.y + B.y) / 2 - 34}px) scale(${size})`, opacity: 1, offset: .3 },
-      { transform: `translate(${B.x}px, ${B.y}px) scale(${size * .8})`, opacity: 1 },
-    ], { duration: span, delay, easing: "cubic-bezier(.35,.65,.3,1)", fill: "backwards" });
+                   `${(A.y + B.y) / 2 - 34}px) scale(${size})`, opacity: 1, offset: .42 },
+      { transform: `translate(${B.x}px, ${B.y}px) ` +
+                   `scale(${size * (way === "out" ? .38 : .8)})`,
+        opacity: way === "out" ? 0.85 : 1 },
+    ], { duration: span, easing: "cubic-bezier(.35,.65,.3,1)", fill: "backwards" });
 
     const done = () => {
       mark.remove();
@@ -2337,7 +2394,7 @@ export class Scene {
     anim.finished.then(done, done);
     // Losing is the one that empties as the symbol *leaves*, so the bar is
     // already down by the time the boxes are carried off the island.
-    if (way === "out") setTimeout(done, still() ? 1 : delay + span * 0.35);
+    if (way === "out") setTimeout(done, still() ? 1 : span * 0.35);
   }
 
   /**

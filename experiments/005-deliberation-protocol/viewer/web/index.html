@@ -905,6 +905,13 @@ const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
 
 let timeline = null, scene = null, player = null, live = null, reveal = null;
+//: What the last live poll carried -- its row count and the last row's seq --
+//: so the next one can tell whether anything actually happened.
+let lastRows = null;
+//: The rows that island was built from, kept so the handover below can rebuild
+//: it with the hidden half in it -- by then the board has stopped saying
+//: anything, so there is no later poll to carry them.
+let lastMounted = null;
 //: Which of the island and the cards this viewer asked for. Portrait only --
 //: landscape has margins down the sides and the cards stand in them, so the two
 //: are not competing there and there is nothing for a tap to re-divide. Kept
@@ -1134,15 +1141,16 @@ function raise(traders, goods, portrait) {
     // While the island turns, the cards ride their own settlements. Set here
     // rather than inside the stage because the stage draws an island and knows
     // nothing about what is written on top of it.
-    // Every frame: where each settlement is on screen, and where each trader's
-    // yard of a given good is. The second is what lets a symbol fly between a
+    // Every frame: where each settlement is on screen, and where the top box
+    // of each trader's pile of a given good is -- the crate a symbol leaves
+    // from or falls into, not the empty slot after it. The second is what lets a symbol fly between a
     // box standing on the island and the bar on the card that counts it --
     // the two halves of the page are drawn by different engines and this is
     // the one place they are put in the same coordinates.
     stage.onFrame = (st) => scene?.follow(
       traders.map((n) => st.toViewBox(anchors[n])),
       st.stock && Object.fromEntries(traders.flatMap((n) => goods.map((g) =>
-        [`${n}:${g}`, st.toViewBox(st.stock.next(n, g))]))));
+        [`${n}:${g}`, st.toViewBox(st.stock.top(n, g))]))));
     canvas.hidden = false;
     app.classList.add("has-3d");
     return traders.map((n) => stage.toViewBox(anchors[n]));
@@ -1373,21 +1381,46 @@ function lockReveal(why) {
 // --- wiring ----------------------------------------------------------------
 
 function mount(rows, { manager } = {}) {
-  timeline = reduce(rows, manager ? { manager } : {});
-  // The scene is built knowing whether it has a hidden half, because a card
-  // with a score row is a different card, not the same one with a blank in it.
-  // The island is built first: it decides where the settlements stand, and the
-  // scene then puts each trader's card at its own hut.
-  scene = new Scene($("island"), timeline, reveal, isPortrait(),
-                    raise(timeline.traders, timeline.goods, isPortrait()),
-                    frameAspect(), chromeBands(), focus);
-  legend(timeline.goods, !!reveal);
+  const next = reduce(rows, manager ? { manager } : {});
+  //: **A live poll must not build a new island.** This runs every three
+  //: seconds on a live board, and it used to throw the whole Scene away and
+  //: make another: every SVG node rebuilt, and with the old object went the two
+  //: maps a pill's motion lives in -- when it started down its rope, and where
+  //: it had got to. So every offer's pill jumped back to its maker's hut and
+  //: started its slide again, once per poll, for as long as it stayed open.
+  //: Measured on a live board: a 955-unit jump backwards every three seconds.
+  //:
+  //: The cast is what a Scene is built around -- a hut per trader, a shelf slot
+  //: per good -- so while that is unchanged the same Scene is kept and simply
+  //: told the new timeline. A trader or a good appearing is a different island
+  //: and still builds one.
+  const keep = scene && sameCast(timeline, next);
+  timeline = next;
+  if (keep) { scene.timeline = timeline; }
+  else {
+    // The scene is built knowing whether it has a hidden half, because a card
+    // with a score row is a different card, not the same one with a blank in it.
+    // The island is built first: it decides where the settlements stand, and the
+    // scene then puts each trader's card at its own hut.
+    scene = new Scene($("island"), timeline, reveal, isPortrait(),
+                      raise(timeline.traders, timeline.goods, isPortrait()),
+                      frameAspect(), chromeBands(), focus);
+    legend(timeline.goods, !!reveal);
+  }
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
+}
+
+//: Whether two timelines are about the same island: the same traders in the
+//: same order, holding the same goods. Order matters as well as membership --
+//: a seat's colour is its index.
+function sameCast(a, b) {
+  const same = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
+  return !!a && same(a.traders, b.traders) && same(a.goods, b.goods);
 }
 
 async function startReplay(boardUrl, revealUrl) {
   mode = "replay";
-  liveFrom = null; tookReveal = null; replayOf = null;
+  liveFrom = null; tookReveal = null; replayOf = null; lastMounted = null;
   $("transport").style.display = "";
   live?.stop();
   player?.stop();
@@ -1428,6 +1461,7 @@ async function startReplay(boardUrl, revealUrl) {
 function startLive(url, channel) {
   mode = "live";
   liveFrom = url; tookReveal = null; replayOf = null;
+  lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1450,6 +1484,7 @@ function startHub(config, channel) {
   // A room read straight from a hub has no manager writing files beside it,
   // so there is no handover to wait for: this one ends and stays ended.
   liveFrom = null; tookReveal = null; replayOf = null;
+  lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1481,7 +1516,29 @@ function liveHandlers(statusWhenOk, statusOnError) {
         (sealed.length ? ` · ${sealed.length} sealed` : "");
       const first = !timeline;
       const before = timeline ? timeline.frames.length : 0;
+      //: **A poll that brought nothing does nothing.** Most of them bring
+      //: nothing: three seconds is short and a board is quiet for most of a
+      //: round, and every one of those used to re-reduce the whole history and
+      //: repaint every card, bar, rope and pile to arrive at the picture
+      //: already on screen. The sun does not need this either -- `sky` is aimed
+      //: at the bell and travels there on its own clock, and re-aiming it at
+      //: the same moment three seconds later is at best a no-op.
+      //:
+      //: **By the last row's seq, not by how many there are.** `hubFeed` takes
+      //: a snapshot of the last 200, so on a board that has said more than that
+      //: the count is pinned at 200 while the game carries on underneath it --
+      //: and a page that skipped on the count would stop updating for the rest
+      //: of the round, which is a far worse bug than the one this fixes.
+      // **Before the quiet-poll return, not after it.** The handover is
+      // written after the closing line, so the poll that carries it usually
+      // carries no new row -- and a check below the return would never run on
+      // the one board state that has an ending to take.
+      if (raw?.finished) takeHandover(raw.finished);
+      const mark = `${rows.length}:${rows[rows.length - 1]?.seq ?? ""}`;
+      if (!first && mark === lastRows) return;
+      lastRows = mark;
       mount(rows);
+      lastMounted = rows;
       const last = timeline.frames.length - 1;
       $("status").innerHTML = notes?.length
         ? `<span class="warn">${notes.join(" · ")}</span>` : statusWhenOk();
@@ -1502,11 +1559,6 @@ function liveHandlers(statusWhenOk, statusOnError) {
         scene.play(f.event);
         sound.play(f.event);
       }, i * 420));
-      // The game is over and its seed is out: take the hidden half now, so
-      // the ending this page draws is the scored one rather than the one that
-      // says it cannot know. `mount` above rebuilds the cards with it on the
-      // next poll, and the file keeps its pointer, so this is idempotent.
-      if (raw?.finished) takeHandover(raw.finished);
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },
   };
@@ -1536,12 +1588,22 @@ async function takeHandover(finished) {
     tookReveal = null;
     return;
   }
-  drawReveal(reveal);
-  legend(timeline.goods, true);
   if (finished.board) {
     replayOf = { board: new URL(finished.board, base).href, reveal: revealUrl };
   }
-  if (timeline) closing(timeline.final);
+  // Rebuilt here rather than left to the next poll: the board has said its
+  // last line, so there is no next poll that changes anything, and a card with
+  // a score row is a different card rather than the same one with a blank in
+  // it. `paint` draws the ending too, with the numbers this just took.
+  if (lastMounted) {
+    mount(lastMounted);
+    drawReveal(reveal);
+    const last = timeline.frames.length - 1;
+    if (last >= 0) {
+      paint({ state: timeline.final, event: null, animate: false, index: last,
+              until: null, hold: 0 });
+    }
+  }
 }
 
 // --- the two drawers -------------------------------------------------------
