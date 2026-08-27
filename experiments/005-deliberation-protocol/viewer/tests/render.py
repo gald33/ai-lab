@@ -1686,7 +1686,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // What is directly under a point, ignoring anything standing on the ground
   // rather than being it.
   const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|dust|labour_)/;
+  const SKIP = /^(settlement_|hut_|trails?$|trail_|tree_|palm_|marker_|site_|smoke_|goat_|gull_|cloud_|leaf_|ripple_|surf_|crate|ring|puff_|labour_)/;
   const chain = (o) => { const ns = []; for (let k = o; k && k !== made.island; k = k.parent) ns.push(k.name || '?'); return ns; };
   window.__under = (x, z) => {
     ray.set(new THREE.Vector3(x, 8, z), down);
@@ -1878,11 +1878,22 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
     }
   }
 
+  //: Where the trail's stones lie, with the radius each is drawn at. A step
+  //: is a flat sand disc, and a flat sand disc inside a hut's footprint is the
+  //: thing the campfire's clearing was removed for -- see `island3d.js`.
+  //: In world coordinates, like the boxes above, and with the radius carried
+  //: through whatever the island itself is scaled to. Local numbers compared
+  //: against world boxes is a check that passes for the wrong reason.
+  const steps = made.island.getObjectByName('trails').children.map(o => {
+    const w = o.getWorldPosition(new THREE.Vector3());
+    return [+w.x.toFixed(3), +w.z.toFixed(3), +(0.11 * made.island.scale.x).toFixed(3)];
+  });
+
   // Everything the island places on purpose, by name, so a check can ask
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot, sunk,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -2451,6 +2462,25 @@ def island(browser, base: str, out: Path) -> list[str]:
                     bad.append(f"island {label}: {one['name']} and {two['name']} "
                                f"overlap by {-gap:.2f} on the ground; they are "
                                f"drawn against each other")
+        #: And no stone of the trail lies under anything the trail runs to.
+        #: The steps were laid at eighths of the way out, so the last one fell
+        #: short by a fraction of the distance rather than by the size of what
+        #: it was walking to -- and under a settlement on the near ring that is
+        #: a sand disc lying inside the hut. Reported by eye, as a yellow disc
+        #: below a hut, which is the same complaint that took the campfire's
+        #: clearing off the island one commit earlier. Measured against the
+        #: drawn footprint for the same reason the pair check above is: a hut
+        #: is its roof, not its anchor.
+        for sx, sz, sr in built.get("steps") or []:
+            for one in feet:
+                a = one["box"]
+                gap = max(max(a[0] - (sx + sr), (sx - sr) - a[2]),
+                          max(a[1] - (sz + sr), (sz - sr) - a[3]))
+                if gap <= 0:
+                    bad.append(f"island {label}: a trail step at "
+                               f"({sx:.2f}, {sz:.2f}) lies inside "
+                               f"{one['name']} by {-gap:.2f}; it is a sand "
+                               f"disc drawn under a prop")
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
         #: A share, not an area: what "crowded" means is how much of the grass

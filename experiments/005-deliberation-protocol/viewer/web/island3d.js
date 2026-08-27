@@ -1008,15 +1008,61 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   // — the trail: the fire to each settlement, each site, and the dock head —
   const trail = new THREE.Group();
   trail.name = "trails";
-  const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z]),
-                ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z]),
-                [2.75, 1.15]];
-  for (const [ex, ez] of ends) {
+  //: **A trail stops at the door; it does not run under the hut.** The steps
+  //: were laid at eighths of the way from the fire to whatever the trail runs
+  //: to, so the last one sat a *fraction* of the distance short -- and for a
+  //: settlement on the near ring that fraction is about a third of a unit,
+  //: which is less than the hut's own half-footprint. The stone landed inside
+  //: the walls and showed as a **yellow disc lying under the hut**, reported
+  //: by eye and reading as exactly the thing that was taken off the campfire
+  //: two commits earlier (`hearth_ground`, above). The far-ring sites hid it
+  //: better and had it too.
+  //:
+  //: So each end carries the clearance it needs and the steps are laid over
+  //: what is left. The clearance is the widest thing that end draws -- the
+  //: hut's roof, which is a cone wider than its wall and the part that would
+  //: cover a stone from above; a site's own half-footprint, `RSITE`, the one
+  //: the spacing rule uses -- plus the stone's radius and the jitter it can
+  //: take, since a step that clears the eaves by its middle still puts its rim
+  //: under them. The dock head is a plank the trail is meant to reach.
+  const STONE = 0.11 + 0.04;
+  const ends = [...traders.map((n) => [anchors[n].x, anchors[n].z,
+                                       0.52 * 0.95 * room + STONE]),
+                ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z,
+                                     RSITE + STONE]),
+                [2.75, 1.15, STONE]];
+  //: **And no stone lies inside anything else on the way, either.** Clearing
+  //: the end a trail runs to is not enough on a crowded island: a trail to the
+  //: far side of the fire passes straight through whatever stands between, and
+  //: at seven traders and five goods it laid stones inside four settlements and
+  //: three sites -- the same yellow disc under a hut, arrived at from a
+  //: different direction. Measured by `render.py:island`, which fails on every
+  //: one of them.
+  //:
+  //: A stone inside a footprint is simply not laid. That leaves a gap in the
+  //: trail where it passes behind a hut, which is what a path behind a hut
+  //: looks like; it is not the same as a trail that stops short of its own
+  //: destination, which is why the clearance above exists as well.
+  island.updateMatrixWorld(true);
+  const solid = [...traders.map((n) => `settlement_${n}`),
+                 ...goods.map((g) => `site_${g}`)]
+    .map((n) => island.getObjectByName(n)).filter(Boolean)
+    .map((o) => new THREE.Box3().setFromObject(o));
+  const buried = (x, z, rad) => solid.some((b) =>
+    x + rad > b.min.x && x - rad < b.max.x && z + rad > b.min.z && z - rad < b.max.z);
+  for (const [ex, ez, clear] of ends) {
+    //: Compressed rather than truncated: the same seven steps, laid over the
+    //: span that is left, ending on the clearance. A trail with stones dropped
+    //: off its end is a trail that peters out, which says the walking stopped
+    //: rather than that it arrived.
+    const span = Math.hypot(ex - 0.45, ez - 0.55);
+    const reach = Math.max(0.35, span - clear) / span;
     for (let s = 1; s <= 7; s++) {
-      const k = s / 8;
+      const k = (s / 7) * reach;
       const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
       const onSand = Math.hypot(x, z) > 3.1;
       const jx = x + (r() - 0.5) * 0.08, jz = z + (r() - 0.5) * 0.08;
+      if (buried(jx, jz, 0.11)) continue;
       add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
         `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
         [jx, ground(jx, jz) + 0.01, jz]);

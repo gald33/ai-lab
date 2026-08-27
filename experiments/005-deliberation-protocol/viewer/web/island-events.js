@@ -13,9 +13,10 @@
  * exist, in the right places, belonging to the right traders -- so a clip that
  * brought its own would be a second set standing inside the first. What is
  * kept is the *motion*, re-aimed at the island's own nodes; what is spawned is
- * only what genuinely appears and then goes: the crate a production yields,
- * the dust where a crate lands, the puffs behind something crossing the
- * island.
+ * only what genuinely appears and then goes: the crate a production yields
+ * and the puffs behind something crossing the island. (The dust where a crate
+ * landed was the last of the flat ground marks and went with them; see
+ * `produced`.)
  *
  * That change is also what makes them mean anything. A crate that leaves the
  * bread fields and lands at the settlement that produced it says who made it;
@@ -23,7 +24,7 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { M, goodMat } from "./island3d.js";
+import { goodMat } from "./island3d.js";
 //: The exchange's schedule, in milliseconds, named beside the dwell it has to
 //: fit inside. This is the boxes' half of it; `scene.js:hands` runs the cards'
 //: half off the same numbers, which is the point -- the two were separate
@@ -59,13 +60,6 @@ function land_(box, at) {
   box.scale.setScalar(1);
   box.visible = true;
 }
-
-//: Everything a clip spawns is bigger than the delivered clip drew it.
-//: The clips were watched one at a time in a frame about two units across;
-//: the island is eight, and half of it is behind the traders' cards. A crate
-//: the size the diorama used is four pixels on a phone -- present, but not
-//: something a spectator would ever notice crossing the ground.
-const PROP = 1.7;
 
 //: **There are no ground marks left on this island.** There was a ring under
 //: every event, then -- when those were reported as shockwaves -- a patch of
@@ -273,11 +267,19 @@ function produced(event, { island, anchors, goods, stock }) {
     return c;
   }
 
-  const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
-  const dust = mesh(new THREE.CircleGeometry(0.22 * PROP, 20), dustMat, "dust",
-    [home.x, home.y + 0.03, home.z], [-Math.PI / 2, 0, 0]);
-  c.root.add(dust);
-
+  //: **The dust is gone**, and with it the last of the flat sand discs. It was
+  //: a `CircleGeometry` in `M.sand` that faded up and grew to two and a half
+  //: times its size as a crate landed -- and it was drawn at `home`, the
+  //: settlement's own anchor, rather than where any box came down, so what a
+  //: spectator saw was a **yellow disc growing and fading under the hut**.
+  //: Reported by eye, and reported as the thing that had just been removed:
+  //: the campfire's clearing (`hearth_ground`) and the ground marks before it
+  //: went for the same reason a coloured circle on the grass did -- it is a
+  //: caption for something that happened, not the thing happening. See `ring`
+  //: below, and the same cut in `exchanged`.
+  //:
+  //: What says a crate landed is the crate: it hops, and then it is standing
+  //: in the yard. That was always the part carrying the event.
   c.update = (t) => {
     for (const w of works) w(t);
     legs.forEach(({ box, wake, from, to }, i) => {
@@ -299,11 +301,8 @@ function produced(event, { island, anchors, goods, stock }) {
         box.position.y = to.y + Math.abs(Math.sin(land * Math.PI * 2)) * 0.12 * (1 - land);
         box.rotation.set(0, 0, 0);
         box.scale.setScalar(1);
-        dustMat.opacity = Math.max(dustMat.opacity, 0.4 * (1 - land));
-        dust.scale.setScalar(1 + land * 1.5);
       }
     });
-    if (t < 0.9) dustMat.opacity = 0;
   };
   // Scrubbed away mid-flight, the boxes are still the trader's: the receipt
   // happened. Put them down in the slots they were already promised.
@@ -542,13 +541,9 @@ function settled(event, { island, anchors, goods, stock, life }) {
   c.dur = Math.max(...legs.map((l) => l.t0)) + S(CARRY.cross + CARRY.land) + 0.3;
   c.settle.push(() => { for (const { box, b: at } of legs) land_(box, at); });
 
-  const dustMat = own(c, clone(M.sand, { transparent: true, opacity: 0 }));
-  const dust = legs.map((l) => {
-    const d = mesh(new THREE.CircleGeometry(0.18 * PROP, 20), own(c, dustMat.clone()), "dust",
-      [l.b.x, l.b.y - 0.06, l.b.z], [-Math.PI / 2, 0, 0]);
-    c.root.add(d);
-    return d;
-  });
+  //: The dust went from here too, for the reason it went from `produced`: a
+  //: flat sand disc that grows and fades is a ground mark, and this island
+  //: stopped drawing those. The hop below is the landing.
 
   // Where the deal was struck, the fire flares once: it belongs to neither
   // trader, it is at the centre both of them face, and it is already the thing
@@ -576,9 +571,7 @@ function settled(event, { island, anchors, goods, stock, life }) {
         land_(l.box, l.b);
         l.box.position.y = l.b.y
           + Math.abs(Math.sin(down * Math.PI * 2)) * 0.12 * (1 - down);
-        dust[i].material.opacity = 0.42 * (1 - down);
-        dust[i].scale.setScalar(1 + down * 1.6);
-      } else dust[i].material.opacity = 0;
+      }
     });
     life?.flare(Math.sin(Math.PI * win(t, 1.9, 3.6)) ** 0.7 * 0.55);
   };
