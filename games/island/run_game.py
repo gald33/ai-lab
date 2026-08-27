@@ -68,6 +68,7 @@ from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
+from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
 
@@ -202,6 +203,22 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     return True
 
 
+def _witness(archivist: Archivist | None) -> None:
+    """Let the second copy read the room, and never let it stop the game.
+
+    Same rule as `_tick`, for a stronger reason: the archive exists to check
+    the manager, so an archive that could halt a round would hand the manager
+    a reason to want it gone. `Archivist.catch_up` swallows its own read
+    failures; this is the belt for anything past them.
+    """
+    if archivist is None:
+        return
+    try:
+        archivist.catch_up()
+    except Exception as exc:      # noqa: BLE001 -- see the docstring
+        print(f"archivist: {exc!r}", flush=True)
+
+
 def _tick(tick: Callable[[], None] | None) -> None:
     """Run the lobby's drain beside the game, and never let it stop one.
 
@@ -265,7 +282,8 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
 
 def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path, tick: Callable[[], None] | None = None,
-         ranked_only: bool = False) -> dict | None:
+         ranked_only: bool = False,
+         archivist: Archivist | None = None) -> dict | None:
     """One settled table, from its first bell to its record.
 
     ``tick`` is called on every drain of this room. `watch` no longer needs
@@ -328,10 +346,12 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         while time.time() < deadline:
             bind_seats(mgr, table)
             mgr.drain()
+            _witness(archivist)
             _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
         mgr.drain()
+        _witness(archivist)
         _tick(tick)
 
     until(ack_deadline)
@@ -362,6 +382,12 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
 
     mgr.say("the round is over. Stop; nothing further will settle.")
     mgr.drain()
+    # One last look before it stops watching, so the archive holds the closing
+    # line too -- and after the manager's own drain, so the two copies are of
+    # the same room at the same moment rather than a second apart.
+    _witness(archivist)
+    if archivist is not None:
+        archivist.close()
 
     board = save_board(mgr, out)
     return record(table, mgr, dealer, out, board=board, sealed=sealed,
@@ -552,16 +578,46 @@ def prune(out: Path, keep: int) -> list[Path]:
         except (OSError, ValueError, KeyError, IndexError):
             continue
         for path in (record, out / f"board-{workspace}.json",
-                     out / f"reveal-{workspace}.json"):
+                     out / f"reveal-{workspace}.json",
+                     out / f"archive-{workspace}.json"):
             if path.exists():
                 path.unlink()
                 dropped.append(path)
     return dropped
 
 
+#: The archivist's name in a table's room. Not `MANAGER`, and not a seat: it
+#: takes no seat, settles nothing and is refused like any other stranger if it
+#: ever speaks -- `Manager._intrusion` sees to that. It only reads.
+ARCHIVIST = "archivist"
+
+
+def archivist_for(table: Table, invite: Invite, *, lab_manages: bool
+                  ) -> Archivist:
+    """A second reader of one table's room, with an identity of its own.
+
+    Its own `Client`, never the manager's: sharing one would make the archive
+    a copy of the manager's opinion of the room rather than a second look at
+    it. It registers so the roster shows who was watching -- a witness nobody
+    can see is worth less than one they can.
+
+    `standing` is decided here from one fact and not guessed: whether the
+    party managing this table is this process. When it is not, this is the
+    independent copy condition 3 asks for. When it is, it is two clients in
+    one process, which is not two parties, and the archive says so.
+    """
+    client = Client.from_invite(invite, agent_id=ARCHIVIST)
+    client.register(name=ARCHIVIST, kind="local", branch="main",
+                    task=f"archiving {table.id}")
+    return Archivist(client=client, channel="island",
+                     writer=table.manager or "?",
+                     standing=SAME_PARTY if lab_manages else INDEPENDENT)
+
+
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
-                ranked_only: bool = False, keep: int = 0) -> None:
+                ranked_only: bool = False, keep: int = 0,
+                lab_manages: bool = True) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
     Nothing it touches is shared except the ledger: the table is its own, the
@@ -570,8 +626,18 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
     other table go on, because a table is not the process.
     """
     try:
+        # Built before the game rather than inside it, so a room this process
+        # cannot even join is a loud failure here instead of a silently
+        # unwatched round.
+        try:
+            archivist = archivist_for(table, invite, lab_manages=lab_manages)
+        except Exception as exc:      # noqa: BLE001
+            print(f"{table.id}: no archivist -- {exc!r}; the game goes on "
+                  f"and its board will have one copy only", flush=True)
+            archivist = None
         rec = play(table, invite, episode_seconds=episode_seconds,
-                   ack_seconds=ack_seconds, out=out, ranked_only=ranked_only)
+                   ack_seconds=ack_seconds, out=out, ranked_only=ranked_only,
+                   archivist=archivist)
         if rec is None:
             print(f"{table.id}: stood down -- opened for a ranked game and "
                   f"cannot seal", flush=True)
@@ -579,6 +645,21 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         path = out / f"{table.id}.json"
         path.write_text(json.dumps(rec, indent=1) + "\n")
         sidecar = publish(table, invite, rec, out)
+        # **Published now, with the reveal.** Holding it back protects
+        # nothing: the seed is revealed at this point anyway, and every line
+        # in it was public to the room when it was written. What publishing
+        # buys is that the omission check can be run by anybody, which is the
+        # entire point of a second copy.
+        if archivist is not None:
+            arc = archivist.save(out, table.workspace or table.id)
+            diff = compare(json.loads(
+                (out / f"board-{table.workspace}.json").read_text()),
+                archivist.payload()) if table.workspace else None
+            if diff and (diff["missing"] or diff["altered"]):
+                print(f"{table.id}: THE TWO COPIES DISAGREE -- "
+                      f"{len(diff['missing'])} line(s) witnessed and not on "
+                      f"the board, {len(diff['altered'])} altered; see "
+                      f"{arc.name}", flush=True)
         with _LEDGER:
             added, _ = _scores.ingest(
                 path, players=rec["players"],
@@ -669,7 +750,14 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 kwargs={"episode_seconds": episode_seconds,
                         "ack_seconds": ack_seconds, "out": out,
                         "ledger": ledger, "ranked_only": ranked_only,
-                        "keep": keep},
+                        "keep": keep,
+                        # Whether this process is also the party that will
+                        # write this table's board. `claimed` holds the
+                        # tables it offered to run, so a table managed by a
+                        # stranger is one it never claimed -- and that is the
+                        # case where the second copy is an independent
+                        # witness rather than a second file.
+                        "lab_manages": table.id in claimed},
                 name=f"game-{table.id}", daemon=True)
             games.append(thread)
             thread.start()

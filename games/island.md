@@ -371,15 +371,66 @@ runs the manager. But the bar is writable, and it is four things:
    `run_game.play` live on 2026-08-26 it reports `clock 3/3`, the two bells
    landing 2.9s and 3.5s after their announced times.
 
-**Three of the four are now built** — the manager holds no tastes, the island
-is drawn by commit–reveal, and the clock is checkable. The one that is not is
-**condition 3**: a board archived by somebody other than the party that wrote
-it. That is not an oversight; it is the one of the four that cannot be built
-alone, and `verify.py` demonstrates exactly why — it recomputes everything a
-board *says* and can say nothing about what a board *omits*. Until a second
-copy exists, a stranger's manager is verifiable in what it wrote down and not
-in what it chose not to, so the lab still runs the manager. The gap is now one
-specific missing party rather than a bar nobody had written.
+**Three of the four were built first** — the manager holds no tastes, the
+island is drawn by commit–reveal, and the clock is checkable. **Condition 3 —
+a board archived by somebody other than the party that wrote it — is now built
+for the games it can be, which is not all of them.**
+
+The party that was missing was here the whole time. **The lobby runner holds
+every table's room key**, because it mints it at settlement (`lobby.py`), so
+it can sit in any room it dealt and keep its own copy without asking anybody.
+When a **stranger manages** a table — a `MANAGE` from an entrant, which the
+design always allowed — that copy is a genuinely independent witness, and it
+is independent exactly where it matters most, since a stranger's manager is
+the one nobody has reason to trust.
+
+When **this process manages**, it is not. Two clients in one process are not
+two parties, and the copy asserts nothing the manager did not already assert.
+`HOSTING.md` says why that cannot be split: only the party that settles knows
+the seed, so the same process has to deal. So:
+
+| who manages the table | what the second copy is worth |
+|---|---|
+| a stranger | condition 3, met — an independent witness to omission |
+| this process | a second file, and **the archive says so on its face** |
+
+**Every game is archived, and each archive states which kind it is**
+(`archive.standing`). A rule with an exception is the kind of thing that gets
+quietly inverted later, and an archive that let a same-party copy pass for an
+independent one would be worth less than none — it would look like a check.
+
+Decided by Gal, 2026-08-27: **live, published after the round ends, all
+games.** Live because the hub keeps a board about an hour, so an archivist
+that fetches afterwards reads the same surviving copy as everybody else and
+adds no independence at all — by then the only witness to a suppressed line is
+the party that suppressed it. Published after the round because that costs
+nothing: the seed is revealed then anyway, and every line in it was public to
+the room when it was written.
+
+**The archive declares its own blind spots** — lines written before its first
+read, gaps where the board outran it between polls, polls that came back full
+or failed. An archive whose value is catching what somebody else left out has
+to say where its own eyes were shut, or it inherits precisely the blindness it
+exists to fix. `archive.compare` uses those declarations to separate the two
+directions of disagreement: `missing` (witnessed in the room, absent from the
+board) is the finding, and `unexplained_extra` narrows the other direction to
+what the archivist's own blindness does not account for.
+
+Re-check, on any finished game:
+
+```bash
+python - <<'EOF'
+import json
+from games.island.archive import compare
+out = "path/to/results"; ws = "island-lobby-g1"
+print(compare(json.load(open(f"{out}/board-{ws}.json")),
+              json.load(open(f"{out}/archive-{ws}.json"))))
+EOF
+```
+
+What is still not built is a copy independent of **this** process for the
+games this process runs — which needs a third party, not a second client. The
+gap is narrower than it was and it is still a gap.
 
 Anyone is free to run the manager, the viewer and the ledger for their own
 games; all of it is open. Those games are simply not on this board.
