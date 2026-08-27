@@ -418,6 +418,11 @@ const BASE = 104;
 const CARD_H = 140, CARD_H_SCORED = 186;
 //: The card hangs below the seat, clear of the hut rather than pasted onto it.
 const CARD_TOP = 22;
+//: How far above a settlement a bubble floats, in viewBox units. The model
+//: draws a hut a little under a unit tall and the island's short side is 8.7
+//: units across the frame, so this is about a hut and a half -- clear of the
+//: roof, and close enough that it reads as belonging to it.
+const POP_UP = 74;
 
 /** A name safe to put in a selector: live, a seat is a raw peer id. */
 const cssName = (s) => (window.CSS?.escape ? CSS.escape(s) : String(s));
@@ -574,6 +579,14 @@ export class Scene {
     //: to start or end somewhere real, and the island is a canvas the SVG
     //: layer cannot see into.
     if (yards) this.yards = yards;
+    //: Any bubble in the air goes with the settlement it belongs to. It is a
+    //: second or three long and the camera covers about a fiftieth of its
+    //: revolution in that time -- a few pixels, which is exactly enough for a
+    //: bubble pinned at the start to drift off the roof it is meant to be over.
+    for (const node of this.flights?.querySelectorAll(".pop-at") ?? []) {
+      const p = this.pins[node.getAttribute("data-trader")];
+      if (p) node.setAttribute("transform", `translate(${p.x} ${p.y})`);
+    }
     this.layTethers();
     const open = this.state.proposals.filter((p) => p.status === "open");
     const rank = new Map();
@@ -1398,8 +1411,25 @@ export class Scene {
    * turned up.
    */
   mark(who, kind, title = "") {
-    const seat = this.seats[who];
-    if (!seat) return;
+    //: **Over the hut, not over the card.** A refusal and a remark are things a
+    //: *trader* did, and the trader on this page is the settlement standing on
+    //: the island -- the card is the ledger beside it, out in the frame's
+    //: margin. The bubbles were drawn above the card, so the one picture that
+    //: says "this one just spoke" appeared a third of a frame away from the
+    //: thing that spoke, and read as chrome rather than as the island.
+    //:
+    //: `pins` is where the model put the settlement, refreshed every frame by
+    //: `follow`; `seats` is the card, and is the fallback for a browser with no
+    //: model, where the two are the same place anyway.
+    const at = this.pins[who] ?? this.seats[who];
+    if (!at) return;
+    //: Two groups. The outer one holds the *place* and is moved by `follow` as
+    //: the camera goes round; the inner one holds the *rise* and is animated.
+    //: One group doing both would have the animation's transform overwrite the
+    //: position every frame, and the bubble would sit where the hut was when
+    //: it opened.
+    const anchor = el("g", { class: "pop-at", "data-trader": who,
+                             transform: `translate(${at.x} ${at.y})` });
     const g = el("g", { class: `pop ${kind}` });
     if (title) g.append(el("title", {}, title));
     g.append(el("path", { class: "pop-bubble",
@@ -1414,17 +1444,20 @@ export class Scene {
         style: `animation-delay: ${i * 0.16}s`,
       })));
     }
-    this.flights.append(g);
+    anchor.append(g);
+    this.flights.append(anchor);
+    //: Purely vertical, and relative to the anchor. `POP_UP` clears the roof of
+    //: the hut it belongs to at the scale the model draws one.
     const anim = g.animate([
-      { transform: `translate(${seat.x}px, ${seat.y - 100}px) scale(.6)`, opacity: 0 },
-      { transform: `translate(${seat.x}px, ${seat.y - 126}px) scale(1)`, opacity: 1,
+      { transform: `translate(0px, ${-POP_UP + 22}px) scale(.6)`, opacity: 0 },
+      { transform: `translate(0px, ${-POP_UP}px) scale(1)`, opacity: 1,
         offset: 0.18 },
-      { transform: `translate(${seat.x}px, ${seat.y - 134}px) scale(1)`, opacity: 1,
+      { transform: `translate(0px, ${-POP_UP - 8}px) scale(1)`, opacity: 1,
         offset: 0.72 },
-      { transform: `translate(${seat.x}px, ${seat.y - 162}px) scale(.9)`, opacity: 0 },
+      { transform: `translate(0px, ${-POP_UP - 36}px) scale(.9)`, opacity: 0 },
     ], { duration: still() ? 1 : DWELL[kind === "bad" ? "refused" : "said"],
          easing: "ease-out" });
-    anim.finished.then(() => g.remove(), () => g.remove());
+    anim.finished.then(() => anchor.remove(), () => anchor.remove());
   }
 
   /**
