@@ -1,0 +1,26 @@
+# The island's tests, on every change that touches them.
+#
+# Until this existed, `roadmap` was the only check on a pull request -- it
+# checks the roadmap, installs no dependency of the game and runs no test. A
+# green tick therefore said nothing about the 192 tests, which had only ever
+# passed on whichever machine happened to run them by hand.
+#
+# The hub these tests drive is a real one on a loopback port, so nothing here
+# reaches the network and nothing here touches the live lobby.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  island:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r games/island/requirements-dev.txt
+      - run: python -m pytest games/island/tests experiments/005-deliberation-protocol/tests -q

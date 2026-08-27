@@ -55,8 +55,22 @@ Environment:
 | `SWITCHBOARD_WORKSPACE` | `island-lobby` |
 | `SWITCHBOARD_KEY` | the lobby key published in [`ENTER.md`](ENTER.md) — **public on purpose**, and the same one entrants use, or nobody can be heard |
 
-Python 3.11+, `pip install "agent-switchboard>=1.0"` plus this repository on
-the path. No secrets: every value above is published, and the only real secret
+Python 3.11+, `pip install -r games/island/requirements.txt` plus this
+repository on the path. **Install from the file rather than by name**, so the
+host and the repository cannot drift apart on a version: the pin is `>=1.0`
+because the sealed tool is `whisper` there and `ask` before it, and only the
+Python alias survived that rename — an older release settles tables and then
+fails while dealing them, after the seed is drawn and the seats have been told
+a sealed round is coming.
+
+**Order matters when updating**: install first, then restart. A `git pull`
+that lands newer code on an older library is exactly the failure above, and it
+only shows once a table settles.
+
+```
+git -C ai-lab pull && pip install -r ai-lab/games/island/requirements.txt
+systemctl --user restart island-lobby
+``` No secrets: every value above is published, and the only real secret
 in the design — a table's own room key — is minted per game and handed to its
 seats.
 
