@@ -737,8 +737,15 @@ In the rail (the ▤ drawer, shut until asked for):
 ## Deploying
 
 `.github/workflows/pages.yml`, at the repo root, publishes `web/`, `results/`
-and `games/replays/` to `https://gald33.github.io/ai-lab/` on every push to
-`main` that touches this directory or a published replay. The staged site's
+and `games/replays/` to `https://gald33.github.io/ai-lab/island/` on every push
+to `main` that touches this directory or a published replay. **Under
+`island/`, because the island is one game and the root is a games index** — a
+game that owns the whole site is a site to be rearranged the moment a second
+one wants a page. The tree moves whole and nothing in `web/` changes, since it
+all fetches by relative path. The root redirects there, carrying `?` and `#`
+across, so the links written down before this move — `games/runs/001` and
+`002` each cite the root as where their replay outlives its room — still
+resolve. The staged site's
 directory names are `serve.py:ROOTS`' prefixes, which is what `api/boards`
 names — so the copy and the listing cannot disagree about where a board is. Same origin switchboard's own published viewer uses
 — a different path under `gald33.github.io`, not a different origin — so the
