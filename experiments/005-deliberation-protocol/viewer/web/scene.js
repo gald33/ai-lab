@@ -36,6 +36,15 @@ const SLOT = ["--good-1", "--good-2", "--good-3", "--good-4",
 //: then takes to go. The fade is CSS (`.rope.delivered`), and this only has to
 //: outlast it so a rope is not still fading when its pill is asked to move.
 const SLIDE = 1100;
+//: How quickly a pill closes the gap to where it belongs, as the time constant
+//: of an exponential ease: about 95% of the way there in three of these. Short
+//: enough that a re-stacked pile has settled before a viewer looks for it, long
+//: enough to read as a move rather than a jump.
+const GLIDE = 110;
+//: The longest gap that counts as animation: one frame on a slow machine. See
+//: `glideTo` -- without this a pill that has been sitting still teleports the
+//: first time its target moves.
+const GLIDE_CAP = 48;
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -730,6 +739,10 @@ export class Scene {
     //: arrive -- and pruned in `paint()` when the offer stops being open, so
     //: scrubbing back over a proposal plays it again.
     this.travel = new Map();
+    //: Where each pill actually *is*, as against where the geometry says it
+    //: belongs. Kept by pid for the same reason the clock is: the rope's node
+    //: is thrown away and rebuilt whenever the set of offers changes.
+    this.spot = new Map();
     this.build();
   }
 
@@ -1589,6 +1602,12 @@ export class Scene {
     for (const pid of [...this.travel.keys()]) {
       if (!placed.has(pid)) this.travel.delete(pid);
     }
+    //: Dropped one paint later than the clock would allow, because `fray` and
+    //: `verdict` draw a copy of an offer that has just stopped being open and
+    //: it has to leave from where the pill actually was.
+    for (const pid of [...this.spot.keys()]) {
+      if (!placed.has(pid) && !this.wasStack?.has(pid)) this.spot.delete(pid);
+    }
     // Kept so a refusal played straight after this paint can find what was
     // open at the moment it happened.
     this.state = state;
@@ -1745,6 +1764,48 @@ export class Scene {
   }
 
   /**
+   * The pill's drawn position: never the target, always on its way to it.
+   *
+   * **A pill only ever flies.** Everything that moves one used to move it by
+   * setting a new place: a pill below it in the pile lapsing and the ones above
+   * dropping a slot, a pile compressing as it grew, a pair's fan changing when
+   * a second offer between the same two huts closed -- and, every single time,
+   * the arrival itself, because the end of the rope and the resting spot over
+   * the hut are two different points and the pill jumped between them.
+   *
+   * So the target is followed rather than taken. The drawn point eases toward
+   * wherever the geometry says it should be, at a rate that does not depend on
+   * how often this is called, and the loop in `ride()` keeps running while any
+   * pill is still catching up.
+   *
+   * A viewer who asked for less motion gets the target, arrived.
+   */
+  glide(pid, target) {
+    if (still()) return target;
+    const now = performance.now();
+    const was = this.spot.get(pid);
+    if (!was) { this.spot.set(pid, { ...target, at: now }); return target; }
+    //: Time-based, not per-frame: a 120Hz screen must not settle the pill twice
+    //: as fast as a 60Hz one.
+    //:
+    //: **Clamped to one slow frame**, and that clamp is the whole thing
+    //: working. A settled pill is not being glided -- the loop in `ride()` has
+    //: stopped -- so when its pile changes under it, the gap since the last
+    //: step is however long it sat there, and an unclamped ease covers the
+    //: whole distance in that first step. Measured: the drop of a slot when the
+    //: pill below it settles moved 38 units in one frame, which is the jump
+    //: this exists to remove, wearing an ease. Idle time is not animation time.
+    const { x, y } = glideTo(was, target, now - was.at);
+    const near = Math.hypot(target.x - x, target.y - y) < 0.35;
+    const spot = near ? { ...target, at: now } : { x, y, at: now };
+    this.spot.set(pid, spot);
+    //: Still moving, so the loop has to keep going -- the pill may have arrived
+    //: at the end of its rope a second ago and still be rising into the pile.
+    if (!near) { this.settling = true; this.ride(); }
+    return spot;
+  }
+
+  /**
    * Where the pill sits, given how far along it is.
    *
    * On the way: the point at `t` of the same quadratic the rope is drawn as, so
@@ -1790,6 +1851,10 @@ export class Scene {
     this.riding = true;
     const step = () => {
       let flying = false;
+      //: Set by `glide` for any pill that has not caught its target yet, and
+      //: cleared here so it is asked afresh every frame. A pill can be still
+      //: travelling, still settling, or both.
+      this.settling = false;
       for (const p of this.state?.proposals ?? []) {
         if (p.status !== "open") continue;
         const node = this.ropes?.querySelector(`.rope[data-pid="${p.pid}"]`);
@@ -1797,7 +1862,7 @@ export class Scene {
         if (this.progress(p.pid) < 1) flying = true;
         this.aimRope(node, p, this.shown?.get(p.pid) ?? 0);
       }
-      if (flying) requestAnimationFrame(step);
+      if (flying || this.settling) requestAnimationFrame(step);
       else this.riding = false;
     };
     requestAnimationFrame(step);
@@ -1823,7 +1888,7 @@ export class Scene {
     // Arrived: the rope has said what it had to say -- who sent this to whom --
     // and goes, leaving the offer standing over the trader it is addressed to.
     g.classList.toggle("delivered", prog >= 1);
-    const spot = this.chipAt(at, prog);
+    const spot = this.glide(p.pid, this.chipAt(at, prog));
     g.querySelector(".rope-chip")?.setAttribute(
       "transform", `translate(${spot.x.toFixed(2)} ${spot.y.toFixed(2)})`);
   }
@@ -1844,7 +1909,10 @@ export class Scene {
     g.append(el("path", { class: "rope-shadow", d }));
     g.append(el("path", { class: "rope-line", d }));
     const prog = this.progress(p.pid, force);
-    const spot = this.chipAt(at, prog);
+    //: Through the glide, so a rope rebuilt under a pill -- which is what a
+    //: changed set of offers does to all of them -- puts the new node's pill
+    //: back where the old one had got to, rather than at the target.
+    const spot = this.glide(p.pid, this.chipAt(at, prog));
     const chip = el("g", { class: "rope-chip",
                            transform: `translate(${spot.x.toFixed(2)} ${spot.y.toFixed(2)})` });
     const text = `${bundleText(p.give)} → ${bundleText(p.want)}`;
@@ -2379,6 +2447,26 @@ export function stacking(open) {
 
 //: The pill's own height, and how far apart two of them stand in a pile: the
 //: height plus a gap, so a stack of them reads as separate things.
+/**
+ * One step of a pill toward where it belongs, `ms` of animation later.
+ *
+ * Exponential, so it leaves quickly and settles rather than stopping dead, and
+ * driven by elapsed time so a 120Hz screen does not settle it twice as fast as
+ * a 60Hz one.
+ *
+ * **The clamp is the part that matters.** A settled pill is not being stepped
+ * at all -- `ride()` has stopped -- so when its pile changes under it the gap
+ * since the last step is however long it sat there, and an unclamped ease
+ * covers the whole distance in one frame: a jump wearing an ease, which is
+ * what this was measured doing before the clamp went in. Idle time is not
+ * animation time.
+ */
+export function glideTo(was, target, ms, tau = GLIDE, cap = GLIDE_CAP) {
+  const k = 1 - Math.exp(-Math.min(Math.max(0, ms), cap) / tau);
+  return { x: was.x + (target.x - was.x) * k,
+           y: was.y + (target.y - was.y) * k };
+}
+
 export const PILL_H = 32;
 export const PILL_STEP = 38;
 

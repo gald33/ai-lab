@@ -1108,6 +1108,45 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
 The colour is the answer and stays under `prefers-reduced-motion`; only the
 blinking goes.
 
+### A pill only ever flies
+
+**Nothing moves a pill by putting it somewhere else** (2026-08-27, Gal's ask).
+Every place that used to set a new position now sets a *target*, and `glide()`
+eases the drawn point toward it on `ride()`'s frames. Four things teleported:
+
+* **The arrival**, every single time, and it was the big one. The end of the
+  rope and the resting spot over the hut are two different points — the pill
+  reached the end of its slide and jumped up into its place in the pile.
+* **A re-stack**: a pill below it settles or lapses, and the ones above drop a
+  slot.
+* **A pile compressing** as it grows, which moves every pill in it.
+* **A pair's fan changing** when a second offer between the same two huts
+  closes, which moves the arc out from under the pill.
+
+Measured on the replay, sampling every frame and taking the largest
+single-frame move per pill (`--disable-webgl`, because the model renders at
+about 2fps headless and an ease measured in wall-clock time cannot be seen at
+2fps):
+
+| | biggest single-frame move |
+|---|---|
+| before, at the arrival (t≈1094ms) | 78, 116, 154 units — one frame each |
+| after, same moment | 22–30 units, spread over frames |
+| a re-stack, before | 38 units in one frame |
+| a re-stack, after | 13.4 units, 38 total |
+
+**The clamp is the part that matters.** The first version still teleported on a
+re-stack and the measurement is what caught it: a settled pill is not being
+stepped — `ride()` has stopped — so when its pile changes under it, the gap
+since its last step is however long it sat there, and an unclamped exponential
+covers the whole distance in that first frame. A jump wearing an ease. Idle
+time is not animation time, so `glideTo` clamps the gap to one slow frame
+(48ms), and `scene.test.mjs` holds that: a nine-second gap must move the pill
+no further than 48ms would.
+
+A viewer who asked for less motion gets the target, arrived — there is nothing
+to smooth when nothing is animating.
+
 ### The pile on a hut is the queue that hut has to answer
 
 **The pills stack by taker, and the ropes fan by pair. Those are two different
