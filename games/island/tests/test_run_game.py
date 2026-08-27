@@ -892,3 +892,35 @@ def test_the_archivist_takes_no_seat_and_is_refused_if_it_speaks(settled, hub, t
 
     assert mgr.intrusions, "a line from a key that took no seat is recorded"
     assert run_game.ARCHIVIST not in {s for s in mgr.names}
+
+
+def test_the_archivist_in_the_room_does_not_cost_a_table_its_ranking(settled, hub, tmp_path):
+    """A third member of the room must not turn a ranked game into a practice one.
+
+    `sealable` answers "can this table seal?" from who turned up, so an extra
+    body on the roster is exactly the shape of thing that could silently
+    downgrade a round -- and a silent downgrade is the worst failure this
+    design has, because the game still plays and simply stops counting.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="trading")
+
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="running")
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    assert run_game.sealable(mgr), "sealable before the archivist arrives"
+
+    run_game.archivist_for(table, invite, lab_manages=True)
+    run_game.bind_seats(mgr, table)
+
+    assert run_game.sealable(mgr), "and still sealable with it watching"
