@@ -434,8 +434,43 @@ What each clip carries itself now:
 | a production | the site works, and boxes are made there and hop home |
 | an offer | a post and a lit notice beside the maker's hut, and **the boxes it is offering lift off the pile** |
 | a settlement | the boxes cross the island, and the fire flares once |
+| a refusal | **a bubble over the hut, with a cross in it** |
+| a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
+
+### A bubble belongs over the hut
+
+The two things a trader does that leave no goods behind — refusing an offer, and
+simply speaking — are drawn as a speech bubble: a cross for the refusal, and for
+a remark **three dots and nothing else**, because the island's job is to say
+*that* somebody spoke, not what they said. What they said is in the ticker, and
+printing the manager's sentence across the sand was the thing this replaced.
+
+They were hung at `seats`, which is the **card** once there is a model. So the
+one picture that says "this one just spoke" appeared out in the frame's margin,
+a third of a frame from the thing that spoke, and read as chrome rather than as
+the island. They hang at `pins` now — where the model put the settlement.
+
+Two groups, not one. The outer holds the *place* and is moved by `follow()` on
+every frame the camera turns; the inner holds the *rise* and is what the
+animation drives. One group doing both would have the animation's transform
+overwrite the position sixty times a second, and the bubble would sit where the
+hut was at the moment it opened — which matters, because a bubble lives about a
+second and a half and the camera covers a few pixels of its revolution in that
+time.
+
+`render.py:overhead` drives a real refusal on the real page and asks that the
+bubble opens on the settlement, is still on it a second later, and carries the
+right mark. It **freezes the bubble half way up** before measuring: it lives
+1300–1500ms and a click through the driver costs most of that, so measured live
+the first reading came back with the thing already faded to two per cent — a
+check that would pass or fail on how busy the machine is.
+
+Neither replay this repo keeps has a plain remark on it, so the talk half is
+driven from the first board the page serves that does have one, and which board
+that was is printed. Both halves fail when the bubbles are put back over the
+card.
 
 ### The huts have no lanterns
 

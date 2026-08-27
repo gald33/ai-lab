@@ -480,6 +480,8 @@ def run(out: Path, headed: bool = False) -> int:
                 problems += replay(browser, base, board, out)
             for board in boards:
                 problems += blame(browser, base, board, out)
+            for board in boards:
+                problems += overhead(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
             problems += mobile(browser, base, boards[0], out)
             problems += fallback(browser, base, boards[0], out)
@@ -562,6 +564,181 @@ BLAME = {
          "trader": "T1", "good": "cloth", "rope": None, "innocent": "p6"},
     ],
 }
+
+
+#: Freeze a bubble half way up and read where it is.
+#:
+#: Frozen because it lives 1.3 to 1.5 seconds and a click through the driver
+#: costs most of that: measured live, the first reading came back at t=1400 of
+#: 1500 with the thing already faded to two per cent, which is a check that
+#: passes or fails on how busy the machine is. `currentTime` puts it at the top
+#: of its rise, where a viewer sees it.
+OVERHEAD = """(want) => {
+  for (const a of document.getAnimations()) {
+    const n = a.effect?.target;
+    if (n && n.classList && n.classList.contains('pop')) { a.pause(); a.currentTime = 500; }
+  }
+  //: Read off the SVG's own transform list rather than by parsing the
+  //: attribute. A regex over `translate(x y)` is one backslash away from
+  //: matching nothing and returning whatever the fallback was, which is how
+  //: the first cut of this passed against a deliberately broken page.
+  const spot = (n) => {
+    const m = n && n.transform && n.transform.baseVal.consolidate();
+    return m ? [m.matrix.e, m.matrix.f] : null;
+  };
+  const at = document.querySelector('.pop-at');
+  if (!at) return { error: 'no bubble was drawn at all' };
+  const who = at.getAttribute('data-trader');
+  const here = spot(at);
+  if (!here) return { error: 'the bubble is not placed by a transform' };
+  const pin = document.querySelector(`.tether[data-trader="${who}"] .tether-pin`);
+  const hut = document.querySelector(`.hut[data-trader="${who}"]`);
+  return {
+    who, at: here,
+    kinds: [...document.querySelectorAll('.pop')].map(n => n.getAttribute('class')),
+    pin: pin ? [+pin.getAttribute('cx'), +pin.getAttribute('cy')] : null,
+    card: spot(hut),
+    cross: !!document.querySelector('.pop-cross'),
+    dots: document.querySelectorAll('.pop-dot').length,
+    want,
+  };
+}"""
+
+
+def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A refusal and a remark are drawn over the settlement, not over the card.
+
+    **Reported by eye.** They are things a *trader* did, and the trader on this
+    page is the hut standing on the island -- the card is the ledger beside it,
+    out in the frame's margin. The bubbles were placed at `seats`, which is the
+    card once there is a model, so the one picture that says "this one just
+    spoke" appeared a third of a frame away from the thing that spoke.
+
+    Two statements. The bubble opens over the settlement, and it is **still**
+    over it a second later: the camera goes right round the island every
+    hundred and fifty seconds, so a bubble pinned once at the moment it opened
+    drifts off the roof it belongs to while it is still on screen.
+
+    Measured against the tether pin, which is where the page itself thinks the
+    settlement is, and against the card's own transform -- so this fails both
+    ways round: a bubble at the card is far from the pin, and a check that read
+    the wrong node would find them equal.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 1500, "height": 1000})
+    errs: list[str] = []
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_timeout(1800)
+    if not page.evaluate("() => document.querySelector('.app')"
+                         ".classList.contains('has-3d')"):
+        page.close()
+        return []
+    marks = """async (url) => {
+      const { reduce } = await import('./reducer.js');
+      const t = reduce((await (await fetch(url)).json()).messages, {});
+      const out = {};
+      t.frames.forEach((f, k) => {
+        if (f.event?.kind === 'refused' && out.bad === undefined) out.bad = k;
+        if (f.event?.kind === 'said' && !f.event.attempt && out.talk === undefined) {
+          out.talk = k;
+        }
+      });
+      return out;
+    }"""
+    found = page.evaluate(marks, f"replays/{board.name}")
+    #: **A remark is not on either replay this repo keeps**, and the talk
+    #: bubble is half of what this exists to check. The page serves every tree
+    #: `serve.py:ROOTS` names, so the listing is asked for a board that does
+    #: have one and it is opened for that half. Whether that found anything is
+    #: printed either way: a check that quietly examined one of the two kinds
+    #: and said nothing would read as having examined both.
+    def elsewhere():
+        """The first board this page serves that has a plain remark on it."""
+        return page.evaluate("""async (m) => {
+          const list = await (await fetch('api/boards', {cache: 'no-store'})).json();
+          const look = new Function('url', 'return (' + m + ')(url)');
+          for (const b of (list.boards || []).slice(0, 60)) {
+            try {
+              const at = await look(b.board);
+              if (at.talk !== undefined) return { board: b.board, at: at.talk };
+            } catch { /* a board this page cannot read is not this check's business */ }
+          }
+          return null;
+        }""", marks)
+
+    #: The refusal first, on the board this was opened with, and only then the
+    #: search for a remark -- which navigates. The other way round left the
+    #: refusal being looked for on a board that does not contain it, and the
+    #: check reported no bubble at all rather than the wrong board.
+    for kind in ("bad", "talk"):
+        at = found.get(kind)
+        where = f"{stem} overhead {kind}"
+        if at is None and kind == "talk":
+            other = elsewhere()
+            if other:
+                page.goto(f"{base}/?board={other['board']}")
+                page.wait_for_selector(".hut", timeout=15_000)
+                page.wait_for_timeout(1800)
+                at = other["at"]
+                print(f"NOTE {where}: driven from {other['board']}")
+        if at is None:
+            # Said out loud rather than skipped in silence: no board this page
+            # can see has a frame of that kind.
+            print(f"NOTE {where}: no board served here has one; not checked")
+            continue
+        page.evaluate("""(i) => { const s = document.getElementById('scrub');
+          s.value = String(i); s.dispatchEvent(new Event('input')); }""", at - 1)
+        page.wait_for_timeout(900)
+        page.click("#fwd")
+        page.wait_for_timeout(250)
+        seen = page.evaluate(OVERHEAD, kind)
+        if seen.get("error"):
+            bad.append(f"{where}: {seen['error']}")
+            continue
+        if seen["pin"] is None or seen["card"] is None:
+            bad.append(f"{where}: no pin or card for {seen['who']} to measure against")
+            continue
+        near = math.dist(seen["at"], seen["pin"])
+        far = math.dist(seen["at"], seen["card"])
+        #: In viewBox units, where the island is about 700 across. A bubble is
+        #: hung *at* the settlement and rises from there, so the anchor should
+        #: be on the pin and not merely nearer to it than to the card.
+        if near > 3:
+            bad.append(f"{where}: the bubble is {near:.0f} from {seen['who']}'s "
+                       f"settlement and {far:.0f} from its card; it is not "
+                       f"drawn over the hut")
+        elif far < 60:
+            bad.append(f"{where}: {seen['who']}'s settlement and card are only "
+                       f"{far:.0f} apart, so this frame cannot tell them apart")
+        # The right mark for the right thing: a cross for a refusal, and for a
+        # remark three dots that say a trader spoke without saying what.
+        if kind == "bad" and not seen["cross"]:
+            bad.append(f"{where}: a refusal drew no cross")
+        if kind == "talk" and seen["dots"] < 3:
+            bad.append(f"{where}: a remark drew {seen['dots']} dot(s), not three")
+        # And it goes with the settlement as the camera turns.
+        page.wait_for_timeout(1400)
+        moved = page.evaluate(OVERHEAD, kind)
+        if moved.get("error") or moved["pin"] is None:
+            bad.append(f"{where}: the bubble was gone before the camera moved")
+            continue
+        drift = math.dist(moved["at"], moved["pin"])
+        turned = math.dist(moved["pin"], seen["pin"])
+        if turned < 1:
+            bad.append(f"{where}: the camera did not move ({turned:.1f}), so "
+                       f"nothing checked that the bubble follows")
+        elif drift > 3:
+            bad.append(f"{where}: the settlement moved {turned:.0f} and the "
+                       f"bubble stayed behind ({drift:.0f} off it)")
+    page.screenshot(path=str(out / f"overhead-{stem}.png"))
+    page.close()
+    return bad + [f"{stem} overhead: {e}" for e in errs]
+
 
 
 def blame(browser, base: str, board: Path, out: Path) -> list[str]:
