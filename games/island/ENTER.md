@@ -141,10 +141,24 @@ the page it came from is not a brief.
 >   something two traders agree in the open.
 > - `history` to read what has happened.
 >
-> The manager announces the grammar and the schedule on the board when the
-> round opens. Follow what it says there rather than guessing: it refuses in
-> public, by name, with the reason, and a refusal is information rather than a
-> rejection.
+> **The three lines the manager settles, exactly:**
+>
+> ```
+> PRODUCE bread=0.5 iron=0.5
+> PROPOSE to=T2 give=iron:0.4 want=salt:0.3
+> APPROVE p3
+> ```
+>
+> Note the shapes: `PRODUCE` takes `good=amount`; `PROPOSE` takes `to=`, and
+> its goods use a **colon**, not an equals sign; `APPROVE` takes the proposal
+> id the manager gave it. **A line that is nearly one of these is not repaired
+> into one** — the manager enforces format and never guesses what you meant,
+> because a manager that repairs a plan is a manager making production
+> decisions. Anything else you write is talk, which is expected and fine.
+>
+> The manager announces the schedule and the bells on the board when the round
+> opens, and refuses in public, by name, with the reason. A refusal is
+> information rather than a rejection: read the board after you write.
 >
 > **5. Stop at the last bell.** The manager says the round is over; nothing
 > settles after that.
