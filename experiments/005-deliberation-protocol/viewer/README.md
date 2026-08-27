@@ -844,6 +844,53 @@ still. Ropes are moved in place now and rebuilt only when the set of offers
 changes. `turning()` holds both halves: the node has to survive the camera
 turning, and the path has to start at the maker's end.
 
+### The sea moves, and there are dolphins in it
+
+The open water was a flat disc: one colour, perfectly still, with every moving
+thing in the picture crowded into the two surf rings at the shore. The further
+from the coast a pixel was, the more plainly it was a painted floor.
+
+**The swell** is that disc's surface. `island-life.js` lays a ring of geometry
+over it, from just under the shallows out past anything the camera frames, and
+displaces it with three sine trains crossing at different bearings and speeds.
+The normals are recomputed each frame, which is the part that matters: without
+it the crests are lit as though the sheet were flat and the whole thing is a
+blue disc with a bumpy outline. Lit rather than tinted, so it goes gold at dusk
+because the light does, and nobody keeps a second copy of that arithmetic.
+
+The deep disc stayed, and **moved down**. Its top used to sit at `-0.04`, and
+the swell's troughs reach a tenth of a unit below the still water line, so
+every trough cut into it and the sea got a ring of intersection lines. It is
+the colour behind the swell now; it only has to be below the lowest trough.
+
+**The dolphins are occasional, and that is the design.** A pod circling the
+island all day is scenery and stops being seen by the second minute. A pass is
+a chord across the open water lasting thirteen seconds out of every fifty-two,
+on a bearing taken from the cycle number — so it is different each time round
+and still reproducible — and between passes the pod is not in the scene. They
+porpoise: the pitch follows the slope of the arc rather than being animated
+apart from it, so a dolphin never enters the water nose up.
+
+Two things had to be got right and neither is guessable from the code that
+draws them.
+
+**A dolphin is built along `+x`, so its yaw is `-bearing`.** The gulls' own
+`-a + PI/2` is the tangent to a circle, and borrowing it here swam the whole
+pod broadside, nose to the camera, for a full pass.
+
+**They belong to the backdrop pass, not the framed one.** `Stage.render()`
+draws the sea across the whole canvas on layer `WATER` and then the island
+again, scissored to its own rectangle. Anything on layer 0 alone stops existing
+outside that rectangle: the swell ended at the edge of the box with flat water
+beyond it, and a pod passing wide was cut off mid-leap at a line down the
+frame. `stage.js` enables `WATER` on the swell and on each dolphin — and on
+their child meshes, because layers are per object and are not inherited, so
+marking the group alone renders nothing at all.
+
+Neither is caught by a structural check; both were found by looking, with
+`python viewer/tests/render.py --out /tmp/after` and a browser on
+`viewer/serve.py`.
+
 ## The goods stand on the island
 
 **Nothing pops or vanishes except when it is created or consumed.**

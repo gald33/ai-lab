@@ -620,8 +620,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: the deep water, so it does not need to receive one either. The shallows,
   //: the shelf and the beach still do both, which is where the coast's own
   //: shadows are.
+  //: **Dropped again, for the swell.** The life layer lays a moving surface
+  //: over this disc, and its troughs go a tenth of a unit below the still
+  //: water line -- so with the disc's top at -0.04 every trough sank *into*
+  //: it and the open sea got a ring of intersection lines where the two
+  //: surfaces cut. The disc is the deep colour behind the swell; it only has
+  //: to be below the lowest trough, and this is well below it.
   const sea = add(island, new THREE.CylinderGeometry(16, 16, 0.12, 128), M.seaDeep,
-    "sea", [0, -0.10, 0]);
+    "sea", [0, -0.30, 0]);
   sea.castShadow = false;
   sea.receiveShadow = false;
   //: The water follows the coast rather than a circle. A round shallows and a

@@ -1721,7 +1721,14 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: what a spectator asked for instead of a void. Left in, it makes the
   //: "silhouette" the whole canvas and every question below unanswerable.
   //: What is left is the coast: shallows, surf, shelf, beach, and the land.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|sea$)/;
+  //: **`swell` and the dolphins go with it, for the same reason.** The swell
+  //: is the sea's own surface -- seventeen units of it, wider than any frame
+  //: -- and a pod passing out in the open water is no more the island's
+  //: outline than a gull over it is. Left in, they put the "silhouette" at the
+  //: edge of the picture and every question below is unanswerable again: the
+  //: check reported the island drawn under the chrome on four frame shapes,
+  //: measuring water.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|dolphin_|sea$|swell$)/;
   const meshes = [];
   for (const part of made.island.children) {
     if (WEATHER.test(part.name)) continue;
