@@ -256,10 +256,120 @@ model's pixels behind every pill.
 `tests/render.py` drives seven viewports and checks what a screenshot cannot:
 that nothing scrolls sideways, that **no two pieces of chrome overlap**, that
 the island fills the band between the chrome and the cards, that every control
-is a fingertip tall, and that rotating actually turns the island. The overlap check exists
+is a fingertip tall, that rotating actually turns the island, and — in
+`focusing` — that a tap re-divides the frame and a second tap puts it back. The overlap check exists
 because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
+
+### The viewer says which of the two gets the screen
+
+The section above ends by conceding that on a 393×660 phone the island is drawn
+small and calling it the deliberate side of a trade. It is, and it is still not
+comfortable. **Neither of them is.** At `even` on that frame the island draws
+198px wide in a 393px window and a card 147px, with its quantities at 8.3 device
+pixels. There is no arrangement that fixes that: the room is not there.
+
+So it stops being the layout's call. **A tap on the island gives it the screen;
+a tap on a card gives it to the cards; a second tap on the same thing gives it
+back.** The whole mechanism is one number — `FOCUS` in `scene.js` scales the
+cards, and `cardPlan` already sizes the island as the *residual* of the band the
+chrome left, so the island moves by construction and there is nothing else to
+move.
+
+Measured on 393×660, two traders:
+
+| focus | card scale | card, drawn | island, drawn | of the window |
+|---|---|---|---|---|
+| `island` | 0.58 | 85px | **275px** | 70% |
+| `even` | 1.00 | 147px | 198px | 50% |
+| `cards` | 1.19 | **174px** | 165px | 42% |
+
+**The asymmetry is the frame's, not a choice.** The island gains 39% and the
+cards 19%, because the cards run out of *width* long before the island runs out
+of *height*: two to a row on a 520-unit frame allows `1.19×`, while the height
+freed by taking the island all the way down to `ISLAND_TINY` would allow
+`1.63×`. A card focus that shrank the island further would buy nothing at all.
+
+Two things fall out of that arithmetic and are worth stating, because both look
+like bugs from the outside:
+
+- **The island is capped at the frame's own width.** The land spans exactly its
+  box, so a box wider than the frame is an island with its shore cropped. On a
+  *tall* phone — 390×844, a browser with no bars showing — the island is already
+  at that cap at `even`, and tapping it only clears the cards away. That is the
+  honest answer, not a dead tap.
+- **The frame's height is settled before the focus is**, off the card the layout
+  would have drawn had nobody chosen. A focus that moved `H` would change the
+  frame's *shape*, and the shape is the whole reason the chrome's bands land
+  where the chrome is — so a tap on a card would have walked the pills back over
+  the island. A tap re-divides the band; it never resizes it.
+
+The block of island-then-cards is now **centred** in the band rather than pinned
+to its top. Slack dumped below the last card is invisible, and on a tall phone —
+where the island cannot grow — that is all a tap would have produced.
+
+#### 0.58 of a card is not a card
+
+The viewBox is 520 across, so on a 390pt window a unit is 0.75 device pixels and
+0.58 of one is 0.44. That puts a shelf's quantities at **4.8 pixels** and its
+`labour` and `utility` captions at 4.2. A number too small to read is worse than
+no number, because the page still looks like it is telling you something.
+
+So the small card stops being a shrunk card and becomes a **glance card**. What
+goes is everything that was a number at that size — the per-good quantities, the
+labour caption, the dial's own reading. What stays is drawn at the size it
+always was, by being declared `1/0.58` larger inside a group about to be scaled
+by 0.58: the trader's name at 13px, the goods' glyphs at 12px, the utility at
+10px, and the bars, which are shapes and survive being small. That is the same
+rule as everywhere else here — the weaker thing is allowed, and is never allowed
+to look like the stronger one.
+
+`focusing()` in `tests/render.py` drives the taps on a real phone viewport and
+re-measures all of it: that a tap moves the layout at all, that it moves it the
+right way, that a second tap returns the frame **exactly** — a toggle that
+drifts is one nobody presses twice — that the glance card prints no quantity at
+all, that every mark it *does* print is still **the size it is at even focus**,
+and that the same tap on a landscape phone does nothing, because there the cards
+stand in margins and are not competing with anything.
+
+Ten neuters, and **two of them found the check rather than the code**:
+
+- The legibility rule was an absolute *7 device pixels*. Deleting the stylesheet
+  rule that holds the trader's name up could not be made to fail it — 15 units
+  at 0.58 on a 390pt window still paints a 7.5px box. It measures each mark
+  against the same mark on the same card at even focus instead, which is what
+  the stylesheet actually claims and which cannot go stale when a font size
+  moves.
+- The landscape rule compared viewBoxes. But `layout` ignores the focus in
+  landscape, so a tap that got past the gate would rebuild the scene — throwing
+  away every animation in flight — and land on exactly the same viewBox. Deleting
+  the gate failed nothing. It reads the caption too now, which is the one thing
+  that says a tap was taken.
+
+#### A check that could not fail
+
+Found while writing the above. `mobile()` measured the island by counting canvas
+pixels with any alpha — which was the island back when the canvas was
+transparent around it. [The sea reaches the edge of the frame](#the-sea-reaches-the-edge-of-the-frame)
+ended that, and the classifier was never revisited: it had been returning the
+whole canvas ever since.
+
+| phone | what it measured | the island |
+|---|---|---|
+| 390×844 | 390×811, 2.22 of its band | 382×363, 0.99 |
+| 393×660 | 393×464, 2.30 of its band | 198×187, 0.93 |
+
+Every island-size assertion in that check — fills its band, wide enough to be
+the picture — had been passing on arithmetic that could not fail. It uses
+`LAND_JS` now, the classifier `uncovered()` and the card checks already share,
+and it passes on the real numbers.
+
+Shown, not assumed: pinning the island to `ISLAND_TINY` and running `mobile`
+both ways, the fixed classifier fails **all three** portrait viewports with true
+figures (29%, 47%, 49% of their bands); the old one fails **one**, and by
+accident — the cards had moved up, so the band shrank until the whole canvas
+stopped covering it.
 
 ## The fire at the centre
 
@@ -1056,6 +1166,14 @@ every hour's light because the fill is the sea's own colour — and `mechanics`
 crops its shots to the rectangle the island is drawn into, which is exactly the
 denominator it had before. A card over open sea was always fine; the cards live
 in the margins and the margins are water.
+
+That sweep missed one, and `mobile` went on measuring the island by alpha for
+long enough to make every island-size assertion in it vacuous — it was reporting
+the island as 2.3 times the band it was given, because it was reporting the
+whole canvas. Found while adding `focusing`, and written up
+[above](#a-check-that-could-not-fail). The lesson is not "grep harder": it is
+that a check whose numbers nobody looks at can pass for weeks on a question it
+has stopped asking.
 
 And on the live side: `rowsFromState` against `tests/fixtures/snapshot-sample.json`,
 a real snapshot from a real hub rather than a shape assumed by hand — this is

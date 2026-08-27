@@ -493,6 +493,30 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .score-floor-tag { fill: var(--muted); font-size: 8.5px; text-anchor: middle;
   letter-spacing: .04em; text-transform: uppercase; }
 .score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
+
+/* --- the card at a glance -------------------------------------------------
+   What is left of a card once a viewer has given the screen to the island.
+   0.58 of a card puts a shelf's quantities at 4.8 device pixels on a 390pt
+   window and its captions at 4.2, so what goes is everything that was a
+   *number* at that size -- and what stays is drawn at the size it always was,
+   by declaring it 1/0.58 larger in a group that is about to be scaled by 0.58.
+
+   The bars stay because a bar is a shape and a shape survives being small;
+   they are the whole point of a glance card. The name stays because bars
+   nobody can attribute are not worth drawing, and the utility stays because it
+   is the one number the round is scored on. `focus-island` in render.py
+   re-measures every one of these against a real phone. */
+.card.mini .qty, .card.mini .wheel-text, .card.mini > .card-sub,
+.card.mini .score-floor-tag { display: none; }
+.card.mini .card-name { font-size: 26px; }
+.card.mini .glyph { font-size: 22px; }
+.card.mini .score-value { font-size: 20px; }
+/* The one caption that stays. `labour` goes because the dial beside it is
+   already a dial, but a bare 0.000 under a shelf with nothing naming it is the
+   thing this file keeps calling a number that looks like it is telling you
+   something. Direct-child selector above so that hiding one does not hide it:
+   `labour` hangs off the card, `utility` off the score row. */
+.card.mini .score .card-sub { font-size: 17px; }
 .score-value.zero { fill: var(--critical); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 /* --- a narrow window ------------------------------------------------------
@@ -553,6 +577,27 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 
   .curtain { padding-bottom: 130px; padding-left: 10px; padding-right: 10px; }
 }
+
+/* --- who gets the screen -------------------------------------------------
+   The island and the cards are competing for one phone, and a tap says which
+   of them the viewer is actually looking at (`FOCUS` in scene.js). Nothing
+   permanent is added to the chrome for it -- the top row is already six
+   controls across 390 points -- so the gesture says what it did and goes.
+
+   Under the chrome's own band at the top, which is the one strip of the frame
+   that is sea in every focus. Above the transport is where it started and is
+   wrong: at island focus that is exactly where the cards went, so the caption
+   covered the utilities it had just spent a stylesheet rule keeping. */
+.focus-note { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%);
+  top: calc(var(--chrome-top) + 8px); pointer-events: none;
+  background: #0b1116d9; border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 13px; font-size: 12.5px; color: var(--ink-2);
+  backdrop-filter: blur(4px); opacity: 0; transition: opacity .3s ease;
+  white-space: nowrap; max-width: calc(100% - 20px); overflow: hidden;
+  text-overflow: ellipsis; }
+.focus-note.on { opacity: 1; }
+.focus-note b { color: var(--ink); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .focus-note { transition: none; } }
 
 /* A fingertip is about 9mm and these are the only controls on the page. Keyed
    to the pointer rather than the width, because a tablet is neither narrow nor
@@ -617,6 +662,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <div class="note" id="status"></div>
+  <div class="focus-note" id="focus-note" role="status" aria-live="polite"></div>
   <div class="legend" id="legend"></div>
 
   <div class="chrome at-bottom" id="transport">
@@ -751,6 +797,12 @@ const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
 
 let timeline = null, scene = null, player = null, live = null, reveal = null;
+//: Which of the island and the cards this viewer asked for. Portrait only --
+//: landscape has margins down the sides and the cards stand in them, so the two
+//: are not competing there and there is nothing for a tap to re-divide. Kept
+//: here rather than on the scene because `raise()` lays the island out too, and
+//: the two have to be planning the same frame.
+let focus = "even";
 //: Shut by hand, and only until the round is left behind: scrubbing back
 //: into play clears it, so the card returns when the ending does.
 let dismissed = false;
@@ -952,7 +1004,7 @@ function raise(traders, goods, portrait) {
   const canvas = $("stage");
   const app = document.querySelector(".app");
   try {
-    const geo = layout(traders.length, portrait, frameAspect(), chromeBands());
+    const geo = layout(traders.length, portrait, frameAspect(), chromeBands(), focus);
     if (!stage) stage = new Stage(canvas, geo); else stage.reframe(geo);
     // Where the settlements go, chosen on the *screen* and then dropped onto
     // the island's ground. Placing them on a ring in island coordinates put
@@ -1196,7 +1248,7 @@ function mount(rows, { manager } = {}) {
   // scene then puts each trader's card at its own hut.
   scene = new Scene($("island"), timeline, reveal, isPortrait(),
                     raise(timeline.traders, timeline.goods, isPortrait()),
-                    frameAspect(), chromeBands());
+                    frameAspect(), chromeBands(), focus);
   legend(timeline.goods, !!reveal);
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
@@ -1363,6 +1415,63 @@ addEventListener("resize", () => {
       paint({ ...lastPaint, animate: false });
     } else stage?.resize();
   }, 180);
+});
+
+/**
+ * Give the screen to whichever of the two the viewer just tapped.
+ *
+ * A phone in portrait has to fit an island and a card per trader into one
+ * screen, and at the sizes that leaves neither is comfortable: the island draws
+ * about half the window wide and a card's numbers are near the floor of legible.
+ * There is no arrangement that fixes that -- the room is not there -- so the
+ * viewer says which one they are looking at and it gets the room.
+ *
+ * **A tap on a thing, not a control.** The island and the cards are the two
+ * objects on the page and they are their own buttons; the alternative was a
+ * seventh control in a top row that is already six wide at 390 points.
+ * Tapping the thing that is already focused gives the screen back.
+ */
+function refocus(next) {
+  focus = next;
+  if (!scene?.reflow(isPortrait(), frameAspect(), chromeBands(), focus)) return;
+  // The same path a rotated phone takes: the frame is re-divided, so the island
+  // is reframed, its settlements land somewhere else and the scene takes the
+  // new places.
+  scene.replace(raise(scene.traders, scene.goods, isPortrait()));
+  if (lastPaint) paint({ ...lastPaint, animate: false });
+  say(next);
+}
+
+//: What the gesture just did, for as long as it takes to read. It says the
+//: *reversal* as well as the state, because a tap that gives the island the
+//: screen has also taken it from the cards and nothing else on the page says
+//: how to get them back.
+let saying = null;
+function say(what) {
+  const note = $("focus-note");
+  note.innerHTML = what === "island"
+    ? "<b>the island</b> · tap it again for the cards"
+    : what === "cards"
+      ? "<b>the cards</b> · tap one again for the island"
+      : "<b>even</b> · tap the island or a card to give it the screen";
+  note.classList.add("on");
+  clearTimeout(saying);
+  saying = setTimeout(() => note.classList.remove("on"), 2600);
+}
+
+$("island").addEventListener("click", (e) => {
+  // Portrait only, and only with a model behind the page: without one the cards
+  // hang under their own drawn huts rather than standing in the frame's
+  // margins, so there is no margin to re-divide and `cardScale` is 1 whatever
+  // this says.
+  if (!scene?.portrait || !scene.modelled) return;
+  const svg = $("island");
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+  const hit = scene.tapped(at.x, at.y);
+  // The sea around them is not a third state. A tap there is a tap on nothing.
+  if (hit) refocus(focus === hit ? "even" : hit);
 });
 
 addEventListener("keydown", (e) => {

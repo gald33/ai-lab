@@ -200,14 +200,80 @@ const ISLAND_TOP = 0.5 - ISLAND_UP / ISLAND_ACROSS;
 //: than a negative one.
 const ISLAND_MIN = 200;
 
-function cardPlan(n, w, h, cardH, portrait, frame) {
+//: And the smallest it goes once somebody has *asked* for the cards. The floor
+//: above is what the layout imposes on a viewer who chose nothing; this is what
+//: a viewer gets who tapped a card, which is a different question and deserves
+//: a different answer. Still an island and not a strip: below about this the
+//: huts stop being distinguishable from the trees.
+const ISLAND_TINY = 116;
+
+//: The widest a card goes with two of them to a row. The columns are centred on
+//: `0.265w` and `0.735w`, so cards of width `W` leave `0.47w - W` between them;
+//: this keeps twelve units of that as a gutter.
+//:
+//: **This, and not the island, is what caps the cards.** Measured: on a 393pt
+//: portrait frame it allows `1.19x`, while the height freed by taking the
+//: island all the way down to `ISLAND_TINY` would allow `1.63x`. So a card
+//: focus that shrank the island further would buy nothing at all -- the frame
+//: is 520 units wide whatever the island does.
+const CARD_WIDEST = (w) => 0.47 * w - 12;
+
+/**
+ * What one tap is worth, on a phone held upright.
+ *
+ * The island and the cards are competing for one screen and the viewer is the
+ * only one who knows which of them they are looking at. So they get to say, and
+ * this is the whole of the mechanism: **a card scale, and a floor under the
+ * island.** `cardPlan` already sizes the island as the *residual* of the band
+ * the chrome left, so scaling the cards moves the island by construction and
+ * there is nothing else to move.
+ *
+ * `card: null` means "as large as the frame allows", solved below.
+ *
+ * Measured on a 393x660 portrait frame -- a shared link opened with the
+ * browser's own bars showing -- with two traders:
+ *
+ * | focus | card | island, drawn | of the window |
+ * |---|---|---|---|
+ * | `even` | 1.00 | 198px | 50% |
+ * | `island` | 0.58 | 276px | 70% |
+ * | `cards` | 1.19 | 166px | 42% |
+ *
+ * The asymmetry is real and is the frame's, not a choice: the island gains 39%
+ * and the cards 19%, because the cards run out of *width* long before the
+ * island runs out of *height*.
+ */
+const FOCUS = {
+  even: { card: 1, floor: ISLAND_MIN },
+  //: `mini`, because 0.58 of a card is not a card. Measured on a 390pt window:
+  //: the viewBox is 520 across, so a unit is 0.75 device pixels and 0.58 of one
+  //: is 0.44 -- which puts a shelf's quantities at **4.8 pixels** and its
+  //: `labour` and `utility` captions at 4.2. A number too small to read is
+  //: worse than no number, because it still looks like the page is telling you
+  //: something. So the small card stops being a shrunk card and becomes a
+  //: glance card: whose it is, the coloured bars, and what the shelf came to.
+  //: The rules are in the stylesheet, on `.card.mini`.
+  island: { card: 0.58, floor: ISLAND_MIN, mini: true },
+  cards: { card: null, floor: ISLAND_TINY },
+};
+
+/** The focus names, in the order a tap cycles them. */
+export const FOCUSES = Object.keys(FOCUS);
+
+function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
   const gap = 14;
   const pitch = CARD_TOP + cardH + gap;
   if (portrait) {
     // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
     // fit beside each other with a gutter and three do not.
     const rows = Math.ceil(n / 2);
-    const cardsH = rows * pitch;
+    //: **The frame's height is settled before the focus is**, off the card the
+    //: layout would have drawn had nobody chosen. A focus that moved `H` would
+    //: change the frame's *shape*, and the shape is what makes the chrome's
+    //: bands land where the chrome is -- so a tap on a card would have walked
+    //: the pills back over the island. A tap re-divides this band; it never
+    //: resizes it.
+    const cardsEven = rows * pitch;
     //: **The frame is the window's own shape**, so the viewBox does not
     //: letterbox and a band measured in units is the same band in pixels.
     //:
@@ -229,7 +295,7 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     //: its minimum once the chrome and the cards have theirs. The frame is
     //: then taller than the window and the slack falls across the *width*,
     //: which is the direction this has been spending slack in all along.
-    const floorH = Math.ceil((ISLAND_MIN * ISLAND_FOOT + 16 + cardsH)
+    const floorH = Math.ceil((ISLAND_MIN * ISLAND_FOOT + 16 + cardsEven)
                              / Math.max(0.2, 1 - frame.top - frame.foot));
     const H = Math.max(720, Math.round(w / frame.aspect), floorH);
     //: The chrome's two bands, in units. Declared in the stylesheet next to
@@ -249,12 +315,35 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     //: near half the height between them and the island is drawn small. That
     //: is the trade, and it is the deliberate side of it: the island was
     //: bigger before because it was drawn *underneath* the chrome.
-    const room = H - above - below - cardsH - 16;
-    const D = Math.max(ISLAND_MIN, Math.min(w, Math.floor(room / ISLAND_FOOT)));
+    //:
+    //: **Which of the two gives is now the viewer's to say.** `FOCUS` scales
+    //: the cards; the island is still the residual and still takes all of it.
+    const band = H - above - below;
+    const want = FOCUS[focus] ?? FOCUS.even;
+    const pitchAt = (s) => s * (CARD_TOP + cardH) + gap;
+    //: The largest card that still leaves the island the floor this focus put
+    //: under it. Never below 1: a viewer who asked for the cards is not told
+    //: that the answer is smaller cards.
+    const byHeight = ((band - 16 - want.floor * ISLAND_FOOT) / rows - gap)
+                     / (CARD_TOP + cardH);
+    const scale = want.card
+      ?? Math.max(1, Math.min(CARD_WIDEST(w) / CARD_W, byHeight));
+    const cardsH = Math.round(rows * pitchAt(scale));
+    const room = band - cardsH - 16;
+    const D = Math.max(want.floor, Math.min(w, Math.floor(room / ISLAND_FOOT)));
+    //: **The block sits in the middle of the band, not at the top of it.**
+    //: The island is capped at the frame's own width -- past that its shore
+    //: would be cropped, since the land spans exactly its box -- so on a tall
+    //: phone it is already as big as it can be and every unit the cards give
+    //: back is slack. Dumped below the last card that slack is invisible, and
+    //: a tap on the island would have looked like a tap that did nothing.
+    //: Shared above and below, it is the island getting the room.
+    const used = Math.round(ISLAND_FOOT * D) + 16 + cardsH;
+    const top = above + Math.max(0, Math.round((band - used) / 2));
     //: Where the island actually stops, which is above where its box does.
     //: Kept separate from where the cards start, so that a check comparing the
     //: two is asking a question rather than restating one number twice.
-    const islandFoot = above + Math.round(ISLAND_FOOT * D);
+    const islandFoot = top + Math.round(ISLAND_FOOT * D);
     const foot = islandFoot + 16;
     return {
       cards: Array.from({ length: n }, (_, i) => {
@@ -262,12 +351,14 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
         // A row with one card in it sits in the middle rather than off to a side.
         const alone = i === n - 1 && n % 2 === 1;
         return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-                 y: foot + row * pitch };
+                 y: foot + row * pitchAt(scale) };
       }),
-      islandBox: { x: Math.round((w - D) / 2), y: above, w: D, h: D },
+      islandBox: { x: Math.round((w - D) / 2), y: top, w: D, h: D },
       //: Where the island starts drawing, a hair below its box's own top.
-      islandTop: above + Math.round(ISLAND_TOP * D),
+      islandTop: top + Math.round(ISLAND_TOP * D),
       islandFoot,
+      cardScale: scale,
+      cardMini: !!want.mini,
       //: The window's height, or more if the cards need it. Any slack falls
       //: past the last card, below the transport's own band, where it is sea.
       h: Math.max(H, foot + cardsH + below),
@@ -284,7 +375,12 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     const block = of * pitch - gap;
     return { x: right ? w - col : col, y: (h - block) / 2 + k * pitch };
   });
-  return { cards, islandBox: { x: col * 2, y: 0, w: w - col * 4, h }, h };
+  //: Landscape has margins down the sides and the cards stand in them, so
+  //: nothing here is competing for the same pixels and there is nothing for a
+  //: focus to re-divide. `cardScale` is declared anyway rather than left
+  //: undefined, so the scene has one number to read either way up.
+  return { cards, islandBox: { x: col * 2, y: 0, w: w - col * 4, h }, h,
+           cardScale: 1, cardMini: false };
 }
 
 /**
@@ -310,8 +406,11 @@ const widen = (base, h, aspect) =>
  *   stands on, as fractions of the window's height. Read off the stylesheet by
  *   the page; **zero here means the island is drawn under the pills**, which
  *   is what it did before these existed.
+ * @param {string} focus  which of the island and the cards the viewer asked
+ *   for -- `"even"`, `"island"` or `"cards"`. Portrait only; see `FOCUS`.
  */
-export function layout(n, portrait = false, aspect = null, chrome = null) {
+export function layout(n, portrait = false, aspect = null, chrome = null,
+                       focus = "even") {
   if (portrait) {
     // One seat above another, far enough apart for a hut above each card. The
     // pitch is the seat's own extent -- hut, card and a gap -- rather than a
@@ -330,7 +429,8 @@ export function layout(n, portrait = false, aspect = null, chrome = null) {
     const plan = cardPlan(n, w, bottom + 120, CARD_H_SCORED, true,
                           // A phone held upright, for a caller that did not say.
                           { aspect: aspect ?? 0.46,
-                            top: chrome?.top ?? 0, foot: chrome?.foot ?? 0 });
+                            top: chrome?.top ?? 0, foot: chrome?.foot ?? 0 },
+                          focus);
     return {
       w, h: plan.h, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
       // Beside the column rather than in it: a fire between two stacked huts
@@ -488,7 +588,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 
 export class Scene {
   constructor(root, timeline, reveal = null, portrait = false, placed = null,
-              aspect = null, chrome = null) {
+              aspect = null, chrome = null, focus = "even") {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -504,7 +604,10 @@ export class Scene {
     //: takes a different share of it -- a phone's pill rows are a fixed number
     //: of pixels, so a shorter window is a bigger band at the same aspect.
     this.chrome = chrome;
-    this.geo = layout(this.traders.length, portrait, aspect, chrome);
+    //: Which of the island and the cards this viewer asked for. Portrait only:
+    //: landscape has margins for the cards and the two are not competing.
+    this.focus = focus;
+    this.geo = layout(this.traders.length, portrait, aspect, chrome, focus);
     // Where the settlements actually are, when there is a model underneath.
     // The island decides where its own huts stand; the cards stand in the
     // frame's margins and a line ties each one back, which is why this arrives
@@ -537,15 +640,17 @@ export class Scene {
    * the page can skip a repaint on a resize that did not cross the boundary
    * (every scroll on mobile Safari fires one).
    */
-  reflow(portrait, aspect = this.aspect, chrome = this.chrome) {
+  reflow(portrait, aspect = this.aspect, chrome = this.chrome,
+         focus = this.focus) {
     const same = (a, b) => (a?.top ?? 0) === (b?.top ?? 0)
                         && (a?.foot ?? 0) === (b?.foot ?? 0);
     if (portrait === this.portrait && aspect === this.aspect
-        && same(chrome, this.chrome)) return false;
+        && focus === this.focus && same(chrome, this.chrome)) return false;
     this.portrait = portrait;
     this.aspect = aspect;
     this.chrome = chrome;
-    this.geo = layout(this.traders.length, portrait, aspect, chrome);
+    this.focus = focus;
+    this.geo = layout(this.traders.length, portrait, aspect, chrome, focus);
     // The layout's own seats, for now. A caller with an island underneath
     // follows this with `replace()`, because the settlements have to be put
     // back on a frame of the new shape before the cards can find them.
@@ -768,6 +873,51 @@ export class Scene {
     thatch.append(el("path", { d: "M 0 6 q 4 -6 8 0", class: "thatch-line" }));
     defs.append(thatch);
     return defs;
+  }
+
+  /**
+   * What the cards are drawn at, which is 1 unless a viewer asked otherwise.
+   *
+   * Only with a model behind the page: without one the cards hang under their
+   * own drawn huts at `geo.seats` rather than standing in the frame's margins
+   * at `geo.cards`, so scaling them would move a card off the hut it belongs
+   * to and the layout's own plan is not being used anyway.
+   */
+  cardScale() {
+    return this.modelled ? (this.geo.cardScale ?? 1) : 1;
+  }
+
+  /**
+   * Where one good's bar stands, in scene coordinates.
+   *
+   * The bar's own `x` and the shelf's `BASE` are **card** coordinates, and the
+   * card is a scaled group, so the two are not the same thing any more. This is
+   * the one place the conversion happens: every symbol that flies between a
+   * pile on the island and the bar counting it starts or ends here.
+   */
+  barAt(seat, slot) {
+    const s = this.cardScale();
+    return { x: seat.x + slot.x * s, y: seat.y + (CARD_TOP + BASE - 10) * s };
+  }
+
+  /**
+   * What a tap at a point in the frame is a tap on: `"cards"`, `"island"`, or
+   * `null` for the sea around them.
+   *
+   * The page asks, because the page owns the gesture; this owns the geometry
+   * and is the only thing that knows where either of them ended up. A card is
+   * tested first: the two boxes do not overlap by construction, but a tap near
+   * the edge of one should land on the thing that was drawn there.
+   */
+  tapped(x, y) {
+    const s = this.cardScale();
+    const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
+    const inside = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+    for (const seat of seats ?? []) {
+      if (inside({ x: seat.x - (CARD_W / 2) * s, y: seat.y + CARD_TOP * s,
+                   w: CARD_W * s, h: this.cardH * s })) return "cards";
+    }
+    return this.geo.islandBox && inside(this.geo.islandBox) ? "island" : null;
   }
 
   /** Where the sun stands, this far through the episode. */
@@ -1011,7 +1161,17 @@ export class Scene {
     g.append(el("rect", { class: "door", x: -8, y: -14, width: 20, height: 26, rx: 2 }));
     g.append(el("path", { class: "hut-rim", d: "M -50 -34 L 0 -80 L 50 -34" }));
 
-    const card = el("g", { class: "card" });
+    //: **The card scales; the hut does not.** In portrait the two are competing
+    //: for one screen and a tap says which of them wins (see `FOCUS`), and the
+    //: card is the term that moves because the island is sized as the residual.
+    //: Applied to the card's own group rather than to the whole settlement, so
+    //: that a drawn hut -- the fallback with no model behind the page -- is
+    //: never scaled by a number chosen for the thing hanging under it.
+    const card = el("g", {
+      class: this.cardScale() !== 1 && this.geo.cardMini ? "card mini" : "card" });
+    if (this.cardScale() !== 1) {
+      card.setAttribute("transform", `scale(${this.cardScale()})`);
+    }
     card.append(el("rect", { class: "card-shadow", x: -CARD_W / 2 + 3, y: CARD_TOP + 5,
                              width: CARD_W, height: this.cardH, rx: 13 }));
     card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: CARD_TOP,
@@ -1515,7 +1675,7 @@ export class Scene {
       // `qty / capacity`, and a capacity is private, so live the page has no
       // way to know it and must not pretend otherwise.
       const size = 0.62 + 0.55 * Math.min(1, qty / (this.top || 1));
-      const x = seat.x + slot.x, to = seat.y + CARD_TOP + BASE - 10;
+      const { x, y: to } = this.barAt(seat, slot);
       //: **From the boxes.** The goods stand on the island now -- a pile per
       //: good beside every hut -- so the symbol that fills a bar comes off the
       //: pile it is counting rather than out of the top of its own card. With
@@ -1661,7 +1821,7 @@ export class Scene {
     const seat = this.seats[name], slot = this.bars[name]?.[good];
     if (!seat || !slot) return;
     const yard = this.yards[`${name}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
-    const x = seat.x + slot.x, at = seat.y + CARD_TOP + BASE - 10;
+    const { x, y: at } = this.barAt(seat, slot);
     // Held at what it was until the symbol lands, the same way `produce()`
     // holds a shelf: a bar that moved on its own would win the race and the
     // symbol would arrive at a bar that had already finished changing.
