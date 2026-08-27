@@ -106,6 +106,36 @@ export const carriedBy = (i, back = false) =>
   (back ? CARRY.back : 0) + CARRY.off + i * CARRY.step + CARRY.spread
   + CARRY.cross + CARRY.land + CARRY.rest;
 
+/**
+ * The other journey a good makes: **out of the site that made it, home.**
+ *
+ * The same arrangement as `CARRY`, for the same reason. Production had no
+ * shared table at all: `island-events.js` flew its crates off hard-coded
+ * seconds -- 0.9 and 0.3 apart, 1.9 across, landing at 2.4 -- while
+ * `scene.js:produce` filled the shelf off `DWELL.produced` minus 300, and the
+ * two had never been the same schedule. The symbols left the yard inside the
+ * first second and the crates were still walking home at two and a half, so
+ * the card filled from goods that had not arrived yet. **The exact defect
+ * `CARRY` was written to end, at the other event.** Reported by eye, twice --
+ * once as the trades looking right and production not.
+ *
+ * So a production is three legs like an exchange, and the last one is the same
+ * motion: the crate is made at the site, it walks home, it lands, it opens,
+ * and the symbol rises out of it into the bar.
+ */
+export const MAKE = {
+  work: 900,     // the site works before anything comes out of it
+  step: 300,     // and the next good's crates are made this much later
+  spread: 240,   // one good's crates leave across this window, however many
+  fly: 1900,     // across the island, from the site to the yard
+  land: 600,     // the hop onto the pile
+  rest: 160,     // a beat standing there before the lid comes up
+};
+
+/** When the `i`-th good of a receipt is certainly standing in its yard. */
+export const madeBy = (i) =>
+  MAKE.work + i * MAKE.step + MAKE.spread + MAKE.fly + MAKE.land + MAKE.rest;
+
 //: The arriving boxes emptying into the gaining card: the third leg.
 //: Exported for the same reason `CARRY` is -- the boxes hold their lids open
 //: for exactly as long as the symbols are climbing out of them, and a second
@@ -123,7 +153,10 @@ export const DWELL = {
   //: for the worst case a board allows -- seven goods, 7.6s -- would spend that
   //: on every two-good trade as well.
   settled: carriedBy(0, true) + IN_LEG,
-  produced: 2600,  // the hut works, then a sheaf per good lands on the shelf
+  //: The floor, for a receipt of one good: the site works, the crate walks
+  //: home and lands, and the symbol rises off it. `dwellFor` measures a wider
+  //: receipt, exactly as it does a wider bundle.
+  produced: madeBy(0) + IN_LEG,
   refused: 1500,   // one badge, rising
   said: 1300,      // one bubble, rising
   bell: 3600,      // the sun goes down. Not a thing to hurry
@@ -151,6 +184,12 @@ export function dwellFor(event, isStill = false) {
   //: Measured off the bundle rather than taken off the table: the last leg of
   //: an exchange starts when the last of its boxes has landed, and that is
   //: `CARRY.step` later for every good in it.
+  //: A receipt is measured the same way an exchange is: its last crate lands
+  //: `MAKE.step` later for every good in it, and the symbol leaves from there.
+  if (event.kind === "produced") {
+    const n = Object.values(event.made || {}).filter((q) => q > 1e-9).length;
+    return Math.max(DWELL.produced, madeBy(Math.max(0, n - 1)) + IN_LEG);
+  }
   if (event.kind === "settled") {
     const wide = (b) => Object.values(b || {}).filter((q) => q > 1e-9).length;
     return Math.max(DWELL.settled, ...[[wide(event.give), false],
@@ -2118,8 +2157,10 @@ export class Scene {
     const hut = this.root.querySelector(`.hut[data-trader="${e.trader}"]`);
     hut?.classList.add("working");
     const wheel = this.labels[e.trader];
-    const span = still() ? 1 : DWELL.produced - 300;
-    const each = still() ? 0 : Math.min(520, (span - 900) / Math.max(1, made.length));
+    //: The wheel fills while the site works and the crates cross, which is the
+    //: labour being spent -- it is finished by the time the first crate is in
+    //: the yard, and the symbols are what happens after that.
+    const span = still() ? 1 : madeBy(0) - MAKE.rest;
 
     // The labour goes as the goods come. One unit divided across the shelf is
     // the entire decision a trader makes here, and the wheel filling silently
@@ -2132,60 +2173,23 @@ export class Scene {
         { duration: span, easing: "cubic-bezier(.4,0,.3,1)" });
     }
 
+    //: **The same last leg as an exchange's.** A production used to fill the
+    //: shelf off its own clock: the symbols left the yard inside the first
+    //: second while the crates were still walking home at two and a half, so a
+    //: bar filled from goods that had not arrived. Reported by eye, as the
+    //: trades looking right and production not.
+    //:
+    //: It is `hand(..., "in", ...)` now -- the identical motion, on the
+    //: identical schedule shape: `madeBy(i)` is when that good's crate is
+    //: certainly standing in the yard, and `IN_LEG` is the rise off it. Which
+    //: means the fix that made an exchange's symbols leave from the crate --
+    //: built at the moment they fly, not cued three seconds earlier against an
+    //: island that then turns -- is the same code here and cannot drift from
+    //: it. A production's crates land *open* now, because there is finally
+    //: something coming out of them.
     made.forEach(([good, qty], i) => {
-      const slot = this.bars[e.trader]?.[good];
-      if (!slot) return;
-      // Hold this slot at what it held before, and let the goods fill it. The
-      // arriving sheaf is what makes the bar grow -- before, the two were
-      // unrelated and the bar won the race by a second.
-      slot.holding = true;
-      this.setBar(slot, slot.was.qty, slot.was.free);
-      const delay = still() ? 0 : i * each;
-      const flight = still() ? 1 : Math.max(700, span - i * each - 120);
-
-      const sheaf = el("g", { class: "sheaf" });
-      sheaf.append(el("circle", { class: "sheaf-puff", r: 15 }));
-      sheaf.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
-      sheaf.append(el("text", { y: 16, class: "sheaf-qty" }, qty.toFixed(2)));
-      this.flights.append(sheaf);
-
-      // Sized by how much of it there is, on the shelf's own scale -- so a big
-      // haul is a big thing crossing the card. Not by labour share: that is
-      // `qty / capacity`, and a capacity is private, so live the page has no
-      // way to know it and must not pretend otherwise.
-      const size = 0.62 + 0.55 * Math.min(1, qty / (this.top || 1));
-      const { x, y: to } = this.barAt(seat, slot);
-      //: **From the boxes.** The goods stand on the island now -- a pile per
-      //: good beside every hut -- so the symbol that fills a bar comes off the
-      //: pile it is counting rather than out of the top of its own card. With
-      //: no model there is no pile, and the card's seat stands in as it always
-      //: did.
-      const from = this.yards[`${e.trader}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
-      const anim = sheaf.animate([
-        { transform: `translate(${from.x}px, ${from.y}px) scale(.35)`, opacity: 0 },
-        { transform: `translate(${from.x}px, ${from.y - 26}px) scale(${size})`,
-          opacity: 1, offset: .22 },
-        { transform: `translate(${(from.x + x) / 2}px, ` +
-                     `${(from.y + to) / 2 - 40}px) scale(${size})`,
-          opacity: 1, offset: .55 },
-        { transform: `translate(${x}px, ${to}px) scale(${size * .8})`, opacity: 1 },
-      ], { duration: flight, delay, easing: "cubic-bezier(.3,.7,.35,1)",
-           fill: "backwards" });
-
-      anim.finished.then(() => {
-        // It landed. *Now* the shelf has it.
-        sheaf.remove();
-        slot.holding = false;
-        this.setBar(slot, slot.now.qty, slot.now.free);
-        slot.cell.classList.add("grew");
-        setTimeout(() => slot.cell.classList.remove("grew"), 700);
-      }, () => {
-        // Scrubbed away mid-flight: put the shelf where the state says it is
-        // rather than leaving it held at a value nothing is coming to fill.
-        sheaf.remove();
-        slot.holding = false;
-        this.setBar(slot, slot.now.qty, slot.now.free);
-      });
+      this.hand(e.trader, good, qty, "in", still() ? 2 : madeBy(i),
+                still() ? 1 : IN_LEG);
     });
 
     setTimeout(() => hut?.classList.remove("working"), still() ? 1 : span);

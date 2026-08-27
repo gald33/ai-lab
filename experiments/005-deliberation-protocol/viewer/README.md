@@ -901,7 +901,7 @@ What each clip carries itself now:
 
 | clip | what a viewer sees |
 |---|---|
-| a production | the site works, and boxes are made there and hop home |
+| a production | the site works, boxes are made there and hop home, and **they open where they land** |
 | an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
 | a settlement | the boxes cross the island and **open where they land**, and the fire flares once |
 | a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
@@ -1505,12 +1505,12 @@ Three things follow from open being a *moment*:
 * **A clip cut short shuts the lid**, the same way it puts the box down:
   `land_` does both, so no box is left standing open with nothing coming to
   empty it.
-* **A production's crates land shut.** Not an exemption: `scene.js:produce`
-  fills the shelf off its own clock — its symbols leave the yard inside the
-  first second and the boxes are still walking home at two and a half — so a
-  lid swung up on landing would open on an empty beat, after everything it was
-  meant to release had gone. Production has no `carriedBy`, and giving it one
-  means retiming `DWELL.produced` around the walk home. That is its own change.
+* **A production's crates open too, and did not at first.** They landed shut
+  for one release, because `scene.js:produce` filled the shelf off its own
+  clock — its symbols left the yard inside the first second while the crates
+  were still walking home at two and a half — so a lid swung up on landing
+  would have opened on an empty beat. That was written down here as its own
+  change, and it is done: see **A production is three legs too**.
 
 **`render.py:emerging` is the check for all of it**, and it is a check of the
 card layer's *keyframes*, not of a rendered frame: it drives a real exchange,
@@ -1539,6 +1539,55 @@ and it reports them still transparent 42% of the way from the crate.
 `render.py`'s yard checks take the crates by name (`box_`) rather than every
 mesh under `yards`: a flap sits a box-height above the grass by construction,
 and the clearance check exists to catch a crate that floats.
+
+### A production is three legs too
+
+*Reported by eye:* **"for trades I see the boxes move and only then their
+symbols; for production it should be the same."** It was not, and the reason is
+the one this file has now recorded three times in different clothes: **two
+engines drawing one event off two schedules**.
+
+An exchange has had a single table since `CARRY` was written. A production had
+none. `island-events.js` flew its crates off hard-coded seconds — the first at
+0.9, the next 0.3 later, *per crate rather than per good*, 1.9 across, landing
+at 2.4 — while `scene.js:produce` filled the shelf off `DWELL.produced - 300`
+divided among however many goods there were. Nothing tied the two together, and
+they disagreed by more than a second: the bar filled from goods that were still
+walking home.
+
+`MAKE` is that table, and `madeBy(i)` is the cue both sides compute from it:
+
+| | ms |
+|---|---|
+| `work` | the site works before anything comes out of it |
+| `step` | and the next good's crates are made this much later |
+| `spread` | one good's crates leave across this window, however many |
+| `fly` | across the island, from the site to the yard |
+| `land` | the hop onto the pile |
+| `rest` | a beat standing there before the lid comes up |
+
+`spread` is there for the reason it is in `CARRY`: the crates of one good used
+to be staggered *per crate*, so a good that came to six crates landed a second
+and a half after one that came to one, and no card could compute a landing time
+from a quantity. Spread across a fixed window at `k / (n - 1)` of it, the last
+crate of a good always lands at `madeBy(i) - rest`.
+
+**And the card's last leg is now literally the exchange's.** `produce()` calls
+`hand(..., "in", madeBy(i), IN_LEG)` — the same method, the same motion, the
+same rise off the crate. Which means the fix that made an exchange's symbols
+leave *from* the crate rather than from where it was three seconds earlier is
+this code too, and cannot drift from it. `DWELL.produced` stopped being a
+literal for the same reason `DWELL.settled` did: `dwellFor` measures the
+receipt it is given.
+
+`tests/making.test.mjs` is the check, and it drives the clip rather than
+reading the table: for each good, when its own crates stop moving against when
+the card is told to send that good's symbol. Bounded on both sides — early is
+the defect, later than the beat means the schedules have drifted apart again —
+plus the lid, which must be shut while the crate crosses, open at the cue, open
+half way through the rise, and shut by the end. Neutered (the crates given back
+a flight of their own, off the table) it reports the crates still moving at
+4240ms against a symbol cued at 3800ms.
 
 ### The symbols were not coming out of the boxes
 

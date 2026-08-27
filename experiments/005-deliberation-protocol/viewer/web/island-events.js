@@ -29,7 +29,7 @@ import { goodMat } from "./island3d.js";
 //: fit inside. This is the boxes' half of it; `scene.js:hands` runs the cards'
 //: half off the same numbers, which is the point -- the two were separate
 //: copies in different units and they had drifted apart by half a second.
-import { CARRY, IN_LEG } from "./scene.js";
+import { CARRY, IN_LEG, MAKE, madeBy } from "./scene.js";
 //: A box is opened by the clip that brought it home; what a lid *is* belongs
 //: to the stock that builds the box.
 import { openLid } from "./island-stock.js";
@@ -44,6 +44,10 @@ const easeInOut = (x) => ((x = clamp01(x)) < 0.5
 const win = (t, a, b) => clamp01((t - a) / (b - a));
 
 const clone = (m, extra = {}) => Object.assign(m.clone(), extra);
+
+//: The schedules are named in milliseconds, beside the card animations that
+//: spend them; a clip's clock is in seconds.
+const S = (ms) => ms / 1000;
 
 function mesh(geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0]) {
   const m = new THREE.Mesh(geo, material);
@@ -277,13 +281,15 @@ function produced(event, { island, anchors, goods, stock }) {
   const home = anchors[event.trader];
   if (!made.length || !home) return null;
 
+  //: A placeholder, as in `settled`: the real length is set below, once how
+  //: many goods this receipt came to is known.
   const c = clip(4.4);
   const legs = [];
   const works = [];
-  for (const [good, qty] of made) {
+  made.forEach(([good, qty], gi) => {
     const site = island.getObjectByName(`site_${good}`);
     const from = anchors[`site_${good}`];
-    if (!from) continue;
+    if (!from) return;
     works.push(...siteWork(good, site, c));
     // What says *here* is the site's own parts working and the crates coming
     // out of it. There used to be a ring on the ground as well; see the note
@@ -292,10 +298,10 @@ function produced(event, { island, anchors, goods, stock }) {
     // less what it holds now. A production too small to move the count by a
     // whole box still works its site -- the receipt happened -- it just does
     // not put another crate in the yard, which is the honest picture.
-    if (!stock) continue;
+    if (!stock) return;
     const add = stock.want(good, (event.after?.[good] ?? qty))
               - stock.count(event.trader, good);
-    if (add <= 0) continue;
+    if (add <= 0) return;
     const born = from.clone().setY(from.y + 0.28);
     const boxes = stock.mint(good, add, born);
     // The slots are claimed now, at the start, so the flight has somewhere to
@@ -303,10 +309,20 @@ function produced(event, { island, anchors, goods, stock }) {
     // on top of them.
     const rest = stock.put(event.trader, good, boxes);
     boxes.forEach((box, k) => {
+      //: **One good's crates leave across a fixed window, however many there
+      //: are** -- `MAKE.spread`, `k / (n - 1)` of it, a lone crate taking the
+      //: whole of it. The same rule as `CARRY.spread` and for the same reason:
+      //: the *last* crate of a good then always lands at `madeBy(gi) - rest`,
+      //: whether that good came to one crate or six, and the card's symbol --
+      //: which does not know how many crates a quantity came to -- has a
+      //: landing time it can compute.
+      const lag = boxes.length > 1
+        ? (k / (boxes.length - 1)) * S(MAKE.spread) : S(MAKE.spread);
       legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                  from: born, to: rest[k] });
+                  from: born, to: rest[k],
+                  t0: S(MAKE.work + gi * MAKE.step) + lag });
     });
-  }
+  });
   if (!legs.length) {
     // Nothing crossed the ground, but the site still worked and the mark still
     // went down: a receipt is a thing that happened.
@@ -328,14 +344,24 @@ function produced(event, { island, anchors, goods, stock }) {
   //:
   //: What says a crate landed is the crate: it hops, and then it is standing
   //: in the yard. That was always the part carrying the event.
+  //: As long as the last crate's own rise off the pile, rather than a constant.
+  //: A receipt of three goods runs a second and a half past the 4.4 that used
+  //: to be hard-coded here, and the lid has to still be open when the symbol
+  //: leaves.
+  c.dur = S(madeBy(Math.max(0, made.length - 1)) + IN_LEG + SHUT) + 0.2;
+
   c.update = (t) => {
     for (const w of works) w(t);
-    legs.forEach(({ box, wake, from, to }, i) => {
-      const t0 = 0.9 + i * 0.3;
+    legs.forEach(({ box, wake, from, to, t0 }) => {
+      //: **The crate's own schedule, off the table the card reads too.** These
+      //: were hard-coded seconds -- 0.9, and 0.3 apart *per crate* rather than
+      //: per good -- with nothing tying them to when `scene.js:produce` sent
+      //: its symbols, and the two disagreed by more than a second. `MAKE` is
+      //: that table now and `madeBy(i)` is what both sides compute from it.
       // Coming into being at the site that made it: the one place a box is
       // allowed to grow out of nothing.
       const pop = easeOut(win(t, t0 - 0.6, t0));
-      const p = easeInOut(win(t, t0, t0 + 1.9));
+      const p = easeInOut(win(t, t0, t0 + S(MAKE.fly)));
       box.visible = pop > 0.01;
       box.scale.setScalar(pop);
       box.position.lerpVectors(from, to, p);
@@ -352,13 +378,22 @@ function produced(event, { island, anchors, goods, stock }) {
       //: production has no such number yet; giving it one means retiming
       //: `DWELL.produced` around the walk home, which is its own change.
       // The hop as it lands on the pile, and then it is simply standing there.
-      const land = win(t, t0 + 1.8, t0 + 2.4);
+      const down = t0 + S(MAKE.fly);
+      const land = win(t, down, down + S(MAKE.land));
       if (land > 0) {
         box.position.copy(to);
         box.position.y = to.y + Math.abs(Math.sin(land * Math.PI * 2)) * 0.12 * (1 - land);
         box.rotation.set(0, 0, 0);
         box.scale.setScalar(1);
       }
+      //: **And then it opens, because something is coming out of it.** A
+      //: production's crates used to land shut, and they had to: the card was
+      //: filling off its own clock and everything the lid would have released
+      //: had already gone. On one schedule the lid is the same beat it is in an
+      //: exchange -- up across the landing hop, open through `MAKE.rest` and
+      //: the whole of the symbol's rise, shut afterwards.
+      openLid(box, lidAt(t, down + S(MAKE.land), S(MAKE.rest + IN_LEG),
+                         S(MAKE.land)));
     });
   };
   // Scrubbed away mid-flight, the boxes are still the trader's: the receipt
@@ -548,9 +583,6 @@ function settled(event, { island, anchors, goods, stock, life }) {
   //: re-created rather than changing hands. These come off the maker's own
   //: pile and go onto the taker's, and the count in each yard is the count the
   //: board says after the exchange.
-  //: `CARRY` is in milliseconds because that is what a card's animation takes;
-  //: a clip's clock is in seconds.
-  const S = (ms) => ms / 1000;
   const push = (bundle, giver, taker, back) => {
     Object.entries(bundle || {}).filter(([, q]) => q > 1e-9)
       .forEach(([good, q], i) => {
