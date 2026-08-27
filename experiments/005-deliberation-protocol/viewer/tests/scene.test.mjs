@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          DWELL, dwellFor, CARRY, carriedBy,
-         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, sunAt, SET } from "../web/scene.js";
+         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, sunAt, SET } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -457,6 +457,26 @@ test("a refusal blinks the offer the manager was answering", () => {
   assert.deepEqual(
     refused(proposals, "T1", "you have 0.0000 cloth uncommitted, not 0.1500"), []);
   assert.deepEqual(refused(undefined, "T1", "p6 was not addressed to you"), []);
+});
+
+
+test("pills waiting on one hut stack, oldest at the bottom", () => {
+  const open = [
+    { pid: "p1", maker: "T1", taker: "T4" },
+    { pid: "p2", maker: "T2", taker: "T4" },
+    { pid: "p3", maker: "T2", taker: "T3" },
+    { pid: "p4", maker: "T3", taker: "T4" },
+  ];
+  // By taker, not by pair: three different makers offering T4 used to land on
+  // that one roof on top of each other, all of them at pair fan 0.
+  assert.deepEqual([...stacking(open)].map(([pid, s]) => [pid, s.i]),
+                   [["p1", 0], ["p2", 1], ["p3", 0], ["p4", 2]]);
+  // How tall the pile is, on every member of it: the fifth of five and the
+  // fifth of nine sit at different heights once the pile has to fit the frame.
+  assert.deepEqual([...stacking(open)].map(([pid, s]) => [pid, s.of]),
+                   [["p1", 3], ["p2", 3], ["p3", 1], ["p4", 3]]);
+  assert.deepEqual([...stacking([])], []);
+  assert.deepEqual([...stacking(undefined)], []);
 });
 
 

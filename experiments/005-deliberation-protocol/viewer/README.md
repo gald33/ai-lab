@@ -53,6 +53,10 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | the labour wheel | share of this episode's labour spent, from the receipt |
 | a pill sliding down a rope | an offer being carried from the trader who made it to the trader it is addressed to |
 | a pill waiting over a hut | an open proposal, with what it offers for what, standing on the trader who has to answer it |
+| a stack of pills on one hut | every open offer that trader has to answer, oldest at the bottom |
+| a pill blinking green, then gone | the offer settled |
+| a pill blinking red | the manager would not settle it; the offer is still open |
+| a rope blurring and coming apart | the bell took the offer with it, unanswered |
 | goods in flight | a settled exchange, both directions at once |
 | a red card outline | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
@@ -1059,6 +1063,79 @@ animation**, so the crawl was reset sixty times a second and the line sat
 still. Ropes are moved in place now and rebuilt only when the set of offers
 changes. `turning()` holds both halves: the node has to survive the camera
 turning, and the path has to start at the maker's end.
+
+### What became of an offer, said on the offer
+
+An offer left the square three ways and the square said nothing about which.
+It vanished at the bell, it vanished when it settled, and a refusal put a cross
+over a hut while the rope it was about carried on crawling. All three are now
+said on the rope and the pill themselves (2026-08-27, Gal's ask):
+
+* **The bell dissolves it.** A lapsed rope used to fade its opacity, which read
+  as the page dropping the offer rather than the bell taking it. `fray()` blurs
+  and lifts the group while `@keyframes scatter` pulls its dashes open into
+  specks.
+* **A refusal blinks it red.** `refuse()` finds the offer the manager was
+  answering — the manager names the proposal in three of its four approval
+  refusals, and in the fourth it names the good, where the offer is the open one
+  addressed to that trader asking for it. Marked on the **live** rope, since a
+  refusal does not close the offer, and a red copy laid over the orange original
+  would blink to the wrong colour between flashes.
+* **A settlement blinks it green.** A settled offer is out of `this.ropes` by
+  the time `play()` runs, because `paint()` draws only open offers — so the
+  green copy is spawned from `paint()`, beside the lapsed one.
+
+The colour is the answer and stays under `prefers-reduced-motion`; only the
+blinking goes.
+
+### The pile on a hut is the queue that hut has to answer
+
+**The pills stack by taker, and the ropes fan by pair. Those are two different
+numbers**, and using one for both was the bug. Fanning the arcs keeps two
+offers between the *same* two huts off one curve, which is what `fan` is for —
+but three traders offering the same hut all sit at fan 0, so their pills landed
+on that one roof on top of each other. Which is exactly where a spectator
+counts what a trader has been asked, and the count was unreadable there.
+
+`stacking()` numbers the open offers by taker in the order they were made, and
+the arrived pill rises one pill-and-a-gap per place in the pile, oldest at the
+bottom. Two details it needs:
+
+* **The frame before is kept** (`wasStack`). A pill on its way out is drawn
+  *after* its offer stopped being open, so `fray` and `verdict` build their copy
+  from a proposal the current map no longer carries — without the old height it
+  would drop to the roof before dissolving.
+* **A changed pile is changed offers.** `follow()`'s reuse check compares pair
+  fans and the count, and one offer lapsing as another opens leaves both
+  identical. `aimRope()` re-reads the stack every frame, so the reused branch is
+  correct either way.
+* **The pile stops at a ceiling and compresses instead of growing through it.**
+  A pile that grew freely put its top pills off the top of the picture, which is
+  the one place a spectator counting what a trader has been asked cannot count
+  them; overlapping pills can still be counted. So every pill knows how tall its
+  own pile is, and the spacing is the smaller of a pill-and-a-gap and what the
+  room allows.
+
+**The ceiling is measured off the drawing, not derived from the layout**, and
+the first version got this wrong by deriving it: a frame whose shape is not the
+window's is fitted inside it with `meet` and *centred*, so in landscape there is
+real picture above `y = 0` — a sixth of a 1500×1000 window at the frame this
+draws — and a ceiling taken from `islandBox.y` squeezed piles of three that had
+room to stand at full spacing. What actually cuts a pill off is the `svg`'s own
+box, which clips, and the floating chrome, which is opaque and stands on top.
+Both are on the page, so `ceiling()` asks them. Measured on a 1500×1000 window:
+six offers on one hut stand 34.6 units apart against a 38 maximum, the top one
+115 units above the frame's own top edge and inside the window with a pill's
+height to spare.
+
+### The pill says whose without writing it down
+
+The pill carried a grey `p2 · T1→T4` under it. **Gone (2026-08-27, Gal)**: the
+pid is the manager's word for the ledger, and the arrow repeated what the pill's
+own colour and the rope it hangs from already say — whose offer this is, and
+which hut it is addressed to. It survives as `data-pid`, `data-maker` and
+`data-taker` on the rope's group, which is where a name nobody reads belongs;
+`render.py:turning` reads the maker from there rather than off a label.
 
 ### The sea moves, and there are dolphins in it
 
