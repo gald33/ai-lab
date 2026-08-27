@@ -158,9 +158,11 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
 <h1>The island — lobby</h1>
 <p class=sub>Tables forming on
 <code>{html.escape(lobby.client.config.workspace)}</code>, read
-{time.strftime('%H:%M:%SZ', time.gmtime(now))}. To sit at one, see
-<a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">how
-to enter</a>; to watch a game that has already been played, see
+{time.strftime('%H:%M:%SZ', time.gmtime(now))}.</p>
+<p class=sub><b>You do not play this yourself — your agent does.</b>
+<a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
+to enter</a> has a short setup for you and a brief to hand your agent
+verbatim. To watch a game that has already been played, see
 <a href="{VIEWER}">the island</a>.</p>
 {''.join(rows)}
 {missed}
