@@ -2083,35 +2083,56 @@ CARRY = """async ({goods, give, want, hold}) => {
 EMERGING = """() => {
   window.__born = [];
   const svg = document.querySelector('svg');
+  //: `translate(Xpx, Ypx)` out of a keyframe, in the SVG's own viewBox units --
+  //: which is what the yards are given in, so nothing has to be converted into
+  //: client pixels and back.
+  const at = (t) => {
+    const m = /translate\\(([-\\d.]+)px,\\s*([-\\d.]+)px\\)/.exec(t || '');
+    return m ? [+m[1], +m[2]] : null;
+  };
   const obs = new MutationObserver((ms) => {
     for (const m of ms) for (const n of m.addedNodes) {
       if (!n.classList?.contains('sheaf')) continue;
       const way = n.classList.contains('in') ? 'in'
-                : n.classList.contains('out') ? 'out' : 'made';
-      if (way === 'made') continue;
-      // Where it is on its very first frame, and how visible it is there.
-      const b = n.getBoundingClientRect(), r = svg.getBoundingClientRect();
-      const vb = svg.viewBox.baseVal;
-      const st = window.__island;
+                : n.classList.contains('out') ? 'out' : null;
+      if (!way) continue;  // a production's sheaf is not this check's business
+      const anim = n.getAnimations()[0];
+      const keys = anim ? anim.effect.getKeyframes() : [];
+      //: **The crate end of the flight, whichever end that is.** `in` rises
+      //: out of a box and lands on a bar; `out` leaves a bar and drops into a
+      //: box. Measuring both at birth is measuring one of them at the wrong
+      //: end, which is what the first draft of this check did.
+      const k = way === 'in' ? keys[0] : keys[keys.length - 1];
       const yards = [];
+      const st = window.__island;
       if (st?.stock) for (const t of (st.world?.traders || []))
         for (const g of (st.world?.goods || [])) {
           const p = st.toViewBox(st.stock.top(t, g));
-          yards.push([`${t}:${g}`,
-                      r.x + (p.x - vb.x) / vb.width * r.width,
-                      r.y + (p.y - vb.y) / vb.height * r.height]);
+          yards.push([`${t}:${g}`, p.x, p.y]);
         }
-      const at = [b.x + b.width / 2, b.y + b.height / 2];
+      const end = k ? at(k.transform) : null;
       let near = null;
-      for (const [k, yx, yy] of yards) {
-        const d = Math.hypot(at[0] - yx, at[1] - yy);
-        if (!near || d < near.d) near = { k, d: +d.toFixed(1) };
+      if (end) for (const [key, yx, yy] of yards) {
+        const d = Math.hypot(end[0] - yx, end[1] - yy);
+        if (!near || d < near.d) near = { k: key, d: +d.toFixed(1) };
       }
-      // What a viewer would see of it a tenth of the way into the flight,
-      // which is where it is meant to be clear of the crate's mouth.
-      const anims = n.getAnimations();
-      window.__born.push({ way, near, anims: anims.length,
-                           op0: +getComputedStyle(n).opacity });
+      //: How visible it is at that end, and how soon. A symbol that is
+      //: transparent where it meets the crate is the other half of the defect:
+      //: it fades up in open air, and the box it came out of is never seen to
+      //: give it up.
+      //: `computedOffset`, not `offset`: the first and last keyframes of a
+      //: list that does not spell theirs out come back with `offset: null`,
+      //: and reading those as 0 and 1 the wrong way round put the crate end of
+      //: an `out` symbol at 58% of its own flight.
+      const lit = keys.filter((f) => +(f.opacity ?? 1) > 0.5)
+        .map((f) => (way === 'in' ? f.computedOffset : 1 - f.computedOffset));
+      //: **How long it waits between being built and flying.** This is the
+      //: defect itself: a keyframe cannot be re-pinned, so a symbol built at
+      //: cue time and flown 3.4s later aims at an island that has turned under
+      //: it. Zero, and the distance above is the whole claim.
+      const wait = anim ? (anim.effect.getTiming().delay || 0) : null;
+      window.__born.push({ way, near, anims: anim ? 1 : 0, wait,
+                           lit: lit.length ? Math.min(...lit) : null });
     }
   });
   obs.observe(svg, { childList: true, subtree: true });
@@ -2133,10 +2154,19 @@ def emerging(browser, base: str, out: Path) -> list[str]:
     of a revolution stale. Measured at **55px** on a 1400px page.
 
     So this drives an exchange and watches the SVG layer, catching each symbol
-    on the frame it is created: how far it is from the nearest crate, and
-    whether it was given an animation at all. The bound is generous on purpose
-    -- the camera keeps moving and a crate is a real size -- and it is nowhere
-    near 55.
+    on the frame it is created and reading the keyframes it was built with:
+    how far its **crate end** is from the nearest crate, how early it is
+    visible there, and **how long it waits before it flies** -- which is the
+    defect itself, since a symbol built now and flown three seconds later aims
+    at an island that has turned under it. Built at the moment it flies, its
+    aim and the crate are the same point, and that is what is asserted. Which end that is depends on the direction -- `in` rises out
+    of a box, `out` drops into one -- and the first draft of this check
+    measured both at birth, which is the wrong end for half of them and
+    reported a symbol leaving its own bar as 362px from a crate.
+
+    The bound is generous on purpose -- the camera keeps moving and a crate is
+    a real size -- and it is nowhere near 55. In viewBox units, where the
+    island is about 700 across.
     """
     bad: list[str] = []
     page = browser.new_page(viewport={"width": 1400, "height": 900},
@@ -2185,9 +2215,23 @@ def emerging(browser, base: str, out: Path) -> list[str]:
                 bad.append(f"emerging: a '{way}' symbol was drawn {b['near']['d']:.0f}px "
                            f"from the nearest crate ({b['near']['k']}); it does not "
                            f"come out of the box it is counting")
+            if b["wait"] is not None and b["wait"] > 50:
+                bad.append(f"emerging: a '{way}' symbol was built {b['wait']:.0f}ms "
+                           f"before it flies; a keyframe cannot be re-pinned, so it "
+                           f"aims at an island that has turned under it")
             if not b["anims"]:
                 bad.append(f"emerging: a '{way}' symbol was drawn with no animation, "
                            f"so it never travels")
+            #: Visible within a tenth of the crate end. Held transparent for
+            #: longer than that and it appears out of clear air, however
+            #: exactly it was aimed.
+            if b["lit"] is None:
+                bad.append(f"emerging: a '{way}' symbol is never opaque; "
+                           f"nothing of it is visible at all")
+            elif b["lit"] > 0.15:
+                bad.append(f"emerging: a '{way}' symbol is still transparent "
+                           f"{b['lit']:.0%} of the way from the crate; it does not "
+                           f"read as coming out of the box")
     return bad + [f"emerging: {e}" for e in errs]
 
 
