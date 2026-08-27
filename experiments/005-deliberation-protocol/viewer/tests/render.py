@@ -504,6 +504,9 @@ def run(out: Path, headed: bool = False) -> int:
             problems += uncovered(browser, base, boards[0], out)
             problems += afloat(browser, base, boards[0], out)
             problems += nightfall(browser, base, out)
+            problems += clockwork(browser, base, out)
+            for board in boards:
+                problems += travelling(browser, base, board, out)
             problems += stock(browser, base, out)
             problems += carrying(browser, base, out)
             problems += island(browser, base, out)
@@ -3556,6 +3559,184 @@ def ending(page, reveal, where: str) -> list[str]:
             and "beat playing alone" not in shown["verdict"]:
         bad.append(f"{where}: every trader finished below autarky and the card "
                    f"does not say so: {shown['verdict']!r}")
+    return bad
+
+
+#: Played, not scrubbed: a scrub paints with nothing ahead of it, and the
+#: journey being measured is the one between two board events.
+TRAVEL = """async () => {
+  const nap = (ms) => new Promise(r => setTimeout(r, ms));
+  if (!window.__island) return { error: 'the page never handed over a stage' };
+  document.getElementById('play').click();
+  // Somewhere in the first stretch of the board there is a gap between two
+  // lines, and the island should be crossing it rather than waiting at the
+  // last one. Poll for a glide in flight and measure while it runs.
+  for (let i = 0; i < 120; i++) {
+    const st = window.__island;
+    if (st && st.glide) {
+      const first = st.dayNow();
+      await nap(250);
+      const second = st.dayNow();
+      document.getElementById('play').click();
+      return { first, second };
+    }
+    await nap(100);
+  }
+  document.getElementById('play').click();
+  return { error: 'no day ever travelled between two board events' };
+}"""
+
+
+def clockwork(browser, base: str, out: Path) -> list[str]:
+    """The three ways the island's clock read wrong to a spectator.
+
+    Reported against `island-game-001d-g1`: shadows sweeping the island at the
+    *start* of a day, shadows reaching the middle of the day and stopping while
+    the board went on trading, and the campfire alight through production and
+    settlement. None of the three is in the record -- that board settles
+    everything before its bell -- so all three were the drawing.
+
+    Each is measured off the stage's own objects rather than off a screenshot,
+    because what is asserted here is where the light *is*, and a picture can
+    only say how bright it came out.
+    """
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 900, "height": 600})
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    page.evaluate(STAGE, {"w": 900, "h": 600, "n": 2, "portrait": False,
+                          "goods": ["bread", "cloth", "iron", "salt"]})
+    seen = page.evaluate("""async () => {
+      const st = window.__st;
+      const nap = (ms) => new Promise(r => setTimeout(r, ms));
+      const bearing = () => {
+        const p = st.key.position;
+        return Math.atan2(p.x, p.z);
+      };
+      const flame = () => {
+        let f = null;
+        st.island.traverse((o) => {
+          if (!f && o.material && o.material.emissiveIntensity !== undefined
+              && /flame/.test(o.name || '')) f = o;
+        });
+        return f ? f.material.emissiveIntensity : null;
+      };
+      // A bell, and then the dawn that follows it: the clip holds a night that
+      // lifts from 1 to 0 while the page's own clock says the new day has
+      // barely started.
+      st.setDay(1);
+      st.life.update(0, st.ctx());
+      const dusk = bearing();
+      st.setDay(0.02);
+      st.life.hold(1);
+      st.life.update(0.1, st.ctx());
+      const dark = bearing();
+      st.life.hold(0.5);
+      st.life.update(0.2, st.ctx());
+      const half = bearing();
+      st.life.update(0.3, st.ctx());
+      const dawn = bearing();
+
+      // The fire, against the day the page is on.
+      st.setDay(0.6);
+      st.life.update(1, st.ctx());
+      const midday = flame();
+      st.setDay(1);
+      st.life.update(2, st.ctx());
+      const bell = flame();
+
+      // The glide: told where the day is and where it will be when the next
+      // line lands, the light has to cover the ground between.
+      //: Two seconds, and the two reads are taken by the clock rather than by
+      //: the naps: a headless browser under load runs a 200ms timer late, and
+      //: a glide short enough to have finished by the time the nap returns
+      //: measures the timer, not the light.
+      st.setDay(0.2, 0.8, 2000);
+      const t0 = performance.now();
+      const before = st.dayNow();
+      await nap(700);
+      const midAt = (performance.now() - t0) / 2000;
+      const during = st.dayNow();
+      await nap(2000);
+      const after = st.dayNow();
+      // And a day set with nowhere to go stays put.
+      st.setDay(0.3);
+      await nap(120);
+      const still = st.dayNow();
+      return { dusk, dark, half, dawn, midday, bell,
+               before, during, after, midAt, still };
+    }""")
+    page.close()
+
+    # 1. The dawn's hold is a night, not an hour: it must not move the shadows.
+    #    The bearing belongs to the clock, so it lands on the new day's hour the
+    #    moment the page says so -- under cover of the night the clip is still
+    #    drawing -- and stays there while the night lifts.
+    swing = max(abs(seen["half"] - seen["dark"]), abs(seen["dawn"] - seen["dark"]))
+    if swing > 0.05:
+        bad.append(f"clockwork: the light swung {swing:.2f} rad while the night "
+                   f"lifted; a hold is moving the sun, not just the dark")
+    if abs(seen["dark"] - seen["dusk"]) < 0.5:
+        bad.append(f"clockwork: a new day did not move the light off the last "
+                   f"one's dusk ({seen['dusk']:.2f} -> {seen['dark']:.2f})")
+
+    # 2. The fire is the bell. Banked at midday, up at the bell.
+    if seen["midday"] is None or seen["bell"] is None:
+        bad.append("clockwork: no flame on the island to measure")
+    else:
+        if seen["midday"] > 0.5:
+            bad.append(f"clockwork: the campfire is alight at midday "
+                       f"({seen['midday']:.2f}), while the island is still "
+                       f"producing and settling")
+        if seen["bell"] < seen["midday"] * 2:
+            bad.append(f"clockwork: the campfire does not come up by the bell "
+                       f"({seen['midday']:.2f} -> {seen['bell']:.2f})")
+
+    # 3. The day travels over a silence instead of freezing at the last event.
+    # Where the light should have got to by the time the middle read was taken,
+    # measured off the same clock the glide runs on rather than off the nap.
+    want = 0.2 + 0.6 * min(1.0, seen["midAt"])
+    if not seen["before"] < seen["during"] <= seen["after"]:
+        bad.append(f"clockwork: the island's day did not travel between two "
+                   f"board events ({seen['before']:.2f}, {seen['during']:.2f}, "
+                   f"{seen['after']:.2f}); the shadows are frozen at whatever "
+                   f"the last line said")
+    elif abs(seen["during"] - want) > 0.05:
+        bad.append(f"clockwork: the day is not on the glide's own clock "
+                   f"({seen['during']:.2f} at {seen['midAt']:.2f} of the way "
+                   f"through, wanting {want:.2f})")
+    if abs(seen["after"] - 0.8) > 0.02:
+        bad.append(f"clockwork: the day overran where the next line lands "
+                   f"({seen['after']:.2f} against 0.80)")
+    if abs(seen["still"] - 0.3) > 1e-6:
+        bad.append(f"clockwork: a day with nowhere to go drifted "
+                   f"({seen['still']:.4f} against 0.30)")
+    return bad
+
+
+def travelling(browser, base: str, board: Path, out: Path) -> list[str]:
+    """And the page hands the island both ends of that journey.
+
+    `clockwork` drives the stage directly, so it holds the glide shut without
+    ever asking whether the page uses it -- and the whole bug was in the
+    wiring: `setDay` was called with the day and nothing else while `sky` was
+    given the day *and* where it would be by the next line. So this one plays a
+    real replay and watches the island's own clock move between two board
+    events.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_timeout(1200)
+    seen = page.evaluate(TRAVEL)
+    page.close()
+    if seen.get("error"):
+        bad.append(f"{stem} travelling: {seen['error']}")
+    elif not seen["second"] > seen["first"]:
+        bad.append(f"{stem} travelling: the island's day stood still through a "
+                   f"glide ({seen['first']:.3f} -> {seen['second']:.3f})")
     return bad
 
 

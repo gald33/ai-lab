@@ -168,6 +168,42 @@ stays where it stands and both paths remain one path with one arc in it.
 `daylight` and `alive` read the day off its position, which is what a viewer of
 the fallback reads it off too.
 
+### The model's light travels too
+
+**The glide belongs to both suns, not just the drawn one.** `sky()` is handed
+where the day is now and where it will be when the next line lands, and it
+animates the disc across the gap so a silence looks long. The stage got only
+the first of those — `setDay` was called once per board event with the
+instantaneous fraction — so the island's shadows stepped to wherever the last
+event fell and froze there. On a 3D board that is the *only* clock a viewer
+has, because `.has-3d .sun` hides the disc that would have shown the rest of
+the day.
+
+Reported by eye against `island-game-001d-g1`: shadows walking to the middle of
+the day and stopping while the board went on producing and trading. The board is
+not at fault — every line on it settles before its bell — and the middle is
+simply where that day's last event falls (0.38, 0.84 and 0.69 of the three
+days). `setDay(day, until, ms)` now takes the same two ends of the same journey
+and `Stage.dayNow()` reads the light off it per frame. It never travels
+backwards, for the same reason the disc does not: a new day is a jump, not a
+rewind.
+
+### A hold is a level of night, not an hour
+
+A clip that wants the island dark says so with `life.hold(v)`, and that value
+used to *be* the day for as long as the clip ran. The day owns the key's
+bearing as well as its brightness, so the dawn clip — which holds a night
+lifting from `1` to `0` over four and a half seconds — dragged the sun
+backwards through a whole day and swept every shadow across the island at the
+moment a new day **opened**. Reported by eye as shadows crossing the island at
+the start of a day, in the dark.
+
+The hold is spent on the light *level* now — how bright, how warm, how high the
+fire — and the bearing stays on the page's clock. The bell loses nothing: the
+day is already at dusk when it rings, so the shadow is where the hold would have
+put it anyway. The dawn gains what the drawn disc always had — a jump, made
+under cover of the night still being drawn over it.
+
 ### The arc it keeps
 
 An episode is a day, so the day is readable from the sky. The sun crosses on an
@@ -432,6 +468,26 @@ whose huts are eight-tenths of a unit across — so the thing meant to be a
 campfire read as the largest structure on the island, which is the complaint
 the market got. Reported by eye. The clearing is about a hut and a half wide
 now and the hearth inside it is something four people could sit round.
+
+### The fire is the bell
+
+**So it does not light at lunchtime.** The flames rose from `day` 0.52 and stood
+at full by 0.82 — from just past midday, and full while the island was still
+producing and still settling trades. Reported by eye against
+`island-game-001d-g1`, where day 2's activity runs 0.49 → 0.84 and day 3's
+0.64 → 0.69: a spectator watched the campfire burn through a working afternoon.
+
+This page's own glossary says the bell **is** nightfall and the campfire taking
+over. A fire lit halfway through the day says the day is ending when it is not,
+which is the one thing the fire is on screen to say. It rises from 0.86 and is
+full at the bell itself, where the bell clip's hold and flare carry it the rest
+of the way; the fireflies keep their place a little behind it, from 0.92.
+Decided by Gal, 2026-08-27.
+
+It is still banked all day — the embers are a floor under the flames, not a
+curve — and still comes up a little before the light has quite gone, which is
+what the last stretch of the day buys. What changed is how much of the day
+counts as "before the light has quite gone": an eighth of it, not half.
 
 **Fireflies** come out over the meadow once the light has gone, a little behind
 the fire, which is banked before dusk and built up as it arrives. They are
@@ -1321,6 +1377,24 @@ shelf cell per good, plays a receipt at the scene to confirm the **event
 animations actually run**, and renders a four-trader board, which no saved
 replay is. It **skips** when Playwright or Chromium is absent, so a checkout
 never has to install a browser to run the free suites.
+
+**The island's clock is checked on the light, not on a screenshot.**
+`render.py:clockwork` drives a stage through a bell and the dawn after it, a
+midday and a bell, and a day told where it is going, and reads the key light's
+bearing, a flame's emissive level and `Stage.dayNow()` straight off the stage.
+All three were reported by eye against `island-game-001d-g1` and none of them
+is a brightness: a picture can say how bright a frame came out, not where the
+sun is standing. What it holds shut: a hold does not move the bearing, the fire
+is dark at midday and up at the bell, and the day travels between two board
+events instead of freezing at the last line.
+
+`clockwork` drives the stage directly, which would hold the glide shut without
+ever asking whether the page uses it — and the wiring was the whole bug, so
+`travelling` plays a real replay and watches `window.__island` cross a gap
+between two lines. Both were confirmed against the behaviour they describe
+before it was fixed: the bearing check reports the 2.16-radian sweep, the fire
+check reports it alight at midday, and `travelling` reports a day that never
+travelled at all.
 
 **Measured on the land, not on the canvas.** Several of these checks used to
 ask "is this pixel opaque?" and mean "is this the island?", which was true while

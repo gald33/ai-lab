@@ -1032,6 +1032,19 @@ export class Scene {
     return Math.max(0, Math.min(1, (now - (bell - span)) / span));
   }
 
+  /**
+   * How far through its day this frame will be by the time the next line
+   * lands -- the far end of the sun's travel over a silence.
+   *
+   * `until` is when the next event is, or `null` when there is no next event
+   * to wait for. Never behind `dayProgress`: the sun does not travel back.
+   */
+  dayAhead(state, until = null) {
+    const now = this.dayProgress(state);
+    if (now === null || until === null) return now;
+    return Math.max(now, this.dayProgress({ ...state, at: until }) ?? now);
+  }
+
   /** Put the sun at a point in the day, with no journey. */
   placeSun(p) {
     if (!this.sunNode) return;
@@ -1061,10 +1074,8 @@ export class Scene {
       // going and the fire coming up, and that runs alongside.
       to = SET;
     } else {
-      const now = this.dayProgress(state);
-      if (now === null) return;   // no clock on this board: leave it where it is
-      to = until === null ? now
-        : Math.max(now, this.dayProgress({ ...state, at: until }) ?? now);
+      to = this.dayAhead(state, until);
+      if (to === null) return;   // no clock on this board: leave it where it is
     }
     // Never travel backwards across the sky. A new day begins in the east and
     // the night between is a jump nobody watches: the disc is at zero opacity
