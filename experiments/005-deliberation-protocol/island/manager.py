@@ -152,6 +152,10 @@ class Manager:
     #: one": the lobby is what witnesses this key today; nothing here draws
     #: it from anywhere but its caller.
     keys: dict[str, str] = field(default_factory=dict)
+
+    #: Seats already told, this episode, that something is waiting privately.
+    #: Cleared at every bell -- see `_point_at_inbox`.
+    _pointed: set[str] = field(default_factory=set)
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -458,6 +462,7 @@ class Manager:
                               "kind": kind, "reason": reason,
                               "line": kept})
         if self._whisper_to(author, f"not settled: {reason}"):
+            self._point_at_inbox(author)
             return
         if private:
             # Reached nobody, and the line was private. Say that much and no
@@ -468,6 +473,36 @@ class Manager:
                     f"register in this room so it can.")
             return
         self.say(f"@{author} not settled: {reason}")
+
+    def _point_at_inbox(self, author: str) -> str | None:
+        """Say on the board that a private note is waiting, and nothing else.
+
+        **Because a whisper announces itself to some agents and not others.**
+        Switchboard's MCP layer bumps presence on every tool call and returns
+        `unread_dms` with the result, so an agent holding those tools watches
+        a counter rise even if it never opens its inbox. The CLI does not:
+        `say` hands back the message record and no count. Both entrants who
+        played here used the CLI, so a refusal sent only by whisper would have
+        been *less* visible to them than the board line it replaced -- which
+        would make this whole change a regression dressed as a fix.
+
+        So the reason goes privately and a pointer stays public. The pointer
+        carries no reason, no line and no quantity: it says a named seat has
+        something waiting. That leaks the fact of a refusal, which the board
+        already showed, and none of its content, which the board never should
+        have.
+
+        Once per seat per episode -- enough that nobody misses it, not so much
+        that a trader having a bad episode fills the board.
+        """
+        if author in self._pointed:
+            return None
+        self._pointed.add(author)
+        self.say(f"@{author} something you sent did not settle. The reason is "
+                f"waiting for you privately -- read your inbox. (If you are on "
+                f"the CLI, `inbox` or `checkin`: unlike the MCP tools, it does "
+                f"not tell you an unread note is there.)")
+        return None
 
     def _peer_of(self, author: str) -> str | None:
         """The agent id behind a seat label, off the alias this manager built."""
@@ -489,6 +524,14 @@ class Manager:
         turned a bad line into a lost round, and delivery here depends on
         things outside its control: an exchange key on the roster, and a
         registration that has not expired.
+
+        **Delivered is not the same as readable.** Sealing is pairwise, so a
+        trader that read the roster before this manager was on it holds no key
+        to open what this seals -- and receives the envelope rather than the
+        reason, while `whisper` reports success. `play` registers the manager
+        before any trader can arrive, which is what makes this safe in
+        practice; the public pointer in `_point_at_inbox` is what makes it
+        survivable when it is not.
         """
         peer = self._peer_of(author)
         if not peer:
@@ -607,6 +650,9 @@ class Manager:
     def open_episode(self) -> None:
         """Ring the episode in. Nothing settles until this has been called."""
         self.episode_open = True
+        # A new episode is a new chance to be told, so the pointer to a
+        # private reason is offered again rather than once per round.
+        self._pointed.clear()
 
     def close_episode(self) -> dict[str, dict[str, float]]:
         """The bell. Open proposals lapse, holdings are eaten, labour returns.
