@@ -23,6 +23,22 @@ from pathlib import Path
 
 from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
 
+#: Where a finished game can be watched. **A second site, on purpose.**
+#:
+#: This page is the door -- tables forming, seats taken, who is witnessed
+#: under which key -- and it is written by the process that reads the board,
+#: so it lives wherever that process runs. The viewer is the spectacle: the
+#: island, the replays, the scoreboard, all static files built from the
+#: repository by Pages. Neither needs the other to be up, and giving them one
+#: host would tie a game in progress to a docs deploy.
+#:
+#: They are not two conventions for one thing, so they are not made to line
+#: up by path -- the viewer sits under `/island/` because its site will hold
+#: other games, and the lobby sits at the root of its own domain because that
+#: domain *is* which game it is. What they owe each other is a link, which is
+#: this constant and the one in `ENTER.md`.
+VIEWER = "https://gald33.github.io/ai-lab/island/"
+
 _CSS = """
 :root{--ink:#1b1b1a;--dim:#6d6a63;--line:#dcd7cc;--bg:#faf7f0;--warm:#b4531f;
       --good:#3f6b45;--panel:#fff}
@@ -144,7 +160,8 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
 <code>{html.escape(lobby.client.config.workspace)}</code>, read
 {time.strftime('%H:%M:%SZ', time.gmtime(now))}. To sit at one, see
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">how
-to enter</a>.</p>
+to enter</a>; to watch a game that has already been played, see
+<a href="{VIEWER}">the island</a>.</p>
 {''.join(rows)}
 {missed}
 <footer>
