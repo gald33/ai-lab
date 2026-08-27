@@ -1448,6 +1448,47 @@ In the rail (the ▤ drawer, shut until asked for):
   and worst trader, how many ended below autarky, how many trader-episodes were
   zero, and the first episode that beat the floor.
 
+## The island can be heard, if you ask
+
+A speaker button (🔇/🔊) in the top-right chrome, **off by default and
+remembered**. Six voices, one per event the island already animates: a crate
+knocking down for a production, two notes rising for an offer, a chord that
+agrees for a settlement, one short falling note for a refusal, a struck bell
+with a long decay for the bell, and a slow three-note dawn for a day opening.
+
+**Sound is never the only place something is said.** The card, the transcript
+line and the clip on the ground already carry every event; a listener who never
+turns this on loses nothing, and one who does is told the same thing a fourth
+way. That is the constraint the voices are written to — it is why a refusal is
+one quiet falling note and not a buzzer. A refusal is an ordinary thing to
+happen on this island and the page should not scold anybody for it.
+
+**Synthesised, not sampled** (`web/island-sound.js`). The only other assets in
+this viewer are `vendor/three`, and a folder of audio files would be the first
+binaries in the repository — for six noises that are a few oscillators and an
+envelope each. Nothing is fetched, so nothing can fail to load and nothing can
+fall out of step with a deploy.
+
+**Off by default, and the button is the gesture.** A page that starts making
+noise is a page somebody closes, and browsers agree: an `AudioContext` will not
+start before a user gesture. So the context is built on the first press, which
+is also the moment there is a gesture to unlock it — and a browser with no
+WebAudio at all leaves the button off rather than pretending, because `set()`
+returns what it actually managed and the button follows that.
+
+**Not tied to `prefers-reduced-motion`.** A reader who wants the island to hold
+still has said nothing about hearing it. `stage.fire()` is silent under that
+setting, so the sound is fired from `paint()` beside the clip rather than from
+inside it, and a still island can still be heard.
+
+**Two throttles, and they are the reason a scrub is bearable.** At 16× a scrub
+pushes events through in a few frames: without a floor between two soundings of
+the same voice (90 ms) and a ceiling on all voices at once (6 in 700 ms), the
+bell rings forty times in a second, which a listener reads as the page being
+broken rather than the board being busy. `tests/sound.test.mjs` holds both
+shut against a fake `AudioContext`, along with off-by-default, every animated
+event kind having a voice, and nothing else having one.
+
 ## Deploying
 
 `.github/workflows/pages.yml`, at the repo root, publishes `web/`, `results/`
@@ -1742,6 +1783,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the three feeds, and the replay clock |
 | `web/index.html` | the page: the island, and the chrome floating over it |
+| `web/island-sound.js` | the island heard: one synthesised voice per event, off until asked |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
 | `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
@@ -1753,6 +1795,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/board.mjs` | reading a saved board, packed or not |
 | `palette.py` | the contrast and colour-blindness gates `tokens.css` describes |
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
+| `tests/sound.test.mjs` | the voices, against a fake `AudioContext` — off by default, and throttled |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |

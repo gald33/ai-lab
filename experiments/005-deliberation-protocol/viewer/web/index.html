@@ -756,6 +756,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
             title="Choose a round by what happened in it">⌕<span id="t-filter-n"></span></button>
     <select id="source" title="Which board" aria-label="Which board"></select>
     <button id="reload" title="Read the source again">↻</button>
+    <button id="t-sound" aria-pressed="false"
+            title="Hear the island">🔇</button>
     <button id="t-rail" aria-pressed="false" aria-controls="rail"
             title="The hidden half, and who has spoken">▤</button>
     <button id="t-log" aria-pressed="false" aria-controls="log"
@@ -842,6 +844,7 @@ import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer }
 import { Stage } from "./stage.js";
 import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
+import { Sound } from "./island-sound.js";
 
 const $ = (id) => document.getElementById(id);
 /**
@@ -1183,6 +1186,10 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
     // and what it made crosses the ground to the hut that made it. The card
     // says the number; this says where it came from.
     stage?.fire(event);
+    //: And heard. Beside the clip rather than inside it: `stage.fire()` is
+    //: silent for a reader who asked the island to hold still, and holding
+    //: still is not a request for quiet.
+    sound.play(event);
   }
   hud(state);
   closing(state);
@@ -1474,7 +1481,10 @@ function liveHandlers(statusWhenOk, statusOnError) {
       paint({ state: timeline.final, event: null, animate: false, index: last,
               until: left > 0 ? timeline.final.bell_at : null,
               hold: left > 0 ? left : 0 });
-      fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
+      fresh.forEach((f, i) => setTimeout(() => {
+        scene.play(f.event);
+        sound.play(f.event);
+      }, i * 420));
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },
   };
@@ -1497,6 +1507,23 @@ function drawer(button, panel, cls) {
   $(button).onclick = () => set(!open());
   return { set, open };
 }
+
+// --- hearing it -----------------------------------------------------------
+//
+// The button is the whole interface. Off is the default and the setting is
+// remembered, so the one press somebody makes is also the gesture that lets
+// the browser start the audio.
+
+const sound = new Sound();
+const soundButton = () => {
+  const on = sound.enabled;
+  const b = $("t-sound");
+  b.textContent = on ? "🔊" : "🔇";
+  b.setAttribute("aria-pressed", String(on));
+  b.title = on ? "Silence the island" : "Hear the island";
+};
+$("t-sound").onclick = () => { sound.toggle(); soundButton(); };
+soundButton();
 
 const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");
