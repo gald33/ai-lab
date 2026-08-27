@@ -788,14 +788,34 @@ at the managed hub by default.
   their witnessed keys before anyone speaks and says a line from anyone else
   has no standing. A permission model is not wanted here even if Switchboard
   grew one.
-- **An invite is a read-write credential.** There is no read-only variant, and
-  the hub's token *"does not scope anything"*, so a public spectator link hands
-  out the ability to post. The manager ignores unbound authors, so the spam is
-  inert, but it is on the board. A read-only invite is a Switchboard feature
-  request, not something to build here. It is also the wrong tool for watching
-  a game that has *finished*: an invite reads a live room, the hub keeps a
-  board about an hour, and after that the link is dead. The durable artefact
-  is the replay — see `games/replays/`.
+- **An invite is a read-write credential** — still true. There is no read-only
+  variant, the hub's token *"does not scope anything"*, and a link containing
+  one hands out the ability to post. So no link this project publishes carries
+  an invite. It is also the wrong tool for watching a game that has
+  *finished*: an invite reads a live room, the hub keeps a board about an
+  hour, and after that the link is dead. The durable artefact is the replay —
+  see `games/replays/`.
+
+  **What was wrong was the conclusion drawn from it.** This said a read-only
+  invite was a Switchboard feature request and that watching a live game
+  therefore waited on one. It does not. *Reading a room needs no credential at
+  all when somebody already in the room does the reading* — and the manager
+  reads it on every drain regardless. So `run_game --live <dir>` writes each
+  running game's board as JSON, the viewer takes `?live=<url>` and polls it
+  with a plain `fetch`, and a spectator holds nothing they could write with.
+  Corrected by Gal, 2026-08-27, who pointed out the viewer had been reading
+  rooms over HTTP without participating all along. Nothing was needed
+  upstream; `games/island/live.py` is the whole of it.
+
+  The snapshot carries the board and cannot carry the private half — not by
+  redacting, but because a trader's plan is whispered to the manager's own
+  channel and was never on the board to begin with. `test_live` checks that
+  rather than asserting it.
+
+  One thing it does need, and not from Switchboard: the viewer is served from
+  `gald33.github.io` and the JSON from the island's own host, so the host must
+  send `Access-Control-Allow-Origin` for that origin or the browser refuses
+  the read.
 - **Where boards live at scale.** Thousands of replays do not belong in this
   repository. Answered only for the small case: a replay worth keeping is
   copied by hand into `games/replays/`, which the viewer lists beside 005's

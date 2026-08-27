@@ -69,6 +69,7 @@ from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
 from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
+from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
 
@@ -203,6 +204,22 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     return True
 
 
+def _show(mgr: Manager, live: Path | None) -> None:
+    """Write the board where a spectator can read it, and never stop a game.
+
+    Same rule as `_tick` and `_witness`, and for the plainest reason of the
+    three: nobody watching is playing. A file that cannot be written costs a
+    spectator a refresh and costs the traders nothing, so it is said out loud
+    and the bells go on.
+    """
+    if live is None:
+        return
+    try:
+        write_live(mgr.client, mgr.channel, live)
+    except Exception as exc:      # noqa: BLE001 -- see the docstring
+        print(f"live view not written: {exc!r}", flush=True)
+
+
 def _witness(archivist: Archivist | None) -> None:
     """Let the second copy read the room, and never let it stop the game.
 
@@ -283,7 +300,8 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
 def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path, tick: Callable[[], None] | None = None,
          ranked_only: bool = False,
-         archivist: Archivist | None = None) -> dict | None:
+         archivist: Archivist | None = None,
+         live: Path | None = None) -> dict | None:
     """One settled table, from its first bell to its record.
 
     ``tick`` is called on every drain of this room. `watch` no longer needs
@@ -347,11 +365,13 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
             bind_seats(mgr, table)
             mgr.drain()
             _witness(archivist)
+            _show(mgr, live)
             _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
         mgr.drain()
         _witness(archivist)
+        _show(mgr, live)
         _tick(tick)
 
     until(ack_deadline)
@@ -386,6 +406,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     # line too -- and after the manager's own drain, so the two copies are of
     # the same room at the same moment rather than a second apart.
     _witness(archivist)
+    _show(mgr, live)
     if archivist is not None:
         archivist.close()
 
@@ -617,7 +638,7 @@ def archivist_for(table: Table, invite: Invite, *, lab_manages: bool
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
                 ranked_only: bool = False, keep: int = 0,
-                lab_manages: bool = True) -> None:
+                lab_manages: bool = True, live_dir: Path | None = None) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
     Nothing it touches is shared except the ledger: the table is its own, the
@@ -637,7 +658,8 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
             archivist = None
         rec = play(table, invite, episode_seconds=episode_seconds,
                    ack_seconds=ack_seconds, out=out, ranked_only=ranked_only,
-                   archivist=archivist)
+                   archivist=archivist,
+                   live=(live_dir / f"{table.id}.json") if live_dir else None)
         if rec is None:
             print(f"{table.id}: stood down -- opened for a ranked game and "
                   f"cannot seal", flush=True)
@@ -680,7 +702,8 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT,
-          page: Path | None = None, keep: int = 0) -> None:
+          page: Path | None = None, keep: int = 0,
+          live_dir: Path | None = None) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
     **Each table plays in its own thread.** A game takes minutes, and two
@@ -750,7 +773,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 kwargs={"episode_seconds": episode_seconds,
                         "ack_seconds": ack_seconds, "out": out,
                         "ledger": ledger, "ranked_only": ranked_only,
-                        "keep": keep,
+                        "keep": keep, "live_dir": live_dir,
                         # Whether this process is also the party that will
                         # write this table's board. `claimed` holds the
                         # tables it offered to run, so a table managed by a
@@ -828,6 +851,13 @@ def main(argv: list[str] | None = None) -> int:
                          "page a person can look at. It belongs here rather "
                          "than on run_lobby because this process embeds the "
                          "only lobby its channel may have")
+    ap.add_argument("--live", type=Path, default=None,
+                    help="write each running game's board into this directory "
+                         "as JSON, one file per table, rewritten every drain. "
+                         "It is what lets a person watch a game in progress "
+                         "without being handed a room key -- the viewer reads "
+                         "it with ?live=<url>. Serve it; it carries only what "
+                         "is on the board, never the sealed half")
     ap.add_argument("--keep", type=int, default=0,
                     help="keep the raw output of only this many finished games, "
                          "pruning oldest first. The ledger row always survives, "
@@ -873,7 +903,8 @@ def main(argv: list[str] | None = None) -> int:
               ack_seconds=args.ack_seconds, out=args.out,
               ranked_only=args.ranked, ledger=args.ledger,
               manager=manager, channel=args.channel,
-              max_concurrent=args.max_games, page=args.page, keep=args.keep)
+              max_concurrent=args.max_games, page=args.page, keep=args.keep,
+              live_dir=args.live)
     except KeyboardInterrupt:
         print()
     return 0

@@ -18,7 +18,9 @@ nobody's.
 from __future__ import annotations
 
 import html
+import os
 import time
+from urllib.parse import quote
 from pathlib import Path
 
 from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
@@ -38,6 +40,22 @@ from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
 #: domain *is* which game it is. What they owe each other is a link, which is
 #: this constant and the one in `ENTER.md`.
 VIEWER = "https://gald33.github.io/ai-lab/island/"
+
+#: Where this host serves `--live` from, if it serves it at all. A table that
+#: is running gets a **watch** link built from this, and no key travels in it:
+#: the file is a board somebody already in the room wrote down, so a spectator
+#: reads without holding anything they could write with. Unset means no link,
+#: which is the honest state for a host that is not serving one.
+LIVE_BASE = os.environ.get("ISLAND_LIVE_BASE", "").rstrip("/")
+
+
+def watch_link(table) -> str:
+    """The viewer, pointed at this table's live board. Empty if none is served."""
+    if not LIVE_BASE or not table.settled or table.lapsed:
+        return ""
+    src = f"{LIVE_BASE}/{table.id}.json"
+    return (f' &middot; <a href="{html.escape(VIEWER)}?live='
+            f'{html.escape(quote(src, safe=""))}">watch it</a>')
 
 _CSS = """
 :root{--ink:#1b1b1a;--dim:#6d6a63;--line:#dcd7cc;--bg:#faf7f0;--warm:#b4531f;
@@ -282,7 +300,8 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
             notes.append(f"lapses in {max(0, left // 60)}m {max(0, left % 60)}s "
                          f"if it does not fill and find a manager")
         if table.manager:
-            notes.append(f"managed by {html.escape(table.manager)}")
+            notes.append(f"managed by {html.escape(table.manager)}"
+                        + watch_link(table))
         rows.append(
             f"<section class='t {_state(table).split()[0]}'>"
             f"<h2>{html.escape(table.id)}</h2>"

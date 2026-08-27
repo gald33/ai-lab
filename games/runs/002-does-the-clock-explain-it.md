@@ -121,7 +121,8 @@ the run.
 ## Failure modes anticipated
 
 - **The signer deadlock.** Still unfixed upstream at 0.10.0 (checked: no
-  `RemoteSigningIdentity` guard in `mcp_server`). `run_entrant.hold_signer` is
+  `RemoteSigningIdentity` guard in `mcp_server`) — and **still unfixed at
+  1.0.0**, re-checked 2026-08-27. `run_entrant.hold_signer` is
   the workaround and it is load-bearing; if it regresses, both agents play the
   whole round awake and unable to write, which on the board is indistinguishable
   from two traders who said nothing.
