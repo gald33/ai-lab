@@ -962,14 +962,22 @@ def test_a_vanishing_move_is_answered_every_time(settled, hub, tmp_path):
     mgr.drain()
     assert sum("took no seat" in b for b in said()) == 1
 
-    # A move: answered on its own terms, every single time.
+    # A move: answered on its own terms, every single time -- and answered to
+    # the writer rather than to the room, because a refusal is addressed to
+    # whoever wrote the line and the board does not need it.
+    stranger.agents()          # both sides read the roster before sealing
+    mgr.client.agents()
     stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
     mgr.drain()
     stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
     mgr.drain()
 
-    receipts = [b for b in said() if "settled nothing, because this key" in b]
+    got = [str(m.get("body", "")) for m in stranger.inbox()]
+    receipts = [b for b in got if "settled nothing" in b]
     assert len(receipts) == 2, "a move that vanished is answered each time"
     assert "PRODUCE" in receipts[0]
     # And it says what to do, not merely that something is wrong.
     assert "the same one the lobby saw" in receipts[0]
+    # The board carries the company notice and nothing else about it.
+    assert not [b for b in said() if "settled nothing" in b], (
+        "a receipt addressed to one writer does not belong on the board")

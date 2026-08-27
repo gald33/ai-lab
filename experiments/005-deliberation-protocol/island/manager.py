@@ -292,11 +292,12 @@ class Manager:
             if msg.get("unreadable"):
                 self._refuse(author, "sealed",
                             "this was sealed to somebody else, or to a key "
-                            "this manager does not hold", "<sealed>")
+                            "this manager does not hold", "<sealed>",
+                            private=True)
                 continue
             body, _forecast = unwrap_forecast(msg.get("body"))
             self._consider(author, body if isinstance(body, str) else "",
-                           msg.get("signature"))
+                           msg.get("signature"), private=True)
 
     def _intrusion(self, peer: str, msg: dict) -> None:
         """Somebody in this room who is not at this table has written in it.
@@ -358,19 +359,29 @@ class Manager:
                     f"This round is recorded as one that had company, and a "
                     f"round with company is not ranked.")
         if _is_a_move(text):
-            # Every time, and addressed to the line rather than to the room:
-            # this is somebody's move disappearing, and they cannot see why.
-            self.say(f"@{mark} that was a well-formed {text.strip().split()[0].upper()} "
-                    f"and it settled nothing, because this key took no seat at "
-                    f"this table. Your seat is bound to the signing key the "
-                    f"lobby witnessed on your JOIN, and you are writing under a "
-                    f"different one. Check that your signing identity here is "
-                    f"the same one the lobby saw -- a second client, or a "
-                    f"second install of it, mints a new key and silently signs "
-                    f"as itself. Nothing you send will settle until they match.")
+            # Every time, and to the writer rather than the room: this is
+            # somebody's move disappearing and they cannot see why. Whispered
+            # if they can be reached at all -- an unbound writer often cannot
+            # be, which is why the board is the fallback rather than the
+            # default.
+            head = text.strip().split()[0].upper()
+            note = (f"that was a well-formed {head} and it settled nothing, "
+                    f"because this key took no seat at this table. Your seat "
+                    f"is bound to the signing key the lobby witnessed on your "
+                    f"JOIN, and you are writing under a different one. Check "
+                    f"that your signing identity here is the same one the "
+                    f"lobby saw -- a second client, or a second install of it, "
+                    f"mints a new key and silently signs as itself. Nothing "
+                    f"you send will settle until they match.")
+            try:
+                self.client.whisper(peer, note)
+                return
+            except Exception:      # noqa: BLE001 -- fall through to the board
+                pass
+            self.say(f"@{mark} {note}")
 
     def _consider(self, author: str, text: str,
-                 signature: dict | None = None) -> None:
+                 signature: dict | None = None, *, private: bool = False) -> None:
         if author not in self.holders:
             return
         self.spoke.add(author)
@@ -415,8 +426,28 @@ class Manager:
         except Refused as exc:
             self._refuse(author, type(action).__name__.lower(), str(exc), text)
 
-    def _refuse(self, author: str, kind: str, reason: str, text: str) -> None:
-        """Say no, and keep why. The reason is the diagnostic, not the count."""
+    def _refuse(self, author: str, kind: str, reason: str, text: str,
+                *, private: bool = False) -> None:
+        """Say no, and keep why. The reason is the diagnostic, not the count.
+
+        **Answered on the channel it arrived on.** A line whispered to this
+        manager is refused by whisper; a line said on the board is refused on
+        the board. Both halves of that matter and both were got wrong at
+        first:
+
+        - *Delivery.* A trader that whispered is watching its inbox. A receipt
+          posted to the board is a receipt where the sender may not be
+          looking, and an entrant has already read a board it was not
+          watching as a manager that had gone quiet.
+        - *Privacy.* A sealed round exists so a plan stays off the board.
+          Refusing it in public announces that this seat sent one and why it
+          failed, which is a slice of the thing the sealing was for.
+
+        If the whisper cannot be delivered -- no exchange key on the roster,
+        a registration that has expired -- it falls back to the board without
+        the reason, naming only that something private did not settle. Silence
+        is the one option that is never right.
+        """
         self.refused += 1
         # A sealed line is kept as the marker alone. Recording the ciphertext
         # would put a plan the trader paid to hide into the run record, which
@@ -426,7 +457,47 @@ class Manager:
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
                               "line": kept})
+        if self._whisper_to(author, f"not settled: {reason}"):
+            return
+        if private:
+            # Reached nobody, and the line was private. Say that much and no
+            # more: the reason belongs to the trader, and the board is not
+            # where it was sent.
+            self.say(f"@{author} something you sent privately did not settle, "
+                    f"and this manager could not reach you to say why -- "
+                    f"register in this room so it can.")
+            return
         self.say(f"@{author} not settled: {reason}")
+
+    def _peer_of(self, author: str) -> str | None:
+        """The agent id behind a seat label, off the alias this manager built."""
+        for peer, slot in self.alias.items():
+            if slot == author:
+                return peer
+        return None
+
+    def _whisper_to(self, author: str, text: str) -> bool:
+        """Seal a line back to one trader. False if it could not be delivered.
+
+        **Everything the manager says to one trader goes this way**; only
+        announcements to the room are said on the board. A refusal is
+        addressed to whoever wrote the line, so it is theirs -- the board does
+        not need it, and in a sealed round it is a slice of exactly what the
+        sealing was for.
+
+        Never raises. A manager that dies trying to explain a refusal has
+        turned a bad line into a lost round, and delivery here depends on
+        things outside its control: an exchange key on the roster, and a
+        registration that has not expired.
+        """
+        peer = self._peer_of(author)
+        if not peer:
+            return False
+        try:
+            self.client.whisper(peer, text)
+            return True
+        except Exception:      # noqa: BLE001 -- see the docstring
+            return False
 
     # --- settling ----------------------------------------------------------
 
