@@ -440,16 +440,14 @@ function offered(event, { anchors, traders, ground, stock }) {
   const scroll = mesh(new THREE.BoxGeometry(0.03, 0.5, 0.56), scrollMat, "notice", [0, 0.95, 0.28]);
   post.add(scroll);
 
-  // A post and a notice are a metre of timber on an island eight across, so
-  // something has to carry this out to somebody watching the whole island.
-  //
-  //: **It used to be a ring going out from the post**, and it is a lamp on the
-  //: post now. Every expanding ring on this island has gone the same way: five
-  //: clips fired one, a four-good production put four up at once, and at 4x
-  //: they arrived on top of each other -- reported twice by somebody watching,
-  //: the second time as simply too distracting to read. A lamp on the post and
-  //: the light it throws on the ground say the same thing and say it *in one
-  //: place*, which is where the offer actually is.
+  //: **It was a ring, then a lamp, and now it is neither.** Every expanding
+  //: ring on this island went the same way: five clips fired one, a four-good
+  //: production put four up at once, and at 4x they arrived on top of each
+  //: other -- reported twice, the second time as simply too distracting to
+  //: read. The lamp replaced the ring and then went the same way itself. What
+  //: an offer has on the island is the post, the notice, and the crates; what
+  //: an offer *is*, a viewer reads off the rope.
+  //:
   //: **The boxes it is offering lift off the pile.** A post and a notice are a
   //: metre of timber on an island eight across, and with the ring gone they
   //: were most of what an offer had -- a clip nobody can see is not an
@@ -470,16 +468,23 @@ function offered(event, { anchors, traders, ground, stock }) {
       }
     });
   }
-  const lampMat = own(c, clone(M.glass, { transparent: true, opacity: 0 }));
-  const lamp = mesh(new THREE.SphereGeometry(0.11, 16, 12), lampMat, "offer_lamp",
-                    [0, 1.32, 0.1]);
-  post.add(lamp);
-  //: And the light it throws. A lamp that lights nothing is a decal -- the
-  //: same argument the fire is built on -- and this is what carries an offer
-  //: out to somebody watching the whole island now that the ring is gone.
-  const beam = new THREE.PointLight(0xffc978, 0, 2.6, 2);
-  beam.position.set(spot.at.x, spot.at.y + 1.1, spot.at.z);
-  c.root.add(beam);
+  //: **The lamp is gone, and the light it threw with it.**
+  //:
+  //: It was the last lantern on the island -- the huts lost theirs first -- and
+  //: it was put here to replace the ring that used to go out from the post,
+  //: which was cut for being distracting. Cut in turn on the same reading, and
+  //: the cost is known and was measured before the cut: an offer changed 1.75%
+  //: of the island's frame with it and 0.36% without, because the light on the
+  //: ground was most of what it changed. Doubling the notice instead gets
+  //: 0.61%, so nothing standing on the post buys that back.
+  //:
+  //: **What carries an offer is the rope**, and always did: a line across the
+  //: island from the maker to the taker, labelled with what is being offered
+  //: for what, its dashes crawling toward the trader it is addressed to. That
+  //: is drawn in SVG over the canvas, so the island's own share of an offer is
+  //: small on purpose now -- the post rising, the notice unrolling, and the
+  //: crates it is offering lifting off the pile. `render.py:turning` is what
+  //: holds the rope to its job.
 
   c.update = (t) => {
     const rise = easeOut(win(t, 0, 0.5));
@@ -493,9 +498,6 @@ function offered(event, { anchors, traders, ground, stock }) {
     post.userData.banner.rotation.y = Math.sin(t * 3.6) * 0.12 * flut;
     const p = win(t, 0.6, 2.8);
     const shine = Math.sin(Math.PI * p) ** 0.6;
-    lampMat.opacity = 0.85 * shine;
-    lampMat.emissiveIntensity = 0.4 + shine * 1.6;
-    beam.intensity = shine * 4.2;
     offered.forEach(({ box, at, turn }, k) => {
       const up = Math.sin(Math.PI * win(t, 0.35 + k * 0.1, 2.9)) ** 0.6;
       box.position.y = at.y + up * 0.42;
@@ -613,12 +615,18 @@ function refused(event, { anchors, traders, ground }) {
   const right = mesh(half, noticeMat, "notice_r", [0, 0.95, 0.43]);
   post.add(left, right);
 
-  const flashMat = own(c, clone(M.cloth, {
-    transparent: true, opacity: 0, color: new THREE.Color(0xd03b3b),
-    emissive: new THREE.Color(0xd03b3b), emissiveIntensity: 0.8 }));
-  const flash = mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.01, 40), flashMat, "refusal_flash",
-    [post.position.x, post.position.y + 0.04, post.position.z]);
-  c.root.add(flash);
+  //: **The red disc on the ground is gone.** It is the last of the rings: a
+  //: three-unit circle of light thrown across the grass, which survived the
+  //: purge that took the other five because it was called a flash rather than
+  //: a ring. It is the same thing, and it was cut for the same reason -- a
+  //: coloured disc on the grass is not a thing that happened, it is a caption
+  //: for one.
+  //:
+  //: **What carries a refusal is the bubble over the hut**, with a cross in
+  //: it, and the red outline round the trader's card. Both are drawn over the
+  //: canvas, so what is left here is the post shaking and the notice tearing
+  //: in two, which is the refusal itself rather than a light about it.
+  //: `render.py:overhead` is what holds the bubble to its job.
 
   c.update = (t) => {
     const shake = win(t, 0.1, 0.8);
@@ -629,8 +637,6 @@ function refused(event, { anchors, traders, ground }) {
     left.rotation.set(tear * 1.4, tear * 0.6, tear * 2.2);
     right.rotation.set(-tear * 1.1, -tear * 0.5, -tear * 1.9);
     const fl = win(t, 0.3, 2.4);
-    flashMat.opacity = 0.6 * Math.sin(Math.PI * fl) ** 0.9;
-    flash.scale.setScalar(0.55 + fl * 0.75);
     const down = win(t, 2.5, 3.0);
     post.scale.y = 1 - down;
   };

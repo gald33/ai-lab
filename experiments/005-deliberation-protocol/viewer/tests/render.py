@@ -2478,6 +2478,18 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
     those are not the clip's to keep.
     """
     bad: list[str] = []
+    #: **The handover, asserted.** An offer and a refusal are let off the
+    #: island's own floor because their picture is drawn over the canvas
+    #: instead -- so the checks that hold *those* to their job have to still be
+    #: in the suite, or the two events go quiet everywhere at once and nothing
+    #: says so. Read out of this file's own source, which is where `run` says
+    #: what it runs.
+    here = Path(__file__).read_text()
+    for kind, carrier in (("an offer", "turning"), ("a refusal", "overhead")):
+        if f"problems += {carrier}(" not in here:
+            bad.append(f"mechanics: {kind} is excused the island's floor "
+                       f"because `{carrier}` carries it, and `{carrier}` is no "
+                       f"longer run")
     page = browser.new_page(viewport={"width": 1000, "height": 700})
     errs: list[str] = []
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
@@ -2589,9 +2601,32 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
             continue
         #: Share of the island. Small, because most of an island is ground --
         #: but an order of magnitude above the hairlines this replaced.
-        if r["peak"] < 0.012:
+        #:
+        #: **Two events are not carried by the island and are not asked to
+        #: be.** An offer's picture is the rope across the frame, labelled with
+        #: what is on the table and crawling toward the trader it is addressed
+        #: to; a refusal's is the bubble over the hut with a cross in it. Both
+        #: are SVG over the canvas, which this cannot see -- it drives a bare
+        #: stage with no scene on it.
+        #:
+        #: That is a **decision**, not a threshold being relaxed to fit: the
+        #: lamp on the offer's post and the red disc under the refusal were the
+        #: last two ground-lights on the island and both were cut on report.
+        #: Measured before and after -- an offer went 1.75% -> 0.36% and a
+        #: refusal 3.20% -> 0.27% -- so the island's own share of them is small
+        #: on purpose. What is still required of it is that something happens
+        #: there at all: a post rising and a notice unrolling, a post shaking
+        #: and a notice tearing in two, an order of magnitude above nothing.
+        #:
+        #: `carries` names who does hold each of them to its job, and the
+        #: assertion below is that those checks are still in the suite. Without
+        #: it this is an exemption; with it, it is a handover.
+        carries = {"offer": "turning", "refused": "overhead"}
+        floor = 0.002 if r["kind"] in carries else 0.012
+        if r["peak"] < floor:
             bad.append(f"{where}: only {r['peak'] * 100:.2f}% of the island ever "
-                       f"changed; whatever it did cannot be seen")
+                       f"changed, under {floor * 100:.1f}%; whatever it did "
+                       f"cannot be seen")
         if r["live"]:
             bad.append(f"{where}: {r['live']} clip(s) still running after the end")
         if r["after"] > 0.0015:
