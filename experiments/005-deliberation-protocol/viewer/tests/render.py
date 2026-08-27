@@ -1932,7 +1932,12 @@ STOCK = """async ({goods, cases}) => {
   for (const c of cases) {
     st.showStock(c.stocks, c.event ?? null);
     const boxes = [];
-    st.stock.root.traverse(o => { if (o.isMesh) boxes.push(o); });
+    //: The crates themselves, not their lids. A box carries a hinged flap on
+    //: its top face now -- see `island-stock.js:openLid` -- and a flap sits a
+    //: box-height above the grass by construction, so a clearance check that
+    //: swept up every mesh in the yards would fail on the one part that is
+    //: meant to be up there.
+    st.stock.root.traverse(o => { if (o.isMesh && o.name.startsWith('box_')) boxes.push(o); });
     // Where every box actually stands, and how far each is above the ground
     // beneath it: a crate floating over the grass or sunk into it is the same
     // defect the flags had, and this is a hundred more chances to have it.
@@ -2014,7 +2019,7 @@ CARRY = """async ({goods, give, want, hold}) => {
                   T2: Object.fromEntries(goods.map(g => [g, hold]))};
   st.showStock(before);
   const was = [];
-  st.stock.root.traverse(o => { if (o.isMesh) was.push(o); });
+  st.stock.root.traverse(o => { if (o.isMesh && o.name.startsWith('box_')) was.push(o); });
   const home = new Map(was.map(o => [o, o.getWorldPosition(new THREE.Vector3())]));
   // What the board says after the exchange, and **only the traded goods move**.
   // A fixture that changed every holding would have the yards reconciling

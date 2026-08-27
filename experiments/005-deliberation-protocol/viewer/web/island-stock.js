@@ -76,6 +76,17 @@ const MOST = 6;
 //: against the banner pole as well, which the hut no longer has -- kept as it
 //: is, because a yard tight against the wall reads as part of the building.
 const OUT = 0.86, PITCH = 0.34;
+//: A crate's lid: a thin slab hinged on the back edge of the top face, shut
+//: except in the moment a box has just come to rest in a yard. **The symbol
+//: that fills a card comes off the pile it is counting**, and it used to rise
+//: out of a sealed cube -- so a lid that swings up as the box lands is the box
+//: saying what the symbol is: the goods coming out of what carried them.
+//: Thin, because a lid a spectator can see the thickness of at this scale is a
+//: second box balanced on the first.
+const LID = BOX * 0.11;
+//: How far open. A right angle reads as a lid torn off; this is the flap
+//: standing back past vertical the way a crate's does when it is emptied.
+const AJAR = 2.0;
 //: What one box is worth, in the goods' own units. See the note above: the
 //: ninetieth percentile of `exp(0.8 * N(0,1))` is 2.788, and six boxes is that.
 export const UNIT = 2.788 / MOST;
@@ -117,6 +128,19 @@ function yardAt(home, centre, ground) {
 }
 
 /**
+ * How far open one box's lid stands, from shut (0) to open (1).
+ *
+ * Exported because the clips are what know when a box has arrived: the stock
+ * owns what a box *is*, `island-events.js` owns what happens to it. Anything
+ * without a lid -- a box built before this, or a prop borrowed from elsewhere
+ * -- is left alone rather than made a special case.
+ */
+export function openLid(box, p) {
+  const hinge = box?.getObjectByName?.("lid");
+  if (hinge) hinge.rotation.x = -(p < 0 ? 0 : p > 1 ? 1 : p) * AJAR;
+}
+
+/**
  * The standing stock: a yard of boxes beside every hut.
  *
  * @param {THREE.Group} island
@@ -128,6 +152,7 @@ export function standing(island, { traders, goods, anchors, ground }) {
   island.add(root);
 
   const geo = new THREE.BoxGeometry(BOX, BOX, BOX);
+  const lidGeo = new THREE.BoxGeometry(BOX, LID, BOX);
   const mats = {};
   const yards = {};
   goods.forEach((good, i) => {
@@ -159,6 +184,20 @@ export function standing(island, { traders, goods, anchors, ground }) {
     m.name = `box_${good}`;
     m.castShadow = true;
     m.receiveShadow = true;
+    //: The hinge is a node at the back edge of the top face and the lid hangs
+    //: forward off it, so `rotation.x` alone swings the flap up and back and
+    //: the crate underneath is untouched. It is a child of the box, so every
+    //: carry, hop and tumble the box already does carries the lid with it and
+    //: nothing has to be kept in step by hand.
+    const hinge = new THREE.Group();
+    hinge.name = "lid";
+    hinge.position.set(0, BOX / 2, -BOX / 2);
+    const flap = new THREE.Mesh(lidGeo, mats[good]);
+    flap.name = "flap";
+    flap.position.set(0, LID / 2, BOX / 2);
+    flap.castShadow = true;
+    hinge.add(flap);
+    m.add(hinge);
     root.add(m);
     return m;
   };
@@ -175,6 +214,10 @@ export function standing(island, { traders, goods, anchors, ground }) {
       m.position.copy(slot(t, good, k));
       m.rotation.set(0, 0, 0);
       m.scale.setScalar(1);
+      //: Shut. A box standing in a yard is a box holding something; open is
+      //: only ever the beat it is being emptied into a card, and a scrub has
+      //: no beat in it.
+      openLid(m, 0);
     });
   };
 
@@ -263,6 +306,7 @@ export function standing(island, { traders, goods, anchors, ground }) {
     dispose() {
       island.remove(root);
       geo.dispose();
+      lidGeo.dispose();
       for (const m of Object.values(mats)) m.dispose();
     },
   };

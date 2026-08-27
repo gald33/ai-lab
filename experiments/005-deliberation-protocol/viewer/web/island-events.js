@@ -29,7 +29,10 @@ import { goodMat } from "./island3d.js";
 //: fit inside. This is the boxes' half of it; `scene.js:hands` runs the cards'
 //: half off the same numbers, which is the point -- the two were separate
 //: copies in different units and they had drifted apart by half a second.
-import { CARRY } from "./scene.js";
+import { CARRY, IN_LEG } from "./scene.js";
+//: A box is opened by the clip that brought it home; what a lid *is* belongs
+//: to the stock that builds the box.
+import { openLid } from "./island-stock.js";
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
@@ -59,7 +62,26 @@ function land_(box, at) {
   box.rotation.set(0, 0, 0);
   box.scale.setScalar(1);
   box.visible = true;
+  //: And shut. A clip cut short mid-flight must not leave a lid standing open
+  //: on a box nothing is coming to empty -- the same rule as the position.
+  openLid(box, 0);
 }
+
+//: How long a lid takes to swing up, and to fall shut again. The opening is
+//: the landing hop itself, so it is `CARRY.land`; the closing is its own
+//: little beat after the symbol has gone.
+const SHUT = 280;
+
+/**
+ * A lid, over one box's arrival: shut, open as it lands, held open while the
+ * card is filling off it, then shut again.
+ *
+ * `at` is when the box touches down and `hold` is how long it stands open
+ * after that. Written as one function because both arrivals -- a production
+ * walking home and an exchange crossing the island -- are the same picture.
+ */
+const lidAt = (t, at, hold, land) =>
+  easeOut(win(t, at - land, at)) * (1 - easeIn(win(t, at + hold, at + hold + SHUT / 1000)));
 
 //: **There are no ground marks left on this island.** There was a ring under
 //: every event, then -- when those were reported as shockwaves -- a patch of
@@ -294,6 +316,15 @@ function produced(event, { island, anchors, goods, stock }) {
       box.position.y += Math.sin(p * Math.PI) * 0.6;
       box.rotation.set(p * 4.2, p * 3.1, p * 1.8);
       wake(from, to, p, 0.75);
+      //: **A production's crates land shut**, where an exchange's arriving
+      //: crates open and let the card's symbols out of them. Not an oversight
+      //: and not a second rule: `scene.js:produce` fills the shelf off its own
+      //: clock -- the symbols leave the yard within the first second and the
+      //: boxes are still walking home at two and a half -- so a lid swung up
+      //: here would open on an empty beat, after everything it was meant to
+      //: release had already gone. What syncs the exchange is `carriedBy`, and
+      //: production has no such number yet; giving it one means retiming
+      //: `DWELL.produced` around the walk home, which is its own change.
       // The hop as it lands on the pile, and then it is simply standing there.
       const land = win(t, t0 + 1.8, t0 + 2.4);
       if (land > 0) {
@@ -538,7 +569,12 @@ function settled(event, { island, anchors, goods, stock, life }) {
   if (!legs.length) return null;
   //: As long as its longest leg, rather than a constant that has to be kept
   //: above one. A bundle of four goods runs a second past a hard-coded 4.2.
-  c.dur = Math.max(...legs.map((l) => l.t0)) + S(CARRY.cross + CARRY.land) + 0.3;
+  //: Long enough to see the third leg out: the lid is open from the landing
+  //: hop, through `CARRY.rest` and the whole of the card's `IN_LEG`, and then
+  //: falls shut. A clip that ended at the landing would have shut the box in
+  //: the frame the symbols left it.
+  c.dur = Math.max(...legs.map((l) => l.t0))
+    + S(CARRY.cross + CARRY.land + CARRY.rest + IN_LEG + SHUT) + 0.2;
   c.settle.push(() => { for (const { box, b: at } of legs) land_(box, at); });
 
   //: The dust went from here too, for the reason it went from `produced`: a
@@ -572,6 +608,13 @@ function settled(event, { island, anchors, goods, stock, life }) {
         l.box.position.y = l.b.y
           + Math.abs(Math.sin(down * Math.PI * 2)) * 0.12 * (1 - down);
       }
+      //: **The box opens and the symbol comes out of it.** The card's gaining
+      //: bar fills off this pile at `carriedBy` -- the landing plus
+      //: `CARRY.rest` -- and takes `IN_LEG` over it, so the lid is up for
+      //: exactly that window and no other. Driven after the landing branch
+      //: because `land_` shuts it.
+      openLid(l.box, lidAt(t, l.t0 + S(CARRY.cross + CARRY.land),
+                           S(CARRY.rest + IN_LEG), S(CARRY.land)));
     });
     life?.flare(Math.sin(Math.PI * win(t, 1.9, 3.6)) ** 0.7 * 0.55);
   };
