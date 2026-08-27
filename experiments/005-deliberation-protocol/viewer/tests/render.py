@@ -246,11 +246,24 @@ def motion(page, where: str) -> list[str]:
       const watch = (cls) => document.querySelectorAll('.flights ' + cls).length;
       const found = {};
 
+      //: A receipt's symbol leaves when its crate has landed, which is
+      //: `madeBy(0)` after the receipt and not 150ms -- and the animation only
+      //: begins on the page's next paint. Waited for rather than timed, for
+      //: the reason spelled out in `production()`.
+      const { madeBy } = await import('./scene.js');
+      const till = async (want, cap) => {
+        const t1 = performance.now() + cap;
+        while (performance.now() < t1) { if (want()) return true; await nap(50); }
+        return false;
+      };
       scene.play({ kind: 'produced', trader: scene.traders[0],
                    made: { [scene.goods[0]]: 1.25 }, unspent: 0 });
-      await nap(150);
+      await till(() => watch('.sheaf'), madeBy(0) + 4000);
       found.sheaf = watch('.sheaf');
       found.popOnProduce = watch('.pop');
+      //: And gone again before the next event is played, so what the refusal
+      //: and the remark below count is their own.
+      await till(() => !watch('.sheaf'), 4000);
 
       scene.play({ kind: 'refused', trader: scene.traders[0], reason });
       await nap(150);
@@ -349,8 +362,21 @@ def production(page, where: str) -> list[str]:
     bar on a 0.55s CSS transition, and a sheaf flew for 1.5s. So the shelf had
     finished filling a second before anything landed on it, and nothing on
     screen connected the flying glyph to the bar that grew.
+
+    **It waits on the page's own table, not on naps of its own.** This check
+    used to look for a symbol in flight 620ms after the receipt and read the
+    filled bar at 3.8s, which were the old hard-coded production timings
+    written out a second time here. When production was put on one schedule
+    with its crates (`MAKE`, `madeBy`) the symbols moved behind those naps and
+    this reported three failures on a page that was drawing the thing
+    correctly. So it reads `madeBy(0)` and `IN_LEG` off `scene.js` and samples
+    against them: mid-rise there is a symbol in the air, and after it lands the
+    bar has grown. A check that mirrors a schedule goes stale the first time
+    the schedule moves, which is the whole reason there is a table.
     """
     seen = page.evaluate("""async () => {
+      //: The schedule the page actually runs on, read rather than copied.
+      const { madeBy, IN_LEG } = await import('./scene.js');
       // This drives the *drawn* scene in isolation -- the fallback a browser
       // with no WebGL gets -- so the model's class comes off for it. With it on,
       // the scenery is hidden and the palm check has nothing to measure.
@@ -381,6 +407,10 @@ def production(page, where: str) -> list[str]:
                       labour: { ...t.final.labour, [who]: 0 } };
       scene.draw(after, t);
       scene.play({ kind: 'produced', trader: who, made, unspent: 0 });
+      const t0 = performance.now();
+      //: Wait until a moment on the receipt's own clock, however long that is
+      //: from here.
+      const until = (ms) => nap(Math.max(0, t0 + ms - performance.now()));
 
       await nap(120);
       const early = bar();
@@ -394,17 +424,40 @@ def production(page, where: str) -> list[str]:
       scene.draw(after, t);
       await nap(200);
       const redrawn = bar();
-      const flying = document.querySelectorAll('.flights .sheaf').length;
 
       // Past where the old CSS transition would have finished (0.5s). If the
       // wheel is already at its final value here, nothing is animating it and
       // the labour went in one silent step.
       const wheelLate = wheel();
-      await nap(3200);
+
+      //: **Waited for, not timed.** The symbol is built at the moment it flies
+      //: -- `madeBy(0)` after the receipt -- and a WAAPI animation does not
+      //: start until the page paints, which this harness does about four times
+      //: a second. Sampling on absolute times therefore races the animation
+      //: rather than measuring it. So: wait for a symbol to be in the air,
+      //: read the bar *then*, and wait for it to land before reading the bar
+      //: again. Both claims survive any frame rate.
+      const till = async (want, cap) => {
+        const t1 = performance.now() + cap;
+        while (performance.now() < t1) {
+          if (want()) return true;
+          await nap(50);
+        }
+        return false;
+      };
+      const airborne = await till(
+        () => document.querySelectorAll('.flights .sheaf').length, madeBy(0) + 4000);
+      const flying = document.querySelectorAll('.flights .sheaf').length;
+      // The bar is still low while the symbol is rising -- the thing this
+      // whole check exists for, asked at the moment it can be wrong.
+      const mid = bar();
+      const landed = await till(
+        () => !document.querySelectorAll('.flights .sheaf').length, IN_LEG + 4000);
+      await nap(120);
       const settled = bar();
       const wheelDone = wheel();
-      return { before, early, redrawn, settled, flying, working,
-               wheelLate, wheelDone };
+      return { before, early, redrawn, mid, settled, flying, working,
+               airborne, landed, wheelLate, wheelDone };
     }""")
     bad = []
     if seen["settled"] is None or seen["settled"] <= (seen["before"] or 0) + 0.05:
@@ -417,6 +470,13 @@ def production(page, where: str) -> list[str]:
     if seen["redrawn"] is None or seen["redrawn"] > (seen["settled"] or 1) * 0.5:
         bad.append(f"{where}: a repaint during the flight filled the shelf early "
                    f"(bar {seen['redrawn']} of {seen['settled']}) — {seen}")
+    if not seen["landed"]:
+        bad.append(f"{where}: the symbol never landed; it was still in the air "
+                   f"when this gave up waiting — {seen}")
+    if seen["mid"] is None or seen["mid"] > (seen["settled"] or 1) * 0.5:
+        bad.append(f"{where}: the shelf was already full while the symbol was "
+                   f"still rising out of the crate (bar {seen['mid']} of "
+                   f"{seen['settled']}) — {seen}")
     if not seen["flying"]:
         bad.append(f"{where}: nothing was in flight during production ({seen})")
     if not seen["working"]:
@@ -876,6 +936,8 @@ def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
     page.wait_for_timeout(1200)
     page.evaluate("u => { window.__boardUrl = u; }", f"replays/{board.name}")
     seen = page.evaluate("""async () => {
+      //: The schedule the page actually runs on, read rather than copied.
+      const { madeBy, IN_LEG } = await import('./scene.js');
       const s = document.getElementById('scrub');
       const at = (i) => new Promise(r => {
         s.value = String(i); s.dispatchEvent(new Event('input'));
@@ -3812,6 +3874,8 @@ def clockwork(browser, base: str, out: Path) -> list[str]:
     page.evaluate(STAGE, {"w": 900, "h": 600, "n": 2, "portrait": False,
                           "goods": ["bread", "cloth", "iron", "salt"]})
     seen = page.evaluate("""async () => {
+      //: The schedule the page actually runs on, read rather than copied.
+      const { madeBy, IN_LEG } = await import('./scene.js');
       const st = window.__st;
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const bearing = () => {
