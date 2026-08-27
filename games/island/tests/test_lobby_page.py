@@ -102,3 +102,11 @@ def test_a_keyless_lobby_says_it_can_witness_nothing(hub):
     page = lobby_page.render(lobby)
 
     assert "no key" in page
+
+
+def test_the_page_points_at_where_a_finished_game_can_be_watched(hub):
+    """Two live surfaces with no path between them is a door into a room
+    nobody can see, and a spectacle nobody can find the door to."""
+    page = lobby_page.render(Lobby(client=_client(hub, "lobby", generate_key())))
+
+    assert lobby_page.VIEWER in page

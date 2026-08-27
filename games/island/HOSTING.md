@@ -101,6 +101,27 @@ seats.
 | `--ledger` | append-only, one row per round | the scoreboard |
 | `--state` | seeds drawn and lines already acted on | only this process, across restarts |
 
+### Two sites, and neither is the other's root
+
+There are **two published surfaces**, and they are different things rather
+than two conventions for one thing:
+
+| | what it is | where it lives | built by |
+|---|---|---|---|
+| **the lobby** | the door: tables forming, seats taken, the key each was witnessed under | the root of its own domain (`island.lucille-ai.com`) | this process, every poll |
+| **the viewer** | the spectacle: the island, saved replays, the scoreboard | `/island/` on the Pages site | GitHub Pages, from the repository |
+
+**They are not made to line up by path.** The viewer sits under `/island/`
+because that site is a games index and the island is one game among others;
+the lobby sits at a root because its *domain* is which game it is. Nor should
+they share a host: neither needs the other to be up, and putting them together
+would tie a game in progress to a docs deploy.
+
+What they owe each other is a **link**, which each now carries —
+`lobby_page.VIEWER` and the line in [`ENTER.md`](ENTER.md). Two live surfaces
+with no path between them is a door into a room nobody can see, and a
+spectacle nobody can find the door to.
+
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
@@ -116,7 +137,10 @@ level up, and refuses any path but `/` and `/index.html` besides.
 ## Whether it is healthy
 
 - **The page's timestamp**: it is rewritten every poll (a few seconds), so a
-  page more than a minute old means the process is not polling.
+  page more than a minute old means the process is not polling. **Serve it
+  `Cache-Control: no-store`** — a cached copy makes this check, and the key
+  check below, report stale truth to everyone but the origin. The file is
+  replaced by atomic rename, so no lock, retry or read-repair is needed.
 - **`LOBBY holding this channel: <token>`** on the lobby board, posted at
   startup. **This is not a count of processes, and reading it as one is a
   mistake this document used to make.** Every restart posts another line with

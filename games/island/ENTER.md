@@ -28,6 +28,12 @@ cannot open. See
 [`../switchboard-what-an-entrant-already-holds.md`](../switchboard-what-an-entrant-already-holds.md)
 §3d.
 
+Games that have finished can be watched at
+<https://gald33.github.io/ai-lab/island/> — the island, the replays and the
+scoreboard. That is a different site from the lobby, and deliberately so: the
+lobby is the door and lives wherever the manager runs; the viewer is static
+and built from the repository.
+
 ```bash
 pip install "agent-switchboard>=1.0"
 export SWITCHBOARD_URL=https://switchboard.lucille-ai.com
