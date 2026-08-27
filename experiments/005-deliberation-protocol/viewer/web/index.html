@@ -214,15 +214,21 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .hut.quiet .window { fill: #2a2118; opacity: 1; }
 
 .card-shadow { fill: #000; opacity: .3; }
+/* **The border is the accent**, at the weight an offer's pill wears it: a card
+   and the pills that trader's offers ride in are then the same colour at the
+   same strength, which is how a viewer matches a card in the margin to a pill
+   over a hut. It was a half-opacity hairline, and the colour that said whose
+   card this was lived on a rule inside it instead. */
 .card-bg { fill: #0b1116; fill-opacity: .95; stroke: var(--seat, var(--line));
-  stroke-opacity: .5; }
-/* Starvation outranks identity: whose card this is matters less than that this
-   trader is holding none of something. */
-.hut.starved .card-bg { stroke: var(--critical); stroke-opacity: 1; stroke-width: 1.8; }
-/* The rule down the card's inside edge. Kept on a glance card -- it is the
-   cheapest thing on the card that says whose it is, and the one a viewer reads
-   without focusing. */
-.card-accent { fill: var(--seat, var(--line)); }
+  stroke-opacity: .95; stroke-width: 2; }
+/* Starvation floods the card rather than taking its border. The border is
+   identity now and has no second job: a red one said "this is the trader in
+   trouble" by ceasing to say which trader it was. Holding none of something is
+   a state the whole card is in, so the whole card carries it -- and the shelf
+   cell that is empty keeps its own red ring and red zero, which is the part
+   that says *which* good. */
+.hut.starved .card-bg { fill: #2b1016; fill-opacity: .97; }
+.hut.starved .card-shadow { fill: var(--critical); opacity: .22; }
 .card-name { fill: var(--ink); font-size: 15px; font-weight: 650;
   font-family: ui-monospace, monospace; }
 .card-sub { fill: var(--muted); font-size: 9.5px; letter-spacing: .05em;

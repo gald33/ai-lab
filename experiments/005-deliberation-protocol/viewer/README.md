@@ -58,7 +58,7 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | a pill blinking red | the manager would not settle it; the offer is still open |
 | a rope blurring and coming apart | the bell took the offer with it, unanswered |
 | goods in flight | a settled exchange, both directions at once |
-| a red card outline | holding some goods and none of another — a zero episode |
+| a card washed dark red | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
 | the pink bar | replay only — what the shelf is worth to the trader who owns it |
 | the tick on it | what autarky would have given them: the line worth beating |
@@ -647,8 +647,9 @@ offer is **the rope** across the frame — labelled with what is on the table, i
 dashes crawling toward the trader it is addressed to — and, on the island
 itself, the crates the maker is offering lifting off its own pile and settling
 back, since an offer is a proposal and nothing has moved yet. A refusal is the
-**bubble over the hut** with a cross in it and the red outline round the card,
-and it now has nothing of its own on the island at all: `render.py:overhead` is
+**bubble over the hut** with a cross in it — and, where the manager named a
+cause, the slot it came up short in and the offer holding what it needed, lit
+together (`blame()`). It has nothing of its own on the island at all: `render.py:overhead` is
 what holds it to that job, and `mechanics` names it as the one event the island
 is not asked to show. Measured on the way here — a refusal was 3.20% of the
 island's frame with its ground disc and 0.27% with only the post, so what was
@@ -1063,6 +1064,25 @@ animation**, so the crawl was reset sixty times a second and the line sat
 still. Ropes are moved in place now and rebuilt only when the set of offers
 changes. `turning()` holds both halves: the node has to survive the camera
 turning, and the path has to start at the maker's end.
+
+### The border is whose, and nothing else
+
+**A card's border is its seat's colour, at the weight an offer's pill wears
+it** (2026-08-27, Gal's ask). It was a half-opacity hairline with the colour
+that said whose card this was living on a rule *inside* it instead — so a card
+in the margin and a pill over a hut, which are the two places the same trader
+appears at once, wore the same colour at two different strengths. They match
+now, and the inside rule is gone: with the border carrying it at full weight, a
+second stripe of the same colour is the same fact twice.
+
+That leaves the border with one job, which is why the other thing on it had to
+move. **Starvation floods the card instead of outlining it.** A red border said
+"this is the trader in trouble" by ceasing to say *which* trader it was —
+identity and alarm competing for one line, and the alarm winning. Holding some
+of something and none of another is a state the whole card is in, so the whole
+card carries it: the fill goes dark red and the shadow under it picks up the
+same colour. The shelf cell that is empty keeps its own red ring and red zero,
+which is the part that says which good.
 
 ### What became of an offer, said on the offer
 

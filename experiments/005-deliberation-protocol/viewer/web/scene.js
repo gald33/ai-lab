@@ -1331,12 +1331,10 @@ export class Scene {
     label.append(el("title", {}, name));
     card.append(label);
 
-    //: The card's half of the accent: a rule down its inside edge, in the same
-    //: colour as the door of the hut above it. Inset rather than laid on the
-    //: card's own border, which is rounded at 13 and would show a straight
-    //: stripe overhanging both corners.
-    card.append(el("rect", { class: "card-accent", x: -CARD_W / 2 + 5.5, y: CARD_TOP + 13,
-                             width: 3.5, height: Math.max(0, tall - 26), rx: 1.75 }));
+    //: **No rule down the inside edge any more.** It existed because the card's
+    //: own border was a half-opacity hairline and could not carry the seat's
+    //: colour; the border wears it at full weight now, the way an offer's pill
+    //: does, so a second stripe of the same colour is the same fact twice.
 
     // Labour: filled by what this trader spent this episode, and empty until a
     // production receipt says otherwise -- nobody has told this page anything
