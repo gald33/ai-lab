@@ -3819,7 +3819,11 @@ WHOSE = """async ({w, h, n, goods, turns}) => {
   const THREE = await import('./vendor/three/three.module.js');
   const { Stage } = await import('./stage.js');
   const { layout } = await import('./scene.js');
-  const { SEAT_COLOURS } = await import('./island3d.js');
+  //: The seat's colour from `seats.js`, which is what the island paints with:
+  //: it was `SEAT_COLOURS[i % 6]` in `island3d.js` until a seventh trader was
+  //: found wearing the first one's colour, and this check reads whatever the
+  //: island is actually painting so it cannot go stale against it.
+  const { seatRing } = await import('./seats.js');
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
   const st = new Stage(cv, layout(n, false, w / h, {top: 0, foot: 0}));
@@ -3866,9 +3870,9 @@ WHOSE = """async ({w, h, n, goods, turns}) => {
     st.camera.updateMatrixWorld(true);
     made.island.updateMatrixWorld(true);
     const at = {spin, huts: []};
+    const ring = seatRing(n);
     traders.forEach((t, i) => {
-      const row = {trader: t,
-                   colour: '#' + SEAT_COLOURS[i % SEAT_COLOURS.length].toString(16).padStart(6, '0')};
+      const row = {trader: t, colour: ring[i]};
       for (const part of ['door', 'band', 'finial']) {
         const m = made.island.getObjectByName(`hut_${t}_${part}`);
         row[part] = m ? seen(m, st.camera) : null;

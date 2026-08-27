@@ -50,6 +50,34 @@
   --good-6: #008300;
   --good-7: #9085e9;
 
+  /* The seats: whose a hut, a boat and an offer's pill are. The island has
+     painted its huts and boats these six since it was modelled; they are named
+     here because the palette's gates are run against this file, so a colour
+     that exists only in the drawing code has passed nothing. `web/seats.js`
+     carries the same six and is what both layers actually draw with;
+     `test_palette.py` compares the two lists, because that is exactly the seam
+     the goods drifted apart across once already.
+
+     **Six is where the named list ends, not where the table does.** A round
+     can seat any number, and `seats.js` generates the whole ring -- n hues
+     evenly spaced at the lightness and chroma these six sit at -- as soon as
+     there are more than six seats, rather than handing the same six round
+     twice. Two huts in one colour is a wrong answer to "whose is that?",
+     which is worse than no colour at all.
+
+     Deliberately not the metric tokens and not a series slot: `--util` and
+     `--eff` already name utility and efficiency on the card beside the hut,
+     and a good's colour on a pill would read as that good. Held to
+     byte-distinctness from every encoding colour rather than to the series'
+     contrast floors -- a seat is never the only thing saying whose an offer
+     is, which carries the two traders' names in text beside it. */
+  --seat-1: #e8a13d;
+  --seat-2: #6fc2a0;
+  --seat-3: #c98bd8;
+  --seat-4: #d9694f;
+  --seat-5: #86a8e0;
+  --seat-6: #d3c463;
+
   /* Metrics, not series: distinct from every good, so a score can never be
      mistaken for a stock.
 

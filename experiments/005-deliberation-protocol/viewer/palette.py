@@ -132,3 +132,48 @@ def worst_cvd(a: str, b: str) -> float:
     dichromacies -- which is the number that decides whether they are one
     colour to somebody."""
     return min([delta_e(a, b)] + [delta_e(simulate(a, k), simulate(b, k)) for k in CVD])
+
+
+def seat_ring(n: int) -> list[str]:
+    """What `web/seats.js` paints a table of `n`, asked of the module itself.
+
+    **Not a second implementation.** The ring is generated in the browser, and a
+    Python copy of the generator is the drift this repo keeps paying for -- the
+    goods, then the seats. This shells out to the one implementation so that
+    everything measured here is measured on what the page actually draws.
+    """
+    import json
+    import subprocess
+    src = ("import { seatRing } from './seats.js';"
+           f"process.stdout.write(JSON.stringify(seatRing({int(n)})));")
+    out = subprocess.run(["node", "--input-type=module", "-e", src],
+                         cwd=TOKENS.parent, capture_output=True, text=True, timeout=60)
+    if out.returncode != 0:
+        raise RuntimeError(f"seats.js would not run: {out.stderr.strip()}")
+    return [c.lower() for c in json.loads(out.stdout)]
+
+
+def _seats_report(counts: list[int]) -> None:
+    """The numbers the seat ring's comments claim, printed.
+
+        python3 viewer/palette.py seats 6 7 8 10 12 16
+    """
+    import itertools
+    surface = tokens()[SURFACE]
+    for n in counts:
+        ring = seat_ring(n)
+        pairs = list(itertools.combinations(ring, 2))
+        worst = min((worst_cvd(a, b) for a, b in pairs), default=float("inf"))
+        normal = min((delta_e(a, b) for a, b in pairs), default=float("inf"))
+        floor = min(contrast(c, surface) for c in ring)
+        print(f"{n:3d} seats  worst CVD ΔE {worst:5.1f}  worst ΔE {normal:5.1f}  "
+              f"contrast {floor:4.2f}:1  distinct {len(set(ring)) == n}")
+        print(f"          {' '.join(ring)}")
+
+
+if __name__ == "__main__":
+    import sys
+    if sys.argv[1:2] == ["seats"]:
+        _seats_report([int(a) for a in sys.argv[2:]] or [6, 7, 8, 10, 12, 16])
+    else:
+        raise SystemExit("usage: palette.py seats [n ...]")

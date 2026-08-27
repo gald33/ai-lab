@@ -51,7 +51,8 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | four bars, fixed order | stock, from production and settled trades |
 | the pale part of a bar | promised to an open offer, so not offerable again |
 | the labour wheel | share of this episode's labour spent, from the receipt |
-| a rope across the square | an open proposal, with what it offers for what |
+| a pill sliding down a rope | an offer being carried from the trader who made it to the trader it is addressed to |
+| a pill waiting over a hut | an open proposal, with what it offers for what, standing on the trader who has to answer it |
 | goods in flight | a settled exchange, both directions at once |
 | a red card outline | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
@@ -614,11 +615,17 @@ The stripe is inset rather than laid on the card's own border, which is rounded
 at 13 and would show a straight stripe overhanging both corners. Starvation
 still outranks identity: a starved card's border goes back to `--critical`.
 
-`--seat-1..6` are in `tokens.css` and are the same list as `SEAT_COLOURS`, which
-is not a coincidence to be trusted — the goods drifted in exactly this way, so
-`test_palette.py` compares the two lists, checks each accent carries on the
-surface, and checks none of them is `--util` or `--eff`, both of which are drawn
-on the card the accent tints.
+`--seat-1..6` are in `tokens.css`, and were the same list as `SEAT_COLOURS` in
+`island3d.js` — not a coincidence to be trusted, since the goods drifted in
+exactly this way, so `test_palette.py` compared the two.
+
+**Superseded the same day, and by the defect both lists shared:** each picked
+its colour with `% 6`, so a seventh trader's hut, card and offers all wore the
+first trader's colour. There is one list now — `web/seats.js`, which answers for
+any seat count and which both layers import — and the accent set on the
+settlement group comes from it rather than from `var(--seat-N)`. The stylesheet
+still names the six, because that is where the palette's gates are run. See "A
+seat's colour is a function of the seat *and how many seats there are*" below.
 
 The bell and the new day used to run those banners down and back up their poles.
 Both keep the larger half they always had — nightfall over the whole frame, the
@@ -734,6 +741,112 @@ together they cover no more than 48% of the meadow. The old "two settlements at
 least 1.2 apart" is gone — the right question asked against a constant, from
 when a hut was always the same size. Neutered to a constant size, the new one
 reports 51%, 56% and 62% and two overlaps.
+
+### An offer is delivered, and then it waits on the trader it is addressed to
+
+**Decided by Gal, 2026-08-27.** The rope was the whole picture of an offer: a
+line between two huts with a label hanging at its midpoint, its dashes crawling
+toward the taker. Two things it did not say, and both are the offer's content.
+
+**Whose it is.** The label named the maker in 10px monospace beside the pid,
+and that is the only place on the frame an offer said who made it — a spectator
+reading the square had to read text to answer the first question they have. The
+pill now wears the **maker's seat colour**, as its border and as a dot inside
+it: the same colour the island paints that trader's hut and boat, so a pill
+leaving a roof is the colour of the roof it left.
+
+The seats are held to **byte-distinctness** from every good and metric rather
+than to the series' contrast floors. A seat is never the only thing saying
+whose an offer is — the pill carries `maker→taker` in text under it — so it is
+not asked to be tellable apart at a glance the way two bars on one shelf are.
+What it must not be is the *same colour* as something that already means a good
+or a score on the same frame.
+
+### A seat's colour is a function of the seat *and how many seats there are*
+
+`SEAT_COLOURS[i % 6]` is what the island did, and a table is not capped at six
+anywhere — `dealer.draw` takes an agent count and the lobby seats whoever turns
+up. **At seven, the seventh trader wore the first trader's colour**: on the
+hut, on the boat, and on every offer either of them made. A repeated colour is
+not a quiet degradation, it is a wrong answer to the one question a colour on
+this island is asked.
+
+`web/seats.js` owns it now, and both layers import it — the island for its huts
+and boats, the SVG layer for its pills, so there is one list rather than a
+CSS one and a three.js one drifting apart the way the goods did. Up to six
+seats it is the hand-picked six, unchanged, which are also `--seat-1..6` in
+`tokens.css` where the gates are run. Past six the **whole ring is generated**:
+`n` hues evenly spaced in OKLCH around the band those six sit in.
+
+**The ring belongs to the round, not to the trader.** With seven at the table
+nobody wears one of the six; they wear one of seven. That is fine because the
+question a seat colour answers — *whose is that?* — is only ever asked within a
+table, and a round is where the table is fixed.
+
+**Hue alone is one colour to a dichromat, which is why the ring steps its
+lightness too.** Evenly spaced hues at fixed lightness looked right and
+measured terribly: at ten seats the closest pair was CVD ΔE **0.3**, because
+red-green vision keeps roughly one chromatic axis and a hue circle folds onto
+it. Lightness survives every dichromacy, so seats cycle four levels spanning
+0.20 of OKLab L as the hue goes round:
+
+| seats | closest pair (worst CVD) | closest pair (normal) | dimmest on the panel |
+|---|---|---|---|
+| 6, hand-picked | 2.1 | 17.1 | 4.93:1 |
+| 7 | 5.1 | 19.9 | 4.87:1 |
+| 8 | 3.2 | 17.0 | 4.91:1 |
+| 10 | 2.8 | 14.7 | 4.70:1 |
+| 12 | 3.8 | 12.6 | 4.75:1 |
+| 16 | 1.1 | 10.1 | 4.73:1 |
+
+```
+python3 viewer/palette.py seats 6 7 8 10 12 16
+```
+
+Two things that table says, and both are written into the gates rather than
+left as a reading. **The hand-picked six do not clear the series' adjacent
+floor and never did** — `--seat-2` and `--seat-5` are ΔE 2.1 apart under
+deuteranopia — so `test_palette.py` holds seats to **2.0**, which is a
+regression gate at what the palette measures today and not a standard anybody
+would design to. And **past twelve, colour stops carrying a seat at all**: 1.1
+at sixteen, 0.0 at twenty-four, two seats one colour to a dichromat and
+distinct only in bytes. That is the eye and the gamut, not the generator, and
+no palette fixes it. What is asserted at every size is what remains true: **no
+two seats share a colour, and every seat is legible on the surface it is drawn
+on.** Past that, the name in text beside the colour is what identifies a
+trader — the same bargain the goods make with their glyphs.
+
+**Where it is going.** The rope's direction was carried only by the crawl of
+its dashes, which is a thing a viewer has to already know to read. The pill now
+**slides the rope**, from the maker's hut to the taker's, and then the **rope
+fades** and the pill **stays over the taker** until that trader answers it or
+the bell takes it away. An offer is a thing waiting on somebody, and it now
+looks like one: the line was the *delivery*, and once the delivery has happened
+a line across the picture is saying something already said.
+
+Three details that are the design, not the implementation:
+
+* **The pill rides the rope's own curve**, sampled from the same quadratic the
+  path is drawn as, and it is driven by a per-frame loop rather than by a CSS
+  or WAAPI animation. The camera turns the island continuously, so keyframes
+  sampled when the offer opened would walk a path that is no longer where the
+  huts are. `scene.js:ride`.
+* **The slide's clock is kept by pid, not by node.** `follow()` and `paint()`
+  both throw the rope nodes away — on every camera frame when the set of open
+  offers changes — and a slide restarted by a rebuild is a pill that never
+  arrives. Kept in `scene.travel` and dropped when the offer stops being open,
+  which is also what lets a viewer scrub backwards and watch it delivered
+  again. This is the same defect the dashes' crawl had, and it is the reason
+  `render.py:turning` reads the animation's own clock.
+* **The faded rope is still in the DOM, at its own two settlements.** That is
+  what `turning` reads to check the ropes are re-laid as the camera goes round,
+  and the crawl still runs under the fade. A blamed offer — a refusal for goods
+  the trader has already promised away — brings its rope back at full opacity,
+  because that refusal is a statement about *which* line on the square is the
+  problem and it cannot make it invisibly.
+
+A viewer who asked for less motion gets the pill arrived and the rope gone at
+once: the picture is where the offer is standing, not the travelling.
 
 ### There are no ground marks left, and now no lights either
 

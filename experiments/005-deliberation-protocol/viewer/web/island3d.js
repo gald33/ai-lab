@@ -25,6 +25,9 @@ import * as THREE from "./vendor/three/three.module.js";
 //: What a good looks like when the island draws one -- the same face a crate
 //: in a trader's yard wears.
 import { face } from "./good-face.js";
+//: One colour per seat, for however many seats there are. Shared with the SVG
+//: layer, which draws an offer's pill in the colour of the hut that made it.
+import { seatInt } from "./seats.js";
 
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
 
@@ -89,17 +92,18 @@ export const M = {
 export const GOOD_COLOURS = [0x3987e5, 0xd95926, 0x199e70, 0xc98500,
                              0xd55181, 0x008300, 0x9085e9];
 
-//: Seat colours, and deliberately not the metric tokens the design reached for.
-//: `--util` and `--eff` name utility and efficiency, and both are drawn on the
-//: card standing beside the hut; a banner in one of them would be the third
-//: thing on screen wearing a colour that already means something else.
-export const SEAT_COLOURS = [0xe8a13d, 0x6fc2a0, 0xc98bd8, 0xd9694f,
-                             0x86a8e0, 0xd3c463];
-
 export const goodMat = (good, i) =>
   mat(`good_${good}`, GOOD_COLOURS[i % GOOD_COLOURS.length], 0.6, 0.1);
-export const seatMat = (name, i) =>
-  mat(`trader_${name}`, SEAT_COLOURS[i % SEAT_COLOURS.length], 0.7);
+//: **A seat's colour needs the seat count, not just the seat.** It used to be
+//: `SEAT_COLOURS[i % 6]`, so a seventh trader's hut was painted the first
+//: trader's colour -- and nothing caps a table at six. `seats.js` owns the
+//: list of six and the generated ring past it; the deliberate part it keeps
+//: from here is that these are not the metric tokens the design first reached
+//: for. `--util` and `--eff` name utility and efficiency and are both drawn on
+//: the card standing beside the hut; a hut in one of them would be a third
+//: thing on screen wearing a colour that already means something else.
+export const seatMat = (name, i, n) =>
+  mat(`trader_${name}`, seatInt(i, n), 0.7);
 
 function add(group, geo, material, name, pos = [0, 0, 0], rot = [0, 0, 0], scale = null) {
   const mesh = new THREE.Mesh(geo, material);
@@ -839,7 +843,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     .map(([x, z]) => homeSite(x, z));
   traders.forEach((name, i) => {
     const [x, z] = homes[i];
-    const g = hut(name, seatMat(name, i));
+    const g = hut(name, seatMat(name, i, traders.length));
     g.position.set(x, ground(x, z), z);
     // Facing the fire, which is what a settlement on an island with one fire
     // in the middle of it would do.
@@ -996,7 +1000,7 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit, "dock_bollard", [0.3, 0.5, 1.62]);
   // One boat per seat, up to what the jetty holds: the traders arrived somehow.
   traders.slice(0, 3).forEach((name, i) => {
-    const b = boat(i + 1, seatMat(name, i));
+    const b = boat(i + 1, seatMat(name, i, traders.length));
     b.position.set(-0.75 + i * 0.85, 0.02, 1.5 - i * 0.4);
     b.rotation.y = 0.22 - i * 0.57;
     dock.add(b);
