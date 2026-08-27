@@ -1085,6 +1085,27 @@ none of them is a defect a still screenshot shows.
   raycasts a frame shape bought nothing that measuring the clearance beneath
   the flag does not.
 
+* **And the quarry was inside the hill.** Reported by eye, and the line above —
+  "a quarry terrace is still cut into the rock" — is the assumption that hid
+  it. `follow()` corrects for the *slope across a site*, which on this island
+  is a hundredth of a unit. It says nothing about a part built below its own
+  origin, and the quarry's three terraces were built at −0.08, −0.24 and −0.40:
+  the first's top face exactly at the grass, the third a third of a unit under
+  it. What showed was a flag, a cart and two lumps of spoil.
+
+  Cutting downward is what a quarry *is*, and on a grass hill it is three slabs
+  of rock nobody can see. A hillside quarry seen from below is a stepped rock
+  face, so that is what it is: three ledges standing on the ground, each
+  stepping back uphill and up. The cut faces are what says stone.
+
+  `render.py:island` now measures **every part of every site** against the
+  ground under it — the flags were one part of one kind — and at the part's
+  **top**, against zero rather than a margin. A thing may stand into the slope
+  and still be there to look at: the salt pans are bedded into the sand and
+  clear by two hundredths at the biggest tables, so any floor generous enough
+  to be a margin fails them, and the quarry never needed one. Neutered back to
+  cutting downward it reports all three terraces, in every frame shape.
+
 * **The shockwaves are gone.** Five clips fired expanding rings, and a
   production of four goods put four up at once with an offer's and a bell's
   arriving on top at 4×. Cut to three first, then to none: the second report

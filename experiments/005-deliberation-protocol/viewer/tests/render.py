@@ -1688,6 +1688,31 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // its top half still catches the ray first, so the check that reads like the
   // complaint answers yes to everything, and 600 raycasts a shape bought
   // nothing this line does not.
+  //: **Every part of every site, against the ground under it.** The flags
+  //: below are one part of one kind; this is all of them, and it is a
+  //: different question -- not "does this stand a little into the slope" but
+  //: "is the whole of it underneath the island". The quarry's three terraces
+  //: were built at -0.08, -0.24 and -0.40 from the site's origin, which is
+  //: what cutting a quarry means and which on a grass hill means three slabs
+  //: of rock nobody can see. Reported as the quarry being inside the hill.
+  //:
+  //: The *top* of the part, not its bottom: a thing may stand into the slope
+  //: -- the salt pans are bedded a little into the sand -- and still be there
+  //: to look at. A part whose highest point is under the ground is not.
+  const sunk = [];
+  {
+    const b = new THREE.Box3(), mid = new THREE.Vector3();
+    for (const site of made.island.children.filter((n) => /^site_/.test(n.name))) {
+      site.updateMatrixWorld(true);
+      for (const part of site.children) {
+        b.setFromObject(part);
+        b.getCenter(mid);
+        sunk.push({ site: site.name, part: part.name,
+                    clear: +(b.max.y - made.ground(mid.x, mid.z)).toFixed(3) });
+      }
+    }
+  }
+
   const flags = {};
   const flagFace = {};
   for (const good of goods) {
@@ -1746,7 +1771,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -2170,6 +2195,33 @@ def island(browser, base: str, out: Path) -> list[str]:
                        f"{built['shoreTop']:.0f} in the frame at its worst bearing, "
                        f"above the band the chrome has at {built['band']:.0f}; "
                        f"it is drawn under the pills")
+        #: **No part of a site is buried in the island.**
+        #:
+        #: Reported by eye as the quarry being inside the hill, and it was: its
+        #: three terraces are what makes it a quarry, they were cut downward
+        #: from the site's own origin, and on a grass hill that put all three
+        #: of them under the grass -- the first's top face exactly at it, the
+        #: third a third of a unit below. What showed was a flag, a cart and
+        #: two lumps of spoil.
+        #:
+        #: `follow` is not a defence against this and cannot be: it walks each
+        #: part down onto the ground *under it*, which corrects for the slope
+        #: across a site -- a hundredth of a unit -- and says nothing about a
+        #: part built below its own origin.
+        #:
+        #: Measured at the part's **top**, against zero and not against a
+        #: margin. A thing may stand into the slope and still be there to look
+        #: at -- the salt pans are bedded into the sand and their beds clear by
+        #: two hundredths at the biggest tables -- so any floor generous enough
+        #: to be a "margin" fails them, and the quarry did not need one: its
+        #: terraces were flush, a sixth under and a third under. Buried means
+        #: buried. The hair above zero is for the flush case, which is a part
+        #: whose top face is exactly the ground and is just as invisible.
+        for part in built["sunk"]:
+            if part["clear"] <= 0.005:
+                bad.append(f"island {label}: {part['site']}'s {part['part']} "
+                           f"tops out at {part['clear']:+.3f} against the "
+                           f"ground beneath it; it is drawn inside the island")
         #: **Nothing casts a shadow from outside the shadow camera's box.**
         #:
         #: Reported by eye as a dark, soft-edged rectangle sitting on the

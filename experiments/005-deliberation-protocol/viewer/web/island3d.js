@@ -415,9 +415,28 @@ const SITES = {
     return [0.95, 0, 0.25];
   },
   iron(g) {                                      // the quarry
+    //: **The terraces step up into the hill, not down into it.**
+    //:
+    //: They were cut downward -- centred at -0.08, -0.24 and -0.40 below the
+    //: site's own origin -- which is what a quarry is, and which on this
+    //: island means three slabs of rock entirely underneath a grass hill.
+    //: Measured: the first one's top face at exactly the ground, the second a
+    //: sixth of a unit under and the third a third of a unit under. What was
+    //: left above the grass was a flag, a cart and two lumps of spoil, and it
+    //: was reported as the quarry being inside the hill.
+    //:
+    //: `follow` cannot rescue that. It walks each part down onto the ground
+    //: *under it*, which corrects for the slope and nothing else -- and the
+    //: slope across a site is a hundredth of a unit where the burial was a
+    //: third of one.
+    //:
+    //: A hillside quarry seen from below is a stepped rock face, so that is
+    //: what it is now: three ledges standing on the ground, each stepping back
+    //: uphill (-z is into the hill, because a site faces the fire) and up. The
+    //: cut faces are what a viewer sees, which is the thing that says stone.
     for (let i = 0; i < 3; i++) {
       add(g, new THREE.BoxGeometry(1.0 - i * 0.22, 0.16, 0.62 - i * 0.12), M.rock,
-        `quarry_terrace_${i}`, [i * 0.1, -0.08 - i * 0.16, -i * 0.1]);
+        `quarry_terrace_${i}`, [i * 0.1, 0.08 + i * 0.14, -i * 0.1]);
     }
     add(g, new THREE.DodecahedronGeometry(0.14), M.rock, "quarry_spoil_a", [0.5, 0.06, 0.34], [0.4, 0.2, 0.7]);
     add(g, new THREE.DodecahedronGeometry(0.1), M.rock, "quarry_spoil_b", [0.62, 0.03, 0.2], [0.9, 0.5, 0.1]);
