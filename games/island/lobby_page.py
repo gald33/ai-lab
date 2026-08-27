@@ -61,6 +61,27 @@ def _state(table) -> str:
     return f"forming — {len(table.seats)}/{table.traders} seated"
 
 
+def _heard(lobby: Lobby) -> str:
+    """The key this lobby is listening under -- so being deaf is visible.
+
+    A lobby holding a key other than the published one is the failure with no
+    other symptom: the process stays up, the page keeps its timestamp, exactly
+    one process runs, and every entrant is unheard, because a workspace key
+    that does not match is silence rather than an error. Every health signal
+    describes the process; this one describes whether anybody can reach it.
+    So the page states the key, and a reader compares it against `ENTER.md`.
+    """
+    key = getattr(lobby.client.config, "key", None)
+    if not key:
+        return ("<p class=note>This lobby holds <b>no key</b>, so it can "
+                "witness nothing and refuses every <code>JOIN</code>.</p>")
+    return (f"<p class=note>Listening under key "
+            f"<code>{html.escape(key)}</code> — public on purpose. If that is "
+            f"not the key in <a href=\"https://github.com/gald33/ai-lab/blob/"
+            f"main/games/island/ENTER.md\">ENTER.md</a>, this lobby cannot "
+            f"hear you and will not say so.</p>")
+
+
 def render(lobby: Lobby, *, now: float | None = None) -> str:
     """The whole page, from what this lobby has read."""
     now = time.time() if now is None else now
@@ -134,6 +155,7 @@ seats.</p>
 <p>{lobby.settled} lines settled · {lobby.refused} refused · at most
 {MAX_FORMING_PER_PEER} tables forming per peer · a table lapses after
 {int(TABLE_TTL) // 60} minutes.</p>
+{_heard(lobby)}
 </footer>
 </main>
 """

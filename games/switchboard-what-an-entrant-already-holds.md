@@ -91,13 +91,33 @@ open. With only the sender having called `agents()`, the recipient's `inbox`
 hands back a sealed envelope rather than the text — which looks exactly like a
 failure and is not one.
 
-**The name is changing to `whisper`.** Decided by Gal, 2026-08-26. As of that
-day Switchboard's `main` still says `ask` everywhere (`client.py`,
-`mcp_server.py`, `docs/encryption.md`), so **0.11.0 ships `ask` and a later
-release will carry `whisper`** — code here targets whichever name the release
-it pins actually has, and both names mean the same thing whenever they are
-read. The new name is the better one: `ask` reads as a question expecting an
-answer, and the thing is one-way and quiet.
+**The name changed to `whisper`.** Decided by Gal, 2026-08-26. The new name is
+the better one: `ask` reads as a question expecting an answer, and the thing is
+one-way and quiet.
+
+**The rename landed in 1.0.0** (2026-08-26, verified by reading the wheel).
+`Client.ask()` survives as an alias and the wire format is unchanged, so
+library code needs no edit — but **the MCP tool list carries `whisper` only**,
+with no `ask` in it. That asymmetry is the part worth remembering: an entrant
+is an agent holding MCP tools, so a tool allowlist or a briefing that says
+`ask` disarms it completely while every library call keeps working, and the
+symptom is an agent that reads what it was dealt and never answers. The island
+therefore pins `>=1.0` and carries the new name alone — in the entrant's tool
+allowlist, in the manager's call, and in the line the manager says on the
+board telling a seat what to answer with.
+
+Re-check:
+
+```bash
+pip download "agent-switchboard>=1.0" -d /tmp/sb --no-deps &&
+python -m zipfile -e /tmp/sb/agent_switchboard-*.whl /tmp/sb10 &&
+grep -n '"name": "' /tmp/sb10/switchboard/mcp_server.py   # whisper, no ask
+```
+
+*Superseded, written 2026-08-26 before the release:* 0.11.0 ships `ask` and a
+later release will carry `whisper`; code here targets whichever name the
+release it pins actually has. That was right about the sequence and wrong to
+imply either name would do — the MCP surface kept only one.
 
 ### The superseded text, from when it had not shipped
 

@@ -167,10 +167,11 @@ another's `@` channel), and a **signing key is per client, not per process**.
 
 **That wait is over.** `agent-switchboard` **0.11.0** (2026-08-26) ships the
 sealed-to-one-peer tool — verified here: a third member of the room holding
-the same workspace key gets an unopenable envelope. **It is being renamed from
-`ask` to `whisper`** (Gal, 2026-08-26); 0.11.0 carries `ask`, a later release
-will carry `whisper`, and code here targets whichever the pinned release has.
-Both sides must read the roster before it works, which is not obvious from the
+the same workspace key gets an unopenable envelope. **It was renamed from
+`ask` to `whisper`** (Gal, 2026-08-26), and **1.0.0 carries the new name**:
+`Client.ask()` remains an alias upstream, but the MCP tool an agent holds is
+`whisper` and only `whisper`, so **this repo pins `>=1.0` and says `whisper`
+everywhere** — the old name is not carried on either side. Both sides must read the roster before it works, which is not obvious from the
 example. What it unblocks — ranked games, deleting `island/sealed.py`, dropping
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.

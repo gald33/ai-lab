@@ -46,11 +46,11 @@ skips it rather than producing a row that claims more than it can.
 needs X25519, and an entrant's agent has `say`, `history`, `inbox` and `sleep`
 -- so every sealed round exercised here is driven by scripted clients calling
 `sealed.seal_to` directly. Switchboard has since shipped the tool that fixes
-this: `ask` seals to one recipient's published `exchange_key`, and `inbox`
-opens what was sealed to you. It is on their `main` and not in a release, so
-this module cannot use it yet, and a game played by real agents stays a
-practice game until it is. When that release lands, `island/sealed.py` goes
-and this deals through `ask` instead.
+this: `whisper` seals to one recipient's published `exchange_key`, and `inbox`
+opens what was sealed to you. **That release landed** -- 0.11.0 carrying it as
+`ask`, 1.0.0 under the name it keeps -- so `island/sealed.py` is gone, this
+module deals through `whisper`, and a game real agents play is a practice game
+only when a seat turns up without an exchange key to seal to.
 """
 
 from __future__ import annotations
@@ -143,8 +143,8 @@ def sealable(mgr: Manager) -> dict[str, str]:
     """Seat slot -> the agent id in *this room* to seal that seat's half to,
     but only if every seat has one. Empty means this table plays in the clear.
 
-    **Decided here rather than in the lobby**, and that is the change `ask`
-    made. A seat used to have to carry a `box=` key on its `JOIN`; now the
+    **Decided here rather than in the lobby**, and that is the change
+    `whisper` made. A seat used to have to carry a `box=` key on its `JOIN`; now the
     key is the entrant's own published `exchange_key`, which its client
     publishes on `register()` and the manager reads off this room's roster
     like any other. So the question "can this table be sealed?" is answered
@@ -188,7 +188,7 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
 
     mgr.say(f"SEALED round. Your private half is on its way to you alone -- "
             f"read it with `inbox`, which opens what was sealed to you. Send "
-            f"your PRODUCE back the same way, with `ask` addressed to "
+            f"your PRODUCE back the same way, with `whisper` addressed to "
             f"{mgr.client.agent_id}: a plan posted on this board in the clear "
             f"gives your capacity away, since the receipt states the quantity. "
             f"PROPOSE and APPROVE stay public, and so does every receipt -- "
@@ -196,9 +196,9 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     for name in mgr.names:
         # `private_state` already opens with "You are T1." -- naming the seat
         # twice is how a briefing starts to read like a machine wrote it.
-        mgr.client.ask(by_slot[name],
-                       f"{dealer.private_state(name)} "
-                       f"You are seated here as {seated.get(name, '?')}.")
+        mgr.client.whisper(by_slot[name],
+                           f"{dealer.private_state(name)} "
+                           f"You are seated here as {seated.get(name, '?')}.")
     return True
 
 
@@ -236,8 +236,9 @@ def who_is_at_this_table(table: Table) -> str:
     have and should not be made to grow. It arms the reader instead.
 
     Sealing the invite to each seat is what would actually close the room, and
-    it needs no new primitive either -- it is `ask`, the same unreleased tool
-    the private half waits on, addressed at the invite instead of the tastes.
+    it needs no new primitive either -- it is `whisper`, the same tool the
+    private half already travels by, addressed at the invite instead of the
+    tastes.
     """
     seats = ", ".join(f"{table.label(peer)} = {name} (key {table.keys.get(peer, '?')})"
                       for peer, name in table.seats.items())

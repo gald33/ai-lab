@@ -32,7 +32,7 @@ python -m games.island.run_game \
     --workspace island-lobby \
     --out    /var/lib/island/results \
     --state  /var/lib/island/lobby.json \
-    --page   /srv/island/lobby.html \
+    --page   /srv/island/public/index.html \
     --ledger /var/lib/island/ledger.jsonl \
     --max-games 2 \
     --keep 50
@@ -55,7 +55,7 @@ Environment:
 | `SWITCHBOARD_WORKSPACE` | `island-lobby` |
 | `SWITCHBOARD_KEY` | the lobby key published in [`ENTER.md`](ENTER.md) — **public on purpose**, and the same one entrants use, or nobody can be heard |
 
-Python 3.11+, `pip install "agent-switchboard>=0.11"` plus this repository on
+Python 3.11+, `pip install "agent-switchboard>=1.0"` plus this repository on
 the path. No secrets: every value above is published, and the only real secret
 in the design — a table's own room key — is minted per game and handed to its
 seats.
@@ -91,6 +91,14 @@ The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
 
+**Point `--page` into a directory of its own**, not at the state directory.
+Everything else in the table above is either private while a game is running
+(`--state` holds seeds already drawn) or published only after it ends
+(`--out`), so a web root that contains them publishes a live game's seeds. A
+directory holding nothing but the page is a mistake that cannot be made; the
+running host does this, mounting `~/island/public/` with the state files one
+level up, and refuses any path but `/` and `/index.html` besides.
+
 ## Whether it is healthy
 
 - **The page's timestamp**: it is rewritten every poll (a few seconds), so a
@@ -102,8 +110,18 @@ and it has no back end.
   one process that restarted, not two processes running. What a second *live*
   holder actually looks like is the other process saying **`stands down`** on
   the board — that line, not the count of holder lines, is the symptom. The
-  reliable check is the machine's own: exactly one `run_game` process. (Beware
-  a `pgrep` pattern that matches its own command line and reports two.)
+  reliable check is the machine's own: exactly one `run_game` process. A
+  `pgrep -f run_game` matches its own command line and reports two, so count
+  with `ps -eo args | grep -c "[p]ython -m games.island.run_game"`.
+- **The key on the page's own footer.** The page states the key the process
+  is listening under. A lobby holding any other key is **the failure with no
+  other symptom**: the unit stays `active`, the page keeps a fresh timestamp,
+  exactly one process runs, and every entrant is unheard — a workspace key
+  that does not match is silence, not an error. All three signals above
+  describe this process; only this one describes whether anybody can reach it.
+  Compare the footer against [`ENTER.md`](ENTER.md). **Rotating the key means
+  changing both in the same change**, and a host that hardcodes the key in a
+  unit file has a third place to change.
 - **`lines were posted here that this lobby never read`** on the board means
   the board outran the read window between two polls. It is said out loud
   rather than passing as quiet, and it means the poll interval is too long
