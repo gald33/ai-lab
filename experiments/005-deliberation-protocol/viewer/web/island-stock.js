@@ -283,6 +283,26 @@ export function standing(island, { traders, goods, anchors, ground }) {
     next: (t, good, i = 0) => slot(t, good, (yards[t]?.held[good].length ?? 0) + i),
 
     /**
+     * Where the **top box** of a pile is standing, and `next` if there is none.
+     *
+     * What a card's symbol has to leave from and fly to. `next` was standing in
+     * for this and it is the wrong point by one slot: the crates that just
+     * arrived are the *last* of the pile, and the slot after them is empty
+     * grass -- a row across, or a tier up, or the first box of nothing. So the
+     * symbols were rising off a patch of ground beside the crates that were
+     * open, which is most of why they did not read as coming out of them.
+     *
+     * The box's own position rather than its slot, because that is where it is:
+     * a box mid-hop is somewhere between the two and the symbol should leave
+     * from where the spectator can see it.
+     */
+    top(t, good) {
+      const pile = yards[t]?.held[good];
+      const last = pile?.[pile.length - 1];
+      return last ? last.position.clone() : slot(t, good, pile?.length ?? 0);
+    },
+
+    /**
      * What is standing in every yard, by trader and good.
      *
      * The island's own answer to "what is on the ground", which is the thing a

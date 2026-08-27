@@ -509,6 +509,7 @@ def run(out: Path, headed: bool = False) -> int:
                 problems += travelling(browser, base, board, out)
             problems += stock(browser, base, out)
             problems += carrying(browser, base, out)
+            problems += emerging(browser, base, out)
             problems += island(browser, base, out)
             problems += whose(browser, base, out)
             problems += mechanics(browser, base, out)
@@ -2073,6 +2074,121 @@ CARRY = """async ({goods, give, want, hold}) => {
           home: was.map(o => {const p = home.get(o);
                               return [+p.x.toFixed(3), +p.y.toFixed(3), +p.z.toFixed(3)];})};
 }"""
+
+
+
+#: A real exchange on a real page, watched at the instant each symbol is drawn.
+#: The DOM is the only place this defect exists: the schedule was right, the
+#: boxes were right, and the symbol was still leaving from somewhere else.
+EMERGING = """() => {
+  window.__born = [];
+  const svg = document.querySelector('svg');
+  const obs = new MutationObserver((ms) => {
+    for (const m of ms) for (const n of m.addedNodes) {
+      if (!n.classList?.contains('sheaf')) continue;
+      const way = n.classList.contains('in') ? 'in'
+                : n.classList.contains('out') ? 'out' : 'made';
+      if (way === 'made') continue;
+      // Where it is on its very first frame, and how visible it is there.
+      const b = n.getBoundingClientRect(), r = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      const st = window.__island;
+      const yards = [];
+      if (st?.stock) for (const t of (st.world?.traders || []))
+        for (const g of (st.world?.goods || [])) {
+          const p = st.toViewBox(st.stock.top(t, g));
+          yards.push([`${t}:${g}`,
+                      r.x + (p.x - vb.x) / vb.width * r.width,
+                      r.y + (p.y - vb.y) / vb.height * r.height]);
+        }
+      const at = [b.x + b.width / 2, b.y + b.height / 2];
+      let near = null;
+      for (const [k, yx, yy] of yards) {
+        const d = Math.hypot(at[0] - yx, at[1] - yy);
+        if (!near || d < near.d) near = { k, d: +d.toFixed(1) };
+      }
+      // What a viewer would see of it a tenth of the way into the flight,
+      // which is where it is meant to be clear of the crate's mouth.
+      const anims = n.getAnimations();
+      window.__born.push({ way, near, anims: anims.length,
+                           op0: +getComputedStyle(n).opacity });
+    }
+  });
+  obs.observe(svg, { childList: true, subtree: true });
+}"""
+
+
+def emerging(browser, base: str, out: Path) -> list[str]:
+    """The symbols leave the crates they are supposed to be coming out of.
+
+    **Reported by eye, twice, and the second time the lids were already on.**
+    Leg 3 is the arriving boxes emptying into the gaining card, and it was
+    drawing a symbol that rose out of open grass a stride away from them.
+
+    Nothing on either side was wrong about itself, which is why this needed a
+    check of its own. The schedule was exact -- `carrying()` proves the symbols
+    are cued at the moment the boxes stop. The boxes were exact. What was wrong
+    was the *point*: a gaining bar is cued 3.4s after the losing one and the
+    island turns for all of it, so a keyframe baked at cue time starts a third
+    of a revolution stale. Measured at **55px** on a 1400px page.
+
+    So this drives an exchange and watches the SVG layer, catching each symbol
+    on the frame it is created: how far it is from the nearest crate, and
+    whether it was given an animation at all. The bound is generous on purpose
+    -- the camera keeps moving and a crate is a real size -- and it is nowhere
+    near 55.
+    """
+    bad: list[str] = []
+    page = browser.new_page(viewport={"width": 1400, "height": 900},
+                            reduced_motion="no-preference")
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_selector(".hut", timeout=15_000)
+    at = page.evaluate("""async () => {
+      const { reduce } = await import('./reducer.js');
+      const list = await (await fetch('api/boards', {cache: 'no-store'})).json();
+      for (const b of (list.boards || []).slice(0, 40)) {
+        const t = reduce((await (await fetch(b.board, {cache: 'no-store'})).json()).messages, {});
+        for (let i = 0; i < t.frames.length; i++)
+          if (t.frames[i].event?.kind === 'settled') return { board: b.board, at: i };
+      }
+      return null;
+    }""")
+    if not at:
+        print("NOTE emerging: no board served here settles an exchange; not checked")
+        page.close()
+        return []
+    page.goto(f"{base}/?board={at['board']}")
+    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_timeout(1800)
+    page.evaluate("(i) => { const s = document.getElementById('scrub');"
+                  " s.value = String(i); s.dispatchEvent(new Event('input')); }", at["at"] - 1)
+    page.wait_for_timeout(1000)
+    page.evaluate(EMERGING)
+    page.click("#fwd")
+    #: Long enough for the whole exchange: leg 1, the crossing, the landing,
+    #: `CARRY.rest`, and leg 3 on top of it.
+    page.wait_for_timeout(9000)
+    born = page.evaluate("() => window.__born")
+    page.screenshot(path=str(out / "emerging.png"))
+    page.close()
+    ways = {w: [b for b in born if b["way"] == w] for w in ("in", "out")}
+    for way, seen in ways.items():
+        if not seen:
+            bad.append(f"emerging: the exchange drew no '{way}' symbol at all")
+            continue
+        for b in seen:
+            if b["near"] is None:
+                bad.append(f"emerging: a '{way}' symbol had no crate to measure against")
+            elif b["near"]["d"] > 30:
+                bad.append(f"emerging: a '{way}' symbol was drawn {b['near']['d']:.0f}px "
+                           f"from the nearest crate ({b['near']['k']}); it does not "
+                           f"come out of the box it is counting")
+            if not b["anims"]:
+                bad.append(f"emerging: a '{way}' symbol was drawn with no animation, "
+                           f"so it never travels")
+    return bad + [f"emerging: {e}" for e in errs]
 
 
 def carrying(browser, base: str, out: Path) -> list[str]:

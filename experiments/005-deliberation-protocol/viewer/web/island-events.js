@@ -585,8 +585,17 @@ function settled(event, { island, anchors, goods, stock, life }) {
           //: only of the ones that came to more than one.
           const lag = boxes.length > 1
             ? (k / (boxes.length - 1)) * S(CARRY.spread) : S(CARRY.spread);
+          //: **The far end of the same picture.** Leg 1 is the losing bar
+          //: emptying *into* these boxes, and a symbol falling into a sealed
+          //: crate is the defect that was reported at the other end: the lid
+          //: opens as the card starts emptying and is shut again before the
+          //: box is carried anywhere. `load` is when `scene.js:hands` sends
+          //: the losing symbols down, and `shut` is a lid-fall short of the
+          //: moment this box sets off.
           legs.push({ box, wake: trail(c, goodMat(good, goods.indexOf(good))),
-                      a: box.position.clone(), b: rest[k], t0: start + lag });
+                      a: box.position.clone(), b: rest[k], t0: start + lag,
+                      load: S((back ? CARRY.back : 0) + i * CARRY.step),
+                      shut: start + lag - S(SHUT) });
         });
       });
   };
@@ -639,8 +648,15 @@ function settled(event, { island, anchors, goods, stock, life }) {
       //: `CARRY.rest` -- and takes `IN_LEG` over it, so the lid is up for
       //: exactly that window and no other. Driven after the landing branch
       //: because `land_` shuts it.
-      openLid(l.box, lidAt(t, l.t0 + S(CARRY.cross + CARRY.land),
-                           S(CARRY.rest + IN_LEG), S(CARRY.land)));
+      //:
+      //: Twice per box, and the two never overlap: open to be loaded before it
+      //: leaves, shut while it crosses, open again where it lands. `Math.max`
+      //: rather than a sum, so no arithmetic can drive a lid past open.
+      const loading = easeOut(win(t, l.load, l.load + 0.22))
+        * (1 - easeIn(win(t, l.shut, l.shut + S(SHUT))));
+      openLid(l.box, Math.max(loading,
+        lidAt(t, l.t0 + S(CARRY.cross + CARRY.land),
+              S(CARRY.rest + IN_LEG), S(CARRY.land))));
     });
     life?.flare(Math.sin(Math.PI * win(t, 1.9, 3.6)) ** 0.7 * 0.55);
   };

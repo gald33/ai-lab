@@ -1481,6 +1481,48 @@ Three things follow from open being a *moment*:
 mesh under `yards`: a flap sits a box-height above the grass by construction,
 and the clearance check exists to catch a crate that floats.
 
+### The symbols were not coming out of the boxes
+
+Reported by eye after the lids went on, and the lid was not the half that was
+wrong. Three things were, and each of them on its own is enough to make leg 3
+read as a symbol passing *in front of* a crate rather than out of one.
+
+**1. The flight started 55px off the crate.** Measured on a 1400px page, by
+driving a real exchange and comparing each symbol's first keyframe against
+where the page itself says that trader's top crate is. The gaining bar is cued
+**3.4 seconds** after the losing one — leg 1, the crossing, the landing,
+`CARRY.rest` — and the island turns for all of it, so a start point baked at
+cue time is a start point from a third of a revolution ago. The rope and the
+overhead bubbles are re-pinned every frame for exactly this reason; a WAAPI
+keyframe cannot be re-pinned, so the symbol is now **built at the moment it
+flies** and reads the yard then. Same measurement after: **11px**, which is the
+camera's drift across the flight itself — the same drift a bubble lives with.
+
+`hand()` therefore only *schedules*; `fly_` is what draws. A scheduled symbol
+carries the `gen` of the card layer it was scheduled on and is dropped if the
+layer has been rebuilt under it, and each exchange cancels anything the last
+one left pending — otherwise a symbol would arrive at a bar that had moved on.
+
+**2. It was invisible where it mattered.** Both ends started at `opacity: 0`
+and reached 1 at three tenths of the way across, so the symbol faded up in open
+air a third of the way to the card — the one moment it is meant to be read as
+coming out of the box was the one moment it could not be seen. The fade is a
+beat at the crate end now: small in the mouth of the box, full size and clear
+of it by a tenth of the flight. `out` runs the same motion backwards and
+shrinks *into* the crate rather than snapping out at full size on top of it.
+
+**3. The pin was the wrong slot.** `yards` was `stock.next()` — where the
+*next* box would land, which after an arrival is the empty slot after the
+crates that just came: a row across, a tier up, or bare grass. It is
+`stock.top()` now, the position of the top box of the pile, which is both where
+the arriving crates are standing and where a departing bundle is taken from.
+
+**And the departing crates open too.** A symbol falling into a sealed box on
+leg 1 is the same defect at the other end, so the maker's crates open as its
+bar starts emptying and are shut again a lid-fall before they are carried off.
+Each box's two open windows never overlap: open to be loaded, shut across the
+island, open where it lands.
+
 `carrying()` measures the claim rather than the table: for **each good**, the
 moment its own boxes stop moving against the moment `hands()` is told to send
 its symbols. Bounded on both sides — early is the defect, and later than a beat
