@@ -15,6 +15,12 @@
 // drift the first time the island changed size.
 
 import { utilityOf } from "./utility.js";
+//: Whose an offer is, in the seat's own colour -- the same colour the island
+//: paints that trader's hut and boat with, so a pill sliding off a roof wears
+//: the colour of the roof it left. It takes the seat *count* as well as the
+//: seat: past six the ring is generated, and six colours handed round a table
+//: of seven puts two huts in one colour.
+import { seatRing } from "./seats.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -25,14 +31,6 @@ export const GLYPH = {
 
 const SLOT = ["--good-1", "--good-2", "--good-3", "--good-4",
               "--good-5", "--good-6", "--good-7"];
-
-//: Whose an offer is, in the seat's own colour -- the same six the island
-//: paints a hut and a boat with, so the pill sliding off a roof wears the
-//: colour of the roof it left. Named in `tokens.css` and mirrored in
-//: `island3d.js` as hex integers for three.js; `test_palette.py` compares the
-//: two lists, because the goods drifted apart exactly this way once already.
-const SEAT = ["--seat-1", "--seat-2", "--seat-3",
-              "--seat-4", "--seat-5", "--seat-6"];
 
 //: How long the pill takes to travel the rope, in ms, and how long the rope
 //: then takes to go. The fade is CSS (`.rope.delivered`), and this only has to
@@ -1525,11 +1523,16 @@ export class Scene {
    * The seat's colour, for whoever is named.
    *
    * A trader's index in `traders` is the same index the island picks its hut's
-   * colour by, so an offer's pill is the colour of the hut that made it.
+   * colour by, and it is given the same seat count, so an offer's pill is the
+   * colour of the hut that made it however many huts there are.
+   *
+   * The ring is built once per scene rather than once per pill: it is `n`
+   * colour conversions, and `paint()` draws every open offer.
    */
   seatColour(name) {
+    this.ring ??= seatRing(this.traders.length);
     const i = this.traders.indexOf(name);
-    return `var(${SEAT[(i < 0 ? 0 : i) % SEAT.length]})`;
+    return this.ring[i < 0 ? 0 : i];
   }
 
   /**

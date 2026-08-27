@@ -169,37 +169,176 @@ def test_the_island_draws_the_stylesheet_s_goods() -> None:
 SEATS = [f"--seat-{i}" for i in range(1, 7)]
 
 
+#: The drawing code's own copy of the named six, and the generator that takes
+#: over past them. One module, imported by both layers -- the island's huts and
+#: boats, and the SVG layer's pills -- so there is no third list to drift.
+SEATS_JS = HERE.parent / "web" / "seats.js"
+
+
+def _ring(n: int) -> list[str] | None:
+    """What `seats.js` paints a table of `n`, or None with no node to ask."""
+    import json
+    import subprocess
+    src = ("import { seatRing } from './seats.js';"
+           f"process.stdout.write(JSON.stringify(seatRing({n})));")
+    try:
+        out = subprocess.run(["node", "--input-type=module", "-e", src],
+                             cwd=SEATS_JS.parent, capture_output=True, text=True,
+                             timeout=60)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0:
+        raise AssertionError(f"seats.js would not run: {out.stderr.strip()}")
+    return [c.lower() for c in json.loads(out.stdout)]
+
+
+def _need_ring(n: int) -> list[str]:
+    ring = _ring(n)
+    if ring is None:
+        pytest.skip("no node to run seats.js with")
+    return ring
+
+
+#: How many seats the ring is measured out to. Not a cap the game has -- there
+#: is none -- but past this a table is a different problem than a palette.
+RING_MAX = 16
+
+#: The counts every gate below is run at: the named six, and rings either side
+#: of the sizes a table plausibly reaches.
+RINGS = (6, 7, 8, 10, 12, RING_MAX)
+
+
 def test_the_island_draws_the_stylesheet_s_seats() -> None:
     """A pill is the colour of the hut that made the offer on it.
 
-    The same failure the goods had, one list along: `SEAT_COLOURS` is hex
-    integers for three.js and `--seat-1..6` is CSS, and until an offer's pill
-    wore a seat colour nothing needed both. Now the hut standing on the island
-    and the pill sliding off its roof are the same trader, so they are held to
-    the same colour, and the stylesheet is the source.
+    The same failure the goods had, one list along: the seats were hex integers
+    for three.js in `island3d.js` and `--seat-1..6` in CSS, and until an offer's
+    pill wore a seat colour nothing needed both. The drawing code is one module
+    now -- `seats.js`, imported by the island and by the SVG layer -- and the
+    stylesheet is still the source: its colours are the ones the gates above are
+    run against, so a colour that exists only in the drawing code has passed
+    nothing.
     """
-    model = _model_list("SEAT_COLOURS")
+    named = _need_ring(len(SEATS))
     css = [TOKENS[s] for s in SEATS]
-    assert len(model) == len(css), (
-        f"the model paints {len(model)} seats and the stylesheet names {len(css)}")
-    for i, (a, b) in enumerate(zip(css, model), start=1):
+    assert len(named) == len(css), (
+        f"seats.js names {len(named)} seats and the stylesheet names {len(css)}")
+    for i, (a, b) in enumerate(zip(css, named), start=1):
         assert a == b, (
-            f"seat {i} is {a} on the pill and {b} on the hut; an offer and the "
-            f"trader who made it are the same seat and must be the same colour")
+            f"seat {i} is {a} in the stylesheet and {b} on the island; an offer "
+            f"and the trader who made it must be the same colour")
+
+
+def test_no_table_seats_two_traders_in_one_colour() -> None:
+    """The defect this replaces: `SEAT_COLOURS[i % 6]` at seven seats.
+
+    The seventh trader wore the first trader's colour -- on the hut, on the boat
+    and on every offer either of them made -- and nothing caps a table at six.
+    A repeated colour is not a quiet failure; it is a wrong answer to the one
+    question a colour on this island is asked.
+    """
+    for n in range(1, RING_MAX + 1):
+        ring = _need_ring(n)
+        assert len(ring) == n, f"a table of {n} got {len(ring)} colours"
+        assert len(set(ring)) == n, (
+            f"a table of {n} paints two seats one colour: "
+            f"{sorted(c for c in set(ring) if ring.count(c) > 1)}")
+
+
+def test_every_seat_is_visible_on_the_surface_it_is_drawn_on() -> None:
+    """A graphical object needs 3:1 against its surface (WCAG 1.4.11).
+
+    A generated colour has not been looked at by anybody, which is the whole
+    risk of generating one. The ring holds lightness fixed in OKLab precisely so
+    that this holds at every hue; this is the assertion that it does.
+    """
+    for n in RINGS:
+        for i, colour in enumerate(_need_ring(n), start=1):
+            ratio = palette.contrast(colour, TOKENS[palette.SURFACE])
+            assert ratio >= CONTRAST_FLOOR, (
+                f"seat {i} of {n} ({colour}) is {ratio:.2f}:1 on {palette.SURFACE}")
 
 
 def test_no_seat_is_a_good_or_a_metric() -> None:
-    """A pill's colour must not read as a good or a score.
+    """A seat's colour must not read as a good or a score.
 
-    Byte-distinctness, not the series' contrast floors: a seat is never the
-    only thing saying whose an offer is -- the pill carries `maker→taker` in
-    text -- so it is not held to being tellable apart at a glance the way two
-    bars on one shelf are. What it must not be is *the same colour* as
-    something that already means a good or a metric on the same frame.
+    **Byte-distinctness, not the series' contrast floors, and the difference is
+    the point.** A seat is never the only thing saying whose an offer is -- the
+    pill carries `maker→taker` in text, and the hut stands where it stands -- so
+    it is not asked to be tellable apart at a glance the way two bars on one
+    shelf are. Nor could it be: past six seats the ring fills the hue wheel, the
+    goods are on that wheel too, and promising every seat is distinguishable
+    from every good at twelve seats is a promise no palette can keep. What it
+    must not be is the *same colour* as something that already means a good or a
+    metric on the same frame.
     """
-    for seat in SEATS:
-        for other in SERIES + METRICS:
-            assert TOKENS[seat] != TOKENS[other], (
-                f"{seat} is byte-identical to {other} ({TOKENS[other]})")
-    for a, b in itertools.combinations(SEATS, 2):
-        assert TOKENS[a] != TOKENS[b], f"{a} and {b} are both {TOKENS[a]}"
+    for n in RINGS:
+        for i, colour in enumerate(_need_ring(n), start=1):
+            for other in SERIES + METRICS:
+                assert colour != TOKENS[other], (
+                    f"seat {i} of {n} is byte-identical to {other} ({colour})")
+
+
+#: What a seat's colour is actually held to under dichromacy, and it is a long
+#: way under the series' 9.0.
+#:
+#: **Two colours at ΔE 2 are one colour to somebody, and this floor admits
+#: that.** It is not a standard anybody would design to; it is a regression
+#: gate at the level the palette measures today, so that a repaint or a change
+#: to the ring cannot quietly make things worse. The reason it can be this low
+#: is the reason the goods carry glyphs: colour is what makes a seat findable,
+#: and the name in text beside it is what identifies it.
+#:
+#: The measurement, and where each number comes from:
+#:
+#:     python3 viewer/palette.py seats 6 7 8 10 12 16
+#:
+#: The hand-picked six measure 2.1 -- `--seat-1` and `--seat-6` are ΔE 5.3
+#: apart at worst and `--seat-2` and `--seat-5` are the 2.1 -- so the six do
+#: *not* clear the series' adjacent floor, and never did. The generated rings
+#: measure 5.1 at seven seats, 3.2 at eight, 2.8 at ten and 3.8 at twelve: past
+#: six, a viewer is given something better than the six, not worse.
+SEAT_FLOOR = 2.0
+
+#: The largest table the floor above is claimed at. Past twelve it stops being
+#: true and is not asserted: at sixteen the closest pair measures 1.1 and at
+#: twenty-four 0.0 -- two seats one colour to a dichromat, distinct only in
+#: bytes. Said out loud here rather than left for somebody to find on a big
+#: table: that is a property of the eye and the gamut, not of the generator,
+#: and no palette fixes it. What still holds at any size is what the two tests
+#: below assert -- no two seats the same colour, and every seat legible.
+TELLABLE_MAX = 12
+
+
+def test_seats_are_as_far_apart_as_the_palette_has_measured() -> None:
+    """No repaint may quietly make two seats harder to tell apart.
+
+    The floor is the measurement, not an aspiration -- see `SEAT_FLOOR`. What
+    this catches is a change that moves it: a repainted `--seat-n`, a different
+    span of lightness in the ring, a chroma the gamut eats.
+    """
+    for n in [n for n in RINGS if n <= TELLABLE_MAX]:
+        ring = _need_ring(n)
+        for a, b in itertools.combinations(range(n), 2):
+            worst = palette.worst_cvd(ring[a], ring[b])
+            assert worst >= SEAT_FLOOR, (
+                f"seats {a + 1} and {b + 1} of {n} ({ring[a]}, {ring[b]}) are "
+                f"ΔE {worst:.1f} apart at worst, under the measured {SEAT_FLOOR}")
+
+
+def test_a_generated_ring_beats_the_hand_picked_six() -> None:
+    """Past six, nobody is handed something worse than a smaller table gets.
+
+    Stated as a test because it is the argument for generating at all rather
+    than, say, repeating the six with a pattern or a border. If a repaint ever
+    makes the six better than the ring, this fails and the ring is what needs
+    looking at.
+    """
+    named = min(palette.worst_cvd(a, b)
+                for a, b in itertools.combinations(_need_ring(len(SEATS)), 2))
+    for n in (7, 8, 10, 12):
+        ring = _need_ring(n)
+        worst = min(palette.worst_cvd(a, b) for a, b in itertools.combinations(ring, 2))
+        assert worst >= named, (
+            f"a table of {n} separates its seats by ΔE {worst:.1f}, worse than "
+            f"the hand-picked six at {named:.1f}")

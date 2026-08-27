@@ -643,12 +643,8 @@ toward the taker. Two things it did not say, and both are the offer's content.
 and that is the only place on the frame an offer said who made it — a spectator
 reading the square had to read text to answer the first question they have. The
 pill now wears the **maker's seat colour**, as its border and as a dot inside
-it: the same six the island has painted its huts and boats with since it was
-modelled, so a pill leaving a roof is the colour of the roof it left. Named in
-`tokens.css` as `--seat-1..6` and mirrored in `island3d.js` as hex integers for
-three.js, with `test_palette.py` comparing the two lists — the goods drifted
-apart across exactly that seam once already, from the fifth good on, and
-nothing was looking.
+it: the same colour the island paints that trader's hut and boat, so a pill
+leaving a roof is the colour of the roof it left.
 
 The seats are held to **byte-distinctness** from every good and metric rather
 than to the series' contrast floors. A seat is never the only thing saying
@@ -656,6 +652,60 @@ whose an offer is — the pill carries `maker→taker` in text under it — so i
 not asked to be tellable apart at a glance the way two bars on one shelf are.
 What it must not be is the *same colour* as something that already means a good
 or a score on the same frame.
+
+### A seat's colour is a function of the seat *and how many seats there are*
+
+`SEAT_COLOURS[i % 6]` is what the island did, and a table is not capped at six
+anywhere — `dealer.draw` takes an agent count and the lobby seats whoever turns
+up. **At seven, the seventh trader wore the first trader's colour**: on the
+hut, on the boat, and on every offer either of them made. A repeated colour is
+not a quiet degradation, it is a wrong answer to the one question a colour on
+this island is asked.
+
+`web/seats.js` owns it now, and both layers import it — the island for its huts
+and boats, the SVG layer for its pills, so there is one list rather than a
+CSS one and a three.js one drifting apart the way the goods did. Up to six
+seats it is the hand-picked six, unchanged, which are also `--seat-1..6` in
+`tokens.css` where the gates are run. Past six the **whole ring is generated**:
+`n` hues evenly spaced in OKLCH around the band those six sit in.
+
+**The ring belongs to the round, not to the trader.** With seven at the table
+nobody wears one of the six; they wear one of seven. That is fine because the
+question a seat colour answers — *whose is that?* — is only ever asked within a
+table, and a round is where the table is fixed.
+
+**Hue alone is one colour to a dichromat, which is why the ring steps its
+lightness too.** Evenly spaced hues at fixed lightness looked right and
+measured terribly: at ten seats the closest pair was CVD ΔE **0.3**, because
+red-green vision keeps roughly one chromatic axis and a hue circle folds onto
+it. Lightness survives every dichromacy, so seats cycle four levels spanning
+0.20 of OKLab L as the hue goes round:
+
+| seats | closest pair (worst CVD) | closest pair (normal) | dimmest on the panel |
+|---|---|---|---|
+| 6, hand-picked | 2.1 | 17.1 | 4.93:1 |
+| 7 | 5.1 | 19.9 | 4.87:1 |
+| 8 | 3.2 | 17.0 | 4.91:1 |
+| 10 | 2.8 | 14.7 | 4.70:1 |
+| 12 | 3.8 | 12.6 | 4.75:1 |
+| 16 | 1.1 | 10.1 | 4.73:1 |
+
+```
+python3 viewer/palette.py seats 6 7 8 10 12 16
+```
+
+Two things that table says, and both are written into the gates rather than
+left as a reading. **The hand-picked six do not clear the series' adjacent
+floor and never did** — `--seat-2` and `--seat-5` are ΔE 2.1 apart under
+deuteranopia — so `test_palette.py` holds seats to **2.0**, which is a
+regression gate at what the palette measures today and not a standard anybody
+would design to. And **past twelve, colour stops carrying a seat at all**: 1.1
+at sixteen, 0.0 at twenty-four, two seats one colour to a dichromat and
+distinct only in bytes. That is the eye and the gamut, not the generator, and
+no palette fixes it. What is asserted at every size is what remains true: **no
+two seats share a colour, and every seat is legible on the surface it is drawn
+on.** Past that, the name in text beside the colour is what identifies a
+trader — the same bargain the goods make with their glyphs.
 
 **Where it is going.** The rope's direction was carried only by the crawl of
 its dashes, which is a thing a viewer has to already know to read. The pill now
