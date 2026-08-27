@@ -833,3 +833,62 @@ def test_pruning_never_touches_the_ledger(tmp_path):
 
     run_game.prune(tmp_path, keep=1)
     assert ledger.read_text() == '{"round_id": "r1"}\n'
+
+
+def test_a_real_room_gets_a_second_copy_and_the_two_agree(settled, hub, tmp_path):
+    """Condition 3, end to end against a real hub.
+
+    The archivist is built the way the runner builds it, reads the room the
+    way the runner reads it, and its copy is compared with the manager's the
+    way the runner compares them. What is asserted is that it saw the game --
+    an archive of an empty room agrees with everything and is worth nothing.
+    """
+    from games.island import archive as _archive
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="trading")
+
+    # A stranger manages this table, so the copy is the independent kind.
+    archivist = run_game.archivist_for(table, invite, lab_manages=False)
+    assert archivist.standing == _archive.INDEPENDENT
+
+    record, board = _play_scripted(table, invite, room, tmp_path)
+    archivist.catch_up()
+    archivist.close()
+
+    saved = json.loads(archivist.save(tmp_path, table.workspace).read_text())
+    assert saved["lines"] > 5, "it watched a game, not an empty room"
+    assert saved["writer"] == table.manager
+    assert saved["failed_polls"] == 0
+
+    diff = _archive.compare(json.loads(board.read_text()), archivist.payload())
+    assert diff["missing"] == [], "nothing the room said is absent from the board"
+    assert diff["altered"] == []
+    assert diff["unexplained_extra"] == []
+
+
+def test_the_archivist_takes_no_seat_and_is_refused_if_it_speaks(settled, hub, tmp_path):
+    """It reads. A witness that could write would be a player."""
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    archivist = run_game.archivist_for(table, invite, lab_manages=True)
+
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    mgr.open_episode()
+
+    archivist.client.post("island", "PRODUCE bread=1.0")
+    mgr.drain()
+
+    assert mgr.intrusions, "a line from a key that took no seat is recorded"
+    assert run_game.ARCHIVIST not in {s for s in mgr.names}

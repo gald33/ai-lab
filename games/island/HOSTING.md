@@ -98,6 +98,7 @@ seats.
 | `--out/<table>.json` | the run record | the ledger, the viewer |
 | `--out/board-<workspace>.json` | the board as it stood, with the manager's reading of every signature | `games.island.verify`, and any stranger checking the game |
 | `--out/reveal-<workspace>.json` | the replay: the island, the seed, the room key, the draw | published **after** the game; it is what makes a finished game checkable |
+| `--out/archive-<workspace>.json` | the **second copy** of the board, read live by an archivist that took no seat, with its own blind spots declared | anybody checking what the manager left out |
 | `--ledger` | append-only, one row per round | the scoreboard |
 | `--state` | seeds drawn and lines already acted on | only this process, across restarts |
 
@@ -200,5 +201,11 @@ from every seat's nonce and is recomputable from the board afterwards; the
 private half is sealed by Switchboard to each seat; every line says which key
 signed it; and `python -m games.island.verify <board.json>` re-checks the draw,
 the authorship, the production, the exchange and the clock. What a single host
-still cannot prove is what it **left out** — that needs a second archivist,
-and it is the one condition of four that is not built.
+still cannot prove is what it **left out** — that needs a second party in the
+room, and there now is one. The lobby runner mints every table's room key, so
+it archives every game it deals: `archive-<workspace>.json`, read live and
+published with the reveal. For a table a **stranger** manages that copy is an
+independent witness and is condition 3 met; for a table **this process**
+manages it is a second file, because two clients in one process are not two
+parties — and each archive says which it is rather than leaving a reader to
+assume. See `games/island.md`.
