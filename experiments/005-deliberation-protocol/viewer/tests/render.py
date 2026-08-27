@@ -2221,7 +2221,12 @@ def island(browser, base: str, out: Path) -> list[str]:
     bad: list[str] = []
     #: Where a settlement may stand. Not the beach: a hut on sand is a hut
     #: nobody put there on purpose.
-    LAND = {"meadow", "upland", "hearth_ground", "ridge"}
+    #:
+    #: `hearth_ground` was here for the sand clearing the fire used to sit in,
+    #: which was removed as a yellow circle that said nothing the fire had not
+    #: (island3d.js). That ground is plain `meadow` now, so the name is gone
+    #: from both lists rather than left as a surface nothing can return.
+    LAND = {"meadow", "upland", "ridge"}
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     page.goto(f"{base}/")
     page.wait_for_timeout(600)
@@ -2472,7 +2477,7 @@ def island(browser, base: str, out: Path) -> list[str]:
         }
       }
       return {n: goats.length, fastest,
-              off: seen.filter(s => !['meadow', 'upland', 'hearth_ground', 'ridge'].includes(s[3]))
+              off: seen.filter(s => !['meadow', 'upland', 'ridge'].includes(s[3]))
                        .slice(0, 3)};
     }""")
     if not walk["n"]:
