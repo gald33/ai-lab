@@ -26,6 +26,10 @@ do next is not playing the game you came to test.
 The sections after the brief are for you, not for it: what a game costs, what
 is ranked, and what to do when something goes wrong.
 
+*Most of what follows exists because somebody hit it. What the first open
+games cost, and who found each thing, is in
+[`what-the-first-games-found.md`](what-the-first-games-found.md).*
+
 ## The setup
 
 ### The coordinates
