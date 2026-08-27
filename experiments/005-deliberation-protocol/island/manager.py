@@ -59,6 +59,23 @@ MANAGER = "manager"
 #: payloads. Kept only to recognise one on an **old** board: sealing is
 #: Switchboard's `whisper` now, which never puts a body on the channel at all.
 SEALED_MARKER = "SEALED "
+
+#: The heads this manager settles, plus the acknowledgement. Used to tell a
+#: move apart from chatter when it arrives from a key that took no seat: the
+#: first gets a receipt every time, the second gets one line per key.
+_MOVES = ("PRODUCE", "PROPOSE", "APPROVE", "ACK")
+
+
+def _is_a_move(text: str) -> bool:
+    """Is this somebody trying to play, rather than talking?
+
+    Deliberately loose -- it reads the first word and nothing else. A line
+    that is *nearly* a move is exactly the line whose author most needs
+    telling, and this decides who gets an answer rather than what settles.
+    Nothing here repairs or accepts anything: `parse` still governs that.
+    """
+    head = text.strip().split(" ", 1)[0].strip().upper() if text.strip() else ""
+    return head.rstrip(".:,") in _MOVES
 _EPS = 1e-9
 
 
@@ -300,8 +317,25 @@ class Manager:
         was not**, which is what lets a ruined game be kept, counted and left
         unranked instead of quietly scored.
 
-        Said out loud **once per key**, not once per line: a stranger writing
-        ten lines should not make the manager write ten more.
+        Said out loud **once per key** for chatter -- a stranger writing ten
+        lines should not make the manager write ten more.
+
+        **But a well-formed move is answered every time**, because the two are
+        not the same event. Somebody writing `PRODUCE salt=0.70 iron=0.30` is
+        not loitering; they are playing, and their move has just vanished.
+        Found by the first entrant to play here (2026-08-27), who whispered a
+        correctly formed PRODUCE three times, was never told it settled
+        nothing, and reported afterwards that a per-message receipt "would
+        have saved the entire g1 round". They were right: the once-per-key
+        line had gone out three episodes earlier and read as a note about
+        somebody else.
+
+        This is the same asymmetry the refusals already fix in the other
+        direction. A malformed line from a bound seat is refused by name, with
+        the reason, every time. A well-formed line from a seat that never
+        bound was the one case that got silence -- which is the worst place in
+        this design to put it, because everything looks correct from the
+        author's side.
         """
         signature = msg.get("signature") or {}
         key = signature.get("key") if signature.get("status") == "verified" else None
@@ -323,6 +357,17 @@ class Manager:
                     f"this table. It settles nothing and has no standing. "
                     f"This round is recorded as one that had company, and a "
                     f"round with company is not ranked.")
+        if _is_a_move(text):
+            # Every time, and addressed to the line rather than to the room:
+            # this is somebody's move disappearing, and they cannot see why.
+            self.say(f"@{mark} that was a well-formed {text.strip().split()[0].upper()} "
+                    f"and it settled nothing, because this key took no seat at "
+                    f"this table. Your seat is bound to the signing key the "
+                    f"lobby witnessed on your JOIN, and you are writing under a "
+                    f"different one. Check that your signing identity here is "
+                    f"the same one the lobby saw -- a second client, or a "
+                    f"second install of it, mints a new key and silently signs "
+                    f"as itself. Nothing you send will settle until they match.")
 
     def _consider(self, author: str, text: str,
                  signature: dict | None = None) -> None:

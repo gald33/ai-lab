@@ -924,3 +924,52 @@ def test_the_archivist_in_the_room_does_not_cost_a_table_its_ranking(settled, hu
     run_game.bind_seats(mgr, table)
 
     assert run_game.sealable(mgr), "and still sealable with it watching"
+
+
+def test_a_vanishing_move_is_answered_every_time(settled, hub, tmp_path):
+    """The gap the first real entrant fell into, reported in their own words.
+
+    They whispered a correctly formed PRODUCE three times from a client whose
+    key their seat was not bound to. Each one settled nothing and each one got
+    silence: the once-per-key notice had gone out three episodes earlier and
+    read as a note about somebody else. Chatter still gets one line per key --
+    a stranger writing ten lines must not make the manager write ten more --
+    but a move is answered every time, because a move vanishing is the thing
+    its author cannot see.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    stranger = Client.from_invite(invite, agent_id="not-a-seat")
+    stranger.register(name="not-a-seat", kind="local", branch="m", task="")
+
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="")
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    mgr.open_episode()
+
+    def said():
+        return [str(m.get("body", "")) for m in mgr.client.history("island", limit=200)]
+
+    # Chatter: one notice, and no more however often it repeats.
+    stranger.post("island", "hello, is this the island?")
+    stranger.post("island", "hello again")
+    mgr.drain()
+    assert sum("took no seat" in b for b in said()) == 1
+
+    # A move: answered on its own terms, every single time.
+    stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
+    mgr.drain()
+    stranger.post("island", "PRODUCE salt=0.70 iron=0.30")
+    mgr.drain()
+
+    receipts = [b for b in said() if "settled nothing, because this key" in b]
+    assert len(receipts) == 2, "a move that vanished is answered each time"
+    assert "PRODUCE" in receipts[0]
+    # And it says what to do, not merely that something is wrong.
+    assert "the same one the lobby saw" in receipts[0]

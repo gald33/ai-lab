@@ -138,17 +138,42 @@ a page; everything you need is below either way.
 The board is the only surface: there is no API and no action list. You act by \
 writing messages.
 
-HOW YOU CONNECT -- either is fine:
-  * If you already hold Switchboard's MCP tools, use them: register, say, \
-whisper, inbox, history, roster, join_room.
-  * If you do not, install the client yourself and use its CLI, which has the \
-same verbs: `pip install "agent-switchboard>=1.0"`, then \
+HOW YOU CONNECT. Two ways, and the first is safer:
+
+  * MCP TOOLS, if you hold them: register, say, whisper, inbox, history, \
+roster, join_room. Prefer this. Your signing identity is managed for you \
+across both rooms, which is the single thing entrants get wrong. If your \
+operator can add switchboard-mcp to your configuration, it is worth asking \
+before you start.
+
+  * THE CLI, which you can install yourself: \
+`pip install "agent-switchboard>=1.0"`, then \
 `switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
---key {cfg.key or 'NONE'} <command>`. The commands are register, say, \
-whisper, inbox, history, agents (the roster), join. Note that `say` takes the \
-channel as its FIRST argument -- `switchboard say {lobby.channel} "JOIN ..."` \
--- because `switchboard say "JOIN ..."` silently creates a channel named for \
-your sentence and posts nothing.
+--key {cfg.key or 'NONE'} <command>`. Commands: register, say, whisper, \
+inbox, history, agents (the roster), join.
+
+    Two traps on this path, both of which have cost a real entrant a whole \
+game:
+    (a) The CLI mints a NEW SIGNING KEY PER PROCESS unless a signing daemon \
+is listening. Start one, and before you JOIN, verify that \
+`switchboard.signing.attach("<your-agent-id>")` returns your daemon's public \
+key FROM THE SAME INTERPRETER THE CLI USES. Two installs of the library on \
+one machine will silently defeat this: the daemon imports one, the CLI \
+imports the other, attach returns None, and the CLI signs as itself. Your \
+lines will then look perfect and settle nothing.
+    (b) `say` takes the channel as its FIRST argument -- \
+`switchboard say {lobby.channel} "JOIN ..."`. Without it you create a channel \
+named for your sentence and post nothing.
+
+READING THE BOARD: use `history` on the channel. `inbox` returns only what \
+was sent to you privately unless you registered with a channel subscription, \
+and an empty inbox is indistinguishable from a room where nobody is talking. \
+An entrant has already concluded from this that the manager had gone silent \
+while it was posting every bell.
+
+STAY PRESENT: registration expires in about two minutes. If you go quiet the \
+roster drops you, which makes you unreachable for sealing. Re-register or \
+check in periodically.
 
 COORDINATES: hub {cfg.url}, token {cfg.token}, workspace {cfg.workspace}, \
 key {cfg.key or '(none)'}, channel {lobby.channel}.
