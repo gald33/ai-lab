@@ -1570,8 +1570,12 @@ export class Scene {
     // scrubbing backwards over an old bell does not replay somebody else's.
     const was = this.shown || new Map();
     for (const p of state.proposals) {
-      if (p.status !== "lapsed" || !was.has(p.pid)) continue;
-      this.fray(p, was.get(p.pid));
+      if (!was.has(p.pid)) continue;
+      if (p.status === "lapsed") this.fray(p, was.get(p.pid));
+      // The rope of a settled offer is gone from `this.ropes` by the time
+      // `play()` runs -- only open offers are drawn -- so the answer an offer
+      // got is said here, on a copy, or it is not said at all.
+      else if (p.status === "settled") this.verdict(p, was.get(p.pid), "approved");
     }
     this.shown = placed;
     //: A pill's clock lives as long as its offer is open. Dropping it when the
@@ -1586,7 +1590,7 @@ export class Scene {
     this.root.classList.toggle("closed", closed);
   }
 
-  /** One rope, going slack and fading, after the bell took the offer with it. */
+  /** One rope, dissolving, after the bell took the offer with it. */
   fray(p, fan) {
     //: Arrived, not travelling: a rope only lapses after its pill has landed,
     //: and a pill that started its slide again on the way out would leave the
@@ -1594,9 +1598,37 @@ export class Scene {
     const node = this.rope(p, fan, 1);
     node.classList.add("lapsing");
     this.flights.append(node);
+    //: **Dissolved, not switched off.** A plain fade read as the page dropping
+    //: the offer; an offer the bell took is a thing that came apart. So it
+    //: blurs, lifts and loses colour on the way out, and `.rope.lapsing` in
+    //: index.html scatters its dashes at the same time.
+    const anim = node.animate([
+      { opacity: 1, filter: "blur(0px)", transform: "translateY(0) scale(1)" },
+      { opacity: .5, filter: "blur(1.5px)",
+        transform: "translateY(-6px) scale(1.015)", offset: .45 },
+      { opacity: 0, filter: "blur(6px)", transform: "translateY(-18px) scale(1.04)" },
+    ], { duration: still() ? 1 : 1300, easing: "ease-in", fill: "forwards" });
+    anim.finished.then(() => node.remove(), () => node.remove());
+  }
+
+  /**
+   * The answer an offer got, blinked on the rope itself.
+   *
+   * Green for approved, on a copy in `flights`: a settled offer is off the
+   * square by the time this runs, since `paint()` draws only open ones. A
+   * refusal leaves its offer open, so `refuse()` marks the live rope instead
+   * and shares these classes.
+   *
+   * The colour is the content, so under `prefers-reduced-motion` the copy is
+   * still drawn in that colour; only the blinking goes (`index.html`).
+   */
+  verdict(p, fan, kind) {
+    const node = this.rope(p, fan, 1);
+    node.classList.add("answered", kind);
+    this.flights.append(node);
     const anim = node.animate(
-      [{ opacity: 1 }, { opacity: 0.55, offset: .3 }, { opacity: 0 }],
-      { duration: still() ? 1 : 1100, easing: "ease-in" });
+      [{ opacity: 1 }, { opacity: 1, offset: .72 }, { opacity: 0 }],
+      { duration: still() ? 1 : 1400, easing: "ease-out", fill: "forwards" });
     anim.finished.then(() => node.remove(), () => node.remove());
   }
 
@@ -1767,6 +1799,7 @@ export class Scene {
       // *that* it refused, and whose.
       case "refused":
         this.blame(event.trader, event.reason);
+        this.refuse(event.trader, event.reason);
         return this.mark(event.trader, "bad", event.reason);
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
@@ -1818,6 +1851,35 @@ export class Scene {
     clearTimeout(this.blameTimer);
     this.blameTimer = setTimeout(() => {
       for (const node of held) node.classList.remove("blamed");
+    }, DWELL.refused);
+  }
+
+  /**
+   * The offer a refusal was about, blinked red.
+   *
+   * `blame()` says which *stock* the trader came up short in; this says which
+   * offer the manager would not settle -- the one thing a spectator watching
+   * the square is looking for when a ✗ goes up. Only offers the manager itself
+   * named, or the offer it was answering: a refusal at proposal time is about
+   * an offer that does not exist yet, and there is nothing on the square to
+   * blink.
+   */
+  refuse(who, reason = "") {
+    const held = [];
+    for (const p of refused(this.state?.proposals, who, reason)) {
+      const rope = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
+      // Marked on the live rope rather than on a copy: the offer is still open
+      // -- a refusal does not close it -- and a red copy laid over an orange
+      // original would blink to the wrong colour between flashes.
+      if (rope) { rope.classList.add("answered", "refused"); held.push(rope); }
+    }
+    if (!held.length) return;
+    //: On a timer, as `blame()` is, and for the same reason: under reduced
+    //: motion there is no animation to hang the clean-up off, and the reader
+    //: still needs the colour for as long as the badge is up.
+    clearTimeout(this.refuseTimer);
+    this.refuseTimer = setTimeout(() => {
+      for (const rope of held) rope.classList.remove("answered", "refused");
     }, DWELL.refused);
   }
 
@@ -2191,6 +2253,30 @@ export function culprits(proposals, who, good) {
   return (proposals || []).filter(
     (p) => p.status === "open" && p.maker === who && (p.give?.[good] || 0) > 0);
 }
+
+/**
+ * Which offers on the square a refusal is about.
+ *
+ * The manager names the proposal in three of its four approval refusals
+ * (`no such proposal 'p3'`, `p3 is already settled`, `p3 was not addressed to
+ * you`); the fourth -- coming up short on what an offer asks for -- names the
+ * good instead, and the offer is then the open one addressed to this trader
+ * that asks for it. A pid the board never carried matches nothing, which is
+ * the right answer for `no such proposal`.
+ */
+export function refused(proposals, who, reason = "") {
+  const open = (proposals || []).filter((p) => p.status === "open");
+  const named = /\b(p\d+)\b/.exec(reason);
+  if (named) return open.filter((p) => p.pid === named[1]);
+  const asks = ASKS.exec(reason);
+  if (asks) {
+    return open.filter((p) => p.taker === who && (p.want?.[asks[2]] || 0) > 0);
+  }
+  return [];
+}
+
+//: The one approval refusal that names a good rather than a proposal.
+export const ASKS = /you have ([\d.]+) (\w+) uncommitted, not the ([\d.]+) it asks for/;
 
 export const NAME_MAX = 14;
 

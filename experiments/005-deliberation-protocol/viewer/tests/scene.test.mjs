@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          DWELL, dwellFor, CARRY, carriedBy,
-         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, sunAt, SET } from "../web/scene.js";
+         shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, sunAt, SET } from "../web/scene.js";
 import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
@@ -431,6 +431,32 @@ test("the culprit is the trader's own open offer holding that good", () => {
   assert.deepEqual(culprits(proposals, "T2", "cloth"), []);
   assert.deepEqual(culprits(proposals, "T1", "iron"), []);
   assert.deepEqual(culprits(undefined, "T1", "cloth"), []);
+});
+
+
+test("a refusal blinks the offer the manager was answering", () => {
+  const proposals = [
+    { pid: "p6", maker: "T2", taker: "T1", want: { cloth: 0.4 }, status: "open" },
+    { pid: "p7", maker: "T1", taker: "T2", want: { iron: 0.5 }, status: "open" },
+    { pid: "p2", maker: "T2", taker: "T1", want: { cloth: 0.3 }, status: "settled" },
+  ];
+  // Named outright by the manager.
+  assert.deepEqual(
+    refused(proposals, "T1", "p6 was not addressed to you").map((p) => p.pid), ["p6"]);
+  assert.deepEqual(
+    refused(proposals, "T1", "p7 is already settled").map((p) => p.pid), ["p7"]);
+  // A pid the board never carried: nothing on the square to point at.
+  assert.deepEqual(refused(proposals, "T1", "no such proposal 'p9'"), []);
+  // Named by the good instead: the open offer addressed to this trader that
+  // asks for it, and not the settled one that also did.
+  assert.deepEqual(
+    refused(proposals, "T1",
+            "you have 0.3868 cloth uncommitted, not the 0.4000 it asks for")
+      .map((p) => p.pid), ["p6"]);
+  // At proposal time the offer does not exist yet: nothing blinks.
+  assert.deepEqual(
+    refused(proposals, "T1", "you have 0.0000 cloth uncommitted, not 0.1500"), []);
+  assert.deepEqual(refused(undefined, "T1", "p6 was not addressed to you"), []);
 });
 
 

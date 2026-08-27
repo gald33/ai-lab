@@ -334,9 +334,40 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    on the square is the problem, and it cannot make it invisibly. After the
    fade rule, because both are two classes deep and the later one wins. */
 .rope.blamed .rope-line { stroke: var(--critical); stroke-opacity: 1; }
-.rope.lapsing .rope-line { stroke: var(--muted); animation: none; }
+/* The bell took it. The line comes apart rather than switching off: the dashes
+   pull open into specks while `scene.js:fray` blurs and lifts the whole group. */
+.rope.lapsing .rope-line { stroke: var(--muted); animation: scatter 1.3s ease-in forwards; }
+.rope.lapsing .rope-shadow { stroke-opacity: 0; }
 .rope.lapsing .chip-bg { stroke: var(--muted); }
 .rope.lapsing .chip-seat { fill: var(--muted); }
+@keyframes scatter {
+  0%   { stroke-dasharray: 7 6;  stroke-opacity: .85; }
+  100% { stroke-dasharray: 1 22; stroke-opacity: 0; }
+}
+/* The answer an offer got, on the offer itself: green when it settled, red
+   when the manager would not. Both are drawn on a copy of the rope
+   (`scene.js:verdict`) that lives just long enough to be read. */
+.rope.answered .rope-line { stroke-dasharray: none; stroke-width: 3.5;
+  stroke-opacity: 1; }
+.rope.answered .chip-text, .rope.answered .chip-pid { fill: var(--ink); }
+.rope.approved .rope-line { stroke: var(--good); animation: blink-yes .34s steps(1) 4; }
+.rope.approved .chip-bg { stroke: var(--good); }
+.rope.approved .chip-seat { fill: var(--good); }
+.rope.approved .rope-chip { animation: blink-yes .34s steps(1) 4; }
+.rope.refused .rope-line { stroke: var(--critical); animation: blink-no .3s steps(1) 4; }
+.rope.refused .chip-bg { stroke: var(--critical); }
+.rope.refused .chip-seat { fill: var(--critical); }
+.rope.refused .rope-chip { animation: blink-no .3s steps(1) 4; }
+@keyframes blink-yes { 0%, 49% { opacity: 1; filter: brightness(1.7); }
+                       50%, 100% { opacity: .25; filter: none; } }
+@keyframes blink-no  { 0%, 49% { opacity: 1; filter: brightness(1.7); }
+                       50%, 100% { opacity: .25; filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  /* The colour is the answer and stays; only the blinking goes. */
+  .rope.approved .rope-line, .rope.approved .rope-chip,
+  .rope.refused .rope-line, .rope.refused .rope-chip { animation: none; }
+  .rope.lapsing .rope-line { animation: none; stroke-opacity: .3; }
+}
 /* Whose offer this is, in the seat's own colour: the border of the pill and a
    dot inside it, both from `--seat` on the rope's group (`scene.js:rope`). Two
    pixels of border is not a colour a viewer can match to a roof across the
