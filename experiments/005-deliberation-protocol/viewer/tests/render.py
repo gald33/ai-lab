@@ -1495,8 +1495,10 @@ ROPE_DASH = """async () => {
   const line = pick();
   if (!line) return {has: false};
   const g = line.closest('.rope');
-  const label = g.querySelector('.chip-pid')?.textContent || '';
-  const maker = (label.split('\u00b7').pop() || '').split('\u2192')[0].trim();
+  // From the group's own data, not from a label: the pill used to carry a
+  // `p2 · T1→T4` subtitle and no longer does -- it said what the pill's colour
+  // and the rope already said.
+  const maker = g.getAttribute('data-maker') || '';
   const nums = (line.getAttribute('d') || '').match(/-?[\d.]+/g)?.map(Number) || [];
   // Each tether's group carries its trader; the pin inside it is where that
   // settlement is drawn this frame.

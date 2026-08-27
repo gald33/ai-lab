@@ -53,8 +53,12 @@ rail; disagreement says the *drawing* is wrong, not the score.
 | the labour wheel | share of this episode's labour spent, from the receipt |
 | a pill sliding down a rope | an offer being carried from the trader who made it to the trader it is addressed to |
 | a pill waiting over a hut | an open proposal, with what it offers for what, standing on the trader who has to answer it |
+| a stack of pills on one hut | every open offer that trader has to answer, oldest at the bottom |
+| a pill blinking green, then gone | the offer settled |
+| a pill blinking red | the manager would not settle it; the offer is still open |
+| a rope blurring and coming apart | the bell took the offer with it, unanswered |
 | goods in flight | a settled exchange, both directions at once |
-| a red card outline | holding some goods and none of another — a zero episode |
+| a card washed dark red | holding some goods and none of another — a zero episode |
 | nightfall | the bell: proposals lapse, stocks and labour are eaten |
 | the pink bar | replay only — what the shelf is worth to the trader who owns it |
 | the tick on it | what autarky would have given them: the line worth beating |
@@ -643,8 +647,9 @@ offer is **the rope** across the frame — labelled with what is on the table, i
 dashes crawling toward the trader it is addressed to — and, on the island
 itself, the crates the maker is offering lifting off its own pile and settling
 back, since an offer is a proposal and nothing has moved yet. A refusal is the
-**bubble over the hut** with a cross in it and the red outline round the card,
-and it now has nothing of its own on the island at all: `render.py:overhead` is
+**bubble over the hut** with a cross in it — and, where the manager named a
+cause, the slot it came up short in and the offer holding what it needed, lit
+together (`blame()`). It has nothing of its own on the island at all: `render.py:overhead` is
 what holds it to that job, and `mechanics` names it as the one event the island
 is not asked to show. Measured on the way here — a refusal was 3.20% of the
 island's frame with its ground disc and 0.27% with only the post, so what was
@@ -1060,6 +1065,98 @@ still. Ropes are moved in place now and rebuilt only when the set of offers
 changes. `turning()` holds both halves: the node has to survive the camera
 turning, and the path has to start at the maker's end.
 
+### The border is whose, and nothing else
+
+**A card's border is its seat's colour, at the weight an offer's pill wears
+it** (2026-08-27, Gal's ask). It was a half-opacity hairline with the colour
+that said whose card this was living on a rule *inside* it instead — so a card
+in the margin and a pill over a hut, which are the two places the same trader
+appears at once, wore the same colour at two different strengths. They match
+now, and the inside rule is gone: with the border carrying it at full weight, a
+second stripe of the same colour is the same fact twice.
+
+That leaves the border with one job, which is why the other thing on it had to
+move. **Starvation floods the card instead of outlining it.** A red border said
+"this is the trader in trouble" by ceasing to say *which* trader it was —
+identity and alarm competing for one line, and the alarm winning. Holding some
+of something and none of another is a state the whole card is in, so the whole
+card carries it: the fill goes dark red and the shadow under it picks up the
+same colour. The shelf cell that is empty keeps its own red ring and red zero,
+which is the part that says which good.
+
+### What became of an offer, said on the offer
+
+An offer left the square three ways and the square said nothing about which.
+It vanished at the bell, it vanished when it settled, and a refusal put a cross
+over a hut while the rope it was about carried on crawling. All three are now
+said on the rope and the pill themselves (2026-08-27, Gal's ask):
+
+* **The bell dissolves it.** A lapsed rope used to fade its opacity, which read
+  as the page dropping the offer rather than the bell taking it. `fray()` blurs
+  and lifts the group while `@keyframes scatter` pulls its dashes open into
+  specks.
+* **A refusal blinks it red.** `refuse()` finds the offer the manager was
+  answering — the manager names the proposal in three of its four approval
+  refusals, and in the fourth it names the good, where the offer is the open one
+  addressed to that trader asking for it. Marked on the **live** rope, since a
+  refusal does not close the offer, and a red copy laid over the orange original
+  would blink to the wrong colour between flashes.
+* **A settlement blinks it green.** A settled offer is out of `this.ropes` by
+  the time `play()` runs, because `paint()` draws only open offers — so the
+  green copy is spawned from `paint()`, beside the lapsed one.
+
+The colour is the answer and stays under `prefers-reduced-motion`; only the
+blinking goes.
+
+### The pile on a hut is the queue that hut has to answer
+
+**The pills stack by taker, and the ropes fan by pair. Those are two different
+numbers**, and using one for both was the bug. Fanning the arcs keeps two
+offers between the *same* two huts off one curve, which is what `fan` is for —
+but three traders offering the same hut all sit at fan 0, so their pills landed
+on that one roof on top of each other. Which is exactly where a spectator
+counts what a trader has been asked, and the count was unreadable there.
+
+`stacking()` numbers the open offers by taker in the order they were made, and
+the arrived pill rises one pill-and-a-gap per place in the pile, oldest at the
+bottom. Two details it needs:
+
+* **The frame before is kept** (`wasStack`). A pill on its way out is drawn
+  *after* its offer stopped being open, so `fray` and `verdict` build their copy
+  from a proposal the current map no longer carries — without the old height it
+  would drop to the roof before dissolving.
+* **A changed pile is changed offers.** `follow()`'s reuse check compares pair
+  fans and the count, and one offer lapsing as another opens leaves both
+  identical. `aimRope()` re-reads the stack every frame, so the reused branch is
+  correct either way.
+* **The pile stops at a ceiling and compresses instead of growing through it.**
+  A pile that grew freely put its top pills off the top of the picture, which is
+  the one place a spectator counting what a trader has been asked cannot count
+  them; overlapping pills can still be counted. So every pill knows how tall its
+  own pile is, and the spacing is the smaller of a pill-and-a-gap and what the
+  room allows.
+
+**The ceiling is measured off the drawing, not derived from the layout**, and
+the first version got this wrong by deriving it: a frame whose shape is not the
+window's is fitted inside it with `meet` and *centred*, so in landscape there is
+real picture above `y = 0` — a sixth of a 1500×1000 window at the frame this
+draws — and a ceiling taken from `islandBox.y` squeezed piles of three that had
+room to stand at full spacing. What actually cuts a pill off is the `svg`'s own
+box, which clips, and the floating chrome, which is opaque and stands on top.
+Both are on the page, so `ceiling()` asks them. Measured on a 1500×1000 window:
+six offers on one hut stand 34.6 units apart against a 38 maximum, the top one
+115 units above the frame's own top edge and inside the window with a pill's
+height to spare.
+
+### The pill says whose without writing it down
+
+The pill carried a grey `p2 · T1→T4` under it. **Gone (2026-08-27, Gal)**: the
+pid is the manager's word for the ledger, and the arrow repeated what the pill's
+own colour and the rope it hangs from already say — whose offer this is, and
+which hut it is addressed to. It survives as `data-pid`, `data-maker` and
+`data-taker` on the rope's group, which is where a name nobody reads belongs;
+`render.py:turning` reads the maker from there rather than off a label.
+
 ### The sea moves, and there are dolphins in it
 
 The open water was a flat disc: one colour, perfectly still, with every moving
@@ -1350,6 +1447,47 @@ In the rail (the ▤ drawer, shut until asked for):
 - **Diagnostics** the medians hide: the `eff_round` bracket, gains at the median
   and worst trader, how many ended below autarky, how many trader-episodes were
   zero, and the first episode that beat the floor.
+
+## The island can be heard, if you ask
+
+A speaker button (🔇/🔊) in the top-right chrome, **off by default and
+remembered**. Six voices, one per event the island already animates: a crate
+knocking down for a production, two notes rising for an offer, a chord that
+agrees for a settlement, one short falling note for a refusal, a struck bell
+with a long decay for the bell, and a slow three-note dawn for a day opening.
+
+**Sound is never the only place something is said.** The card, the transcript
+line and the clip on the ground already carry every event; a listener who never
+turns this on loses nothing, and one who does is told the same thing a fourth
+way. That is the constraint the voices are written to — it is why a refusal is
+one quiet falling note and not a buzzer. A refusal is an ordinary thing to
+happen on this island and the page should not scold anybody for it.
+
+**Synthesised, not sampled** (`web/island-sound.js`). The only other assets in
+this viewer are `vendor/three`, and a folder of audio files would be the first
+binaries in the repository — for six noises that are a few oscillators and an
+envelope each. Nothing is fetched, so nothing can fail to load and nothing can
+fall out of step with a deploy.
+
+**Off by default, and the button is the gesture.** A page that starts making
+noise is a page somebody closes, and browsers agree: an `AudioContext` will not
+start before a user gesture. So the context is built on the first press, which
+is also the moment there is a gesture to unlock it — and a browser with no
+WebAudio at all leaves the button off rather than pretending, because `set()`
+returns what it actually managed and the button follows that.
+
+**Not tied to `prefers-reduced-motion`.** A reader who wants the island to hold
+still has said nothing about hearing it. `stage.fire()` is silent under that
+setting, so the sound is fired from `paint()` beside the clip rather than from
+inside it, and a still island can still be heard.
+
+**Two throttles, and they are the reason a scrub is bearable.** At 16× a scrub
+pushes events through in a few frames: without a floor between two soundings of
+the same voice (90 ms) and a ceiling on all voices at once (6 in 700 ms), the
+bell rings forty times in a second, which a listener reads as the page being
+broken rather than the board being busy. `tests/sound.test.mjs` holds both
+shut against a fake `AudioContext`, along with off-by-default, every animated
+event kind having a voice, and nothing else having one.
 
 ## Deploying
 
@@ -1645,6 +1783,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `web/utility.js` | Cobb-Douglas, and the audit against the recorded score. Cannot run live |
 | `web/feeds.js` | the three feeds, and the replay clock |
 | `web/index.html` | the page: the island, and the chrome floating over it |
+| `web/island-sound.js` | the island heard: one synthesised voice per event, off until asked |
 | `serve.py` | static files, the board list, the scores API, and the `api/state` forward |
 | `freeze_static.py` | writes `api/boards` and `api/scores` as files, for a static deploy |
 | `scores.py` | the ledger: recording finished rounds and reading the boards out |
@@ -1656,6 +1795,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/board.mjs` | reading a saved board, packed or not |
 | `palette.py` | the contrast and colour-blindness gates `tokens.css` describes |
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
+| `tests/sound.test.mjs` | the voices, against a fake `AudioContext` — off by default, and throttled |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |

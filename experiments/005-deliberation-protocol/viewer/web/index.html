@@ -214,15 +214,21 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .hut.quiet .window { fill: #2a2118; opacity: 1; }
 
 .card-shadow { fill: #000; opacity: .3; }
+/* **The border is the accent**, at the weight an offer's pill wears it: a card
+   and the pills that trader's offers ride in are then the same colour at the
+   same strength, which is how a viewer matches a card in the margin to a pill
+   over a hut. It was a half-opacity hairline, and the colour that said whose
+   card this was lived on a rule inside it instead. */
 .card-bg { fill: #0b1116; fill-opacity: .95; stroke: var(--seat, var(--line));
-  stroke-opacity: .5; }
-/* Starvation outranks identity: whose card this is matters less than that this
-   trader is holding none of something. */
-.hut.starved .card-bg { stroke: var(--critical); stroke-opacity: 1; stroke-width: 1.8; }
-/* The rule down the card's inside edge. Kept on a glance card -- it is the
-   cheapest thing on the card that says whose it is, and the one a viewer reads
-   without focusing. */
-.card-accent { fill: var(--seat, var(--line)); }
+  stroke-opacity: .95; stroke-width: 2; }
+/* Starvation floods the card rather than taking its border. The border is
+   identity now and has no second job: a red one said "this is the trader in
+   trouble" by ceasing to say which trader it was. Holding none of something is
+   a state the whole card is in, so the whole card carries it -- and the shelf
+   cell that is empty keeps its own red ring and red zero, which is the part
+   that says *which* good. */
+.hut.starved .card-bg { fill: #2b1016; fill-opacity: .97; }
+.hut.starved .card-shadow { fill: var(--critical); opacity: .22; }
 .card-name { fill: var(--ink); font-size: 15px; font-weight: 650;
   font-family: ui-monospace, monospace; }
 .card-sub { fill: var(--muted); font-size: 9.5px; letter-spacing: .05em;
@@ -334,9 +340,40 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    on the square is the problem, and it cannot make it invisibly. After the
    fade rule, because both are two classes deep and the later one wins. */
 .rope.blamed .rope-line { stroke: var(--critical); stroke-opacity: 1; }
-.rope.lapsing .rope-line { stroke: var(--muted); animation: none; }
+/* The bell took it. The line comes apart rather than switching off: the dashes
+   pull open into specks while `scene.js:fray` blurs and lifts the whole group. */
+.rope.lapsing .rope-line { stroke: var(--muted); animation: scatter 1.3s ease-in forwards; }
+.rope.lapsing .rope-shadow { stroke-opacity: 0; }
 .rope.lapsing .chip-bg { stroke: var(--muted); }
 .rope.lapsing .chip-seat { fill: var(--muted); }
+@keyframes scatter {
+  0%   { stroke-dasharray: 7 6;  stroke-opacity: .85; }
+  100% { stroke-dasharray: 1 22; stroke-opacity: 0; }
+}
+/* The answer an offer got, on the offer itself: green when it settled, red
+   when the manager would not. Both are drawn on a copy of the rope
+   (`scene.js:verdict`) that lives just long enough to be read. */
+.rope.answered .rope-line { stroke-dasharray: none; stroke-width: 3.5;
+  stroke-opacity: 1; }
+.rope.answered .chip-text { fill: var(--ink); }
+.rope.approved .rope-line { stroke: var(--good); animation: blink-yes .34s steps(1) 4; }
+.rope.approved .chip-bg { stroke: var(--good); }
+.rope.approved .chip-seat { fill: var(--good); }
+.rope.approved .rope-chip { animation: blink-yes .34s steps(1) 4; }
+.rope.refused .rope-line { stroke: var(--critical); animation: blink-no .3s steps(1) 4; }
+.rope.refused .chip-bg { stroke: var(--critical); }
+.rope.refused .chip-seat { fill: var(--critical); }
+.rope.refused .rope-chip { animation: blink-no .3s steps(1) 4; }
+@keyframes blink-yes { 0%, 49% { opacity: 1; filter: brightness(1.7); }
+                       50%, 100% { opacity: .25; filter: none; } }
+@keyframes blink-no  { 0%, 49% { opacity: 1; filter: brightness(1.7); }
+                       50%, 100% { opacity: .25; filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  /* The colour is the answer and stays; only the blinking goes. */
+  .rope.approved .rope-line, .rope.approved .rope-chip,
+  .rope.refused .rope-line, .rope.refused .rope-chip { animation: none; }
+  .rope.lapsing .rope-line { animation: none; stroke-opacity: .3; }
+}
 /* Whose offer this is, in the seat's own colour: the border of the pill and a
    dot inside it, both from `--seat` on the rope's group (`scene.js:rope`). Two
    pixels of border is not a colour a viewer can match to a roof across the
@@ -345,8 +382,6 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   stroke-width: 2; }
 .chip-seat { fill: var(--seat, var(--muted)); }
 .chip-text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
-.chip-pid { fill: var(--muted); font-size: 10px; text-anchor: middle;
-  font-family: ui-monospace, monospace; }
 
 .parcel-bg { fill: var(--c); }
 .parcel-trail { fill: var(--c); opacity: .5; }
@@ -721,6 +756,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
             title="Choose a round by what happened in it">⌕<span id="t-filter-n"></span></button>
     <select id="source" title="Which board" aria-label="Which board"></select>
     <button id="reload" title="Read the source again">↻</button>
+    <button id="t-sound" aria-pressed="false"
+            title="Hear the island">🔇</button>
     <button id="t-rail" aria-pressed="false" aria-controls="rail"
             title="The hidden half, and who has spoken">▤</button>
     <button id="t-log" aria-pressed="false" aria-controls="log"
@@ -807,6 +844,7 @@ import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer }
 import { Stage } from "./stage.js";
 import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
+import { Sound } from "./island-sound.js";
 
 const $ = (id) => document.getElementById(id);
 /**
@@ -1148,6 +1186,10 @@ function paint({ state, event, animate, index, until = null, hold = 0 }) {
     // and what it made crosses the ground to the hut that made it. The card
     // says the number; this says where it came from.
     stage?.fire(event);
+    //: And heard. Beside the clip rather than inside it: `stage.fire()` is
+    //: silent for a reader who asked the island to hold still, and holding
+    //: still is not a request for quiet.
+    sound.play(event);
   }
   hud(state);
   closing(state);
@@ -1439,7 +1481,10 @@ function liveHandlers(statusWhenOk, statusOnError) {
       paint({ state: timeline.final, event: null, animate: false, index: last,
               until: left > 0 ? timeline.final.bell_at : null,
               hold: left > 0 ? left : 0 });
-      fresh.forEach((f, i) => setTimeout(() => scene.play(f.event), i * 420));
+      fresh.forEach((f, i) => setTimeout(() => {
+        scene.play(f.event);
+        sound.play(f.event);
+      }, i * 420));
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },
   };
@@ -1462,6 +1507,23 @@ function drawer(button, panel, cls) {
   $(button).onclick = () => set(!open());
   return { set, open };
 }
+
+// --- hearing it -----------------------------------------------------------
+//
+// The button is the whole interface. Off is the default and the setting is
+// remembered, so the one press somebody makes is also the gesture that lets
+// the browser start the audio.
+
+const sound = new Sound();
+const soundButton = () => {
+  const on = sound.enabled;
+  const b = $("t-sound");
+  b.textContent = on ? "🔊" : "🔇";
+  b.setAttribute("aria-pressed", String(on));
+  b.title = on ? "Silence the island" : "Hear the island";
+};
+$("t-sound").onclick = () => { sound.toggle(); soundButton(); };
+soundButton();
 
 const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");
