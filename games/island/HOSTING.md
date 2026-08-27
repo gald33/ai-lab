@@ -140,7 +140,11 @@ level up, and refuses any path but `/` and `/index.html` besides.
 - **The page's timestamp**: it is rewritten every poll (a few seconds), so a
   page more than a minute old means the process is not polling. **Serve it
   `Cache-Control: no-store`** — a cached copy makes this check, and the key
-  check below, report stale truth to everyone but the origin. The file is
+  check below, report stale truth to everyone but the origin. **This stopped
+  being only a freshness question when the page grew a start block**: the
+  prompt on it carries the key an entrant will use, so a cached page does not
+  merely look stale, it hands somebody a key that no longer opens anything.
+  Raised by the host operator, 2026-08-27. The file is
   replaced by atomic rename, so no lock, retry or read-repair is needed.
 - **`LOBBY holding this channel: <token>`** on the lobby board, posted at
   startup. **This is not a count of processes, and reading it as one is a

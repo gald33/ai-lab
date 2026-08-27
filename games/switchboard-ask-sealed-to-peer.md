@@ -2,9 +2,9 @@
 
 > **A record, not guidance.** This file is the request as it was sent on
 > 2026-08-26, kept unedited — including the name `ask`, which is what the tool
-> was called then. **It is called `whisper` now, and the old name has been
-> removed from Switchboard entirely**; anything you are writing today should
-> say `whisper` and nothing else. Editing this page to match would make it
+> was called then. **It is called `whisper` now**: the old name is gone from
+> the MCP surface and is being removed from the library upstream. Anything you
+> are writing today should say `whisper` and nothing else. Editing this page to match would make it
 > look as though the request had always used the later name, which is the one
 > thing a record may not do. Live guidance is in
 > [`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md).

@@ -39,8 +39,8 @@ print(sorted(set(re.findall(r'^\s*def (\w+)', inspect.getsource(m), re.M))))"`
 
 > **On the name `ask`.** It appears below only inside dated passages —
 > requests as sent, and text marked superseded. The tool is called `whisper`,
-> the old name has been removed from Switchboard entirely, and nothing written
-> today should use it. The old name survives here only where removing it would
+> the old name is gone from the MCP surface and is being removed from the
+> library upstream, and nothing written today should use it. The old name survives here only where removing it would
 > make a record read as though it had always said the new one.
 
 ## 2. A `dm` is private from the hub. It is **not** private from the room.
@@ -102,10 +102,20 @@ failure and is not one.
 the better one: `ask` reads as a question expecting an answer, and the thing is
 one-way and quiet.
 
-**The rename landed in 1.0.0** (2026-08-26, verified by reading the wheel),
-and **the old name has since been removed upstream entirely** (Gal,
-2026-08-27). There is now exactly one name for this tool on every surface, and
-this repo carries only it.
+**The rename landed in 1.0.0** (2026-08-26, verified by reading the wheel).
+The MCP tool list carries `whisper` and nothing else; the library still
+carries `ask` as an alias.
+
+**The alias is being removed upstream** (Gal, 2026-08-27) — in Switchboard's
+source, **not yet in a release**. Checked, because this file has now been
+wrong about this exact tool twice: `pip download agent-switchboard --no-deps`
+still returns 1.0.0, whose `client.py` still defines `ask`. This repo says
+`whisper` everywhere regardless, which is right under both.
+
+*Corrected 2026-08-27: this paragraph first said the alias "has since been
+removed entirely", stating somebody else's unreleased `main` as a shipped
+fact. **A change in another project's source is not a change you have.** The
+reproduction above is one command and would have caught it.*
 
 For one release there were two, and the asymmetry is the part worth
 remembering rather than the names: the library kept the old name as an alias

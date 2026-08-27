@@ -169,9 +169,18 @@ another's `@` channel), and a **signing key is per client, not per process**.
 sealed-to-one-peer tool — verified here: a third member of the room holding
 the same workspace key gets an unopenable envelope. **It was renamed from
 `ask` to `whisper`** (Gal, 2026-08-26), and **1.0.0 carries the new name**:
-**The old name has since been removed from Switchboard entirely** (Gal,
-2026-08-27), so there is exactly one name on every surface and **this repo
-pins `>=1.0` and says `whisper` everywhere**. For one release there were two —
+**The old name is being removed from Switchboard entirely** (Gal,
+2026-08-27) — in its source, **not yet in a release**: PyPI's newest is still
+1.0.0 and still carries `Client.ask` as an alias. **This repo says `whisper`
+everywhere regardless**, which is correct under both the current release and
+the one that drops the alias.
+
+*Corrected 2026-08-27, having written "has been removed" as though it had
+shipped.* That is the second time a prediction about this one tool was
+recorded here as a fact — the first said 0.11.0 would carry the old name and a
+later release the new one. **A change in somebody else's `main` is not a
+change you have**, and the check is one command:
+`pip download agent-switchboard -d /tmp/x --no-deps` and read the wheel. For one release there were two —
 the library aliased the old name while the MCP tool list carried only the new
 one — and that asymmetry is the lesson worth keeping: **a rename that lands on
 one surface before the other is more dangerous than a breaking change**,
