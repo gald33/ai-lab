@@ -136,7 +136,7 @@ settlement per seat, a site per good, a dock and boats. Ported from a design
 delivered as `island.html`; `island3d.js` holds the geometry and `stage.js`
 puts it under the scene.
 
-Two things about it are worth knowing before changing either.
+Three things about it are worth knowing before changing any of them.
 
 **The camera is orthographic, and that is not a style choice.** The cards,
 ropes and sun are SVG drawn in viewBox coordinates. Under perspective, the map
@@ -151,6 +151,36 @@ each into a point on the island, and the card goes back at `toViewBox()` of the
 hut. Placing them on a ring in island coordinates was tried first and put both
 huts on nearly the same pixel — the ring's axis and the camera's happened to
 line up. A spectator does not care which compass point a hut is on.
+
+**Anything standing on the coast is placed against the outline, never against
+a radius.** The slabs are cut to `silhouette()`, whose two wobble terms can add
+to nearly a quarter of the nominal radius — so on some bearings the meadow's
+`3.25` reaches `3.70`, and on a few of them the grass reaches past the sand.
+The dock was placed at a hand-picked point whose radius, 3.43, cleared 3.25 and
+so looked offshore; it was inside the coastline, under the meadow's surface,
+along with its bollard and two of its three boats, and `island-life.js` bobbed
+them through soil for as long as the page was open. Only the third boat was
+ever in water, so the scene read as a lone dinghy off an island with no dock.
+Reported by eye, which is the argument for the check.
+
+`meadowEdge`, `beachEdge`, `shelfEdge` and `shallowsEdge` are the four outlines
+to ask, and `dockAxis()` is the worked example: it takes a bearing, seats the
+root against whichever of the grass and the sand reaches furthest, and returns
+both the rotation that aims the thing out to sea and how far it may reach
+before it leaves the water. **A length is as much a placement as a position
+is** — seating the root correctly while leaving the old hand-picked length of
+1.54 in place moved the failure rather than fixing it: the jetty then reached
+past the shallows, and since a dock is not weather, `render.py:island` counts
+it as the island's own silhouette and found the island's foot below the first
+card on a phone. The drawn water outside the sand is about `0.7` wide on every
+bearing, so that is how long a jetty can be, and boats moor broadside because a
+hull is 1.26 long and does not fit bow-out in 0.7 of water at any scale.
+
+`tests/render.py:island` measures every part of the dock against those
+outlines: nothing inside the grass, and no boat short of the waterline. They
+are separate assertions because they fail separately — a boat can clear the
+grass and still be a hull sitting on wet sand, which is exactly what the one
+un-buried boat was.
 
 **Without WebGL the page draws the island as it always did.** `.has-3d` is set
 only once a model is actually up, so the drawn world is hidden exactly when it
