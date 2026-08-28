@@ -40,5 +40,5 @@ def test_the_installed_client_actually_has_it():
     from switchboard.client import Client
 
     assert hasattr(Client, "whisper"), (
-        "agent-switchboard >=1.2.2 is required: `whisper` is the only name the "
+        "agent-switchboard >=1.2.3 is required: `whisper` is the only name the "
         "MCP surface carries, and the manager deals through it")
