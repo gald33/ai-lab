@@ -248,6 +248,15 @@ mount is read-only, and the seeds live one directory *above* what is mounted.
 Re-run those four checks after any change to this block — "be careful with the
 web root" is not a check.
 
+## Saying something in the room, and knowing it arrived
+
+Anything an operator or an agent posts to a Switchboard room — a note to the
+other side, a status line, a question — is worth sending the way
+[`switchboard-a-post-that-printed-is-not-a-post-that-landed.md`](../switchboard-a-post-that-printed-is-not-a-post-that-landed.md)
+describes: **body before options, body in a file, and read the channel back.**
+`posted #45995 to coord` means a request succeeded, not that anybody can read
+what you meant to say.
+
 ## Whether it is healthy
 
 - **The page's timestamp**: it is rewritten every poll (a few seconds), so a
