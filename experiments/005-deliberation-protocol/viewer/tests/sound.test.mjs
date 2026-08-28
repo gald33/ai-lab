@@ -119,6 +119,11 @@ test("a production is heard at its site, and the bell takes the fire up", () => 
   s.last.clear(); s.recent = [];
   s.play({ kind: "offer", made: {} });
   assert.equal(flared, 1, "an offer touches neither");
+  let rose = 0;
+  s.bed.sunrise = () => { rose++; };
+  s.last.clear(); s.recent = [];
+  s.play({ kind: "open" });
+  assert.equal(rose, 1, "and a day opening is the sun coming up");
   s.bed.dispose();
 });
 

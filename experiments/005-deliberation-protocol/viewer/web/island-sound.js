@@ -162,6 +162,11 @@ export class Sound {
       for (const good of Object.keys(event.made || {})) this.bed?.working(good);
     } else if (event.kind === "bell") {
       this.bed?.flare();
+    } else if (event.kind === "open") {
+      //: The day's open is the one event whose sound is almost entirely the
+      //: world's: the sun coming up over six seconds, with the accent above
+      //: only the breath underneath it.
+      this.bed?.sunrise();
     }
     try { voice(this.ctx, this.accent, this.ctx.currentTime); return true; }
     catch (err) { console.warn("the island went quiet", err); return false; }
@@ -262,13 +267,15 @@ const VOICES = {
     }
   },
 
-  //: A day opening: the same partials from underneath, quiet and slow, more
-  //: light than event.
+  //: **A day opening is the sunrise, and the sunrise is on the bed.** This
+  //: was three notes over 0.9s, which is a chime saying "morning" rather than
+  //: a morning: `Ambience.sunrise()` takes six seconds, brightens as it grows
+  //: and brings the birds with it, and it is fired from `Sound.play` beside
+  //: this. What is left here is the first breath under it -- one low note,
+  //: slower than any other accent, that the swell comes up through.
   open(ctx, out, t) {
-    for (const [f, at] of [[261.63, 0], [392.00, 0.08], [523.25, 0.16]]) {
-      tone(ctx, out, { freq: f, at: t + at, dur: 0.7, peak: 0.09,
-                       type: "sine", attack: 0.12 });
-    }
+    tone(ctx, out, { freq: 87.31, at: t, dur: 2.4, peak: 0.07,
+                     type: "sine", attack: 0.5 });
   },
 };
 
