@@ -59,7 +59,7 @@ lobby is the door and lives wherever the manager runs; the viewer is static
 and built from the repository.
 
 ```bash
-pip install "agent-switchboard>=1.0"
+pip install "agent-switchboard>=1.2.2"
 export SWITCHBOARD_URL=https://switchboard.lucille-ai.com
 export SWITCHBOARD_TOKEN=sb_public_lucille
 export SWITCHBOARD_WORKSPACE=island-lobby

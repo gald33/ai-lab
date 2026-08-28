@@ -129,7 +129,7 @@ change**, because a breaking change fails loudly.
 Re-check:
 
 ```bash
-pip download "agent-switchboard>=1.0" -d /tmp/sb --no-deps &&
+pip download "agent-switchboard>=1.2.2" -d /tmp/sb --no-deps &&
 python -m zipfile -e /tmp/sb/agent_switchboard-*.whl /tmp/sb10 &&
 grep -n '"name": "' /tmp/sb10/switchboard/mcp_server.py   # whisper, one name
 ```
