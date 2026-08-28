@@ -1134,6 +1134,62 @@ LAND_JS = """
 """
 
 
+#: **Which pixels are land, asked of the model instead of of the colour.**
+#:
+#: `LAND_JS` above guesses from the pixel: blue enough is water, anything else
+#: is land. It was a fair guess while the sea was the only blue thing on the
+#: page, and it is the reason a sunset could not be put on the water -- warm
+#: the sea and it stops being blue, so every check that separates island from
+#: sea starts counting the water behind a card as island. Measured: a sea at
+#: `0x5c4a63` produced 29 failures, cards and chrome "standing on the island"
+#: across every window shape, and the honest reading of that was not that the
+#: colour was wrong but that the classifier was.
+#:
+#: The island already knows the answer. The open sea is one mesh on its own
+#: layer -- it is the backdrop pass -- and the shore water is modelled
+#: separately: `shallows`, `surf_ring`, the `swell` sheet and the dolphins.
+#: So this hides the water and renders once: whatever still puts down a pixel
+#: is land, whatever does not is water, and the colour of either is free to be
+#: anything. The mask is 1 byte per pixel of the *stage canvas*, in that
+#: canvas's own resolution, and `maskAt` maps a point in canvas pixels onto it.
+#:
+#: Costs a render and restores what it hid, exactly as `twilight` does when it
+#: hides everything but the grass. It needs `window.__island`, which is the one
+#: thing this file otherwise avoids -- but a mask built from the model is a
+#: better statement of "this pixel is land" than a threshold on how blue it is,
+#: and the pixels it selects are still the pixels a viewer sees.
+MASK_JS = """
+  const WATER_RE = /^(sea|shallows|surf_ring|swell|dolphin_)/;
+  const landMask = (st) => {
+    const hidden = [];
+    st.island.traverse((n) => {
+      if (!n.isMesh || !n.visible) return;
+      for (let o = n; o; o = o.parent) {
+        if (o.name && WATER_RE.test(o.name)) { n.visible = false; hidden.push(n); return; }
+      }
+    });
+    st.render();
+    const cv = st.canvas;
+    const g = document.createElement('canvas');
+    g.width = cv.width; g.height = cv.height;
+    const c = g.getContext('2d');
+    c.drawImage(cv, 0, 0);
+    const d = c.getImageData(0, 0, cv.width, cv.height).data;
+    const m = new Uint8Array(cv.width * cv.height);
+    for (let i = 0, k = 0; i < d.length; i += 4, k++) m[k] = d[i + 3] > 40 ? 1 : 0;
+    hidden.forEach((n) => { n.visible = true; });
+    st.render();
+    return { m, w: cv.width, h: cv.height };
+  };
+  //: A point in stage-canvas pixels, which is what every caller has.
+  const maskAt = (mask, x, y) => {
+    const px = Math.max(0, Math.min(mask.w - 1, Math.round(x)));
+    const py = Math.max(0, Math.min(mask.h - 1, Math.round(y)));
+    return mask.m[py * mask.w + px] === 1;
+  };
+"""
+
+
 #: Reading the model's own pixels. Everything the life layer does is in the
 #: canvas and none of it is in the DOM, so the alternative was a test handle on
 #: the shipped page -- and a check that measures what a viewer sees is better
@@ -1145,17 +1201,29 @@ LAND_JS = """
 #: that goes *bluer* as the sun sets -- the fill is the sea's own colour and
 #: dusk turns it indigo -- so an average over the whole canvas is mostly water
 #: fighting the thing being measured, and the island's warming at dusk came out
-#: as no change at all. `LAND_JS` is the same classifier the card checks use.
-SAMPLE = """() => {""" + LAND_JS + """
+#: as no change at all.
+#:
+#: **Which pixels are land comes from `landMask`, not from their colour**, so
+#: that warming the sea at dusk does not quietly move the island's own pixels
+#: into the average. Falls back to `LAND_JS` on a page with no model, which is
+#: the drawn island -- there the sea really is the only blue thing and the
+#: guess is sound.
+SAMPLE = """() => {""" + LAND_JS + MASK_JS + """
   const cv = document.getElementById('stage');
+  const st = window.__island;
+  const mask = st ? landMask(st) : null;
   const s = document.createElement('canvas');
   s.width = 96; s.height = Math.max(1, Math.round(96 * cv.height / cv.width));
   const g = s.getContext('2d');
   g.drawImage(cv, 0, 0, s.width, s.height);
   const px = g.getImageData(0, 0, s.width, s.height).data;
+  const kx = cv.width / s.width, ky = cv.height / s.height;
   let lum = 0, warm = 0, lit = 0;
   for (let i = 0; i < px.length; i += 4) {
-    if (!LAND(px, i)) continue;
+    const p = i / 4, sx = p % s.width, sy = (p - sx) / s.width;
+    const land = mask ? (px[i + 3] > 40 && maskAt(mask, (sx + 0.5) * kx, (sy + 0.5) * ky))
+                      : LAND(px, i);
+    if (!land) continue;
     lit++;
     lum += (px[i] + px[i + 1] + px[i + 2]) / 3;
     warm += px[i] - px[i + 2];          // red over blue: how warm the light is
@@ -1319,8 +1387,9 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
                              ".classList.contains('has-3d')"):
             page.close()
             continue
-        seen = page.evaluate("""() => {""" + LAND_JS + """
+        seen = page.evaluate("""() => {""" + LAND_JS + MASK_JS + """
           const cv = document.getElementById('stage');
+          const mask = window.__island ? landMask(window.__island) : null;
           const s = document.createElement('canvas');
           s.width = cv.width; s.height = cv.height;
           s.getContext('2d').drawImage(cv, 0, 0);
@@ -1349,11 +1418,28 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
             };
             return [chan(0), chan(1), chan(2)];
           };
-          //: Water, by the classifier the rest of the suite reads land with.
-          //: Black is *land* to it -- blue is what it excludes -- which is
-          //: exactly why a corner cleared to black fails this and passed the
-          //: alpha rule above.
-          const wet = (c) => !LAND([c[0], c[1], c[2], 255], 0);
+          //: **Water is "painted, and not the island"**, asked of the model.
+          //:
+          //: This used to be `!LAND(...)` -- water is whatever is blue enough
+          //: -- and that made the check a statement about the sea's *colour*
+          //: rather than about the frame running out of it. It cost the page a
+          //: sunset on the water: warm the sea and the corners stop being
+          //: blue, and this reports a void that is not there. Black still
+          //: fails, which is the fault it exists to catch, because a cleared
+          //: corner has no alpha and no mesh behind it either.
+          //:
+          //: The corner is sampled as a *block* and the mask is per pixel, so
+          //: the two are joined at the block's centre -- nothing is ever drawn
+          //: within twelve pixels of a corner but the water itself.
+          const dryAt = (fx, fy) => {
+            const n = 12;
+            const x = Math.round((s.width - n) * fx), y = Math.round((s.height - n) * fy);
+            const c = block(fx, fy);
+            const alpha = g.getImageData(x + (n >> 1), y + (n >> 1), 1, 1).data[3];
+            if (alpha < 250) return false;                    // a hole in the page
+            if (mask) return !maskAt(mask, x + (n >> 1), y + (n >> 1));
+            return !LAND([c[0], c[1], c[2], 255], 0);
+          };
           //: The letterbox band, if the canvas and the viewBox disagree about
           //: their shape. Computed from the two of them rather than read off
           //: the stage, which a real replay page does not expose.
@@ -1378,7 +1464,7 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
           }
           const corners = [block(0, 0), block(1, 0), block(0, 1), block(1, 1)];
           return { clear, total: px.length / 4, corners, band,
-                   dry: corners.map(wet) };
+                   dry: [dryAt(0, 0), dryAt(1, 0), dryAt(0, 1), dryAt(1, 1)] };
         }""")
         page.close()
         if seen["clear"]:
@@ -1614,57 +1700,51 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
         if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
             page.close()
             continue
-        seen = page.evaluate("""() => {""" + LAND_JS + """
+        #: The mask, not the colour: see `MASK_JS`. A card over warm water is
+        #: not a card over the island, and the old blue test could not tell
+        #: the two apart once the sea took the sunset.
+        seen = page.evaluate("""() => {""" + MASK_JS + """
           const cv = document.getElementById('stage');
           const cr = cv.getBoundingClientRect();
-          const s = document.createElement('canvas');
-          s.width = cv.width; s.height = cv.height;
-          const g = s.getContext('2d');
-          g.drawImage(cv, 0, 0);
+          const mask = landMask(window.__island);
           const sx = cv.width / cr.width, sy = cv.height / cr.height;
           return [...document.querySelectorAll('.hut')].map(hut => {
             const bg = hut.querySelector('.card-bg').getBoundingClientRect();
             const x = Math.max(0, Math.round((bg.x - cr.x) * sx));
             const y = Math.max(0, Math.round((bg.y - cr.y) * sy));
-            const bw = Math.min(s.width - x, Math.round(bg.width * sx));
-            const bh = Math.min(s.height - y, Math.round(bg.height * sy));
+            const bw = Math.min(cv.width - x, Math.round(bg.width * sx));
+            const bh = Math.min(cv.height - y, Math.round(bg.height * sy));
             const name = hut.getAttribute('data-trader');
             if (bw <= 0 || bh <= 0) return { name, over: 0, off: true };
-            const px = g.getImageData(x, y, bw, bh).data;
             let on = 0;
-            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) on++;
+            for (let j = 0; j < bh; j++)
+              for (let i = 0; i < bw; i++) if (maskAt(mask, x + i, y + j)) on++;
             return { name, over: on / (bw * bh), off: false };
           });
         }""")
-        pills = page.evaluate("""(chrome) => {""" + LAND_JS + """
+        pills = page.evaluate("""(chrome) => {""" + MASK_JS + """
           const cv = document.getElementById('stage');
           const cr = cv.getBoundingClientRect();
-          const s = document.createElement('canvas');
-          s.width = cv.width; s.height = cv.height;
-          s.getContext('2d').drawImage(cv, 0, 0);
-          const g = s.getContext('2d');
+          const mask = landMask(window.__island);
           const sx = cv.width / cr.width, sy = cv.height / cr.height;
           // What the island covers of the canvas, to divide by: a pill over a
           // tenth of a *frame* means nothing, and a pill over a tenth of the
           // island means the island is being hidden. Counted at the same
           // sampling as the pills so the two are the same measurement.
           let world = 0;
-          {
-            const px = g.getImageData(0, 0, s.width, s.height).data;
-            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) world++;
-          }
+          for (let k = 0; k < mask.m.length; k++) if (mask.m[k]) world++;
           return { world, pills: chrome.map(sel => {
             const n = document.querySelector(sel);
             if (!n || n.hidden) return null;
             const r = n.getBoundingClientRect();
             const x = Math.max(0, Math.round((r.x - cr.x) * sx));
             const y = Math.max(0, Math.round((r.y - cr.y) * sy));
-            const bw = Math.min(s.width - x, Math.round(r.width * sx));
-            const bh = Math.min(s.height - y, Math.round(r.height * sy));
+            const bw = Math.min(cv.width - x, Math.round(r.width * sx));
+            const bh = Math.min(cv.height - y, Math.round(r.height * sy));
             if (bw <= 0 || bh <= 0) return null;
-            const px = g.getImageData(x, y, bw, bh).data;
             let on = 0;
-            for (let i = 0; i < px.length; i += 4) if (LAND(px, i)) on++;
+            for (let j = 0; j < bh; j++)
+              for (let i = 0; i < bw; i++) if (maskAt(mask, x + i, y + j)) on++;
             return { sel, on };
           }).filter(Boolean) };
         }""", CHROME)
@@ -1967,7 +2047,13 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: edge of the picture and every question below is unanswerable again: the
   //: check reported the island drawn under the chrome on four frame shapes,
   //: measuring water.
-  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|dolphin_|sea$|swell$)/;
+  //: `swell` as a prefix, not `swell$`: the sun's glade is `swell_glade`, a
+  //: plane thirty-four units long lying on the open water, and it walked
+  //: straight into the trap this comment describes -- counted as coast, it put
+  //: the silhouette at the edge of the picture and reported the island drawn
+  //: under the chrome on four shapes. Everything named `swell*` is the sea's
+  //: own surface and none of it is the island's outline.
+  const WEATHER = /^(cloud_|gull_|leaf_|smoke_|puff_|dolphin_|sea$|swell)/;
   const meshes = [];
   for (const part of made.island.children) {
     if (WEATHER.test(part.name)) continue;
@@ -3707,7 +3793,7 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=15_000)
         page.wait_for_timeout(1400)
-        seen = page.evaluate("""(chrome) => {""" + LAND_JS + """
+        seen = page.evaluate("""(chrome) => {""" + LAND_JS + MASK_JS + """
           const box = (s) => { const n = document.querySelector(s);
             if (!n || n.hidden) return null;
             const r = n.getBoundingClientRect();
@@ -3725,22 +3811,26 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
           // classifier returned the whole canvas: on a 393x660 phone it made
           // the island 393x464 and its share of its own band 2.30, and every
           // island-size assertion below had been passing on arithmetic that
-          // could not fail. `LAND_JS` is the classifier `uncovered` and the
-          // card checks already use, and it puts the same island at 198x187.
+          // could not fail. The classifier is `landMask` -- the same one
+          // `uncovered` and the card checks use -- which asks the model which
+          // mesh is water rather than guessing from how blue a pixel is, and
+          // it puts the same island at 198x187.
           const cv = document.getElementById('stage');
           let drawn = null, span = null, drawnBox = null;
           if (document.querySelector('.app').classList.contains('has-3d') && cv) {
             const cr = cv.getBoundingClientRect();
+            const mask = landMask(window.__island);
             const s = document.createElement('canvas');
             s.width = 200; s.height = Math.max(1, Math.round(200 * cr.height / cr.width));
             const g = s.getContext('2d');
             g.drawImage(cv, 0, 0, s.width, s.height);
             const px = g.getImageData(0, 0, s.width, s.height).data;
+            const kx = cv.width / s.width, ky = cv.height / s.height;
             let lit = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
             for (let y = 0; y < s.height; y++) {
               let row = 0;
               for (let x = 0; x < s.width; x++) {
-                if (!LAND(px, (y * s.width + x) * 4)) continue;
+                if (!maskAt(mask, (x + 0.5) * kx, (y + 0.5) * ky)) continue;
                 row++;
                 if (x < x0) x0 = x; if (x > x1) x1 = x;
                 if (y < y0) y0 = y; if (y > y1) y1 = y;
@@ -3937,20 +4027,23 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     page.wait_for_timeout(1400)
 
     #: The island's own pixels and the cards' boxes, in one read. The island is
-    #: measured off the canvas with `LAND_JS` for the reason `mobile` now is:
-    #: the sea fills the frame, so anything with alpha is the whole canvas.
-    look = """() => {""" + LAND_JS + """
+    #: measured off the canvas with `landMask` for the reason `mobile` is: the
+    #: sea fills the frame, so anything with alpha is the whole canvas -- and
+    #: the mask asks the model which mesh is water rather than guessing from
+    #: the colour, so a sea that has gone warm at dusk is still sea here.
+    look = """() => {""" + MASK_JS + """
       const cv = document.getElementById('stage');
       const cr = cv.getBoundingClientRect();
+      const mask = landMask(window.__island);
       const s = document.createElement('canvas');
       s.width = 200; s.height = Math.max(1, Math.round(200 * cr.height / cr.width));
       const g = s.getContext('2d');
       g.drawImage(cv, 0, 0, s.width, s.height);
-      const px = g.getImageData(0, 0, s.width, s.height).data;
+      const kx = cv.width / s.width, ky = cv.height / s.height;
+      const LANDPX = (x, y) => maskAt(mask, (x + 0.5) * kx, (y + 0.5) * ky);
       let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, lit = 0;
       for (let y = 0; y < s.height; y++) for (let x = 0; x < s.width; x++) {
-        const i = (y * s.width + x) * 4;
-        if (!LAND(px, i)) continue;
+        if (!LANDPX(x, y)) continue;
         lit++;
         if (x < x0) x0 = x; if (x > x1) x1 = x;
         if (y < y0) y0 = y; if (y > y1) y1 = y;
@@ -3968,10 +4061,9 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
         const bw = Math.min(s.width - bx, Math.round(r.width * sx));
         const bh = Math.min(s.height - by, Math.round(r.height * sy));
         if (bw <= 0 || bh <= 0) return null;
-        const q = document.createElement('canvas').getContext('2d');
         let on = 0;
-        const d = g.getImageData(bx, by, bw, bh).data;
-        for (let i = 0; i < d.length; i += 4) if (LAND(d, i)) on++;
+        for (let j = 0; j < bh; j++)
+          for (let i = 0; i < bw; i++) if (LANDPX(bx + i, by + j)) on++;
         return { sel, on };
       }).filter(Boolean);
       const cards = [...document.querySelectorAll('.card-bg')]

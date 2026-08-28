@@ -1081,6 +1081,42 @@ passes that test because `afloat` does not sample there. So there is no warm
 sea to be had at the ends of the day at any strength, and the thing to change
 first, if it is ever wanted, is the classifier rather than the colour.
 
+**Then the classifier changed, and the sea got its sunset after all.** Gal,
+2026-08-28: "the classifier could be the sea layer and the shore water layer;
+the latter is modelled separately and the former is the background." That is
+the way out of the paragraph above, and it was right. The island already knows
+which mesh is water — the open sea is one mesh on its own layer and *is* the
+backdrop pass, and `shallows`, `surf_ring`, the `swell` sheet and the dolphins
+are the shore water. So `MASK_JS` in `viewer/tests/render.py` hides the water
+and renders once: whatever still puts down a pixel is land. `alive`,
+`uncovered`, `afloat`, `mobile` and `@focus` all read that instead of guessing
+from how blue a pixel is, and the sea's colour is then free.
+
+**The sunset on the water is a glade, not a tint.** Gal supplied the reference
+— a photograph of a sun path on water. A flat warm tint of the whole ocean
+reads as a stain because the sea is not evenly lit at dusk: one line of it is
+on fire and the rest stays dark. So `island-life.js` lays a long soft plane
+along the sun's own bearing, additive, on `burnAt`, in the key light's colour.
+
+**It has to be painted rather than lit, and that is a fact about this camera.**
+A glade is the sun's specular reflection, so the honest way to get one is a
+smooth water material and a low key. It cannot work here: under an
+**orthographic** camera every point on a flat plane shares one view vector, so
+the half-vector is constant and the specular term is uniform across the whole
+sea — a sheen, never a streak. The streak in a photograph is parallax, and this
+camera has none. Same root cause as the horizon: an ortho camera buys the
+affine ground-to-viewBox map that puts a hut under its card, and it costs every
+effect that depends on the view direction varying across the picture.
+
+**And one waterline.** Gal: "the shallow and deep sea should probably be on the
+same level, just different shades." They were not: the shallows slab sat with
+its top 0.16 *above* `SEA_Y`, so the lagoon was a raised plateau with a lip all
+the way round, and `surfaceAt` existed to float a boat inside it higher than
+one outside. The slab now sits below the swell's lowest trough, the swell is
+the only surface, and the shallows are what they should always have been — a
+lighter colour showing through where the water is shallow. `surfaceAt` is a
+constant.
+
 The lesson generalises past the sun: **on this island the lights are a shared
 resource and the greens have first claim on them.** Anything that wants to tint
 the whole scene should tint the one light that is actually casting, not the one

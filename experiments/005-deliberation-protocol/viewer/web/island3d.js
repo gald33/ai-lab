@@ -866,8 +866,23 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: The water follows the coast rather than a circle. A round shallows and a
   //: round line of surf against a wobbled shore put the white water a long way
   //: out on one bearing and up on the sand at another.
+  //: **Under the swell, not standing proud of it.** The shallows used to sit
+  //: at -0.05, which with the extrusion and its two bevels put their top at
+  //: 0.14 -- 0.16 *above* the open sea's surface at `SEA_Y`. The lagoon was a
+  //: raised plateau of water with a visible lip all the way round it, and a
+  //: boat inside floated a sixth of a unit higher than one outside; the note
+  //: on `surfaceAt` below used to exist to paper over exactly that.
+  //:
+  //: Reported by eye as the shallow and the deep sea wanting to be on one
+  //: level and differ only in shade, which is right: there is one waterline on
+  //: an island, and the colour of the water is a fact about its depth, not
+  //: about its height. So the slab drops until its top is below the swell's
+  //: lowest trough (`SEA_Y - 0.1`), and the swell -- one sheet, at one height,
+  //: over the whole sea -- becomes the only surface there is. What is left of
+  //: the shallows is what it should have been all along: a lighter colour
+  //: showing up through the water where the water is shallow.
   const shallows = slab(SHALLOWS.radius, 0.09, 0.05, SHALLOWS.wobble,
-                        SHALLOWS.phase, -0.05, M.sea, "shallows");
+                        SHALLOWS.phase, -0.35, M.sea, "shallows");
   //: **Water casts nothing.** `slab()` turns casting on for land, and once the
   //: lagoon was widened the shallows reached 6.11 -- past the 6 the shadow
   //: camera covers -- so its clipped shadow map drew the frustum's own edge
@@ -1341,19 +1356,14 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: shallows stand 0.10 higher than that arithmetic says. Raycasting the
   //: thing settles it, and carries a change to the slab's depth or bevel
   //: without anyone remembering to come back here.
-  //: **Per boat, because the water is not one height.** The shallows are a
-  //: raised shelf -- their top stands 0.16 above the open sea's rest -- so a
-  //: boat inside the lagoon and one outside it float at heights that differ
-  //: by more than a hull's draught. Asked at the boat's own position, which
-  //: also means nothing has to remember which side of the rim it is on.
-  const shallowsMesh = island.getObjectByName("shallows");
-  const surfaceRay = new THREE.Raycaster();
-  const surfaceAt = (x, z) => {
-    if (!shallowsMesh) return SEA_Y;
-    surfaceRay.set(new THREE.Vector3(x, 12, z), new THREE.Vector3(0, -1, 0));
-    const hit = surfaceRay.intersectObject(shallowsMesh, false)[0];
-    return hit ? hit.point.y : SEA_Y;
-  };
+  //: **One height, because there is one waterline.** This used to raycast the
+  //: shallows and float each boat on whatever it hit, because the shallows
+  //: stood 0.16 proud of the open sea and a boat inside the lagoon and one
+  //: outside it sat at heights differing by more than a hull's draught. The
+  //: shallows are under the swell now (see where the slab is built), so there
+  //: is nothing to ask: the sea is `SEA_Y` everywhere and the lagoon is a
+  //: colour rather than a shelf.
+  const surfaceAt = () => SEA_Y;
   //: Outward along the bearing until the hull's whole footprint is off the
   //: land, asked of the slabs rather than of a radius. It starts at the drawn
   //: shore and steps by a twentieth, so a berth is as close in as the water
