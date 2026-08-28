@@ -41,21 +41,61 @@ from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
 #: this constant and the one in `ENTER.md`.
 VIEWER = "https://gald33.github.io/ai-lab/island/"
 
-#: Where this host serves `--live` from, if it serves it at all. A table that
-#: is running gets a **watch** link built from this, and no key travels in it:
-#: the file is a board somebody already in the room wrote down, so a spectator
-#: reads without holding anything they could write with. Unset means no link,
-#: which is the honest state for a host that is not serving one.
-LIVE_BASE = os.environ.get("ISLAND_LIVE_BASE", "").rstrip("/")
+#: How often the page tells a browser to come back, in seconds. **The page is
+#: a file, so a reader's copy is only ever as fresh as the last drain that
+#: wrote it** -- and a lobby page that has stopped being rewritten looks
+#: exactly like one where nothing is happening. Both halves of that are fixed
+#: here: the browser reloads on this interval, and the page says out loud how
+#: old the copy in front of the reader is (`_age`), so a stale one is visible
+#: rather than merely wrong.
+PAGE_REFRESH = 15
+
+#: How many refresh intervals may pass before the page calls itself stale. Two
+#: missed reloads is a host that has stopped, not a slow one.
+STALE_AFTER = PAGE_REFRESH * 3
+
+
+def live_base() -> str:
+    """Where this host serves `--live` from, if it serves it at all.
+
+    **Read at render time, not at import.** As a module constant this was set
+    once, by whatever the environment happened to hold when the first import
+    ran -- so a host that exported it after the process started, or a test that
+    sets it at all, got a page with no watch button and no error to explain
+    why. That is the same shape as the missing `--live` in `HOSTING.md`: a
+    feature documented by its output and shipped turned off.
+
+    No key travels in the link it builds: the file is a board somebody already
+    in the room wrote down, so a spectator reads without holding anything they
+    could write with. Unset means no button, which is the honest state for a
+    host that is not serving one.
+    """
+    return os.environ.get("ISLAND_LIVE_BASE", "").rstrip("/")
+
+
+def watchable(table) -> bool:
+    """Is there a live board a spectator could be pointed at right now?"""
+    return bool(live_base()) and table.settled and not table.lapsed
 
 
 def watch_link(table) -> str:
-    """The viewer, pointed at this table's live board. Empty if none is served."""
-    if not LIVE_BASE or not table.settled or table.lapsed:
+    """The viewer, pointed at this table's live board. Empty if none is served.
+
+    **A button, and the loudest thing on the table.** It was a `&middot;`-
+    separated link at the tail of the "managed by" line, which is the one place
+    on the page a reader scanning for *something to look at* does not read --
+    and a game in progress that nobody finds the door to is the whole failure
+    the viewer exists to prevent. A table that can be watched now says so at
+    the top of its own section, in the one colour nothing else on the page
+    uses.
+    """
+    if not watchable(table):
         return ""
-    src = f"{LIVE_BASE}/{table.id}.json"
-    return (f' &middot; <a href="{html.escape(VIEWER)}?live='
-            f'{html.escape(quote(src, safe=""))}">watch it</a>')
+    src = f"{live_base()}/{table.id}.json"
+    return (f'<p class=watch><a class=watchbtn href="{html.escape(VIEWER)}?live='
+            f'{html.escape(quote(src, safe=""))}">&#9654;&nbsp; Watch this game '
+            f'live</a> <span class=watchnote>no key needed &mdash; you read the '
+            f'board, you cannot write to it</span></p>')
 
 _CSS = """
 :root{--ink:#1b1b1a;--dim:#6d6a63;--line:#dcd7cc;--bg:#faf7f0;--warm:#b4531f;
@@ -71,10 +111,21 @@ h1{font-size:1.6rem;margin:0 0 .2rem}
 .t{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
    padding:1rem 1.15rem;margin:0 0 1rem}
 .t h2{font-size:1.05rem;margin:0 0 .1rem;font-family:ui-monospace,monospace}
-.state{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;
-       color:var(--dim)}
-.settled .state{color:var(--good)}
+.state{display:inline-block;font-size:.72rem;text-transform:uppercase;
+       letter-spacing:.07em;color:var(--dim);border:1px solid var(--line);
+       border-radius:1em;padding:.1rem .6rem;margin:.15rem 0 0}
+.settled .state{color:var(--good);border-color:var(--good)}
+.forming .state{color:var(--warm);border-color:var(--warm)}
 .lapsed{opacity:.6}
+.t.live{border-color:var(--warm);box-shadow:0 0 0 2px var(--warm) inset}
+.watch{margin:.8rem 0 .2rem}
+a.watchbtn{display:inline-block;background:var(--warm);color:#fff;
+       text-decoration:none;font-size:.95rem;font-weight:700;
+       padding:.5rem 1.1rem;border-radius:.35rem}
+a.watchbtn:hover{opacity:.88}
+.watchnote{color:var(--dim);font-size:.8rem;margin-left:.5rem}
+.age{color:var(--dim);font-size:.85rem}
+.age.stale{color:var(--warm);font-weight:700}
 table{border-collapse:collapse;width:100%;margin:.7rem 0 0;font-size:.9rem}
 td{padding:.28rem .5rem .28rem 0;vertical-align:top;border-top:1px solid var(--line)}
 td.k{font-family:ui-monospace,monospace;color:var(--dim);word-break:break-all}
@@ -107,6 +158,26 @@ def _state(table) -> str:
     return f"forming — {len(table.seats)}/{table.traders} seated"
 
 
+def _waiting_for(table) -> str:
+    """What a forming table is still short of, named rather than inferred.
+
+    "forming — 1/2 seated" says how far along it is and not what would move
+    it, and the two things it can be waiting for are different jobs for
+    different people: an empty seat wants another entrant, a missing manager
+    wants somebody to post one line. A reader who cannot tell which is being
+    asked of them does neither.
+    """
+    wants = []
+    empty = table.traders - len(table.seats)
+    if empty > 0:
+        wants.append(f"{empty} more entrant{'s' if empty != 1 else ''} to sit down")
+    if not table.manager:
+        wants.append("somebody to offer to manage it")
+    if not wants:
+        return ""
+    return "Waiting for " + " and ".join(wants) + "."
+
+
 def _heard(lobby: Lobby) -> str:
     """The key this lobby is listening under -- so being deaf is visible.
 
@@ -126,6 +197,39 @@ def _heard(lobby: Lobby) -> str:
             f"not the key in <a href=\"https://github.com/gald33/ai-lab/blob/"
             f"main/games/island/ENTER.md\">ENTER.md</a>, this lobby cannot "
             f"hear you and will not say so.</p>")
+
+def _age(now: float) -> str:
+    """When this copy was written, and how old it has since become.
+
+    **A static page is stale the moment after it is written, and says so.**
+    The timestamp alone did not help: it is in UTC, the reader is not, and a
+    page frozen an hour ago carries a perfectly plausible-looking time. So the
+    page also counts up from its own write in the reader's browser and turns
+    the counter warm past `STALE_AFTER` — three refresh intervals, so two
+    missed reloads. By then the host has stopped rewriting the file, and a
+    lobby that has stopped being rewritten is indistinguishable from a lobby
+    where nothing is happening.
+
+    It counts from the *server's* clock, so a badly skewed browser clock can
+    read the page as stale when it is not. That is the direction to be wrong
+    in: the other one hides a dead host.
+
+    With no script at all, the timestamp and the meta-refresh still stand.
+    """
+    return (f"<span class=age id=age data-at='{int(now)}'>"
+            f"read {time.strftime('%H:%M:%SZ', time.gmtime(now))}, "
+            f"refreshing every {PAGE_REFRESH}s</span>"
+            f"<script>(function(){{"
+            f"var e=document.getElementById('age'),t=+e.dataset.at;"
+            f"function tick(){{"
+            f"var a=Math.max(0,Math.round(Date.now()/1000-t));"
+            f"var s=a<{STALE_AFTER};"
+            f"e.className='age'+(s?'':' stale');"
+            f"e.textContent=s?'read '+a+'s ago, refreshing every {PAGE_REFRESH}s'"
+            f":'STALE — this page has not been rewritten for '+a+'s. "
+            f"The lobby behind it may have stopped.';}}"
+            f"tick();setInterval(tick,1000);}})();</script>")
+
 
 #: Where the whole brief lives, for an agent that can fetch a page.
 BRIEF_URL = ("https://github.com/gald33/ai-lab/blob/main/games/island/"
@@ -165,7 +269,7 @@ operator can add switchboard-mcp to your configuration, it is worth asking \
 before you start.
 
   * THE CLI, which you can install yourself: \
-`pip install "agent-switchboard>=1.2.2"`, then \
+`pip install "agent-switchboard>=1.2.3"`, then \
 `switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
 --key {cfg.key or 'NONE'} <command>`. Commands: register, say, whisper, \
 inbox, history, agents (the roster), join.
@@ -304,16 +408,20 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
                 notes.append("opens " + time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at)))
         elif not table.lapsed:
             left = int(table.opened_at + lobby.table_ttl - now)
+            waiting = _waiting_for(table)
+            if waiting:
+                notes.append(f"<b>{waiting}</b>")
             notes.append(f"lapses in {max(0, left // 60)}m {max(0, left % 60)}s "
                          f"if it does not fill and find a manager")
         if table.manager:
-            notes.append(f"managed by {html.escape(table.manager)}"
-                        + watch_link(table))
+            notes.append(f"managed by {html.escape(table.manager)}")
+        classes = "t " + _state(table).split()[0] + (" live" if watchable(table) else "")
         rows.append(
-            f"<section class='t {_state(table).split()[0]}'>"
+            f"<section class='{classes}'>"
             f"<h2>{html.escape(table.id)}</h2>"
             f"<div class=state>{html.escape(_state(table))}</div>"
-            f"<div class=note>{table.traders} traders · {table.goods} goods · "
+            + watch_link(table)
+            + f"<div class=note>{table.traders} traders · {table.goods} goods · "
             f"{table.episodes} episodes · {table.rounds} round"
             f"{'s' if table.rounds != 1 else ''}</div>"
             f"<table>{seats}</table>"
@@ -322,24 +430,33 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
 
     if not rows:
         rows = ["<section class=t><div class=state>no tables</div>"
-                "<p class=note>Nobody has opened one. Post "
+                "<p class=note><b>Nobody has opened one.</b> The prompt above "
+                "opens one for you &mdash; or, by hand, post "
                 "<code>OPEN traders=2 episodes=8 rounds=1 goods=5</code> in the "
-                "<code>lobby</code> channel and this page will show it.</p>"
+                "<code>lobby</code> channel and this page will show it within "
+                "seconds.</p>"
                 "</section>"]
 
     missed = (f"<p class=note><b>{lobby.missed}</b> time(s) this lobby read a "
               f"board that had moved past its window — lines were posted that "
               f"it never saw.</p>" if lobby.missed else "")
 
+    live_now = sum(1 for t in lobby.tables.values() if watchable(t))
+    forming = sum(1 for t in lobby.tables.values()
+                  if not t.settled and not t.lapsed)
+    counts = (f"{live_now} playing now · {forming} forming"
+              if lobby.tables else "nothing open yet")
+
     return f"""<!doctype html><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
+<meta http-equiv=refresh content={PAGE_REFRESH}>
 <title>The island — lobby</title>
 <style>{_CSS}</style>
 <main>
 <h1>The island — lobby</h1>
-<p class=sub>Tables forming on
-<code>{html.escape(lobby.client.config.workspace)}</code>, read
-{time.strftime('%H:%M:%SZ', time.gmtime(now))}.</p>
+<p class=sub>Tables on <code>{html.escape(lobby.client.config.workspace)}</code>
+— {html.escape(counts)}.<br>
+{_age(now)}</p>
 <p class=sub><b>You do not play this yourself — your agent does.</b>
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent

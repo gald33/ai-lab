@@ -24,8 +24,12 @@ import { seatRing } from "./seats.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
+//: Iron's pickaxe is U+26CF, which is a *text* codepoint by default: without
+//: the variation selector it renders as a black monochrome glyph and vanishes
+//: into the agent card's dark background. The trailing U+FE0F asks for the
+//: colour emoji, like every other good here already gets by default.
 export const GLYPH = {
-  bread: "🍞", cloth: "🧵", iron: "⛏", salt: "🧂",
+  bread: "🍞", cloth: "🧵", iron: "⛏️", salt: "🧂",
   fish: "🐟", grain: "🌾", timber: "🪵",
 };
 
@@ -759,6 +763,13 @@ export class Scene {
     //: takes a different share of it -- a phone's pill rows are a fixed number
     //: of pixels, so a shorter window is a bigger band at the same aspect.
     this.chrome = chrome;
+    //: Which offers a refusal is currently blinking, and until when. The ropes
+    //: are rebuilt from scratch on every paint (`paint()` calls
+    //: `replaceChildren`), so a class put on one by `refuse()` is gone by the
+    //: next frame -- which did not show while the bubble over the hut was
+    //: carrying the message, and is the whole indicator now. Held here and
+    //: re-applied by `rope()` for as long as the mark is meant to be up.
+    this.noUntil = new Map();
     //: Which of the island and the cards this viewer asked for. Portrait only:
     //: landscape has margins for the cards and the two are not competing.
     this.focus = focus;
@@ -2001,7 +2012,30 @@ export class Scene {
     g.append(chip);
     if (prog >= 1) g.classList.add("delivered");
     else this.ride();
+    //: A rope rebuilt while its refusal is still on screen is re-marked here,
+    //: or the blink would last one frame.
+    if ((this.noUntil.get(p.pid) || 0) > performance.now()) this.markNo(g);
     return g;
+  }
+
+  /**
+   * The red answer, on one rope: the classes and the ✗ that rides its pill.
+   *
+   * Marked on the **live** rope rather than on a copy, since a refusal does not
+   * close the offer and a red copy laid over the orange original would blink to
+   * the wrong colour between flashes.
+   */
+  markNo(g, reason = "") {
+    g.classList.add("answered", "refused");
+    const chip = g.querySelector(".rope-chip");
+    if (!chip || chip.querySelector(".chip-no")) return;
+    const bg = chip.querySelector(".chip-bg");
+    const x = Number(bg?.getAttribute("width") || 104) / 2 + 13;
+    const no = el("g", { class: "chip-no", transform: `translate(${x} 0)` });
+    const why = reason || this.noWhy || "";
+    if (why) no.append(el("title", {}, why));
+    no.append(el("path", { class: "chip-cross", d: "M -6 -6 L 6 6 M 6 -6 L -6 6" }));
+    chip.append(no);
   }
 
   // --- what an event looks like ---------------------------------------------
@@ -2013,10 +2047,17 @@ export class Scene {
       // A symbol, and the reason kept as the badge's title rather than printed
       // over the sand. What the manager wrote is in the ticker; the island says
       // *that* it refused, and whose.
-      case "refused":
+      case "refused": {
         this.blame(event.trader, event.reason);
-        this.refuse(event.trader, event.reason);
-        return this.mark(event.trader, "bad", event.reason);
+        //: The red blink on the offer *is* the refusal (Gal, 2026-08-28). The
+        //: bubble over the hut said the same thing a second time, further from
+        //: the square than the thing it was about, so it is kept only for the
+        //: refusals that have no rope to blink -- a refusal at proposal time is
+        //: about an offer that does not exist yet, and something must still say
+        //: it happened.
+        const blinked = this.refuse(event.trader, event.reason);
+        return blinked ? undefined : this.mark(event.trader, "bad", event.reason);
+      }
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
       case "said": return event.attempt ? undefined : this.mark(event.author, "talk");
@@ -2075,28 +2116,40 @@ export class Scene {
    *
    * `blame()` says which *stock* the trader came up short in; this says which
    * offer the manager would not settle -- the one thing a spectator watching
-   * the square is looking for when a ✗ goes up. Only offers the manager itself
+   * the square is looking for. It is the whole indicator: the badge over the
+   * hut is drawn only when this finds nothing, so this returns whether it did.
+   * Only offers the manager itself
    * named, or the offer it was answering: a refusal at proposal time is about
    * an offer that does not exist yet, and there is nothing on the square to
    * blink.
    */
   refuse(who, reason = "") {
-    const held = [];
-    for (const p of refused(this.state?.proposals, who, reason)) {
-      const rope = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
-      // Marked on the live rope rather than on a copy: the offer is still open
-      // -- a refusal does not close it -- and a red copy laid over an orange
-      // original would blink to the wrong colour between flashes.
-      if (rope) { rope.classList.add("answered", "refused"); held.push(rope); }
+    const pids = refused(this.state?.proposals, who, reason).map((p) => p.pid);
+    if (!pids.length) return false;
+    //: An ✗ on the pill as well as the colour: red alone is a colour a viewer
+    //: reads as "an answer", and the cross is *which* answer. It carries the
+    //: manager's reason as its `<title>`, which is where the badge kept it.
+    this.noWhy = reason;
+    const until = performance.now() + DWELL.refused;
+    for (const pid of pids) {
+      this.noUntil.set(pid, until);
+      const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
+      if (rope) this.markNo(rope, reason);
     }
-    if (!held.length) return;
     //: On a timer, as `blame()` is, and for the same reason: under reduced
     //: motion there is no animation to hang the clean-up off, and the reader
-    //: still needs the colour for as long as the badge is up.
+    //: still needs the colour for as long as the mark is meant to be up.
     clearTimeout(this.refuseTimer);
     this.refuseTimer = setTimeout(() => {
-      for (const rope of held) rope.classList.remove("answered", "refused");
+      for (const pid of pids) {
+        this.noUntil.delete(pid);
+        const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
+        if (!rope) continue;
+        rope.classList.remove("answered", "refused");
+        rope.querySelector(".chip-no")?.remove();
+      }
     }, DWELL.refused);
+    return true;
   }
 
   /**

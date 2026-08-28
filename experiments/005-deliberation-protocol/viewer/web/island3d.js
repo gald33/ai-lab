@@ -246,6 +246,21 @@ function lander(island) {
  * assumed. `tests/render.py:island` fails on any part of the dock that is not
  * where this says it is.
  */
+/**
+ * A point in open water on a bearing: half way between the wet sand and the
+ * shallows' edge, which is where something that floats belongs.
+ *
+ * Both ends are read on the bearing rather than taken as radii, and the inner
+ * one is the *outer* of the sand and the grass, because on some bearings the
+ * meadow reaches past the beach -- see `dockAxis`, which was caught by that.
+ */
+export function midWater(bearing) {
+  const ux = Math.cos(bearing), uz = Math.sin(bearing);
+  const r = (Math.max(shelfEdge(ux, uz), meadowEdge(ux, uz))
+             + shallowsEdge(ux, uz)) / 2;
+  return { r, x: ux * r, z: uz * r };
+}
+
 export function dockAxis(bearing, scale = 1) {
   const ux = Math.cos(bearing), uz = Math.sin(bearing);
   //: **Against whichever outline reaches furthest, not against the beach's.**
@@ -566,17 +581,16 @@ function boat(i, sailMat) {
   //: it is exactly what was drawn: the hull is the *lower* half of a sphere
   //: (`phiStart = PI/2`), its rim at y = 0.1 and its floor below the
   //: waterline, so the shallows' own surface passed straight through the
-  //: opening. A floor just under the rim is what a boat has, and it has to
-  //: sit above the water rather than merely inside the hull -- the slab's top
-  //: is at y = 0.04 and this lands at 0.124 with the boat at its mooring,
-  //: still 0.089 at the bottom of `island-life`'s bob.
-  //: **Low enough to leave a gunwale standing above it.** At 0.075 the floor
-  //: was two hundredths under the rim, so from the page's camera the boat was
-  //: a flat disc inside a ring -- a lily pad with a flag on it. Dropped to
-  //: 0.03 there is a visible depth of hull to see into, which is what tells a
-  //: spectator it is a boat and not a marker. It still has to clear the
-  //: water: at the mooring this sits 0.10 up against a surface at 0.04, and
-  //: 0.07 at the bottom of `island-life`'s bob.
+  //: opening.
+  //:
+  //: **And low enough to leave a gunwale standing above it.** The first floor
+  //: sat at 0.075, two hundredths under the rim, which stopped the water
+  //: showing through and left a flat disc inside a ring -- a lily pad with a
+  //: flag on it, reported by eye in its turn. At 0.03 there is a visible
+  //: depth of hull to see into, which is what says boat rather than marker.
+  //: It still has to clear the water: the slab's top is at 0.04, this lands
+  //: at 0.10 with the boat at its mooring, and 0.07 at the bottom of
+  //: `island-life`'s bob.
   add(g, new THREE.CircleGeometry(0.26, 24), M.timber, `boat_${i}_deck`,
     [0, 0.03, 0], [-Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
@@ -1200,8 +1214,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //:
   //: So a berth is a bearing, and the spacing is arc length: each hull needs
   //: `2 * halfLen + gap` of coast, which at this radius is an angle. Slots
-  //: alternate sides and start three-quarters of a slot out, so the jetty
-  //: keeps a slot of its own and no boat is laid across it.
+  //: alternate sides, and the rows interleave -- see `berth` below, which
+  //: owns how far out the first slot has to start for the jetty to keep its
+  //: own water.
   //: 0.75 -- what lets two rows of them fit the lagoon's 1.15 at this bearing
   //: rather than one long arc of them round the island.
   const BOAT_SCALE = 0.75;

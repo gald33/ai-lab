@@ -83,7 +83,7 @@ TOOLS = ["mcp__switchboard__checkin", "mcp__switchboard__say",
          # game it plays badly.
          #
          # `whisper` is the only name this repo knows. It went by another
-         # before 1.0.0, and the pin is `>=1.2.2`, so an allowlist naming the
+         # before 1.0.0, and the pin is `>=1.2.3`, so an allowlist naming the
          # old one would only be arming a release we do not run against.
          "mcp__switchboard__whisper",
          "mcp__switchboard__whoami", "Bash(sleep:*)"]

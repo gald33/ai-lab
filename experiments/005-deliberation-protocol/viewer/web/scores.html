@@ -75,6 +75,7 @@ details.how div { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
     <nav class="tabs">
       <a href="./">Island</a>
       <a href="scores.html" class="on">High scores</a>
+      <a href="https://island.lucille-ai.com/" rel="noopener">Lobby</a>
     </nav>
   </div>
 
@@ -158,8 +159,16 @@ const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toF
 // The scores are fractions of what was on offer; a person reads them as a
 // percentage, so that is what the page shows. The fraction is still there in
 // the tooltip for anybody who wants it.
-const pct = (x) => (x === null || x === undefined ? "—"
-  : `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(0)}%`);
+const pct = (x) => {
+  if (x === null || x === undefined) return "—";
+  const n = Math.abs(x * 100);
+  // A whole-number percent is what a person wants to read, except just below
+  // the frontier: 99.5% rounds to "+100%", and this page says 100% means
+  // nothing was left on the table. A game that left something must not print
+  // the number that says it did not.
+  const shown = n >= 99.5 && n < 100 ? n.toFixed(1) : n.toFixed(0);
+  return `${x >= 0 ? "+" : "−"}${shown}%`;
+};
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 // Four traders from one entrant is one name four times, which reads as four
 // entrants until you look. Say it once, with the count.
@@ -186,9 +195,15 @@ function diverging(value) {
   </div>`;
 }
 const day = (stamp) => (stamp ? stamp.slice(0, 16).replace("T", " ") : "—");
-// When it was played; a round whose board was not kept falls back to when it
-// was written down, and says so rather than passing one off as the other.
-const when = (r) => (r.played_at ? day(r.played_at) : `recorded ${day(r.recorded_at)}`);
+// When it was played, and how well that is known. Off the board is exact; off
+// the manager's own stamp for the round is good to the minute but was written
+// by the runner rather than witnessed, so it says "about"; and a round that
+// says nothing about when it ran falls back to when it was written down and
+// says so, rather than passing one off as the other.
+const when = (r) => {
+  if (!r.played_at) return `recorded ${day(r.recorded_at)}`;
+  return r.played_from === "run_stamp" ? `about ${day(r.played_at)}` : day(r.played_at);
+};
 
 const state = await fetch("api/scores", { cache: "no-store" })
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
@@ -258,7 +273,7 @@ function record(best, title, scope) {
         bigger share of what its island had on offer.</div>
       <div>Played by <span class="holder">${roster(best.by)}</span>
         on <strong>${format(best)}</strong>
-        <span class="sub">· ${day(best.played_at)}</span></div>
+        <span class="sub">· ${when(best)}</span></div>
       <div class="sub">A record rather than a rank: it beat the
         ${plural(best.first_of, "game")} that played its own size of island, and
         the other formats were never a race it could run${best.rounds > 1
@@ -282,7 +297,7 @@ function playerRecord(best, title, scope) {
       <div><span class="holder">${best.id}</span> ended a game with
         <strong>${best.best.toFixed(2)}×</strong> what they would have had trading
         with nobody${best.level ? ` — on ${format({agents: best.level[0], goods: best.level[1], episodes: best.level[2]})}` : ""}
-        <span class="sub">· ${day(best.played_at)}</span></div>
+        <span class="sub">· ${when(best)}</span></div>
       <div class="sub">Their best day ${scope}, out of ${plural(best.games, "game")} across
         ${plural(best.levels, "format")}; they usually end at
         ${best.median.toFixed(2)}×${others.length
@@ -305,7 +320,7 @@ function games(list) {
           ? `<div class="sub">${plural(g.rounds, "round")}, scored on the middle one</div>` : ""}</td>
         <td>${g.place} of ${g.of}</td>
         <td class="id">${roster(g.by)}</td>
-        <td class="left sub">${day(g.played_at)}</td>
+        <td class="left sub">${when(g)}</td>
       </tr>`).join("")
       : `<tr><td colspan="6" class="empty">no game on the board in this window</td></tr>`);
   $("games-more").textContent = list.length > TOP
@@ -344,7 +359,7 @@ function levels(list) {
       <div class="meter-legend"><span>much worse than not trading</span>
         <span>no trade</span><span>perfect</span></div>
       <div class="who">record held by <span class="holder">${roster(i.by)}</span>
-        <span class="sub">· ${day(i.played_at)}</span></div>
+        <span class="sub">· ${when(i)}</span></div>
       <div class="sub" style="margin-top:6px">
         ${i.ranked} of ${plural(i.attempts, "game")} on the board${i.game_rounds > 1
           ? ` · the record is a ${plural(i.game_rounds, "round")} game` : ""} ·

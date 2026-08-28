@@ -81,15 +81,16 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
-**The pin is `>=1.2.2`, one number for everybody.** It briefly had two floors
+**The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
 problem it described: a reader had to work out which of two numbers applied to
 them before they could install anything. The higher one covers both reasons,
 and the reasons are in `requirements.txt` beside the pin: **1.0** is where
 `whisper` arrived (an older release settles tables and then fails while dealing
-them), and **1.2.2** is where `say <channel> --thread X "msg"` stopped
+them), **1.2.2** is where `say <channel> --thread X "msg"` stopped
 rejecting the message instead of posting it — which is a thing this document
-tells you to do.
+tells you to do — and **1.2.3** is where CLI `inbox` stopped destroying
+whispers it could not open, which is the entrant's own reading path.
 
 **Order matters when updating**: install first, then restart. The manager is
 what writes the ending — the board and reveal copies, and the official score it
@@ -155,13 +156,55 @@ they share a host: neither needs the other to be up, and putting them together
 would tie a game in progress to a docs deploy.
 
 What they owe each other is a **link**, which each now carries —
-`lobby_page.VIEWER` and the line in [`ENTER.md`](ENTER.md). Two live surfaces
+`lobby_page.VIEWER` and the line in [`ENTER.md`](ENTER.md) pointing at the
+viewer, and the viewer's own 🚪 button pointing back here (in the chrome of
+`viewer/web/index.html`, and in the scoreboard's tabs). Two live surfaces
 with no path between them is a door into a room nobody can see, and a
 spectacle nobody can find the door to.
+
+**The lobby's address is written in the viewer's HTML, not fetched.** The
+viewer is static files built by Pages and has nothing to read a constant out
+of; a host that moves the lobby off `island.lucille-ai.com` edits those two
+links, the same way it would edit `lobby_page.VIEWER` after moving the
+viewer.
 
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
+
+### `ISLAND_LIVE_BASE`: the watch button, and the second flag shipped off
+
+Set it to the **public URL `--live` is served from**, and every table that is
+playing gets a **Watch this game live** button on the lobby page, pointed at
+the viewer with `?live=<that base>/<table>.json`:
+
+```
+ISLAND_LIVE_BASE=https://island.lucille-ai.com/live
+```
+
+Unset, there is no button — which is honest for a host serving no live
+directory, and *silent* for one that is. That is the same shape as the missing
+`--live` line above, so it is written here beside it: **a host that serves the
+files and never exports this runs games nobody can be pointed at.**
+
+It is now read at render time rather than at import (2026-08-28). As a module
+constant it was fixed by whatever the environment held when the first import
+ran — so a unit that set it later, or an operator who exported it into a
+running process, got a page with no button and nothing to explain why.
+
+### The page says how old it is
+
+The page is a file, rewritten every poll, so a reader's copy is only ever as
+fresh as the last drain — and **a lobby page that has stopped being rewritten
+looks exactly like a lobby where nothing is happening.** So it now carries a
+`meta refresh` on `lobby_page.PAGE_REFRESH` (15s) *and* counts up from its own
+write in the reader's browser, turning warm and saying `STALE` past three
+intervals. A timestamp alone did not do this job: it is UTC, the reader is
+not, and an hour-old page carries a perfectly plausible-looking time.
+
+The count is against the *server's* clock, so a badly skewed browser clock can
+call a live page stale. That is the direction to be wrong in; the other one
+hides a dead host.
 
 `--live` is served and `--out` is not, which is why the handover copies
 rather than links: `--out` holds the seeds of games that are **still
