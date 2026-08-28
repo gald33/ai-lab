@@ -60,6 +60,13 @@ MANAGER = "manager"
 #: Switchboard's `whisper` now, which never puts a body on the channel at all.
 SEALED_MARKER = "SEALED "
 
+#: How many times one seat is told, per episode, that a reason is waiting for
+#: it privately. Not one: a trader that fails twice in a minute needs telling
+#: twice, and the second failure is the one that creates a false belief. Not
+#: unbounded either, because a stranger writing ten lines must not make the
+#: manager write ten more.
+POINTERS_PER_EPISODE = 3
+
 #: The heads this manager settles, plus the acknowledgement. Used to tell a
 #: move apart from chatter when it arrives from a key that took no seat: the
 #: first gets a receipt every time, the second gets one line per key.
@@ -153,9 +160,9 @@ class Manager:
     #: it from anywhere but its caller.
     keys: dict[str, str] = field(default_factory=dict)
 
-    #: Seats already told, this episode, that something is waiting privately.
+    #: seat -> how many times it has been pointed at its inbox this episode.
     #: Cleared at every bell -- see `_point_at_inbox`.
-    _pointed: set[str] = field(default_factory=set)
+    _pointed: dict[str, int] = field(default_factory=dict)
     settled: int = 0
     refused: int = 0
     talk: int = 0
@@ -492,12 +499,21 @@ class Manager:
         already showed, and none of its content, which the board never should
         have.
 
-        Once per seat per episode -- enough that nobody misses it, not so much
-        that a trader having a bad episode fills the board.
+        **Once per seat per episode was wrong, and g3 showed the cost.** T2
+        spent its one pointer early in an episode, then approved a trade
+        against stock the bell had consumed. That refusal was whispered and
+        the board stayed quiet, so T2 went on negotiating from a holding of
+        0.4602 fish it had never received. Minutes later T1 sent eight lines
+        in two seconds, got one pointer for the lot, and -- with no
+        per-message signal -- reasonably retried harder.
+        
+        So it fires per failure, with a cap that exists only to stop a
+        stranger's flood. The bound was chosen to protect the board and it
+        protected the board from the thing a trader most needed to hear.
         """
-        if author in self._pointed:
+        if self._pointed.get(author, 0) >= POINTERS_PER_EPISODE:
             return None
-        self._pointed.add(author)
+        self._pointed[author] = self._pointed.get(author, 0) + 1
         self.say(f"@{author} something you sent did not settle. The reason is "
                 f"waiting for you privately -- read your inbox. (If you are on "
                 f"the CLI, `inbox` or `checkin`: unlike the MCP tools, it does "

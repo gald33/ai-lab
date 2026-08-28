@@ -204,6 +204,28 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     return True
 
 
+def _stay_present(client) -> None:
+    """Keep the manager on the roster, every drain.
+
+    **Registration lapses in about two minutes; a round runs eight.** So a
+    manager that registers once at the start is absent from the roster for
+    most of its own game -- and a peer that is not on the roster cannot be
+    whispered to, because sealing needs its exchange key from there. Every
+    sealed PRODUCE after the first couple of minutes therefore had nowhere to
+    go.
+
+    Found by the trader in g3, who reported that "one early whisper worked and
+    later ones failed" and had reasonably blamed its own setup. It was this.
+
+    Never raises: a failed heartbeat is a manager that may go unreachable, and
+    a manager that dies of one is a round that certainly ends.
+    """
+    try:
+        client.heartbeat(renew_leases=False)
+    except Exception as exc:      # noqa: BLE001 -- see the docstring
+        print(f"presence not refreshed: {exc!r}", flush=True)
+
+
 def _show(mgr: Manager, live: Path | None) -> None:
     """Write the board where a spectator can read it, and never stop a game.
 
@@ -346,12 +368,38 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
                                    episode_seconds=episode_seconds,
                                    ack_seconds=ack_seconds))
     mgr.say(who_is_at_this_table(table))
-    # **Whether this table can seal is known here and not before.** It turns
-    # on every seat having published an exchange key *in this room*, which
-    # cannot be true until the entrants have registered in it -- so a runner
-    # asked for ranked games only finds out now, and stands the table down
-    # before anybody has produced rather than playing a round it will not
-    # record.
+
+    def until(deadline: float) -> None:
+        while time.time() < deadline:
+            bind_seats(mgr, table)
+            _stay_present(mgr.client)
+            mgr.drain()
+            _witness(archivist)
+            _show(mgr, live)
+            _tick(tick)
+            time.sleep(DRAIN_EVERY)
+        bind_seats(mgr, table)
+        _stay_present(mgr.client)
+        mgr.drain()
+        _witness(archivist)
+        _show(mgr, live)
+        _tick(tick)
+
+    # **Wait before asking who is here.** Whether a table can seal turns on
+    # every seat having published an exchange key *in this room*, and an
+    # entrant only reaches this room after reading the invite off the lobby
+    # board. Asking at settlement asks an empty roster: it answered "no" every
+    # time, so the manager dealt in the clear and announced a practice game
+    # while the lobby had just witnessed both seats as sealable. **Sealing had
+    # therefore never worked for an agent that joins at its own pace** -- only
+    # for test clients that register instantly. Found by watching g3, where
+    # the two lines contradicted each other one second apart.
+    #
+    # So the acknowledgement window comes first, and the deal after it: the
+    # traders learn their half as episode 1 opens rather than two minutes
+    # before, which is the cost, and it is worth paying.
+    until(ack_deadline)
+
     if ranked_only and not sealable(mgr):
         mgr.say("Standing this table down: it was opened for a ranked game, "
                 "and not every seat published an exchange key in this room, "
@@ -360,21 +408,6 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         return None
     sealed = deal(mgr, dealer, table)
 
-    def until(deadline: float) -> None:
-        while time.time() < deadline:
-            bind_seats(mgr, table)
-            mgr.drain()
-            _witness(archivist)
-            _show(mgr, live)
-            _tick(tick)
-            time.sleep(DRAIN_EVERY)
-        bind_seats(mgr, table)
-        mgr.drain()
-        _witness(archivist)
-        _show(mgr, live)
-        _tick(tick)
-
-    until(ack_deadline)
     missing = sorted(set(players(table)) - set(mgr.keys))
     if missing:
         # Said out loud rather than left to look like silence: a seat nobody

@@ -30,6 +30,13 @@ run does not start without an explicit go written down here.
 Both are **practice** games — unranked, both hands face up, both seats the
 lab's own agents. Neither is evidence about anybody else's agent.
 
+**Games played on the open board are not recorded here.** `g1` and `g3`, the
+first two played by agents nobody in this lab wrote, were not pre-registered
+and could not have been — they were the door being used, not a cell being run.
+Numbering them alongside these would claim a discipline they did not have. What
+they produced is a defect list, and it is in
+[`../island/what-the-first-games-found.md`](../island/what-the-first-games-found.md).
+
 **What these numbers mean is not recorded here.** A record in this directory
 carries what happened and with what denominators; the reading of a result is
 the experiment's, for the reason stated above — a game is not an experimental
