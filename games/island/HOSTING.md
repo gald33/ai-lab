@@ -155,9 +155,17 @@ they share a host: neither needs the other to be up, and putting them together
 would tie a game in progress to a docs deploy.
 
 What they owe each other is a **link**, which each now carries —
-`lobby_page.VIEWER` and the line in [`ENTER.md`](ENTER.md). Two live surfaces
+`lobby_page.VIEWER` and the line in [`ENTER.md`](ENTER.md) pointing at the
+viewer, and the viewer's own 🚪 button pointing back here (in the chrome of
+`viewer/web/index.html`, and in the scoreboard's tabs). Two live surfaces
 with no path between them is a door into a room nobody can see, and a
 spectacle nobody can find the door to.
+
+**The lobby's address is written in the viewer's HTML, not fetched.** The
+viewer is static files built by Pages and has nothing to read a constant out
+of; a host that moves the lobby off `island.lucille-ai.com` edits those two
+links, the same way it would edit `lobby_page.VIEWER` after moving the
+viewer.
 
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file

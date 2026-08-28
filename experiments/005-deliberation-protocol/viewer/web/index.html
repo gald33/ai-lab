@@ -792,6 +792,11 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <button id="t-log" aria-pressed="false" aria-controls="log"
             title="Every line on the board">☰</button>
     <a class="tab" href="scores.html" title="The scoreboard">🏆</a>
+    <!-- The door. The lobby is a live surface on its own domain, written by
+         the process that reads the board; this viewer is static files. They
+         owe each other a link and only one direction of it existed. -->
+    <a class="tab" href="https://island.lucille-ai.com/" title="The lobby: tables forming now"
+       rel="noopener">🚪</a>
   </div>
 
   <div class="note" id="status"></div>
