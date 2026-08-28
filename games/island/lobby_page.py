@@ -342,7 +342,8 @@ def _age(now: float) -> str:
 SOON = 120
 
 
-def _countdown(left: float, *, prefix: str, at: str = "", after: str = "") -> str:
+def _countdown(left: float, *, key: str, prefix: str, at: str = "",
+               after: str = "") -> str:
     """A number of seconds, ticking down in the reader's browser.
 
     **It counts down from the server's number, not towards the server's
@@ -364,10 +365,14 @@ def _countdown(left: float, *, prefix: str, at: str = "", after: str = "") -> st
     `at` is the absolute UTC time, kept beside it so a reader with no script
     still has the one thing they need, and so two people comparing pages have
     a fixed point to compare. `after` is what to say once it reaches zero.
+
+    `key` names the countdown across reloads, so the meta-refresh does not
+    make it jump -- see `_TICKER`.
     """
     left = max(0.0, left)
     shown = f"{prefix} {_span(left)}" + (f" ({at})" if at else "")
-    return (f"<span class=cd data-left='{left:.0f}' data-prefix='{html.escape(prefix)}' "
+    return (f"<span class=cd data-key='{html.escape(key)}' data-left='{left:.0f}' "
+            f"data-prefix='{html.escape(prefix)}' "
             f"data-at='{html.escape(at)}' data-after='{html.escape(after)}'>"
             f"{html.escape(shown)}</span>")
 
@@ -381,16 +386,49 @@ def _span(seconds: float) -> str:
     return f"in {seconds // 60}m {seconds % 60:02d}s"
 
 
+#: How far the number the server wrote may sit from the one this browser has
+#: been counting before the browser gives up its own count and takes the
+#: server's. A page is written at most `PAGE_REFRESH` before it is read, so
+#: anything inside a couple of intervals is that staleness and nothing else;
+#: past it, the schedule itself moved and the reader should be told.
+RESYNC = PAGE_REFRESH * 2
+
 #: One script for every countdown on the page. It runs once, measures its own
 #: elapsed time, and never reads a wall clock -- see `_countdown`.
+#:
+#: **It also carries each countdown across the meta-refresh.** Within one load
+#: the number ticked; every `PAGE_REFRESH` the page was replaced by one written
+#: up to an interval earlier, and the countdown jumped back to it -- so what a
+#: reader watched was a second hand that lurched backwards every fifteenth
+#: second. The deadline was never wrong; the counting between reloads was.
+#:
+#: So the first load of each countdown records, in `sessionStorage`, what was
+#: left and the `Date.now()` it read that at, and later loads count from that
+#: record instead of from the freshly-written number. Both readings come from
+#: one browser's clock, so a skewed clock cancels: this is still measuring
+#: elapsed time and still never comparing a browser to a server. When the two
+#: disagree by more than `RESYNC` the record is thrown away and the server's
+#: number wins, because that is no longer page staleness -- the schedule moved.
+#: With `sessionStorage` unavailable every branch falls back to the server's
+#: number, which is what the page did before.
 _TICKER = f"""<script>(function(){{
 var t0=Date.now(),els=[].slice.call(document.querySelectorAll('.cd'));
+function store(k,v){{try{{sessionStorage.setItem(k,v);}}catch(_){{}}}}
+els.forEach(function(e){{
+  var k='cd:'+(e.dataset.key||e.dataset.prefix),srv=+e.dataset.left,base=srv,saw=null;
+  try{{saw=JSON.parse(sessionStorage.getItem(k));}}catch(_){{}}
+  if(saw&&isFinite(saw.left)&&isFinite(saw.t)){{
+    var carried=saw.left-(t0-saw.t)/1000;
+    if(Math.abs(carried-srv)<={RESYNC}) base=carried;
+    else store(k,JSON.stringify({{left:srv,t:t0}}));
+  }} else store(k,JSON.stringify({{left:srv,t:t0}}));
+  e.dataset.base=base;}});
 function span(s){{s=Math.max(0,Math.round(s));
   return s<60?'in '+s+'s':'in '+Math.floor(s/60)+'m '+('0'+(s%60)).slice(-2)+'s';}}
 function tick(){{
   var gone=(Date.now()-t0)/1000;
   els.forEach(function(e){{
-    var left=+e.dataset.left-gone;
+    var left=+e.dataset.base-gone;
     if(left<=0){{e.className='cd now';e.textContent=e.dataset.after;return;}}
     e.className='cd'+(left<={SOON}?' soon':'');
     e.textContent=e.dataset.prefix+' '+span(left)
@@ -654,7 +692,7 @@ def render(lobby: Lobby, *, now: float | None = None,
                 # reader is not in, on a page that had already been sitting in
                 # their browser for some fraction of a refresh interval.
                 notes.append(_countdown(
-                    table.opens_at - now, prefix="opens",
+                    table.opens_at - now, key=f"{table.id}:opens", prefix="opens",
                     at=time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at)),
                     after="the game has started"))
         elif not table.lapsed:
@@ -663,7 +701,7 @@ def render(lobby: Lobby, *, now: float | None = None,
             if waiting:
                 notes.append(f"<b>{waiting}</b>")
             notes.append(_countdown(
-                left, prefix="lapses",
+                left, key=f"{table.id}:lapses", prefix="lapses",
                 after="lapsed, unless somebody took the last seat just now")
                 + " if it does not fill and find a manager")
         if table.manager:

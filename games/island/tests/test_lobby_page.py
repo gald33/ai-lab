@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import json
 import time
 
@@ -398,7 +399,48 @@ def test_minutes_appear_only_once_there_are_minutes():
 
 
 def test_a_countdown_escapes_what_it_is_given():
-    marked = lobby_page._countdown(30, prefix="opens<b>", at="x'y", after="&")
+    marked = lobby_page._countdown(30, key="g1'<b>:opens", prefix="opens<b>",
+                                   at="x'y", after="&")
 
     assert "<b>" not in marked and "&lt;b&gt;" in marked
     assert "x'y" not in marked and "&#x27;" in marked
+
+
+def test_a_countdown_carries_across_the_meta_refresh(hub):
+    """**The refresh was making the second hand lurch backwards.**
+
+    The page reloads every `PAGE_REFRESH`, and the copy it reloads was written
+    up to an interval before it is read -- so every reload replaced a number
+    the browser had been ticking down with an older one and the countdown
+    jumped. The deadline was never wrong; what a reader watched was.
+
+    So each countdown is named, and the script carries what it was counting
+    across the reload in `sessionStorage`, resyncing to the server only when
+    the two have drifted further apart than page staleness can explain.
+    """
+    lobby = _settled(hub, generate_key())
+    table = lobby.tables["g1"]
+
+    page = lobby_page.render(lobby, now=table.opens_at - 42)
+
+    assert f"data-key='{table.id}:opens'" in page
+    assert "sessionStorage" in page
+    # And it is still elapsed time, never a browser clock against a server one:
+    # both readings in the comparison come from this browser's own `Date.now`.
+    assert "saw.left-(t0-saw.t)/1000" in page
+    assert f"<={lobby_page.RESYNC}" in page
+
+
+def test_every_countdown_on_the_page_is_named_apart(hub):
+    """One `sessionStorage` key for two countdowns would have each reload hand
+    the other's remainder over, which is the jump again with worse arithmetic.
+    """
+    key = generate_key()
+    lobby = _settled(hub, key)
+    _client(hub, "opener2", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    keys = re.findall(r"data-key='([^']*)'", page)
+    assert len(keys) >= 2 and len(set(keys)) == len(keys), keys
