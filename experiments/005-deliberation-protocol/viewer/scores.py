@@ -114,7 +114,7 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 6
+BOARDS_V = 7
 
 #: How far back "this week" reaches, counted from the newest round in the
 #: record rather than from the clock on the machine building the page.
@@ -875,6 +875,31 @@ def best_ever(game_board: list[dict]) -> dict | None:
     return top
 
 
+def best_player(trader_board: list[dict], game_board: list[dict]) -> dict | None:
+    """The best any single player has ever done, on any format.
+
+    The one number a player's board is asked for, and it can be given honestly
+    where the games board cannot: a ratio is what one trader ended with as a
+    multiple of what *they* would have had alone, which is a pure number against
+    their own baseline and does not carry the island it was drawn on with it.
+    So this really is every format together, and not a format's number wearing
+    an overall label.
+
+    What it still cannot say is that every format is equally easy to post a big
+    ratio on, so it names the one this was set on and how many games the player
+    has behind it -- a 2× from a single game and a 2× from forty are different
+    claims and the card has to be able to tell them apart.
+    """
+    if not trader_board:
+        return None
+    top = dict(trader_board[0])
+    held = next((g for g in game_board if g["game_id"] == top["best_game"]), None)
+    top["level"] = held["level"] if held else None
+    top["played_at"] = held["played_at"] if held else top.get("last_played")
+    top["with"] = held["by"] if held else []
+    return top
+
+
 def boards(rows: list[dict]) -> dict:
     """The leaderboards, with their denominators attached to them.
 
@@ -897,6 +922,8 @@ def boards(rows: list[dict]) -> dict:
     week = board_set(recent_rows, recent_played)
     week["since"] = since
     week["days"] = RECENT_DAYS
+    week["best_ever"] = best_ever(week["games"])
+    week["best_player"] = best_player(week["traders"], week["games"])
 
     levels = {tuple(g["level"]) for g in played
               if g["level"] and is_ranked(g)}
@@ -910,7 +937,13 @@ def boards(rows: list[dict]) -> dict:
         "islands": all_time["islands"],
         "games": all_time["games"],
         "traders": all_time["traders"],
+        # The two overall records, one for a table and one for a player. They
+        # are different kinds of claim and are labelled as such: the game's is
+        # the biggest number in the book on a format nobody can compare to
+        # another, the player's is a ratio against their own baseline and is
+        # genuinely across every format.
         "best_ever": best_ever(all_time["games"]),
+        "best_player": best_player(all_time["traders"], all_time["games"]),
         "week": week,
         "recent": sorted(rows, key=lambda r: r.get("played_at") or r["recorded_at"],
                          reverse=True)[:12],
@@ -961,6 +994,13 @@ def table(data: dict) -> str:
                    f"{' + '.join(top['by'])} on {top['label']}")
         out.append(f"  the biggest number in the book, not first place across "
                    f"formats: it beat {top['first_of'] - 1} other game(s) on its own")
+    who = data.get("best_player")
+    if who:
+        out.append(f"\nBEST PLAYER — {who['id']} at {who['best']:.3f}x what they "
+                   f"would have had alone")
+        out.append(f"  over {who['games']} game(s) on {who['levels']} format(s); "
+                   f"their best was on "
+                   f"{level_label(tuple(who['level'])) if who['level'] else '?'}")
 
     out.append("\nLEVELS — best game on each format, as gains captured "
                "(autarky 0.0, frontier 1.0)")

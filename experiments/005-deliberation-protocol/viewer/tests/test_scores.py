@@ -645,3 +645,40 @@ def test_a_players_best_game_is_one_a_spectator_can_go_and_look_at(tmp_path):
         assert row["best"] == pytest.approx(max(game["ratios"].values()), abs=5e-5) \
             or row["best"] in [round(v, 4) for v in game["ratios"].values()]
         assert row["best_level"] == scores.level_label(tuple(game["level"]))
+
+
+def test_the_best_player_overall_is_the_top_of_the_players_board(tmp_path):
+    """The other overall record, and the one that really is across formats.
+
+    A player's score is a multiple of what *they* would have had alone, which is
+    a number about them rather than about the island they drew -- so unlike a
+    game's capture it can be read across every format at once. What it still
+    cannot say is that every format is equally easy to post a big ratio on, so
+    the record names the one it was set on and the games behind it.
+    """
+    ledger, _ = _ledger_of(tmp_path)
+    data = scores.boards(scores.load(ledger))
+    who = data["best_player"]
+
+    assert who["id"] == data["traders"][0]["id"]
+    assert who["best"] == max(t["best"] for t in data["traders"])
+    # It names the game it was set on, and that game is on the board.
+    held = next(g for g in data["games"] if g["game_id"] == who["best_game"])
+    assert who["level"] == held["level"]
+    assert who["id"] in who["with"]
+    # And the record says how much is behind it: one game and forty games are
+    # different claims for the same number.
+    assert who["games"] >= 1 and who["levels"] >= 1
+
+
+def test_both_overall_records_are_computed_for_the_week_too(tmp_path):
+    """The headline follows the window, so it can never be an all-time number
+    wearing this week's label."""
+    ledger, _ = _ledger_of(tmp_path)
+    data = scores.boards(scores.load(ledger))
+    for window in (data, data["week"]):
+        assert (window["best_ever"] is None) == (not window["games"])
+        assert (window["best_player"] is None) == (not window["traders"])
+        if window["best_ever"]:
+            assert window["best_ever"]["capture"] == window["games"][0]["capture"]
+            assert window["best_player"]["best"] == window["traders"][0]["best"]

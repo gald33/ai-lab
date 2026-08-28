@@ -12,7 +12,8 @@
   border: 1px solid var(--line); color: var(--ink-2); font-size: 14px; }
 .tabs a.on { background: #2c3940; border-color: #4a5b63; color: var(--ink); }
 
-/* The one number the page is for. */
+/* The two numbers the page is for. */
+.records { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
 .record { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .record .score { font-family: ui-monospace, monospace; font-size: 46px; font-weight: 700;
   line-height: 1; color: var(--above); }
@@ -21,7 +22,7 @@
 .record h2 { margin: 0 0 2px; }
 
 /* All time / this week */
-.window { display: flex; gap: 6px; margin: 0 0 12px; }
+.window { display: flex; gap: 6px; margin: 0 0 12px; align-items: center; }
 .window button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px;
   border: 1px solid var(--line); background: transparent; color: var(--ink-2);
   cursor: pointer; }
@@ -77,15 +78,17 @@ details.how div { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
     </nav>
   </div>
 
-  <!-- The all-time high, across every format there is. -->
-  <div class="card" id="record-card">
-    <div class="record" id="record"></div>
-  </div>
-
   <div class="window" id="window">
     <button data-window="all" class="on">All time</button>
     <button data-window="week">This week</button>
     <span class="sub" id="window-note" style="align-self:center"></span>
+  </div>
+
+  <!-- The two overall records: the best a table has ever done, and the best a
+       single player has ever done, both across every format there is. -->
+  <div class="records">
+    <div class="card"><div class="record" id="record"></div></div>
+    <div class="card"><div class="record" id="record-player"></div></div>
   </div>
 
   <div class="card">
@@ -194,6 +197,7 @@ const state = await fetch("api/scores", { cache: "no-store" })
 if (state.error) {
   $("record").innerHTML = `<div class="empty">no games recorded yet — add one with
     <code class="mono">python viewer/scores.py --ingest results/…/v3.json</code></div>`;
+  $("record-player").innerHTML = "";
   $("window").hidden = true;
 } else {
   draw(state);
@@ -206,7 +210,6 @@ function draw(data) {
     `${plural(t.games, "game")} played · ${t.ranked} on the boards · ` +
     `${plural(t.levels, "format")} · ${plural(t.players, "player")}`;
 
-  record(data.best_ever);
   levels(data.islands);
   feed(data);
 
@@ -218,6 +221,11 @@ function draw(data) {
     : "every game ever recorded");
   const show = (key) => {
     const w = windows[key];
+    const week = key === "week";
+    record(w.best_ever, week ? "Best game this week" : "All-time high",
+           week ? "this week" : "ever");
+    playerRecord(w.best_player, week ? "Best player this week" : "Best player ever",
+                 week ? "this week" : "ever");
     games(w.games);
     traders(w.traders);
     $("window-note").textContent = note(key);
@@ -236,7 +244,7 @@ function draw(data) {
 // format. It is a record, not a league position -- nothing makes two formats
 // comparable -- so the card says which format it was set on and how big the
 // field on that format was.
-function record(best) {
+function record(best, title, scope) {
   if (!best) {
     $("record").innerHTML = `<div class="empty">no game has made the boards yet</div>`;
     return;
@@ -244,14 +252,40 @@ function record(best) {
   $("record").innerHTML = `
     <div class="score ${best.capture >= 0 ? "" : "down"}">${pct(best.capture)}</div>
     <div class="what">
-      <h2>All-time high</h2>
+      <h2>${title}</h2>
       <div>Held by <span class="holder">${roster(best.by)}</span>
         on <strong>${format(best)}</strong>
         <span class="sub">· ${day(best.played_at)}</span></div>
-      <div class="sub">The biggest score on any format. It was the best of
+      <div class="sub">The biggest score ${scope}, on any format. It was the best of
         ${plural(best.first_of, "game")} played on that one${best.rounds > 1
           ? `, and it was a ${plural(best.rounds, "round")} game` : ""}.
         Scores on different formats are not races against each other.</div>
+    </div>`;
+}
+
+// The other record, and the one that really is across every format: a player's
+// score is what they ended with as a multiple of what they would have had
+// alone, which is a number about them and not about the island they drew.
+function playerRecord(best, title, scope) {
+  if (!best) {
+    $("record-player").innerHTML = `<div class="empty">nobody has made the boards yet</div>`;
+    return;
+  }
+  const others = (best.with || []).filter((id) => id !== best.id);
+  $("record-player").innerHTML = `
+    <div class="score ${best.best >= 1 ? "" : "down"}">${best.best.toFixed(2)}×</div>
+    <div class="what">
+      <h2>${title}</h2>
+      <div><span class="holder">${best.id}</span> ended a game with
+        <strong>${best.best.toFixed(2)}×</strong> what they would have had trading
+        with nobody${best.level ? ` — on ${format({agents: best.level[0], goods: best.level[1], episodes: best.level[2]})}` : ""}
+        <span class="sub">· ${day(best.played_at)}</span></div>
+      <div class="sub">Their best day ${scope}, out of ${plural(best.games, "game")} across
+        ${plural(best.levels, "format")}; they usually end at
+        ${best.median.toFixed(2)}×${others.length
+          ? `. That day they were at a table with ${roster(others)}` : ""}.
+        This one <em>does</em> count every format: a player's score is measured
+        against their own trading alone, not against the island.</div>
     </div>`;
 }
 

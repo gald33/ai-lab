@@ -1987,11 +1987,20 @@ actually ask a high-score screen: **what is the best anybody has ever done**, an
 **who is doing well lately**. So the page now carries four things, and they are
 all the same arithmetic read differently:
 
-- **The all-time high**, at the top: the single biggest `capture` in the book, on
-  any format. It is a **record, not a rank**. Nothing makes two formats
-  comparable, so the headline names the format it was set on and the size of the
-  field on that format (`first_of`) — a record set where only one game was ever
-  played must not read like a record that beat everybody.
+- **Two overall records**, at the top, and they are **not the same kind of
+  claim**. The *all-time high* is the single biggest `capture` in the book on any
+  format — a record, not a rank: nothing makes two formats comparable, so it
+  names the format it was set on and the size of the field there (`first_of`), or
+  a record set where only one game was ever played reads like one that beat
+  everybody. The *best player ever* can be honest about "overall" where that one
+  cannot: a player's score is `u_i / autarky_i`, a pure number against their own
+  baseline that does not carry the island with it, so it really is every format
+  at once. What it still cannot claim is that every format is equally easy to
+  post a big ratio on, so it too names the format it was set on, and the games
+  and formats behind it — 2× from one game and 2× from forty are different
+  claims.
+  Both follow the window toggle, so a week headline is never an all-time number
+  wearing this week's label.
 - **Best games**, ranked on `capture`. The list is sorted so it can be read down;
   the number that means something is the **place**, which is computed inside the
   format and nowhere else. Both are shown, because a list has to have an order to
