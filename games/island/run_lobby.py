@@ -37,6 +37,7 @@ from pathlib import Path
 from switchboard.client import Client
 from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 
+from .hub import through_blips
 from .lobby import Held, Lobby
 from .lobby_page import write as write_page
 
@@ -78,7 +79,9 @@ def main(argv: list[str] | None = None) -> int:
     reported: set[str] = set()
     try:
         while True:
-            lobby.drain()
+            # Not a bare `drain()`: a hub redeploy answers a poll with a 502
+            # and would otherwise end this process -- see `hub.py`.
+            through_blips(lobby.drain, "lobby drain")
             if args.page:
                 write_page(lobby, args.page)
             if lobby.stood_down:
