@@ -280,3 +280,29 @@ def test_a_forming_table_names_what_it_is_waiting_for(hub):
 
     assert "Waiting for 1 more entrant to sit down and somebody to offer to " \
            "manage it." in page
+
+
+# --- the levers -------------------------------------------------------------
+
+
+def test_the_levers_offer_exactly_the_ladder_the_lobby_will_accept():
+    """A lever that offers a value the lobby refuses is a trap on the page."""
+    from games.island.protocol import EPISODE_SECONDS_ALLOWED
+    seconds = dict((f, vals) for f, _, vals in lobby_page.LEVERS)["seconds"]
+    assert tuple(seconds) == EPISODE_SECONDS_ALLOWED
+
+
+def test_the_prompt_carries_the_open_line_the_levers_rewrite(hub):
+    """The copy button reads the whole block, so the span must be in it.
+
+    If the wrap ever misses, the page silently goes back to copying a fixed
+    line while the levers appear to work -- which is worse than no levers.
+    """
+    lobby = Lobby(client=_client(hub, "lobby", generate_key()))
+    html_out = lobby_page._start(lobby)
+    assert "<span id=ol>" in html_out
+    assert lobby_page.open_line() in lobby_page.prompt(lobby)
+
+
+def test_the_suggested_open_spells_out_seconds_so_the_knob_is_discoverable():
+    assert "seconds=60" in lobby_page.open_line()

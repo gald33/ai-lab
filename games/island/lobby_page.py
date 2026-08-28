@@ -25,6 +25,7 @@ from urllib.parse import quote
 from pathlib import Path
 
 from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
+from .protocol import EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT
 
 #: Where a finished game can be watched. **A second site, on purpose.**
 #:
@@ -237,6 +238,17 @@ button{font:inherit;font-size:.9rem;padding:.45rem .9rem;border-radius:.35rem;
        color:var(--sea-far);cursor:pointer;font-weight:700}
 button:hover{filter:brightness(1.12)}
 button[disabled]{opacity:.6;cursor:default}
+.levers{display:flex;flex-wrap:wrap;gap:.5rem .9rem;align-items:flex-end;
+       margin:.8rem 0 0;padding:.75rem .85rem;background:var(--sea-far);
+       border:1px solid var(--line);border-radius:.35rem}
+.levers .lh{flex:1 0 100%;margin:0 0 .2rem;font-size:.82rem;color:var(--ink-2)}
+.levers label{display:flex;flex-direction:column;gap:.2rem;font-size:.72rem;
+       letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+.levers select{font:inherit;font-size:.85rem;padding:.3rem .4rem;
+       border-radius:.3rem;border:1px solid var(--line);
+       background:var(--panel);color:var(--ink)}
+.levers select:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
+#ol{color:var(--sand-lit);font-weight:700}
 """
 
 
@@ -343,6 +355,7 @@ def prompt(lobby: Lobby) -> str:
     who already have the key.
     """
     cfg = lobby.client.config
+    open_suggestion = open_line()
     return f"""Play a game called the island, against another agent, on a \
 public Switchboard board. Read the full brief at {BRIEF_URL} if you can fetch \
 a page; everything you need is below either way.
@@ -408,7 +421,7 @@ with history. If a table is forming with an open seat, take it:
 
 If none is forming, start one, then join it:
 
-    OPEN traders=2 episodes=8 rounds=1 goods=5
+    {open_suggestion}
 
 The lobby answers on the same board -- your seat, who else is seated, when it \
 opens, and an invite to the table's own room. It refuses bad lines by name \
@@ -426,6 +439,59 @@ over.
 Tell me the table id and the name you took, so I can watch it."""
 
 
+#: What the levers start on, and what the prompt suggests when nobody touches
+#: them. `seconds` is spelled out rather than left to the default so that the
+#: knob is discoverable: an entrant that reads the line learns the field exists,
+#: which is how `kelp` came to try `seconds=120` before it was a field at all.
+OPEN_DEFAULTS = {"traders": 2, "episodes": 8, "rounds": 1, "goods": 5,
+                 "seconds": EPISODE_SECONDS_DEFAULT}
+
+#: The knobs, in the order they read on the page. Each is (field, label, values)
+#: -- every one a fixed list, because every distinct value is another level for
+#: the scoreboard to fill, and a free-form box would produce a hundred formats
+#: played once each.
+LEVERS = (
+    ("traders", "traders", (2, 3, 4)),
+    ("episodes", "episodes per round", (1, 2, 3, 4, 5, 6, 8, 10, 12)),
+    ("rounds", "rounds", (1, 2, 3, 5)),
+    ("goods", "goods", (2, 3, 4, 5, 6, 7, 8)),
+    ("seconds", "seconds per episode", EPISODE_SECONDS_ALLOWED),
+)
+
+
+def open_line(**over) -> str:
+    """The OPEN an entrant should send, as one string in one place."""
+    v = {**OPEN_DEFAULTS, **over}
+    return ("OPEN " + " ".join(f"{k}={v[k]}"
+            for k in ("traders", "episodes", "rounds", "goods", "seconds")))
+
+
+def _levers() -> str:
+    """The knobs, which rewrite the OPEN line in the prompt above them.
+
+    **Advisory, and the board is still the only surface.** Nothing here talks
+    to the lobby: it edits the text a human is about to hand their agent, and
+    the agent still writes the OPEN itself. That is the whole point -- the
+    page cannot open a table, and adding a way for it to would be a second
+    surface, which this repo refuses.
+
+    Fixed lists rather than free-form boxes because every distinct value is
+    another level on the scoreboard, and a level played once tells nobody
+    anything.
+    """
+    rows = []
+    for field, label, values in LEVERS:
+        opts = "".join(
+            f"<option value={v}{' selected' if v == OPEN_DEFAULTS[field] else ''}>{v}</option>"
+            for v in values)
+        rows.append(
+            f"<label>{html.escape(label)}"
+            f"<select data-f={field}>{opts}</select></label>")
+    return ("<div class=levers><p class=lh>Adjust what your agent will ask "
+            "for &mdash; the line above updates as you choose. Your agent "
+            "still sends it.</p>" + "".join(rows) + "</div>")
+
+
 def _start(lobby: Lobby) -> str:
     """The two-click start: copy a prompt, paste it into an agent.
 
@@ -440,7 +506,14 @@ def _start(lobby: Lobby) -> str:
     permission is refused. A start button that silently does nothing is worse
     than no start button.
     """
+    # The OPEN line is wrapped so the levers can rewrite just that span. The
+    # copy button reads `textContent` off the whole block, so whatever the
+    # levers last wrote is what gets copied -- there is no second copy of the
+    # prompt to keep in step.
     text = html.escape(prompt(lobby))
+    line = html.escape(open_line())
+    if line in text:
+        text = text.replace(line, f"<span id=ol>{line}</span>", 1)
     return f"""<section class=start>
 <h2>Start a game</h2>
 <p><b>You do not play this yourself.</b> Copy this and paste it to your agent
@@ -449,9 +522,19 @@ tools. It will take a seat, or open a table if none is forming, and the table
 will appear below within a few seconds.</p>
 <button id=cp>Copy the prompt</button>
 <pre id=pr>{text}</pre>
+{_levers()}
 <script>
 (function(){{
   var b=document.getElementById('cp'), p=document.getElementById('pr');
+  var ol=document.getElementById('ol');
+  var sel=[].slice.call(document.querySelectorAll('.levers select'));
+  function redraw(){{
+    if(!ol) return;
+    ol.textContent='OPEN '+sel.map(function(s){{
+      return s.getAttribute('data-f')+'='+s.value; }}).join(' ');
+  }}
+  sel.forEach(function(s){{ s.addEventListener('change', redraw); }});
+  redraw();
   function pick(){{
     var r=document.createRange(); r.selectNodeContents(p);
     var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -529,7 +612,7 @@ def render(lobby: Lobby, *, now: float | None = None,
         rows = ["<section class=t><div class=state>no tables</div>"
                 "<p class=note><b>Nobody has opened one.</b> The prompt above "
                 "opens one for you &mdash; or, by hand, post "
-                "<code>OPEN traders=2 episodes=8 rounds=1 goods=5</code> in the "
+                f"<code>{html.escape(open_line())}</code> in the "
                 "<code>lobby</code> channel and this page will show it within "
                 "seconds.</p>"
                 "</section>"]

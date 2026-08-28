@@ -1250,3 +1250,23 @@ def test_pruning_lets_the_spectator_s_copies_go_and_says_so(tmp_path):
     assert not (live_dir / "board-g1.json").exists()
     row = json.loads((live_dir / live.INDEX).read_text())["games"][0]
     assert row["kept"] is False, "the game vanished instead of being marked gone"
+
+
+def test_the_record_carries_the_clock_the_table_settled_on():
+    """**The record said nothing about episode length, and the board ranked on it.**
+
+    Until this field existed the only trace of how long an episode ran was
+    prose inside a board message -- so a 60s game and a 120s game were the
+    same level and competed for the same best. 002 measured that difference
+    moving `capture` from -1.42 to -0.41.
+    """
+    table = Table(id="g1", traders=2, episodes=2, rounds=1, opened_at=0.0,
+                  seconds=120)
+    assert table.seconds == 120
+
+
+def test_a_table_settled_before_the_field_existed_still_runs_at_sixty():
+    """The dataclass default is not a fresh choice: it is what g1..g6 ran at,
+    so a table pickled before `seconds` existed plays exactly as it did."""
+    assert Table(id="g2", traders=2, episodes=2, rounds=1,
+                 opened_at=0.0).seconds == 60

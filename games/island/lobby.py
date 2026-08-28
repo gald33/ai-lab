@@ -63,7 +63,8 @@ from switchboard.crypto import generate_key
 from switchboard.invite import Invite
 from switchboard.timing import unwrap_forecast
 
-from .protocol import GOODS_DEFAULT, Join, Malformed, Manage, Open, parse
+from .protocol import (EPISODE_SECONDS_DEFAULT, GOODS_DEFAULT, Join, Malformed,
+                       Manage, Open, parse)
 
 #: How long an OPEN table waits to fill and be claimed before it lapses.
 #: Chosen, not derived -- long enough that a human posting JOIN by hand is not
@@ -126,6 +127,11 @@ class Table:
     #: know the format before it decides to sit down, and two rounds are only
     #: comparable if they were drawn over the same number of goods.
     goods: int = GOODS_DEFAULT
+    #: How long each episode runs, settled at OPEN like `goods` and for the
+    #: same reason: it is part of the level, and an entrant has to know it
+    #: before it decides to sit down. Until g6 this was a host-wide flag that
+    #: appeared nowhere in the record -- see `protocol.EPISODE_SECONDS_ALLOWED`.
+    seconds: int = EPISODE_SECONDS_DEFAULT
     #: peer id -> the name it joined under. Insertion order is seat order:
     #: the first peer to join is T1, the second T2, and so on -- the same
     #: labelling `island/manager.py` defaults to, so a settled table's seats
@@ -463,8 +469,8 @@ class Lobby:
                 f"for it to lapse, before opening another")
         table = Table(id=f"g{self._next}", traders=action.traders,
                      episodes=action.episodes, rounds=action.rounds,
-                     goods=action.goods, opened_at=self.clock(),
-                     opened_by=peer)
+                     goods=action.goods, seconds=action.seconds,
+                     opened_at=self.clock(), opened_by=peer)
         # Committed here, before a single JOIN exists, which is the only
         # moment at which committing means anything: a lobby that has not
         # seen the seats' nonces cannot pick a seed to suit anybody.
