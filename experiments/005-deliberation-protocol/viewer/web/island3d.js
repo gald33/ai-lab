@@ -142,6 +142,11 @@ const MEADOW = { radius: 3.25, wobble: 0.12, phase: 1.9 };
  */
 const BEACH = { radius: 3.9, wobble: 0.11, phase: 0.7 };
 const SHELF = { radius: 4.15, wobble: 0.10, phase: 0.7 };
+//: And the drawn water's own edge. Past this there is still sea -- an
+//: enormous plane of it -- but the *island* stops, and `render.py:island`
+//: measures the island's silhouette from the shallows inwards. Anything the
+//: dock puts beyond this lengthens the island's foot on screen.
+const SHALLOWS = { radius: 4.62, wobble: 0.10, phase: 0.7 };
 
 /**
  * How far the grass reaches, in the direction of an island point.
@@ -160,6 +165,8 @@ export const beachEdge = (x, z) =>
   silhouette(BEACH.radius, BEACH.wobble, BEACH.phase)(Math.atan2(-z, x));
 export const shelfEdge = (x, z) =>
   silhouette(SHELF.radius, SHELF.wobble, SHELF.phase)(Math.atan2(-z, x));
+export const shallowsEdge = (x, z) =>
+  silhouette(SHALLOWS.radius, SHALLOWS.wobble, SHALLOWS.phase)(Math.atan2(-z, x));
 
 /**
  * Where the dock stands and which way it runs, for a bearing off the fire.
@@ -184,7 +191,7 @@ export const shelfEdge = (x, z) =>
  * assumed. `tests/render.py:island` fails on any part of the dock that is not
  * where this says it is.
  */
-export function dockAxis(bearing) {
+export function dockAxis(bearing, scale = 1) {
   const ux = Math.cos(bearing), uz = Math.sin(bearing);
   //: **Against whichever outline reaches furthest, not against the beach's.**
   //: The two silhouettes have different wobbles, so on some bearings -- this
@@ -198,6 +205,19 @@ export function dockAxis(bearing) {
     // three.js turns local `+z` to `(sin ry, cos ry)`, so this is the rotation
     // that aims the plank run along the outward radius.
     rotation: Math.atan2(ux, uz),
+    //: **And how long it may be, which is not a thing to pick by hand
+    //: either.** Seating the root correctly and leaving the old hand-picked
+    //: length of 1.54 in place put the head at r = 5.35 and a boat's bow at
+    //: 5.50, well past the shallows -- and the dock is not weather, so
+    //: `render.py:island` counts it as the island's own outline and measured
+    //: the island's foot 3px *below* the first card on a phone. The old
+    //: length never showed up there only because the whole jetty was buried
+    //: inside the hill.
+    //:
+    //: There is no bearing on which that length fits: the drawn water outside
+    //: the sand is `SHALLOWS.radius - BEACH.radius` wide, about 0.7, all the
+    //: way round. So the jetty is as long as the water is, and short.
+    reach: (shallowsEdge(ux, uz) - 0.08 - r) / scale,
   };
 }
 
@@ -718,7 +738,8 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: The water follows the coast rather than a circle. A round shallows and a
   //: round line of surf against a wobbled shore put the white water a long way
   //: out on one bearing and up on the sand at another.
-  island.add(slab(4.62, 0.09, 0.05, 0.10, 0.7, -0.05, M.sea, "shallows"));
+  island.add(slab(SHALLOWS.radius, 0.09, 0.05, SHALLOWS.wobble, SHALLOWS.phase,
+                  -0.05, M.sea, "shallows"));
   island.add(shoreRing(4.30, 0.10, 0.7, 0.075, 0.05, M.surf, "surf_ring"));
 
   // — land —
@@ -1049,34 +1070,57 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: bearing is the one the dock has always been on -- east-south-east, clear
   //: of the settlements -- so the framing does not move; what changes is that
   //: the jetty now begins at the sand and ends over water.
-  const DOCK_BEARING = 0.405;
-  const axis = dockAxis(DOCK_BEARING);
+  const DOCK_BEARING = 0.405, DOCK_SCALE = 0.95;
+  const axis = dockAxis(DOCK_BEARING, DOCK_SCALE);
   const dock = new THREE.Group();
   dock.name = "dock";
   dock.position.set(axis.at[0], 0, axis.at[1]);
   dock.rotation.y = axis.rotation;
-  for (let i = 0; i < 7; i++) {
-    add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * 0.26]);
+  //: Three planks laid over whatever `reach` turned out to be, rather than
+  //: seven at a fixed pitch running off into the ocean. Their own depth is
+  //: 0.24, so the pitch is what keeps the last one's outer face inside the
+  //: reach; a fourth would need water this island does not have.
+  const PLANKS = 3, pitch = axis.reach / PLANKS;
+  for (let i = 0; i < PLANKS; i++) {
+    add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * pitch]);
   }
   for (let i = 0; i < 4; i++) {
     add(dock, new THREE.CylinderGeometry(0.035, 0.035, 0.62, 8), M.timber,
-      `dock_pile_${i}`, [(i % 2 ? 0.3 : -0.3), 0.0, 0.3 + Math.floor(i / 2) * 1.1]);
+      `dock_pile_${i}`, [(i % 2 ? 0.3 : -0.3), 0.0,
+                         0.06 + Math.floor(i / 2) * (axis.reach - 0.12)]);
   }
-  add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit, "dock_bollard", [0.3, 0.5, 1.62]);
+  add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit,
+    "dock_bollard", [0.3, 0.5, axis.reach - 0.08]);
   //: One boat per seat, up to what the jetty holds: the traders arrived
-  //: somehow. **They moor at the head, on the water side of the shelf.** They
-  //: used to fan back down the plank run towards the shore end, which put the
-  //: nearest of them a good half-unit up the beach even once the dock itself
-  //: was pointing the right way; moored is the far end, alternating sides.
-  const MOORINGS = [[-0.80, 1.05, 0.25], [0.82, 1.30, -0.30], [-0.86, 1.72, 0.18]];
+  //: somehow. **Broadside along the planks, not nose-out at the head.**
+  //:
+  //: A hull is 1.26 long and 0.6 wide, and the water outside the sand is only
+  //: about 0.7 deep -- so a boat moored bow-out simply does not fit between
+  //: the wet sand and the shallows' edge, and pointing them out to sea is
+  //: what put a bow at r = 5.50 and the island's foot under the first card.
+  //: Turned broadside it is the hull's *width* that has to fit, and it very
+  //: nearly does. Which is also how a boat ties up to a jetty.
+  //:
+  //: They are also a size down. At full size the width alone is wider than
+  //: the water; 0.85 is what fits, and a smaller boat beside a short jetty is
+  //: the same picture at a smaller scale.
+  //: Staggered outward along the planks so no hull's inner side is back on
+  //: the wet sand: the innermost clears the shelf by 0.11 and the outermost
+  //: overhangs the shallows by 0.15, which is the best trade this water
+  //: allows. Re-derive with `node` against the four edge functions above if
+  //: any of the slabs move.
+  const MOORINGS = [[-0.62, 0.26, 1], [0.64, 0.40, -1], [-0.70, 0.52, 1]];
   traders.slice(0, MOORINGS.length).forEach((name, i) => {
     const b = boat(i + 1, seatMat(name, i, traders.length));
-    const [bx, bz, br] = MOORINGS[i];
+    const [bx, bz, side] = MOORINGS[i];
     b.position.set(bx, 0.02, bz);
-    b.rotation.y = br;
+    //: Along the shore, give or take: a mooring line is never quite square,
+    //: and three boats at exactly the same angle read as a car park.
+    b.rotation.y = side * (Math.PI / 2) + (i - 1) * 0.07;
+    b.scale.setScalar(0.85);
     dock.add(b);
   });
-  dock.scale.setScalar(0.95);
+  dock.scale.setScalar(DOCK_SCALE);
   island.add(dock);
   //: The footprint the spacing rule keeps clear, taken from where the dock
   //: actually is rather than from a copy of the old hand-picked point.
