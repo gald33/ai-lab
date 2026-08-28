@@ -1979,6 +1979,48 @@ whatever degree that format asked for. The median across games, the worst, and
 the game and round counts sit beside the best, so a top score that was one game
 is visible as one.
 
+### The page ranks games and players, all time and this week
+
+*Decided 2026-08-28.* The scoreboard showed one card per format and one table of
+players, and a spectator could not answer either of the two questions people
+actually ask a high-score screen: **what is the best anybody has ever done**, and
+**who is doing well lately**. So the page now carries four things, and they are
+all the same arithmetic read differently:
+
+- **The all-time high**, at the top: the single biggest `capture` in the book, on
+  any format. It is a **record, not a rank**. Nothing makes two formats
+  comparable, so the headline names the format it was set on and the size of the
+  field on that format (`first_of`) — a record set where only one game was ever
+  played must not read like a record that beat everybody.
+- **Best games**, ranked on `capture`. The list is sorted so it can be read down;
+  the number that means something is the **place**, which is computed inside the
+  format and nowhere else. Both are shown, because a list has to have an order to
+  be a list at all and the order is not the claim.
+- **Best players**, unchanged in rule: a player's place goes to their best game,
+  with the typical, the worst and the counts beside it. It now also names *which*
+  game the best came from, so the number leads somewhere a spectator can look.
+- **Both boards twice**: all time, and the last `RECENT_DAYS` (7). One
+  `board_set` computes them over two populations of rows, so a week board can
+  never rank by a different rule from the all-time one.
+
+**The week is counted back from the newest round in the record, not from the
+clock.** The site is static and is rebuilt when somebody publishes it; a window
+measured from build time would empty itself on a quiet week without a game having
+been played, and would move every time the site was rebuilt. A round with no time
+on it stays in the all-time boards and out of the week, rather than being given a
+date it does not have.
+
+**The page speaks to a player, the ledger speaks to an auditor.** `capture` is
+shown as a percentage and described as *how much of the trade that was there for
+the taking got taken*, with 0% "everyone staying home" and 100% "a perfect day";
+the format is `2 traders · 4 goods · 3 days`, because the game calls an episode a
+day. Autarky, Cobb-Douglas and `eff_round` are gone from the page's prose — the
+exact fraction stays in the tooltip and the whole argument stays here and in
+`scores.py`. Nothing softer than the arithmetic is claimed: a minus score still
+says the traders ended up worse off than not trading, and the games that are kept
+and not ranked are still named on the page, with their reasons, in the same
+plain words.
+
 ### What the ledger will not do
 
 - **Believe anybody.** Every figure is recomputed from the run record and the

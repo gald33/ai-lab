@@ -544,3 +544,104 @@ def test_two_games_that_captured_the_same_share_a_place(tmp_path):
 def test_a_game_the_ledger_never_saw_has_no_standing(tmp_path):
     ledger, _ = _ledger_of(tmp_path, n=1)
     assert scores.standing(scores.load(ledger), "no-such-game") is None
+
+
+def test_the_all_time_high_is_the_best_game_and_says_what_it_beat(tmp_path):
+    """One headline number, and enough beside it that it cannot mislead.
+
+    Nothing makes two formats comparable, so the record is the biggest score in
+    the book rather than first place in a league of every format -- and the
+    field it actually beat has to travel with it, or a record set on a format
+    only one game ever played reads like a record that beat everybody.
+    """
+    ledger, _ = _ledger_of(tmp_path)
+    data = scores.boards(scores.load(ledger))
+    best = data["best_ever"]
+    ranked = [g for g in scores.games(scores.load(ledger)) if scores.is_ranked(g)]
+
+    assert best["capture"] == max(g["capture"] for g in ranked)
+    assert best["game_id"] == data["games"][0]["game_id"]
+    assert best["place"] == 1
+    # What it beat is the field on its own format, not every game ever played.
+    same = [g for g in ranked if g["level"] == best["level"]]
+    assert best["first_of"] == len(same) <= len(ranked)
+
+
+def test_the_games_board_places_each_game_inside_its_own_format(tmp_path):
+    """The list is sorted so a person can read down it; the *place* is the
+    number that means something, and it never crosses a format."""
+    ledger, _ = _ledger_of(tmp_path)
+    board = scores.boards(scores.load(ledger))["games"]
+    assert board, "no ranked game to place"
+    assert [g["capture"] for g in board] == sorted(
+        (g["capture"] for g in board), reverse=True)
+
+    by_level = {}
+    for g in board:
+        by_level.setdefault(tuple(g["level"]), []).append(g)
+    for entries in by_level.values():
+        assert all(g["of"] == len(entries) for g in entries)
+        assert min(g["place"] for g in entries) == 1
+        for g in entries:
+            ahead = sum(1 for p in entries if p["capture"] > g["capture"] + 1e-12)
+            assert g["place"] == ahead + 1
+
+
+def test_the_week_board_is_the_same_rules_over_the_last_seven_days(tmp_path):
+    """A second view of one record, never a second record.
+
+    The window is counted back from the newest round rather than from the clock
+    on the machine: the site is static and is rebuilt when somebody publishes
+    it, so a window measured from build time would empty itself on a quiet week
+    without a game having been played.
+    """
+    ledger, rows = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    newest = max(r["played_at"] or r["recorded_at"] for r in rows)
+
+    # Push every round but one well outside the window.
+    old = "2020-01-01T00:00:00+00:00"
+    for row in rows[1:]:
+        row["played_at"] = old
+    rows[0]["played_at"] = newest
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+
+    data = scores.boards(scores.load(ledger))
+    week = data["week"]
+    assert week["days"] == scores.RECENT_DAYS
+    assert week["since"] < newest
+    assert week["counts"]["rounds"] == 1
+    assert len(week["games"]) <= 1
+    # All time still holds everything: the week narrows the view, not the record.
+    assert data["totals"]["rounds"] == len(rows)
+    assert len(data["games"]) >= len(week["games"])
+
+
+def test_a_round_with_no_time_stays_out_of_the_week_and_in_the_record(tmp_path):
+    """A row that cannot be placed in a week is not given a date it does not
+    have -- it keeps its place all-time, where it is comparable."""
+    ledger, _ = _ledger_of(tmp_path, n=1)
+    rows = scores.load(ledger)
+    for row in rows:
+        row["played_at"] = None
+        row["recorded_at"] = "2020-01-01T00:00:00+00:00"
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    rows = scores.load(ledger)
+
+    assert scores.within(rows[0], None) is True
+    assert scores.within(rows[0], "2026-01-01T00:00:00+00:00") is False
+    data = scores.boards(rows)
+    assert data["totals"]["rounds"] == len(rows)
+
+
+def test_a_players_best_game_is_one_a_spectator_can_go_and_look_at(tmp_path):
+    """A number with nothing behind it is a number nobody can check."""
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    data = scores.boards(rows)
+    played = {g["game_id"]: g for g in scores.games(rows)}
+    for row in data["traders"]:
+        game = played[row["best_game"]]
+        assert row["best"] == pytest.approx(max(game["ratios"].values()), abs=5e-5) \
+            or row["best"] in [round(v, 4) for v in game["ratios"].values()]
+        assert row["best_level"] == scores.level_label(tuple(game["level"]))
