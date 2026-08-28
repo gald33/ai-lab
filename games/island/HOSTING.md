@@ -118,6 +118,7 @@ seats.
 | `--out/archive-<workspace>.json` | the **second copy** of the board, read live by an archivist that took no seat, with its own blind spots declared | anybody checking what the manager left out |
 | `--live/<table>.json` | the running game's board, rewritten every drain, plus — at the last bell — a `finished` block naming the two files below | **anybody**: it is what `?live=<url>` reads |
 | `--live/board-<table>.json`, `--live/reveal-<table>.json` | copies of the finished game's board and reveal, written beside the live file so whoever watched the round can see its scores and replay it | the spectator's page |
+| `--live/index.json` | every finished game on this host, newest first, with its board, reveal, official standing and the facets the picker filters on | the spectator's page — this is what turns a finished game into a listed recording |
 | `--ledger` | append-only, one row per round | the scoreboard |
 | `--state` | seeds drawn and lines already acted on | only this process, across restarts |
 
@@ -150,6 +151,15 @@ and it has no back end.
 rather than links: `--out` holds the seeds of games that are **still
 running**, and serving it would publish them. A copy under `--live` is a
 finished game only, put there by the same call that publishes the sidecar.
+**The live directory is the archive.** A game does not get copied anywhere to
+become watchable: it ends, its board and reveal land beside the live file
+nobody stopped polling, and `index.json` lists it. The viewer reads that index
+— `?games=<url>`, or automatically from the directory of whatever `?live=` was
+pointed at — so the URL a spectator watched a game on is the URL its recording
+lives at afterwards. `games/replays/` in the repository is a different thing
+and stays that way: a handful of games kept in git *deliberately*, with a
+commit behind each, rather than everything this host has ever played.
+
 **Nothing under `--live` is ever pruned, and `--keep` should stay unset.**
 Decided by Gal, 2026-08-28: *all games are saved forever*. A spectator link,
 once handed out, keeps working — and pruning a live copy breaks the link

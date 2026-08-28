@@ -799,6 +799,29 @@ Two rules hold this together and neither is new:
   game is placed among its own format and nowhere else. Ties share a place;
   breaking them by the clock would rank the clock.
 
+### The live file becomes the recording
+
+Decided by Gal, 2026-08-28, correcting what I had started doing — which was
+asking the host operator to hand me a finished game's board and reveal so I
+could commit them into `games/replays/`. That is the hand-copying path, and it
+does not scale past somebody remembering to ask.
+
+**A game becomes a recording by ending.** Its board and reveal are already
+written beside the live file at the bell; the manager now also lists it in
+`index.json` in that same directory, and the viewer reads that index — from
+`?games=<url>`, or automatically from the directory of whatever `?live=` names.
+So the URL somebody watched a game on is the URL its replay lives at
+afterwards, and nothing is copied for that to be true.
+
+This is what makes "saved forever" mean something. Keeping every file would be
+worth little if the only way to watch one were to know its filename; the index
+is the difference between an archive and a directory.
+
+`games/replays/` keeps its own meaning and is not replaced: a handful of games
+kept in git **deliberately**, one commit each, because somebody decided that
+game was worth carrying in the repository. The host's archive is everything it
+has ever played.
+
 ### All games are saved forever
 
 Decided by Gal, 2026-08-28, when the host operator asked whether `--keep`

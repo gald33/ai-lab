@@ -23,6 +23,7 @@ spectator sees is exactly the board, which is exactly what the traders see.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 #: What the viewer's `rowsFromState` reads. Kept to that shape deliberately:
@@ -56,8 +57,45 @@ def write(client, channel: str, path: Path, *, limit: int = 300) -> Path:
     return path
 
 
+#: The archive's own listing, beside the games it lists. A spectator's page
+#: reads this to know which finished games are watchable, so a game becomes a
+#: recording by being written here rather than by anybody copying it anywhere.
+INDEX = "index.json"
+
+
+def _remember(directory: Path, label: str, copies: dict, standing: dict | None,
+              facets: dict | None, when: str) -> None:
+    """Add this game to the live directory's index, or replace its entry.
+
+    **The live directory is the archive.** Nothing here is ever pruned (see
+    `HOSTING.md`, "all games are saved forever"), so the file a spectator was
+    polling while the game ran is the file that keeps its replay afterwards --
+    and the only thing standing between "a game ended" and "a recording anybody
+    can watch" was a listing. This is that listing.
+
+    Keyed by label and rewritten whole, so re-finishing a game replaces its row
+    rather than doubling it, and newest first because with many games kept the
+    interesting one is the one that just ended.
+    """
+    index = directory / INDEX
+    try:
+        rows = json.loads(index.read_text()).get("games", [])
+    except (OSError, ValueError):
+        rows = []
+    rows = [r for r in rows if r.get("label") != label]
+    rows.append({"label": label, "finished_at": when,
+                 "board": copies["board"], "reveal": copies["reveal"],
+                 "live": f"{label}.json",
+                 **({"standing": standing} if standing else {}),
+                 **({"facets": facets} if facets else {})})
+    rows.sort(key=lambda r: r.get("finished_at") or "", reverse=True)
+    tmp = index.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"games": rows}, indent=1) + "\n")
+    tmp.replace(index)
+
+
 def finish(path: Path, *, board: Path, reveal: Path,
-           standing: dict | None = None) -> dict:
+           standing: dict | None = None, facets: dict | None = None) -> dict:
     """Say on the spectator's own file that the game is over, and where to read it.
 
     A live round shows no score, and cannot: utility needs a taste and tastes
@@ -102,4 +140,10 @@ def finish(path: Path, *, board: Path, reveal: Path,
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(state) + "\n")
     tmp.replace(path)
+
+    # Last, and only once the game is genuinely readable: the index is what a
+    # page believes. A row pointing at files that are not there yet would be
+    # the same mistake as a pointer written before its copies, one level up.
+    _remember(path.parent, stem, copies, standing, facets,
+              datetime.now(timezone.utc).isoformat(timespec="seconds"))
     return copies
