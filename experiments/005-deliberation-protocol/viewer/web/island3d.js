@@ -417,8 +417,7 @@ function slab(radius, depth, bevel, wobble, phase, baseY, material, name) {
  * along the sand on one bearing and sit a good half-unit out to sea on the
  * next. This is the shore's own silhouette, swept.
  */
-function shoreRing(radius, wobble, phase, thickness, y, material, name) {
-  const edge = silhouette(radius, wobble, phase);
+function shoreRing(edge, thickness, y, material, name) {
   const N = 96;
   const pts = Array.from({ length: N }, (_, i) => {
     const t = (i / N) * Math.PI * 2;
@@ -799,7 +798,15 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: out on one bearing and up on the sand at another.
   island.add(slab(SHALLOWS.radius, 0.09, 0.05, SHALLOWS.wobble, SHALLOWS.phase,
                   -0.05, M.sea, "shallows"));
-  island.add(shoreRing(4.30, 0.10, 0.7, 0.075, 0.05, M.surf, "surf_ring"));
+  //: **Set out from the drawn sand, not at a radius of its own.** A ring at
+  //: 4.30 was inside the land on 17 bearings of 72 -- the slabs' bevels put
+  //: the sand as much as 0.20 further out than their outlines say -- so the
+  //: white water was buried for a quarter of the coast and surfaced in
+  //: patches on the rest. It read as a few stray arcs floating near the shore
+  //: rather than as surf, which is how it was reported. Following `dryEdge`
+  //: it breaks along the whole shoreline, at every bearing, by construction.
+  island.add(shoreRing((t) => dryEdge(Math.cos(t), -Math.sin(t)) + 0.12,
+                       0.075, 0.05, M.surf, "surf_ring"));
 
   // — land —
   island.add(slab(SHELF.radius, 0.14, 0.14, SHELF.wobble, SHELF.phase, 0.0, M.sandWet, "shore_shelf"));
@@ -1198,7 +1205,11 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: allows and no closer.
   const afloatAt = (t) => {
     const ux = Math.cos(t), uz = Math.sin(t), tx = -uz, tz = ux;
-    const from = dryEdge(ux, uz);
+    //: Outside the surf as well as the sand: the white water now runs at
+    //: `dryEdge + 0.12` with a tube of 0.075 on it, and a hull moored through
+    //: the breakers is what the first report's white streaks across the boats
+    //: actually were.
+    const from = dryEdge(ux, uz) + 0.28;
     for (let r = from; r < from + 1.6; r += 0.05) {
       let clear = true;
       for (let a = -1; a <= 1 && clear; a++) {
