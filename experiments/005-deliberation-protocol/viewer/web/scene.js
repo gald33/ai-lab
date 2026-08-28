@@ -756,6 +756,13 @@ export class Scene {
     //: takes a different share of it -- a phone's pill rows are a fixed number
     //: of pixels, so a shorter window is a bigger band at the same aspect.
     this.chrome = chrome;
+    //: Which offers a refusal is currently blinking, and until when. The ropes
+    //: are rebuilt from scratch on every paint (`paint()` calls
+    //: `replaceChildren`), so a class put on one by `refuse()` is gone by the
+    //: next frame -- which did not show while the bubble over the hut was
+    //: carrying the message, and is the whole indicator now. Held here and
+    //: re-applied by `rope()` for as long as the mark is meant to be up.
+    this.noUntil = new Map();
     //: Which of the island and the cards this viewer asked for. Portrait only:
     //: landscape has margins for the cards and the two are not competing.
     this.focus = focus;
@@ -1998,7 +2005,30 @@ export class Scene {
     g.append(chip);
     if (prog >= 1) g.classList.add("delivered");
     else this.ride();
+    //: A rope rebuilt while its refusal is still on screen is re-marked here,
+    //: or the blink would last one frame.
+    if ((this.noUntil.get(p.pid) || 0) > performance.now()) this.markNo(g);
     return g;
+  }
+
+  /**
+   * The red answer, on one rope: the classes and the ✗ that rides its pill.
+   *
+   * Marked on the **live** rope rather than on a copy, since a refusal does not
+   * close the offer and a red copy laid over the orange original would blink to
+   * the wrong colour between flashes.
+   */
+  markNo(g, reason = "") {
+    g.classList.add("answered", "refused");
+    const chip = g.querySelector(".rope-chip");
+    if (!chip || chip.querySelector(".chip-no")) return;
+    const bg = chip.querySelector(".chip-bg");
+    const x = Number(bg?.getAttribute("width") || 104) / 2 + 13;
+    const no = el("g", { class: "chip-no", transform: `translate(${x} 0)` });
+    const why = reason || this.noWhy || "";
+    if (why) no.append(el("title", {}, why));
+    no.append(el("path", { class: "chip-cross", d: "M -6 -6 L 6 6 M 6 -6 L -6 6" }));
+    chip.append(no);
   }
 
   // --- what an event looks like ---------------------------------------------
@@ -2087,36 +2117,27 @@ export class Scene {
    * blink.
    */
   refuse(who, reason = "") {
-    const held = [];
-    for (const p of refused(this.state?.proposals, who, reason)) {
-      const rope = this.ropes.querySelector(`.rope[data-pid="${p.pid}"]`);
-      // Marked on the live rope rather than on a copy: the offer is still open
-      // -- a refusal does not close it -- and a red copy laid over an orange
-      // original would blink to the wrong colour between flashes.
-      if (rope) { rope.classList.add("answered", "refused"); held.push(rope); }
-    }
-    if (!held.length) return false;
-    //: An ✗ on the pill as well as the colour, since the blink is the whole
-    //: indicator now: red alone is a colour a red-green viewer reads as "an
-    //: answer", and the cross is which answer. It carries the manager's reason
-    //: as its `<title>`, which is where the badge used to keep it.
-    for (const rope of held) {
-      const chip = rope.querySelector(".rope-chip");
-      if (!chip) continue;
-      const bg = chip.querySelector(".chip-bg");
-      const x = Number(bg?.getAttribute("width") || 104) / 2 + 13;
-      const no = el("g", { class: "chip-no", transform: `translate(${x} 0)` });
-      if (reason) no.append(el("title", {}, reason));
-      no.append(el("path", { class: "chip-cross",
-                             d: "M -6 -6 L 6 6 M 6 -6 L -6 6" }));
-      chip.append(no);
+    const pids = refused(this.state?.proposals, who, reason).map((p) => p.pid);
+    if (!pids.length) return false;
+    //: An ✗ on the pill as well as the colour: red alone is a colour a viewer
+    //: reads as "an answer", and the cross is *which* answer. It carries the
+    //: manager's reason as its `<title>`, which is where the badge kept it.
+    this.noWhy = reason;
+    const until = performance.now() + DWELL.refused;
+    for (const pid of pids) {
+      this.noUntil.set(pid, until);
+      const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
+      if (rope) this.markNo(rope, reason);
     }
     //: On a timer, as `blame()` is, and for the same reason: under reduced
     //: motion there is no animation to hang the clean-up off, and the reader
-    //: still needs the colour for as long as the badge is up.
+    //: still needs the colour for as long as the mark is meant to be up.
     clearTimeout(this.refuseTimer);
     this.refuseTimer = setTimeout(() => {
-      for (const rope of held) {
+      for (const pid of pids) {
+        this.noUntil.delete(pid);
+        const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
+        if (!rope) continue;
         rope.classList.remove("answered", "refused");
         rope.querySelector(".chip-no")?.remove();
       }
