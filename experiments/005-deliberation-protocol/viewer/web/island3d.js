@@ -1217,6 +1217,10 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: fine standing still. Carried into the search below so every berth is
   //: clear through the whole of the swing.
   const SWING = 0.10;
+  //: Half of what one row would need, because the rows interleave: two boats
+  //: a slot apart are in different rows and pass each other on the radius.
+  const STEP = (2 * HALF_LEN + 0.30) / 2
+               / dryEdge(Math.cos(DOCK_BEARING), Math.sin(DOCK_BEARING));
   const onLand = lander(island);
   //: Outward along the bearing until the hull's whole footprint is off the
   //: land, asked of the slabs rather than of a radius. It starts at the drawn
@@ -1244,6 +1248,25 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: rather than this quietly choosing somewhere wrong.
     return from + 1.6;
   };
+  //: **The two rows are concentric, not each boat at its own depth.**
+  //: Taking every berth's radius from `afloatAt` on its own bearing sounds
+  //: right and is not: the coast wobbles, so the inner row on one bearing can
+  //: sit further out than the outer row on the next, and the rows cross. That
+  //: is what put boat_4 through boat_6 -- and the comment here claimed they
+  //: cleared "by construction", which was the claim and not the code.
+  //: One radius for the arc, taken where the water starts latest, and the
+  //: rows are then exactly `ROW_GAP` apart everywhere.
+  const berth = (i) => {
+    const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2);
+    //: **Far enough out that no hull lies across the jetty.** The deck is
+    //: 0.7 wide and a hull is 1.03 long, so the first slot has to clear half
+    //: of each plus a margin -- at this radius about 0.22 of a radian, where
+    //: 0.8 of a slot was 0.13 and laid the first two boats through the deck.
+    return DOCK_BEARING + side * (rank + 1.4) * STEP;
+  };
+  const ROW_GAP = 2 * HALF_WID + 0.14;
+  const bearings = traders.map((_, i) => berth(i));
+  const rIn = Math.max(...bearings.map(afloatAt));
   const moorings = new THREE.Group();
   moorings.name = "moorings";
   traders.forEach((name, i) => {
@@ -1254,19 +1277,15 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: halves the arc each boat needs, and the row a boat is in decides its
     //: radius -- so the two rows clear each other by construction, whatever
     //: the angle works out to.
-    const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2), row = rank % 2;
+    const rank = Math.floor(i / 2), row = rank % 2;
     //: The radius is read first at the dock's own bearing, because the slot
     //: width depends on it and the slot decides the bearing. A tenth of a
     //: unit either way does not move the angle enough to matter.
     //: Half of what one row would need, because the rows interleave: two
     //: boats a slot apart are in different rows and pass each other on the
     //: radius instead.
-    const step = (2 * HALF_LEN + 0.30) / 2
-                 / dryEdge(Math.cos(DOCK_BEARING), Math.sin(DOCK_BEARING));
-    const t = DOCK_BEARING + side * (rank + 0.8) * step;
-    //: The outer row stands off by more than a hull's width, so nothing in it
-    //: can reach anything in the inner one however the angles fall.
-    const r = afloatAt(t) + row * (2 * HALF_WID + 0.14);
+    const t = berth(i);
+    const r = rIn + row * ROW_GAP;
     const x = Math.cos(t) * r, z = Math.sin(t) * r;
     const b = boat(i + 1, seatMat(name, i, traders.length));
     //: Higher than the old 0.02. The hull's floor has to be under the water
