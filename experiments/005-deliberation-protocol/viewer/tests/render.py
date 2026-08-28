@@ -693,7 +693,17 @@ OVERHEAD = """(want) => {
     return m ? [m.matrix.e, m.matrix.f] : null;
   };
   const at = document.querySelector('.pop-at');
-  if (!at) return { error: 'no bubble was drawn at all' };
+  if (!at) {
+    //: A refusal the manager named an offer in draws no bubble at all: the red
+    //: blink on that offer is the indicator, and the bubble is what is left
+    //: when there is nothing on the square to blink.
+    const blinked = [...document.querySelectorAll('.rope.refused')].map(n => n.dataset.pid);
+    if (blinked.length) {
+      return { blinkedOnly: true, blinked,
+               chipCross: document.querySelectorAll('.chip-cross').length };
+    }
+    return { error: 'no bubble was drawn at all' };
+  }
   const who = at.getAttribute('data-trader');
   const here = spot(at);
   if (!here) return { error: 'the bubble is not placed by a transform' };
@@ -705,6 +715,14 @@ OVERHEAD = """(want) => {
     pin: pin ? [+pin.getAttribute('cx'), +pin.getAttribute('cy')] : null,
     card: spot(hut),
     cross: !!document.querySelector('.pop-cross'),
+    //: Read in the *same* evaluate as the bubble, never in one of its own: a
+    //: badge lives 1500ms and a round-trip through the driver on a loaded
+    //: machine costs most of that, so a second call to ask "did an offer
+    //: blink?" spent the rest of the budget and the bubble was gone before
+    //: this one ran -- which is what a separate guard did here, and it read
+    //: as the page having drawn nothing.
+    blinked: [...document.querySelectorAll('.rope.refused')].map(n => n.dataset.pid),
+    chipCross: document.querySelectorAll('.chip-cross').length,
     dots: document.querySelectorAll('.pop-dot').length,
     want,
   };
@@ -802,21 +820,18 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
         page.wait_for_timeout(900)
         page.click("#fwd")
         page.wait_for_timeout(250)
-        #: A refusal the manager named an offer in draws no bubble at all any
-        #: more -- the red blink on the offer is the indicator, and the bubble
-        #: is kept only for the refusals with nothing on the square to blink.
-        #: So this half checks the blink instead when that is what happened,
-        #: and says which of the two it examined.
-        if kind == "bad":
-            blink = page.evaluate("() => ({"
-                                  " ropes: document.querySelectorAll('.rope.refused').length,"
-                                  " cross: document.querySelectorAll('.chip-cross').length })")
-            if blink["ropes"]:
-                print(f"NOTE {where}: the offer blinked; no bubble is drawn for it")
-                if not blink["cross"]:
-                    bad.append(f"{where}: the blinked offer carries no cross")
-                continue
         seen = page.evaluate(OVERHEAD, kind)
+        #: The blink is the whole refusal when the manager named an offer, and
+        #: then there is no bubble to measure -- what is checked instead is
+        #: that the offer is marked and carries its cross.
+        if seen.get("blinkedOnly"):
+            print(f"NOTE {where}: the offer blinked; no bubble is drawn for it")
+            if not seen["chipCross"]:
+                bad.append(f"{where}: the blinked offer carries no cross")
+            continue
+        if seen.get("blinked") and kind == "bad":
+            bad.append(f"{where}: a bubble was drawn over {seen['blinked']}, "
+                       f"which was already blinking, so the refusal is said twice")
         if seen.get("error"):
             bad.append(f"{where}: {seen['error']}")
             continue
