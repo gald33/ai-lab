@@ -24,8 +24,12 @@ import { seatRing } from "./seats.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
+//: Iron's pickaxe is U+26CF, which is a *text* codepoint by default: without
+//: the variation selector it renders as a black monochrome glyph and vanishes
+//: into the agent card's dark background. The trailing U+FE0F asks for the
+//: colour emoji, like every other good here already gets by default.
 export const GLYPH = {
-  bread: "🍞", cloth: "🧵", iron: "⛏", salt: "🧂",
+  bread: "🍞", cloth: "🧵", iron: "⛏️", salt: "🧂",
   fish: "🐟", grain: "🌾", timber: "🪵",
 };
 
