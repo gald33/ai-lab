@@ -22,7 +22,11 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { onMeadow, GRASS_Y, SAND_Y, SEA_Y } from "./island3d.js";
+import { M, onMeadow, GRASS_Y, SAND_Y, SEA_Y } from "./island3d.js";
+//: The day's colour curve, shared with the drawn island so the sea's warmth
+//: and the fallback's burn turn at the same hour. `scene.js` owns the day and
+//: nothing there is imported back, so the two are not a cycle.
+import { burnAt } from "./scene.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
@@ -225,6 +229,58 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     color: 0x2d5d79, roughness: 0.3, metalness: 0.06,
     transparent: true, opacity: 0.9, side: THREE.DoubleSide }), "swell",
     [0, SEA_Y, 0]);
+  //: **The sun's glade** -- the glitter path a low sun lays across water,
+  //: bright where it points at you and gone a little way to either side.
+  //:
+  //: This is what a sunrise on the sea actually looks like, and it is the
+  //: thing a flat tint of the whole ocean cannot be: tinting every pixel of
+  //: the water the same warm colour reads as a stain on the picture, because
+  //: the sea is not evenly lit at dusk -- one line of it is on fire and the
+  //: rest stays dark.
+  //:
+  //: **It has to be drawn rather than lit**, and that is worth the note. A
+  //: glade is the sun's specular reflection, so the honest way to get one is a
+  //: smooth water material and a low key -- and it does not work here, because
+  //: the camera is orthographic. Under an ortho camera every point on a flat
+  //: plane shares one view vector, so the half-vector is constant and the
+  //: specular term comes out *uniform* across the whole sea: a sheen, never a
+  //: streak. The streak in a photograph is parallax, and this camera has none.
+  //: So the shape is painted and pointed at the sun instead.
+  //:
+  //: Additive and depth-blind: it is light on the water, not a slick floating
+  //: on it, so it may not occlude the swell it lies over.
+  //: Built as data rather than on a 2D canvas, so it needs no `document` --
+  //: `firelight.test.mjs` builds an island under plain node, and a texture
+  //: that reached for the DOM took the whole life layer down with it there.
+  const gladeTex = (() => {
+    const N = 128, px = new Uint8Array(N * N * 4);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const dx = (x + 0.5) / N * 2 - 1, dy = (y + 0.5) / N * 2 - 1;
+      //: Brightest at the middle and gone by the rim, which under the stretch
+      //: below is a long soft spindle rather than a disc. Squared, so the
+      //: falloff is soft rather than a disc with an edge.
+      const d = Math.min(1, Math.hypot(dx, dy));
+      const a = (1 - d) * (1 - d);
+      const i = (y * N + x) * 4;
+      px[i] = px[i + 1] = px[i + 2] = 255;
+      px[i + 3] = Math.round(a * 255);
+    }
+    const t = new THREE.DataTexture(px, N, N, THREE.RGBAFormat);
+    t.needsUpdate = true;
+    return t;
+  })();
+  const gladeMat = new THREE.MeshBasicMaterial({
+    map: gladeTex, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  //: Long down the sun's bearing and narrow across it. Wider than the island
+  //: is across so the path runs out of frame rather than ending in the water,
+  //: which is what a horizon-less picture has instead of a horizon.
+  const glade = mesh(new THREE.PlaneGeometry(7.5, 34), gladeMat, "swell_glade",
+                     [0, SEA_Y + 0.012, 0]);
+  glade.rotation.x = -Math.PI / 2;
+  glade.castShadow = false;
+  glade.receiveShadow = false;
+  island.add(glade);
   //: Same reason the deep disc neither casts nor receives: water in a shadow
   //: map this wide is the flickering rectangle all over again.
   swell.castShadow = false;
@@ -665,6 +721,41 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: like everything else.
   const deep = new THREE.Color(0x244a63);
   const water = new THREE.Color(0x244a63);
+
+  //: **The sky is on the water, and on nothing else.**
+  //:
+  //: A dawn and a bell used to be a soft-light rect over the whole frame --
+  //: meadow, sand, huts and cards together -- and it was reported by eye as
+  //: the island looking *tinted*. A low sun does not wash a landscape evenly:
+  //: it lights the faces turned towards it and leaves the rest, and the one
+  //: surface that genuinely goes the colour of the sky is the water, because
+  //: it is reflecting it.
+  //:
+  //: The drawn island does this by z-order -- its burn is between the sea and
+  //: the land now (`scene.js`) -- but a model cannot: the island is a canvas
+  //: *behind* the SVG, so no rect on top of it spares the meadow. So the sea
+  //: is warmed here, at the one place only water is: its own material.
+  //:
+  //: **This was tried once and reverted**, because a warm sea stopped being
+  //: sea to the checks that separate island from water by how blue a pixel is
+  //: -- 29 failures, cards and chrome "standing on the island" because the
+  //: water behind them counted as land. The classifier was the thing that was
+  //: wrong: the island already knows which mesh is water, and
+  //: `viewer/tests/render.py` asks it now (`MASK_JS`) instead of guessing from
+  //: the colour. With that in place the sea's colour is free.
+  //:
+  //: Kept a *blue that has gone warm* rather than an orange: water at dusk is
+  //: still water, and the swell and the dolphins crossing it are drawn in
+  //: tones picked against blue.
+  const deepBurn = new THREE.Color(0x44315a);
+  //: The shallows and the swell over them, which are a lighter blue and take
+  //: the same journey so the shore does not stay cold against a warmed sea.
+  const shallowDay = new THREE.Color(0x36718f);
+  const shallowBurn = new THREE.Color(0x664b86);
+  //: What the deep water's material is at this hour. The band round the frame
+  //: is computed from *this* rather than from the flat blue, or the join stops
+  //: matching -- `afloat` measures that seam and allows 4 per channel.
+  const nowDeep = new THREE.Color(0x244a63);
   const seaDay = new THREE.Color(0x6fa6c8);
   const seaDusk = new THREE.Color(0x3c4a7a);
 
@@ -780,6 +871,26 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
       const a = Math.PI * (0.08 + lit * 0.84);
+      //: The sea takes the sky's colour at the ends of the day, and it is the
+      //: only thing that does -- see "The sky is on the water" above. Set on
+      //: the material rather than through a light, so it reaches water and
+      //: nothing else: `M.seaDeep` is the open sea, `M.sea` the shallows and
+      //: the swell over them.
+      //: Held back to seven tenths even at the ends of the day. At full lerp
+      //: the sea read as a stain rather than as water catching a sky, and the
+      //: two surfaces have to travel *together* -- the shallows are a lighter
+      //: blue than the deep, and tinting them by different amounts put a
+      //: violet lagoon inside a blue ocean. Both burn colours are the
+      //: material's own hue swung to 268 degrees at the same fraction of its
+      //: saturation and lightness, so what changes is the hour and not the
+      //: relationship between the two.
+      //: A quarter, not seven tenths. The glade above is what a sunset on the
+      //: water actually is; this is only the sea being under a warm sky at
+      //: all, and any more of it is the stain again.
+      const wet = burnAt(lit) * 0.25;
+      nowDeep.copy(deep).lerp(deepBurn, wet);
+      M.seaDeep.color.copy(nowDeep);
+      M.sea.color.copy(shallowDay.clone().lerp(shallowBurn, wet));
       if (key) {
         /*
          * Where the light stands, **reckoned from the camera and not from the
@@ -802,6 +913,18 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         const swing = turn + (0.5 - bear) * 2.2;
         const high = 1.1 + Math.sin(Math.PI * bear) * 8.0;
         key.position.set(Math.sin(swing) * 7.5, high, Math.cos(swing) * 7.5);
+        //: The glade lies along the sun's own bearing, so it swings with the
+        //: light and with the camera together and always points at whoever is
+        //: watching from the sun's side. `swing` is that bearing; the plane
+        //: was laid flat with a turn about X, so the spin within it is Z.
+        glade.rotation.z = -swing;
+        //: Only at the ends of the day, and strongest when the sun is lowest.
+        //: `burnAt` is the curve the drawn island's sky reads, so the glitter
+        //: arrives at the same hour the sky turns.
+        gladeMat.opacity = burnAt(lit) * 0.55;
+        //: The colour of the light making it, so a dawn glade is pinker than
+        //: a bell's and neither is ever a colour the sun is not.
+        gladeMat.color.copy(key.color);
         // A floor under it: the island still has to be readable at dusk, and
         // the cards standing on it are the part that matters most then.
         key.intensity = 0.75 + Math.sin(a) * 1.55;
@@ -825,10 +948,12 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       //: sea pixel a few pixels inside the frame, so it cannot drift far
       //: without being caught.
       if (ambient && key && fill) {
-        water.copy(deep).multiply(ambient.color).multiplyScalar(ambient.intensity);
-        water.add(deep.clone().multiply(key.color)
+        //: `nowDeep`, not `deep`: the band has to be the sea's colour *at this
+        //: hour*, and at the ends of the day that is the warmed one.
+        water.copy(nowDeep).multiply(ambient.color).multiplyScalar(ambient.intensity);
+        water.add(nowDeep.clone().multiply(key.color)
           .multiplyScalar(key.intensity * Math.max(0, Math.sin(a)) * 0.42));
-        water.add(deep.clone().multiply(fill.color).multiplyScalar(fill.intensity * 0.3));
+        water.add(nowDeep.clone().multiply(fill.color).multiplyScalar(fill.intensity * 0.3));
         water.r = Math.min(1, water.r);
         water.g = Math.min(1, water.g);
         water.b = Math.min(1, water.b);

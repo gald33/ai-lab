@@ -1151,6 +1151,74 @@ ambient #141 tuned. **Do not fix it by loosening `alive`'s threshold** — the
 question is whether the island should read warm at dusk on its own pixels, and
 if the answer is yes the fix is in the light, not in the bar.
 
+**The wash came off the land, and a warm sea could not be had.** Reported by
+eye, 2026-08-28: "the island seems tinted on dawn and dusk, maybe it's easier
+on the eyes if the sunrise and sunset only on the sea?" Both halves of that are
+right about what was wrong, and only one of them turned out to be buildable.
+
+The burn was the last rect on the SVG stack, over the whole frame — meadow,
+sand, huts and cards together. That is not what a low sun does to a landscape:
+it lights the faces turned towards it and leaves the rest, and the surface that
+really does go the colour of the sky is the water, which is reflecting it.
+
+- **The drawn island gets exactly what was asked for**, by z-order alone: the
+  burn rect is appended between `water()` and `land()`, so the sea takes the
+  colour and nothing standing on the island is touched.
+- **The model cannot be fixed that way** — the island is a canvas *behind* the
+  SVG, so no rect on top of it can spare the meadow. So the overlay is dropped
+  under `.has-3d` entirely and the modelled dusk is the key light on the faces
+  turned to it, which is where a sunset belongs anyway.
+- **Tinting the modelled sea itself was tried and reverted.** It is the obvious
+  way to put the sky on the water and it breaks the page: every check that
+  separates island from sea, and the letterbox band with them, calls a pixel
+  water only when `b > r + 16 && b > g + 4` (`LAND_JS` in
+  `viewer/tests/render.py`). A sea warmed to `0x5c4a63` stopped being sea by
+  that test — 29 failures, most of them cards and chrome suddenly "standing on
+  the island" because the water behind them now counted as land.
+
+**And the headroom is not merely small, it is already negative.** Measured with
+no tint at all: the lit band is `rgb(2,8,16)` at the open and `rgb(1,5,12)` at
+the bell — `b - r` of 14 and 11, against a bar of 17. Full dusk water only
+passes that test because `afloat` does not sample there. So there is no warm
+sea to be had at the ends of the day at any strength, and the thing to change
+first, if it is ever wanted, is the classifier rather than the colour.
+
+**Then the classifier changed, and the sea got its sunset after all.** Gal,
+2026-08-28: "the classifier could be the sea layer and the shore water layer;
+the latter is modelled separately and the former is the background." That is
+the way out of the paragraph above, and it was right. The island already knows
+which mesh is water — the open sea is one mesh on its own layer and *is* the
+backdrop pass, and `shallows`, `surf_ring`, the `swell` sheet and the dolphins
+are the shore water. So `MASK_JS` in `viewer/tests/render.py` hides the water
+and renders once: whatever still puts down a pixel is land. `alive`,
+`uncovered`, `afloat`, `mobile` and `@focus` all read that instead of guessing
+from how blue a pixel is, and the sea's colour is then free.
+
+**The sunset on the water is a glade, not a tint.** Gal supplied the reference
+— a photograph of a sun path on water. A flat warm tint of the whole ocean
+reads as a stain because the sea is not evenly lit at dusk: one line of it is
+on fire and the rest stays dark. So `island-life.js` lays a long soft plane
+along the sun's own bearing, additive, on `burnAt`, in the key light's colour.
+
+**It has to be painted rather than lit, and that is a fact about this camera.**
+A glade is the sun's specular reflection, so the honest way to get one is a
+smooth water material and a low key. It cannot work here: under an
+**orthographic** camera every point on a flat plane shares one view vector, so
+the half-vector is constant and the specular term is uniform across the whole
+sea — a sheen, never a streak. The streak in a photograph is parallax, and this
+camera has none. Same root cause as the horizon: an ortho camera buys the
+affine ground-to-viewBox map that puts a hut under its card, and it costs every
+effect that depends on the view direction varying across the picture.
+
+**And one waterline.** Gal: "the shallow and deep sea should probably be on the
+same level, just different shades." They were not: the shallows slab sat with
+its top 0.16 *above* `SEA_Y`, so the lagoon was a raised plateau with a lip all
+the way round, and `surfaceAt` existed to float a boat inside it higher than
+one outside. The slab now sits below the swell's lowest trough, the swell is
+the only surface, and the shallows are what they should always have been — a
+lighter colour showing through where the water is shallow. `surfaceAt` is a
+constant.
+
 The lesson generalises past the sun: **on this island the lights are a shared
 resource and the greens have first claim on them.** Anything that wants to tint
 the whole scene should tint the one light that is actually casting, not the one
