@@ -3002,10 +3002,10 @@ def island(browser, base: str, out: Path) -> list[str]:
         #: bevels the solid outward by up to 0.20 -- while a hull is 1.17 long
         #: and touches down at its ends. Two errors compounding, both in the
         #: direction of saying yes. Reported by eye, with a picture.
-        for name, n in sorted((built.get("aground") or {}).items()):
-            if n:
-                bad.append(f"island {label}: {name} has {n} of 9 hull points "
-                           f"over land; it is beached, not moored")
+        for name, points in sorted((built.get("aground") or {}).items()):
+            if points:
+                bad.append(f"island {label}: {name} has {points} of 9 hull "
+                           f"points over land; it is beached, not moored")
         #: And there is a dock at all. The loop above is vacuously happy about
         #: an empty one, and the boats are read off it by name.
         if not [m for m in (built.get("moored") or []) if m["name"].startswith("boat_")]:
@@ -3029,10 +3029,15 @@ def island(browser, base: str, out: Path) -> list[str]:
         #: of them. The boats used to be laid against a list of three hand
         #: written positions, so a fourth seat simply had no boat -- reported
         #: as sails carrying the agents' colours but not all of the agents'.
+        #: Against the traders the island was actually built for, not against
+        #: the shape's requested `n` -- a loop variable above was named `n`
+        #: too and quietly rebound it, so this compared every count against
+        #: zero and failed thirteen times on a correct scene.
         boats = [h for h in harbour if h["name"].startswith("boat_")]
-        if len(boats) != n:
-            bad.append(f"island {label}: {len(boats)} boats for {n} traders; "
-                       f"every seat arrived somehow and wears its own colour")
+        if len(boats) != len(built["traders"]):
+            bad.append(f"island {label}: {len(boats)} boats for "
+                       f"{len(built['traders'])} traders; every seat arrived "
+                       f"somehow and wears its own colour")
 
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
