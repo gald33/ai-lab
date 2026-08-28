@@ -81,15 +81,16 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
-**The pin is `>=1.2.2`, one number for everybody.** It briefly had two floors
+**The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
 problem it described: a reader had to work out which of two numbers applied to
 them before they could install anything. The higher one covers both reasons,
 and the reasons are in `requirements.txt` beside the pin: **1.0** is where
 `whisper` arrived (an older release settles tables and then fails while dealing
-them), and **1.2.2** is where `say <channel> --thread X "msg"` stopped
+them), **1.2.2** is where `say <channel> --thread X "msg"` stopped
 rejecting the message instead of posting it — which is a thing this document
-tells you to do.
+tells you to do — and **1.2.3** is where CLI `inbox` stopped destroying
+whispers it could not open, which is the entrant's own reading path.
 
 **Order matters when updating**: install first, then restart. The manager is
 what writes the ending — the board and reveal copies, and the official score it
@@ -117,6 +118,19 @@ seats.
   own; if it exits, something went wrong and the lobby is deaf until it is
   back. On restart it reads `--state` and picks up its own settled tables
   rather than settling them again.
+
+  **A restart is not a resume, which is why blips are retried in-process.**
+  `island-lobby` crashed at 11:55:28 on 2026-08-28 (`NRestarts=2`): the
+  managed hub's own redeploy answered a poll with a Cloudflare 502, the drain
+  raised, and the process exited 1. It was idle, so nothing was lost — but
+  `--state` records a settled table as one this process already dealt, so the
+  same crash during a live game would have brought back a runner that
+  *declines* to play the table it was in the middle of. The fix is
+  [`hub.py`](hub.py): a poll that fails on a transport error or a
+  408/429/500/502/503/504 is retried with backoff for two minutes and said
+  out loud each time; everything else still raises on the first try. Two
+  minutes of silence is no longer a blink, so past that it exits and this
+  bullet's restart is right again.
 - **~100 MB of memory and almost no CPU** between games. A game costs one
   thread and a poll every few seconds for the length of its episodes.
 - **A clock that is roughly right.** Every deadline it posts is absolute UTC

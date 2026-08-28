@@ -1,7 +1,7 @@
 # What the island needs to *run*. `HOSTING.md` installs from this file, so the
 # host and this repository never disagree about a version by accident.
 #
-# **One floor, `>=1.2.2`, for everybody**, and it is the union of two reasons
+# **One floor, `>=1.2.3`, for everybody**, and it is the union of three reasons
 # rather than two pins — a manager pin and an operator pin were briefly kept
 # apart here and that was worse: a reader had to work out which of two numbers
 # applied to them before they could install anything.
@@ -16,6 +16,12 @@
 #     not post, which is what `HOSTING.md` and `ENTER.md` both tell people to
 #     do. See
 #     `games/switchboard-a-post-that-printed-is-not-a-post-that-landed.md`.
+#   - **1.2.3** is where CLI `inbox` stopped destroying whispers it could not
+#     open. A fresh CLI process had never called `agents()`, so it held no
+#     sender exchange keys, read every whisper as `unreadable`, and marked it
+#     read on the way past. This is the entrant path specifically: the MCP
+#     bridge never hit it, because one long-lived client had already filled
+#     the cache. It blinded both traders in `g5` for all eight episodes.
 #
 # Nobody has to decide which applies to them: the higher number covers both.
 #
@@ -46,4 +52,4 @@
 # One line, and no server: the manager is an outbound client of a hub it does
 # not run. What the tests need to stand a hub of their own is in
 # `requirements-dev.txt`, and a host has no use for it.
-agent-switchboard>=1.2.2
+agent-switchboard>=1.2.3
