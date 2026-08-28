@@ -225,17 +225,33 @@ def _opened_at(msg: dict, default: float) -> float:
 
 
 def missing(client: Client, channel: str, *, patience: float,
-            now: float | None = None) -> dict[str, int]:
+            now: float | None = None, filler: str | None = None,
+            min_real: int = 1) -> dict[str, int]:
     """Tables that have sat forming too long, and how many seats each lacks.
 
     Read off the lobby's own board and nothing else -- this process has no
     privileged view of the lobby and is not given one. Which means it can only
     see what it can count: `is forming` says how many seats a table wants,
     `seat ... =` says one was taken, and `is full` or `lapsed` ends it.
+
+    **A table nobody turned up to is not filled.** `min_real` is how many of
+    those seats have to be held by somebody who is not this filler before it
+    offers anything, and it is 1 by default: the point of an NPC is that three
+    entrants and an empty chair still play, never that a drawn island plays
+    itself to an audience of nobody. A round with no people in it costs a seed,
+    an hour of the lobby and a row in the archive, and answers no question that
+    was asked -- and because `run_game` marks any board with an NPC on it
+    `practice`, it cannot even be ranked afterwards.
+
+    Which seats are this filler's own is read the same way as everything else
+    here, off the name in the lobby's own `seat ... = <name>` line: `fill`
+    seats `<filler>-<table>-<n>`, so `filler` is that prefix. Pass
+    `min_real=0` for the old behaviour of filling anything short.
     """
     now = time.time() if now is None else now
     wants: dict[str, int] = {}
     taken: dict[str, int] = {}
+    real: dict[str, int] = {}
     opened: dict[str, float] = {}
     done: set[str] = set()
     for msg in sorted(client.history(channel, limit=500),
@@ -249,12 +265,18 @@ def missing(client: Client, channel: str, *, patience: float,
             opened[parts[0]] = _opened_at(msg, now)
         elif len(parts) > 2 and parts[1] == "seat":
             taken[parts[0]] = taken.get(parts[0], 0) + 1
+            # `<table> seat <label> = <name>, ...` -- the name is what tells a
+            # filled seat from a real one, and nothing else on the board does.
+            seated_as = parts[4].rstrip(",") if len(parts) > 4 else ""
+            if filler is None or not seated_as.startswith(f"{filler}-"):
+                real[parts[0]] = real.get(parts[0], 0) + 1
         elif len(parts) > 2 and parts[1:3] == ["is", "full:"]:
             done.add(parts[0])
         elif len(parts) > 1 and parts[1] == "lapsed:":
             done.add(parts[0])
     return {t: wants[t] - taken.get(t, 0) for t in wants
             if t not in done and wants[t] > taken.get(t, 0)
+            and real.get(t, 0) >= min_real
             and now - opened.get(t, now) >= patience}
 
 
@@ -277,7 +299,9 @@ def fill(args) -> int:
     try:
         while True:
             for table, short in missing(client, args.channel,
-                                        patience=args.patience).items():
+                                        patience=args.patience,
+                                        filler=args.name,
+                                        min_real=args.min_real).items():
                 for i in range(seated.get(table, 0), short):
                     name = f"{args.name}-{table}-{i + 1}"
                     print(f"{table}: {short} seat(s) unclaimed after "
@@ -330,6 +354,11 @@ def main(argv: list[str] | None = None) -> int:
                          "waited out --patience without filling")
     ap.add_argument("--patience", type=float, default=PATIENCE,
                     help="how long a table forms before this offers to fill it")
+    ap.add_argument("--min-real", type=int, default=1,
+                    help="how many seats must be held by somebody who is not "
+                         "this filler before it seats anybody (default 1, so "
+                         "a table nobody turned up to lapses rather than "
+                         "playing itself; 0 fills anything short)")
     args = ap.parse_args(argv)
     npc.parse_mix(args.mix)  # refused here rather than after a seat is taken
     args.workdir.mkdir(parents=True, exist_ok=True)
