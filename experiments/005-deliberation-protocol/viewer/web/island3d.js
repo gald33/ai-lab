@@ -211,6 +211,27 @@ export const wetEdge = (x, z) => shallowsEdge(x, z) + BEVEL.shallows;
  * `grounder()` below already reads the terrain this way; this asks the
  * simpler question of whether there is any terrain at all.
  */
+/**
+ * Which of the island's layers stands under a point, or nothing if it is water.
+ *
+ * `lander` answers whether there is any land here; this answers *which*, which
+ * is what a site that belongs on the sand has to be able to ask. Same raycast,
+ * same reason: the slabs' bevels put each layer further out than its outline
+ * says, so a radius compared with a formula gets this wrong.
+ */
+function layerer(island) {
+  const LAYERS = ["upland", "meadow", "beach", "shore_shelf"];
+  const meshes = LAYERS.map((n) => island.getObjectByName(n)).filter(Boolean);
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const from = new THREE.Vector3();
+  return (x, z) => {
+    ray.set(from.set(x, 12, z), down);
+    const hit = ray.intersectObjects(meshes, false)[0];
+    return hit ? hit.object.name : null;
+  };
+}
+
 function lander(island) {
   const LAND = /^(meadow|beach|shore_shelf|upland)$/;
   const meshes = island.children.filter((n) => LAND.test(n.name));
@@ -1008,8 +1029,36 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   const bearing = (k) => -0.6 + (k / crowd) * Math.PI * 2;
   const slotOf = (kind, i) => bearing(deal.findIndex(([w, j]) => w === kind && j === i));
   const polar = (a, rad) => [Math.cos(a) * rad, Math.sin(a) * rad];
-  const siteAt = goods.map((good, i) => polar(slotOf("site", i),
-    good === "salt" || good === "fish" ? 2.75 : good === "iron" ? 1.7 : 2.15));
+  //: **Wet work stands on the sand, and until now it did not.** The module's
+  //: own header says fish gets its nets on the shore and the comment below
+  //: says salt is worked on the wet shelf -- but both were laid at a radius of
+  //: 2.75, which is grass. So the drying racks and the salt pans sat in the
+  //: middle of the meadow, and a spectator reading the net panels on their
+  //: posts as masts and sails asked why the boats were inside the island.
+  //:
+  //: Asked of the terrain rather than given a radius, for the third time in
+  //: this file and for the same reason: the slabs' bevels put every layer
+  //: further out than its outline says, so 2.75 was never going to be a
+  //: number anyone could pick correctly. `shoreAt` walks out along the
+  //: bearing and stops on the first sand it finds.
+  const standsOn = layerer(island);
+  const shoreAt = (a) => {
+    const ux = Math.cos(a), uz = Math.sin(a);
+    for (let rad = 2.4; rad <= 5.2; rad += 0.05) {
+      const on = standsOn(ux * rad, uz * rad);
+      if (on === "beach" || on === "shore_shelf") return rad;
+      //: Past the land altogether without meeting sand: this bearing has none
+      //: -- the grass runs to the water on a few of them -- so the site goes
+      //: as far out as there is island to stand on.
+      if (on === null) return Math.max(2.4, rad - 0.05);
+    }
+    return 5.2;
+  };
+  const siteAt = goods.map((good, i) => {
+    const a = slotOf("site", i);
+    if (good === "salt" || good === "fish") return polar(a, shoreAt(a));
+    return polar(a, good === "iron" ? 1.7 : 2.15);
+  });
   // Clamped and separated before any of them is built, because a seat arrives
   // from the page in screen coordinates and the island is the only thing that
   // knows where its own grass ends -- or that two of them landed in one place.
@@ -1366,8 +1415,18 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
                  ...goods.map((g) => `site_${g}`)]
     .map((n) => island.getObjectByName(n)).filter(Boolean)
     .map((o) => new THREE.Box3().setFromObject(o));
+  //: **A hair wider than the stone, so touching counts as inside.** These
+  //: comparisons are strict, and `render.py:island` fails a step whose gap to
+  //: a footprint is `<= 0` -- so a stone exactly tangent to a hut was laid by
+  //: this and rejected by that. It reported an overlap "by -0.00", which is
+  //: the two rules disagreeing at the boundary and not a stone anyone can
+  //: see. The drawing side is the one to make stricter: a step dropped that
+  //: did not have to be is a gap in a path behind a hut, and a step kept that
+  //: should not have been is a yellow disc under one.
+  const EDGE = 0.01;
   const buried = (x, z, rad) => solid.some((b) =>
-    x + rad > b.min.x && x - rad < b.max.x && z + rad > b.min.z && z - rad < b.max.z);
+    x + rad + EDGE > b.min.x && x - rad - EDGE < b.max.x
+    && z + rad + EDGE > b.min.z && z - rad - EDGE < b.max.z);
   for (const [ex, ez, clear] of ends) {
     //: Compressed rather than truncated: the same seven steps, laid over the
     //: span that is left, ending on the clearance. A trail with stones dropped
