@@ -2119,30 +2119,46 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const harbour = [];
   {
     made.island.updateMatrixWorld(true);
+    //: **The deck is one prop, not one per plank.** The planks are laid at a
+    //: pitch shorter than their own depth so the walkway is continuous rather
+    //: than a ladder of gaps -- they are *meant* to overlap, and asked pair
+    //: by pair they report the deck being drawn through itself on every
+    //: frame shape. So the jetty enters this as a single footprint spanning
+    //: its planks, which is also the only thing a boat can be drawn through.
     const props = [];
     const d = made.island.getObjectByName('dock');
-    if (d) props.push(...d.children.filter(c => /^dock_plank_/.test(c.name)));
-    made.island.traverse((o) => { if (/^boat_\d+$/.test(o.name)) props.push(o); });
+    if (d) {
+      const planks = d.children.filter(c => /^dock_plank_/.test(c.name));
+      if (planks.length) props.push({ name: 'dock_deck', of: planks, at: d });
+    }
+    made.island.traverse((o) => {
+      if (/^boat_\d+$/.test(o.name)) props.push({ name: o.name, of: [o], at: o });
+    });
     const inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
     const box = new THREE.Box3(), one = new THREE.Box3();
-    for (const o of props) {
-      inv.copy(o.matrixWorld).invert();
+    const v = new THREE.Vector3();
+    for (const prop of props) {
+      //: Measured in the frame the prop is *drawn* in -- the dock's for the
+      //: deck, the boat's own for a boat -- so the box hugs the thing rather
+      //: than the compass.
+      inv.copy(prop.at.matrixWorld).invert();
       box.makeEmpty();
-      o.traverse((c) => {
-        if (!c.geometry) return;
-        c.geometry.computeBoundingBox();
-        one.copy(c.geometry.boundingBox);
-        rel.multiplyMatrices(inv, c.matrixWorld);
-        box.union(one.applyMatrix4(rel));
-      });
-      const v = new THREE.Vector3();
+      for (const root of prop.of) {
+        root.traverse((c) => {
+          if (!c.geometry) return;
+          c.geometry.computeBoundingBox();
+          one.copy(c.geometry.boundingBox);
+          rel.multiplyMatrices(inv, c.matrixWorld);
+          box.union(one.applyMatrix4(rel));
+        });
+      }
       const corners = [[box.min.x, box.min.z], [box.min.x, box.max.z],
                        [box.max.x, box.max.z], [box.max.x, box.min.z]]
         .map(([x, z]) => {
-          v.set(x, 0, z).applyMatrix4(o.matrixWorld);
+          v.set(x, 0, z).applyMatrix4(prop.at.matrixWorld);
           return [+v.x.toFixed(3), +v.z.toFixed(3)];
         });
-      harbour.push({ name: o.name, corners });
+      harbour.push({ name: prop.name, corners });
     }
   }
 
