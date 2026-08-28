@@ -36,9 +36,17 @@ python -m games.island.run_game \
     --page   /srv/island/public/index.html \
     --live   /srv/island/public/live \
     --ledger /var/lib/island/ledger.jsonl \
-    --max-games 2 \
-    --keep 50
+    --max-games 2
 ```
+
+**`--keep` is deliberately not in that command**, and was until 2026-08-28,
+when the host operator pointed out that the example carried `--keep 50` while
+the retention section below said to leave it unset. Somebody standing up a
+second host copies the command; they skim the paragraph. That is the same
+shape of defect as the missing `--live` — a flag documented by its outputs and
+not by the command, and its mirror, a flag set by the command and contradicted
+by the prose — so retention is now stated in exactly one place, further down,
+and never in the command above.
 
 **`--live` is not optional if anybody is to watch.** Without it the process
 plays the game and writes nothing a spectator can read, so the viewer's live
@@ -271,12 +279,12 @@ new here.
 `--keep N` prunes finished games' raw output, oldest first, once they are in
 the ledger: **the ledger row survives, so the game is still counted and still
 in every denominator** — what goes is the board and reveal files it points at.
-Leave it unset to keep everything, which is right while games are rare and
-wrong on a disk that is filling.
+It is a count of most-recent and has no notion of rank.
 
-**A replay worth keeping is copied by hand into `games/replays/`** and lives
-in git, exactly as it did before any of this ran. Pruning `--out` never
-touches those.
+**A replay worth keeping is also copied by hand into `games/replays/`** and
+lives in git, one commit each, exactly as it did before any of this ran.
+Pruning `--out` never touches those, and neither does anything else here:
+that directory is a deliberate handful, not a mirror of what a host holds.
 
 ## What it costs to leave running
 
