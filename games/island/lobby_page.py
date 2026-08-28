@@ -18,6 +18,7 @@ nobody's.
 from __future__ import annotations
 
 import html
+import json
 import os
 import time
 from urllib.parse import quote
@@ -73,79 +74,168 @@ def live_base() -> str:
     return os.environ.get("ISLAND_LIVE_BASE", "").rstrip("/")
 
 
-def watchable(table) -> bool:
-    """Is there a live board a spectator could be pointed at right now?"""
-    return bool(live_base()) and table.settled and not table.lapsed
+def live_state(table, live_dir=None) -> str:
+    """Is this table playing now, finished, or neither -- `live`, `recording`, `""`.
+
+    **The live file is what knows, and the board is not.** A table settles and
+    the board says nothing more about it: the last bell is a thing the manager
+    writes into `--live/<table>.json`, as the `finished` block that names the
+    copies of the board and the reveal beside it (`live.finish`). So a page
+    that reads only the lobby cannot tell a game being played from one that
+    ended an hour ago -- and it called both of them *live*, which is a claim
+    about right now made from a fact that was true once.
+
+    The process that writes this page is the process that writes those files,
+    so the answer is a file read rather than a guess. Reading the block rather
+    than testing for the copies beside it is deliberate: `finish` writes the
+    copies **before** the pointer, so a poll landing between the two sees a
+    game still running, which is the direction that stays honest.
+
+    With no `live_dir` -- `run_lobby --page`, or `run_game` without `--live` --
+    there is nothing to read and nothing is claimed: `unknown`. A host serving
+    no live directory has nothing to point at either.
+    """
+    if not live_base() or not table.settled or table.lapsed:
+        return ""
+    if live_dir is None:
+        return "unknown"
+    path = Path(live_dir) / f"{table.id}.json"
+    try:
+        state = json.loads(path.read_text())
+    except (OSError, ValueError):
+        # No file yet, or a game whose host never wrote one. Either way there
+        # is nothing served at the URL a button would point at, so there is no
+        # button -- a door onto a 404 is worse than no door.
+        return ""
+    return "recording" if state.get("finished") else "live"
 
 
-def watch_link(table) -> str:
-    """The viewer, pointed at this table's live board. Empty if none is served.
+def watchable(table, live_dir=None) -> bool:
+    """Is there a board a spectator could be pointed at, running or finished?"""
+    return bool(live_state(table, live_dir))
+
+
+#: What each state's button says and looks like. **The label is the claim**:
+#: "live" says a game is being played right now, and saying it over a game that
+#: ended is the page telling a spectator something it has not checked.
+_WATCH = {
+    "live": ("&#9654;&nbsp; Watch this game live",
+             "watching a game in progress &mdash; the board updates as it is written"),
+    "recording": ("&#9654;&nbsp; Watch the recording",
+                  "this game has finished &mdash; its scores and replay are on the page"),
+    "unknown": ("&#9654;&nbsp; Watch this game",
+                "this host does not say whether the game is still running"),
+}
+
+
+def watch_link(table, live_dir=None) -> str:
+    """The viewer, pointed at this table's board. Empty if none is served.
 
     **A button, and the loudest thing on the table.** It was a `&middot;`-
     separated link at the tail of the "managed by" line, which is the one place
     on the page a reader scanning for *something to look at* does not read --
     and a game in progress that nobody finds the door to is the whole failure
     the viewer exists to prevent. A table that can be watched now says so at
-    the top of its own section, in the one colour nothing else on the page
-    uses.
-    """
-    if not watchable(table):
-        return ""
-    src = f"{live_base()}/{table.id}.json"
-    return (f'<p class=watch><a class=watchbtn href="{html.escape(VIEWER)}?live='
-            f'{html.escape(quote(src, safe=""))}">&#9654;&nbsp; Watch this game '
-            f'live</a> <span class=watchnote>no key needed &mdash; you read the '
-            f'board, you cannot write to it</span></p>')
+    the top of its own section.
 
+    A running game gets the fire colour and the word *live*; a finished one
+    gets the quieter surface and the word *recording*. One URL serves both --
+    the live file is the archive (`HOSTING.md`) -- so the difference is what
+    the page is willing to claim about it, not where it points.
+    """
+    state = live_state(table, live_dir)
+    if not state:
+        return ""
+    label, note = _WATCH[state]
+    src = f"{live_base()}/{table.id}.json"
+    return (f'<p class=watch><a class="watchbtn {state}" '
+            f'href="{html.escape(VIEWER)}?live='
+            f'{html.escape(quote(src, safe=""))}">{label}</a> '
+            f'<span class=watchnote>{note}</span></p>')
+
+
+#: The lobby, wearing the island's own palette.
+#:
+#: **A copy of `viewer/web/tokens.css`, on purpose.** The viewer is committed
+#: to one look -- "an island at dusk", and its tokens file says a light mode
+#: would be a different picture rather than the same one lit differently -- and
+#: the lobby is the door into that. It was a warm cream serif page with a
+#: dark-mode media query, which is a second look for one game: a spectator who
+#: came from the island arrived somewhere that did not resemble it, and the
+#: page's own dark mode meant it did not even resemble itself.
+#:
+#: It is duplicated rather than linked because these are **two hosts** (see
+#: `VIEWER`): the lobby is one static file written by this process wherever it
+#: runs, and a stylesheet fetched from the Pages site would make the door
+#: depend on a docs deploy being up -- the coupling the two-sites decision
+#: exists to refuse. So the values are copied, and copied *whole*: only the
+#: scenery tokens, which encode nothing and are held to no contrast gate.
+#: **Nothing categorical is copied** -- no good, trader or metric colour lives
+#: here, because nothing on this page encodes one, and a categorical token
+#: loose on a page with no legend is how a reader starts looking for meaning
+#: in the furniture.
 _CSS = """
-:root{--ink:#1b1b1a;--dim:#6d6a63;--line:#dcd7cc;--bg:#faf7f0;--warm:#b4531f;
-      --good:#3f6b45;--panel:#fff}
-@media(prefers-color-scheme:dark){:root{--ink:#ece7dd;--dim:#9b958a;
-      --line:#3a3733;--bg:#191817;--warm:#e08a4f;--good:#8fbf8f;--panel:#221f1d}}
+:root{color-scheme:dark;
+  --sea-near:#1d3242;--sea-mid:#132532;--sea-far:#070d12;
+  --panel:#171d21;--panel-2:#1e262b;--line:#2b353b;
+  --ink:#f2f4f4;--ink-2:#b6c0c4;--muted:#8b9599;
+  --fire:#ffb648;--sand:#c9a86a;--sand-lit:#ddbe83;--surf:#cfe6ef;
+  --frond:#55803f;--sky-set:#d9603a}
 *{box-sizing:border-box}
-body{margin:0;padding:2rem 1.25rem 4rem;background:var(--bg);color:var(--ink);
+body{margin:0;padding:2rem 1.25rem 4rem;color:var(--ink);
+     background:var(--sea-far);
+     background-image:linear-gradient(180deg,var(--sea-mid) 0,var(--sea-far) 34rem);
+     background-repeat:no-repeat;
      font:16px/1.55 ui-serif,Georgia,serif}
 main{max-width:52rem;margin:0 auto}
-h1{font-size:1.6rem;margin:0 0 .2rem}
-.sub{color:var(--dim);margin:0 0 2rem}
+h1{font-size:1.6rem;margin:0 0 .2rem;color:var(--sand-lit);
+   letter-spacing:.01em}
+.sub{color:var(--ink-2);margin:0 0 2rem}
 .t{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
    padding:1rem 1.15rem;margin:0 0 1rem}
-.t h2{font-size:1.05rem;margin:0 0 .1rem;font-family:ui-monospace,monospace}
+.t h2{font-size:1.05rem;margin:0 0 .1rem;font-family:ui-monospace,monospace;
+      color:var(--surf)}
 .state{display:inline-block;font-size:.72rem;text-transform:uppercase;
-       letter-spacing:.07em;color:var(--dim);border:1px solid var(--line);
+       letter-spacing:.07em;color:var(--muted);border:1px solid var(--line);
        border-radius:1em;padding:.1rem .6rem;margin:.15rem 0 0}
-.settled .state{color:var(--good);border-color:var(--good)}
-.forming .state{color:var(--warm);border-color:var(--warm)}
-.lapsed{opacity:.6}
-.t.live{border-color:var(--warm);box-shadow:0 0 0 2px var(--warm) inset}
+.settled .state{color:var(--frond);border-color:var(--frond)}
+.forming .state{color:var(--sand);border-color:var(--sand)}
+.lapsed{opacity:.55}
+.t.live{border-color:var(--fire);box-shadow:0 0 0 1px var(--fire) inset,
+        0 0 1.6rem -.6rem var(--fire)}
 .watch{margin:.8rem 0 .2rem}
-a.watchbtn{display:inline-block;background:var(--warm);color:#fff;
-       text-decoration:none;font-size:.95rem;font-weight:700;
-       padding:.5rem 1.1rem;border-radius:.35rem}
-a.watchbtn:hover{opacity:.88}
-.watchnote{color:var(--dim);font-size:.8rem;margin-left:.5rem}
-.age{color:var(--dim);font-size:.85rem}
-.age.stale{color:var(--warm);font-weight:700}
+a.watchbtn{display:inline-block;text-decoration:none;font-size:.95rem;
+       font-weight:700;padding:.5rem 1.1rem;border-radius:.35rem;
+       border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+a.watchbtn.live{background:var(--fire);border-color:var(--fire);
+       color:var(--sea-far)}
+a.watchbtn.recording{border-color:var(--surf);color:var(--surf)}
+a.watchbtn:hover{filter:brightness(1.12)}
+.watchnote{color:var(--muted);font-size:.8rem;margin-left:.5rem}
+.age{color:var(--muted);font-size:.85rem}
+.age.stale{color:var(--sky-set);font-weight:700}
 table{border-collapse:collapse;width:100%;margin:.7rem 0 0;font-size:.9rem}
 td{padding:.28rem .5rem .28rem 0;vertical-align:top;border-top:1px solid var(--line)}
-td.k{font-family:ui-monospace,monospace;color:var(--dim);word-break:break-all}
-.note{color:var(--warm);font-size:.9rem;margin:.6rem 0 0}
-footer{color:var(--dim);font-size:.85rem;margin-top:2.5rem;
+td.k{font-family:ui-monospace,monospace;color:var(--muted);word-break:break-all}
+.note{color:var(--ink-2);font-size:.9rem;margin:.6rem 0 0}
+.note b{color:var(--sand-lit)}
+footer{color:var(--muted);font-size:.85rem;margin-top:2.5rem;
        border-top:1px solid var(--line);padding-top:1rem}
-code{font-family:ui-monospace,monospace;background:var(--bg);padding:.1em .3em;
-     border-radius:.2em}
-a{color:inherit}
+code{font-family:ui-monospace,monospace;background:var(--sea-far);
+     color:var(--sand-lit);padding:.1em .3em;border-radius:.2em}
+a{color:var(--surf)}
 .start{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
        padding:1rem 1.15rem;margin:0 0 1.5rem}
-.start h2{font-size:1.05rem;margin:0 0 .35rem}
-.start p{margin:.35rem 0 .7rem;color:var(--dim);font-size:.9rem}
-.start pre{background:var(--bg);border:1px solid var(--line);border-radius:.35rem;
+.start h2{font-size:1.05rem;margin:0 0 .35rem;color:var(--sand-lit)}
+.start p{margin:.35rem 0 .7rem;color:var(--ink-2);font-size:.9rem}
+.start pre{background:var(--sea-far);border:1px solid var(--line);
+       border-radius:.35rem;color:var(--ink-2);
        padding:.7rem .8rem;margin:.7rem 0 0;max-height:11rem;overflow:auto;
        white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}
 button{font:inherit;font-size:.9rem;padding:.45rem .9rem;border-radius:.35rem;
-       border:1px solid var(--ink);background:var(--ink);color:var(--bg);
-       cursor:pointer}
-button:hover{opacity:.85}
+       border:1px solid var(--sand);background:var(--sand);
+       color:var(--sea-far);cursor:pointer;font-weight:700}
+button:hover{filter:brightness(1.12)}
 button[disabled]{opacity:.6;cursor:default}
 """
 
@@ -382,8 +472,14 @@ will appear below within a few seconds.</p>
 </section>"""
 
 
-def render(lobby: Lobby, *, now: float | None = None) -> str:
-    """The whole page, from what this lobby has read."""
+def render(lobby: Lobby, *, now: float | None = None,
+           live_dir: Path | None = None) -> str:
+    """The whole page, from what this lobby has read.
+
+    `live_dir` is the `--live` directory this host writes, if it writes one:
+    the lobby says a table settled, and only that directory says whether the
+    game is still being played. See `live_state`.
+    """
     now = time.time() if now is None else now
     rows = []
     for table in sorted(lobby.tables.values(), key=lambda t: -t.opened_at):
@@ -415,12 +511,13 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
                          f"if it does not fill and find a manager")
         if table.manager:
             notes.append(f"managed by {html.escape(table.manager)}")
-        classes = "t " + _state(table).split()[0] + (" live" if watchable(table) else "")
+        watching = live_state(table, live_dir)
+        classes = "t " + _state(table).split()[0] + (" live" if watching == "live" else "")
         rows.append(
             f"<section class='{classes}'>"
             f"<h2>{html.escape(table.id)}</h2>"
             f"<div class=state>{html.escape(_state(table))}</div>"
-            + watch_link(table)
+            + watch_link(table, live_dir)
             + f"<div class=note>{table.traders} traders · {table.goods} goods · "
             f"{table.episodes} episodes · {table.rounds} round"
             f"{'s' if table.rounds != 1 else ''}</div>"
@@ -441,10 +538,13 @@ def render(lobby: Lobby, *, now: float | None = None) -> str:
               f"board that had moved past its window — lines were posted that "
               f"it never saw.</p>" if lobby.missed else "")
 
-    live_now = sum(1 for t in lobby.tables.values() if watchable(t))
+    states = [live_state(t, live_dir) for t in lobby.tables.values()]
+    live_now = sum(1 for s in states if s == "live")
+    recorded = sum(1 for s in states if s == "recording")
     forming = sum(1 for t in lobby.tables.values()
                   if not t.settled and not t.lapsed)
     counts = (f"{live_now} playing now · {forming} forming"
+              + (f" · {recorded} to watch back" if recorded else "")
               if lobby.tables else "nothing open yet")
 
     return f"""<!doctype html><meta charset=utf-8>
@@ -479,10 +579,11 @@ seats.</p>
 """
 
 
-def write(lobby: Lobby, path: Path, *, now: float | None = None) -> Path:
+def write(lobby: Lobby, path: Path, *, now: float | None = None,
+          live_dir: Path | None = None) -> Path:
     """Render and replace the page atomically, so a reader never sees half."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(render(lobby, now=now))
+    tmp.write_text(render(lobby, now=now, live_dir=live_dir))
     tmp.replace(path)
     return path

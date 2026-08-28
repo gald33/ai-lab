@@ -205,6 +205,51 @@ constant it was fixed by whatever the environment held when the first import
 ran — so a unit that set it later, or an operator who exported it into a
 running process, got a page with no button and nothing to explain why.
 
+**The button needs `--live` as well, and reads the file it names.** The page
+writer is handed the `--live` directory (`write_page(..., live_dir=...)`) and
+looks in it for each settled table:
+
+| what it finds | what the button says |
+|---|---|
+| the live file, no `finished` block | **Watch this game live**, in the fire colour, table outlined |
+| the live file with a `finished` block | **Watch the recording**, quiet |
+| no file | no button at all |
+| no `live_dir` at all (`run_lobby --page`) | **Watch this game**, claiming neither |
+
+Decided 2026-08-28, after the button called every settled table *live*.
+**"Live" is a claim about right now, and the board cannot make it**: a table
+settles and the board says nothing about it again — the last bell is written
+into `--live/<table>.json` as the `finished` block (`live.finish`), and
+nowhere else. So a page reading only the lobby was calling a game that ended
+an hour ago live, from a fact that had been true once. It reads the block
+rather than testing for the `board-`/`reveal-` copies beside it because
+`finish` writes the copies **before** the pointer: a poll landing between the
+two sees a game still running, which is the direction that stays honest.
+
+Both buttons point at the **same URL** — the live file is the archive — so
+what changes is only what the page is willing to claim about it. And the
+missing-file case closes a smaller lie of the same kind: a settled table on a
+host that never wrote a live file used to offer a button onto a 404.
+
+### The lobby wears the island's palette
+
+Decided 2026-08-28. The lobby page was a warm cream serif page with a
+`prefers-color-scheme` dark mode; the viewer is committed to one look — "an
+island at dusk", and `viewer/web/tokens.css` says a light mode would be a
+different picture rather than the same one lit differently. Two looks for one
+game meant a spectator crossing from the island arrived somewhere that did not
+resemble it, and the page's own dark mode meant it did not reliably resemble
+itself either. So `lobby_page._CSS` now carries the viewer's palette and no
+media query.
+
+**The values are copied, not linked**, because these are two hosts: a
+stylesheet fetched from the Pages site would make the door depend on a docs
+deploy being up, which is the coupling the two-sites decision refuses. Only
+the **scenery** tokens are copied — sea, sand, surf, frond, fire. None of the
+categorical slots are, because nothing on this page encodes a good, a trader
+or a metric, and a categorical colour loose on a page with no legend invites a
+reader to look for meaning in the furniture.
+
 ### The page says how old it is
 
 The page is a file, rewritten every poll, so a reader's copy is only ever as

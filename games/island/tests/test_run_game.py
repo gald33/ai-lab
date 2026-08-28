@@ -767,7 +767,7 @@ def test_the_runner_writes_the_lobby_page_because_nothing_else_can(monkeypatch, 
     """
     page = tmp_path / "lobby.html"
     monkeypatch.setattr(run_game, "write_page",
-                        lambda lob, path: path.write_text("<!doctype html>rendered"))
+                        lambda lob, path, **kw: path.write_text("<!doctype html>rendered"))
 
     run_game.watch(_StubLobby({}, stop_after=1), every=0, episode_seconds=1,
                    ack_seconds=1, out=tmp_path, page=page)
@@ -778,7 +778,7 @@ def test_the_runner_writes_the_lobby_page_because_nothing_else_can(monkeypatch, 
 def test_a_page_that_cannot_be_written_does_not_stop_the_runner(monkeypatch, tmp_path, capsys):
     """A page is not a game. If rendering throws -- a full disk, a bad path --
     the tables still play and the fault is said out loud."""
-    def boom(lobby, path):
+    def boom(lobby, path, **kw):
         raise OSError("no space left on device")
 
     monkeypatch.setattr(run_game, "write_page", boom)

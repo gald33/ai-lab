@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 from switchboard.crypto import generate_key
@@ -153,7 +154,19 @@ def test_the_start_block_shows_the_prompt_it_copies(hub):
     assert "isSecureContext" in page and "Select-copy" in page
 
 
-def test_a_settled_table_gets_a_watch_button_when_a_live_board_is_served(hub, monkeypatch):
+def _live(tmp_path, table_id="g1", finished=False):
+    """A `--live` directory holding one game's board, running or finished."""
+    d = tmp_path / "live"
+    d.mkdir(exist_ok=True)
+    state = {"episode": 1}
+    if finished:
+        state["finished"] = {"board": f"board-{table_id}.json",
+                             "reveal": f"reveal-{table_id}.json"}
+    (d / f"{table_id}.json").write_text(json.dumps(state))
+    return d
+
+
+def test_a_running_game_gets_a_live_button(hub, monkeypatch, tmp_path):
     """The door to a game in progress, drawn as a door.
 
     It used to be a `&middot;`-separated link at the tail of the "managed by"
@@ -164,35 +177,79 @@ def test_a_settled_table_gets_a_watch_button_when_a_live_board_is_served(hub, mo
     monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live/")
     lobby = _settled(hub, generate_key())
 
-    page = lobby_page.render(lobby, now=1_000_000.0)
+    page = lobby_page.render(lobby, now=1_000_000.0, live_dir=_live(tmp_path))
 
     assert "Watch this game live" in page
-    assert "watchbtn" in page
     assert "https%3A%2F%2Fhost.example%2Flive%2Fg1.json" in page
-    assert "no key needed" in page, "a spectator reads and cannot write"
-    assert "class='t settled live'" in page, "the table itself is marked live"
+    assert "class=\'t settled live\'" in page, "the table itself is marked live"
+    assert "1 playing now · 0 forming" in page
 
 
-def test_the_live_base_is_read_at_render_time_not_at_import(hub, monkeypatch):
+def test_a_finished_game_says_recording_and_not_live(hub, monkeypatch, tmp_path):
+    """"Live" is a claim about right now, and the board cannot make it: a table
+    settles and the board never mentions it again. The last bell is written
+    into the live file as its `finished` block, so that is what decides the
+    word -- otherwise the page calls an hour-old game live because it was live
+    once."""
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0,
+                             live_dir=_live(tmp_path, finished=True))
+
+    assert "Watch the recording" in page
+    assert "Watch this game live" not in page
+    assert "class=\'t settled\'" in page, "not outlined as live"
+    assert "0 playing now · 0 forming · 1 to watch back" in page
+    # Same URL either way: the live file is the archive.
+    assert "https%3A%2F%2Fhost.example%2Flive%2Fg1.json" in page
+
+
+def test_a_host_that_wrote_no_live_file_offers_no_button(hub, monkeypatch, tmp_path):
+    """A door onto a 404 is worse than no door."""
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0, live_dir=tmp_path / "live")
+
+    assert 'class="watchbtn' not in page
+
+
+def test_with_no_live_directory_the_page_claims_neither(hub, monkeypatch):
+    """`run_lobby --page` plays nothing and reads no live directory, so it
+    cannot tell a running game from a finished one. It says so rather than
+    guessing: claiming "live" from a fact that was true once is the bug."""
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert "Watch this game</a>" in page
+    assert "does not say whether the game is still running" in page
+
+
+def test_the_live_base_is_read_at_render_time_not_at_import(hub, monkeypatch, tmp_path):
     """As a module constant this was fixed by whatever the environment held
     when the first import ran, so a host that exported it after start-up got
     no button and no error saying why -- a feature shipped turned off."""
     monkeypatch.delenv("ISLAND_LIVE_BASE", raising=False)
     lobby = _settled(hub, generate_key())
+    live = _live(tmp_path)
 
-    assert "Watch this game live" not in lobby_page.render(lobby, now=1_000_000.0)
+    assert 'class="watchbtn' not in lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
 
     monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
 
-    assert "Watch this game live" in lobby_page.render(lobby, now=1_000_000.0)
+    assert 'class="watchbtn' in lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
 
 
-def test_a_lapsed_table_offers_nothing_to_watch(hub, monkeypatch):
+def test_a_lapsed_table_offers_nothing_to_watch(hub, monkeypatch, tmp_path):
     monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
     lobby = _settled(hub, generate_key())
     lobby.tables["g1"].lapsed = True
 
-    assert "Watch this game live" not in lobby_page.render(lobby, now=1_000_000.0)
+    assert 'class="watchbtn' not in lobby_page.render(lobby, now=1_000_000.0,
+                                               live_dir=_live(tmp_path))
 
 
 def test_the_page_says_how_old_the_copy_in_front_of_the_reader_is(hub):
@@ -223,12 +280,3 @@ def test_a_forming_table_names_what_it_is_waiting_for(hub):
 
     assert "Waiting for 1 more entrant to sit down and somebody to offer to " \
            "manage it." in page
-
-
-def test_the_header_counts_what_is_playing_and_what_is_forming(hub, monkeypatch):
-    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
-    lobby = _settled(hub, generate_key())
-
-    page = lobby_page.render(lobby, now=1_000_000.0)
-
-    assert "1 playing now · 0 forming" in page

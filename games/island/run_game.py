@@ -941,7 +941,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
             # prevent. A deployment that ran the page and the games separately
             # would have one of them stand down.
             try:
-                write_page(lobby, page)
+                write_page(lobby, page, live_dir=live_dir)
             except Exception as exc:  # noqa: BLE001 - a page is not a game
                 print(f"lobby page not written: {exc!r}", flush=True)
         if lobby.stood_down:
