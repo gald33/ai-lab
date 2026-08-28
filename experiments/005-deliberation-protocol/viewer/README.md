@@ -1599,6 +1599,27 @@ half way through the rise, and shut by the end. Neutered (the crates given back
 a flight of their own, off the table) it reports the crates still moving at
 4240ms against a symbol cued at 3800ms.
 
+### A check that mirrors a schedule goes stale the moment the schedule moves
+
+`render.py:production` and `render.py:motion` both looked for a symbol in the
+air **150–620ms** after a receipt and read the filled bar at 3.8s. Those were
+the old production timings, written out a second time in the harness — so when
+production was put on one table with its crates, both reported failures on a
+page that had started drawing the thing correctly. Three of them, from one
+change of schedule.
+
+They wait on the symbol now rather than on a clock: wait for one to be in the
+air, read the bar *then*, wait for it to land, read the bar again. Which also
+fixed a subtler thing they had been getting away with — **this harness paints
+about four times a second**, and a WAAPI animation does not start until the
+page paints. A symbol built at cue time (as they are now, so they leave from
+the crate) therefore begins up to 800ms after it was created, and any check
+sampling on absolute times is racing it rather than measuring it.
+
+The claims are unchanged and still bounded: neutered — the bar let fill on its
+own instead of waiting for the symbol — `production` reports the shelf full at
+1 of 1 while the symbol is still rising, three times over.
+
 ### The symbols were not coming out of the boxes
 
 Reported by eye after the lids went on, and the lid was not the half that was
