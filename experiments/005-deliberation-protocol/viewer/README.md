@@ -2035,6 +2035,60 @@ says the traders ended up worse off than not trading, and the games that are kep
 and not ranked are still named on the page, with their reasons, in the same
 plain words.
 
+### The ledger holds every experiment's rounds, not this one's
+
+*Decided 2026-08-28, after `island-e-plan-1-0823T1105` — a game where one trader
+ended at 2.01× — turned out not to be on the board at all.* It had been played,
+scored and kept; it had simply never been ingested, because it belongs to 007
+and the ledger held whatever somebody had run `--ingest` on, which was 005's
+runs. **A leaderboard of who remembered to type a command is worse than a wrong
+one**, because its denominators look right: the page said "72 games played" and
+meant "72 games somebody ingested".
+
+    python viewer/scores.py --sweep      # every run record in the tree
+    python viewer/scores.py --upgrade    # re-derive rows from an older version
+
+`--sweep` is now the normal way to feed the ledger and naming one record is the
+exception. Re-ingesting is free — a round's id is a hash of its own content — so
+a sweep adds what is new and skips what is there. Four things had to hold first:
+
+- **Paths that resolve in somebody else's checkout.** A row from outside this
+  experiment would have stored an absolute path, and `--verify` degrades to "the
+  file moved" for every one of them. Rows store a path relative to the
+  experiment while they are inside it — which is what every row written before
+  this says — then to the experiments tree, then to the checkout; `resolve`
+  tries all three.
+- **Boards in either shape.** This experiment writes `{"messages": [...]}`
+  beside its run record; 006 and 007 write the room's rows as a bare list under
+  `boards/`, named by arm and seed rather than by workspace, so they are found
+  by reading the workspace off the rows themselves. A dict board is returned
+  untouched, or every digest already written down would report as changed.
+- **A round that never started is still a round.** 007 records those as
+  `{"failed": true, "error": ...}` with no workspace and no trajectory, and they
+  crashed the ingest outright. They are kept, never ranked, and carry their
+  error — and when there is no workspace the run and cell name the row, so two
+  failures in one run cannot hash to one id and quietly shrink the very
+  denominator they are there to show.
+- **A date that is a date.** `recorded_at` is when somebody typed the command,
+  so falling back to it dated an August game as played today and put it in
+  "this week". The round is asked instead: the board's last line where the board
+  was kept, else the manager's own `run_stamp` for the round, and `played_from`
+  says which. The page writes *about* for a stamp and *recorded* when the round
+  says nothing at all, rather than showing the weaker answer as the stronger.
+
+**`--upgrade` re-derives rows written by an older schema**, in place, keeping
+`recorded_at` — when a round was first written down is a fact about this file
+that re-deriving must not overwrite — and refusing to replace a row whose id
+moves, which would be a different round wearing an old row's name. It exists
+because `--verify` skips old rows, and a file that quietly accumulates unchecked
+rows stops being a record anybody can defend. Three rows resist it and are
+reported every time: they name `games/results/g1.json`, a run record that is not
+in this repository, so they cannot be re-derived from anything.
+
+What the sweep did to the boards, first time out: **75 rounds became 327**, 238
+of them ranked across 7 formats, and both overall records changed hands — the
+best game went from +64% to +99.5%, and the best player from 1.83× to 3.16×.
+
 ### What the ledger will not do
 
 - **Believe anybody.** Every figure is recomputed from the run record and the

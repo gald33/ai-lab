@@ -98,6 +98,12 @@ LEDGER = HERE / "scores" / "ledger.jsonl"
 #: are still read: `resolve` tries both.
 ROOT = HERE.parent.parent
 
+#: The checkout above it. Three rows in the ledger name `games/results/g1.json`
+#: -- the island's own games, whose run records are not in the repository -- and
+#: a path from outside the experiments tree has to be resolvable for the day one
+#: of them is.
+REPO = ROOT.parent
+
 #: Reading the ledger is O(rounds) and computing the boards is O(rounds); doing
 #: both per request is a page that gets slower every time somebody plays. The
 #: record stays append-only and cold, and what the page actually reads is a
@@ -159,7 +165,7 @@ def relative(path: Path | None) -> str | None:
     if not path:
         return None
     resolved = path.resolve()
-    for base in (HERE.parent, ROOT):
+    for base in (HERE.parent, ROOT, REPO):
         try:
             return resolved.relative_to(base).as_posix()
         except ValueError:
@@ -171,7 +177,7 @@ def resolve(stored: str | None) -> Path | None:
     """A stored path, read back. Tried against both bases, experiment first."""
     if not stored:
         return None
-    for base in (HERE.parent, ROOT):
+    for base in (HERE.parent, ROOT, REPO):
         candidate = base / stored
         if candidate.is_file() or candidate.with_suffix(
                 candidate.suffix + ".gz").is_file():
@@ -588,6 +594,60 @@ def sweep(root: Path = ROOT) -> list[Path]:
     adds what is new and skips what is there.
     """
     return sorted(root.glob("*/results/**/v3.json"))
+
+
+def upgrade(ledger: Path = LEDGER) -> tuple[int, list[str]]:
+    """Re-derive rows written by an older version of this file, in place.
+
+    `--verify` skips a row whose schema predates the current one, because a
+    field that did not exist yet is not tampering -- but a skipped row is an
+    unchecked row, and a file that quietly accumulates them stops being a record
+    anybody can defend. Re-ingesting cannot fix them: a round's id is a hash of
+    its own content, so the sweep correctly skips a round it already holds.
+
+    So the row is rebuilt from the run record it names, and **`recorded_at` is
+    kept**: when a round was first written down is a fact about this file that
+    re-deriving it must not overwrite. The id is recomputed too, and a row whose
+    id moves is reported rather than replaced -- that would be a different round
+    wearing an old row's name.
+    """
+    rows = load(ledger)
+    if len(parts(ledger)) > 1:
+        return 0, ["the ledger has rolled-off parts; upgrade them before packing"]
+    changed, problems = 0, []
+    out = []
+    for row in rows:
+        source = resolve((row.get("source") or {}).get("result"))
+        if row.get("v") == SCHEMA or not source or not source.is_file():
+            out.append(row)
+            if row.get("v") != SCHEMA:
+                problems.append(f"{row['round_id']}: v{row.get('v')} and its run "
+                                f"record is not where the row says it is")
+            continue
+        record = json.loads(source.read_text())
+        rnd = next((r for r in record.get("rounds", [])
+                    if r.get("workspace") == row["workspace"]), None)
+        if rnd is None:
+            problems.append(f"{row['round_id']}: {row['workspace']} is not in "
+                            f"{row['source']['result']} any more")
+            out.append(row)
+            continue
+        try:
+            fresh = entry(record, rnd, source=source)
+        except ValueError as exc:
+            fresh = unscored(record, rnd, source, str(exc))
+        if fresh["round_id"] != row["round_id"]:
+            problems.append(f"{row['round_id']}: re-derives to "
+                            f"{fresh['round_id']}, which is a different round")
+            out.append(row)
+            continue
+        fresh["recorded_at"] = row["recorded_at"]     # a fact about this file
+        out.append(fresh)
+        changed += 1
+    if changed:
+        ledger.write_text("".join(json.dumps(r) + "\n" for r in out))
+        write_boards(ledger)
+    return changed, problems
 
 
 def verify(ledger: Path = LEDGER) -> list[str]:
@@ -1238,6 +1298,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--table", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--upgrade", action="store_true",
+                    help="re-derive rows written by an older version of this "
+                         "file, so --verify checks every row rather than "
+                         "skipping the old ones")
     ap.add_argument("--refresh", action="store_true",
                     help="rebuild the derived boards and index from the record")
     ap.add_argument("--results", type=Path, default=None,
@@ -1259,6 +1323,14 @@ def main(argv: list[str] | None = None) -> int:
         for result in args.ingest:
             added, skipped = ingest(result, ledger=args.ledger, players=players)
             print(f"{result}: {len(added)} added, {len(skipped)} already there")
+
+    if args.upgrade:
+        changed, problems = upgrade(args.ledger)
+        for p in problems:
+            print(p, file=sys.stderr)
+        print(f"{changed} row(s) re-derived to v{SCHEMA}; {len(problems)} could not be")
+        if problems:
+            return 1
 
     if args.verify:
         problems = verify(args.ledger)
