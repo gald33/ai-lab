@@ -799,6 +799,22 @@ Two rules hold this together and neither is new:
   game is placed among its own format and nowhere else. Ties share a place;
   breaking them by the clock would rank the clock.
 
+**The viewer carries a door back to the lobby.** Decided 2026-08-28. The link
+between the two live surfaces ran one way: the lobby page pointed at the
+viewer and `ENTER.md` said where games are watched, but a spectator who found
+the island first had no way to the room where tables are forming — the address
+was in `HOSTING.md`, which is a document for whoever runs the host, not for
+whoever is watching. So the island's chrome carries a 🚪 beside the 🏆, and
+the scoreboard's tabs carry a **Lobby** link, both to
+`https://island.lucille-ai.com/`.
+
+It is a plain link and nothing more: the viewer neither reads the lobby nor
+depends on it being up, which is the point of the two surfaces being separate
+(`games/island/HOSTING.md`, "Two sites, and neither is the other's root"). The
+address is written into the HTML because the viewer is static files with
+nothing to read a constant out of; moving the lobby means editing those two
+links.
+
 ### The live file becomes the recording
 
 Decided by Gal, 2026-08-28, correcting what I had started doing — which was
