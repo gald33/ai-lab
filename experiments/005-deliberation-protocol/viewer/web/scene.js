@@ -1298,12 +1298,17 @@ export class Scene {
     const geo = this.geo;
     const g = el("g", { class: "scenery", "aria-hidden": "true" });
     const seatList = Object.values(this.seats);
+    // A track is worn between huts, so an island with nobody on it has none --
+    // and reaching for the first seat's `x` there threw, which is what an empty
+    // live room used to show instead of a board.
     const first = seatList[0], last = seatList[seatList.length - 1];
-    g.append(el("path", {
-      class: "track",
-      d: `M ${first.x} ${geo.fire.y - 34} Q ${geo.cx} ${geo.fire.y + 74} ` +
-         `${last.x} ${geo.fire.y - 34}`,
-    }));
+    if (first) {
+      g.append(el("path", {
+        class: "track",
+        d: `M ${first.x} ${geo.fire.y - 34} Q ${geo.cx} ${geo.fire.y + 74} ` +
+           `${last.x} ${geo.fire.y - 34}`,
+      }));
+    }
     // Along the shore, where nothing informative goes. Kept as fractions of the
     // island so a wider canvas plants more of it rather than stretching six.
     const ring = [[-.90, -.34], [.91, -.30], [-.74, .56], [.76, .58],
