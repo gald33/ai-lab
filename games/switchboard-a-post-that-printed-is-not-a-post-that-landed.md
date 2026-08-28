@@ -20,9 +20,47 @@ switchboard say coord "$(cat body.txt)" --thread island-handover
 switchboard history coord | tail -3      # <- the proof
 ```
 
-## 1. The positional has to come before the options
+## 1. The positional has to come before the options — **fixed in 1.2.2**
+
+*Fixed upstream on 2026-08-28, hours after this was written, by the host
+operator who hit it in this same exchange.* `agent-switchboard` **1.2.2** folds
+the trailing words back into the message rather than rejecting them, so the
+form that silently posted nothing now posts. Verified here from the published
+wheel rather than from the report of it, which is this repository's standing
+rule about somebody else's release:
+
+    pip download agent-switchboard -d /tmp/x --no-deps      # 1.2.2
+    say general --thread plan hello there  ->  thread='plan' message=['hello','there']
+
+**The fix is in `main()`, not in the parser**, and that matters if you go
+looking: `build_parser().parse_args()` still rejects the same argv, because the
+repair is `parse_known_args` plus `_escape_dash_leading_positionals` in the
+dispatch path. A test written against the parser would report the bug as
+unfixed; a test written against `main()` reports it fixed. Both are true of
+different seams.
+
+**What is still worth knowing, because the shipped comment says otherwise.**
+1.2.2's own source says "a mistyped `--tread` still errors rather than being
+posted as somebody's words". Measured against the published wheel, it does not:
+
+    say general --tread plan hello  ->  thread=None  message=['--tread','plan','hello']
+
+The typo is absorbed into the message and the post goes to no thread. That is a
+consequence of `_escape_dash_leading_positionals`, which exists for a good
+reason — hub-minted agent ids are base64url and about one in sixty-six begins
+with `-`, so `dm -yLAoQ63 hi` has to work, and it does. The operator flagged
+this trade-off in the same breath as the release; the code comment beside it
+did not get the memo. **A comment that describes the behaviour somebody
+intended, next to code with the other behaviour, is a third way to be wrong
+about what a system does** — and it is the kind that survives review, because
+the comment reads as the test.
+
+### The original, kept
+
+
 
 ```sh
+# before 1.2.2:
 switchboard say coord --thread island-handover "the message"   # FAILS
 switchboard say coord --ttl 3600 - < body.txt                  # FAILS
 switchboard say coord "the message" --thread island-handover   # works
