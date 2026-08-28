@@ -72,6 +72,20 @@ advance any agent's cursor. `serve.py` forwards `api/state` so the two share an
 origin, which they must: `api/state` sends no CORS headers, so a page served
 from anywhere else cannot read it at all.
 
+**A finished game is a recording, and the list finds it.** The host's live
+directory *is* the archive — nothing there is pruned — so the manager lists
+each finished game in `index.json` beside the files it already wrote, and this
+page reads that index from `?games=<url>` or, failing that, from the directory
+of whatever `?live=` names. The URL a game was watched on is the URL its replay
+lives at; nothing is copied for that to be true. (`games/replays/` is still its
+own thing: games kept in git deliberately, a commit each.)
+
+**One control for search and list.** They used to be two: a ⌕ that filtered a
+list you could not see, and a dropdown that listed rounds you could not filter.
+The list now lives inside the drawer, under the search that narrows it, as a
+listbox rather than a dropdown — a dropdown that has to be opened to be read
+hides its own result.
+
 **A live game ends into its own replay.** The live file a manager writes
 (`games/island/live.py`) grows a `finished` block at the last bell naming the
 board and reveal it has just copied in beside itself. The page takes it: the
@@ -122,7 +136,7 @@ settlement per seat, a site per good, a dock and boats. Ported from a design
 delivered as `island.html`; `island3d.js` holds the geometry and `stage.js`
 puts it under the scene.
 
-Two things about it are worth knowing before changing either.
+Three things about it are worth knowing before changing any of them.
 
 **The camera is orthographic, and that is not a style choice.** The cards,
 ropes and sun are SVG drawn in viewBox coordinates. Under perspective, the map
@@ -137,6 +151,36 @@ each into a point on the island, and the card goes back at `toViewBox()` of the
 hut. Placing them on a ring in island coordinates was tried first and put both
 huts on nearly the same pixel — the ring's axis and the camera's happened to
 line up. A spectator does not care which compass point a hut is on.
+
+**Anything standing on the coast is placed against the outline, never against
+a radius.** The slabs are cut to `silhouette()`, whose two wobble terms can add
+to nearly a quarter of the nominal radius — so on some bearings the meadow's
+`3.25` reaches `3.70`, and on a few of them the grass reaches past the sand.
+The dock was placed at a hand-picked point whose radius, 3.43, cleared 3.25 and
+so looked offshore; it was inside the coastline, under the meadow's surface,
+along with its bollard and two of its three boats, and `island-life.js` bobbed
+them through soil for as long as the page was open. Only the third boat was
+ever in water, so the scene read as a lone dinghy off an island with no dock.
+Reported by eye, which is the argument for the check.
+
+`meadowEdge`, `beachEdge`, `shelfEdge` and `shallowsEdge` are the four outlines
+to ask, and `dockAxis()` is the worked example: it takes a bearing, seats the
+root against whichever of the grass and the sand reaches furthest, and returns
+both the rotation that aims the thing out to sea and how far it may reach
+before it leaves the water. **A length is as much a placement as a position
+is** — seating the root correctly while leaving the old hand-picked length of
+1.54 in place moved the failure rather than fixing it: the jetty then reached
+past the shallows, and since a dock is not weather, `render.py:island` counts
+it as the island's own silhouette and found the island's foot below the first
+card on a phone. The drawn water outside the sand is about `0.7` wide on every
+bearing, so that is how long a jetty can be, and boats moor broadside because a
+hull is 1.26 long and does not fit bow-out in 0.7 of water at any scale.
+
+`tests/render.py:island` measures every part of the dock against those
+outlines: nothing inside the grass, and no boat short of the waterline. They
+are separate assertions because they fail separately — a boat can clear the
+grass and still be a hull sitting on wet sand, which is exactly what the one
+un-buried boat was.
 
 **Without WebGL the page draws the island as it always did.** `.has-3d` is set
 only once a model is actually up, so the drawn world is hidden exactly when it
@@ -512,6 +556,101 @@ It is still banked all day — the embers are a floor under the flames, not a
 curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
+
+### The warmth belongs to the light, not to the sky over the island
+
+*Corrected 2026-08-28. The section below said the day's own light never takes
+the greens off a leaf, and gave 100°–128° of hue across the whole arc as the
+measurement. That number was a **sum done by hand for a flat, up-facing patch
+of grass**, not a reading off the picture. It was wrong about the picture, the
+campfire fix shipped on the back of it, and the island was still yellow at the
+end of a day. The superseded reasoning stays here because it is the reason the
+second look went to the right place.*
+
+**What the pixels say.** Draw the island with everything but the grass hidden —
+meadow, upland, ridge, canopies, fronds — and count the hue of what is left:
+
+| `day` | median grass hue | on the yellow side of 90° |
+|---|---|---|
+| 0.25 – 0.80 | 102° – 116° | 0% |
+| 0.90 | 91° | 30% |
+| 0.95 | 87° | **64%** |
+| 1.00 | 92° | 40% |
+
+Two thirds of the island olive in the last stretch of the day, and turning the
+campfire off changed it by a few points — so the fire was never the half of it
+that a spectator was reporting.
+
+**It was the ambient.** The rig is a key, a fill and an ambient, and the
+ambient reaches every face, including all the ones a low sun has stopped
+touching. Its dusk colour was `0xa08a90` — a warm mauve — chosen so that a cool
+ambient held fixed would not make the last light of the day read *bluer* than
+midday. That reasoning is right and the fix for it was in the wrong place: it
+put the sunset in the light that falls on everything, and orange on green is
+yellow.
+
+Twilight is a cool sky with one warm light in it. The key keeps its sunset
+colour (`0xd9603a`) and does the warming; the ambient goes to `0x8497b0` at
+dusk and `0xb3bccb` at dawn, which is what the sky over an island is at those
+hours. The grass comes back — median 103°–128° at every hour of the day, with
+nothing below 100° — the sand still reads warm (hue ~22 at `day` 0.95, because
+the key is still on it), and dusk is still darker than noon by two thirds.
+
+**The check.** `twilight` in `viewer/tests/render.py` is the reproduction and
+the guard. It measures the rendered pixels, because that is the thing that was
+wrong while the arithmetic said otherwise:
+
+```bash
+python viewer/tests/render.py
+```
+
+It fails on the old ambient at seven hours of the day, and on the old campfire
+at two.
+
+### The firelight is a pool, not a floodlight
+
+**The trees and the hill went yellow at nightfall, and it was the campfire.**
+Reported by eye twice, and looked for twice in the wrong place: the island's
+greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and a
+sum done by hand said the day's own light never takes them back — under the
+whole arc from dawn to dusk the grass stays between about 100° and 128° of hue,
+which is a leaf. **That sum was of a flat patch of grass and was wrong about
+the picture** — see the section above, which is the other half of this bug. The
+fire below is real and was the near half of it.
+
+The fire's `PointLight` did. It was `(0xff9a3c, distance 4.2, decay 2)` driven
+to intensity 5.5 at the bell, and the fire stands *on* the hill: at half a unit
+that is three and a half times as much light as the island gets at midday, and
+firelight is orange while the island is green. A strong warm light on a green
+material beats its green channel down until red and green come out level, and
+level red and green with no blue is yellow. The hill, the ridge and every tree
+within about two units of the hearth measured 79°–88° — olive — while the
+meadow, being mostly further off, stayed green. Hence "the trees and the hill",
+which is what made it look like a materials bug.
+
+The colour was never wrong: a fire is orange and the ground beside a fire is
+warm. The **reach** was. At distance 2.4 and intensity 1.2 the pool covers the
+hearth and its clearing — the ground there is still six times as bright as the
+grass outside it — never out-shines the day, and is back to leaf-green by the
+foot of the hill.
+
+Grass at the bell, on the ground beside the hearth, against the same grass at
+midday — measured on the built island, not on the arithmetic:
+
+| from the fire | before | now |
+|---|---|---|
+| 0.35 | 3.39× midday, hue 60° | 0.87× midday, hue 64° |
+| 1.2 | 0.40× midday, hue 72° | 0.19× midday, hue 90° |
+| 2.0 | 0.20× midday, hue 89° | 0.15× midday, hue 103° |
+
+Both halves are pinned by `viewer/tests/firelight.test.mjs`, which builds the
+real island, runs the life layer to the bell and sums the rig the way the
+renderer does for an up-facing surface — the same approximation already used
+for the sea band, and checkable without a GPU:
+
+```bash
+node --test viewer/tests/firelight.test.mjs
+```
 
 **Fireflies** come out over the meadow once the light has gone, a little behind
 the fire, which is banked before dusk and built up as it arrives. They are
@@ -891,8 +1030,9 @@ That is fine, because neither event was ever carried by the island:
 * an **offer** is the **rope** — a line across the frame from the maker to the
   taker, labelled with what is on the table, its dashes crawling toward the
   trader it is addressed to;
-* a **refusal** is the **bubble over the hut** with a cross in it, and the red
-  outline round the trader's card.
+* a **refusal** is the **offer blinking red** with a ✗ on its pill — and, only
+  when the manager named no offer this page is holding, the **bubble over the
+  hut** with a cross in it, and the red outline round the trader's card.
 
 Both are SVG over the canvas. So `mechanics` — which drives a bare stage with
 no scene on it, and cannot see either — lets those two off its 1.2% floor and
@@ -923,7 +1063,7 @@ What each clip carries itself now:
 | a production | the site works, boxes are made there and hop home, and **they open where they land** |
 | an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
 | a settlement | the boxes cross the island and **open where they land**, and the fire flares once |
-| a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
+| a refusal | the post shakes and the notice tears, and **the offer blinks red with a ✗ on its pill** (a bubble over the hut only when no offer is named) |
 | a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
@@ -971,8 +1111,8 @@ contrast of the wheels against the body, not its parts.
 ### A bubble belongs over the hut
 
 The two things a trader does that leave no goods behind — refusing an offer, and
-simply speaking — are drawn as a speech bubble: a cross for the refusal, and for
-a remark **three dots and nothing else**, because the island's job is to say
+simply speaking — were both drawn as a speech bubble: a cross for the refusal, and
+for a remark **three dots and nothing else**, because the island's job is to say
 *that* somebody spoke, not what they said. What they said is in the ticker, and
 printing the manager's sentence across the sand was the thing this replaced.
 
@@ -988,6 +1128,14 @@ overwrite the position sixty times a second, and the bubble would sit where the
 hut was at the moment it opened — which matters, because a bubble lives about a
 second and a half and the camera covers a few pixels of its revolution in that
 time.
+
+**The refusal half of that is now the exception, not the rule** (2026-08-28,
+Gal's ask): the red blink on the offer is enough, so the bubble is drawn for a
+refusal only when `refuse()` finds nothing on the square to blink — which is
+every refusal at *proposal* time, where the offer does not exist yet and
+something must still say it happened. When there is a rope, drawing the bubble
+too said the same refusal twice, a frame away from the square it happened on.
+The remark's three dots are unchanged.
 
 `render.py:overhead` drives a real refusal on the real page and asks that the
 bubble opens on the settlement, is still on it a second later, and carries the
@@ -1119,7 +1267,14 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
   refusals, and in the fourth it names the good, where the offer is the open one
   addressed to that trader asking for it. Marked on the **live** rope, since a
   refusal does not close the offer, and a red copy laid over the orange original
-  would blink to the wrong colour between flashes.
+  would blink to the wrong colour between flashes. **This is the whole
+  indicator** since 2026-08-28: `refuse()` returns whether it marked anything,
+  and the badge over the hut is drawn only when it did not. It hangs a ✗ on the
+  pill as well as the colour, carrying the manager's reason as the cross's
+  `<title>` — red on its own is a colour a viewer reads as "an answer", and the
+  cross is *which* answer. `render.py:motion` drives both halves: an offer the
+  manager named blinks, carries the cross, and raises no badge; the
+  proposal-time refusal above it still raises one.
 * **A settlement blinks it green.** A settled offer is out of `this.ropes` by
   the time `play()` runs, because `paint()` draws only open offers — so the
   green copy is spawned from `paint()`, beside the lapsed one.
@@ -1769,7 +1924,8 @@ always have had.
 |---|---|
 | sea, wind | always, swelling on their own slow clocks |
 | gulls | the hour — most at dawn, none once the light has gone |
-| the fire at the centre | always, and up at the bell as the light goes |
+| the fire at the centre | always, and it *is* the night |
+| the sun coming up | the day's open: six seconds of swell, with the shine on top |
 | dolphins | nothing at all |
 | a site at work | a production receipt for that good, for 6.5s |
 | an event accent | the event, at 42% |
@@ -1861,6 +2017,242 @@ The other thing that changed with it: the `produced` accent in
 dropped from 780Hz to 430Hz), because it fires in the same instant the site
 starts working and two onsets stacked were most of what made a production
 unpleasant. A production window is 5s now, not 6.5.
+
+### The morning is a sunrise, and the night is a fireplace
+
+Both asked for by Gal, 2026-08-28, in those words, and both were things the
+bed had a token of rather than the thing itself.
+
+**The open was a chime saying "morning".** Three notes over 0.9s — an
+announcement of a sunrise, which is the opposite of one: what makes a sunrise
+read is that it *takes its time and brightens as it grows*. `Ambience.sunrise()`
+is one gesture over six seconds where everything moves the same way at once — a
+warm low chord swelling from nothing, a lowpass opening from 180Hz to 2.4kHz
+across it so the sound gets brighter as it gets louder, the octave arriving
+late and quiet as the top of it, the surf brightening with it, and seven gulls
+scattered through: the dawn chorus is the loudest hour for birds and this is
+that hour arriving. The fire goes the other way, because a fire at sunrise is a
+fire being left. The accent voice in `island-sound.js` is now one low note the
+swell comes up through, not the event's whole sound.
+
+**The night was a beach with a fire on it.** Sea at full, fire a little up
+behind it — but once the light has gone every trader is round the one fire at
+the centre, and that is where a spectator should be sitting. At night the fire
+is `4.2` against the sea's `0.62` and the wind's `0.22`, and because the
+crackle interval is *divided* by the fire's level, a louder fire is also a
+busier one. The fire's own filter opened from 190Hz to 340Hz (a hearth you are
+sitting at has air moving in it; a lowpassed rumble alone reads as traffic) and
+one spit in twelve is now a `pop` — a log settling, lower and four times as
+long. The bell hands straight over to it rather than flaring and settling back,
+so the flare and the night are one continuous fire.
+
+Both are measured, and the checks are written to be about the *shape* rather
+than the level, since level is the thing that was already there:
+
+| asserted | measured |
+|---|---|
+| the sunrise swells | late half ÷ early half > 1.3 (it is ×1.8) |
+| …and brightens as it swells | late brightness ÷ early > 1.15 (×1.35) |
+| …and is heard over the bed it rises into | ×1.4 (it is ×1.7) |
+| night is louder than day | the bed at night ÷ the bed by day > 1.1 (×1.4) |
+| …and warmer than day | night brightness < day's (0.077 against 0.155) |
+
+### The light on top of it: a shine, from a reference
+
+Gal, 2026-08-28, pointed at a four-second game accent (Envato `shining` by
+TibaSFX — tagged *bless, enlightenment, grace, illumination, magic, shine*)
+and asked for something like it. **Like it, and not it.** What is taken is the
+idiom, which belongs to nobody: a cluster of bell partials with long tails,
+detuned in pairs so they beat against each other, sparkles scattered above,
+and a riser climbing underneath into the moment they land. No part of that
+recording is in this repository and nothing is fetched at runtime — the
+reference was read, not sampled.
+
+`Ambience.shine()` is that, and it is the top of the sunrise rather than a
+separate event: the swell is the sun's warmth and mass, the shine is the
+moment it clears the water. A struck partial is a detuned pair plus a quiet
+inharmonic at 2.76× (roughly where a struck bar puts its first overtone, and
+far enough off the octave to ring rather than to double the note); the sparkle
+climbs on average as it goes, because a sparkle that does not go anywhere is
+a wind chime.
+
+**It starts at 1.5s, and the check is why.** At 0.6s its riser and first
+sparkles fell inside the sunrise's own opening seconds and the gesture then
+*grew without brightening* — there was nothing left for the second half to be
+brighter than. Moving it later fixed the measurement and is also the truer
+thing: the sun is felt before it is seen.
+
+**Every partial in it is a sine, and that is asserted.** The brightest thing
+on this island is the last place the square wave should come back — bright is
+not the same as sharp, and the quarry proved how easily one becomes the other.
+`tests/ambience.test.mjs` counts the cluster (>50 oscillators, where a chime
+is three) and fails on any non-sine partial; `tests/audio.py` adds a *ceiling*
+to go with the brightening floor: the sunrise may not exceed 2.5× the bed's
+brightness.
+
+| the sunrise, measured | |
+|---|---|
+| swell | 0.0200 → 0.0425 (×2.1, floor ×1.3) |
+| brightening | 0.095 → 0.134 (×1.4, floor ×1.15) |
+| over the bed it rises into | ×2.0 (floor ×1.4) |
+| brightness against the bed | ×0.9 (ceiling ×2.5) |
+
+### The world was a third of one chime
+
+Reported by ear, 2026-08-28: the sunrise, the day and the night are all barely
+heard. Measured, and the balance was plain —
+
+| | peak, after the master gain |
+|---|---|
+| the bell | 0.125 |
+| a settlement | 0.107 |
+| **the whole world** | **0.051** |
+
+The island was **half the height of a single accent**, and every check here
+had passed it, because every check compared the island to itself: a site was
+×1.6 over *the bed*, the sunrise ×2.0 over *the bed it rises into*. Nothing
+asked how loud the bed was against the things laid over it, so a world at any
+volume at all would have scored the same.
+
+`BED` went 0.5 → 1.15, and it is one number because of how the file is wired:
+the sites at work and the sunrise both hang off `this.gain`, so raising the
+bed lifts the whole world together and changes only its balance against the
+accents — which is exactly what was wrong. Every ratio the checks hold is
+untouched by it. The world now peaks at 0.130 against the bell's 0.125.
+
+Two checks were added, and both fail on the old value:
+
+- the bed's own RMS must sit in a band — **not below 0.04** (barely there) and
+  not above 0.09 (a spectator noticing the sea rather than the island);
+- the bed must peak at **at least 0.6× the loudest voice** laid over it.
+
+```
+FAIL: the bed is barely there (0.026): the world is the thing being listened
+      to, not the accents over it
+FAIL: the bed is dwarfed by the accents over it (the world peaks at 0.056,
+      one voice at 0.125)
+```
+
+### The checks were measuring a page nobody hears
+
+Reported 2026-08-28: all the sounds are too weak, I can't hear any of it. Then,
+minutes later, unprompted: *now I do hear everything. weird.*
+
+**Nothing in this repository had changed in between.** What changed was GitHub
+Pages: run 74 published the merge that took `BED` from 0.5 to 1.15 at
+09:07:44Z, and the report was made against the deploy before it. So the level
+that sounded broken is the level that sounds right, heard on a stale page, and
+the honest response was to change nothing — the sweep of `MASTER` values that
+was underway when the second message arrived was thrown away.
+
+*Worth writing down for the next time a sound report arrives:* **ask what is
+deployed before touching a number.** The viewer publishes on a push to `main`
+and a listener is usually a minute or two behind it.
+
+But the round found a real defect anyway, in the checks rather than the sound.
+`tests/audio.py` rendered the island straight at the destination and then
+multiplied by its own copy of `MASTER` — so it modelled the master gain and
+**ignored the limiter under it entirely**, and every number it had ever printed
+was a level no listener hears. Renders now go through `outputChain()`, exported
+from `island-sound.js` and used by the page itself, so there is one definition
+of what sits between the island and the speakers.
+
+That is also what let the band below be set honestly. The bed's floor is not a
+round number anybody liked:
+
+| heard | bed RMS out |
+|---|---|
+| `BED` 0.5, "I can't hear any of it" | 0.009 |
+| `BED` 1.15, "now I do hear everything" | 0.021 |
+
+The floor sits between them, at 0.015 — it fails the configuration a listener
+rejected and passes the one they accepted, and that is the whole of its
+justification. Every threshold in that file chosen by taste has been wrong at
+least once; these are the only two numbers in it that a pair of ears has ruled
+on directly. The ceiling (0.09) is still the old rule, still untested by
+anybody's ear, and worth remembering when it first fails.
+
+### Listening to it is part of the harness now
+
+`python viewer/tests/audio.py --wav DIR` writes the day bed, the night, the
+sunrise and every site at work as WAVs, through the page's own master gain and
+boosted for headphones.
+
+The files are what the page plays, at its own gain — **they used to be boosted
+3.2×**, which meant they sounded right while the page was 20dB down, and the
+boost was hiding the very thing it existed to reveal.
+
+It is in the repository for the reason the table above shows twice over:
+**every complaint that mattered was heard by a person and measured only
+afterwards** — the sites inaudible, the quarry harsh, the box in the air
+pitched over the bell, and now the whole world too quiet. Four for four. The
+checks are regression guards; they have never once been the thing that found
+the problem. So the harness that lets a person hear it belongs beside the one
+that measures it, rather than being rebuilt from memory every time somebody
+says it sounds wrong.
+
+### The bell is the top of the register
+
+Reported by ear, 2026-08-28: the box flying is too high against everything
+else. Measured at once, and it was not a close thing —
+
+| voice | rang at |
+|---|---|
+| **settled** | **~1019 Hz** |
+| offer | ~763 Hz |
+| bell | ~539 Hz |
+| refused | ~232 Hz |
+| produced | ~162 Hz |
+| open | ~97 Hz |
+
+`settled` was not merely the highest accent; it was **higher than the bell**,
+and the bell is the one voice this island lets sit over everything — the day
+ending is the loudest fact on the board. A settlement plays while goods cross
+the ground between two huts, and the offer's pill rides its rope to the same
+kind of sound, so what a spectator heard was **a box in the air pitched above
+the end of the day**.
+
+Both dropped an octave. The chords are unchanged in shape — a fifth with a
+third over it for a settlement, two notes up and unresolved for an offer —
+only their register moved: settled now rings at ~509 Hz and offer at ~378 Hz,
+both under the bell.
+
+The rule is now a check rather than a memory. `tests/audio.py` renders every
+voice alone, takes its pitch by zero-crossing rate (a fair proxy for signals
+this simple, and it needs no FFT) and fails any voice that rings above the
+bell. It fails on the old frequencies and passes on the new — verified by
+putting them back, which is the only way to know a check works.
+
+That is three ear-reports in a row that measurement had passed: the sites
+being inaudible, the quarry being harsh, and this. Each one became a check
+afterwards, and none of the three was found by one. **The ear goes first
+here; the checks are what stop a fixed thing from coming back.**
+
+### The check is seeded, and judged on its worst seed
+
+Everything intermittent here is scheduled at random, and while tuning the
+sites the check began failing **one run in six, on a different site each
+time** — a margin thin enough that the result was the scheduler's dice rather
+than the design. `Ambience` already took its `rng` for exactly this, so
+`tests/audio.py` now passes a seeded one and takes every measurement on three
+seeds, judging each site on the **worst** of them.
+
+The seeds were not a way to make the failures go away: with them the check
+said plainly that grain (×1.35) and the generic works (×1.37) were genuinely
+marginal, and both were raised until their worst seed cleared. The spread is
+printed under `--verbose` so a site whose seeds disagree is visible rather
+than merely lucky.
+
+| site | worst seed | all three |
+|---|---|---|
+| bread | ×1.74 | 1.74 1.74 1.76 |
+| iron | ×1.61 | 1.69 1.61 1.64 |
+| grain | ×1.64 | 1.64 1.66 1.64 |
+| salt | ×1.59 | 1.59 1.78 1.72 |
+| a good with no site | ×1.59 | 1.63 1.61 1.59 |
+| fish | ×1.49 | 1.49 1.50 1.49 |
+| timber | ×1.44 | 1.60 1.44 1.47 |
+| cloth | ×1.42 | 1.56 1.42 1.45 |
 
 ### The rest of the shape
 
@@ -2115,6 +2507,37 @@ best game went from +64% to +99.5%, and the best player from 1.83× to 3.16×.
   that changes while the record does not is exactly when a cache keyed only on
   the record keeps answering with the old order.
 
+### The page opens on a round, and picks one at random when nothing named one
+
+Decided 2026-08-28. A visit with no `?board=`, no `?live=` and no invite used
+to open whichever round happened to sort first, which meant every unadorned
+visit for months showed the same round -- and the listing has over a hundred
+and fifty. There is no canonical round to show, so the page draws one:
+`picker.js:openingChoice` returns the pinned entry when there is one (a live
+game, or a round somebody was linked to -- that is what the reader came for),
+and otherwise a uniformly random record. Only the *opening* choice is random;
+filtering, sorting and the remembered selection are untouched, and a link that
+names a round still opens exactly that round.
+
+*Amended 2026-08-28, same day.* The first version of this preferred any
+pinned entry, and the listing's live pointer is pinned: `serve.py` publishes
+`live` whether or not a game is running, so an unadorned visit still opened the
+live room -- and when that room had said nothing, the page showed an empty
+island and `Cannot read properties of undefined (reading 'x')`. Two things were
+wrong and both are fixed. The pointer is now marked `offered` and
+`picker.js:openingCandidates` drops it from the opening choice unless one read
+of it finds a game in it; it stays in the listing, where picking it is the
+reader asking for it, and a `?live=`, an invite or a `?board=` still wins
+outright. And `scene.js:scenery` drew the worn track between huts from the
+first seat's `x` without checking there was a seat -- an island with nobody on
+it now simply has no track instead of throwing.
+
+To re-check by hand: run `python viewer/serve.py` with no game running (the
+live pointer 502s), or with the room answering `{"messages": []}`, and open the
+page with no query string -- it opens a record, and a different one each time.
+The choosing half is tested in `viewer/tests/picker.test.mjs`
+(`node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs`).
+
 ### Keeping many rounds
 
 Three different things scale differently, and only one of them was a problem.
@@ -2304,7 +2727,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
 | `tests/sound.test.mjs` | the voices and the button, against a fake `AudioContext` |
 | `tests/ambience.test.mjs` | the bed's hours, its scheduler, and one site sound per good |
-| `tests/audio.py` | the levels, rendered offline in a real browser; skips without one |
+| `tests/audio.py` | the levels, rendered offline in a real browser; `--wav DIR` to listen. Skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/clips.test.mjs` | what an event clip borrows off the island, and gives back |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |

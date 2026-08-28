@@ -132,6 +132,23 @@ const silhouette = (radius, wobble, phase) => (t) =>
 const MEADOW = { radius: 3.25, wobble: 0.12, phase: 1.9 };
 
 /**
+ * The other two outlines anything placed against the coast has to know about.
+ *
+ * **The grass is not the waterline.** The meadow's edge is where the land the
+ * island is *lived on* stops; seaward of it lie a beach of dry sand and a
+ * shelf of wet sand, and only past the shelf is there water a hull can sit in.
+ * These were plain numbers in the `slab()` calls below, which is why the dock
+ * was placed against `MEADOW.radius` and ended up buried -- see `dockAxis`.
+ */
+const BEACH = { radius: 3.9, wobble: 0.11, phase: 0.7 };
+const SHELF = { radius: 4.15, wobble: 0.10, phase: 0.7 };
+//: And the drawn water's own edge. Past this there is still sea -- an
+//: enormous plane of it -- but the *island* stops, and `render.py:island`
+//: measures the island's silhouette from the shallows inwards. Anything the
+//: dock puts beyond this lengthens the island's foot on screen.
+const SHALLOWS = { radius: 4.62, wobble: 0.10, phase: 0.7 };
+
+/**
  * How far the grass reaches, in the direction of an island point.
  *
  * A slab is cut in its own plane and then laid flat by `rotateX(-PI/2)`, which
@@ -142,6 +159,82 @@ const MEADOW = { radius: 3.25, wobble: 0.12, phase: 1.9 };
  */
 export const meadowEdge = (x, z) =>
   silhouette(MEADOW.radius, MEADOW.wobble, MEADOW.phase)(Math.atan2(-z, x));
+
+/** The same reading, for the sand and for the waterline. */
+export const beachEdge = (x, z) =>
+  silhouette(BEACH.radius, BEACH.wobble, BEACH.phase)(Math.atan2(-z, x));
+export const shelfEdge = (x, z) =>
+  silhouette(SHELF.radius, SHELF.wobble, SHELF.phase)(Math.atan2(-z, x));
+export const shallowsEdge = (x, z) =>
+  silhouette(SHALLOWS.radius, SHALLOWS.wobble, SHALLOWS.phase)(Math.atan2(-z, x));
+
+/**
+ * Where the dock stands and which way it runs, for a bearing off the fire.
+ *
+ * **A jetty is placed against the outline, never against a radius.** The dock
+ * used to be dropped at a hand-picked `(3.15, 1.35)` -- r = 3.43, comfortably
+ * outside `MEADOW.radius` of 3.25 and so, on the face of it, offshore. It was
+ * not: on that bearing the two wobble terms add, and the grass reaches 3.70.
+ * The entire jetty, its bollard, and two of the three boats stood *inside* the
+ * coastline and below the meadow's surface, buried in the hill; `island-life`
+ * bobbed two of them up and down through soil for as long as the page was
+ * open. Only the third boat was ever in water, and the picture read as a lone
+ * dinghy off an island with no dock -- which is how this was found, by eye.
+ *
+ * It also ran backwards. The planks are laid up the group's local `+z` and the
+ * bollard caps that end, so local `+z` is the seaward direction and the boats
+ * moor at its far end -- but `rotation.y = -1.35` pointed it inland, so the
+ * head that boats tie to was the end nearest the fire.
+ *
+ * So: the root sits on the beach/shelf line, the axis points straight out to
+ * sea, and everything moored is checked against `shelfEdge` rather than
+ * assumed. `tests/render.py:island` fails on any part of the dock that is not
+ * where this says it is.
+ */
+/**
+ * A point in open water on a bearing: half way between the wet sand and the
+ * shallows' edge, which is where something that floats belongs.
+ *
+ * Both ends are read on the bearing rather than taken as radii, and the inner
+ * one is the *outer* of the sand and the grass, because on some bearings the
+ * meadow reaches past the beach -- see `dockAxis`, which was caught by that.
+ */
+export function midWater(bearing) {
+  const ux = Math.cos(bearing), uz = Math.sin(bearing);
+  const r = (Math.max(shelfEdge(ux, uz), meadowEdge(ux, uz))
+             + shallowsEdge(ux, uz)) / 2;
+  return { r, x: ux * r, z: uz * r };
+}
+
+export function dockAxis(bearing, scale = 1) {
+  const ux = Math.cos(bearing), uz = Math.sin(bearing);
+  //: **Against whichever outline reaches furthest, not against the beach's.**
+  //: The two silhouettes have different wobbles, so on some bearings -- this
+  //: one nearly -- the grass reaches past the sand, and a root seated on the
+  //: beach edge alone clears the meadow by a hundredth of a unit or not at
+  //: all. The margin is over the *outer* of the two, so the shore end is on
+  //: open sand on every bearing rather than on the ones that happen to work.
+  const r = Math.max(beachEdge(ux, uz), meadowEdge(ux, uz)) + 0.10;
+  return {
+    at: [ux * r, uz * r],
+    // three.js turns local `+z` to `(sin ry, cos ry)`, so this is the rotation
+    // that aims the plank run along the outward radius.
+    rotation: Math.atan2(ux, uz),
+    //: **And how long it may be, which is not a thing to pick by hand
+    //: either.** Seating the root correctly and leaving the old hand-picked
+    //: length of 1.54 in place put the head at r = 5.35 and a boat's bow at
+    //: 5.50, well past the shallows -- and the dock is not weather, so
+    //: `render.py:island` counts it as the island's own outline and measured
+    //: the island's foot 3px *below* the first card on a phone. The old
+    //: length never showed up there only because the whole jetty was buried
+    //: inside the hill.
+    //:
+    //: There is no bearing on which that length fits: the drawn water outside
+    //: the sand is `SHALLOWS.radius - BEACH.radius` wide, about 0.7, all the
+    //: way round. So the jetty is as long as the water is, and short.
+    reach: (shallowsEdge(ux, uz) - 0.08 - r) / scale,
+  };
+}
 
 //: Inside this, the island is the fire and the hill: a settlement dropped
 //: there stands in the hearth or sinks into the upland. It is the upland that
@@ -429,6 +522,17 @@ function boat(i, sailMat) {
   g.name = `boat_${i}`;
   add(g, new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
     M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.55, 2.1]);
+  //: **A hull is a bowl with its top open, so without this you see the sea
+  //: through it and the boat reads as full of water.** Reported by eye, and
+  //: it is exactly what was drawn: the hull is the *lower* half of a sphere
+  //: (`phiStart = PI/2`), its rim at y = 0.1 and its floor below the
+  //: waterline, so the shallows' own surface passed straight through the
+  //: opening. A floor just under the rim is what a boat has, and it has to
+  //: sit above the water rather than merely inside the hull -- the slab's top
+  //: is at y = 0.04 and this lands at 0.124 with the boat at its mooring,
+  //: still 0.089 at the bottom of `island-life`'s bob.
+  add(g, new THREE.CircleGeometry(0.28, 24), M.timber, `boat_${i}_deck`,
+    [0, 0.075, 0], [-Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.CylinderGeometry(0.018, 0.022, 0.8, 10), M.timber, `boat_${i}_mast`, [0, 0.5, 0]);
   add(g, new THREE.BoxGeometry(0.012, 0.44, 0.32), sailMat, `boat_${i}_sail`, [0, 0.62, 0.14]);
@@ -660,12 +764,13 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: The water follows the coast rather than a circle. A round shallows and a
   //: round line of surf against a wobbled shore put the white water a long way
   //: out on one bearing and up on the sand at another.
-  island.add(slab(4.62, 0.09, 0.05, 0.10, 0.7, -0.05, M.sea, "shallows"));
+  island.add(slab(SHALLOWS.radius, 0.09, 0.05, SHALLOWS.wobble, SHALLOWS.phase,
+                  -0.05, M.sea, "shallows"));
   island.add(shoreRing(4.30, 0.10, 0.7, 0.075, 0.05, M.surf, "surf_ring"));
 
   // — land —
-  island.add(slab(4.15, 0.14, 0.14, 0.10, 0.7, 0.0, M.sandWet, "shore_shelf"));
-  island.add(slab(3.9, 0.24, 0.20, 0.11, 0.7, 0.08, M.sand, "beach"));
+  island.add(slab(SHELF.radius, 0.14, 0.14, SHELF.wobble, SHELF.phase, 0.0, M.sandWet, "shore_shelf"));
+  island.add(slab(BEACH.radius, 0.24, 0.20, BEACH.wobble, BEACH.phase, 0.08, M.sand, "beach"));
   island.add(slab(MEADOW.radius, 0.34, 0.20, MEADOW.wobble, MEADOW.phase, 0.36, M.grass, "meadow"));
   island.add(slab(1.55, 0.44, 0.22, 0.16, 3.1, 0.68, M.grassDark, "upland"));
 
@@ -986,28 +1091,90 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   }
 
   // — the dock and the boats —
+  //: The bearing is the only thing picked by eye; `dockAxis` reads the coast
+  //: on it and returns where the root goes and which way the planks run. The
+  //: bearing is the one the dock has always been on -- east-south-east, clear
+  //: of the settlements -- so the framing does not move; what changes is that
+  //: the jetty now begins at the sand and ends over water.
+  const DOCK_BEARING = 0.405, DOCK_SCALE = 0.95;
+  const axis = dockAxis(DOCK_BEARING, DOCK_SCALE);
   const dock = new THREE.Group();
   dock.name = "dock";
-  dock.position.set(3.15, 0, 1.35);
-  dock.rotation.y = -1.35;
-  for (let i = 0; i < 7; i++) {
-    add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * 0.26]);
+  dock.position.set(axis.at[0], 0, axis.at[1]);
+  dock.rotation.y = axis.rotation;
+  //: Three planks laid over whatever `reach` turned out to be, rather than
+  //: seven at a fixed pitch running off into the ocean. Their own depth is
+  //: 0.24, so the pitch is what keeps the last one's outer face inside the
+  //: reach; a fourth would need water this island does not have.
+  const PLANKS = 3, pitch = axis.reach / PLANKS;
+  for (let i = 0; i < PLANKS; i++) {
+    add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * pitch]);
   }
   for (let i = 0; i < 4; i++) {
     add(dock, new THREE.CylinderGeometry(0.035, 0.035, 0.62, 8), M.timber,
-      `dock_pile_${i}`, [(i % 2 ? 0.3 : -0.3), 0.0, 0.3 + Math.floor(i / 2) * 1.1]);
+      `dock_pile_${i}`, [(i % 2 ? 0.3 : -0.3), 0.0,
+                         0.06 + Math.floor(i / 2) * (axis.reach - 0.12)]);
   }
-  add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit, "dock_bollard", [0.3, 0.5, 1.62]);
-  // One boat per seat, up to what the jetty holds: the traders arrived somehow.
-  traders.slice(0, 3).forEach((name, i) => {
-    const b = boat(i + 1, seatMat(name, i, traders.length));
-    b.position.set(-0.75 + i * 0.85, 0.02, 1.5 - i * 0.4);
-    b.rotation.y = 0.22 - i * 0.57;
-    dock.add(b);
-  });
-  dock.scale.setScalar(0.95);
+  add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit,
+    "dock_bollard", [0.3, 0.5, axis.reach - 0.08]);
+  dock.scale.setScalar(DOCK_SCALE);
   island.add(dock);
-  placed.push([2.9, 1.2, 0.9]);
+
+  //: — a boat for every seat, along the shore either side of the jetty —
+  //:
+  //: **One per trader, not three.** They used to be `traders.slice(0, 3)`
+  //: against three hand-written positions, so on any table above three seats
+  //: the later traders had no boat at all -- reported by eye as sails wearing
+  //: the agents' colours but not all of the agents'. Nothing caps a table at
+  //: three, and the palette has said so since `seats.js` took the colours
+  //: over.
+  //:
+  //: **And they are not children of the dock.** Moored to it, they were three
+  //: hulls 1.17 long lying broadside across a deck 0.7 wide: every boat cut
+  //: through the planks, and two of them cut through each other by 1.09 --
+  //: measured, not guessed, and reported by eye first as boats without room
+  //: at the mooring. Alongside is the wrong place for more than about one
+  //: boat a side; along the shore there is as much room as the coast is long.
+  //:
+  //: So a berth is a bearing, and the spacing is arc length: each hull needs
+  //: `2 * halfLen + gap` of coast, which at this radius is an angle. Slots
+  //: alternate sides and start three-quarters of a slot out, so the jetty
+  //: keeps a slot of its own and no boat is laid across it.
+  const BOAT_SCALE = 0.85;
+  //: The hull's own half-extents, from `boat()` above: the gunwale is the
+  //: widest ring on it (0.3 + its tube) and the hull is stretched 2.1 along
+  //: its length. Read off the geometry rather than measured off the picture,
+  //: so a change to the model moves the spacing with it.
+  const HALF_LEN = (0.3 + 0.028) * 2.1 * BOAT_SCALE;
+  const HALF_WID = (0.3 + 0.028) * BOAT_SCALE;
+  const moorings = new THREE.Group();
+  moorings.name = "moorings";
+  traders.forEach((name, i) => {
+    //: Alternating sides, outwards: 0 and 1 flank the jetty, 2 and 3 sit
+    //: beyond them, and so on for as many seats as the table has.
+    const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2);
+    //: The radius is read first at the dock's own bearing, because the slot
+    //: width depends on it and the slot decides the bearing. A tenth of a
+    //: unit either way does not move the angle enough to matter.
+    const step = (2 * HALF_LEN + 0.18) / midWater(DOCK_BEARING).r;
+    const t = DOCK_BEARING + side * (rank + 0.75) * step;
+    const { x, z } = midWater(t);
+    const b = boat(i + 1, seatMat(name, i, traders.length));
+    //: Higher than the old 0.02. The hull's floor has to be under the water
+    //: and its deck above it, and at 0.02 the deck cleared the shallows by
+    //: only three hundredths.
+    b.position.set(x, 0.06, z);
+    //: Along the shore, which is across the radius -- and a mooring line is
+    //: never quite square, so no two lie at exactly the same angle.
+    b.rotation.y = Math.atan2(Math.cos(t), Math.sin(t)) + Math.PI / 2
+                   + (i % 3 - 1) * 0.06;
+    b.scale.setScalar(BOAT_SCALE);
+    moorings.add(b);
+  });
+  island.add(moorings);
+  //: The footprint the spacing rule keeps clear, taken from where the dock
+  //: actually is rather than from a copy of the old hand-picked point.
+  placed.push([axis.at[0] * 0.94, axis.at[1] * 0.94, 0.9]);
 
   // — the trail: the fire to each settlement, each site, and the dock head —
   const trail = new THREE.Group();
@@ -1034,7 +1201,11 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
                                        0.52 * 0.95 * room + STONE]),
                 ...goods.map((g) => [anchors[`site_${g}`].x, anchors[`site_${g}`].z,
                                      RSITE + STONE]),
-                [2.75, 1.15, STONE]];
+                //: The trail's seaward end is the dock's own root, pulled a
+                //: little back up the sand so the last stone lies at the foot
+                //: of the planks. It was a hardcoded `[2.75, 1.15]`, which
+                //: aimed at where the dock used to be buried.
+                [axis.at[0] * 0.96, axis.at[1] * 0.96, STONE]];
   //: **And no stone lies inside anything else on the way, either.** Clearing
   //: the end a trail runs to is not enough on a crowded island: a trail to the
   //: far side of the fire passes straight through whatever stands between, and

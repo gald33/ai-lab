@@ -273,6 +273,22 @@ def motion(page, where: str) -> list[str]:
       found.titled = [...island.querySelectorAll('.pop.bad title')]
         .some(n => n.textContent === reason);
 
+      //: A refusal the manager named an offer in: the red blink on that offer
+      //: is the whole indicator, and the badge over the hut is not drawn on
+      //: top of it. The ✗ rides the pill so the answer is not colour alone.
+      const mk = scene.traders[0], tk = scene.traders[1] || scene.traders[0];
+      const offer = { pid: 'p6', maker: mk, taker: tk, status: 'open',
+                      give: { [scene.goods[0]]: .5 },
+                      want: { [scene.goods[1]]: .25 } };
+      scene.draw({ ...t.final, phase: 'market', proposals: [offer] }, t);
+      const badBefore = watch('.pop.bad');
+      scene.play({ kind: 'refused', trader: tk, reason: 'p6 is already settled' });
+      await nap(150);
+      found.blinked = document.querySelectorAll('.rope.refused').length;
+      found.chipCross = document.querySelectorAll('.chip-cross').length;
+      found.badOnBlink = watch('.pop.bad') - badBefore;
+      scene.draw({ ...t.final, phase: 'market' }, t);
+
       scene.play({ kind: 'said', author: scene.traders[0], attempt: false });
       await nap(150);
       found.talk = watch('.pop.talk');
@@ -332,6 +348,17 @@ def motion(page, where: str) -> list[str]:
                        f"({fragment!r} found in its text)")
     if not seen["titled"]:
         bad.append(f"{where}: the refusal badge lost the reason as its title")
+    # And when there *is* an offer to blink, that is the indicator: the badge
+    # over the hut would be the same refusal said twice, a frame away from the
+    # square it happened on.
+    if not seen["blinked"]:
+        bad.append(f"{where}: a refusal naming an open offer did not blink it")
+    if not seen["chipCross"]:
+        bad.append(f"{where}: the blinked offer carries no cross, so red is the "
+                   f"only thing saying which answer it got")
+    if seen["badOnBlink"]:
+        bad.append(f"{where}: {seen['badOnBlink']} refusal badge(s) drawn over an "
+                   f"offer that was already blinking")
     if seen["popOnProduce"]:
         bad.append(f"{where}: production still captions itself "
                    f"({seen['popOnProduce']} bubble(s)); the rising goods say it")
@@ -564,6 +591,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += uncovered(browser, base, boards[0], out)
             problems += afloat(browser, base, boards[0], out)
             problems += nightfall(browser, base, out)
+            problems += twilight(browser, base, boards[0], out)
             problems += clockwork(browser, base, out)
             for board in boards:
                 problems += travelling(browser, base, board, out)
@@ -774,6 +802,20 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
         page.wait_for_timeout(900)
         page.click("#fwd")
         page.wait_for_timeout(250)
+        #: A refusal the manager named an offer in draws no bubble at all any
+        #: more -- the red blink on the offer is the indicator, and the bubble
+        #: is kept only for the refusals with nothing on the square to blink.
+        #: So this half checks the blink instead when that is what happened,
+        #: and says which of the two it examined.
+        if kind == "bad":
+            blink = page.evaluate("() => ({"
+                                  " ropes: document.querySelectorAll('.rope.refused').length,"
+                                  " cross: document.querySelectorAll('.chip-cross').length })")
+            if blink["ropes"]:
+                print(f"NOTE {where}: the offer blinked; no bubble is drawn for it")
+                if not blink["cross"]:
+                    bad.append(f"{where}: the blinked offer carries no cross")
+                continue
         seen = page.evaluate(OVERHEAD, kind)
         if seen.get("error"):
             bad.append(f"{where}: {seen['error']}")
@@ -1404,6 +1446,106 @@ def nightfall(browser, base: str, out: Path) -> list[str]:
 
 
 
+def twilight(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The grass is a leaf at every hour, and the warmth in the picture is the
+    light's.
+
+    **This is the check the reported bug needed and did not have.** The island
+    went yellow late in the day and it was looked for twice in the wrong
+    place: the materials are green, and a hand-rolled sum of the rig over a
+    flat, up-facing patch of grass says they stay green -- 100 to 128 degrees
+    of hue from dawn to dusk. The renderer disagreed. A canopy is a sphere and
+    a hill is a slope, the ambient reaches the faces the low sun has stopped
+    touching, and a warm ambient multiplied every one of them by an orange
+    nothing was casting.
+
+    So this measures the rendered pixels, which is the only thing a spectator
+    ever sees. The island is drawn with everything but the grass hidden --
+    meadow, upland, ridge, canopies, fronds -- so what comes back is exactly
+    the surface the report was about, on a transparent ground, and its hue is
+    counted at hours across the whole day.
+
+    The 90-degree line is where green becomes olive. Some yellow is allowed
+    and has to be: the campfire's own pool is orange light on grass and that
+    is what a fire does (see `island-life.js`, "A pool, not a floodlight"), so
+    the bar is on the *median* grass pixel and on how much of the island the
+    warm light may claim.
+    """
+    grass = r"^(meadow|upland|ridge)$|^tree_\d+_canopy|^palm_\d+_frond"
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1100, "height": 760},
+                            reduced_motion="reduce")
+    bad: list[str] = []
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_timeout(1200)
+    #: Counted in the page: the canvas is the measurement and reading it back
+    #: here would mean a PNG decoder in a test that does not need one.
+    seen = page.evaluate("""({ keep, hours }) => {
+      const st = window.__island;
+      if (!st) return { error: 'no model on this page' };
+      const re = new RegExp(keep);
+      const cv = document.createElement('canvas');
+      cv.width = st.canvas.width; cv.height = st.canvas.height;
+      const g = cv.getContext('2d');
+      const out = [];
+      for (const d of hours) {
+        st.setDay(d);
+        st.life.update(5, st.ctx());
+        const hidden = [];
+        st.island.traverse((n) => {
+          if (n.isMesh && !re.test(n.name) && n.visible) { n.visible = false; hidden.push(n); }
+        });
+        st.render();
+        g.clearRect(0, 0, cv.width, cv.height);
+        g.drawImage(st.canvas, 0, 0);
+        hidden.forEach((n) => { n.visible = true; });
+        const px = g.getImageData(0, 0, cv.width, cv.height).data;
+        const hues = [];
+        for (let i = 0; i < px.length; i += 4 * 2) {
+          const a = px[i + 3];
+          if (a < 200) continue;
+          const r = px[i] / 255, gr = px[i + 1] / 255, b = px[i + 2] / 255;
+          const M = Math.max(r, gr, b), m = Math.min(r, gr, b);
+          if ((M + m) / 2 < 0.03) continue;
+          const c = M - m;
+          if (!c) continue;
+          let h = M === r ? ((gr - b) / c + 6) % 6 : M === gr ? (b - r) / c + 2 : (r - gr) / c + 4;
+          hues.push(h * 60);
+        }
+        hues.sort((x, y) => x - y);
+        out.push({ day: d, px: hues.length,
+                   median: hues.length ? Math.round(hues[hues.length >> 1]) : null,
+                   olive: hues.length
+                     ? Math.round(100 * hues.filter((x) => x < 90).length / hues.length) : null });
+      }
+      st.setDay(null);
+      return { rows: out };
+    }""", {"keep": grass,
+           "hours": [round(i / 20, 2) for i in range(21)]})
+    page.close()
+    if seen.get("error"):
+        return [f"twilight: {seen['error']}"]
+    for row in seen["rows"]:
+        if not row["px"]:
+            bad.append(f"twilight: nothing green was drawn at day {row['day']}")
+            continue
+        #: The middle of the island's grass. At `day` 0.95 this measured 87
+        #: with the warm ambient in place -- olive, on more than half the
+        #: island at once -- and 107 without it.
+        if row["median"] < 100:
+            bad.append(f"twilight: the median grass pixel is {row['median']}° at day "
+                       f"{row['day']}; under 90° is olive and 100° is the floor "
+                       f"this island's greens sit on")
+        #: How much of it the warm light may claim. The fire's own pool is
+        #: most of what is left at the bell.
+        if row["olive"] > 25:
+            bad.append(f"twilight: {row['olive']}% of the grass is on the yellow side "
+                       f"of 90° at day {row['day']}; the campfire's pool is worth "
+                       f"about 12% and the rest of a day is worth none")
+    return bad
+
+
 def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
     """Nothing the page floats stands on the island -- no card, and no pill.
 
@@ -1730,6 +1872,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
   const { layout } = await import('./scene.js');
+  const { meadowEdge, shelfEdge } = await import('./island3d.js');
   // The same bands the page reserves, read the same way the page reads them.
   // A stage built without them frames the island where nothing on the real
   // page ever frames it, and every question asked of it is then about a
@@ -1952,6 +2095,114 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: In world coordinates, like the boxes above, and with the radius carried
   //: through whatever the island itself is scaled to. Local numbers compared
   //: against world boxes is a check that passes for the wrong reason.
+  //: **Every part of the dock, and every boat, against the outlines the
+  //: island is actually cut to.** The dock was placed at a hand-picked point
+  //: whose radius, 3.43, cleared `MEADOW.radius` of 3.25 -- and on that
+  //: bearing the wobble terms add and the grass reaches 3.70, so the whole
+  //: jetty, its bollard and two of the three boats stood inside the coastline
+  //: and under the meadow's surface. `island-life` bobbed two of them through
+  //: soil. Nothing measured it; it was reported by eye, as an island with one
+  //: dinghy off it and no dock.
+  //:
+  //: Read in the island's own coordinates, because the outline functions are
+  //: written in them and the stage scales and moves the island underneath --
+  //: world numbers against island outlines is the mistake the trail check
+  //: names above, arrived at from a different direction. Composed through the
+  //: dock's own matrix rather than round-tripped through the world and back:
+  //: `worldToLocal` reads a `matrixWorld` this has not asked anyone to
+  //: refresh, so on a frame the stage had moved it would answer about where
+  //: the island used to be, and answer confidently.
+  const moored = [];
+  {
+    //: Composed up through whatever parents a part has, rather than assuming
+    //: one. The boats were children of the dock and are not any more, and a
+    //: probe that read `dock.children` would now report the jetty alone and
+    //: pass -- the check going quiet is the failure mode to design out here,
+    //: not a wrong number.
+    const localTo = (o, root) => {
+      const v = o.position.clone();
+      for (let p = o.parent; p && p !== root; p = p.parent) {
+        p.updateMatrix(); v.applyMatrix4(p.matrix);
+      }
+      return v;
+    };
+    const parts = [];
+    const d = made.island.getObjectByName('dock');
+    if (d) parts.push(...d.children);
+    made.island.traverse((o) => { if (/^boat_\d+$/.test(o.name)) parts.push(o); });
+    for (const part of parts) {
+      const l = localTo(part, made.island);
+      moored.push({ name: part.name, r: +Math.hypot(l.x, l.z).toFixed(3),
+                    grass: +meadowEdge(l.x, l.z).toFixed(3),
+                    water: +shelfEdge(l.x, l.z).toFixed(3) });
+    }
+  }
+
+  //: **The harbour's own footprints, so the props are not drawn through each
+  //: other.** The settlements and the sites have had this since a spectator
+  //: reported two of them in the same place; the dock and the boats never
+  //: did, and turning the boats broadside laid three hulls 1.17 long across a
+  //: deck 0.7 wide. Every boat cut the planks and two cut each other, which
+  //: the radius checks above are all happy about -- they ask where a thing is
+  //: against the coast, not whether anything else is already there.
+  //:
+  //: Drawn boxes, not radii, for the reason the settlement check gives: a
+  //: boat is a long thing and a circle round it is a different claim from the
+  //: ground it covers.
+  //: **Oriented footprints, not world-aligned boxes.** The boats lie at a
+  //: different angle each -- they follow the shore, and the shore turns -- so
+  //: an axis-aligned box round a hull 1.17 long claims a great deal of water
+  //: the hull is not in, and two of them would read as overlapping while
+  //: floating a clear half-unit apart. That is a check that fails on correct
+  //: scenes, which is worse than no check. So: each prop's box in its *own*
+  //: space, its four ground corners taken through its own matrix, and the
+  //: separation decided by `harbour_clear` below.
+  const harbour = [];
+  {
+    made.island.updateMatrixWorld(true);
+    //: **The deck is one prop, not one per plank.** The planks are laid at a
+    //: pitch shorter than their own depth so the walkway is continuous rather
+    //: than a ladder of gaps -- they are *meant* to overlap, and asked pair
+    //: by pair they report the deck being drawn through itself on every
+    //: frame shape. So the jetty enters this as a single footprint spanning
+    //: its planks, which is also the only thing a boat can be drawn through.
+    const props = [];
+    const d = made.island.getObjectByName('dock');
+    if (d) {
+      const planks = d.children.filter(c => /^dock_plank_/.test(c.name));
+      if (planks.length) props.push({ name: 'dock_deck', of: planks, at: d });
+    }
+    made.island.traverse((o) => {
+      if (/^boat_\d+$/.test(o.name)) props.push({ name: o.name, of: [o], at: o });
+    });
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+    const box = new THREE.Box3(), one = new THREE.Box3();
+    const v = new THREE.Vector3();
+    for (const prop of props) {
+      //: Measured in the frame the prop is *drawn* in -- the dock's for the
+      //: deck, the boat's own for a boat -- so the box hugs the thing rather
+      //: than the compass.
+      inv.copy(prop.at.matrixWorld).invert();
+      box.makeEmpty();
+      for (const root of prop.of) {
+        root.traverse((c) => {
+          if (!c.geometry) return;
+          c.geometry.computeBoundingBox();
+          one.copy(c.geometry.boundingBox);
+          rel.multiplyMatrices(inv, c.matrixWorld);
+          box.union(one.applyMatrix4(rel));
+        });
+      }
+      const corners = [[box.min.x, box.min.z], [box.min.x, box.max.z],
+                       [box.max.x, box.max.z], [box.max.x, box.min.z]]
+        .map(([x, z]) => {
+          v.set(x, 0, z).applyMatrix4(prop.at.matrixWorld);
+          return [+v.x.toFixed(3), +v.z.toFixed(3)];
+        });
+      harbour.push({ name: prop.name, corners });
+    }
+  }
+
   const steps = made.island.getObjectByName('trails').children.map(o => {
     const w = o.getWorldPosition(new THREE.Vector3());
     return [+w.x.toFixed(3), +w.z.toFixed(3), +(0.11 * made.island.scale.x).toFixed(3)];
@@ -1961,7 +2212,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps, moored, harbour,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -2527,6 +2778,28 @@ def stock(browser, base: str, out: Path) -> list[str]:
     return bad
 
 
+def harbour_clear(a: list, b: list) -> bool:
+    """Do two oriented ground footprints stay out of each other?
+
+    Separating axis, over the four edge normals of the two rectangles: if any
+    one of them puts the two spans apart, nothing is drawn through anything.
+    Written out rather than reached for from a library because the rest of
+    this file measures with what it has, and because a boat lying at its own
+    angle to the shore is exactly the case a world-aligned box gets wrong.
+    """
+    for rect in (a, b):
+        for i in range(len(rect)):
+            (x0, z0), (x1, z1) = rect[i], rect[(i + 1) % len(rect)]
+            # The edge's normal. Length does not matter; only the ordering of
+            # the projections does.
+            nx, nz = -(z1 - z0), x1 - x0
+            pa = [px * nx + pz * nz for px, pz in a]
+            pb = [px * nx + pz * nz for px, pz in b]
+            if max(pa) <= min(pb) or max(pb) <= min(pa):
+                return True
+    return False
+
+
 def island(browser, base: str, out: Path) -> list[str]:
     """Nothing stands in the sea, and the goats do not run.
 
@@ -2713,6 +2986,54 @@ def island(browser, base: str, out: Path) -> list[str]:
                                f"({sx:.2f}, {sz:.2f}) lies inside "
                                f"{one['name']} by {-gap:.2f}; it is a sand "
                                f"disc drawn under a prop")
+        #: **The jetty is outside the coastline and the boats are in water.**
+        #: Two separate claims, because they fail separately: a dock inside the
+        #: grass is buried, and a boat that has cleared the grass but not the
+        #: wet sand is a hull sitting on a beach. Both were true at once -- the
+        #: dock was dropped at a radius that cleared `MEADOW.radius` but not
+        #: the wobbled outline that is drawn, *and* it was rotated to run
+        #: inland, so the head the boats moor at was the end nearest the fire.
+        #: Neither was measured; a spectator said the island had one dinghy and
+        #: no dock, which is what two buried boats and a buried jetty look
+        #: like from outside.
+        for m in built.get("moored") or []:
+            if m["r"] <= m["grass"]:
+                bad.append(f"island {label}: {m['name']} stands at "
+                           f"{m['r']:.2f} where the grass reaches "
+                           f"{m['grass']:.2f}; it is inside the island, "
+                           f"under the meadow")
+            elif m["name"].startswith("boat_") and m["r"] <= m["water"]:
+                bad.append(f"island {label}: {m['name']} floats at "
+                           f"{m['r']:.2f} where the water starts at "
+                           f"{m['water']:.2f}; it is a hull on wet sand")
+        #: And there is a dock at all. The loop above is vacuously happy about
+        #: an empty one, and the boats are read off it by name.
+        if not [m for m in (built.get("moored") or []) if m["name"].startswith("boat_")]:
+            bad.append(f"island {label}: no boats are moored at the dock; "
+                       f"the traders arrived somehow")
+
+        #: **Nothing in the harbour is drawn through anything else in it.**
+        #: The radius checks above ask where a prop stands against the coast,
+        #: never whether something is already there -- so three boats turned
+        #: broadside sat across the jetty's planks, and two of them across
+        #: each other by 1.09, with every one of those radius checks content.
+        #: Reported by eye, as boats without room at their mooring.
+        harbour = built.get("harbour") or []
+        for i, one in enumerate(harbour):
+            for two in harbour[i + 1:]:
+                if not harbour_clear(one["corners"], two["corners"]):
+                    bad.append(f"island {label}: {one['name']} and "
+                               f"{two['name']} are drawn through each other "
+                               f"in the water")
+        #: **And there is a boat for every trader**, not for the first three
+        #: of them. The boats used to be laid against a list of three hand
+        #: written positions, so a fourth seat simply had no boat -- reported
+        #: as sails carrying the agents' colours but not all of the agents'.
+        boats = [h for h in harbour if h["name"].startswith("boat_")]
+        if len(boats) != n:
+            bad.append(f"island {label}: {len(boats)} boats for {n} traders; "
+                       f"every seat arrived somehow and wears its own colour")
+
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
         #: A share, not an area: what "crowded" means is how much of the grass

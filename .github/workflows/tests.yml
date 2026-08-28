@@ -24,3 +24,17 @@ jobs:
           python-version: "3.11"
       - run: pip install -r games/island/requirements-dev.txt
       - run: python -m pytest games/island/tests experiments/005-deliberation-protocol/tests -q
+
+  # The viewer's own tests, which are node's and were never run by anything
+  # but a hand. They are the checks on what the island *draws* -- what a clip
+  # borrows and gives back, what the light does to the colour of the grass --
+  # and a green tick that did not include them said nothing about any of it.
+  # They need no dependency: three is vendored in the checkout.
+  viewer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs

@@ -24,8 +24,12 @@ import { seatRing } from "./seats.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
+//: Iron's pickaxe is U+26CF, which is a *text* codepoint by default: without
+//: the variation selector it renders as a black monochrome glyph and vanishes
+//: into the agent card's dark background. The trailing U+FE0F asks for the
+//: colour emoji, like every other good here already gets by default.
 export const GLYPH = {
-  bread: "🍞", cloth: "🧵", iron: "⛏", salt: "🧂",
+  bread: "🍞", cloth: "🧵", iron: "⛏️", salt: "🧂",
   fish: "🐟", grain: "🌾", timber: "🪵",
 };
 
@@ -1298,12 +1302,17 @@ export class Scene {
     const geo = this.geo;
     const g = el("g", { class: "scenery", "aria-hidden": "true" });
     const seatList = Object.values(this.seats);
+    // A track is worn between huts, so an island with nobody on it has none --
+    // and reaching for the first seat's `x` there threw, which is what an empty
+    // live room used to show instead of a board.
     const first = seatList[0], last = seatList[seatList.length - 1];
-    g.append(el("path", {
-      class: "track",
-      d: `M ${first.x} ${geo.fire.y - 34} Q ${geo.cx} ${geo.fire.y + 74} ` +
-         `${last.x} ${geo.fire.y - 34}`,
-    }));
+    if (first) {
+      g.append(el("path", {
+        class: "track",
+        d: `M ${first.x} ${geo.fire.y - 34} Q ${geo.cx} ${geo.fire.y + 74} ` +
+           `${last.x} ${geo.fire.y - 34}`,
+      }));
+    }
     // Along the shore, where nothing informative goes. Kept as fractions of the
     // island so a wider canvas plants more of it rather than stretching six.
     const ring = [[-.90, -.34], [.91, -.30], [-.74, .56], [.76, .58],
@@ -2001,10 +2010,17 @@ export class Scene {
       // A symbol, and the reason kept as the badge's title rather than printed
       // over the sand. What the manager wrote is in the ticker; the island says
       // *that* it refused, and whose.
-      case "refused":
+      case "refused": {
         this.blame(event.trader, event.reason);
-        this.refuse(event.trader, event.reason);
-        return this.mark(event.trader, "bad", event.reason);
+        //: The red blink on the offer *is* the refusal (Gal, 2026-08-28). The
+        //: bubble over the hut said the same thing a second time, further from
+        //: the square than the thing it was about, so it is kept only for the
+        //: refusals that have no rope to blink -- a refusal at proposal time is
+        //: about an offer that does not exist yet, and something must still say
+        //: it happened.
+        const blinked = this.refuse(event.trader, event.reason);
+        return blinked ? undefined : this.mark(event.trader, "bad", event.reason);
+      }
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
       case "said": return event.attempt ? undefined : this.mark(event.author, "talk");
@@ -2063,7 +2079,9 @@ export class Scene {
    *
    * `blame()` says which *stock* the trader came up short in; this says which
    * offer the manager would not settle -- the one thing a spectator watching
-   * the square is looking for when a ✗ goes up. Only offers the manager itself
+   * the square is looking for. It is the whole indicator: the badge over the
+   * hut is drawn only when this finds nothing, so this returns whether it did.
+   * Only offers the manager itself
    * named, or the offer it was answering: a refusal at proposal time is about
    * an offer that does not exist yet, and there is nothing on the square to
    * blink.
@@ -2077,14 +2095,33 @@ export class Scene {
       // original would blink to the wrong colour between flashes.
       if (rope) { rope.classList.add("answered", "refused"); held.push(rope); }
     }
-    if (!held.length) return;
+    if (!held.length) return false;
+    //: An ✗ on the pill as well as the colour, since the blink is the whole
+    //: indicator now: red alone is a colour a red-green viewer reads as "an
+    //: answer", and the cross is which answer. It carries the manager's reason
+    //: as its `<title>`, which is where the badge used to keep it.
+    for (const rope of held) {
+      const chip = rope.querySelector(".rope-chip");
+      if (!chip) continue;
+      const bg = chip.querySelector(".chip-bg");
+      const x = Number(bg?.getAttribute("width") || 104) / 2 + 13;
+      const no = el("g", { class: "chip-no", transform: `translate(${x} 0)` });
+      if (reason) no.append(el("title", {}, reason));
+      no.append(el("path", { class: "chip-cross",
+                             d: "M -6 -6 L 6 6 M 6 -6 L -6 6" }));
+      chip.append(no);
+    }
     //: On a timer, as `blame()` is, and for the same reason: under reduced
     //: motion there is no animation to hang the clean-up off, and the reader
     //: still needs the colour for as long as the badge is up.
     clearTimeout(this.refuseTimer);
     this.refuseTimer = setTimeout(() => {
-      for (const rope of held) rope.classList.remove("answered", "refused");
+      for (const rope of held) {
+        rope.classList.remove("answered", "refused");
+        rope.querySelector(".chip-no")?.remove();
+      }
     }, DWELL.refused);
+    return true;
   }
 
   /**

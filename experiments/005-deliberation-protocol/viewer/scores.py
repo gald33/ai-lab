@@ -1109,6 +1109,61 @@ def best_player(trader_board: list[dict], game_board: list[dict]) -> dict | None
     return top
 
 
+#: What retention keeps, decided by Gal 2026-08-28: "keep the latest 100 and
+#: the best 1000". Two ceilings, and what survives is their union.
+LATEST, BEST = 100, 1000
+
+
+def keepers(rows: list[dict], *, latest: int = LATEST, best: int = BEST) -> set[str]:
+    """The game ids worth keeping the files of, newest-and-best.
+
+    Everything else is prunable: the ledger row survives regardless, so a
+    pruned game is still counted and still in every denominator -- what goes is
+    the board and the reveal, which is to say the ability to *watch* it.
+
+    **Two sets, and the union is what is kept.** `latest` is by when it was
+    played and takes ranked and unranked games alike, because a game played an
+    hour ago is the one somebody is asking about whatever it scored. `best` is
+    by `capture` and takes ranked games only, because an unranked game has no
+    score to be best by -- see `why_not_ranked`.
+
+    **`best` is drawn level by level, not off one list.** Capture is comparable
+    between two islands and *not* between two formats: a single ranked list
+    would fill with whichever format is easiest to score well on, and quietly
+    evict every game of the harder ones. So the best game of each level is
+    taken, then the second of each, and so on until the budget is spent. Every
+    format keeps its champions; no format can crowd out another's.
+
+    The one property worth stating plainly, because it is the cost of "best":
+    **a game can be evicted by a later, better game.** Nothing it did changed.
+    That is why an evicted game keeps a row in the archive index rather than
+    vanishing from it -- `games/island/live.py`.
+    """
+    played = games(rows)
+    by_time = sorted(played, key=lambda g: g.get("played_at") or "", reverse=True)
+    kept = {g["game_id"] for g in by_time[:max(0, latest)]}
+
+    levels: dict[tuple, list[dict]] = {}
+    for g in played:
+        if is_ranked(g) and g["level"]:
+            levels.setdefault(tuple(g["level"]), []).append(g)
+    for ranking in levels.values():
+        ranking.sort(key=lambda g: -g["capture"])
+
+    budget = max(0, best)
+    merit: list[str] = []
+    for rank in range(max((len(v) for v in levels.values()), default=0)):
+        if len(merit) >= budget:
+            break
+        # One level's rank-N game, then the next level's, in a fixed order so
+        # the same ledger always keeps the same games -- a tie broken by dict
+        # order would prune differently on two hosts holding one record.
+        for key in sorted(levels):
+            if rank < len(levels[key]) and len(merit) < budget:
+                merit.append(levels[key][rank]["game_id"])
+    return kept | set(merit)
+
+
 def boards(rows: list[dict]) -> dict:
     """The leaderboards, with their denominators attached to them.
 

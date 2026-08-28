@@ -35,10 +35,37 @@ import { Ambience } from "./island-ambience.js";
 
 const KEY = "island:sound";
 
-//: Peak of the master gain, well under 1: the bed, a site at work and several
-//: voices can overlap on a busy settlement, and the sum -- not the loudest --
-//: is what clips.
+//: The master gain, and the limiter under it.
+//:
+//: **These numbers are as they were, and that is the finding.** Reported by
+//: ear on 2026-08-28 as all the sounds being too weak to hear -- and then,
+//: minutes later, as fine. What had changed in between was not this file: it
+//: was GitHub Pages, publishing the merge that took `BED` from 0.5 to 1.15
+//: (run 74, 09:07:44Z). The report was made against the deploy before it. So
+//: the gain that sounded broken was the gain that sounds right, heard on a
+//: stale page, and the honest response to it is to change nothing here.
+//:
+//: What did change is what the check measures. Until now `tests/audio.py`
+//: multiplied by a copy of `MASTER` and ignored the limiter entirely, so it
+//: was reporting a level no listener ever hears. `outputChain()` below exists
+//: so the page and the check share one definition and the numbers mean
+//: something. Measured through it, this pair puts the bed at an RMS of 0.021
+//: with peaks near 0.13, and **that is the configuration a listener has
+//: said is right** -- which is what the band in the check is anchored to,
+//: rather than to anybody's idea of what a bed should measure.
 const MASTER = 0.32;
+
+//: The compressor under it, named beside the gain rather than buried in the
+//: constructor.
+//:
+//: **It is not really a limiter, whatever the comment here used to say.** A
+//: limiter sits above everything and catches only what would clip; a threshold
+//: of -14dB at 8:1 is under most of this island most of the time, so it is
+//: compressing the bed, the sites and the accents continuously. Whether that
+//: is right is a question for an ear, and the ear that has ruled on this
+//: configuration said it sounds right -- so it stays, described accurately,
+//: rather than being "corrected" into something nobody has heard.
+const LIMIT = { threshold: -14, ratio: 8 };
 
 //: What an event voice keeps now that there is a world under it. Set by
 //: listening: at full level the accents sat on top of the bed and the island
@@ -55,6 +82,33 @@ const FLOOR_MS = 90;
 const BUDGET = 6, BUDGET_MS = 700;
 
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+/**
+ * Everything between the island and the speakers, built once here.
+ *
+ * Exported because `tests/audio.py` renders through it: measuring the island
+ * *before* the master gain is measuring something no listener hears, and that
+ * is exactly how a page nobody could hear passed every check. One definition,
+ * used by the page and by the thing that checks the page.
+ */
+export function outputChain(ctx) {
+  const master = ctx.createGain();
+  master.gain.value = MASTER;
+  //: A limiter, not a taste: a bell landing on a settlement landing on a busy
+  //: quarry would otherwise clip, and clipping is the one artefact a listener
+  //: reads as broken rather than loud.
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = LIMIT.threshold;
+  limiter.ratio.value = LIMIT.ratio;
+  master.connect(limiter).connect(ctx.destination);
+  //: The voices go through their own gain rather than being written quieter
+  //: one by one: their levels are set against each other, and a single bus is
+  //: what keeps that balance while moving all of them.
+  const accent = ctx.createGain();
+  accent.gain.value = ACCENT;
+  accent.connect(master);
+  return { master, accent, limiter };
+}
 
 export class Sound {
   constructor() {
@@ -109,21 +163,9 @@ export class Sound {
     if (!Ctx) return false;
     try {
       this.ctx = new Ctx();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = MASTER;
-      //: A limiter, not a taste: two settlements landing on the same frame
-      //: would otherwise clip, and clipping is the one artefact a listener
-      //: reads as broken rather than loud.
-      const squeeze = this.ctx.createDynamicsCompressor();
-      squeeze.threshold.value = -14;
-      squeeze.ratio.value = 8;
-      this.master.connect(squeeze).connect(this.ctx.destination);
-      //: The voices go through their own gain rather than being written
-      //: quieter one by one: their levels are set against each other, and a
-      //: single bus is what keeps that balance while moving all of them.
-      this.accent = this.ctx.createGain();
-      this.accent.gain.value = ACCENT;
-      this.accent.connect(this.master);
+      const chain = outputChain(this.ctx);
+      this.master = chain.master;
+      this.accent = chain.accent;
       this.bed = new Ambience(this.ctx, this.master);
       return true;
     } catch { this.ctx = null; return false; }
@@ -162,6 +204,11 @@ export class Sound {
       for (const good of Object.keys(event.made || {})) this.bed?.working(good);
     } else if (event.kind === "bell") {
       this.bed?.flare();
+    } else if (event.kind === "open") {
+      //: The day's open is the one event whose sound is almost entirely the
+      //: world's: the sun coming up over six seconds, with the accent above
+      //: only the breath underneath it.
+      this.bed?.sunrise();
     }
     try { voice(this.ctx, this.accent, this.ctx.currentTime); return true; }
     catch (err) { console.warn("the island went quiet", err); return false; }
@@ -231,17 +278,30 @@ const VOICES = {
 
   //: An offer is a question. Two notes up, and it stops on the second rather
   //: than resolving -- nothing has been agreed yet.
+  //:
+  //: **An octave down from where it was**, with `settled`, and for the same
+  //: reason: both of these play while something is crossing the island, and
+  //: a box in the air was the highest-pitched thing in the mix.
   offer(ctx, out, t) {
-    tone(ctx, out, { freq: 523.25, at: t, dur: 0.1, peak: 0.14, type: "triangle" });
-    tone(ctx, out, { freq: 783.99, at: t + 0.09, dur: 0.14, peak: 0.14, type: "triangle" });
+    tone(ctx, out, { freq: 261.63, at: t, dur: 0.11, peak: 0.15, type: "triangle" });
+    tone(ctx, out, { freq: 392.00, at: t + 0.09, dur: 0.16, peak: 0.15, type: "triangle" });
   },
 
   //: A settlement is the answer. A fifth arriving together and a third over
   //: it: the one sound on the island that agrees with itself.
+  //:
+  //: **An octave down.** Reported by ear as the box flying being too high
+  //: against everything else, and measurement agreed at once: at G4-D5-B5 it
+  //: rang at about 1019Hz, which was not merely the highest accent but
+  //: *higher than the bell* -- and the bell is the one voice this island lets
+  //: sit on top of everything. A settlement plays while goods cross the
+  //: ground between two huts, so what a spectator heard was a box in the air
+  //: pitched above the day ending. The chord is unchanged in shape; only its
+  //: register moved, and it now sits under the bell where it belongs.
   settled(ctx, out, t) {
-    tone(ctx, out, { freq: 392.00, at: t, dur: 0.34, peak: 0.16, type: "sine" });
-    tone(ctx, out, { freq: 587.33, at: t, dur: 0.36, peak: 0.13, type: "sine" });
-    tone(ctx, out, { freq: 987.77, at: t + 0.06, dur: 0.4, peak: 0.09, type: "sine" });
+    tone(ctx, out, { freq: 196.00, at: t, dur: 0.36, peak: 0.2, type: "sine" });
+    tone(ctx, out, { freq: 293.66, at: t, dur: 0.38, peak: 0.16, type: "sine" });
+    tone(ctx, out, { freq: 493.88, at: t + 0.06, dur: 0.42, peak: 0.1, type: "sine" });
   },
 
   //: A refusal: one note, low, falling, over before it is interesting. It is
@@ -262,14 +322,22 @@ const VOICES = {
     }
   },
 
-  //: A day opening: the same partials from underneath, quiet and slow, more
-  //: light than event.
+  //: **A day opening is the sunrise, and the sunrise is on the bed.** This
+  //: was three notes over 0.9s, which is a chime saying "morning" rather than
+  //: a morning: `Ambience.sunrise()` takes six seconds, brightens as it grows
+  //: and brings the birds with it, and it is fired from `Sound.play` beside
+  //: this. What is left here is the first breath under it -- one low note,
+  //: slower than any other accent, that the swell comes up through.
   open(ctx, out, t) {
-    for (const [f, at] of [[261.63, 0], [392.00, 0.08], [523.25, 0.16]]) {
-      tone(ctx, out, { freq: f, at: t + at, dur: 0.7, peak: 0.09,
-                       type: "sine", attack: 0.12 });
-    }
+    tone(ctx, out, { freq: 87.31, at: t, dur: 2.4, peak: 0.07,
+                     type: "sine", attack: 0.5 });
   },
 };
 
 export const VOICE_NAMES = Object.keys(VOICES);
+
+//: Exported for `tests/audio.py`, which renders each one offline and measures
+//: where it sits. Nothing in the page reads this -- `play()` above is the only
+//: caller -- but a voice's register is a thing that can be wrong by ear and
+//: was, so it is a thing that gets measured.
+export { VOICES };

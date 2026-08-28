@@ -9,7 +9,8 @@ import assert from "node:assert/strict";
 
 import {
   FACETS, SORTS, groupOf, shortLabel, welfareBand, ruinBand,
-  options, matches, apply, activeCount, organise, countOf,
+  options, matches, apply, activeCount, organise, countOf, openingChoice,
+  openingCandidates,
 } from "../web/picker.js";
 
 const facet = (key) => FACETS.find((f) => f.key === key);
@@ -186,4 +187,43 @@ test("a filter matching nothing yields only what is pinned", () => {
   const out = organise(LISTING, { text: "seed999" });
   assert.equal(countOf(out), 1);
   assert.equal(out[0].items[0].pinned, true);
+});
+
+// --- what the page opens on ----------------------------------------------
+
+test("a pinned round is what the page opens on, however the listing sorts", () => {
+  assert.equal(openingChoice(LISTING, () => 0.9).label, "live — the running round");
+});
+
+test("with nothing pinned the opening round is drawn at random", () => {
+  const rounds = LISTING.filter((e) => !e.pinned);
+  assert.equal(openingChoice(rounds, () => 0).label, rounds[0].label);
+  assert.equal(openingChoice(rounds, () => 0.999).label, rounds.at(-1).label);
+  const seen = new Set();
+  for (let i = 0; i < rounds.length; i++) {
+    seen.add(openingChoice(rounds, () => (i + 0.5) / rounds.length).label);
+  }
+  assert.equal(seen.size, rounds.length);
+});
+
+test("an empty listing has nothing to open", () => {
+  assert.equal(openingChoice([]), undefined);
+});
+
+test("the listing's live offer is not opened unless a game is in it", () => {
+  const offered = { label: "live — the running round", pinned: true, offered: true,
+                    value: "live" };
+  const listing = [offered, ...LISTING.filter((e) => !e.pinned)];
+  assert.equal(openingChoice(openingCandidates(listing, true)), offered);
+  const without = openingCandidates(listing, false);
+  assert.ok(!without.includes(offered));
+  assert.equal(without.length, listing.length - 1);
+  assert.ok(openingChoice(without, () => 0.5).label.startsWith("001-ceiling"));
+});
+
+test("a round the URL named is opened even with the live offer beside it", () => {
+  const linked = { label: "board somebody was sent", pinned: true, value: "linked" };
+  const listing = [linked, { label: "live", pinned: true, offered: true, value: "live" },
+                   ...LISTING.filter((e) => !e.pinned)];
+  assert.equal(openingChoice(openingCandidates(listing, false)), linked);
 });

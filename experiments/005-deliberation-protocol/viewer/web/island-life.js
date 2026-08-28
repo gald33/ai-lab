@@ -477,11 +477,16 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   }));
 
   // — the boats at their moorings —
-  const dock = island.getObjectByName("dock");
-  const boats = dock ? dock.children.filter((c) => /^boat_/.test(c.name)).map((b, i) => ({
-    b, ph: i * 2.1, y0: b.position.y })) : [];
-  if (boats.length) {
-    parts.push((t) => boats.forEach(({ b, ph, y0 }) => {
+  //: Found by name across the island rather than off the dock's child list.
+  //: They were children of the jetty and are not any more -- a boat a side is
+  //: all a 0.7-wide deck can take, so they moor along the shore now -- and a
+  //: lookup through `dock` silently returned none of them, which is a bob
+  //: that quietly stops rather than an error anyone would see.
+  const boats = [];
+  island.traverse((o) => { if (/^boat_\d+$/.test(o.name)) boats.push(o); });
+  const bobbing = boats.map((b, i) => ({ b, ph: i * 2.1, y0: b.position.y }));
+  if (bobbing.length) {
+    parts.push((t) => bobbing.forEach(({ b, ph, y0 }) => {
       b.position.y = y0 + Math.sin(t * 1.5 + ph) * 0.035;
       b.rotation.z = Math.sin(t * 1.2 + ph) * 0.07;
       b.rotation.x = Math.cos(t * 1.7 + ph) * 0.04;
@@ -496,7 +501,21 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   const flames = [0, 1, 2].map((i) => island.getObjectByName(`flame_${i}`))
     .filter(Boolean).map((f) => ({ f, y0: f.position.y, s0: f.scale.y }));
   const hearth = island.getObjectByName("fire");
-  const glow = new THREE.PointLight(0xff9a3c, 0, 4.2, 2);
+  //: **A pool, not a floodlight.** This was `(0xff9a3c, 0, 4.2, 2)` and the
+  //: bell drove it to 5.5, which at half a unit is nearly three times as much
+  //: light as the island gets at midday -- and firelight is orange while the
+  //: island is green, so what the near field actually did was beat the
+  //: material's green channel down until the grass, the trees standing in it
+  //: and the hill the fire stands on all came out olive. Reported by eye,
+  //: twice, as the trees and the hill going yellow.
+  //:
+  //: It is not the colour that was wrong: a fire is orange and the ground
+  //: beside a fire is warm. It is the reach. At 2.4 units and 1.2 the pool
+  //: covers the hearth and its clearing, never out-shines the day, and is back
+  //: to leaf-green by the foot of the hill. Measured in
+  //: `viewer/tests/firelight.test.mjs`, which is the reproduction:
+  //: `node --test viewer/tests/firelight.test.mjs`.
+  const glow = new THREE.PointLight(0xff9a3c, 0, 2.4, 2);
   if (hearth) {
     //: Just above the flames, which are shorter than they were.
     glow.position.copy(hearth.position).setY(hearth.position.y + 0.22);
@@ -559,9 +578,28 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   // is whatever the ambient and the fill say it is -- and a cool ambient held
   // fixed makes the last light of the day read *bluer* than midday, which is
   // the one thing dusk is not.
-  const skyDawn = new THREE.Color(0xd8c2c6);
+  //
+  //: **But the warmth is the key's, not the ambient's**, and putting it in
+  //: the ambient is what turned the trees and the hill yellow. The ambient
+  //: reaches every face, including the ones the low sun has stopped touching,
+  //: so a warm mauve ambient (`0xa08a90`, and `0xd8c2c6` at dawn) multiplied
+  //: the island's green by an orange nothing was casting: measured over the
+  //: rendered grass -- meadow, upland, ridge, canopies, fronds -- 60% of it
+  //: came out on the yellow side of 90 degrees at `day` 0.95, against 0% for
+  //: the whole middle of the day. That is the report, and it is why the
+  //: campfire's reach (which is real, and was fixed first) was not the end of
+  //: it.
+  //:
+  //: Twilight is a cool sky with one warm light in it. The key keeps its
+  //: sunset colour and the ambient goes to what the sky over an island
+  //: actually is at that hour, so the warmth in the picture is what the sun
+  //: is still touching. The sand still reads warm (hue ~22 at `day` 0.95) and
+  //: the grass comes back to a leaf. Measured on the rendered pixels by
+  //: `twilight` in `viewer/tests/render.py`, which is the reproduction:
+  //: `python viewer/tests/render.py`.
+  const skyDawn = new THREE.Color(0xb3bccb);
   const skyNoon = new THREE.Color(0xbcd2dd);
-  const skyDusk = new THREE.Color(0xa08a90);
+  const skyDusk = new THREE.Color(0x8497b0);
   //: The far side of the sky, which the fill stands in for. Cyan while the sea
   //: is bright, deep indigo once the sun is down -- and **not** dimmed to
   //: nothing, because by then the key grazes the island and lights almost
@@ -772,7 +810,7 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         f.scale.set(0.8 + burn * 0.35, (0.7 + burn * 0.5) * lick * (s0 || 1), 0.8 + burn * 0.35);
         f.position.y = y0 + burn * 0.05;
       }
-      glow.intensity = burn * 5.5 * (1 + Math.sin(t * 6.1) * 0.06);
+      glow.intensity = burn * 1.2 * (1 + Math.sin(t * 6.1) * 0.06);
       //: **Only after dark**, and out over the meadow. `night` runs a little
       //: behind the fire: the fire is built before the light goes and the
       //: fireflies come once it has.
