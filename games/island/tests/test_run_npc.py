@@ -139,3 +139,57 @@ def test_a_settled_or_lapsed_table_is_not_offered_a_filler(hub):
     _client(hub, "manager-claim", key).post("lobby", f"MANAGE {table}")
     lobby.drain()
     assert missing(reader, "lobby", patience=0.0) == {}
+
+
+def test_a_sealed_deal_is_opened_and_played(hub):
+    """The failure this exists to prevent, found by running it end to end.
+
+    A whisper is opened by deriving a secret with the *sender's* exchange
+    key, and a client that never called `agents()` holds none -- so the deal
+    arrives `unreadable` and is marked read on the way past. The first real
+    sealed round with NPCs in it had two seats acknowledged, nothing produced
+    and a trajectory of zeros. `games/island/requirements.txt` records the
+    same failure blinding both traders in `g5`.
+    """
+    seat = _client(hub, "npc-1")
+    manager = _client(hub, "manager")
+    manager.agents()
+    peer = next(a["agent_id"] for a in manager.agents()
+                if a.get("name") == "npc-1")
+    schedule = npc.PolicySchedule(mix={"autarky": 1.0}, seed=2,
+                                  mean_seconds=1000.0)
+
+    done: list[npc.Board] = []
+    thread = threading.Thread(
+        target=lambda: done.append(
+            play(seat, "island", name="npc-1", schedule=schedule, every=0.1,
+                 deadline=time.time() + 25, log=lambda *a, **k: None)),
+        daemon=True)
+    thread.start()
+
+    manager.post("island", "Schedule for this round. 2 traders: T1, T2. "
+                           "1 episodes, 60s each. Acknowledge with a line "
+                           "beginning ACK, by 12:00:00Z.")
+    # Nothing about the private half reaches the board, exactly as
+    # `run_game.deal` seals it.
+    manager.whisper(peer, "You are T1. Your production capacity per unit of "
+                          "labour: {'bread': 0.8, 'iron': 0.3}. Your taste "
+                          "weights: {'bread': 0.25, 'iron': 0.75}. Nobody "
+                          "else knows either. You are seated here as npc-1.")
+    manager.post("island", "episode 1 of 1 is open; the bell is at 12:01:00Z "
+                           "(60s).")
+
+    for _ in range(250):
+        produced = [b for b in _bodies(manager, "island")
+                    if b.startswith("PRODUCE")]
+        if produced:
+            break
+        time.sleep(0.1)
+    else:
+        produced = []
+    assert produced == ["PRODUCE bread=0.25 iron=0.75"], (
+        "the seat played its own tastes, so it opened what was sealed to it")
+
+    manager.post("island", "the round is over.")
+    thread.join(timeout=10)
+    assert done and done[0].seat == "T1"

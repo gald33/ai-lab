@@ -98,6 +98,20 @@ def play(client: Client, channel: str, *, name: str,
             seen.add(mid)
             board.read(body)
 
+        # **The roster first, and it is not optional.** A whisper is opened by
+        # deriving a secret with the *sender's* exchange key, and a client
+        # that has never called `agents()` holds none -- so the manager's deal
+        # arrives `unreadable` and is marked read on the way past. This seat
+        # then plays a whole sealed round knowing neither its capacities nor
+        # its tastes, which is exactly what it did the first time this was run
+        # end to end: two seats, both acknowledged, nothing produced, a
+        # trajectory of zeros. `games/island/requirements.txt` records the
+        # same failure blinding both traders in `g5`.
+        try:
+            client.agents()
+        except Exception:  # a poll that failed is not a round that ended
+            pass
+
         # A sealed round deals the private half to this seat alone, and an
         # envelope this seat cannot open arrives marked rather than as content.
         for msg in client.inbox(wait=0.0, limit=50):
