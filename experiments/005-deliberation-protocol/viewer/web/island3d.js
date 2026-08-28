@@ -1518,19 +1518,44 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   const buried = (x, z, rad) => solid.some((b) =>
     x + rad + EDGE > b.min.x && x - rad - EDGE < b.max.x
     && z + rad + EDGE > b.min.z && z - rad - EDGE < b.max.z);
+  //: **A stone is not laid on top of another stone, either.** Every trail
+  //: leaves the same fire, so the first stone of each lies about a stride from
+  //: that one point: at seven traders and five goods there are thirteen of
+  //: them on a circle whose angular pitch is 0.48 rad, which puts neighbours
+  //: 0.20 apart -- less than a stone is wide. What that draws is not thirteen
+  //: paths but a paved rosette round the hearth. Laid stones are kept and each
+  //: new one has to find room, the same way planting does below.
+  const laid = [];
+  const paved = (x, z, rad) =>
+    laid.some(([lx, lz]) => Math.hypot(x - lx, z - lz) < rad * 2 + EDGE);
+  //: **A stride, not a fraction of the way.** The count was a flat seven
+  //: however far the trail ran, so the near ring -- where the walk left after
+  //: both clearances is about a unit -- got a stone every 0.14 while a stone
+  //: is 0.22 across. Overlapping discs from end to end are a paved road, and
+  //: the island is meant to have stepping stones: something a foot lands on
+  //: with grass showing between. So the spacing is fixed at a pace and the
+  //: count follows the distance, which is also what stops a short trail
+  //: carrying as much stone as the long one out to the dock. With the
+  //: no-stone-on-a-stone rule above, the island lays 26 stones at two traders
+  //: where it laid 47, and 46 at eight where it laid 84 -- measured by
+  //: `render.py:island`, which now fails on any two that touch.
+  const STRIDE = 0.42;
   for (const [ex, ez, clear] of ends) {
-    //: Compressed rather than truncated: the same seven steps, laid over the
-    //: span that is left, ending on the clearance. A trail with stones dropped
-    //: off its end is a trail that peters out, which says the walking stopped
-    //: rather than that it arrived.
+    //: Compressed rather than truncated: the steps are laid over the span that
+    //: is left, ending on the clearance. A trail with stones dropped off its
+    //: end is a trail that peters out, which says the walking stopped rather
+    //: than that it arrived.
     const span = Math.hypot(ex - 0.45, ez - 0.55);
-    const reach = Math.max(0.35, span - clear) / span;
-    for (let s = 1; s <= 7; s++) {
-      const k = (s / 7) * reach;
+    const walk = Math.max(0.35, span - clear);
+    const reach = walk / span;
+    const count = Math.max(1, Math.min(7, Math.round(walk / STRIDE)));
+    for (let s = 1; s <= count; s++) {
+      const k = (s / count) * reach;
       const x = 0.45 + (ex - 0.45) * k, z = 0.55 + (ez - 0.55) * k;
       const onSand = Math.hypot(x, z) > 3.1;
       const jx = x + (r() - 0.5) * 0.08, jz = z + (r() - 0.5) * 0.08;
-      if (buried(jx, jz, 0.11)) continue;
+      if (buried(jx, jz, 0.11) || paved(jx, jz, 0.11)) continue;
+      laid.push([jx, jz]);
       add(trail, new THREE.CylinderGeometry(0.1, 0.11, 0.03, 12), onSand ? M.sand : M.sandWet,
         `trail_step_${ex.toFixed(2)}_${ez.toFixed(2)}_${s}`,
         [jx, ground(jx, jz) + 0.01, jz]);
