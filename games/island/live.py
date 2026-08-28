@@ -56,7 +56,8 @@ def write(client, channel: str, path: Path, *, limit: int = 300) -> Path:
     return path
 
 
-def finish(path: Path, *, board: Path, reveal: Path) -> dict:
+def finish(path: Path, *, board: Path, reveal: Path,
+           standing: dict | None = None) -> dict:
     """Say on the spectator's own file that the game is over, and where to read it.
 
     A live round shows no score, and cannot: utility needs a taste and tastes
@@ -77,6 +78,13 @@ def finish(path: Path, *, board: Path, reveal: Path) -> dict:
     Nothing here is published a moment earlier than `--out` publishes it: the
     same rule ("a seed still in play is not replayable by anyone") is what
     decides *when* this is called, and the caller is the last bell.
+
+    `standing` is the game's **official** score and place, and it is passed in
+    rather than worked out here: it comes from `viewer/scores.py:standing`,
+    reading the ledger this game has just been written into. One ranking rule,
+    in the file that owns it. A page that did its own arithmetic on the reveal
+    would be a second scoring surface, and two official scores for one game is
+    worse than a slower one.
     """
     stem = path.name.split(".")[0]
     copies = {}
@@ -88,7 +96,9 @@ def finish(path: Path, *, board: Path, reveal: Path) -> dict:
         copies[kind] = dst.name
 
     state = json.loads(path.read_text()) if path.exists() else {}
-    state["finished"] = copies
+    state["finished"] = dict(copies)
+    if standing is not None:
+        state["finished"]["standing"] = standing
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(state) + "\n")
     tmp.replace(path)

@@ -53,6 +53,13 @@ and the round's seed: the island is redrawn, autarky is resolved, and the
 recorded `eff_round` is checked against a fresh one before an entry is written.
 No agent's account of how it did is read, and no model is in the loop.
 
+**Ranked, or kept and counted and not ranked.** `why_not_ranked` is the one
+place that decides, and it names each reason apart from the others rather than
+folding them into a flag: `practice`, `company`, `unfinished`, `not_scored`.
+The boards ask it and so does `standing`, which is what a spectator is shown
+the instant a game ends -- one rule, so the leaderboard and the ending cannot
+give one game two official scores.
+
 **The ledger is append-only and each entry is reproducible.** An entry carries
 its seed, its trajectory and the digest of the board it came from, so any row
 can be re-derived years later by somebody who does not trust this file.
@@ -107,7 +114,7 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 4
+BOARDS_V = 5
 
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
@@ -541,6 +548,107 @@ def games(rows: list[dict]) -> list[dict]:
     return out
 
 
+def why_not_ranked(game: dict) -> str | None:
+    """The one place that decides whether a game may be ranked, or `None`.
+
+    Every reason is a case of the same standing rule: **the weaker thing is
+    allowed, and never allowed to look like the stronger one.** Each of these
+    games is kept, is counted, and stays in every denominator; what it does not
+    get is a place.
+
+    - `practice` -- the table could not seal, so its private half was public.
+      Every trader could read every other trader's tastes and capacities, which
+      is a different game from the one being measured. **This is the correction
+      of 2026-08-28**: the rule was written in `games/island.md` from the start
+      and stated in the run record as `practice: true`, and the board ranked
+      those games anyway because nothing here read the flag. A rule that lives
+      only in prose is one the code does not have.
+    - `company` -- somebody who took no seat wrote in the room. A key can be
+      handed on and that cannot be prevented; what can be done is to notice.
+    - `unfinished` -- fewer rounds than the game declared. Abandoning the rounds
+      that went badly is the cheapest way to launder a median.
+    - `not_scored` -- some round of it could not be scored at all.
+    """
+    if game.get("arm") == "practice":
+        return "practice"
+    if not game["uninterrupted"]:
+        return "company"
+    if not game["finished"]:
+        return "unfinished"
+    if not game["all_scored"] or game["capture"] is None:
+        return "not_scored"
+    return None
+
+
+def is_ranked(game: dict) -> bool:
+    return why_not_ranked(game) is None
+
+
+def standing(rows: list[dict], game_id: str) -> dict | None:
+    """One game's official score and its place, read off the whole ledger.
+
+    This is what a spectator is shown the moment a game ends, and it exists so
+    that the answer they get is **the ledger's answer**: the same `capture` the
+    board ranks on, placed against the same peers, by the same rule. A page
+    computing its own ranking from a reveal sidecar would be a second scoring
+    surface that could disagree with the first, and the disagreement would show
+    up as two different official scores for one game.
+
+    **A place is only ever against the same level.** Two islands are not equally
+    hard and neither are two formats: four traders face a different frontier
+    from two, and thirty episodes is more room to learn than three. `capture`
+    makes two *rolls* comparable; nothing makes two formats comparable, so a
+    game is placed among the games that played its own format and nowhere else.
+
+    A game that may not be ranked gets its numbers and no place, with the reason
+    named -- never a place quietly withheld, and never a number quietly given a
+    rank it did not earn.
+    """
+    played = games(rows)
+    mine = next((g for g in played if g["game_id"] == game_id), None)
+    if mine is None:
+        return None
+
+    why = why_not_ranked(mine)
+    out = {
+        "game_id": game_id,
+        "workspace": mine["workspace"],
+        "capture": mine["capture"],
+        "eff_round": mine["eff_round"],
+        "floor": mine["floor"],
+        "level": mine["level"],
+        "label": level_label(tuple(mine["level"])) if mine["level"] else None,
+        "ranked": why is None,
+        "why": why,
+        "traders": [{"slot": slot, "id": mine["players"].get(slot),
+                     "ratio": mine["ratios"].get(slot)}
+                    for slot in sorted(mine["ratios"])],
+    }
+    if why is not None or not mine["level"]:
+        return out
+
+    # Ties share a place: two games that captured the same fraction of the same
+    # format are the same result, and breaking that by recorded_at would rank
+    # the clock.
+    peers = [g for g in played if is_ranked(g) and g["level"] == mine["level"]]
+    ahead = sum(1 for p in peers if p["capture"] > mine["capture"] + 1e-12)
+    out["place"] = ahead + 1
+    out["of"] = len(peers)
+    out["best"] = max(p["capture"] for p in peers)
+    out["first"] = ahead == 0
+
+    # A trader's place is among every seat that played this format, not among
+    # the seats of this table: a ratio is a pure number against that trader's
+    # own baseline, which is exactly what makes seats comparable at all.
+    field = [r for p in peers for r in p["ratios"].values()]
+    for row in out["traders"]:
+        if row["ratio"] is None:
+            continue
+        row["place"] = sum(1 for r in field if r > row["ratio"] + 1e-12) + 1
+        row["of"] = len(field)
+    return out
+
+
 def boards(rows: list[dict]) -> dict:
     """The leaderboards, with their denominators attached to them.
 
@@ -550,9 +658,7 @@ def boards(rows: list[dict]) -> dict:
     seeing the results.
     """
     played = games(rows)
-    ranked = [g for g in played
-              if g["finished"] and g["all_scored"] and g["capture"] is not None
-              and g["uninterrupted"]]
+    ranked = [g for g in played if is_ranked(g)]
 
     levels: dict[tuple, list[dict]] = {}
     for g in ranked:
@@ -646,6 +752,12 @@ def boards(rows: list[dict]) -> dict:
             "unfinished_games": unfinished,
             "not_ranked": {s: sum(1 for r in rows if r["status"] == s)
                            for s in sorted({r["status"] for r in rows} - {"complete"})},
+            # Why the games that were not ranked were not, counted by reason
+            # rather than folded into one number -- a practice game and a game
+            # somebody wrote into are different events.
+            "held_out": {why: sum(1 for g in played if why_not_ranked(g) == why)
+                         for why in sorted(filter(None, {why_not_ranked(g)
+                                                         for g in played}))},
             "levels": len(levels),
             "players": len(players),
             "attendance_unrecorded": sum(1 for r in rows if r["status"] == "complete"
@@ -666,6 +778,10 @@ def table(data: dict) -> str:
                    f"declared, kept and not ranked")
     if t["not_ranked"]:
         out.append("  not ranked: " + ", ".join(f"{k} {v}" for k, v in t["not_ranked"].items()))
+    if t.get("held_out"):
+        out.append("  held out of the ranking: "
+                   + ", ".join(f"{k} {v}" for k, v in t["held_out"].items())
+                   + " — kept, counted, and in every denominator above")
     if t["attendance_unrecorded"]:
         out.append(f"  attendance not recorded on {t['attendance_unrecorded']} ranked round(s)")
 

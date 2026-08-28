@@ -270,6 +270,19 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 @media (prefers-reduced-motion: reduce) { .curtain .card { animation: none; } }
 .curtain .shut { position: absolute; top: 8px; right: 8px; }
 .curtain h2 { margin: 0 0 2px; }
+/* The official score: what the ledger says this game was worth, and where it
+   stands. Set apart from the verdict below it because it is a different kind
+   of statement -- the verdict is this page reading the board, this is the
+   record. */
+.official { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line);
+            border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.official .headline { font-size: 15px; }
+.official .headline b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.official .place { color: var(--good); font-weight: 600; }
+.official .level { color: var(--muted); font-size: 12px;
+                   text-transform: uppercase; letter-spacing: .06em; }
+.official.unranked { border-style: dashed; }
+.official.unranked .headline b { color: var(--muted); }
 .verdict { margin: 0 0 12px; font-size: 14px; line-height: 1.45; }
 .verdict b { color: var(--critical); }
 .verdict.good b { color: var(--good); }
@@ -830,6 +843,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <div class="card" role="status">
       <button class="shut" id="closing-shut" title="Watch the island">×</button>
       <h2 id="closing-head">round over</h2>
+      <!-- Filled only when the ledger has spoken: see `official` below. -->
+      <div class="official" id="closing-official" hidden></div>
       <p class="verdict" id="closing-verdict"></p>
       <div id="closing-traders"></div>
       <p class="note" id="closing-traffic"></p>
@@ -900,6 +915,12 @@ const chromeBands = () => {
 };
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
+//: A share of what was on the table, as a percentage: one decimal at most, and
+//: none when it lands on a whole one. Three decimals of a fraction is a figure
+//: nobody reads out loud -- the ending is a result, not a printout. Negative is
+//: not clamped, because doing worse than never trading is a real outcome.
+const pct = (x) => (x === null || x === undefined
+  ? "—" : `${(Math.round(x * 1000) / 10).toFixed(1).replace(/\.0$/, "")}%`);
 
 const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
@@ -926,6 +947,9 @@ let mode = "replay";
 //: page fetched the board from, which reveal it has already taken, and the
 //: replay it can offer of the round it just watched. See `island/live.py:finish`.
 let liveFrom = null, tookReveal = null, replayOf = null;
+//: This game's official score and place, exactly as the ledger reported them
+//: at the last bell. Never computed here -- see `scores.py:standing`.
+let official = null;
 
 // --- chrome ----------------------------------------------------------------
 
@@ -1026,16 +1050,67 @@ function hud(state) {
  * one reproduces the ledger's own figure exactly. Nothing is invented and
  * nothing is asked of the manager.
  *
- * `capture` and `eff_round` are deliberately **not** here. Both are measured
- * against the frontier of the island, the page has no frontier and cannot
- * derive one from a trajectory, and a results screen guessing at the headline
- * number is worse than one that leaves it out. The scoreboard has them.
+ * `capture` and `eff_round` are **not derived here** either, and that has not
+ * changed: the page has no frontier and cannot get one from a trajectory, so a
+ * results screen doing its own arithmetic on the headline number would be
+ * guessing. What changed (2026-08-28) is that it no longer has to. The manager
+ * reads them back out of the ledger it has just written to and hands them over
+ * with the game -- `scores.py:standing` -- so the number shown here is the one
+ * the board ranks on, and `officially()` prints it rather than computing it.
  *
  * The comparison that IS available is the one a trader is scored on: what they
  * ended with as a multiple of what they would have had never trading. Autarky
  * is a per-episode utility and utility here is homogeneous of degree 1, so the
  * total worth beating is `k x autarky_i`.
  */
+/**
+ * The official line: what the record says, printed and not recomputed.
+ *
+ * Every figure comes from `scores.py:standing`, which read the ledger this
+ * game had just been written into. A game that may not be ranked says so, with
+ * the reason, and keeps its numbers -- the weaker thing is kept and counted,
+ * and never allowed to look like the stronger one.
+ */
+const WHY = {
+  practice: `a <b>practice</b> game: some seat could not seal, so the private
+    half was public and every trader could read every other trader's tastes.
+    That is a different game from the one the board ranks.`,
+  company: `somebody who took <b>no seat</b> wrote in this room. A key can be
+    handed on and that cannot be prevented; what can be done is to notice.`,
+  unfinished: `<b>short of the rounds it declared.</b> A game is ranked on all
+    of them or none.`,
+  not_scored: `some round of it <b>could not be scored</b>.`,
+};
+
+/** Where one seat's ratio stands among every seat that played this format. */
+function seatPlace(name) {
+  const seat = official?.ranked
+    && official.traders?.find((t) => t.slot === name && t.place);
+  return seat ? `<span class="num sub">${seat.place}/${seat.of}</span>` : "";
+}
+
+function officially() {
+  const box = $("closing-official");
+  if (!official) { box.hidden = true; return; }
+  const s = official;
+  const place = ["", "1st", "2nd", "3rd"][s.place] || `${s.place}th`;
+  box.className = `official${s.ranked ? "" : " unranked"}`;
+  box.innerHTML = `
+    <div class="level">${s.label || "unrecorded format"}</div>
+    <div class="headline">captured <b>${pct(s.capture)}</b> of what this
+      island had on the table` +
+    (s.ranked
+      ? ` — <span class="place">${place} of ${s.of}</span>
+          game${s.of > 1 ? "s" : ""} on this format${
+            s.first ? "" : `, best ${pct(s.best)}`}</div>`
+      : `</div><div class="note">Kept, counted, and <b>not ranked</b>:
+          ${WHY[s.why] || s.why}</div>`) +
+    `<div class="note">efficiency ${pct(s.eff_round)} against an autarky floor
+      of ${pct(s.floor)} — 0% is never having traded, 100% is everything there
+      was to take.</div>`;
+  box.hidden = false;
+}
+
 function closing(state) {
   const box = $("closing");
   const over = state.phase === "over";
@@ -1080,7 +1155,7 @@ function closing(state) {
       <span class="mono seat" title="${who}">${who}</span>
       <span class="track"><i style="width:${(100 * Math.min(1, r.ratio / span)).toFixed(1)}%"></i>
         <u style="left:${(100 / span).toFixed(1)}%" title="playing alone"></u></span>
-      <span class="num">${r.ratio.toFixed(2)}\u00d7</span></div>`;
+      <span class="num">${r.ratio.toFixed(2)}\u00d7</span>${seatPlace(r.name)}</div>`;
   }).join("");
 
   const zeros = rows.reduce((n, r) => n + r.zeros, 0);
@@ -1092,6 +1167,7 @@ function closing(state) {
        which is zero utility however much of the rest they had.` : "") +
     `<br>The full reveal — tastes, capacities, efficiency per day — is under
      <b>▤</b>, and the scored board is under <b>🏆</b>.`;
+  officially();
   $("closing-replay").hidden = !replayOf;
   box.hidden = false;
 }
@@ -1421,6 +1497,7 @@ function sameCast(a, b) {
 async function startReplay(boardUrl, revealUrl) {
   mode = "replay";
   liveFrom = null; tookReveal = null; replayOf = null; lastMounted = null;
+  official = null;
   $("transport").style.display = "";
   live?.stop();
   player?.stop();
@@ -1460,7 +1537,7 @@ async function startReplay(boardUrl, revealUrl) {
 
 function startLive(url, channel) {
   mode = "live";
-  liveFrom = url; tookReveal = null; replayOf = null;
+  liveFrom = url; tookReveal = null; replayOf = null; official = null;
   lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
@@ -1483,7 +1560,7 @@ function startHub(config, channel) {
   mode = "live";
   // A room read straight from a hub has no manager writing files beside it,
   // so there is no handover to wait for: this one ends and stays ended.
-  liveFrom = null; tookReveal = null; replayOf = null;
+  liveFrom = null; tookReveal = null; replayOf = null; official = null;
   lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
@@ -1591,6 +1668,10 @@ async function takeHandover(finished) {
   if (finished.board) {
     replayOf = { board: new URL(finished.board, base).href, reveal: revealUrl };
   }
+  // The record's own reading of this game, printed as it arrived. It is absent
+  // on a game the manager could not place -- an older runner, or a ledger it
+  // was not writing to -- and the ending then says what it always said.
+  official = finished.standing || null;
   // Rebuilt here rather than left to the next poll: the board has said its
   // last line, so there is no next poll that changes anything, and a card with
   // a score row is a different card rather than the same one with a blank in

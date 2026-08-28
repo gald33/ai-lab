@@ -82,6 +82,15 @@ reached from the surface the watching happened on — see `games/island.md`,
 "Watching". A room read straight from a hub has no manager writing files
 beside it, so this is the local-viewer feed only.
 
+**The ending is the official one.** The handover carries `scores.py:standing`
+— the game's `capture`, its place among the games that played its own format,
+and each seat's place among every seat that played it — read out of the ledger
+the manager had just written the game into. The page prints it and computes no
+ranking of its own: two scoring surfaces would mean two official scores for one
+game. A game that may not be ranked (a practice table, a round somebody wrote
+into, an unfinished game) shows its numbers with the reason it has no place,
+which is the standing rule — kept, counted, never ranked.
+
 **Live from the hub** reads a room the same way the *published* Switchboard
 viewer does — sealed content opened in the browser, nothing trusted with a
 key but the tab it was typed into. `feeds.js` imports `snapshot()` straight
@@ -1424,6 +1433,31 @@ again and the island froze exactly as it stood — sun, clouds and camera — wi
 the canvas still showing the last thing drawn. It asks first now, and a frame
 that throws says so once instead of sixty times a second.
 
+### A game that started with a day, a night and a day
+
+Reported by eye, and decided by Gal, 2026-08-28: *"at the start of a game the
+animations show day becomes night and then day again. that's not needed. just
+start rolling the day."*
+
+Two halves of the fix above met and made it. An island that has not been told
+the hour is lit at **noon** (see the section before this one), and the page
+could not tell it the hour before the first day opened: `dayProgress()` returned
+`null` while the board was still announcing its schedule and waiting for
+acknowledgements. Then the first `open` arrived and `island-events.js:opened`
+played the dawn — a clip whose whole job is to *lift a night*, holding the light
+at full dark and letting it up over four seconds. On day 2 that is right and is
+the mirror of the bell. On day 1 there is no bell behind it.
+
+So the wait for the first line is **morning**, not an unknown hour:
+`dayProgress()` answers `0` in the `before` and `ack` phases, which is not a
+guess — the round has not started, so the island is at dawn and nowhere else.
+And `opened` returns no clip for day 1. The first day now simply rolls: the sun
+is at dawn from the first frame drawn and travels from there.
+
+The `null` rule is untouched and still means what it meant — a board whose
+schedule this page cannot read, or a live poll that brought nothing, leaves the
+light where it is.
+
 ### What a check can catch that could not exist before
 
 The island can now be *wrong* in ways it could not be as a prop layer: a box
@@ -1598,6 +1632,27 @@ plus the lid, which must be shut while the crate crosses, open at the cue, open
 half way through the rise, and shut by the end. Neutered (the crates given back
 a flight of their own, off the table) it reports the crates still moving at
 4240ms against a symbol cued at 3800ms.
+
+### A check that mirrors a schedule goes stale the moment the schedule moves
+
+`render.py:production` and `render.py:motion` both looked for a symbol in the
+air **150–620ms** after a receipt and read the filled bar at 3.8s. Those were
+the old production timings, written out a second time in the harness — so when
+production was put on one table with its crates, both reported failures on a
+page that had started drawing the thing correctly. Three of them, from one
+change of schedule.
+
+They wait on the symbol now rather than on a clock: wait for one to be in the
+air, read the bar *then*, wait for it to land, read the bar again. Which also
+fixed a subtler thing they had been getting away with — **this harness paints
+about four times a second**, and a WAAPI animation does not start until the
+page paints. A symbol built at cue time (as they are now, so they leave from
+the crate) therefore begins up to 800ms after it was created, and any check
+sampling on absolute times is racing it rather than measuring it.
+
+The claims are unchanged and still bounded: neutered — the bar let fill on its
+own instead of waiting for the symbol — `production` reports the shelf full at
+1 of 1 while the symbol is still rising, three times over.
 
 ### The symbols were not coming out of the boxes
 
