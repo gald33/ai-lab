@@ -40,10 +40,31 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 VIEWER = HERE.parent
 
-#: The master gain `island-sound.js` puts between all of this and the speakers.
-#: Kept here so the clipping check is against what a listener hears, not what
-#: the bed renders on its own.
-MASTER = 0.32
+#: **Nothing here multiplies by the master gain any more.** It used to, as a
+#: stand-in for the real chain, and the stand-in was the bug: the page's gain
+#: was 0.32 under a compressor squashing everything above -14dB at 8:1, this
+#: file modelled only the 0.32, and nobody measured the pair. Renders now go
+#: through `outputChain()` itself, so every number below is what leaves the
+#: page.
+#:
+#: The band the bed has to leave the page in, **anchored to two configurations
+#: a listener actually judged** rather than to anybody's idea of what a bed
+#: should measure:
+#:
+#: | heard | bed RMS out |
+#: |---|---|
+#: | `BED` 0.5, reported as "I can't hear any of it" | 0.009 |
+#: | `BED` 1.15, reported as "now I do hear everything" | 0.021 |
+#:
+#: The floor sits between them. That is the whole of its justification, and it
+#: is a better one than a round number: every threshold in this file that was
+#: chosen by taste has been wrong at least once, and these two numbers are the
+#: only ones here that a pair of ears has ruled on directly.
+#:
+#: The ceiling is still the old rule -- a spectator who notices the sea rather
+#: than the island is hearing too much of it -- and has never been tested by
+#: anybody's ear, which is worth knowing when it starts failing.
+OUTPUT = (0.015, 0.09)
 
 #: A site at work has to be at least this much louder than the bed alone over
 #: the same window. Not a taste: 1.0 is inaudible and was shipped once.
@@ -69,11 +90,12 @@ SEEDS = (1, 7, 12345)
 #: was reported by ear before it was ever measured.
 VOICE_PITCH = """
 async () => {
-  const { VOICES } = await import('./island-sound.js');
+  const { VOICES, outputChain } = await import('./island-sound.js');
   const out = {};
   for (const name of Object.keys(VOICES)) {
     const ctx = new OfflineAudioContext(1, 44100 * 3, 44100);
-    VOICES[name](ctx, ctx.destination, 0);
+    const chain = outputChain(ctx);
+    VOICES[name](ctx, chain.accent, 0);
     const d = (await ctx.startRendering()).getChannelData(0);
     let cross = 0, last = 0, voiced = 0, peak = 0;
     for (let i = 1; i < d.length; i++) {
@@ -99,9 +121,11 @@ async () => {
 #: repository beside the one that measures it, rather than being rebuilt from
 #: memory each time somebody says "it sounds wrong".
 #:
-#: Boosted by `LOUD` over the page's own master gain: these are listened to on
-#: headphones, out of context, against no island.
-LOUD = 3.2
+#: **No longer boosted.** These went out at 3.2x while the page's own chain was
+#: 20dB down, so the files sounded right and the page did not -- the boost was
+#: hiding the very thing it was meant to reveal. A WAV from here is now exactly
+#: what the page plays.
+LOUD = 1.0
 
 WAV = """
 async ([secs, good, day, closed, seed, master, loud]) => {
@@ -127,6 +151,7 @@ async ([secs, good, day, closed, seed, master, loud]) => {
 RENDER = """
 () => { window.__islandRender = async ([secs, good, day, closed, seed], raw) => {
   const { Ambience } = await import('./island-ambience.js');
+  const { outputChain } = await import('./island-sound.js');
   const ctx = new OfflineAudioContext(1, 44100 * secs, 44100);
   let fake = 0;
   Object.defineProperty(ctx, 'currentTime', { get: () => fake });
@@ -142,7 +167,12 @@ RENDER = """
     r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
-  const a = new Ambience(ctx, ctx.destination, { rng });
+  //: Through the page's own master gain and limiter, not straight at the
+  //: destination. Measuring the island before that chain is measuring
+  //: something no listener hears -- which is exactly how a page nobody could
+  //: hear passed every check in this file.
+  const chain = outputChain(ctx);
+  const a = new Ambience(ctx, chain.master, { rng });
   a.start();
   a.setDay(day, closed);
   if (good === '@sunrise') a.sunrise(); else if (good) a.working(good);
@@ -258,11 +288,10 @@ def main(argv: list[str] | None = None) -> int:
             for name, r in rows:
                 if args.verbose:
                     print(f"{name:32} work {r['work']:.4f}  bed {r['bed']:.4f}  "
-                          f"peak {r['peak'] * MASTER:.3f}  bright {r['bright']:.3f}"
+                          f"peak {r['peak']:.3f}  bright {r['bright']:.3f}"
                           f" / {r['bedBright']:.3f}")
-                if r["peak"] * MASTER >= 0.99:
-                    problems.append(f"{name} clips at the master gain "
-                                    f"({r['peak'] * MASTER:.2f})")
+                if r["peak"] >= 0.99:
+                    problems.append(f"{name} clips on the way out ({r['peak']:.2f})")
                 if r.get("bright", 0) > 4 * max(r.get("bedBright", 0), 1e-6):
                     problems.append(f"{name} is harsh next to the bed it sits in "
                                     f"(bright {r['bright']:.2f} against {r['bedBright']:.2f})")
@@ -278,11 +307,13 @@ def main(argv: list[str] | None = None) -> int:
             # who notices the sea rather than the island is hearing too much
             # of it.
             day = max(c["bed"] for c in controls)
-            if day > 0.09:
+            quiet = min(c["bed"] for c in controls)
+            if day > OUTPUT[1]:
                 problems.append(f"the bed is loud for a background ({day:.3f})")
-            if min(c["bed"] for c in controls) < 0.04:
-                problems.append(f"the bed is barely there ({day:.3f}): the world is "
-                                f"the thing being listened to, not the accents over it")
+            if quiet < OUTPUT[0]:
+                problems.append(f"the bed is barely there ({quiet:.3f}, floor "
+                                f"{OUTPUT[0]}): this is what leaves the page, and a "
+                                f"listener has to be able to hear it")
             if min(n["bed"] for n in nights) <= 0.004:
                 problems.append("the sea stopped at night")
             # Night is a hearth: the fire is the loudest thing left, so the bed
@@ -343,17 +374,17 @@ def main(argv: list[str] | None = None) -> int:
             for name, v in sorted(voices.items(), key=lambda kv: -kv[1]["pitch"]):
                 if args.verbose:
                     print(f"{('voice: ' + name):32} ~{v['pitch']:.0f} Hz  "
-                          f"peak {v['peak'] * MASTER:.3f}")
-                if v["peak"] * MASTER >= 0.99:
-                    problems.append(f"the {name} voice clips ({v['peak'] * MASTER:.2f})")
+                          f"peak {v['peak']:.3f}")
+                if v["peak"] >= 0.99:
+                    problems.append(f"the {name} voice clips ({v['peak']:.2f})")
             if not bell:
                 problems.append("the bell voice made no sound at all")
             # And the same rule stated against the accents rather than in the
             # abstract: the world may be quieter than the loudest voice on it,
             # but not a fraction of it. This is the comparison whose absence
             # let the island sit at a third of one chime.
-            loudest = max(v["peak"] for v in voices.values()) * MASTER
-            floor = max(c["peak"] for c in controls) * MASTER
+            loudest = max(v["peak"] for v in voices.values())
+            floor = max(c["peak"] for c in controls)
             if args.verbose:
                 print(f"{'bed against the loudest voice':32} "
                       f"{floor:.3f} against {loudest:.3f}")
@@ -375,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
                 takes += [(f"site-{g}", g, 0.5, False, 10) for g in goods()]
                 for name, good, day_, closed_, secs in takes:
                     raw = page.evaluate(WAV, [secs, good, day_, closed_, SEEDS[0],
-                                              MASTER, LOUD])
+                                              1.0, LOUD])
                     out = args.wav / f"{name}.wav"
                     out.write_bytes(base64.b64decode(raw))
                     print(f"wrote {out}")
