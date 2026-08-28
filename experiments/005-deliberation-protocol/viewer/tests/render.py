@@ -903,7 +903,8 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
           const on = (sel) => [...document.querySelectorAll(sel)]
             .map(n => n.dataset.pid || n.dataset.good);
           return { ropes: on('.rope.blamed'), cells: on('.cell.blamed'),
-                   ropesAll: on('.rope'),
+                   ropesAll: on('.rope'), blinked: on('.rope.refused'),
+                   cross: document.querySelectorAll('.chip-cross').length,
                    badge: document.querySelectorAll('.pop.bad').length };
         }""", {"want": want, "url": f"replays/{board.name}"})
         tag = f"{where} {want['good']}"
@@ -930,8 +931,19 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
         if want["good"] not in lit["cells"]:
             bad.append(f"{tag}: the {want['good']} slot it came up short in is not "
                        f"marked (marked {lit['cells']})")
-        if not lit["badge"]:
-            bad.append(f"{tag}: the refusal badge itself stopped being drawn")
+        # The refusal has to say *that* it happened, and since 2026-08-28 that
+        # is the blinking offer with a cross on its pill -- the badge over the
+        # hut only for a refusal with no offer to blink. One of the two, never
+        # neither and never both.
+        if lit["blinked"]:
+            if not lit["cross"]:
+                bad.append(f"{tag}: the blinked offer carries no cross")
+            if lit["badge"]:
+                bad.append(f"{tag}: a badge was drawn over an offer that was "
+                           f"already blinking, so the refusal is said twice")
+        elif not lit["badge"]:
+            bad.append(f"{tag}: the refusal drew neither a blinking offer nor a "
+                       f"badge, so nothing on the page says it happened")
     bad += [f"{where}: {e}" for e in errs]
     page.close()
     return bad
