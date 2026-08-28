@@ -1051,6 +1051,33 @@ function lineClass(e) {
   return "";
 }
 
+/**
+ * The bell countdown, on its own second rather than the poll's.
+ *
+ * It used to be painted only inside `hud`, which runs when a poll brings back
+ * a state -- so a reader watching a live game saw the number sit still and
+ * then drop by however many seconds the poll interval was. The deadline was
+ * right and the counting was a lie of omission: a countdown that does not
+ * count reads as a stopped clock.
+ *
+ * So `hud` now only says *what* is being counted to, and a one-second timer
+ * does the counting. Nothing here is derived: the instant is the manager's
+ * own `bell_at`, and between polls the page is interpolating time it has
+ * measured itself. `bellAt` is null whenever there is nothing to count to
+ * (replay, or a live state with no bell announced), and the pill is hidden.
+ */
+let bellAt = null;
+
+function paintClock() {
+  const clock = $("clock");
+  if (bellAt === null) { clock.hidden = true; return; }
+  const left = Math.max(0, Math.round((bellAt - Date.now()) / 1000));
+  clock.hidden = false;
+  clock.innerHTML = left > 0 ? `bell in <b>${left}s</b>` : "bell due";
+}
+
+setInterval(paintClock, 1000);
+
 function hud(state) {
   $("ep").innerHTML = state.episode
     ? `day <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
@@ -1068,14 +1095,9 @@ function hud(state) {
   // sun that can carry it: it crosses the sky as the episode runs, so a long
   // silence is a long stretch of afternoon. Live keeps its countdown, which is
   // a deadline rather than a description.
-  const clock = $("clock");
-  if (mode === "live" && state.bell_at) {
-    const left = Math.round((Date.parse(state.bell_at) - Date.now()) / 1000);
-    clock.hidden = false;
-    clock.innerHTML = left > 0 ? `bell in <b>${left}s</b>` : "bell due";
-  } else {
-    clock.hidden = true;
-  }
+  const bell = mode === "live" && state.bell_at ? Date.parse(state.bell_at) : NaN;
+  bellAt = Number.isFinite(bell) ? bell : null;
+  paintClock();
 
   const roster = timeline.traders.map((t) => {
     const said = state.spoke.includes(t), ack = state.acknowledged.includes(t);
