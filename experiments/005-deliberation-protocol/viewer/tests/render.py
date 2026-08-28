@@ -2073,15 +2073,92 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: the island used to be, and answer confidently.
   const moored = [];
   {
+    //: Composed up through whatever parents a part has, rather than assuming
+    //: one. The boats were children of the dock and are not any more, and a
+    //: probe that read `dock.children` would now report the jetty alone and
+    //: pass -- the check going quiet is the failure mode to design out here,
+    //: not a wrong number.
+    const localTo = (o, root) => {
+      const v = o.position.clone();
+      for (let p = o.parent; p && p !== root; p = p.parent) {
+        p.updateMatrix(); v.applyMatrix4(p.matrix);
+      }
+      return v;
+    };
+    const parts = [];
+    const d = made.island.getObjectByName('dock');
+    if (d) parts.push(...d.children);
+    made.island.traverse((o) => { if (/^boat_\d+$/.test(o.name)) parts.push(o); });
+    for (const part of parts) {
+      const l = localTo(part, made.island);
+      moored.push({ name: part.name, r: +Math.hypot(l.x, l.z).toFixed(3),
+                    grass: +meadowEdge(l.x, l.z).toFixed(3),
+                    water: +shelfEdge(l.x, l.z).toFixed(3) });
+    }
+  }
+
+  //: **The harbour's own footprints, so the props are not drawn through each
+  //: other.** The settlements and the sites have had this since a spectator
+  //: reported two of them in the same place; the dock and the boats never
+  //: did, and turning the boats broadside laid three hulls 1.17 long across a
+  //: deck 0.7 wide. Every boat cut the planks and two cut each other, which
+  //: the radius checks above are all happy about -- they ask where a thing is
+  //: against the coast, not whether anything else is already there.
+  //:
+  //: Drawn boxes, not radii, for the reason the settlement check gives: a
+  //: boat is a long thing and a circle round it is a different claim from the
+  //: ground it covers.
+  //: **Oriented footprints, not world-aligned boxes.** The boats lie at a
+  //: different angle each -- they follow the shore, and the shore turns -- so
+  //: an axis-aligned box round a hull 1.17 long claims a great deal of water
+  //: the hull is not in, and two of them would read as overlapping while
+  //: floating a clear half-unit apart. That is a check that fails on correct
+  //: scenes, which is worse than no check. So: each prop's box in its *own*
+  //: space, its four ground corners taken through its own matrix, and the
+  //: separation decided by `harbour_clear` below.
+  const harbour = [];
+  {
+    made.island.updateMatrixWorld(true);
+    //: **The deck is one prop, not one per plank.** The planks are laid at a
+    //: pitch shorter than their own depth so the walkway is continuous rather
+    //: than a ladder of gaps -- they are *meant* to overlap, and asked pair
+    //: by pair they report the deck being drawn through itself on every
+    //: frame shape. So the jetty enters this as a single footprint spanning
+    //: its planks, which is also the only thing a boat can be drawn through.
+    const props = [];
     const d = made.island.getObjectByName('dock');
     if (d) {
-      d.updateMatrix();
-      for (const part of d.children) {
-        const l = part.position.clone().applyMatrix4(d.matrix);
-        moored.push({ name: part.name, r: +Math.hypot(l.x, l.z).toFixed(3),
-                      grass: +meadowEdge(l.x, l.z).toFixed(3),
-                      water: +shelfEdge(l.x, l.z).toFixed(3) });
+      const planks = d.children.filter(c => /^dock_plank_/.test(c.name));
+      if (planks.length) props.push({ name: 'dock_deck', of: planks, at: d });
+    }
+    made.island.traverse((o) => {
+      if (/^boat_\d+$/.test(o.name)) props.push({ name: o.name, of: [o], at: o });
+    });
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+    const box = new THREE.Box3(), one = new THREE.Box3();
+    const v = new THREE.Vector3();
+    for (const prop of props) {
+      //: Measured in the frame the prop is *drawn* in -- the dock's for the
+      //: deck, the boat's own for a boat -- so the box hugs the thing rather
+      //: than the compass.
+      inv.copy(prop.at.matrixWorld).invert();
+      box.makeEmpty();
+      for (const root of prop.of) {
+        root.traverse((c) => {
+          if (!c.geometry) return;
+          c.geometry.computeBoundingBox();
+          one.copy(c.geometry.boundingBox);
+          rel.multiplyMatrices(inv, c.matrixWorld);
+          box.union(one.applyMatrix4(rel));
+        });
       }
+      const corners = [[box.min.x, box.min.z], [box.min.x, box.max.z],
+                       [box.max.x, box.max.z], [box.max.x, box.min.z]]
+        .map(([x, z]) => {
+          v.set(x, 0, z).applyMatrix4(prop.at.matrixWorld);
+          return [+v.x.toFixed(3), +v.z.toFixed(3)];
+        });
+      harbour.push({ name: prop.name, corners });
     }
   }
 
@@ -2094,7 +2171,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps, moored,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps, moored, harbour,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -2660,6 +2737,28 @@ def stock(browser, base: str, out: Path) -> list[str]:
     return bad
 
 
+def harbour_clear(a: list, b: list) -> bool:
+    """Do two oriented ground footprints stay out of each other?
+
+    Separating axis, over the four edge normals of the two rectangles: if any
+    one of them puts the two spans apart, nothing is drawn through anything.
+    Written out rather than reached for from a library because the rest of
+    this file measures with what it has, and because a boat lying at its own
+    angle to the shore is exactly the case a world-aligned box gets wrong.
+    """
+    for rect in (a, b):
+        for i in range(len(rect)):
+            (x0, z0), (x1, z1) = rect[i], rect[(i + 1) % len(rect)]
+            # The edge's normal. Length does not matter; only the ordering of
+            # the projections does.
+            nx, nz = -(z1 - z0), x1 - x0
+            pa = [px * nx + pz * nz for px, pz in a]
+            pb = [px * nx + pz * nz for px, pz in b]
+            if max(pa) <= min(pb) or max(pb) <= min(pa):
+                return True
+    return False
+
+
 def island(browser, base: str, out: Path) -> list[str]:
     """Nothing stands in the sea, and the goats do not run.
 
@@ -2871,6 +2970,28 @@ def island(browser, base: str, out: Path) -> list[str]:
         if not [m for m in (built.get("moored") or []) if m["name"].startswith("boat_")]:
             bad.append(f"island {label}: no boats are moored at the dock; "
                        f"the traders arrived somehow")
+
+        #: **Nothing in the harbour is drawn through anything else in it.**
+        #: The radius checks above ask where a prop stands against the coast,
+        #: never whether something is already there -- so three boats turned
+        #: broadside sat across the jetty's planks, and two of them across
+        #: each other by 1.09, with every one of those radius checks content.
+        #: Reported by eye, as boats without room at their mooring.
+        harbour = built.get("harbour") or []
+        for i, one in enumerate(harbour):
+            for two in harbour[i + 1:]:
+                if not harbour_clear(one["corners"], two["corners"]):
+                    bad.append(f"island {label}: {one['name']} and "
+                               f"{two['name']} are drawn through each other "
+                               f"in the water")
+        #: **And there is a boat for every trader**, not for the first three
+        #: of them. The boats used to be laid against a list of three hand
+        #: written positions, so a fourth seat simply had no boat -- reported
+        #: as sails carrying the agents' colours but not all of the agents'.
+        boats = [h for h in harbour if h["name"].startswith("boat_")]
+        if len(boats) != n:
+            bad.append(f"island {label}: {len(boats)} boats for {n} traders; "
+                       f"every seat arrived somehow and wears its own colour")
 
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
