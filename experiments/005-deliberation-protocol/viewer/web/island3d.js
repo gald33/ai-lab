@@ -595,8 +595,12 @@ function palm(i) {
 function boat(i, sailMat) {
   const g = new THREE.Group();
   g.name = `boat_${i}`;
+  //: 0.85 deep, not 0.55. A dish that shallow has barely a finger of hull
+  //: between its floor and its bottom, so there is no height at which the
+  //: deck is dry and the hull is in the water -- the two constraints cross.
+  //: Deeper gives it a draught to sit in and a side to be seen.
   add(g, new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-    M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.55, 2.1]);
+    M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.85, 2.1]);
   //: **A hull is a bowl with its top open, so without this you see the sea
   //: through it and the boat reads as full of water.** Reported by eye, and
   //: it is exactly what was drawn: the hull is the *lower* half of a sphere
@@ -609,9 +613,14 @@ function boat(i, sailMat) {
   //: showing through and left a flat disc inside a ring -- a lily pad with a
   //: flag on it, reported by eye in its turn. At 0.03 there is a visible
   //: depth of hull to see into, which is what says boat rather than marker.
-  //: It still has to clear the water: the slab's top is at 0.04, this lands
-  //: at 0.10 with the boat at its mooring, and 0.07 at the bottom of
-  //: `island-life`'s bob.
+  //: It still has to clear the water -- and where the water *is* was got
+  //: wrong twice. `slab()` extrudes with `bevelThickness` as well as
+  //: `bevelSize`, so a bevel adds height as much as it adds width: the
+  //: shallows' top is `-0.05 + 0.09 + 2 * 0.05 = 0.14`, not the `baseY +
+  //: depth` of 0.04 this file assumed. Every boat floated with its deck
+  //: 0.038 *under* the surface and its gunwale 0.036 clear of it, which is a
+  //: swamped boat, and it is what a spectator saw. The height is read off the
+  //: slab now rather than worked out -- see `waterline` below.
   add(g, new THREE.CircleGeometry(0.26, 24), M.timber, `boat_${i}_deck`,
     [0, 0.03, 0], [-Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
@@ -621,6 +630,18 @@ function boat(i, sailMat) {
 }
 
 export const GRASS_Y = 0.70, HILL_Y = 1.12, SAND_Y = 0.40;
+
+/**
+ * Where the open sea rests, outside the shallows.
+ *
+ * `island-life` lays the swell sheet at this height and moves it about this
+ * height; the boats have to float against it out past the lagoon's rim. It
+ * lives here rather than there because `island-life` already imports this
+ * module and the reverse would be a cycle -- and because two copies of the
+ * sea's height is one of them out of phase with the water, which is the
+ * argument `island-life` itself makes for having one `seaAt`.
+ */
+export const SEA_Y = -0.02;
 
 /** Where a good is made. Four are the design's; the rest are built to fit. */
 const SITES = {
@@ -1221,17 +1242,44 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: bearing is the one the dock has always been on -- east-south-east, clear
   //: of the settlements -- so the framing does not move; what changes is that
   //: the jetty now begins at the sand and ends over water.
-  const DOCK_BEARING = 0.405, DOCK_SCALE = 0.95;
+  //: **The harbour goes where the coast is straightest.** The berths share one
+  //: radius -- see the rows below -- and that radius is where the water starts
+  //: latest anywhere on the arc, so a lumpy stretch pushes every boat out to
+  //: the worst bearing's distance and the whole harbour ends up standing off
+  //: the island. On the bearing this was fixed at, the shore wanders 0.78
+  //: across the arc; the flattest stretch wanders 0.37, and the boats moor
+  //: that much closer in for it.
+  //:
+  //: Measured rather than picked, like everything else here that used to be a
+  //: number: if the silhouette's wobble ever changes, the harbour moves to
+  //: wherever the new coast is straightest instead of staying where the old
+  //: one was.
+  const HARBOUR_ARC = 0.75;
+  let DOCK_BEARING = 0.405, flattest = Infinity;
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 90) {
+    let lo = Infinity, hi = -Infinity;
+    for (let o = -HARBOUR_ARC; o <= HARBOUR_ARC; o += 0.05) {
+      const v = dryEdge(Math.cos(a + o), Math.sin(a + o));
+      lo = Math.min(lo, v); hi = Math.max(hi, v);
+    }
+    if (hi - lo < flattest) { flattest = hi - lo; DOCK_BEARING = a; }
+  }
+  const DOCK_SCALE = 0.95;
   const axis = dockAxis(DOCK_BEARING, DOCK_SCALE);
   const dock = new THREE.Group();
   dock.name = "dock";
   dock.position.set(axis.at[0], 0, axis.at[1]);
   dock.rotation.y = axis.rotation;
-  //: Three planks laid over whatever `reach` turned out to be, rather than
-  //: seven at a fixed pitch running off into the ocean. Their own depth is
-  //: 0.24, so the pitch is what keeps the last one's outer face inside the
-  //: reach; a fourth would need water this island does not have.
-  const PLANKS = 3, pitch = axis.reach / PLANKS;
+  //: **As many planks as it takes to tile the reach, not three.** A plank is
+  //: 0.24 deep, and three of them over a reach of 0.97 sit at a pitch of 0.32
+  //: -- so the deck came apart into three loose boards with 0.08 of open
+  //: water between them, which is what a wider lagoon did to a fixed count.
+  //: The count follows the reach now and the pitch stays under the depth, so
+  //: the boards always overlap and the walkway is continuous at any width of
+  //: water. That overlap is deliberate; `render.py:island` takes the deck as
+  //: one footprint for exactly this reason.
+  const PLANKS = Math.max(3, Math.ceil(axis.reach / 0.20));
+  const pitch = axis.reach / PLANKS;
   for (let i = 0; i < PLANKS; i++) {
     add(dock, new THREE.BoxGeometry(0.7, 0.05, 0.24), M.timber, `dock_plank_${i}`, [0, 0.3, i * pitch]);
   }
@@ -1281,11 +1329,31 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: fine standing still. Carried into the search below so every berth is
   //: clear through the whole of the swing.
   const SWING = 0.10;
-  //: Half of what one row would need, because the rows interleave: two boats
-  //: a slot apart are in different rows and pass each other on the radius.
-  const STEP = (2 * HALF_LEN + 0.30) / 2
+  //: **One slot per hull beam, not per hull length.** Moored bow-in a boat
+  //: takes only its width of coast; broadside it took its whole length, and
+  //: seven of them wanted a third of the island's circumference.
+  const STEP = (2 * HALF_WID + 0.26)
                / dryEdge(Math.cos(DOCK_BEARING), Math.sin(DOCK_BEARING));
   const onLand = lander(island);
+  //: **Where the water actually is, read off the slab.** Twice this file has
+  //: floated the boats against `baseY + depth`, which is not the top of an
+  //: extruded slab: `bevelThickness` adds the bevel to each end, so the
+  //: shallows stand 0.10 higher than that arithmetic says. Raycasting the
+  //: thing settles it, and carries a change to the slab's depth or bevel
+  //: without anyone remembering to come back here.
+  //: **Per boat, because the water is not one height.** The shallows are a
+  //: raised shelf -- their top stands 0.16 above the open sea's rest -- so a
+  //: boat inside the lagoon and one outside it float at heights that differ
+  //: by more than a hull's draught. Asked at the boat's own position, which
+  //: also means nothing has to remember which side of the rim it is on.
+  const shallowsMesh = island.getObjectByName("shallows");
+  const surfaceRay = new THREE.Raycaster();
+  const surfaceAt = (x, z) => {
+    if (!shallowsMesh) return SEA_Y;
+    surfaceRay.set(new THREE.Vector3(x, 12, z), new THREE.Vector3(0, -1, 0));
+    const hit = surfaceRay.intersectObject(shallowsMesh, false)[0];
+    return hit ? hit.point.y : SEA_Y;
+  };
   //: Outward along the bearing until the hull's whole footprint is off the
   //: land, asked of the slabs rather than of a radius. It starts at the drawn
   //: shore and steps by a twentieth, so a berth is as close in as the water
@@ -1301,7 +1369,9 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
       let clear = true;
       for (let a = -1; a <= 1 && clear; a++) {
         for (let b = -1; b <= 1 && clear; b++) {
-          const along = a * (HALF_LEN + SWING), out = r + b * (HALF_WID + SWING);
+          //: Bow-in: the hull's *length* lies along the radius and its beam
+          //: along the shore, which is the way round that fits this water.
+          const along = a * (HALF_WID + SWING), out = r + b * (HALF_LEN + SWING);
           if (onLand(ux * out + tx * along, uz * out + tz * along)) clear = false;
         }
       }
@@ -1312,14 +1382,13 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: rather than this quietly choosing somewhere wrong.
     return from + 1.6;
   };
-  //: **The two rows are concentric, not each boat at its own depth.**
-  //: Taking every berth's radius from `afloatAt` on its own bearing sounds
-  //: right and is not: the coast wobbles, so the inner row on one bearing can
-  //: sit further out than the outer row on the next, and the rows cross. That
-  //: is what put boat_4 through boat_6 -- and the comment here claimed they
-  //: cleared "by construction", which was the claim and not the code.
-  //: One radius for the arc, taken where the water starts latest, and the
-  //: rows are then exactly `ROW_GAP` apart everywhere.
+  //: **One row, each boat at the depth its own bearing gives.** Two rows want
+  //: `2 * beam + gap` of water on top of the surf's clearance -- 1.32 against
+  //: a lagoon of 1.15 -- so the outer row moored outside the shallows
+  //: entirely, in the dark water, which is how it looked. And one row has
+  //: nothing to cross, so a berth can sit where the coast actually is rather
+  //: than every boat standing off at the worst bearing's distance, which is
+  //: what the concentric pair had to do.
   const berth = (i) => {
     const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2);
     //: **Far enough out that no hull lies across the jetty.** The deck is
@@ -1328,38 +1397,35 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: 0.8 of a slot was 0.13 and laid the first two boats through the deck.
     return DOCK_BEARING + side * (rank + 1.4) * STEP;
   };
-  const ROW_GAP = 2 * HALF_WID + 0.14;
-  const bearings = traders.map((_, i) => berth(i));
-  const rIn = Math.max(...bearings.map(afloatAt));
   const moorings = new THREE.Group();
   moorings.name = "moorings";
   traders.forEach((name, i) => {
-    //: **Two rows beside the jetty, not one arc round the island.** One row
-    //: costs a whole hull-length of coast per boat, so seven of them fanned
-    //: 66 degrees each way and read as markers dropped round the island
-    //: rather than as a harbour. Interleaving an inner and an outer row
-    //: halves the arc each boat needs, and the row a boat is in decides its
-    //: radius -- so the two rows clear each other by construction, whatever
-    //: the angle works out to.
-    const rank = Math.floor(i / 2), row = rank % 2;
-    //: The radius is read first at the dock's own bearing, because the slot
-    //: width depends on it and the slot decides the bearing. A tenth of a
-    //: unit either way does not move the angle enough to matter.
-    //: Half of what one row would need, because the rows interleave: two
-    //: boats a slot apart are in different rows and pass each other on the
-    //: radius instead.
+    //: **Bow-in along the jetty's own stretch of coast, not fanned round the
+    //: island.** Broadside, a boat cost its whole length of shore and seven of
+    //: them reached 66 degrees each way, reading as markers dropped round the
+    //: island rather than as a harbour. Turned to face the sea each takes only
+    //: its beam, and the same seven sit inside a third of that arc.
     const t = berth(i);
-    const r = rIn + row * ROW_GAP;
-    const x = Math.cos(t) * r, z = Math.sin(t) * r;
+    //: **Two at the jetty, the rest at anchor beyond the rim.** Asked for by
+    //: eye: the boats out on the open water read better than the ones tucked
+    //: against the sand, but a harbour with nothing in it is not a harbour.
+    //: So the first pair take the lagoon berths either side of the jetty and
+    //: everything after them lies outside the shallows, a clear hull-length
+    //: past the edge so nothing straddles the step in the water.
+    const ux = Math.cos(t), uz = Math.sin(t);
+    const r = i < 2 ? afloatAt(t) : wetEdge(ux, uz) + HALF_LEN + 0.15;
+    const x = ux * r, z = uz * r;
     const b = boat(i + 1, seatMat(name, i, traders.length));
-    //: Higher than the old 0.02. The hull's floor has to be under the water
-    //: and its deck above it, and at 0.02 the deck cleared the shallows by
-    //: only three hundredths.
-    b.position.set(x, 0.08, z);
-    //: Along the shore, which is across the radius -- and a mooring line is
+    //: **Floated against the waterline, not against a number.** The hull's
+    //: floor has to be under the surface and its deck above it, and
+    //: `island-life` bobs it 0.035 either way, so both have to hold through
+    //: the whole of that. At this lift the deck clears the water by 0.078 and
+    //: still by 0.043 at the bottom of the bob, and the hull sits 0.061 into
+    //: it.
+    b.position.set(x, surfaceAt(x, z) + 0.055, z);
+    //: Facing out to sea, which is along the radius -- and a mooring line is
     //: never quite square, so no two lie at exactly the same angle.
-    b.rotation.y = Math.atan2(Math.cos(t), Math.sin(t)) + Math.PI / 2
-                   + (i % 3 - 1) * 0.06;
+    b.rotation.y = Math.atan2(Math.cos(t), Math.sin(t)) + (i % 3 - 1) * 0.06;
     b.scale.setScalar(BOAT_SCALE);
     moorings.add(b);
   });

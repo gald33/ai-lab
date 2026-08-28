@@ -22,7 +22,7 @@
  */
 
 import * as THREE from "./vendor/three/three.module.js";
-import { onMeadow, GRASS_Y, SAND_Y } from "./island3d.js";
+import { onMeadow, GRASS_Y, SAND_Y, SEA_Y } from "./island3d.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
@@ -188,7 +188,7 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: reach as far as the camera ever frames. Transparent, so the deep colour
   //: is what shows through the troughs -- and so a dolphin under it is a shape
   //: in the water rather than nothing at all.
-  const SEA_Y = -0.02;
+
   //: **The inner edge is a circle and the coast is not**, which is the same
   //: mistake the surf ring was rebuilt to fix -- see `shoreRing` in
   //: `island3d.js`. At 4.4 the sheet cleared the drawn shallows on three
