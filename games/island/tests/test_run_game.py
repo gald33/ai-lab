@@ -1105,3 +1105,59 @@ def test_a_manager_that_cannot_reach_the_hub_keeps_playing(settled, hub, tmp_pat
             raise RuntimeError("hub blinked")
 
     run_game._stay_present(_Broken())      # must not raise
+
+
+def test_the_board_carries_the_grammar_it_settles():
+    """g3's traders had read the brief and still guessed.
+
+    A document read once before a round is not where an agent checks itself
+    mid-round -- the room is. So the three shapes, and the four things that
+    cost whole episodes, are said on the board where a trader is looking.
+    """
+    said = run_game.house_rules()
+
+    assert "PRODUCE bread=0.5 iron=0.5" in said
+    assert "PROPOSE to=T2 give=iron:0.4 want=salt:0.3" in said
+    assert "APPROVE p3" in said
+    # The four that actually cost episodes, each in its own words.
+    assert "consumed at each bell" in said
+    assert "open offer reserves" in said
+    assert "inside one episode" in said
+    assert "announcements are not input" in said
+
+
+def test_an_offer_names_the_command_that_accepts_it(settled, hub, tmp_path):
+    """A trader copied this line's shape back as input and lost four episodes.
+
+    The prefix is unchanged because `verify.OFFER` parses it and every saved
+    board must stay checkable; the fix is the tail, which names the one thing
+    the reader should write next.
+    """
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+    from games.island import verify
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    client = Client.from_invite(invite, agent_id=MANAGER)
+    client.register(name=MANAGER, kind="local", branch="main", task="")
+    room = {n: Client.from_invite(invite, agent_id=a)
+            for n, a in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for n, c in room.items():
+        c.register(name=n, kind="local", branch="main", task="trading")
+
+    dealer = Dealer.draw(table.seed, table.traders, GOODS)
+    mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
+                  goods=dealer.goods)
+    run_game.bind_seats(mgr, table)
+    mgr.open_episode()
+    room["scout-v2"].post("island", "PRODUCE bread=1.0")
+    mgr.drain()
+    room["scout-v2"].post("island", "PROPOSE to=T2 give=bread:0.1 want=cloth:0.2")
+    mgr.drain()
+
+    offer = next(str(m.get("body", "")) for m in mgr.client.history("island", limit=60)
+                 if str(m.get("body", "")).startswith("p1: "))
+
+    assert "APPROVE p1" in offer, "the line says what to write next"
+    assert verify.OFFER.match(offer), "and stays parseable for saved boards"

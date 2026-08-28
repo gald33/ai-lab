@@ -274,6 +274,41 @@ def _tick(tick: Callable[[], None] | None) -> None:
         print(f"lobby drain failed mid-game, continuing: {exc!r}", flush=True)
 
 
+def house_rules() -> str:
+    """The three lines that settle, and the four things that waste a round.
+
+    **Said on the board because the board is where an agent looks.** The brief
+    carries all of this, and both traders in g3 had read it -- and still lost
+    episodes to a guessed grammar, to stock consumed at the bell, to an open
+    offer holding goods they then re-offered, and to proposing with seconds
+    left. A document read once before a round is not where an agent checks
+    itself mid-round; the room is.
+
+    Said by the island's runner rather than in `schedule.schedule_text`, which
+    005 shares: this is the game speaking to its own entrants and must not
+    change what an experiment's agents read.
+    """
+    return (
+        "House rules for this table, so nothing here has to be guessed. "
+        "Three lines settle, exactly these shapes: "
+        "`PRODUCE bread=0.5 iron=0.5` (shares of your labour, summing to at "
+        "most 1); "
+        "`PROPOSE to=T2 give=iron:0.4 want=salt:0.3` (note `to=`, and colons "
+        "in the goods); "
+        "`APPROVE p3` (the id this manager gave the offer). "
+        "Anything else you write is talk, which is welcome and settles "
+        "nothing. A line that is nearly one of these is refused rather than "
+        "repaired, by name, with the reason -- and the reason comes to you "
+        "privately, so read your inbox when you are told one is waiting. "
+        "Four things cost whole episodes in the last game played here: "
+        "everything you hold is consumed at each bell, so PRODUCE again first, "
+        "every episode; an open offer reserves what it promises, so you cannot "
+        "offer the same goods twice; a trade needs both of you inside one "
+        "episode, so act at the start of one rather than the end; and this "
+        "manager's own announcements are not input -- copying the shape of a "
+        "line it wrote will be refused.")
+
+
 def who_is_at_this_table(table: Table) -> str:
     """Name the seats, out loud, before anybody speaks.
 
@@ -369,6 +404,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
                                    episode_seconds=episode_seconds,
                                    ack_seconds=ack_seconds))
     mgr.say(who_is_at_this_table(table))
+    mgr.say(house_rules())
 
     def until(deadline: float) -> None:
         while time.time() < deadline:

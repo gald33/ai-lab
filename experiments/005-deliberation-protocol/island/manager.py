@@ -628,9 +628,20 @@ class Manager:
                                        action.want, self.episode)
         self.settled += 1
         self._settled_this_episode += 1
+        # **The tail names the command, because the head taught the wrong one.**
+        # In g3 a trader copied this line's shape back as input -- `PROPOSE T1
+        # offers {...} to T2 for {...}` -- and lost four episodes to it. The
+        # rendering is the most frequent, most recent example of a proposal on
+        # the board, and it is not valid input; an agent that learns by reading
+        # the room learns from it.
+        #
+        # The prefix is unchanged on purpose: `verify.OFFER` parses it, and
+        # every board already saved has to stay checkable. Appending is safe
+        # because that pattern is anchored at the start and not the end.
         self.say(f"{pid}: {author} offers {action.give} to "
                                 f"{action.to} for {action.want} — open until "
-                                f"the bell")
+                                f"the bell. {action.to} takes it by writing "
+                                f"exactly: APPROVE {pid}")
 
     def _approve(self, author: str, action: Approve) -> None:
         if not self.episode_open:
