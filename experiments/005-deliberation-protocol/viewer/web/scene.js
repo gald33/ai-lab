@@ -990,6 +990,22 @@ export class Scene {
     // Behind the water, so it sets *into* the sea rather than on top of it.
     svg.append(this.sun());
     svg.append(this.water());
+    //: **The sunset is on the water, and under the land.**
+    //:
+    //: It used to be the last rect on the stack, over the whole frame, so a
+    //: dawn or a bell put a soft-light wash across the meadow, the sand, the
+    //: huts and the cards alike. Reported by eye as the island looking tinted.
+    //: A wash over everything is not what a low sun does to a landscape: it
+    //: lights the faces turned towards it and leaves the rest, and the one
+    //: surface that really does go the colour of the sky is the water, which
+    //: is reflecting it.
+    //:
+    //: So the rect is drawn here, after the sea and before the land, and the
+    //: z-order is the whole mechanism -- the sea takes the colour and nothing
+    //: standing on the island is touched by it. The model does the same thing
+    //: a different way, because with a canvas underneath the SVG this ordering
+    //: buys nothing: see `island-life.js`, which tints the sea's own material.
+    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "sky-burn" }));
     svg.append(this.land());
 
     // The cards go where the layout put them; the settlements go where the
@@ -1026,7 +1042,6 @@ export class Scene {
     // The colour the light turns as the sun goes, then the dark it leaves.
     // Both opacities are CSS, keyed off `.closed`: a state, not a pulse, so
     // scrubbing to a closed frame lands in the dark with no event played.
-    svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "sky-burn" }));
     svg.append(el("rect", { x: 0, y: 0, width: g.w, height: g.h, class: "night",
                             fill: "url(#dusk)" }));
     svg.append(this.campfire());

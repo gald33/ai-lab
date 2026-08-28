@@ -1049,6 +1049,38 @@ ambient #141 tuned. **Do not fix it by loosening `alive`'s threshold** — the
 question is whether the island should read warm at dusk on its own pixels, and
 if the answer is yes the fix is in the light, not in the bar.
 
+**The wash came off the land, and a warm sea could not be had.** Reported by
+eye, 2026-08-28: "the island seems tinted on dawn and dusk, maybe it's easier
+on the eyes if the sunrise and sunset only on the sea?" Both halves of that are
+right about what was wrong, and only one of them turned out to be buildable.
+
+The burn was the last rect on the SVG stack, over the whole frame — meadow,
+sand, huts and cards together. That is not what a low sun does to a landscape:
+it lights the faces turned towards it and leaves the rest, and the surface that
+really does go the colour of the sky is the water, which is reflecting it.
+
+- **The drawn island gets exactly what was asked for**, by z-order alone: the
+  burn rect is appended between `water()` and `land()`, so the sea takes the
+  colour and nothing standing on the island is touched.
+- **The model cannot be fixed that way** — the island is a canvas *behind* the
+  SVG, so no rect on top of it can spare the meadow. So the overlay is dropped
+  under `.has-3d` entirely and the modelled dusk is the key light on the faces
+  turned to it, which is where a sunset belongs anyway.
+- **Tinting the modelled sea itself was tried and reverted.** It is the obvious
+  way to put the sky on the water and it breaks the page: every check that
+  separates island from sea, and the letterbox band with them, calls a pixel
+  water only when `b > r + 16 && b > g + 4` (`LAND_JS` in
+  `viewer/tests/render.py`). A sea warmed to `0x5c4a63` stopped being sea by
+  that test — 29 failures, most of them cards and chrome suddenly "standing on
+  the island" because the water behind them now counted as land.
+
+**And the headroom is not merely small, it is already negative.** Measured with
+no tint at all: the lit band is `rgb(2,8,16)` at the open and `rgb(1,5,12)` at
+the bell — `b - r` of 14 and 11, against a bar of 17. Full dusk water only
+passes that test because `afloat` does not sample there. So there is no warm
+sea to be had at the ends of the day at any strength, and the thing to change
+first, if it is ever wanted, is the classifier rather than the colour.
+
 The lesson generalises past the sun: **on this island the lights are a shared
 resource and the greens have first claim on them.** Anything that wants to tint
 the whole scene should tint the one light that is actually casting, not the one
