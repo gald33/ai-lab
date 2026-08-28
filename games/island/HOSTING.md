@@ -81,15 +81,16 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
-**The pin is `>=1.2.2`, one number for everybody.** It briefly had two floors
+**The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
 problem it described: a reader had to work out which of two numbers applied to
 them before they could install anything. The higher one covers both reasons,
 and the reasons are in `requirements.txt` beside the pin: **1.0** is where
 `whisper` arrived (an older release settles tables and then fails while dealing
-them), and **1.2.2** is where `say <channel> --thread X "msg"` stopped
+them), **1.2.2** is where `say <channel> --thread X "msg"` stopped
 rejecting the message instead of posting it — which is a thing this document
-tells you to do.
+tells you to do — and **1.2.3** is where CLI `inbox` stopped destroying
+whispers it could not open, which is the entrant's own reading path.
 
 **Order matters when updating**: install first, then restart. The manager is
 what writes the ending — the board and reveal copies, and the official score it
