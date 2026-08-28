@@ -600,6 +600,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += emerging(browser, base, out)
             problems += island(browser, base, out)
             problems += whose(browser, base, out)
+            problems += surf(browser, base, out)
             problems += mechanics(browser, base, out)
             for board in boards:
                 problems += daylight(browser, base, board, out)
@@ -4509,6 +4510,86 @@ WHOSE = """async ({w, h, n, goods, turns}) => {
   return out;
 }
 """
+
+
+SURF = """async ({w, h}) => {
+  const THREE = await import('./vendor/three/three.module.js');
+  const { Stage } = await import('./stage.js');
+  const { layout } = await import('./scene.js');
+  const { dryEdge } = await import('./island3d.js');
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h; document.body.appendChild(cv);
+  const st = new Stage(cv, layout(2, false, w / h, {top: 0, foot: 0}));
+  st.pause();
+  st.build({traders: ['T1', 'T2'], goods: ['bread', 'cloth']});
+  st.pause();
+
+  const rings = [];
+  st.island.traverse((n) => { if (/^surf_ring/.test(n.name)) rings.push(n); });
+
+  //: The gap between a point of white water and the drawn sand on that same
+  //: bearing. A ring that is the coast's own outline, set out from it and
+  //: grown, has one gap all the way round -- give or take the tube's own
+  //: radius and the little the swell's scaling adds at the far bearings. A
+  //: ring that is any other shape does not, and the spread is how far out of
+  //: shape it is, in island units.
+  const spreads = [];
+  for (const t of [0, 0.7, 1.4, 2.1, 2.8, 3.5, 4.2]) {
+    st.life.update(t, st.ctx());
+    st.island.updateMatrixWorld(true);
+    for (const ring of rings) {
+      const pos = ring.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.count; i += 7) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(ring.matrixWorld);
+        const gap = Math.hypot(v.x, v.z) - dryEdge(v.x, v.z);
+        if (gap < lo) lo = gap;
+        if (gap > hi) hi = gap;
+      }
+      spreads.push({name: ring.name, t, spread: hi - lo});
+    }
+  }
+  return {rings: rings.length, spreads};
+}"""
+
+
+def surf(browser, base: str, out: Path) -> list[str]:
+    """The white water is the coast's shape, at every moment of the swell.
+
+    **Reported by eye -- "this swell isn\'t shaped like the island" -- and it
+    was not.** `shoreRing` sweeps the shore\'s own silhouette in the xz plane
+    and lies it flat with `scale.y = 0.5`; the swell in `island-life.js` then
+    grew it with `scale.set(s, s, 0.5)`, putting the growth on **y** and
+    pinning **z** at half. The outline was squashed to half its depth along
+    one world axis, so the surf ran as an ellipse over an island that is not
+    one -- buried under the sand on the bearings the squash pulled in, and a
+    long way out on the ones it did not touch.
+
+    Asked of the model: every point of every ring, against `dryEdge` on its
+    own bearing. Nothing here reads a pixel, so it cannot be argued with by
+    lighting or by where the camera happens to be.
+    """
+    page = browser.new_page(viewport={"width": 1000, "height": 800})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(f"{base}/")
+    page.wait_for_timeout(600)
+    got = page.evaluate(SURF, {"w": 1000, "h": 800})
+    bad = [f"surf: {e}" for e in errs]
+    if got["rings"] != 3:
+        bad.append(f"surf: {got['rings']} surf rings, expected 3")
+    #: 0.45 is comfortably above what a ring in shape ever shows -- the tube
+    #: is 0.075 thick, so 0.15 of the spread is the tube itself, and the
+    #: swell\'s scaling adds under 0.1 more at the widest bearings -- and far
+    #: below the two units the squashed ring showed.
+    for row in got["spreads"]:
+        if row["spread"] > 0.45:
+            bad.append(f"surf: {row['name']} at t={row['t']} runs "
+                       f"{row['spread']:.2f} nearer the sand on one bearing "
+                       f"than another; it is not the coast\'s shape")
+    page.close()
+    return bad
 
 
 def whose(browser, base: str, out: Path) -> list[str]:
