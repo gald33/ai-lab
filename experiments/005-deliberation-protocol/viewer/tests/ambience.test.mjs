@@ -32,12 +32,15 @@ class FakeCtx {
     this.sampleRate = 8000;          // small: the noise buffer is filled for real
     this.destination = node();
     this.started = { osc: 0, buf: 0 };
+    this.oscs = [];
   }
   createGain() { return node({ gain: new FakeParam(1) }); }
   createOscillator() {
     const self = this;
-    return node({ type: "sine", frequency: new FakeParam(440),
-                  start() { self.started.osc++; } });
+    const o = node({ type: "sine", frequency: new FakeParam(440),
+                     start() { self.started.osc++; } });
+    this.oscs.push(o);
+    return o;
   }
   createBufferSource() {
     const self = this;
@@ -143,6 +146,25 @@ test("the sun comes up over seconds, and takes the fire down with it", () => {
   const quiet = ctx.started.osc;
   a.sunrise();
   assert.equal(ctx.started.osc, quiet, "and none of it while the bed is off");
+  a.dispose();
+});
+
+test("the shine is bells and sparkle, and only sines", () => {
+  const { ctx, a } = bed();
+  a.start();
+  const before = ctx.started.osc, mark = ctx.oscs.length;
+  a.shine(0, 4);
+  const made = ctx.started.osc - before;
+  //: Four notes of the chord and eighteen sparkles, each a detuned pair plus
+  //: an inharmonic partial, over one riser. Counted rather than eyeballed
+  //: because "it is a cluster" is the whole difference from a chime.
+  assert.ok(made > 50, `a shine is a cluster, not a note (${made})`);
+  //: And every one of them a sine. The square wave is what made the quarry
+  //: unbearable, and the brightest thing on the island is the last place it
+  //: should come back: bright is not the same as sharp.
+  const sharp = ctx.oscs.slice(mark).filter((o) => o.type !== "sine");
+  assert.equal(sharp.length, 0,
+               `the shine has ${sharp.length} non-sine partial(s) in it`);
   a.dispose();
 });
 

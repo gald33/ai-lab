@@ -231,6 +231,14 @@ def main(argv: list[str] | None = None) -> int:
                 problems.append(f"the sunrise grows without brightening "
                                 f"({sunrise['earlyBright']:.3f} to "
                                 f"{sunrise['lateBright']:.3f})")
+            # And a ceiling on it, under the same rule the sites live by. The
+            # shine is the brightest thing on this island by design, which is
+            # exactly why it needs a bound: bright is not the same as sharp,
+            # and the quarry already proved how easily one becomes the other.
+            worst = max(s["bright"] / max(s["bedBright"], 1e-6) for s in sunrises)
+            if worst > 2.5:
+                problems.append(f"the sunrise is piercing rather than bright "
+                                f"(x{worst:.2f} the bed's brightness)")
             for name, runs in works.items():
                 heards = [(r["work"] / r["bed"])
                           / (c["work"] / c["bed"])

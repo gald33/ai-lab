@@ -1770,7 +1770,7 @@ always have had.
 | sea, wind | always, swelling on their own slow clocks |
 | gulls | the hour — most at dawn, none once the light has gone |
 | the fire at the centre | always, and it *is* the night |
-| the sun coming up | the day's open, over six seconds |
+| the sun coming up | the day's open: six seconds of swell, with the shine on top |
 | dolphins | nothing at all |
 | a site at work | a production receipt for that good, for 6.5s |
 | an event accent | the event, at 42% |
@@ -1901,6 +1901,46 @@ than the level, since level is the thing that was already there:
 | …and is heard over the bed it rises into | ×1.4 (it is ×1.7) |
 | night is louder than day | the bed at night ÷ the bed by day > 1.1 (×1.4) |
 | …and warmer than day | night brightness < day's (0.077 against 0.155) |
+
+### The light on top of it: a shine, from a reference
+
+Gal, 2026-08-28, pointed at a four-second game accent (Envato `shining` by
+TibaSFX — tagged *bless, enlightenment, grace, illumination, magic, shine*)
+and asked for something like it. **Like it, and not it.** What is taken is the
+idiom, which belongs to nobody: a cluster of bell partials with long tails,
+detuned in pairs so they beat against each other, sparkles scattered above,
+and a riser climbing underneath into the moment they land. No part of that
+recording is in this repository and nothing is fetched at runtime — the
+reference was read, not sampled.
+
+`Ambience.shine()` is that, and it is the top of the sunrise rather than a
+separate event: the swell is the sun's warmth and mass, the shine is the
+moment it clears the water. A struck partial is a detuned pair plus a quiet
+inharmonic at 2.76× (roughly where a struck bar puts its first overtone, and
+far enough off the octave to ring rather than to double the note); the sparkle
+climbs on average as it goes, because a sparkle that does not go anywhere is
+a wind chime.
+
+**It starts at 1.5s, and the check is why.** At 0.6s its riser and first
+sparkles fell inside the sunrise's own opening seconds and the gesture then
+*grew without brightening* — there was nothing left for the second half to be
+brighter than. Moving it later fixed the measurement and is also the truer
+thing: the sun is felt before it is seen.
+
+**Every partial in it is a sine, and that is asserted.** The brightest thing
+on this island is the last place the square wave should come back — bright is
+not the same as sharp, and the quarry proved how easily one becomes the other.
+`tests/ambience.test.mjs` counts the cluster (>50 oscillators, where a chime
+is three) and fails on any non-sine partial; `tests/audio.py` adds a *ceiling*
+to go with the brightening floor: the sunrise may not exceed 2.5× the bed's
+brightness.
+
+| the sunrise, measured | |
+|---|---|
+| swell | 0.0200 → 0.0425 (×2.1, floor ×1.3) |
+| brightening | 0.095 → 0.134 (×1.4, floor ×1.15) |
+| over the bed it rises into | ×2.0 (floor ×1.4) |
+| brightness against the bed | ×0.9 (ceiling ×2.5) |
 
 ### The check is seeded, and judged on its worst seed
 

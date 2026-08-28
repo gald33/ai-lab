@@ -451,6 +451,13 @@ export class Ambience {
     this.surf.filter.frequency.setTargetAtTime(1800, t + 1, 2);
     this.surf.filter.frequency.setTargetAtTime(900, t + DUR, 4);
 
+    //: The light itself, **after** the warmth rather than with it. Started
+    //: at 0.6s it put its riser and first sparkles inside the sunrise's own
+    //: first seconds, and the check caught what that costs: the gesture grew
+    //: without brightening, because there was nothing left for the second
+    //: half to be brighter *than*. The sun is felt before it is seen.
+    this.shine(t + 1.5, DUR * 0.73);
+
     //: The chorus. Not scheduled through `due` -- these are extra birds, on
     //: top of whatever the hour was already going to give.
     for (let i = 0; i < 7; i++) this.gull(t + 1.5 + this.rng() * 5, 0.5 + this.rng() * 0.7);
@@ -458,6 +465,105 @@ export class Ambience {
     //: A fire at sunrise is a fire being left.
     this.fire.gain.gain.cancelScheduledValues(t);
     this.fire.gain.gain.setTargetAtTime(this.fire.base * 0.5, t, 3);
+  }
+
+  /**
+   * The light itself: a bell-and-sparkle shimmer over the top of the swell.
+   *
+   * Asked for by Gal, 2026-08-28, pointing at a four-second game accent
+   * (Envato `shining`, tagged *bless, enlightenment, illumination, magic,
+   * shine*) and saying: synthesise something like this. **Like it, and not
+   * it** -- what is taken is the idiom, which is not anybody's property: a
+   * cluster of bell partials with long tails, detuned in pairs so they beat
+   * against each other, sparkles scattered above them, and a riser climbing
+   * underneath into the moment they arrive. No part of that recording is
+   * here, and nothing is fetched at runtime.
+   *
+   * Two things keep it from becoming the harsh mistake this file has already
+   * made once. Every partial is a **sine** -- the square wave is what made
+   * the quarry unbearable, and a bright sound is not the same thing as a
+   * sharp one -- and every envelope has a few milliseconds of attack, so a
+   * sparkle is struck rather than switched on.
+   */
+  shine(t, dur = 4.2) {
+    const ctx = this.ctx;
+    const shimmer = ctx.createGain();
+    shimmer.gain.value = 1;
+    shimmer.connect(this.gain);
+
+    //: C major with the second and sixth in it -- bright, and it resolves
+    //: nowhere, which is what lets it sit over a bed that is not in any key.
+    const NOTES = [523.25, 587.33, 659.25, 783.99, 880, 987.77,
+                   1046.5, 1174.66, 1318.51, 1567.98, 2093];
+
+    /** One struck partial with a long tail, as a pair a few cents apart. */
+    const bell = (freq, at, peak, ring) => {
+      for (const detune of [0.9985, 1.0015]) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq * detune;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(peak / 2, at + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+        o.connect(g).connect(shimmer);
+        o.start(at); o.stop(at + ring + 0.05);
+      }
+      //: A quiet inharmonic partial above each, which is the difference
+      //: between a bell and a flute. 2.76 is roughly where a struck bar puts
+      //: its first overtone, and it is far enough off the octave to ring
+      //: rather than to double the note.
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq * 2.76;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(peak * 0.18, at + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + ring * 0.55);
+      o.connect(g).connect(shimmer);
+      o.start(at); o.stop(at + ring * 0.6 + 0.05);
+    };
+
+    //: The riser: a sine climbing two and a half octaves into the moment the
+    //: bells land, with air behind it. It is what makes the arrival *arrive*
+    //: -- the bells alone are a chime, and a chime is what this replaced.
+    const r = ctx.createOscillator();
+    const rg = ctx.createGain();
+    const rf = ctx.createBiquadFilter();
+    r.type = "sine";
+    r.frequency.setValueAtTime(330, t);
+    r.frequency.exponentialRampToValueAtTime(1900, t + dur * 0.42);
+    rf.type = "lowpass";
+    rf.frequency.setValueAtTime(700, t);
+    rf.frequency.exponentialRampToValueAtTime(4200, t + dur * 0.42);
+    rg.gain.setValueAtTime(0.0001, t);
+    rg.gain.exponentialRampToValueAtTime(0.1, t + dur * 0.34);
+    rg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.52);
+    r.connect(rf).connect(rg).connect(shimmer);
+    r.start(t); r.stop(t + dur * 0.55);
+
+    //: The arrival: four notes of the chord together, low to high, each
+    //: ringing longer than the one before it.
+    const land = t + dur * 0.4;
+    [0, 3, 5, 7].forEach((i, k) => {
+      bell(NOTES[i], land + k * 0.05, 0.15 - k * 0.016, 2.4 + k * 0.5);
+    });
+
+    //: And the sparkle over it: grains climbing on average as the light
+    //: comes up, thickest just after the arrival and thinning into the tail.
+    //: The climb is the point -- a sparkle that does not go anywhere is a
+    //: wind chime.
+    const grains = 18;
+    for (let i = 0; i < grains; i++) {
+      const p = i / grains;
+      const at = t + dur * 0.18 + p * dur * 0.72 + this.rng() * 0.12;
+      //: Weighted to the top of the set as it goes on, rather than jumping
+      //: there: the low notes thin out, the high ones do not start at once.
+      const lo = Math.floor(p * (NOTES.length - 5));
+      const note = NOTES[lo + Math.floor(this.rng() * 5)];
+      bell(note, at, 0.04 + this.rng() * 0.045, 0.5 + this.rng() * 1.1);
+    }
+    return shimmer;
   }
 
   /** The bell: the fire comes up as the light goes, and is heard doing it. */
