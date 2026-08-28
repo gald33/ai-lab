@@ -1998,6 +1998,43 @@ brightness.
 | over the bed it rises into | ×2.0 (floor ×1.4) |
 | brightness against the bed | ×0.9 (ceiling ×2.5) |
 
+### The bell is the top of the register
+
+Reported by ear, 2026-08-28: the box flying is too high against everything
+else. Measured at once, and it was not a close thing —
+
+| voice | rang at |
+|---|---|
+| **settled** | **~1019 Hz** |
+| offer | ~763 Hz |
+| bell | ~539 Hz |
+| refused | ~232 Hz |
+| produced | ~162 Hz |
+| open | ~97 Hz |
+
+`settled` was not merely the highest accent; it was **higher than the bell**,
+and the bell is the one voice this island lets sit over everything — the day
+ending is the loudest fact on the board. A settlement plays while goods cross
+the ground between two huts, and the offer's pill rides its rope to the same
+kind of sound, so what a spectator heard was **a box in the air pitched above
+the end of the day**.
+
+Both dropped an octave. The chords are unchanged in shape — a fifth with a
+third over it for a settlement, two notes up and unresolved for an offer —
+only their register moved: settled now rings at ~509 Hz and offer at ~378 Hz,
+both under the bell.
+
+The rule is now a check rather than a memory. `tests/audio.py` renders every
+voice alone, takes its pitch by zero-crossing rate (a fair proxy for signals
+this simple, and it needs no FFT) and fails any voice that rings above the
+bell. It fails on the old frequencies and passes on the new — verified by
+putting them back, which is the only way to know a check works.
+
+That is three ear-reports in a row that measurement had passed: the sites
+being inaudible, the quarry being harsh, and this. Each one became a check
+afterwards, and none of the three was found by one. **The ear goes first
+here; the checks are what stop a fixed thing from coming back.**
+
 ### The check is seeded, and judged on its worst seed
 
 Everything intermittent here is scheduled at random, and while tuning the

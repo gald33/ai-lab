@@ -56,6 +56,39 @@ SECONDS = 12
 #: one seed in three is a site whose margin is the scheduler's luck.
 SEEDS = (1, 7, 12345)
 
+#: Every accent voice, rendered alone and measured by zero-crossing rate --
+#: a fair pitch proxy for signals this simple, and it needs no FFT.
+#:
+#: The rule it holds is the island's own: **the bell is the top of the
+#: register.** It is the one voice the design lets sit over everything, the
+#: day ending being the loudest fact on the board -- so nothing else may ring
+#: above it. `settled` did, at ~1019Hz against the bell's ~539, and since a
+#: settlement plays while goods cross the ground between two huts, what a
+#: spectator heard was a box in the air pitched above the end of the day. It
+#: was reported by ear before it was ever measured.
+VOICE_PITCH = """
+async () => {
+  const { VOICES } = await import('./island-sound.js');
+  const out = {};
+  for (const name of Object.keys(VOICES)) {
+    const ctx = new OfflineAudioContext(1, 44100 * 3, 44100);
+    VOICES[name](ctx, ctx.destination, 0);
+    const d = (await ctx.startRendering()).getChannelData(0);
+    let cross = 0, last = 0, voiced = 0, peak = 0;
+    for (let i = 1; i < d.length; i++) {
+      peak = Math.max(peak, Math.abs(d[i]));
+      if (Math.abs(d[i]) < 1e-4) continue;
+      voiced++;
+      const sign = d[i] > 0 ? 1 : -1;
+      if (last && sign !== last) cross++;
+      last = sign;
+    }
+    out[name] = { pitch: voiced ? cross / 2 / (voiced / 44100) : 0, peak };
+  }
+  return out;
+}
+"""
+
 MEASURE = """
 async ([secs, good, day, closed, seed]) => {
   const { Ambience } = await import('./island-ambience.js');
@@ -250,6 +283,22 @@ def main(argv: list[str] | None = None) -> int:
                 if worst < FLOOR:
                     problems.append(f"{name} at work cannot be heard over the bed "
                                     f"(x{worst:.2f} on its worst seed, floor x{FLOOR})")
+            voices = page.evaluate(VOICE_PITCH)
+            bell = voices.get("bell", {}).get("pitch", 0)
+            for name, v in sorted(voices.items(), key=lambda kv: -kv[1]["pitch"]):
+                if args.verbose:
+                    print(f"{('voice: ' + name):32} ~{v['pitch']:.0f} Hz  "
+                          f"peak {v['peak'] * MASTER:.3f}")
+                if v["peak"] * MASTER >= 0.99:
+                    problems.append(f"the {name} voice clips ({v['peak'] * MASTER:.2f})")
+            if not bell:
+                problems.append("the bell voice made no sound at all")
+            for name, v in voices.items():
+                if name != "bell" and v["pitch"] > bell:
+                    problems.append(
+                        f"the {name} voice rings above the bell "
+                        f"(~{v['pitch']:.0f}Hz against ~{bell:.0f}Hz): the bell is the "
+                        f"one voice this island lets sit over everything")
             browser.close()
     finally:
         server.shutdown()
