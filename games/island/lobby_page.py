@@ -214,6 +214,9 @@ a.watchbtn.recording{border-color:var(--surf);color:var(--surf)}
 a.watchbtn:hover{filter:brightness(1.12)}
 .watchnote{color:var(--muted);font-size:.8rem;margin-left:.5rem}
 .age{color:var(--muted);font-size:.85rem}
+.cd{font-variant-numeric:tabular-nums}
+.cd.soon{color:var(--sky-set);font-weight:700}
+.cd.now{color:var(--ink);font-weight:700}
 .age.stale{color:var(--sky-set);font-weight:700}
 table{border-collapse:collapse;width:100%;margin:.7rem 0 0;font-size:.9rem}
 td{padding:.28rem .5rem .28rem 0;vertical-align:top;border-top:1px solid var(--line)}
@@ -331,6 +334,68 @@ def _age(now: float) -> str:
             f":'STALE — this page has not been rewritten for '+a+'s. "
             f"The lobby behind it may have stopped.';}}"
             f"tick();setInterval(tick,1000);}})();</script>")
+
+
+#: Inside this many seconds a countdown is worth looking at rather than
+#: reading past: about the time it takes to start an agent and have it reach
+#: the room. Purely presentational -- nothing in the game turns on it.
+SOON = 120
+
+
+def _countdown(left: float, *, prefix: str, at: str = "", after: str = "") -> str:
+    """A number of seconds, ticking down in the reader's browser.
+
+    **It counts down from the server's number, not towards the server's
+    clock**, and that is the whole of the design. The obvious version puts the
+    absolute instant in the page and has the browser subtract `Date.now()`;
+    that reads a browser whose clock is a few minutes fast as "opened 3m ago"
+    for a table that has not opened, and one running slow as "opens in 3m" for
+    a table already playing. A lobby that tells a reader the game has started
+    when it has not is worse than a lobby that says nothing.
+
+    So the page carries how long was left *when it was written*, and the
+    script subtracts only time it has measured itself since the script ran.
+    That depends on no absolute clock at all, and the error it can accumulate
+    is bounded by `PAGE_REFRESH`, because the next rewrite replaces the
+    number. `_age` reasons the other way round on purpose -- it is measuring
+    the page's own staleness, where trusting the reader's clock is what makes
+    a dead host visible.
+
+    `at` is the absolute UTC time, kept beside it so a reader with no script
+    still has the one thing they need, and so two people comparing pages have
+    a fixed point to compare. `after` is what to say once it reaches zero.
+    """
+    left = max(0.0, left)
+    shown = f"{prefix} {_span(left)}" + (f" ({at})" if at else "")
+    return (f"<span class=cd data-left='{left:.0f}' data-prefix='{html.escape(prefix)}' "
+            f"data-at='{html.escape(at)}' data-after='{html.escape(after)}'>"
+            f"{html.escape(shown)}</span>")
+
+
+def _span(seconds: float) -> str:
+    """Seconds as a person reads them. Minutes only once there are minutes:
+    "in 90s" is a clearer thing to wait out than "in 1m 30s"."""
+    seconds = int(max(0.0, seconds))
+    if seconds < 60:
+        return f"in {seconds}s"
+    return f"in {seconds // 60}m {seconds % 60:02d}s"
+
+
+#: One script for every countdown on the page. It runs once, measures its own
+#: elapsed time, and never reads a wall clock -- see `_countdown`.
+_TICKER = f"""<script>(function(){{
+var t0=Date.now(),els=[].slice.call(document.querySelectorAll('.cd'));
+function span(s){{s=Math.max(0,Math.round(s));
+  return s<60?'in '+s+'s':'in '+Math.floor(s/60)+'m '+('0'+(s%60)).slice(-2)+'s';}}
+function tick(){{
+  var gone=(Date.now()-t0)/1000;
+  els.forEach(function(e){{
+    var left=+e.dataset.left-gone;
+    if(left<=0){{e.className='cd now';e.textContent=e.dataset.after;return;}}
+    e.className='cd'+(left<={SOON}?' soon':'');
+    e.textContent=e.dataset.prefix+' '+span(left)
+      +(e.dataset.at?' ('+e.dataset.at+')':'');}});}}
+tick();setInterval(tick,1000);}})();</script>"""
 
 
 #: Where the whole brief lives, for an agent that can fetch a page.
@@ -584,14 +649,23 @@ def render(lobby: Lobby, *, now: float | None = None,
             notes.append("settled" + (" · sealed" if table.sealable() else
                                       " · <b>practice</b>, the private half would be public"))
             if table.opens_at:
-                notes.append("opens " + time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at)))
+                # The one time on this page a reader is actually waiting for.
+                # It was a bare `opens 19:40:00Z` -- correct, in a timezone the
+                # reader is not in, on a page that had already been sitting in
+                # their browser for some fraction of a refresh interval.
+                notes.append(_countdown(
+                    table.opens_at - now, prefix="opens",
+                    at=time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at)),
+                    after="the game has started"))
         elif not table.lapsed:
-            left = int(table.opened_at + lobby.table_ttl - now)
+            left = table.opened_at + lobby.table_ttl - now
             waiting = _waiting_for(table)
             if waiting:
                 notes.append(f"<b>{waiting}</b>")
-            notes.append(f"lapses in {max(0, left // 60)}m {max(0, left % 60)}s "
-                         f"if it does not fill and find a manager")
+            notes.append(_countdown(
+                left, prefix="lapses",
+                after="lapsed, unless somebody took the last seat just now")
+                + " if it does not fill and find a manager")
         if table.manager:
             notes.append(f"managed by {html.escape(table.manager)}")
         watching = live_state(table, live_dir)
@@ -640,6 +714,7 @@ def render(lobby: Lobby, *, now: float | None = None,
 <p class=sub>Tables on <code>{html.escape(lobby.client.config.workspace)}</code>
 — {html.escape(counts)}.<br>
 {_age(now)}</p>
+{_TICKER}
 <p class=sub><b>You do not play this yourself — your agent does.</b>
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent
