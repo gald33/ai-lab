@@ -2087,11 +2087,54 @@ FAIL: the bed is dwarfed by the accents over it (the world peaks at 0.056,
       one voice at 0.125)
 ```
 
+### The checks were measuring a page nobody hears
+
+Reported 2026-08-28: all the sounds are too weak, I can't hear any of it. Then,
+minutes later, unprompted: *now I do hear everything. weird.*
+
+**Nothing in this repository had changed in between.** What changed was GitHub
+Pages: run 74 published the merge that took `BED` from 0.5 to 1.15 at
+09:07:44Z, and the report was made against the deploy before it. So the level
+that sounded broken is the level that sounds right, heard on a stale page, and
+the honest response was to change nothing — the sweep of `MASTER` values that
+was underway when the second message arrived was thrown away.
+
+*Worth writing down for the next time a sound report arrives:* **ask what is
+deployed before touching a number.** The viewer publishes on a push to `main`
+and a listener is usually a minute or two behind it.
+
+But the round found a real defect anyway, in the checks rather than the sound.
+`tests/audio.py` rendered the island straight at the destination and then
+multiplied by its own copy of `MASTER` — so it modelled the master gain and
+**ignored the limiter under it entirely**, and every number it had ever printed
+was a level no listener hears. Renders now go through `outputChain()`, exported
+from `island-sound.js` and used by the page itself, so there is one definition
+of what sits between the island and the speakers.
+
+That is also what let the band below be set honestly. The bed's floor is not a
+round number anybody liked:
+
+| heard | bed RMS out |
+|---|---|
+| `BED` 0.5, "I can't hear any of it" | 0.009 |
+| `BED` 1.15, "now I do hear everything" | 0.021 |
+
+The floor sits between them, at 0.015 — it fails the configuration a listener
+rejected and passes the one they accepted, and that is the whole of its
+justification. Every threshold in that file chosen by taste has been wrong at
+least once; these are the only two numbers in it that a pair of ears has ruled
+on directly. The ceiling (0.09) is still the old rule, still untested by
+anybody's ear, and worth remembering when it first fails.
+
 ### Listening to it is part of the harness now
 
 `python viewer/tests/audio.py --wav DIR` writes the day bed, the night, the
 sunrise and every site at work as WAVs, through the page's own master gain and
 boosted for headphones.
+
+The files are what the page plays, at its own gain — **they used to be boosted
+3.2×**, which meant they sounded right while the page was 20dB down, and the
+boost was hiding the very thing it existed to reveal.
 
 It is in the repository for the reason the table above shows twice over:
 **every complaint that mattered was heard by a person and measured only

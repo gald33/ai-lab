@@ -35,10 +35,37 @@ import { Ambience } from "./island-ambience.js";
 
 const KEY = "island:sound";
 
-//: Peak of the master gain, well under 1: the bed, a site at work and several
-//: voices can overlap on a busy settlement, and the sum -- not the loudest --
-//: is what clips.
+//: The master gain, and the limiter under it.
+//:
+//: **These numbers are as they were, and that is the finding.** Reported by
+//: ear on 2026-08-28 as all the sounds being too weak to hear -- and then,
+//: minutes later, as fine. What had changed in between was not this file: it
+//: was GitHub Pages, publishing the merge that took `BED` from 0.5 to 1.15
+//: (run 74, 09:07:44Z). The report was made against the deploy before it. So
+//: the gain that sounded broken was the gain that sounds right, heard on a
+//: stale page, and the honest response to it is to change nothing here.
+//:
+//: What did change is what the check measures. Until now `tests/audio.py`
+//: multiplied by a copy of `MASTER` and ignored the limiter entirely, so it
+//: was reporting a level no listener ever hears. `outputChain()` below exists
+//: so the page and the check share one definition and the numbers mean
+//: something. Measured through it, this pair puts the bed at an RMS of 0.021
+//: with peaks near 0.13, and **that is the configuration a listener has
+//: said is right** -- which is what the band in the check is anchored to,
+//: rather than to anybody's idea of what a bed should measure.
 const MASTER = 0.32;
+
+//: The compressor under it, named beside the gain rather than buried in the
+//: constructor.
+//:
+//: **It is not really a limiter, whatever the comment here used to say.** A
+//: limiter sits above everything and catches only what would clip; a threshold
+//: of -14dB at 8:1 is under most of this island most of the time, so it is
+//: compressing the bed, the sites and the accents continuously. Whether that
+//: is right is a question for an ear, and the ear that has ruled on this
+//: configuration said it sounds right -- so it stays, described accurately,
+//: rather than being "corrected" into something nobody has heard.
+const LIMIT = { threshold: -14, ratio: 8 };
 
 //: What an event voice keeps now that there is a world under it. Set by
 //: listening: at full level the accents sat on top of the bed and the island
@@ -55,6 +82,33 @@ const FLOOR_MS = 90;
 const BUDGET = 6, BUDGET_MS = 700;
 
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+/**
+ * Everything between the island and the speakers, built once here.
+ *
+ * Exported because `tests/audio.py` renders through it: measuring the island
+ * *before* the master gain is measuring something no listener hears, and that
+ * is exactly how a page nobody could hear passed every check. One definition,
+ * used by the page and by the thing that checks the page.
+ */
+export function outputChain(ctx) {
+  const master = ctx.createGain();
+  master.gain.value = MASTER;
+  //: A limiter, not a taste: a bell landing on a settlement landing on a busy
+  //: quarry would otherwise clip, and clipping is the one artefact a listener
+  //: reads as broken rather than loud.
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = LIMIT.threshold;
+  limiter.ratio.value = LIMIT.ratio;
+  master.connect(limiter).connect(ctx.destination);
+  //: The voices go through their own gain rather than being written quieter
+  //: one by one: their levels are set against each other, and a single bus is
+  //: what keeps that balance while moving all of them.
+  const accent = ctx.createGain();
+  accent.gain.value = ACCENT;
+  accent.connect(master);
+  return { master, accent, limiter };
+}
 
 export class Sound {
   constructor() {
@@ -109,21 +163,9 @@ export class Sound {
     if (!Ctx) return false;
     try {
       this.ctx = new Ctx();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = MASTER;
-      //: A limiter, not a taste: two settlements landing on the same frame
-      //: would otherwise clip, and clipping is the one artefact a listener
-      //: reads as broken rather than loud.
-      const squeeze = this.ctx.createDynamicsCompressor();
-      squeeze.threshold.value = -14;
-      squeeze.ratio.value = 8;
-      this.master.connect(squeeze).connect(this.ctx.destination);
-      //: The voices go through their own gain rather than being written
-      //: quieter one by one: their levels are set against each other, and a
-      //: single bus is what keeps that balance while moving all of them.
-      this.accent = this.ctx.createGain();
-      this.accent.gain.value = ACCENT;
-      this.accent.connect(this.master);
+      const chain = outputChain(this.ctx);
+      this.master = chain.master;
+      this.accent = chain.accent;
       this.bed = new Ambience(this.ctx, this.master);
       return true;
     } catch { this.ctx = null; return false; }
