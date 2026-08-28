@@ -573,9 +573,28 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   // is whatever the ambient and the fill say it is -- and a cool ambient held
   // fixed makes the last light of the day read *bluer* than midday, which is
   // the one thing dusk is not.
-  const skyDawn = new THREE.Color(0xd8c2c6);
+  //
+  //: **But the warmth is the key's, not the ambient's**, and putting it in
+  //: the ambient is what turned the trees and the hill yellow. The ambient
+  //: reaches every face, including the ones the low sun has stopped touching,
+  //: so a warm mauve ambient (`0xa08a90`, and `0xd8c2c6` at dawn) multiplied
+  //: the island's green by an orange nothing was casting: measured over the
+  //: rendered grass -- meadow, upland, ridge, canopies, fronds -- 60% of it
+  //: came out on the yellow side of 90 degrees at `day` 0.95, against 0% for
+  //: the whole middle of the day. That is the report, and it is why the
+  //: campfire's reach (which is real, and was fixed first) was not the end of
+  //: it.
+  //:
+  //: Twilight is a cool sky with one warm light in it. The key keeps its
+  //: sunset colour and the ambient goes to what the sky over an island
+  //: actually is at that hour, so the warmth in the picture is what the sun
+  //: is still touching. The sand still reads warm (hue ~22 at `day` 0.95) and
+  //: the grass comes back to a leaf. Measured on the rendered pixels by
+  //: `twilight` in `viewer/tests/render.py`, which is the reproduction:
+  //: `python viewer/tests/render.py`.
+  const skyDawn = new THREE.Color(0xb3bccb);
   const skyNoon = new THREE.Color(0xbcd2dd);
-  const skyDusk = new THREE.Color(0xa08a90);
+  const skyDusk = new THREE.Color(0x8497b0);
   //: The far side of the sky, which the fill stands in for. Cyan while the sea
   //: is bright, deep indigo once the sun is down -- and **not** dimmed to
   //: nothing, because by then the key grazes the island and lights almost
