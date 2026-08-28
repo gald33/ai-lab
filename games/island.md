@@ -799,6 +799,27 @@ Two rules hold this together and neither is new:
   game is placed among its own format and nowhere else. Ties share a place;
   breaking them by the clock would rank the clock.
 
+### All games are saved forever
+
+Decided by Gal, 2026-08-28, when the host operator asked whether `--keep`
+should prune the live copies too. It should not, and neither should anything
+else: **a spectator link, once handed out, keeps working.**
+
+The reason is the one the host operator raised while arguing the other way:
+pruning a live copy breaks that game's link *silently*, because the `finished`
+block goes on naming files that are no longer there. A link that dies loudly is
+a promise kept badly; a link that dies quietly is the failure this repository
+keeps writing rules against. The alternative designs — a separate `--keep-live`
+number, or an "this replay has expired" state on the page — both exist to make
+deletion survivable, and neither is needed once nothing is deleted.
+
+It is cheap: 108K of records and 28K of live copies after one game, so a
+thousand games is about 25MB. It is written in `HOSTING.md` as well as here,
+because the person who needs it is running the box rather than reading this.
+
+*This also settles what `--keep` is for*: it is the flag for somebody else's
+disk, not for ours. The lab's own host leaves it unset.
+
 ### The board was ranking practice games, and had been all along
 
 *Corrected 2026-08-28, in the same change.* This document has said since the
