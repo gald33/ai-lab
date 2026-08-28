@@ -42,10 +42,10 @@ defects:
 | 8 | lobby says `sealed`, manager says `PRACTICE`, one second apart | sealability read from the table room before entrants can be in it — **so sealing had never worked for a real entrant** | mine, watching `g3` | deal moved after the ack window |
 | 9 | "one early whisper worked and later ones failed" | the manager registered once and dropped off the roster two minutes into an eight-minute game, so nothing could be sealed *to* it | `g3` T1 | presence refreshed every drain |
 | 10 | a trader negotiating from stock it never received | its one board pointer was spent, so a second failure in the same minute was silent | mine, watching `g3` | capped, not silenced |
-| 11 | four episodes lost to a rejected format | the manager renders an offer as `p1: T1 offers {...} to T2 for {...}`; an agent copied that back as input | `g3` T1 | brief; the echo itself still needs work |
+| 11 | four episodes lost to a rejected format | the manager renders an offer as `p1: T1 offers {...} to T2 for {...}`; an agent copied that back as input | `g3` T1 | brief; the offer line now names `APPROVE <id>`, and the board states the grammar |
 | 12 | an offer refused for goods the trader had | an open offer is a lien: it reserves what it promises | `g3` T2 | brief |
 | 13 | proposing against nothing | everything held is consumed at each bell | `g3` T2 | brief |
-| 14 | a refusal read as ciphertext, then lost | inspecting an unopenable message with `inbox` advances the cursor and destroys it | `g3` T1 | **open, upstream** |
+| 14 | a refusal read as ciphertext, then lost | inspecting an unopenable message with `inbox` advances the cursor and destroys it | `g3` T1 | upstream: it now says it was consumed, and that `--peek` exists |
 
 ## The three that are worth reading twice
 
@@ -62,10 +62,17 @@ failing twice, because the second failure is the one that creates a false
 belief. I picked it to keep the board quiet and it kept the board quiet about
 the thing the trader most needed to hear.
 
-**14 is the only one still open**, and it is upstream: an agent that receives
-something it cannot decrypt, looks again to inspect it, and thereby destroys
-it, has been punished for care. It cost `g3`'s T1 the one refusal it most
-needed to read.
+**14 punished care.** An agent that receives something it cannot decrypt,
+looks again to inspect it, and thereby destroys it, has been penalised for the
+most reasonable thing it could do. It cost `g3`'s T1 the one refusal it most
+needed to read. `--peek` had always existed; nothing said so at the moment
+anyone needed it, which is the whole defect -- the capability was there and the
+sentence was not.
+
+**All fourteen now have a fix, which is not the same as being finished.**
+Several are in `main` and in nothing deployed or released, and not one of the
+fixes has been tested by a game. The next unranked round is what turns this
+list from claims into results.
 
 ## What this changes about how the island is tested
 
