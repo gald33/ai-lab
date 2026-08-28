@@ -136,3 +136,41 @@ def test_nothing_is_pointed_at_before_it_is_there(tmp_path, monkeypatch):
 
     assert seen == ["board-g1.json", "reveal-g1.json", "g1.json"], (
         "the live file was updated before what it points at existed")
+
+
+def test_the_official_score_travels_with_the_handover(tmp_path):
+    """A spectator gets the ledger's answer, not the page's own arithmetic.
+
+    `live.finish` never computes a score: it carries the one
+    `viewer/scores.py:standing` read back out of the ledger the game was just
+    written into. Two scoring surfaces would be two official scores for one
+    game.
+    """
+    path = _live_file(tmp_path)
+    board = tmp_path / "board.json"
+    board.write_text("{}")
+    reveal = tmp_path / "reveal.json"
+    reveal.write_text("{}")
+    told = {"capture": 0.41, "eff_round": 0.72, "floor": 0.60, "ranked": True,
+            "place": 2, "of": 7, "best": 0.63,
+            "label": "2 traders · 4 goods · 3 episodes",
+            "traders": [{"slot": "T1", "ratio": 1.2, "place": 3, "of": 14}]}
+
+    live.finish(path, board=board, reveal=reveal, standing=told)
+
+    saved = json.loads(path.read_text())["finished"]
+    assert saved["standing"] == told
+    assert saved["reveal"] == "reveal-g1.json", "the replay still points home"
+
+
+def test_a_game_with_no_standing_still_hands_over(tmp_path):
+    """An older runner, or a run with no ledger, ends as it always did rather
+    than not ending at all."""
+    path = _live_file(tmp_path)
+    for name in ("board.json", "reveal.json"):
+        (tmp_path / name).write_text("{}")
+
+    live.finish(path, board=tmp_path / "board.json",
+                reveal=tmp_path / "reveal.json")
+
+    assert "standing" not in json.loads(path.read_text())["finished"]

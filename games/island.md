@@ -771,6 +771,54 @@ spectator's. And it does not reach a room read straight from a hub
 (`?invite=`, `hubFeed`): there is no manager writing files beside that, so
 such a page ends as it always did, and says so.
 
+**The official score and the place come with it, from the ledger.** Decided by
+Gal, 2026-08-28: a game has to end in an official score and an official rank,
+seen immediately, without going anywhere else for them. So the handover carries
+a third thing — `viewer/scores.py:standing`, read back out of the ledger the
+game has just been written into, after the ingest rather than before it. The
+ending prints `capture` (what fraction of the gains this island actually had on
+the table was taken), the raw efficiency and the autarky floor beside it, the
+game's place among the games that played **its own format**, and each seat's
+place among every seat that played that format.
+
+Two rules hold this together and neither is new:
+
+- **One ranking rule, in the file that owns it.** The page prints what it was
+  handed and computes no ranking of its own. A viewer doing its own arithmetic
+  on a reveal sidecar would be a second scoring surface, and the failure it
+  produces is two different official scores for one game, both defensible.
+  It is also why the standing is read *after* the ledger row is written: the
+  official score is the one the board will still give a year later.
+- **A place is only ever against the same level.** `capture` makes two islands
+  comparable by scoring each against what its own island had on the table.
+  Nothing makes two *formats* comparable — four traders face a different
+  frontier from two, thirty episodes is more room to learn than three — so a
+  game is placed among its own format and nowhere else. Ties share a place;
+  breaking them by the clock would rank the clock.
+
+### The board was ranking practice games, and had been all along
+
+*Corrected 2026-08-28, in the same change.* This document has said since the
+practice rule was written that a game played in the clear is "kept, counted and
+never ranked", and `run_game.record` has written `practice: true` on every such
+game. `viewer/scores.py` read neither. Its ranked set was "finished, scorable,
+uninterrupted" and nothing else, so a practice game — every trader able to read
+every other trader's tastes — sat on the leaderboard beside sealed ones and
+could have topped it.
+
+**A rule that lives only in prose is one the code does not have**, and this is
+the second time that shape of defect has been recorded here (the first was the
+`ask`/`whisper` rename that landed on one surface before the other). The fix is
+`scores.why_not_ranked`, now the single place that decides, naming each reason
+apart from the others: `practice`, `company`, `unfinished`, `not_scored`. Both
+the board and the after-game standing ask it, so they cannot drift.
+
+What it costs: the one real island game in the ledger leaves the ranking — the
+board reads `72 ranked of 73 games`, with `held out of the ranking: practice 1`
+printed beside it. **It is still in every denominator**, which is the whole
+point: dropping what went wrong is choosing a population after seeing the
+results, and holding it out of a *ranking* is not dropping it from the record.
+
 The wrapper stays a separate project that plugs into the published viewer for
 its data stream rather than living inside Switchboard, and a hosted game points
 at the managed hub by default.

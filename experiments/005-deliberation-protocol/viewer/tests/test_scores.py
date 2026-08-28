@@ -447,3 +447,100 @@ def test_adding_a_five_good_level_leaves_the_recorded_ones_alone():
         "every recorded round was played over four goods; if that stops being "
         "true this test is the wrong shape, not the ledger")
     assert (2, 5, 3) not in before
+
+
+# --- the official score, and who may have one ---------------------------------
+#
+# What a spectator is shown the moment a game ends. The rule these test is the
+# standing one: the weaker thing is kept, is counted, and is never allowed to
+# look like the stronger one -- so a practice game keeps its numbers, stays in
+# every denominator, and has no place.
+
+def _ledger_of(tmp_path, n=3, **rowfix):
+    ledger = tmp_path / "ledger.jsonl"
+    for path in RECORDS[:n]:
+        scores.ingest(path, ledger=ledger)
+    rows = scores.load(ledger)
+    for row in rows:
+        row.update(rowfix)
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return ledger, rows
+
+
+def test_a_practice_game_keeps_its_numbers_and_never_gets_a_place(tmp_path):
+    """The correction of 2026-08-28. `games/island.md` has said from the start
+    that a practice game is never ranked and the run record has said
+    `practice: true`; nothing in this file read either, so the board ranked
+    them. A rule that lives only in prose is one the code does not have."""
+    ledger, rows = _ledger_of(tmp_path)
+    played = scores.games(scores.load(ledger))
+    one = played[0]
+    assert scores.is_ranked(one), "a sealed game is ranked"
+
+    _, rows = _ledger_of(tmp_path, arm="practice")
+    played = scores.games(scores.load(ledger))
+    assert [scores.why_not_ranked(g) for g in played] == ["practice"] * len(played)
+
+    data = scores.boards(scores.load(ledger))
+    assert data["totals"]["ranked"] == 0
+    # Kept and counted: out of the ranking is not out of the record.
+    assert data["totals"]["games"] == len(played)
+    assert data["totals"]["rounds"] == len(rows)
+    assert data["totals"]["held_out"] == {"practice": len(played)}
+
+    told = scores.standing(scores.load(ledger), played[0]["game_id"])
+    assert told["ranked"] is False and told["why"] == "practice"
+    assert told["capture"] is not None, "the score is kept, only the place goes"
+    assert "place" not in told
+
+
+def test_the_official_score_is_the_place_among_the_same_format(tmp_path):
+    """What the ending shows: this game's capture, and where it stands among
+    the games that played its own format -- never against another format."""
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    everything = scores.games(rows)
+    # A level with more than one score on it, and no two of them equal: ties
+    # are a real case and get their own test below.
+    by_level = {}
+    for g in everything:
+        by_level.setdefault(tuple(g["level"]), []).append(g)
+    played = sorted(next(v for v in by_level.values()
+                         if len(v) > 1 and len({g["capture"] for g in v}) == len(v)),
+                    key=lambda g: -g["capture"])
+    best, worst = played[0], played[-1]
+
+    top = scores.standing(rows, best["game_id"])
+    assert top["ranked"] and top["place"] == 1 and top["first"] is True
+    assert top["of"] == len(played)
+    assert top["capture"] == best["capture"] == top["best"]
+    assert top["label"] == scores.level_label(tuple(best["level"]))
+
+    last = scores.standing(rows, worst["game_id"])
+    assert last["place"] == len(played) and last["first"] is False
+    assert last["best"] == best["capture"], "the leader is named, not implied"
+
+    # A seat is placed among every seat that played this format, because a
+    # ratio is a pure number against that trader's own baseline.
+    field = sum(len(g["ratios"]) for g in played)
+    assert all(t["of"] == field and 1 <= t["place"] <= field
+               for t in top["traders"])
+
+
+def test_two_games_that_captured_the_same_share_a_place(tmp_path):
+    """Breaking a tie by when it was recorded would rank the clock."""
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    by_capture = {}
+    for g in scores.games(rows):
+        by_capture.setdefault((tuple(g["level"]), g["capture"]), []).append(g)
+    tied = max(by_capture.values(), key=len)
+    assert len(tied) > 1, "no tie in the fixtures to test against"
+
+    places = [scores.standing(rows, g["game_id"])["place"] for g in tied]
+    assert len(set(places)) == 1, "the same result was given different places"
+
+
+def test_a_game_the_ledger_never_saw_has_no_standing(tmp_path):
+    ledger, _ = _ledger_of(tmp_path, n=1)
+    assert scores.standing(scores.load(ledger), "no-such-game") is None
