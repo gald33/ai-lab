@@ -1030,8 +1030,9 @@ That is fine, because neither event was ever carried by the island:
 * an **offer** is the **rope** — a line across the frame from the maker to the
   taker, labelled with what is on the table, its dashes crawling toward the
   trader it is addressed to;
-* a **refusal** is the **bubble over the hut** with a cross in it, and the red
-  outline round the trader's card.
+* a **refusal** is the **offer blinking red** with a ✗ on its pill — and, only
+  when the manager named no offer this page is holding, the **bubble over the
+  hut** with a cross in it, and the red outline round the trader's card.
 
 Both are SVG over the canvas. So `mechanics` — which drives a bare stage with
 no scene on it, and cannot see either — lets those two off its 1.2% floor and
@@ -1062,7 +1063,7 @@ What each clip carries itself now:
 | a production | the site works, boxes are made there and hop home, and **they open where they land** |
 | an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
 | a settlement | the boxes cross the island and **open where they land**, and the fire flares once |
-| a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
+| a refusal | the post shakes and the notice tears, and **the offer blinks red with a ✗ on its pill** (a bubble over the hut only when no offer is named) |
 | a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
@@ -1110,8 +1111,8 @@ contrast of the wheels against the body, not its parts.
 ### A bubble belongs over the hut
 
 The two things a trader does that leave no goods behind — refusing an offer, and
-simply speaking — are drawn as a speech bubble: a cross for the refusal, and for
-a remark **three dots and nothing else**, because the island's job is to say
+simply speaking — were both drawn as a speech bubble: a cross for the refusal, and
+for a remark **three dots and nothing else**, because the island's job is to say
 *that* somebody spoke, not what they said. What they said is in the ticker, and
 printing the manager's sentence across the sand was the thing this replaced.
 
@@ -1127,6 +1128,14 @@ overwrite the position sixty times a second, and the bubble would sit where the
 hut was at the moment it opened — which matters, because a bubble lives about a
 second and a half and the camera covers a few pixels of its revolution in that
 time.
+
+**The refusal half of that is now the exception, not the rule** (2026-08-28,
+Gal's ask): the red blink on the offer is enough, so the bubble is drawn for a
+refusal only when `refuse()` finds nothing on the square to blink — which is
+every refusal at *proposal* time, where the offer does not exist yet and
+something must still say it happened. When there is a rope, drawing the bubble
+too said the same refusal twice, a frame away from the square it happened on.
+The remark's three dots are unchanged.
 
 `render.py:overhead` drives a real refusal on the real page and asks that the
 bubble opens on the settlement, is still on it a second later, and carries the
@@ -1258,7 +1267,14 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
   refusals, and in the fourth it names the good, where the offer is the open one
   addressed to that trader asking for it. Marked on the **live** rope, since a
   refusal does not close the offer, and a red copy laid over the orange original
-  would blink to the wrong colour between flashes.
+  would blink to the wrong colour between flashes. **This is the whole
+  indicator** since 2026-08-28: `refuse()` returns whether it marked anything,
+  and the badge over the hut is drawn only when it did not. It hangs a ✗ on the
+  pill as well as the colour, carrying the manager's reason as the cross's
+  `<title>` — red on its own is a colour a viewer reads as "an answer", and the
+  cross is *which* answer. `render.py:motion` drives both halves: an offer the
+  manager named blinks, carries the cross, and raises no badge; the
+  proposal-time refusal above it still raises one.
 * **A settlement blinks it green.** A settled offer is out of `this.ropes` by
   the time `play()` runs, because `paint()` draws only open offers — so the
   green copy is spawned from `paint()`, beside the lapsed one.
