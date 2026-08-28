@@ -149,6 +149,16 @@ const SHELF = { radius: 4.15, wobble: 0.10, phase: 0.7 };
 const SHALLOWS = { radius: 4.62, wobble: 0.10, phase: 0.7 };
 
 /**
+ * **A silhouette is not the edge that gets drawn.** `slab()` extrudes with
+ * `bevelSize`, and a bevel pushes the geometry *outward*: the meadow's cut
+ * outline may say 3.70 on a bearing while the grass a spectator sees reaches
+ * 3.90. Every clearance here was reasoned from the outlines alone and every
+ * one was short by up to a fifth of a unit -- which is how boats came to be
+ * moored on the wet sand with four separate checks calling them afloat.
+ */
+const BEVEL = { meadow: 0.20, beach: 0.20, shelf: 0.14, shallows: 0.05 };
+
+/**
  * How far the grass reaches, in the direction of an island point.
  *
  * A slab is cut in its own plane and then laid flat by `rotateX(-PI/2)`, which
@@ -167,6 +177,44 @@ export const shelfEdge = (x, z) =>
   silhouette(SHELF.radius, SHELF.wobble, SHELF.phase)(Math.atan2(-z, x));
 export const shallowsEdge = (x, z) =>
   silhouette(SHALLOWS.radius, SHALLOWS.wobble, SHALLOWS.phase)(Math.atan2(-z, x));
+
+/**
+ * The edges as *drawn*, bevel included -- what anything floating has to clear.
+ *
+ * Kept separate from the four above rather than folded into them, because the
+ * outlines have another reader: `spaced()` clamps settlements to `meadowEdge`,
+ * and a hut belongs on the grass's flat top, not out on the bevel's slope.
+ * Land wants the cut outline; water wants the drawn one.
+ *
+ * **And the water between them is thin.** `wetEdge - dryEdge` runs 0.33 to
+ * 0.44 on every bearing -- that is the whole lagoon, and it is narrower than
+ * a full-size hull is wide, which is why the boats are the size they are.
+ */
+export const dryEdge = (x, z) => Math.max(meadowEdge(x, z) + BEVEL.meadow,
+                                          beachEdge(x, z) + BEVEL.beach,
+                                          shelfEdge(x, z) + BEVEL.shelf);
+export const wetEdge = (x, z) => shallowsEdge(x, z) + BEVEL.shallows;
+
+/**
+ * Does the drawn land stand under this point?
+ *
+ * A raycast against the slabs themselves, not a radius compared with a
+ * formula. The formulas are what got the moorings wrong twice: they describe
+ * the shape a slab is cut to and not the solid that ends up in the scene.
+ * `grounder()` below already reads the terrain this way; this asks the
+ * simpler question of whether there is any terrain at all.
+ */
+function lander(island) {
+  const LAND = /^(meadow|beach|shore_shelf|upland)$/;
+  const meshes = island.children.filter((n) => LAND.test(n.name));
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const from = new THREE.Vector3();
+  return (x, z) => {
+    ray.set(from.set(x, 12, z), down);
+    return ray.intersectObjects(meshes, false).length > 0;
+  };
+}
 
 /**
  * Where the dock stands and which way it runs, for a bearing off the fire.
@@ -191,21 +239,6 @@ export const shallowsEdge = (x, z) =>
  * assumed. `tests/render.py:island` fails on any part of the dock that is not
  * where this says it is.
  */
-/**
- * A point in open water on a bearing: half way between the wet sand and the
- * shallows' edge, which is where something that floats belongs.
- *
- * Both ends are read on the bearing rather than taken as radii, and the inner
- * one is the *outer* of the sand and the grass, because on some bearings the
- * meadow reaches past the beach -- see `dockAxis`, which was caught by that.
- */
-export function midWater(bearing) {
-  const ux = Math.cos(bearing), uz = Math.sin(bearing);
-  const r = (Math.max(shelfEdge(ux, uz), meadowEdge(ux, uz))
-             + shallowsEdge(ux, uz)) / 2;
-  return { r, x: ux * r, z: uz * r };
-}
-
 export function dockAxis(bearing, scale = 1) {
   const ux = Math.cos(bearing), uz = Math.sin(bearing);
   //: **Against whichever outline reaches furthest, not against the beach's.**
@@ -1140,13 +1173,47 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: `2 * halfLen + gap` of coast, which at this radius is an angle. Slots
   //: alternate sides and start three-quarters of a slot out, so the jetty
   //: keeps a slot of its own and no boat is laid across it.
-  const BOAT_SCALE = 0.85;
+  //: **0.65, down from 0.85.** The lagoon is 0.33 to 0.44 wide depending on
+  //: bearing -- that is `wetEdge - dryEdge`, measured -- and a hull at 0.85 is
+  //: 0.56 across. It never fitted, which is why every boat sat on the wet sand
+  //: with its checks content. At 0.65 the hull is 0.43 wide and moors with its
+  //: outer side a little over the shallows' edge, which is water too.
+  const BOAT_SCALE = 0.65;
   //: The hull's own half-extents, from `boat()` above: the gunwale is the
   //: widest ring on it (0.3 + its tube) and the hull is stretched 2.1 along
   //: its length. Read off the geometry rather than measured off the picture,
   //: so a change to the model moves the spacing with it.
   const HALF_LEN = (0.3 + 0.028) * 2.1 * BOAT_SCALE;
   const HALF_WID = (0.3 + 0.028) * BOAT_SCALE;
+  //: What `island-life` adds after this: a bob of 0.035 and a roll and pitch
+  //: of 0.07 and 0.04. **The boats swing, so a clearance that only holds at
+  //: rest is not a clearance** -- reported by eye, of moorings that measured
+  //: fine standing still. Carried into the search below so every berth is
+  //: clear through the whole of the swing.
+  const SWING = 0.10;
+  const onLand = lander(island);
+  //: Outward along the bearing until the hull's whole footprint is off the
+  //: land, asked of the slabs rather than of a radius. It starts at the drawn
+  //: shore and steps by a twentieth, so a berth is as close in as the water
+  //: allows and no closer.
+  const afloatAt = (t) => {
+    const ux = Math.cos(t), uz = Math.sin(t), tx = -uz, tz = ux;
+    const from = dryEdge(ux, uz);
+    for (let r = from; r < from + 1.6; r += 0.05) {
+      let clear = true;
+      for (let a = -1; a <= 1 && clear; a++) {
+        for (let b = -1; b <= 1 && clear; b++) {
+          const along = a * (HALF_LEN + SWING), out = r + b * (HALF_WID + SWING);
+          if (onLand(ux * out + tx * along, uz * out + tz * along)) clear = false;
+        }
+      }
+      if (clear) return r;
+    }
+    //: No water on this bearing wide enough to float in. Nothing sensible to
+    //: do here, so it goes out past the shore and `render.py:island` says so
+    //: rather than this quietly choosing somewhere wrong.
+    return from + 1.6;
+  };
   const moorings = new THREE.Group();
   moorings.name = "moorings";
   traders.forEach((name, i) => {
@@ -1156,9 +1223,13 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: The radius is read first at the dock's own bearing, because the slot
     //: width depends on it and the slot decides the bearing. A tenth of a
     //: unit either way does not move the angle enough to matter.
-    const step = (2 * HALF_LEN + 0.18) / midWater(DOCK_BEARING).r;
-    const t = DOCK_BEARING + side * (rank + 0.75) * step;
-    const { x, z } = midWater(t);
+    //: A wider gap than the 0.18 this started with: the boats swing, and
+    //: three of them a half-unit apart read as crowded even when nothing
+    //: quite touches. Reported by eye, twice.
+    const step = (2 * HALF_LEN + 0.45) / dryEdge(Math.cos(DOCK_BEARING),
+                                                 Math.sin(DOCK_BEARING));
+    const t = DOCK_BEARING + side * (rank + 0.9) * step;
+    const r = afloatAt(t), x = Math.cos(t) * r, z = Math.sin(t) * r;
     const b = boat(i + 1, seatMat(name, i, traders.length));
     //: Higher than the old 0.02. The hull's floor has to be under the water
     //: and its deck above it, and at 0.02 the deck cleared the shallows by
