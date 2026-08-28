@@ -118,6 +118,19 @@ seats.
   own; if it exits, something went wrong and the lobby is deaf until it is
   back. On restart it reads `--state` and picks up its own settled tables
   rather than settling them again.
+
+  **A restart is not a resume, which is why blips are retried in-process.**
+  `island-lobby` crashed at 11:55:28 on 2026-08-28 (`NRestarts=2`): the
+  managed hub's own redeploy answered a poll with a Cloudflare 502, the drain
+  raised, and the process exited 1. It was idle, so nothing was lost — but
+  `--state` records a settled table as one this process already dealt, so the
+  same crash during a live game would have brought back a runner that
+  *declines* to play the table it was in the middle of. The fix is
+  [`hub.py`](hub.py): a poll that fails on a transport error or a
+  408/429/500/502/503/504 is retried with backoff for two minutes and said
+  out loud each time; everything else still raises on the first try. Two
+  minutes of silence is no longer a blink, so past that it exits and this
+  bullet's restart is right again.
 - **~100 MB of memory and almost no CPU** between games. A game costs one
   thread and a poll every few seconds for the length of its episodes.
 - **A clock that is roughly right.** Every deadline it posts is absolute UTC

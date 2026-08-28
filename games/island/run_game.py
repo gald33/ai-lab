@@ -69,6 +69,7 @@ from switchboard.config import ClientConfig, MANAGED_HUB_TOKEN, MANAGED_HUB_URL
 from switchboard.invite import Invite
 
 from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
+from .hub import through_blips
 from .live import finish as finish_live
 from .live import forget as forget_live
 from .live import write as write_live
@@ -266,6 +267,23 @@ def _stay_present(client) -> None:
         print(f"presence not refreshed: {exc!r}", flush=True)
 
 
+def _drain(mgr: Manager) -> None:
+    """Read the room, and do not let somebody else's deploy end the round.
+
+    Unlike `_show`, `_witness` and `_tick`, this one is *not* optional: a
+    drain that never happens is receipts that never appear and a bell that
+    settles nothing. So it is retried rather than swallowed, and only while
+    the failure is the hub blinking -- a redeploy behind Cloudflare answers a
+    poll with a 502, which is what killed `island-lobby` on 2026-08-28 while
+    it was idle. A live table would have died of the same thing.
+
+    A hub that is still refusing past `hub.BUDGET` raises, and the round ends
+    as it did before: two minutes of silence in a room whose bells are seconds
+    apart is not a game that can be honestly finished.
+    """
+    through_blips(mgr.drain, "manager drain")
+
+
 def _show(mgr: Manager, live: Path | None) -> None:
     """Write the board where a spectator can read it, and never stop a game.
 
@@ -457,14 +475,14 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         while time.time() < deadline:
             bind_seats(mgr, table)
             _stay_present(mgr.client)
-            mgr.drain()
+            _drain(mgr)
             _witness(archivist)
             _show(mgr, live)
             _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
         _stay_present(mgr.client)
-        mgr.drain()
+        _drain(mgr)
         _witness(archivist)
         _show(mgr, live)
         _tick(tick)
@@ -518,7 +536,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         mgr.close_episode()
 
     mgr.say("the round is over. Stop; nothing further will settle.")
-    mgr.drain()
+    _drain(mgr)
     # One last look before it stops watching, so the archive holds the closing
     # line too -- and after the manager's own drain, so the two copies are of
     # the same room at the same moment rather than a second apart.
@@ -913,7 +931,9 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
     claimed: set[str] = set()
     games: list[threading.Thread] = []
     while True:
-        lobby.drain()
+        # A hub redeploy answers this with a 502, and a runner that died of
+        # one would leave every settled table unplayed -- see `hub.py`.
+        through_blips(lobby.drain, "lobby drain")
         if page is not None:
             # This runner embeds the only lobby on its channel, so it is also
             # the only process that can render one -- `run_lobby --page` would
