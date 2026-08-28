@@ -75,6 +75,7 @@ from .live import forget as forget_live
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
+from .npc import npcs_on_board as _npcs_on_board
 
 # The island economy this game runs, from 005's tree. A code dependency is not
 # grounding -- 005's own CLAUDE.md says exactly that about its import of 002 --
@@ -606,6 +607,11 @@ def save_board(mgr: Manager, out: Path) -> Path:
 def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
            board: Path, seconds: float, sealed: bool = False) -> dict:
     """The run record, in the shape `viewer/scores.py:ingest` already reads."""
+    # Which seats were heuristic players, read off the board this game just
+    # wrote rather than told to us by whoever launched anybody. The manager
+    # does not know who started which process and must not have to: a game
+    # replayed from its board next year reaches the same answer this does.
+    npcs = _npcs_on_board(json.loads(board.read_text()).get("messages", []))
     return {
         "experiment": "005-v3",
         "game": {"id": table.id, "rounds": table.rounds},
@@ -624,12 +630,19 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "players": players(table),
         # A practice game is kept and counted and never ranked: the private
         # half was public, so what it measures is not what the board ranks.
-        "practice": not sealed,
+        "practice": not sealed or bool(npcs),
         "rounds": [{
             "workspace": mgr.client.config.workspace,
             "seed": table.seed,
             "episodes": table.episodes,
             "arm": "sealed" if sealed else "practice",
+            # Seat name -> the policy mix that seat declared. A table with one
+            # is kept, counted and never ranked -- `scores.why_not_ranked`
+            # calls it `heuristic`, which is a different reason from
+            # `practice` because it is a different thing being said: the
+            # private half was hidden perfectly well, and one of the players
+            # was a hundred lines of arithmetic.
+            "npcs": npcs,
             "sealed_lines": mgr.sealed_in,
             "game": {"id": table.id, "rounds": table.rounds},
             "trajectory": trajectory_from(dealer.island, mgr.episode_log,

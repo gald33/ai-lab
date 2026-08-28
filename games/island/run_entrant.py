@@ -272,7 +272,7 @@ def preflight(invite: Invite, *, agent_id: str, workdir: Path) -> None:
 
 def claim(client: Client, channel: str, *, name: str, table: str | None,
           opening: tuple[int, int, int] | None, goods: int, every: float,
-          deadline: float) -> tuple[str, int, int]:
+          deadline: float, nonce: str = "") -> tuple[str, int, int]:
     """Take a seat, and return which table it is on, how long it runs, and
     how many goods it is drawn over.
 
@@ -302,7 +302,12 @@ def claim(client: Client, channel: str, *, name: str, table: str | None,
     else:
         raise SystemExit("no table formed before the deadline")
 
-    client.post(channel, f"JOIN {table} as {name}")
+    # A seat that brings no nonce is a seat the island was not drawn with, and
+    # the lobby says so on the settlement line: "not every seat brought a
+    # nonce, so the draw is not checkable afterwards". Optional here only
+    # because it always was.
+    client.post(channel, f"JOIN {table} as {name}"
+                         + (f" nonce={nonce}" if nonce else ""))
     return table, episodes, goods
 
 

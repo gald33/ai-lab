@@ -306,3 +306,99 @@ def test_the_prompt_carries_the_open_line_the_levers_rewrite(hub):
 
 def test_the_suggested_open_spells_out_seconds_so_the_knob_is_discoverable():
     assert "seconds=60" in lobby_page.open_line()
+
+
+# --- the countdown ---------------------------------------------------------
+#
+# A settled table announces `opens 19:40:00Z` and then the page sits in
+# somebody's browser. The time is correct, in a timezone the reader is not in,
+# for a moment that may already have passed.
+
+def test_a_settled_table_counts_down_to_its_own_start(hub):
+    lobby = _settled(hub, generate_key())
+    table = lobby.tables["g1"]
+    assert table.opens_at, "the lobby settles the moment it announces"
+
+    page = lobby_page.render(lobby, now=table.opens_at - 95)
+
+    assert "opens in 1m 35s" in page
+    # And the absolute time stays beside it: it is the one thing a reader with
+    # no script still needs, and the fixed point two readers can compare.
+    assert time.strftime("%H:%M:%SZ", time.gmtime(table.opens_at)) in page
+    assert "the game has started" in page
+
+
+def test_the_countdown_carries_what_is_left_and_never_an_instant(hub):
+    """**The whole of the design, and the reason it is not the obvious one.**
+
+    Putting the absolute instant in the page and subtracting `Date.now()`
+    reads a browser whose clock runs three minutes fast as "the game has
+    started" for a table that has not opened. Telling a reader the game began
+    when it did not is worse than telling them nothing, so the page carries
+    how long was left when it was written and the script subtracts only time
+    it has measured itself.
+    """
+    lobby = _settled(hub, generate_key())
+    table = lobby.tables["g1"]
+
+    page = lobby_page.render(lobby, now=table.opens_at - 42)
+
+    assert "data-left='42'" in page
+    assert str(int(table.opens_at)) not in page, (
+        "an epoch instant on the page is something a browser would subtract "
+        "its own clock from")
+    assert "Date.now()-t0" in page, "elapsed since the script ran, not a clock"
+
+
+def test_a_moment_already_past_counts_to_zero_rather_than_backwards(hub):
+    lobby = _settled(hub, generate_key())
+    table = lobby.tables["g1"]
+
+    page = lobby_page.render(lobby, now=table.opens_at + 600)
+
+    assert "data-left='0'" in page
+    assert "-600" not in page and "opens in -" not in page
+
+
+def test_the_lapse_clock_ticks_too_rather_than_freezing_at_write(hub):
+    """It read `lapses in 14m 03s` and stayed there, on a page that refreshes
+    every 15 seconds and may have been open for longer."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: 1_000_000.0)
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    page = lobby_page.render(lobby, now=1_000_000.0 + 60)
+
+    assert "lapses in 14m 00s" in page
+    assert "data-prefix='lapses'" in page
+
+
+def test_one_ticker_however_many_countdowns(hub):
+    """A script per countdown would be several intervals disagreeing about the
+    same second."""
+    key = generate_key()
+    lobby = _settled(hub, key)
+    _client(hub, "opener2", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert page.count("class=cd") >= 2, "more than one countdown on the page"
+    assert page.count("querySelectorAll('.cd')") == 1
+
+
+def test_minutes_appear_only_once_there_are_minutes():
+    """`in 90s` is a clearer thing to wait out than `in 1m 30s`."""
+    assert lobby_page._span(0) == "in 0s"
+    assert lobby_page._span(59) == "in 59s"
+    assert lobby_page._span(60) == "in 1m 00s"
+    assert lobby_page._span(95) == "in 1m 35s"
+    assert lobby_page._span(-5) == "in 0s"
+
+
+def test_a_countdown_escapes_what_it_is_given():
+    marked = lobby_page._countdown(30, prefix="opens<b>", at="x'y", after="&")
+
+    assert "<b>" not in marked and "&lt;b&gt;" in marked
+    assert "x'y" not in marked and "&#x27;" in marked

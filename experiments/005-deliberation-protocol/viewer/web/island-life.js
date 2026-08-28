@@ -166,15 +166,31 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     island.add(c);
     return c;
   })] : [];
+  //: **The surf was scaled on the wrong axes and stopped being the coast.**
+  //: `shoreRing` in `island3d.js` sweeps the shore's own silhouette in the xz
+  //: plane and then lies it down on the water with `scale.y = 0.5`; the swell
+  //: here has to grow that ring outward, which is x and z together. It read
+  //: `scale.set(s, s, 0.5)` -- so the growth went onto **y**, where a
+  //: half-height tube only got taller, and **z** was pinned at 0.5, squashing
+  //: the outline to half its depth along one world axis. The white water was
+  //: therefore an ellipse over an island that is not one: reported by eye as
+  //: the swell not being shaped like the island, and visible worst on the
+  //: bearings where the coast's wobble runs along z.
+  //:
+  //: The flattening belongs to the mesh and is already set once, at build
+  //: time; this only ever wanted the radial term.
   if (rings.length) {
     rings[0].material = rings[0].material.clone();
     rings[0].material.transparent = true;
     parts.push((t) => rings.forEach((ring, i) => {
       const p = ((t / 4.2) + i / rings.length) % 1;
       const s = 0.98 + p * 0.09;
-      ring.scale.set(s, s, 0.5);
+      ring.scale.set(s, 0.5, s);
       ring.material.opacity = 0.9 * Math.sin(Math.PI * p) ** 0.7;
-      ring.position.y = 0.055 + Math.sin(p * Math.PI) * 0.02;
+      //: The ring's own resting height, set where the water was
+      //: measured -- see `shoreRing`. A constant here is a second
+      //: opinion about where the sea is, and it was the wrong one.
+      ring.position.y = ring.userData.restY + Math.sin(p * Math.PI) * 0.02;
     }));
   }
 
