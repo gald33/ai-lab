@@ -1930,9 +1930,21 @@ async function boot() {
       if (!answer.ok) continue;
       const listing = await answer.json();
       for (const g of listing.games || []) {
-        // Resolved against the index, because the page may be served from a
-        // different origin than the archive — which is the normal case: the
-        // viewer is on Pages and the archive is on the game's own host.
+        // A game the host no longer keeps stays in the listing, greyed, with
+        // the date it went. Retention keeps the latest and the best, so a game
+        // is evicted by a *later, better* game — nothing it did changed — and
+        // a row that says so is the difference between "played, not kept" and
+        // a link that fails into silence. See `games/island/live.py:forget`.
+        if (g.kept === false) {
+          entries.push({
+            label: `${g.label} — not kept`,
+            dropped: true,
+            facets: g.facets || {},
+            at: Date.parse(g.dropped_at || g.finished_at || "") / 1000 || 0,
+            value: JSON.stringify({ dropped: g }),
+          });
+          continue;
+        }
         const at = new URL(g.board, url).href;
         entries.push({
           label: `${g.label} — played out`,
@@ -2119,8 +2131,26 @@ async function hubConfigFromParams() {
   };
 }
 
+/**
+ * A game the host played and no longer keeps.
+ *
+ * Said in the page rather than left to a failed fetch: retention keeps the
+ * latest and the best, so this game was evicted by a *later, better* game and
+ * nothing about it changed. The row it left behind is what lets the page say
+ * that, and saying it is the whole reason the row exists.
+ */
+function sayDropped(game) {
+  const when = (game.dropped_at || "").slice(0, 10);
+  $("status").innerHTML = `<b>${game.label}</b> was played and is no longer
+    kept${when ? ` — its files went on ${when}` : ""}. The host keeps the most
+    recent games and the best ones; this game is in neither set now, so its
+    board and reveal are gone. <b>Its ledger row is not</b>: it is still
+    counted, still in every denominator, and still on the scoreboard.`;
+}
+
 async function open(what) {
   try {
+    if (what.dropped) return sayDropped(what.dropped);
     if (what.hub) startHub(what.hub, params.get("channel") || "island");
     else if (what.live) startLive(what.live, params.get("channel") || "island");
     else await startReplay(what.board, what.reveal);

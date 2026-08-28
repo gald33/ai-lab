@@ -822,7 +822,50 @@ kept in git **deliberately**, one commit each, because somebody decided that
 game was worth carrying in the repository. The host's archive is everything it
 has ever played.
 
+### Retention: the latest 100 and the best 1000
+
+Decided by Gal, 2026-08-28, **superseding "all games are saved forever" from
+earlier the same day** — that section is below and is kept rather than edited
+away, because a reader who finds only the current rule cannot tell which
+arguments have already been had.
+
+What survives is the **union** of two sets. A game is kept if it is one of the
+**latest 100** played, or one of the **best 1000**. The ledger row survives
+either way and always has: what retention decides is whether a game can still
+be *watched*, never whether it counted. Every denominator is untouched.
+
+Three things the host operator raised, and what each is now:
+
+1. **Eviction is silent, and that is what the tombstone is for.** With a merit
+   ceiling a game is evicted by a *later, better* game — a link handed out
+   today stops working on a day nobody touched that game, for a reason that is
+   nothing to do with it. Worse than an expiry date, which can at least be
+   stated in advance. So `live.forget` deletes the files and **leaves the row**,
+   with `kept: false` and the date, and the viewer says *"this game was played
+   and is no longer kept"* rather than failing into silence.
+2. **The index lists what the host holds**, kept and evicted alike, because the
+   index is a statement about that directory rather than about the ranking. A
+   game in the union but missing from the index would be invisible either way.
+3. **"Best" is drawn level by level.** `capture` compares two islands and not
+   two formats, so a single ranked list would fill with whichever format is
+   easiest to score well on and evict every game of the harder ones. The best
+   game of each level is taken, then the second of each, until the budget is
+   spent — `scores.keepers`, which is in the file that owns what ranking means.
+   **Unranked games have no "best"**, so a practice game or a game somebody
+   wrote into is kept by recency alone. That is a real consequence and is
+   stated here rather than discovered: merit cannot save a game nobody could
+   score.
+
+Two smaller rules that fall out of it: the merit half needs the ledger, and a
+ledger that cannot be read prunes **nothing** — "cannot judge" reads as "keep",
+never as "delete". And the set is deterministic, level order fixed, so two
+hosts holding one record prune to the same games.
+
 ### All games are saved forever
+
+*Superseded on 2026-08-28 by the section above, hours after it was written.
+Kept because the reasoning is what shaped what replaced it — the tombstone
+exists because of the argument recorded here.*
 
 Decided by Gal, 2026-08-28, when the host operator asked whether `--keep`
 should prune the live copies too. It should not, and neither should anything

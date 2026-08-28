@@ -70,6 +70,7 @@ from switchboard.invite import Invite
 
 from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
 from .live import finish as finish_live
+from .live import forget as forget_live
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
@@ -706,34 +707,67 @@ _LEDGER = threading.Lock()
 MAX_CONCURRENT = 2
 
 
-def prune(out: Path, keep: int) -> list[Path]:
-    """Drop the raw output of all but the `keep` most recent games.
+def prune(out: Path, keep: int, *, best: int = 0, ledger: Path | None = None,
+          live_dir: Path | None = None) -> list[Path]:
+    """Drop the files of games that are neither recent enough nor good enough.
 
     **The ledger row is never touched**, so a pruned game is still counted, is
     still in every denominator, and still has its board digest on record. What
-    goes is the bulk: the record, the board and the reveal it points at, which
-    together are the only thing here that grows without limit.
+    goes is the bulk -- the record, the board, the reveal and the archive copy
+    -- which is to say the ability to *watch* it rather than the fact of it.
 
-    Oldest first, by the record's own mtime, and only games that have one --
-    a board with no record beside it is a game that did not finish and is left
-    alone rather than tidied away.
+    Retention is "the latest `keep` and the best `best`", decided by Gal on
+    2026-08-28, and the two sets are unioned by `viewer/scores.py:keepers`,
+    which is the file that owns what "best" means. Nothing about ranking is
+    decided here: this reads a verdict and deletes files.
+
+    With `best` unset (or no ledger to read) this is what it always was, a
+    count of most-recent by the record's own mtime -- so a host that has not
+    been told about merit keeps behaving exactly as it did.
     """
-    if keep <= 0:
+    if keep <= 0 and best <= 0:
         return []
     records = sorted((p for p in out.glob("g*.json") if p.is_file()),
                      key=lambda p: p.stat().st_mtime)
-    dropped: list[Path] = []
-    for record in records[:max(0, len(records) - keep)]:
+
+    doomed: list[tuple[Path, str, str]] = []      # record, workspace, game id
+    for record in records:
         try:
-            workspace = json.loads(record.read_text())["rounds"][0]["workspace"]
+            doc = json.loads(record.read_text())
+            workspace = doc["rounds"][0]["workspace"]
         except (OSError, ValueError, KeyError, IndexError):
             continue
+        doomed.append((record, workspace,
+                       (doc.get("game") or {}).get("id") or record.stem))
+
+    if best > 0:
+        # The merit half needs the ledger, because a game's score is not in the
+        # file being deleted -- it is in the record of every game ever played.
+        # A ledger that cannot be read means merit cannot be judged, and the
+        # safe reading of "cannot judge" is "keep", never "delete".
+        try:
+            spared = _scores.keepers(_scores.load(ledger or _scores.LEDGER),
+                                     latest=keep, best=best)
+        except Exception as exc:      # noqa: BLE001
+            print(f"retention: the ledger could not be read ({exc!r}); "
+                  f"nothing pruned this time", flush=True)
+            return []
+        going = [row for row in doomed if row[2] not in spared]
+    else:
+        going = doomed[:max(0, len(doomed) - keep)]
+
+    dropped: list[Path] = []
+    for record, workspace, game_id in going:
         for path in (record, out / f"board-{workspace}.json",
                      out / f"reveal-{workspace}.json",
                      out / f"archive-{workspace}.json"):
             if path.exists():
                 path.unlink()
                 dropped.append(path)
+        # The spectator's copies go too, and the index says so rather than
+        # letting a link fail into silence -- see `live.forget`.
+        if live_dir is not None:
+            dropped.extend(forget_live(live_dir, game_id))
     return dropped
 
 
@@ -767,7 +801,7 @@ def archivist_for(table: Table, invite: Invite, *, lab_manages: bool
 
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
-                ranked_only: bool = False, keep: int = 0,
+                ranked_only: bool = False, keep: int = 0, keep_best: int = 0,
                 lab_manages: bool = True, live_dir: Path | None = None) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
@@ -841,11 +875,14 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                       flush=True)
         print(f"{table.id}: wrote {path} and {sidecar.name}; "
               f"ledger says {status}", flush=True)
-        if keep:
-            dropped = prune(out, keep)
+        if keep or keep_best:
+            dropped = prune(out, keep, best=keep_best, ledger=ledger,
+                            live_dir=live_dir)
             if dropped:
-                print(f"pruned {len(dropped)} file(s) from older games; their "
-                      f"ledger rows stand", flush=True)
+                print(f"pruned {len(dropped)} file(s) from games that are "
+                      f"neither in the latest {keep} nor the best {keep_best}; "
+                      f"their ledger rows stand and the archive index says "
+                      f"they were played", flush=True)
     except Exception as exc:  # noqa: BLE001 - one table must not take the rest
         print(f"{table.id}: game failed -- {exc!r}", flush=True)
 
@@ -854,7 +891,7 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ack_seconds: int, out: Path, ranked_only: bool = False,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT,
-          page: Path | None = None, keep: int = 0,
+          page: Path | None = None, keep: int = 0, keep_best: int = 0,
           live_dir: Path | None = None) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
@@ -925,7 +962,8 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                 kwargs={"episode_seconds": episode_seconds,
                         "ack_seconds": ack_seconds, "out": out,
                         "ledger": ledger, "ranked_only": ranked_only,
-                        "keep": keep, "live_dir": live_dir,
+                        "keep": keep, "keep_best": keep_best,
+                        "live_dir": live_dir,
                         # Whether this process is also the party that will
                         # write this table's board. `claimed` holds the
                         # tables it offered to run, so a table managed by a
@@ -1014,6 +1052,15 @@ def main(argv: list[str] | None = None) -> int:
                          "beside its live file and the live file points at "
                          "them, so whoever watched the round sees its scores "
                          "and can replay it -- published then and not before")
+    ap.add_argument("--keep-best", type=int, default=0,
+                    help="also keep the raw output of the best this many games "
+                         "-- ranked games only, drawn level by level, because "
+                         "capture is comparable between two islands and not "
+                         "between two formats. Union with --keep: a game "
+                         "survives if it is recent enough OR good enough. "
+                         "Needs --ledger, since a game's score is in the record "
+                         "of every game rather than in its own file. 0 leaves "
+                         "retention on --keep alone (default)")
     ap.add_argument("--keep", type=int, default=0,
                     help="keep the raw output of only this many finished games, "
                          "pruning oldest first. The ledger row always survives, "
@@ -1060,7 +1107,7 @@ def main(argv: list[str] | None = None) -> int:
               ranked_only=args.ranked, ledger=args.ledger,
               manager=manager, channel=args.channel,
               max_concurrent=args.max_games, page=args.page, keep=args.keep,
-              live_dir=args.live)
+              keep_best=args.keep_best, live_dir=args.live)
     except KeyboardInterrupt:
         print()
     return 0

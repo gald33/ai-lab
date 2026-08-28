@@ -685,3 +685,62 @@ def test_both_overall_records_are_computed_for_the_week_too(tmp_path):
         if window["best_ever"]:
             assert window["best_ever"]["capture"] == window["games"][0]["capture"]
             assert window["best_player"]["best"] == window["traders"][0]["best"]
+
+
+# --- what retention keeps -----------------------------------------------------
+#
+# "Keep the latest 100 and the best 1000", Gal, 2026-08-28. Two ceilings whose
+# union survives; the ledger row survives either way, so what is at stake is
+# whether a game can still be watched, never whether it counted.
+
+def test_the_latest_are_kept_whatever_they_scored(tmp_path):
+    ledger, _ = _ledger_of(tmp_path, arm="practice")
+    rows = scores.load(ledger)
+    played = scores.games(rows)
+    assert not any(scores.is_ranked(g) for g in played), "all unranked here"
+
+    # Unranked games have no score to be best by, so merit keeps none of them.
+    assert scores.keepers(rows, latest=0, best=100) == set()
+    # Recency does not care: a game played an hour ago is the one somebody is
+    # asking about, whatever it scored and whether it could be scored at all.
+    newest = max(played, key=lambda g: g.get("played_at") or "")
+    assert newest["game_id"] in scores.keepers(rows, latest=1, best=0)
+
+
+def test_the_best_are_kept_after_they_stop_being_recent(tmp_path):
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    ranked = sorted((g for g in scores.games(rows) if scores.is_ranked(g)),
+                    key=lambda g: -g["capture"])
+    champion = ranked[0]
+
+    # Nothing is recent enough; the top game survives on merit alone.
+    kept = scores.keepers(rows, latest=0, best=1)
+    assert champion["game_id"] in kept
+
+
+def test_best_is_drawn_level_by_level_so_no_format_crowds_another_out(tmp_path):
+    """Capture compares two islands, never two formats. A single ranked list
+    would fill with whichever format is easiest to score well on and evict
+    every game of the harder ones."""
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    levels = {tuple(g["level"]) for g in scores.games(rows) if scores.is_ranked(g)}
+    assert len(levels) > 1, "no second format in the fixtures to be crowded out"
+
+    kept = scores.keepers(rows, latest=0, best=len(levels))
+    got = {tuple(g["level"]) for g in scores.games(rows) if g["game_id"] in kept}
+    assert got == levels, "a format lost its champion to another format's field"
+
+
+def test_the_two_sets_are_a_union_and_the_same_ledger_keeps_the_same_games(tmp_path):
+    ledger, _ = _ledger_of(tmp_path)
+    rows = scores.load(ledger)
+    latest_only = scores.keepers(rows, latest=2, best=0)
+    best_only = scores.keepers(rows, latest=0, best=2)
+    both = scores.keepers(rows, latest=2, best=2)
+    assert both == latest_only | best_only
+
+    # Deterministic: two hosts holding one record must prune to the same set,
+    # so nothing here may depend on dict order or on when a row was read.
+    assert both == scores.keepers(list(reversed(rows)), latest=2, best=2)

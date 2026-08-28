@@ -36,17 +36,19 @@ python -m games.island.run_game \
     --page   /srv/island/public/index.html \
     --live   /srv/island/public/live \
     --ledger /var/lib/island/ledger.jsonl \
-    --max-games 2
+    --max-games 2 \
+    --keep 100 \
+    --keep-best 1000
 ```
 
-**`--keep` is deliberately not in that command**, and was until 2026-08-28,
-when the host operator pointed out that the example carried `--keep 50` while
-the retention section below said to leave it unset. Somebody standing up a
-second host copies the command; they skim the paragraph. That is the same
-shape of defect as the missing `--live` — a flag documented by its outputs and
-not by the command, and its mirror, a flag set by the command and contradicted
-by the prose — so retention is now stated in exactly one place, further down,
-and never in the command above.
+**Those two retention flags are in the command because they are the policy**,
+and this is the third state this line has been in on one day: `--keep 50` while
+the prose said keep everything (the host operator found that), then no flag at
+all while the prose said the same, and now the numbers Gal actually decided.
+The lesson that survives all three is the one from the missing `--live`:
+somebody standing up a second host copies the command and skims the paragraph,
+so **the command and the retention section have to say the same thing** — and
+when they differ it is the command that is believed.
 
 **`--live` is not optional if anybody is to watch.** Without it the process
 plays the game and writes nothing a spectator can read, so the viewer's live
@@ -167,6 +169,21 @@ pointed at — so the URL a spectator watched a game on is the URL its recording
 lives at afterwards. `games/replays/` in the repository is a different thing
 and stays that way: a handful of games kept in git *deliberately*, with a
 commit behind each, rather than everything this host has ever played.
+
+**Retention is `--keep 100 --keep-best 1000`**, decided by Gal 2026-08-28,
+superseding the paragraph below it. A game survives if it is among the latest
+100 played **or** among the best 1000; the ledger row survives either way, so
+what is at stake is whether a game can still be watched. `--keep-best` needs
+`--ledger`, because a game's score lives in the record of every game rather
+than in its own file, and a ledger that cannot be read prunes nothing.
+
+When a game is let go, its copies under `--live` go with it and the archive
+index keeps a row saying it was played (`kept: false`, with the date). The
+viewer reads that row and says so. **Do not add a timer over the live
+directory**: eviction happens in the runner, where the ranking rule already
+lives, or it happens in two places that will disagree.
+
+*Superseded, kept for its reasoning:*
 
 **Nothing under `--live` is ever pruned, and `--keep` should stay unset.**
 Decided by Gal, 2026-08-28: *all games are saved forever*. A spectator link,
