@@ -496,7 +496,21 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   const flames = [0, 1, 2].map((i) => island.getObjectByName(`flame_${i}`))
     .filter(Boolean).map((f) => ({ f, y0: f.position.y, s0: f.scale.y }));
   const hearth = island.getObjectByName("fire");
-  const glow = new THREE.PointLight(0xff9a3c, 0, 4.2, 2);
+  //: **A pool, not a floodlight.** This was `(0xff9a3c, 0, 4.2, 2)` and the
+  //: bell drove it to 5.5, which at half a unit is nearly three times as much
+  //: light as the island gets at midday -- and firelight is orange while the
+  //: island is green, so what the near field actually did was beat the
+  //: material's green channel down until the grass, the trees standing in it
+  //: and the hill the fire stands on all came out olive. Reported by eye,
+  //: twice, as the trees and the hill going yellow.
+  //:
+  //: It is not the colour that was wrong: a fire is orange and the ground
+  //: beside a fire is warm. It is the reach. At 2.4 units and 1.2 the pool
+  //: covers the hearth and its clearing, never out-shines the day, and is back
+  //: to leaf-green by the foot of the hill. Measured in
+  //: `viewer/tests/firelight.test.mjs`, which is the reproduction:
+  //: `node --test viewer/tests/firelight.test.mjs`.
+  const glow = new THREE.PointLight(0xff9a3c, 0, 2.4, 2);
   if (hearth) {
     //: Just above the flames, which are shorter than they were.
     glow.position.copy(hearth.position).setY(hearth.position.y + 0.22);
@@ -772,7 +786,7 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         f.scale.set(0.8 + burn * 0.35, (0.7 + burn * 0.5) * lick * (s0 || 1), 0.8 + burn * 0.35);
         f.position.y = y0 + burn * 0.05;
       }
-      glow.intensity = burn * 5.5 * (1 + Math.sin(t * 6.1) * 0.06);
+      glow.intensity = burn * 1.2 * (1 + Math.sin(t * 6.1) * 0.06);
       //: **Only after dark**, and out over the meadow. `night` runs a little
       //: behind the fire: the fire is built before the light goes and the
       //: fireflies come once it has.

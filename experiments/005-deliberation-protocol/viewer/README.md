@@ -527,6 +527,48 @@ curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
 
+### The firelight is a pool, not a floodlight
+
+**The trees and the hill went yellow at nightfall, and it was the campfire.**
+Reported by eye twice, and looked for twice in the wrong place: the island's
+greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and
+the day's own light never takes them back — under the whole arc from dawn to
+dusk the grass stays between about 100° and 128° of hue, which is a leaf.
+
+The fire's `PointLight` did. It was `(0xff9a3c, distance 4.2, decay 2)` driven
+to intensity 5.5 at the bell, and the fire stands *on* the hill: at half a unit
+that is three and a half times as much light as the island gets at midday, and
+firelight is orange while the island is green. A strong warm light on a green
+material beats its green channel down until red and green come out level, and
+level red and green with no blue is yellow. The hill, the ridge and every tree
+within about two units of the hearth measured 79°–88° — olive — while the
+meadow, being mostly further off, stayed green. Hence "the trees and the hill",
+which is what made it look like a materials bug.
+
+The colour was never wrong: a fire is orange and the ground beside a fire is
+warm. The **reach** was. At distance 2.4 and intensity 1.2 the pool covers the
+hearth and its clearing — the ground there is still six times as bright as the
+grass outside it — never out-shines the day, and is back to leaf-green by the
+foot of the hill.
+
+Grass at the bell, on the ground beside the hearth, against the same grass at
+midday — measured on the built island, not on the arithmetic:
+
+| from the fire | before | now |
+|---|---|---|
+| 0.35 | 3.39× midday, hue 60° | 0.87× midday, hue 64° |
+| 1.2 | 0.40× midday, hue 72° | 0.19× midday, hue 90° |
+| 2.0 | 0.20× midday, hue 89° | 0.15× midday, hue 103° |
+
+Both halves are pinned by `viewer/tests/firelight.test.mjs`, which builds the
+real island, runs the life layer to the bell and sums the rig the way the
+renderer does for an up-facing surface — the same approximation already used
+for the sea band, and checkable without a GPU:
+
+```bash
+node --test viewer/tests/firelight.test.mjs
+```
+
 **Fireflies** come out over the meadow once the light has gone, a little behind
 the fire, which is banked before dusk and built up as it arrives. They are
 nothing at midday on purpose: a bright drifting dot in daylight already means a
