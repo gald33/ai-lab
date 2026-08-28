@@ -1415,8 +1415,18 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
                  ...goods.map((g) => `site_${g}`)]
     .map((n) => island.getObjectByName(n)).filter(Boolean)
     .map((o) => new THREE.Box3().setFromObject(o));
+  //: **A hair wider than the stone, so touching counts as inside.** These
+  //: comparisons are strict, and `render.py:island` fails a step whose gap to
+  //: a footprint is `<= 0` -- so a stone exactly tangent to a hut was laid by
+  //: this and rejected by that. It reported an overlap "by -0.00", which is
+  //: the two rules disagreeing at the boundary and not a stone anyone can
+  //: see. The drawing side is the one to make stricter: a step dropped that
+  //: did not have to be is a gap in a path behind a hut, and a step kept that
+  //: should not have been is a yellow disc under one.
+  const EDGE = 0.01;
   const buried = (x, z, rad) => solid.some((b) =>
-    x + rad > b.min.x && x - rad < b.max.x && z + rad > b.min.z && z - rad < b.max.z);
+    x + rad + EDGE > b.min.x && x - rad - EDGE < b.max.x
+    && z + rad + EDGE > b.min.z && z - rad - EDGE < b.max.z);
   for (const [ex, ez, clear] of ends) {
     //: Compressed rather than truncated: the same seven steps, laid over the
     //: span that is left, ending on the clearance. A trail with stones dropped
