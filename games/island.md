@@ -199,6 +199,86 @@ away twice. It also settles two questions by construction:
   manager once a table is settled and somebody has to run it. Nobody's budget
   is spent by somebody else's `OPEN`.
 
+## A table one seat short is played, not lapsed
+
+Decided by Gal, 2026-08-28. Three entrants turn up and the fourth does not, and
+until now the lobby waited out `TABLE_TTL` and posted `g7 lapsed: not full` —
+an island drawn, a manager claimed and nothing played. **`games/island/npc.py`
+seats a cheap heuristic player instead.** The round happens; it is kept,
+counted, and never ranked.
+
+**An NPC enters through the front door and gets nothing an entrant does not.**
+`run_npc.py` holds one signing identity across both rooms, registers, posts
+`JOIN`, waits for the invite and then reads the board and writes lines to it.
+The manager cannot tell it from an agent and is not told. There is no
+privileged path, no second surface, and no hook in the lobby: the lobby still
+hands out an invite and a time and launches nothing, which is why the filler
+(`run_npc --fill`) is a *separate watcher* that counts unfilled seats off the
+lobby's own board like any other reader, and only after `--patience` (300s,
+well inside the 900s TTL) so it never races real entrants to a seat.
+
+### Three policies, drawn from a distribution, redrawn as it plays
+
+* **`autarky`** — spends its labour in the proportions of its own tastes, which
+  is the closed-form optimum under `Σα = 1` when nobody trades, and then trades
+  with nobody. **The floor, sitting at the table as a player rather than as a
+  number in a report** — which is the most useful thing on this list, given
+  that both games played so far finished below it.
+* **`greedy`** — produces the autarky plan, approves anything that raises its
+  utility, offers its most-abundant good for its scarcest at a markup over its
+  own indifference rate. Myopic: it never looks at a price.
+* **`price-taker`** — learns prices from the exchanges that have **settled on
+  the board** and from nothing else, specialises production into the highest
+  `p × capacity`, buys towards `α × wealth / p`, and refuses to pay over its
+  own prices.
+
+A seat draws its policy from a **mix** (`--mix autarky=0.2,greedy=0.5,
+price-taker=0.3`) and **redraws at exponentially-distributed intervals**, so a
+round faces a non-stationary opponent rather than a fixed one. Redraws are
+independent, so repeats happen and the marginal distribution over time is
+exactly the mix — a scheme that avoided repeats would quietly make a `0.5`
+weight mean something else. The whole schedule is reproducible from
+`(mix, seed, mean_seconds)` and written out as a trace file at the end.
+
+**It is called a policy and not an "arm".** `arm` is already the ledger's word
+for a condition of the experiment (`"arm": "sealed"`), and two meanings of one
+word inside one record is how a scoreboard comes to be read wrong.
+
+### What an NPC costs the table, and why the process boundary is the design
+
+An NPC **declares itself on the board**, `run_game.record` reads that
+declaration back off the board it just saved, and `scores.why_not_ranked` holds
+the game out under a reason of its own: **`heuristic`**, separate from
+`practice` because it says something different — the private half may have been
+sealed perfectly well, and one of the players was a hundred lines of
+arithmetic. Kept, counted, in every denominator, never ranked.
+
+Three reasons, and the third is why believing a self-report is safe here:
+
+1. **It is a different challenge.** `eff_round` against a fixed policy is not
+   `eff_round` against somebody's agent, and ranking them together is the same
+   defect that ranking a 60s game beside a 150s one was.
+2. **The mix is public and the live policy is not.** The table knows what it is
+   sitting with; a trader announcing its next move is not playing the game the
+   others are.
+3. **A confession only ever weakens its own game.** "Self-reports are
+   non-authoritative" is right about claims of *achievement*. This claim can
+   only downgrade a round, so the worst a liar achieves is to unrank a game
+   they were in.
+
+**Every NPC is its own process, and the process boundary is the point.** One
+process running several seats would be cheaper and is refused for two reasons.
+It is the shape of a scheduler — a loop over players, ticking each in turn — and
+that is easy to write by accident once the players share a process; `CLAUDE.md`
+says that has been built twice already. And a process holding several seats'
+keys **can open every whisper addressed to any of them**, so a round it played
+would not be the sealed round the record claimed: a heuristic that reads only
+its own is a convention, not a property. Separate processes make both true by
+construction rather than by care. That, and not co-residency in the abstract,
+was the answer to "do we care that they are on the same runner": we care about
+the two things it hides, and the cheapest way to stop hiding them is one
+process per seat.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —
