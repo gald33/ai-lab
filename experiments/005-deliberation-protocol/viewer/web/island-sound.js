@@ -236,17 +236,30 @@ const VOICES = {
 
   //: An offer is a question. Two notes up, and it stops on the second rather
   //: than resolving -- nothing has been agreed yet.
+  //:
+  //: **An octave down from where it was**, with `settled`, and for the same
+  //: reason: both of these play while something is crossing the island, and
+  //: a box in the air was the highest-pitched thing in the mix.
   offer(ctx, out, t) {
-    tone(ctx, out, { freq: 523.25, at: t, dur: 0.1, peak: 0.14, type: "triangle" });
-    tone(ctx, out, { freq: 783.99, at: t + 0.09, dur: 0.14, peak: 0.14, type: "triangle" });
+    tone(ctx, out, { freq: 261.63, at: t, dur: 0.11, peak: 0.15, type: "triangle" });
+    tone(ctx, out, { freq: 392.00, at: t + 0.09, dur: 0.16, peak: 0.15, type: "triangle" });
   },
 
   //: A settlement is the answer. A fifth arriving together and a third over
   //: it: the one sound on the island that agrees with itself.
+  //:
+  //: **An octave down.** Reported by ear as the box flying being too high
+  //: against everything else, and measurement agreed at once: at G4-D5-B5 it
+  //: rang at about 1019Hz, which was not merely the highest accent but
+  //: *higher than the bell* -- and the bell is the one voice this island lets
+  //: sit on top of everything. A settlement plays while goods cross the
+  //: ground between two huts, so what a spectator heard was a box in the air
+  //: pitched above the day ending. The chord is unchanged in shape; only its
+  //: register moved, and it now sits under the bell where it belongs.
   settled(ctx, out, t) {
-    tone(ctx, out, { freq: 392.00, at: t, dur: 0.34, peak: 0.16, type: "sine" });
-    tone(ctx, out, { freq: 587.33, at: t, dur: 0.36, peak: 0.13, type: "sine" });
-    tone(ctx, out, { freq: 987.77, at: t + 0.06, dur: 0.4, peak: 0.09, type: "sine" });
+    tone(ctx, out, { freq: 196.00, at: t, dur: 0.36, peak: 0.2, type: "sine" });
+    tone(ctx, out, { freq: 293.66, at: t, dur: 0.38, peak: 0.16, type: "sine" });
+    tone(ctx, out, { freq: 493.88, at: t + 0.06, dur: 0.42, peak: 0.1, type: "sine" });
   },
 
   //: A refusal: one note, low, falling, over before it is interesting. It is
@@ -280,3 +293,9 @@ const VOICES = {
 };
 
 export const VOICE_NAMES = Object.keys(VOICES);
+
+//: Exported for `tests/audio.py`, which renders each one offline and measures
+//: where it sits. Nothing in the page reads this -- `play()` above is the only
+//: caller -- but a voice's register is a thing that can be wrong by ear and
+//: was, so it is a thing that gets measured.
+export { VOICES };

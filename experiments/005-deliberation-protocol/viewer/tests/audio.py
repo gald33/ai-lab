@@ -30,6 +30,7 @@ What it holds:
 from __future__ import annotations
 
 import argparse
+import base64
 import http.server
 import socket
 import sys
@@ -56,8 +57,75 @@ SECONDS = 12
 #: one seed in three is a site whose margin is the scheduler's luck.
 SEEDS = (1, 7, 12345)
 
-MEASURE = """
-async ([secs, good, day, closed, seed]) => {
+#: Every accent voice, rendered alone and measured by zero-crossing rate --
+#: a fair pitch proxy for signals this simple, and it needs no FFT.
+#:
+#: The rule it holds is the island's own: **the bell is the top of the
+#: register.** It is the one voice the design lets sit over everything, the
+#: day ending being the loudest fact on the board -- so nothing else may ring
+#: above it. `settled` did, at ~1019Hz against the bell's ~539, and since a
+#: settlement plays while goods cross the ground between two huts, what a
+#: spectator heard was a box in the air pitched above the end of the day. It
+#: was reported by ear before it was ever measured.
+VOICE_PITCH = """
+async () => {
+  const { VOICES } = await import('./island-sound.js');
+  const out = {};
+  for (const name of Object.keys(VOICES)) {
+    const ctx = new OfflineAudioContext(1, 44100 * 3, 44100);
+    VOICES[name](ctx, ctx.destination, 0);
+    const d = (await ctx.startRendering()).getChannelData(0);
+    let cross = 0, last = 0, voiced = 0, peak = 0;
+    for (let i = 1; i < d.length; i++) {
+      peak = Math.max(peak, Math.abs(d[i]));
+      if (Math.abs(d[i]) < 1e-4) continue;
+      voiced++;
+      const sign = d[i] > 0 ? 1 : -1;
+      if (last && sign !== last) cross++;
+      last = sign;
+    }
+    out[name] = { pitch: voiced ? cross / 2 / (voiced / 44100) : 0, peak };
+  }
+  return out;
+}
+"""
+
+#: The same render, handed back as a WAV instead of as numbers.
+#:
+#: **This is the check that has actually caught things.** Every complaint that
+#: mattered -- the sites inaudible, the quarry harsh, the box in the air too
+#: high, the whole world too quiet -- was heard by a person first and measured
+#: afterwards. So the harness that lets a person hear it belongs in the
+#: repository beside the one that measures it, rather than being rebuilt from
+#: memory each time somebody says "it sounds wrong".
+#:
+#: Boosted by `LOUD` over the page's own master gain: these are listened to on
+#: headphones, out of context, against no island.
+LOUD = 3.2
+
+WAV = """
+async ([secs, good, day, closed, seed, master, loud]) => {
+  const render = window.__islandRender;
+  const d = await render([secs, good, day, closed, seed], true);
+  const n = d.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const put = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  put(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); put(8, 'WAVEfmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  put(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const x = Math.max(-1, Math.min(1, d[i] * master * loud));
+    v.setInt16(44 + i * 2, x * 32767, true);
+  }
+  let s = ''; const b = new Uint8Array(buf);
+  for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192));
+  return btoa(s);
+}
+"""
+
+RENDER = """
+() => { window.__islandRender = async ([secs, good, day, closed, seed], raw) => {
   const { Ambience } = await import('./island-ambience.js');
   const ctx = new OfflineAudioContext(1, 44100 * secs, 44100);
   let fake = 0;
@@ -81,6 +149,7 @@ async ([secs, good, day, closed, seed]) => {
   for (let t = 0; t < secs; t += 0.4) { fake = t; a.pump(); }
   fake = 0;
   const d = (await ctx.startRendering()).getChannelData(0);
+  if (raw) return Array.from(d);
   const rms = (from, to) => {
     let sum = 0;
     const a0 = Math.floor(from * 44100), a1 = Math.min(d.length, Math.floor(to * 44100));
@@ -110,8 +179,10 @@ async ([secs, good, day, closed, seed]) => {
            // The two halves of a gesture, for anything that has to *grow*.
            early: rms(0.3, 2.2), late: rms(3.2, 5.6),
            earlyBright: bright(0.3, 2.2), lateBright: bright(3.2, 5.6) };
-}
+}; }
 """
+
+MEASURE = "async (args) => window.__islandRender(args, false)"
 
 
 class Files(http.server.SimpleHTTPRequestHandler):
@@ -142,6 +213,9 @@ def goods() -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--verbose", action="store_true", help="print the levels")
+    ap.add_argument("--wav", metavar="DIR", type=Path,
+                    help="also write the bed, the night, the sunrise and each "
+                         "site at work as WAVs, to listen to")
     args = ap.parse_args(argv)
 
     try:
@@ -163,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             page = browser.new_page()
             page.goto(f"{base}/index.html")
+            page.evaluate(RENDER)
 
             def take(good, day=0.5, closed=False):
                 """Every seed, worst first on whatever the caller is judging."""
@@ -193,8 +268,21 @@ def main(argv: list[str] | None = None) -> int:
                                     f"(bright {r['bright']:.2f} against {r['bedBright']:.2f})")
                 if r["bed"] < 0.004:
                     problems.append(f"{name}: the bed is silent ({r['bed']:.4f})")
-            if control["bed"] > 0.08:
-                problems.append(f"the bed is loud for a background ({control['bed']:.3f})")
+            # The bed lives in a band, and both walls were found by ear.
+            #
+            # The floor: at BED = 0.5 the whole world peaked at 0.051 after the
+            # master gain while one settlement chimed at 0.107 -- reported as
+            # the day, the night and the sunrise all being barely there, and
+            # nothing here could see it, because every check until now compared
+            # the island to itself. The ceiling is the older rule: a spectator
+            # who notices the sea rather than the island is hearing too much
+            # of it.
+            day = max(c["bed"] for c in controls)
+            if day > 0.09:
+                problems.append(f"the bed is loud for a background ({day:.3f})")
+            if min(c["bed"] for c in controls) < 0.04:
+                problems.append(f"the bed is barely there ({day:.3f}): the world is "
+                                f"the thing being listened to, not the accents over it")
             if min(n["bed"] for n in nights) <= 0.004:
                 problems.append("the sea stopped at night")
             # Night is a hearth: the fire is the loudest thing left, so the bed
@@ -250,6 +338,47 @@ def main(argv: list[str] | None = None) -> int:
                 if worst < FLOOR:
                     problems.append(f"{name} at work cannot be heard over the bed "
                                     f"(x{worst:.2f} on its worst seed, floor x{FLOOR})")
+            voices = page.evaluate(VOICE_PITCH)
+            bell = voices.get("bell", {}).get("pitch", 0)
+            for name, v in sorted(voices.items(), key=lambda kv: -kv[1]["pitch"]):
+                if args.verbose:
+                    print(f"{('voice: ' + name):32} ~{v['pitch']:.0f} Hz  "
+                          f"peak {v['peak'] * MASTER:.3f}")
+                if v["peak"] * MASTER >= 0.99:
+                    problems.append(f"the {name} voice clips ({v['peak'] * MASTER:.2f})")
+            if not bell:
+                problems.append("the bell voice made no sound at all")
+            # And the same rule stated against the accents rather than in the
+            # abstract: the world may be quieter than the loudest voice on it,
+            # but not a fraction of it. This is the comparison whose absence
+            # let the island sit at a third of one chime.
+            loudest = max(v["peak"] for v in voices.values()) * MASTER
+            floor = max(c["peak"] for c in controls) * MASTER
+            if args.verbose:
+                print(f"{'bed against the loudest voice':32} "
+                      f"{floor:.3f} against {loudest:.3f}")
+            if floor < loudest * 0.6:
+                problems.append(f"the bed is dwarfed by the accents over it "
+                                f"(the world peaks at {floor:.3f}, one voice at "
+                                f"{loudest:.3f})")
+            for name, v in voices.items():
+                if name != "bell" and v["pitch"] > bell:
+                    problems.append(
+                        f"the {name} voice rings above the bell "
+                        f"(~{v['pitch']:.0f}Hz against ~{bell:.0f}Hz): the bell is the "
+                        f"one voice this island lets sit over everything")
+            if args.wav:
+                args.wav.mkdir(parents=True, exist_ok=True)
+                takes = [("bed-day", None, 0.5, False, 12),
+                         ("bed-night", None, 0.5, True, 12),
+                         ("sunrise", "@sunrise", 0.06, False, 12)]
+                takes += [(f"site-{g}", g, 0.5, False, 10) for g in goods()]
+                for name, good, day_, closed_, secs in takes:
+                    raw = page.evaluate(WAV, [secs, good, day_, closed_, SEEDS[0],
+                                              MASTER, LOUD])
+                    out = args.wav / f"{name}.wav"
+                    out.write_bytes(base64.b64decode(raw))
+                    print(f"wrote {out}")
             browser.close()
     finally:
         server.shutdown()

@@ -1998,6 +1998,94 @@ brightness.
 | over the bed it rises into | ×2.0 (floor ×1.4) |
 | brightness against the bed | ×0.9 (ceiling ×2.5) |
 
+### The world was a third of one chime
+
+Reported by ear, 2026-08-28: the sunrise, the day and the night are all barely
+heard. Measured, and the balance was plain —
+
+| | peak, after the master gain |
+|---|---|
+| the bell | 0.125 |
+| a settlement | 0.107 |
+| **the whole world** | **0.051** |
+
+The island was **half the height of a single accent**, and every check here
+had passed it, because every check compared the island to itself: a site was
+×1.6 over *the bed*, the sunrise ×2.0 over *the bed it rises into*. Nothing
+asked how loud the bed was against the things laid over it, so a world at any
+volume at all would have scored the same.
+
+`BED` went 0.5 → 1.15, and it is one number because of how the file is wired:
+the sites at work and the sunrise both hang off `this.gain`, so raising the
+bed lifts the whole world together and changes only its balance against the
+accents — which is exactly what was wrong. Every ratio the checks hold is
+untouched by it. The world now peaks at 0.130 against the bell's 0.125.
+
+Two checks were added, and both fail on the old value:
+
+- the bed's own RMS must sit in a band — **not below 0.04** (barely there) and
+  not above 0.09 (a spectator noticing the sea rather than the island);
+- the bed must peak at **at least 0.6× the loudest voice** laid over it.
+
+```
+FAIL: the bed is barely there (0.026): the world is the thing being listened
+      to, not the accents over it
+FAIL: the bed is dwarfed by the accents over it (the world peaks at 0.056,
+      one voice at 0.125)
+```
+
+### Listening to it is part of the harness now
+
+`python viewer/tests/audio.py --wav DIR` writes the day bed, the night, the
+sunrise and every site at work as WAVs, through the page's own master gain and
+boosted for headphones.
+
+It is in the repository for the reason the table above shows twice over:
+**every complaint that mattered was heard by a person and measured only
+afterwards** — the sites inaudible, the quarry harsh, the box in the air
+pitched over the bell, and now the whole world too quiet. Four for four. The
+checks are regression guards; they have never once been the thing that found
+the problem. So the harness that lets a person hear it belongs beside the one
+that measures it, rather than being rebuilt from memory every time somebody
+says it sounds wrong.
+
+### The bell is the top of the register
+
+Reported by ear, 2026-08-28: the box flying is too high against everything
+else. Measured at once, and it was not a close thing —
+
+| voice | rang at |
+|---|---|
+| **settled** | **~1019 Hz** |
+| offer | ~763 Hz |
+| bell | ~539 Hz |
+| refused | ~232 Hz |
+| produced | ~162 Hz |
+| open | ~97 Hz |
+
+`settled` was not merely the highest accent; it was **higher than the bell**,
+and the bell is the one voice this island lets sit over everything — the day
+ending is the loudest fact on the board. A settlement plays while goods cross
+the ground between two huts, and the offer's pill rides its rope to the same
+kind of sound, so what a spectator heard was **a box in the air pitched above
+the end of the day**.
+
+Both dropped an octave. The chords are unchanged in shape — a fifth with a
+third over it for a settlement, two notes up and unresolved for an offer —
+only their register moved: settled now rings at ~509 Hz and offer at ~378 Hz,
+both under the bell.
+
+The rule is now a check rather than a memory. `tests/audio.py` renders every
+voice alone, takes its pitch by zero-crossing rate (a fair proxy for signals
+this simple, and it needs no FFT) and fails any voice that rings above the
+bell. It fails on the old frequencies and passes on the new — verified by
+putting them back, which is the only way to know a check works.
+
+That is three ear-reports in a row that measurement had passed: the sites
+being inaudible, the quarry being harsh, and this. Each one became a check
+afterwards, and none of the three was found by one. **The ear goes first
+here; the checks are what stop a fixed thing from coming back.**
+
 ### The check is seeded, and judged on its worst seed
 
 Everything intermittent here is scheduled at random, and while tuning the
@@ -2424,7 +2512,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
 | `tests/sound.test.mjs` | the voices and the button, against a fake `AudioContext` |
 | `tests/ambience.test.mjs` | the bed's hours, its scheduler, and one site sound per good |
-| `tests/audio.py` | the levels, rendered offline in a real browser; skips without one |
+| `tests/audio.py` | the levels, rendered offline in a real browser; `--wav DIR` to listen. Skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/clips.test.mjs` | what an event clip borrows off the island, and gives back |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
