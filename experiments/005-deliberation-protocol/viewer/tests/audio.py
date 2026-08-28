@@ -50,16 +50,34 @@ FLOOR = 1.35
 
 SECONDS = 12
 
+#: The seeds every measurement is taken on. Each is a different draw of when
+#: the gulls call and where the strikes fall; a site clears the floor on the
+#: *worst* of them or it does not clear it. Three, because a site that fails
+#: one seed in three is a site whose margin is the scheduler's luck.
+SEEDS = (1, 7, 12345)
+
 MEASURE = """
-async ([secs, good, day, closed]) => {
+async ([secs, good, day, closed, seed]) => {
   const { Ambience } = await import('./island-ambience.js');
   const ctx = new OfflineAudioContext(1, 44100 * secs, 44100);
   let fake = 0;
   Object.defineProperty(ctx, 'currentTime', { get: () => fake });
-  const a = new Ambience(ctx, ctx.destination);
+  // Seeded, because everything intermittent here is scheduled at random and
+  // an unseeded check reports the dice: sites sit near the floor and one run
+  // in six failed on a different one each time. `Ambience` takes the rng for
+  // exactly this. The spread is not thrown away -- the caller runs several
+  // seeds and judges the worst.
+  let x = seed >>> 0;
+  const rng = () => {
+    x = (x + 0x6D2B79F5) >>> 0;
+    let r = Math.imul(x ^ (x >>> 15), 1 | x);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+  const a = new Ambience(ctx, ctx.destination, { rng });
   a.start();
   a.setDay(day, closed);
-  if (good) a.working(good);
+  if (good === '@sunrise') a.sunrise(); else if (good) a.working(good);
   for (let t = 0; t < secs; t += 0.4) { fake = t; a.pump(); }
   fake = 0;
   const d = (await ctx.startRendering()).getChannelData(0);
@@ -88,7 +106,10 @@ async ([secs, good, day, closed]) => {
   // The work window is the first six seconds (WORK_MS is 6.5); the bed alone
   // is what is left once the site has faded.
   return { work: rms(0.5, 6), bed: rms(8, secs), peak,
-           bright: bright(0.5, 6), bedBright: bright(8, secs) };
+           bright: bright(0.5, 6), bedBright: bright(8, secs),
+           // The two halves of a gesture, for anything that has to *grow*.
+           early: rms(0.3, 2.2), late: rms(3.2, 5.6),
+           earlyBright: bright(0.3, 2.2), lateBright: bright(3.2, 5.6) };
 }
 """
 
@@ -143,11 +164,20 @@ def main(argv: list[str] | None = None) -> int:
             page = browser.new_page()
             page.goto(f"{base}/index.html")
 
-            control = page.evaluate(MEASURE, [SECONDS, None, 0.5, False])
-            night = page.evaluate(MEASURE, [SECONDS, None, 0.5, True])
+            def take(good, day=0.5, closed=False):
+                """Every seed, worst first on whatever the caller is judging."""
+                return [page.evaluate(MEASURE, [SECONDS, good, day, closed, seed])
+                        for seed in SEEDS]
+
+            controls = take(None)
+            nights = take(None, closed=True)
+            sunrises = take("@sunrise", day=0.06)
+            control, night, sunrise = controls[0], nights[0], sunrises[0]
             rows = [("bed", control), ("bed at night", night)]
+            works: dict[str, list[dict]] = {}
             for good in [*goods(), "nothing-has-a-site-called-this"]:
-                rows.append((good, page.evaluate(MEASURE, [SECONDS, good, 0.5, False])))
+                works[good] = take(good)
+                rows.append((good, works[good][0]))
 
             ratio = control["work"] / control["bed"]
             for name, r in rows:
@@ -165,15 +195,53 @@ def main(argv: list[str] | None = None) -> int:
                     problems.append(f"{name}: the bed is silent ({r['bed']:.4f})")
             if control["bed"] > 0.08:
                 problems.append(f"the bed is loud for a background ({control['bed']:.3f})")
-            if night["bed"] <= 0.004:
+            if min(n["bed"] for n in nights) <= 0.004:
                 problems.append("the sea stopped at night")
-            for name, r in rows[2:]:
-                heard = (r["work"] / r["bed"]) / ratio
+            # Night is a hearth: the fire is the loudest thing left, so the bed
+            # is *louder* than by day and *darker* than by day. Asked for in
+            # those words, and this is what those words mean in numbers.
+            if min(n["bed"] for n in nights) <= max(c["bed"] for c in controls) * 1.1:
+                problems.append(f"night is not a fireplace: it is no louder than "
+                                f"the day ({night['bed']:.4f} against {control['bed']:.4f})")
+            if max(n["bedBright"] for n in nights) >= min(c["bedBright"] for c in controls):
+                problems.append(f"night is not a fireplace: it is no warmer than the "
+                                f"day (bright {night['bedBright']:.3f} against "
+                                f"{control['bedBright']:.3f})")
+            # The sunrise has to *rise*: louder at its middle than at its start,
+            # and brighter with it, which is the thing that reads as light
+            # rather than as volume.
+            # Measured against itself, not against another hour: the open
+            # fires at dawn, when the bed is quiet anyway, so comparing it to
+            # midday would credit the sunrise for the hour it happens in.
+            if args.verbose:
+                print(f"{'sunrise':32} early {sunrise['early']:.4f} -> "
+                      f"late {sunrise['late']:.4f}   bright "
+                      f"{sunrise['earlyBright']:.3f} -> {sunrise['lateBright']:.3f}"
+                      f"   (bed after {sunrise['bed']:.4f})")
+            if min(s["late"] / s["early"] for s in sunrises) <= 1.3:
+                problems.append(f"the sun did not come up: no swell "
+                                f"({sunrise['early']:.4f} to {sunrise['late']:.4f})")
+            if min(s["work"] / s["bed"] for s in sunrises) <= 1.4:
+                problems.append(f"the sunrise is not heard over the bed it rises into "
+                                f"({sunrise['work']:.4f} against {sunrise['bed']:.4f})")
+            # Brightening is what reads as light rather than as volume: the
+            # lowpass opens across the swell, so the second half must carry
+            # more of its energy up top than the first.
+            if min(s["lateBright"] / s["earlyBright"] for s in sunrises) <= 1.15:
+                problems.append(f"the sunrise grows without brightening "
+                                f"({sunrise['earlyBright']:.3f} to "
+                                f"{sunrise['lateBright']:.3f})")
+            for name, runs in works.items():
+                heards = [(r["work"] / r["bed"])
+                          / (c["work"] / c["bed"])
+                          for r, c in zip(runs, controls)]
+                worst = min(heards)
                 if args.verbose:
-                    print(f"{name:32} x{heard:.2f} over the bed")
-                if heard < FLOOR:
+                    spread = " ".join(f"{h:.2f}" for h in heards)
+                    print(f"{name:32} x{worst:.2f} over the bed   (seeds: {spread})")
+                if worst < FLOOR:
                     problems.append(f"{name} at work cannot be heard over the bed "
-                                    f"(x{heard:.2f}, floor x{FLOOR})")
+                                    f"(x{worst:.2f} on its worst seed, floor x{FLOOR})")
             browser.close()
     finally:
         server.shutdown()

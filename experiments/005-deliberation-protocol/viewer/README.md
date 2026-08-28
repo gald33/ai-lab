@@ -1769,7 +1769,8 @@ always have had.
 |---|---|
 | sea, wind | always, swelling on their own slow clocks |
 | gulls | the hour — most at dawn, none once the light has gone |
-| the fire at the centre | always, and up at the bell as the light goes |
+| the fire at the centre | always, and it *is* the night |
+| the sun coming up | the day's open, over six seconds |
 | dolphins | nothing at all |
 | a site at work | a production receipt for that good, for 6.5s |
 | an event accent | the event, at 42% |
@@ -1861,6 +1862,71 @@ The other thing that changed with it: the `produced` accent in
 dropped from 780Hz to 430Hz), because it fires in the same instant the site
 starts working and two onsets stacked were most of what made a production
 unpleasant. A production window is 5s now, not 6.5.
+
+### The morning is a sunrise, and the night is a fireplace
+
+Both asked for by Gal, 2026-08-28, in those words, and both were things the
+bed had a token of rather than the thing itself.
+
+**The open was a chime saying "morning".** Three notes over 0.9s — an
+announcement of a sunrise, which is the opposite of one: what makes a sunrise
+read is that it *takes its time and brightens as it grows*. `Ambience.sunrise()`
+is one gesture over six seconds where everything moves the same way at once — a
+warm low chord swelling from nothing, a lowpass opening from 180Hz to 2.4kHz
+across it so the sound gets brighter as it gets louder, the octave arriving
+late and quiet as the top of it, the surf brightening with it, and seven gulls
+scattered through: the dawn chorus is the loudest hour for birds and this is
+that hour arriving. The fire goes the other way, because a fire at sunrise is a
+fire being left. The accent voice in `island-sound.js` is now one low note the
+swell comes up through, not the event's whole sound.
+
+**The night was a beach with a fire on it.** Sea at full, fire a little up
+behind it — but once the light has gone every trader is round the one fire at
+the centre, and that is where a spectator should be sitting. At night the fire
+is `4.2` against the sea's `0.62` and the wind's `0.22`, and because the
+crackle interval is *divided* by the fire's level, a louder fire is also a
+busier one. The fire's own filter opened from 190Hz to 340Hz (a hearth you are
+sitting at has air moving in it; a lowpassed rumble alone reads as traffic) and
+one spit in twelve is now a `pop` — a log settling, lower and four times as
+long. The bell hands straight over to it rather than flaring and settling back,
+so the flare and the night are one continuous fire.
+
+Both are measured, and the checks are written to be about the *shape* rather
+than the level, since level is the thing that was already there:
+
+| asserted | measured |
+|---|---|
+| the sunrise swells | late half ÷ early half > 1.3 (it is ×1.8) |
+| …and brightens as it swells | late brightness ÷ early > 1.15 (×1.35) |
+| …and is heard over the bed it rises into | ×1.4 (it is ×1.7) |
+| night is louder than day | the bed at night ÷ the bed by day > 1.1 (×1.4) |
+| …and warmer than day | night brightness < day's (0.077 against 0.155) |
+
+### The check is seeded, and judged on its worst seed
+
+Everything intermittent here is scheduled at random, and while tuning the
+sites the check began failing **one run in six, on a different site each
+time** — a margin thin enough that the result was the scheduler's dice rather
+than the design. `Ambience` already took its `rng` for exactly this, so
+`tests/audio.py` now passes a seeded one and takes every measurement on three
+seeds, judging each site on the **worst** of them.
+
+The seeds were not a way to make the failures go away: with them the check
+said plainly that grain (×1.35) and the generic works (×1.37) were genuinely
+marginal, and both were raised until their worst seed cleared. The spread is
+printed under `--verbose` so a site whose seeds disagree is visible rather
+than merely lucky.
+
+| site | worst seed | all three |
+|---|---|---|
+| bread | ×1.74 | 1.74 1.74 1.76 |
+| iron | ×1.61 | 1.69 1.61 1.64 |
+| grain | ×1.64 | 1.64 1.66 1.64 |
+| salt | ×1.59 | 1.59 1.78 1.72 |
+| a good with no site | ×1.59 | 1.63 1.61 1.59 |
+| fish | ×1.49 | 1.49 1.50 1.49 |
+| timber | ×1.44 | 1.60 1.44 1.47 |
+| cloth | ×1.42 | 1.56 1.42 1.45 |
 
 ### The rest of the shape
 

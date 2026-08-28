@@ -71,10 +71,15 @@ const AHEAD = 0.9, TICK_MS = 400;
 
 /** Sea, wind and fire in the mix at a given hour, and how likely a gull is. */
 export function hour(day, closed = false) {
-  //: Night is not silence -- the sea does not stop. It is the gulls stopping,
-  //: the wind dropping and the fire being the loudest thing left, which is
-  //: also what the island *looks* like once the light goes.
-  if (closed) return { sea: 1, wind: 0.45, fire: 1.6, gull: 0 };
+  //: **Night is the fire, and the fire is the whole of it.** It used to be the
+  //: sea with the fire a little up behind it, which is a beach at night and
+  //: not this island: once the light has gone, every trader is round the one
+  //: fire at the centre and that is what a spectator should be sitting at.
+  //: Asked for by Gal, 2026-08-28 -- "night background sound should be
+  //: fireplace" -- and the number that makes it one is this: the fire is
+  //: twice the sea rather than half of it, and the crackle rate below is
+  //: divided by it, so a louder fire is also a busier one.
+  if (closed) return { sea: 0.62, wind: 0.22, fire: 4.2, gull: 0 };
   const d = Math.min(1, Math.max(0, day));
   //: Dawn is the loudest hour for birds and the quietest for everything else,
   //: and this is the one place the bed says what time it is.
@@ -84,7 +89,7 @@ export function hour(day, closed = false) {
   return {
     sea: 0.85 + 0.25 * noon,
     wind: 0.5 + 0.6 * noon,
-    fire: 0.5 + 1.1 * dusk,
+    fire: 0.27 + 0.6 * dusk,
     gull: 0.25 + 0.9 * dawn + 0.45 * noon + 0.3 * dusk,
   };
 }
@@ -172,7 +177,11 @@ export class Ambience {
     this.wind = this.layer("bandpass", 620, 0.7, 0.05);
     //: The fire at the centre: a rumble under the crackle the scheduler puts
     //: on top of it.
-    this.fire = this.layer("lowpass", 190, 0.7, 0.03);
+    //: The fire's own bed. Wider than it was (190Hz) because a hearth you are
+    //: sitting at has the air moving in it, not just the low roll a distant
+    //: fire has -- at night this is the loudest thing on the island and a
+    //: lowpassed rumble alone reads as traffic.
+    this.fire = this.layer("lowpass", 340, 0.6, 0.055);
 
     this.lfo = [
       this.drift(this.sea.gain.gain, 0.083, 0.07),
@@ -237,7 +246,11 @@ export class Ambience {
     for (const k of Object.keys(this.due)) if (this.due[k] < t) this.due[k] = t;
 
     while (this.due.crackle < t + AHEAD) {
-      this.crackle(this.due.crackle, m.fire);
+      //: One spit in twelve is a proper pop -- a log settling rather than the
+      //: surface ticking. A fire without them is a hiss, which is the thing
+      //: that stops a bed from being a hearth.
+      const pop = this.rng() < 0.08;
+      this.crackle(this.due.crackle, m.fire * (pop ? 2.6 : 1), pop);
       this.due.crackle += gap(0.08, 0.45) / Math.max(0.2, m.fire);
     }
     while (this.due.gull < t + AHEAD) {
@@ -252,8 +265,8 @@ export class Ambience {
 
   // --- the things that happen now and then --------------------------------
 
-  /** One spit of the fire. */
-  crackle(at, loud = 1) {
+  /** One spit of the fire; a `pop` is a log settling, lower and longer. */
+  crackle(at, loud = 1, pop = false) {
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
     src.buffer = this.bed;
@@ -262,15 +275,16 @@ export class Ambience {
     const off = this.rng() * (this.bed.duration - 0.1);
     const f = ctx.createBiquadFilter();
     f.type = "bandpass";
-    f.frequency.value = 900 + this.rng() * 2600;
-    f.Q.value = 3;
+    f.frequency.value = pop ? 260 + this.rng() * 500 : 900 + this.rng() * 2600;
+    f.Q.value = pop ? 1.6 : 3;
+    const dur = pop ? 0.16 : 0.05;
     const g = ctx.createGain();
     const peak = 0.05 * loud * (0.3 + this.rng());
     g.gain.setValueAtTime(peak, at);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
     src.connect(f).connect(g).connect(this.gain);
-    src.start(at, off, 0.06);
-    src.stop(at + 0.08);
+    src.start(at, off, dur + 0.03);
+    src.stop(at + dur + 0.04);
   }
 
   /**
@@ -378,14 +392,87 @@ export class Ambience {
     return true;
   }
 
+  /**
+   * The day opening: **the sun coming up, heard.**
+   *
+   * Asked for by Gal, 2026-08-28 -- the episode's open should be a rising sun
+   * rather than the three-note chime it was. A chime is an announcement; a
+   * sunrise is a thing that takes its time, and the difference is entirely in
+   * the shape of it.
+   *
+   * So this is one gesture over six seconds, and everything in it goes the
+   * same way at once: a warm low chord swells from nothing, a lowpass opens
+   * over it so the sound *brightens* as it grows (which is what reads as
+   * light rather than as volume), the octave above arrives late and quiet as
+   * the top of it, and the birds start -- the dawn chorus is the loudest hour
+   * for gulls and this is that hour arriving.
+   *
+   * The fire goes the other way, because a fire at sunrise is a fire being
+   * left.
+   */
+  sunrise() {
+    if (!this.running) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const DUR = 6;
+
+    //: The chord, on a filter that opens. Fifths and an octave: nothing that
+    //: resolves anywhere, because a sunrise is not a cadence.
+    const swell = ctx.createGain();
+    const open = ctx.createBiquadFilter();
+    open.type = "lowpass";
+    open.frequency.setValueAtTime(180, t);
+    open.frequency.exponentialRampToValueAtTime(2400, t + DUR * 0.8);
+    open.Q.value = 0.5;
+    swell.gain.setValueAtTime(0.0001, t);
+    swell.gain.exponentialRampToValueAtTime(0.34, t + DUR * 0.62);
+    swell.gain.exponentialRampToValueAtTime(0.0001, t + DUR);
+    swell.connect(open).connect(this.gain);
+    for (const [f, at, level] of [[130.81, 0, 1], [196.00, 0.5, 0.8],
+                                  [261.63, 1.4, 0.7], [392.00, 2.6, 0.45],
+                                  [523.25, 3.8, 0.3]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      //: A few cents of drift on each so the chord breathes instead of
+      //: standing still. Static sines are an organ, and this is weather.
+      o.frequency.setValueAtTime(f * (0.999 + this.rng() * 0.002), t);
+      g.gain.setValueAtTime(0.0001, t + at);
+      g.gain.exponentialRampToValueAtTime(level, t + at + 1.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + DUR);
+      o.connect(g).connect(swell);
+      o.start(t + at); o.stop(t + DUR + 0.05);
+    }
+
+    //: And the light on the water: the surf brightens with it and settles
+    //: back, which is the bed itself taking part rather than a sound laid
+    //: over the top of one.
+    this.surf.filter.frequency.cancelScheduledValues(t);
+    this.surf.filter.frequency.setTargetAtTime(1800, t + 1, 2);
+    this.surf.filter.frequency.setTargetAtTime(900, t + DUR, 4);
+
+    //: The chorus. Not scheduled through `due` -- these are extra birds, on
+    //: top of whatever the hour was already going to give.
+    for (let i = 0; i < 7; i++) this.gull(t + 1.5 + this.rng() * 5, 0.5 + this.rng() * 0.7);
+
+    //: A fire at sunrise is a fire being left.
+    this.fire.gain.gain.cancelScheduledValues(t);
+    this.fire.gain.gain.setTargetAtTime(this.fire.base * 0.5, t, 3);
+  }
+
   /** The bell: the fire comes up as the light goes, and is heard doing it. */
   flare() {
     if (!this.running) return;
     const t = this.ctx.currentTime;
     this.fire.gain.gain.cancelScheduledValues(t);
-    this.fire.gain.gain.setTargetAtTime(this.fire.base * 3, t, 0.6);
-    this.fire.gain.gain.setTargetAtTime(this.fire.base * 1.4, t + 3, 4);
-    for (let i = 0; i < 24; i++) this.crackle(t + this.rng() * 2.5, 1.6);
+    this.fire.gain.gain.setTargetAtTime(this.fire.base * 4, t, 0.6);
+    //: **Handed over to the hearth rather than settling back to daytime.**
+    //: The bell is where the night's fire begins, and `setDay(_, closed)`
+    //: arrives a beat later with the same value -- so the flare and the night
+    //: are one continuous fire instead of a swell that dies and a second one
+    //: that starts.
+    this.fire.gain.gain.setTargetAtTime(this.fire.base * 4.2, t + 3, 4);
+    for (let i = 0; i < 24; i++) this.crackle(t + this.rng() * 2.5, 1.6, this.rng() < 0.25);
   }
 
   /** Every node this holds, stopped. The page is going away. */
@@ -535,9 +622,13 @@ export const WORK = {
 
   //: The quarry: hard strikes, sparse and irregular, over the cart's rumble.
   iron(a, t, until, gain) {
-    under(a, t, until, gain, { freq: 150, peak: 0.05 });
-    scatter(a, t, until, 7, (at) =>
-      strike(a, at, gain, { freq: 2600, body: 190, peak: 0.085, ring: 0.13 }));
+    //: The cart is what carries this site between strikes, and the strikes
+    //: are sparse on purpose -- a quarry is not a drum. Both were raised
+    //: after the check caught iron dipping under the floor on one run in six:
+    //: a margin that thin is a check that reports the scheduler's dice.
+    under(a, t, until, gain, { freq: 150, peak: 0.075 });
+    scatter(a, t, until, 10, (at) =>
+      strike(a, at, gain, { freq: 2600, body: 190, peak: 0.115, ring: 0.13 }));
   },
 
   //: The pans: brine moving in a shallow tray, and a rake dragged through it.
@@ -562,8 +653,8 @@ export const WORK = {
   grain(a, t, until, gain) {
     let at = t + 0.15;
     while (at < until - 0.5) {
-      wash(a, at, gain, { dur: 0.5, freq: 1500, sweep: 0.3, peak: 0.19, q: 0.8 });
-      at += 0.38 + a.rng() * 0.2;
+      wash(a, at, gain, { dur: 0.5, freq: 1500, sweep: 0.3, peak: 0.26, q: 0.8 });
+      at += 0.34 + a.rng() * 0.16;
     }
   },
 
@@ -578,9 +669,9 @@ export const WORK = {
   //: A good this island has no site for still gets worked at. `island3d.js`
   //: draws a generic works for one; this is what a generic works sounds like.
   works(a, t, until, gain) {
-    under(a, t, until, gain, { freq: 260, peak: 0.035 });
-    scatter(a, t, until, 6, (at) =>
-      strike(a, at, gain, { freq: 1700, body: 200, peak: 0.08, ring: 0.1 }));
+    under(a, t, until, gain, { freq: 260, peak: 0.05 });
+    scatter(a, t, until, 9, (at) =>
+      strike(a, at, gain, { freq: 1700, body: 200, peak: 0.12, ring: 0.11 }));
   },
 };
 

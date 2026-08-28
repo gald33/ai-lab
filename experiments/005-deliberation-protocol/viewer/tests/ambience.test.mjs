@@ -120,6 +120,32 @@ test("a production is heard at its own site, and re-triggering does not stack", 
   a.dispose();
 });
 
+test("night is a fireplace, not a beach with a fire on it", () => {
+  const day = hour(0.5), night = hour(0.5, true);
+  assert.ok(night.fire > night.sea * 3,
+            "the fire is what the island is once the light has gone");
+  assert.ok(night.fire > day.fire * 4, "and far more of it than by day");
+  assert.ok(night.sea < day.sea && night.wind < day.wind,
+            "the sea and the wind pull back for it");
+});
+
+test("the sun comes up over seconds, and takes the fire down with it", () => {
+  const { ctx, a } = bed();
+  a.start();
+  const before = ctx.started.osc;
+  a.sunrise();
+  //: A chord, its drifting partials and a chorus of gulls -- a chime would be
+  //: three oscillators and this must not be a chime.
+  assert.ok(ctx.started.osc - before > 12,
+            `a sunrise is a swell, not a chime (${ctx.started.osc - before})`);
+  assert.equal(a.running, true);
+  a.stop();
+  const quiet = ctx.started.osc;
+  a.sunrise();
+  assert.equal(ctx.started.osc, quiet, "and none of it while the bed is off");
+  a.dispose();
+});
+
 test("no gulls at night, and the fire is still there", () => {
   const { ctx, a } = bed();
   a.start();
