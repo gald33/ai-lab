@@ -527,13 +527,66 @@ curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
 
+### The warmth belongs to the light, not to the sky over the island
+
+*Corrected 2026-08-28. The section below said the day's own light never takes
+the greens off a leaf, and gave 100°–128° of hue across the whole arc as the
+measurement. That number was a **sum done by hand for a flat, up-facing patch
+of grass**, not a reading off the picture. It was wrong about the picture, the
+campfire fix shipped on the back of it, and the island was still yellow at the
+end of a day. The superseded reasoning stays here because it is the reason the
+second look went to the right place.*
+
+**What the pixels say.** Draw the island with everything but the grass hidden —
+meadow, upland, ridge, canopies, fronds — and count the hue of what is left:
+
+| `day` | median grass hue | on the yellow side of 90° |
+|---|---|---|
+| 0.25 – 0.80 | 102° – 116° | 0% |
+| 0.90 | 91° | 30% |
+| 0.95 | 87° | **64%** |
+| 1.00 | 92° | 40% |
+
+Two thirds of the island olive in the last stretch of the day, and turning the
+campfire off changed it by a few points — so the fire was never the half of it
+that a spectator was reporting.
+
+**It was the ambient.** The rig is a key, a fill and an ambient, and the
+ambient reaches every face, including all the ones a low sun has stopped
+touching. Its dusk colour was `0xa08a90` — a warm mauve — chosen so that a cool
+ambient held fixed would not make the last light of the day read *bluer* than
+midday. That reasoning is right and the fix for it was in the wrong place: it
+put the sunset in the light that falls on everything, and orange on green is
+yellow.
+
+Twilight is a cool sky with one warm light in it. The key keeps its sunset
+colour (`0xd9603a`) and does the warming; the ambient goes to `0x8497b0` at
+dusk and `0xb3bccb` at dawn, which is what the sky over an island is at those
+hours. The grass comes back — median 103°–128° at every hour of the day, with
+nothing below 100° — the sand still reads warm (hue ~22 at `day` 0.95, because
+the key is still on it), and dusk is still darker than noon by two thirds.
+
+**The check.** `twilight` in `viewer/tests/render.py` is the reproduction and
+the guard. It measures the rendered pixels, because that is the thing that was
+wrong while the arithmetic said otherwise:
+
+```bash
+python viewer/tests/render.py
+```
+
+It fails on the old ambient at seven hours of the day, and on the old campfire
+at two.
+
 ### The firelight is a pool, not a floodlight
 
 **The trees and the hill went yellow at nightfall, and it was the campfire.**
 Reported by eye twice, and looked for twice in the wrong place: the island's
-greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and
-the day's own light never takes them back — under the whole arc from dawn to
-dusk the grass stays between about 100° and 128° of hue, which is a leaf.
+greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and a
+sum done by hand said the day's own light never takes them back — under the
+whole arc from dawn to dusk the grass stays between about 100° and 128° of hue,
+which is a leaf. **That sum was of a flat patch of grass and was wrong about
+the picture** — see the section above, which is the other half of this bug. The
+fire below is real and was the near half of it.
 
 The fire's `PointLight` did. It was `(0xff9a3c, distance 4.2, decay 2)` driven
 to intensity 5.5 at the bell, and the fire stands *on* the hill: at half a unit
