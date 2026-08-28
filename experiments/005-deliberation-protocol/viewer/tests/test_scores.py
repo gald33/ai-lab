@@ -497,6 +497,40 @@ def test_a_practice_game_keeps_its_numbers_and_never_gets_a_place(tmp_path):
     assert "place" not in told
 
 
+def test_a_game_with_a_heuristic_seat_is_kept_counted_and_never_ranked(tmp_path):
+    """An NPC fills a seat so a table one short is played instead of lapsing
+    (`games/island/npc.py`), and the game it plays is not the game the board
+    ranks: `eff_round` against a fixed policy is a different challenge from
+    `eff_round` against somebody's agent. It is a separate reason from
+    `practice` because it says something different -- this round could have
+    sealed perfectly well, and one of the players was arithmetic.
+    """
+    ledger, rows = _ledger_of(tmp_path)
+    assert all(scores.is_ranked(g) for g in scores.games(scores.load(ledger)))
+
+    _, rows = _ledger_of(tmp_path, npcs={"npc-1": "greedy=1"})
+    played = scores.games(scores.load(ledger))
+    assert [scores.why_not_ranked(g) for g in played] == ["heuristic"] * len(played)
+
+    data = scores.boards(scores.load(ledger))
+    assert data["totals"]["ranked"] == 0
+    assert data["totals"]["games"] == len(played)
+    assert data["totals"]["held_out"] == {"heuristic": len(played)}
+
+    told = scores.standing(scores.load(ledger), played[0]["game_id"])
+    assert told["ranked"] is False and told["why"] == "heuristic"
+    assert told["capture"] is not None, "the score is kept, only the place goes"
+
+
+def test_a_table_of_agents_says_so_by_saying_nothing(tmp_path):
+    """The flag has to default to absent, or every game recorded before NPCs
+    existed would be held out of the ranking retrospectively."""
+    ledger, _ = _ledger_of(tmp_path)
+    for game in scores.games(scores.load(ledger)):
+        assert game["npcs"] == []
+        assert scores.why_not_ranked(game) is None
+
+
 def test_the_official_score_is_the_place_among_the_same_format(tmp_path):
     """What the ending shows: this game's capture, and where it stands among
     the games that played its own format -- never against another format."""

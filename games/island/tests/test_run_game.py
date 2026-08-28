@@ -26,7 +26,7 @@ from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 
-from games.island import live, run_game
+from games.island import live, npc, run_game
 from games.island.lobby import Lobby, Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
@@ -109,6 +109,11 @@ def test_a_settled_table_plays_through_and_lands_on_the_scoreboard(settled, hub,
     # Scripted play: both produce, then one offers and the other accepts, so
     # the round exercises production *and* exchange.
     record, board = _play_scripted(table, invite, room, tmp_path)
+
+    # A table of agents says so by saying nothing: the flag has to default to
+    # absent, or every game recorded before NPCs existed would be held out of
+    # the ranking retrospectively.
+    assert record["rounds"][0]["npcs"] == {}
 
     # --- the board is on disk, in the shape the viewer reads ---------------
     assert board.is_file()
@@ -1250,6 +1255,31 @@ def test_pruning_lets_the_spectator_s_copies_go_and_says_so(tmp_path):
     assert not (live_dir / "board-g1.json").exists()
     row = json.loads((live_dir / live.INDEX).read_text())["games"][0]
     assert row["kept"] is False, "the game vanished instead of being marked gone"
+
+
+def test_a_seat_that_declared_itself_a_heuristic_costs_the_game_its_ranking(
+        settled, hub, tmp_path):
+    """The record names the NPCs and holds the game out, and it learns both
+    from the board rather than from whoever launched anybody.
+
+    That matters because the manager does not know what started a seat and
+    must not have to: a game re-read from its board next year has to reach the
+    same answer this does.
+    """
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="trading")
+
+    room["trader-b"].post("island", npc.declaration(
+        "trader-b", npc.parse_mix("autarky=1,greedy=1")))
+    record, _ = _play_scripted(table, invite, room, tmp_path)
+
+    assert record["rounds"][0]["npcs"] == {
+        "trader-b": "autarky=0.5, greedy=0.5"}
+    assert record["practice"] is True
 
 
 def test_the_record_carries_the_clock_the_table_settled_on():
