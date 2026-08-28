@@ -172,8 +172,9 @@ export function countOf(organised) {
 
 /** Which round the page opens on when the URL named none.
  *
- * A pinned entry -- a live game, a `?board=` somebody was linked to -- is what
- * the reader came for, so it always wins. With nothing pinned the page used to
+ * A pinned entry -- a `?board=` somebody was linked to, an invite, a live game
+ * the URL named -- is what the reader came for, so it always wins. The
+ * listing's own live pointer is not that: see `openingCandidates`. With nothing pinned the page used to
  * open whatever happened to sort first, which made every unadorned visit the
  * same round forever; a random record is the cheap fix, and it is also the
  * honest one, since no round in the listing is the canonical one to show.
@@ -186,4 +187,18 @@ export function openingChoice(entries = [], random = Math.random) {
   const pinned = entries.find((e) => e.pinned);
   if (pinned) return pinned;
   return entries[Math.floor(random() * entries.length)] || entries[0];
+}
+
+/** The entries the opening choice may consider.
+ *
+ * The listing's live pointer is a *standing offer*, not a request: `serve.py`
+ * publishes it whether or not a game is running, so it is pinned and first in
+ * the list every time. Opening it when the room has said nothing is how an
+ * unadorned visit landed on an empty island -- and, until `scenery` was
+ * taught about a cast of nobody, on a thrown error as well. So an offered
+ * live entry is dropped from the opening choice unless it has a game in it;
+ * it stays in the listing either way, where picking it is the reader asking.
+ */
+export function openingCandidates(entries = [], liveHasGame = false) {
+  return liveHasGame ? entries : entries.filter((e) => !e.offered);
 }

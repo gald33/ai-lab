@@ -872,9 +872,11 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 <script type="module">
 import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
-import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
+import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer,
+         rowsFromState } from "./feeds.js";
 import { Stage } from "./stage.js";
-import { FACETS, SORTS, options, organise, countOf, activeCount, openingChoice } from "./picker.js";
+import { FACETS, SORTS, options, organise, countOf, activeCount, openingChoice,
+         openingCandidates } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 import { Sound } from "./island-sound.js";
 
@@ -1898,6 +1900,23 @@ async function archiveIndexes() {
   return [...urls];
 }
 
+/** Has the listing's live pointer got a game in it, right now?
+ *
+ * One read, before anything is opened: an endpoint that is down, or a room
+ * that has said nothing, is not something to show a reader who asked for
+ * nothing in particular. Failure is "no" rather than an error -- this decides
+ * where to look first and nothing more.
+ */
+async function liveHasGame(url, channel = params.get("channel") || "island") {
+  try {
+    const answer = await fetch(url, { cache: "no-store" });
+    if (!answer.ok) return false;
+    return rowsFromState(await answer.json(), { channel }).rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Which board, and where from. `?live=` points at a viewer's state endpoint;
 // anything else replays a saved board.
 async function boot() {
@@ -1913,8 +1932,10 @@ async function boot() {
                      value: JSON.stringify({ board: b.board, reveal: b.reveal }) });
     }
     if (list.live) {
-      entries.unshift({ label: "live — the running round", pinned: true,
-                        value: JSON.stringify({ live: list.live }) });
+      // `offered`, not asked for: the pointer is published whether or not a
+      // game is running. See `picker.js:openingCandidates`.
+      entries.unshift({ label: "live — the running round", pinned: true, offered: true,
+                        live: list.live, value: JSON.stringify({ live: list.live }) });
     }
   } catch {
     // Opened without the little server: fall back to whatever the URL says.
@@ -2076,9 +2097,12 @@ async function boot() {
   };
   relist({ keep: false });
   // Nothing in the URL named a round, so the page picks one rather than
-  // opening whichever sorted first every single time. See
-  // `picker.js:openingChoice`.
-  const opening = openingChoice(entries);
+  // opening whichever sorted first every single time -- and the listing's
+  // standing live offer counts as a round only while a game is in it. See
+  // `picker.js:openingChoice` and `openingCandidates`.
+  const offered = entries.find((e) => e.offered);
+  const opening = openingChoice(
+    openingCandidates(entries, offered ? await liveHasGame(offered.live) : false));
   if (opening && [...select.options].some((o) => o.value === opening.value)) {
     select.value = opening.value;
   }

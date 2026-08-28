@@ -2235,6 +2235,25 @@ and otherwise a uniformly random record. Only the *opening* choice is random;
 filtering, sorting and the remembered selection are untouched, and a link that
 names a round still opens exactly that round.
 
+*Amended 2026-08-28, same day.* The first version of this preferred any
+pinned entry, and the listing's live pointer is pinned: `serve.py` publishes
+`live` whether or not a game is running, so an unadorned visit still opened the
+live room -- and when that room had said nothing, the page showed an empty
+island and `Cannot read properties of undefined (reading 'x')`. Two things were
+wrong and both are fixed. The pointer is now marked `offered` and
+`picker.js:openingCandidates` drops it from the opening choice unless one read
+of it finds a game in it; it stays in the listing, where picking it is the
+reader asking for it, and a `?live=`, an invite or a `?board=` still wins
+outright. And `scene.js:scenery` drew the worn track between huts from the
+first seat's `x` without checking there was a seat -- an island with nobody on
+it now simply has no track instead of throwing.
+
+To re-check by hand: run `python viewer/serve.py` with no game running (the
+live pointer 502s), or with the room answering `{"messages": []}`, and open the
+page with no query string -- it opens a record, and a different one each time.
+The choosing half is tested in `viewer/tests/picker.test.mjs`
+(`node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs`).
+
 ### Keeping many rounds
 
 Three different things scale differently, and only one of them was a problem.
