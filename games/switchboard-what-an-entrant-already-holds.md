@@ -446,6 +446,15 @@ The row is **not** deleted at `present_until`. It flips to `away=true`,
 for a human reading a roster: it keeps a peer reachable by `whisper` past its
 own lapse. That is a far softer failure than the one this repo designed around.
 
+**`announce` replaces; it does not take the maximum.** A short-TTL probe is
+not a scoped experiment — it is a permanent downgrade of your own presence
+until you re-announce. Demonstrated here by accident within twenty minutes of
+learning the rest: the `--ttl 60 --back-in 600` probe above overwrote a
+standing `--ttl 3600`, the back-in window closed, and the row was collected.
+Nothing said so; it was found by looking. Any code that probes its own
+presence must restore it afterwards, and a long-running agent should re-assert
+its TTL rather than assume the last `announce` was its own.
+
 ### What it changed here
 
 `run_game.play` now registers the manager with
