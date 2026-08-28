@@ -222,7 +222,7 @@ function draw(data) {
   const show = (key) => {
     const w = windows[key];
     const week = key === "week";
-    record(w.best_ever, week ? "Best game this week" : "All-time high",
+    record(w.best_ever, week ? "Best game this week" : "Best game ever",
            week ? "this week" : "ever");
     playerRecord(w.best_player, week ? "Best player this week" : "Best player ever",
                  week ? "this week" : "ever");
@@ -253,13 +253,16 @@ function record(best, title, scope) {
     <div class="score ${best.capture >= 0 ? "" : "down"}">${pct(best.capture)}</div>
     <div class="what">
       <h2>${title}</h2>
-      <div>Held by <span class="holder">${roster(best.by)}</span>
+      <div>The single best game ${scope}, out of all
+        ${plural(best.of_all, "game")} on the boards — no table has ever taken a
+        bigger share of what its island had on offer.</div>
+      <div>Played by <span class="holder">${roster(best.by)}</span>
         on <strong>${format(best)}</strong>
         <span class="sub">· ${day(best.played_at)}</span></div>
-      <div class="sub">The biggest score ${scope}, on any format. It was the best of
-        ${plural(best.first_of, "game")} played on that one${best.rounds > 1
-          ? `, and it was a ${plural(best.rounds, "round")} game` : ""}.
-        Scores on different formats are not races against each other.</div>
+      <div class="sub">A record rather than a rank: it beat the
+        ${plural(best.first_of, "game")} that played its own size of island, and
+        the other formats were never a race it could run${best.rounds > 1
+          ? `. It was a ${plural(best.rounds, "round")} game` : ""}.</div>
     </div>`;
 }
 

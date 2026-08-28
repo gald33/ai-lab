@@ -114,7 +114,7 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 7
+BOARDS_V = 8
 
 #: How far back "this week" reaches, counted from the newest round in the
 #: record rather than from the clock on the machine building the page.
@@ -859,19 +859,27 @@ def board_set(rows: list[dict], played: list[dict]) -> dict:
 
 
 def best_ever(game_board: list[dict]) -> dict | None:
-    """The single highest score anybody has ever posted, on any format.
+    """The single most successful game there has ever been, on any format.
 
-    **It is a record, not a rank.** Nothing makes two formats comparable, so
-    this is not first place in a league that includes every format -- it is the
-    biggest number in the book, and the page says which format it was set on and
-    how many others played that format. `first_of` is that count, and it is
-    there so a headline set on a format only one game ever played cannot pass
-    for a headline that beat a field.
+    **It is a record, not a rank**, and the difference is the whole of this
+    function. `capture` says how much of what *its own island* had on the table
+    a game took, so the biggest one is a fact about the whole book: no game has
+    ever taken a larger share of what was in front of it. What it is not is
+    first place in a league of every format, because there is no such league --
+    two formats are not one contest, and a game cannot beat a game it never had
+    the chance to play against.
+
+    So both denominators travel with it. `of_all` is every ranked game in the
+    window, which is the field this is the best *of*; `first_of` is how many
+    played its own format, which is the field it actually *beat*. A headline set
+    on a format only one game ever played would otherwise read like a headline
+    that beat everybody.
     """
     if not game_board:
         return None
     top = dict(game_board[0])
     top["first_of"] = top["of"]
+    top["of_all"] = len(game_board)
     return top
 
 
@@ -990,10 +998,11 @@ def table(data: dict) -> str:
 
     top = data.get("best_ever")
     if top:
-        out.append(f"\nALL-TIME HIGH — {top['capture']:+.3f} captured by "
+        out.append(f"\nBEST GAME EVER — {top['capture']:+.3f} captured by "
                    f"{' + '.join(top['by'])} on {top['label']}")
-        out.append(f"  the biggest number in the book, not first place across "
-                   f"formats: it beat {top['first_of'] - 1} other game(s) on its own")
+        out.append(f"  the most successful of all {top['of_all']} ranked game(s); "
+                   f"a record and not a rank, since it only ever played the "
+                   f"{top['first_of']} game(s) on its own format")
     who = data.get("best_player")
     if who:
         out.append(f"\nBEST PLAYER — {who['id']} at {who['best']:.3f}x what they "

@@ -562,9 +562,12 @@ def test_the_all_time_high_is_the_best_game_and_says_what_it_beat(tmp_path):
     assert best["capture"] == max(g["capture"] for g in ranked)
     assert best["game_id"] == data["games"][0]["game_id"]
     assert best["place"] == 1
-    # What it beat is the field on its own format, not every game ever played.
+    # Both denominators: the field it is the best *of*, and the smaller field it
+    # actually *beat*. A record set on a format only one game ever played must
+    # not read like a record that beat everybody.
     same = [g for g in ranked if g["level"] == best["level"]]
-    assert best["first_of"] == len(same) <= len(ranked)
+    assert best["of_all"] == len(ranked)
+    assert best["first_of"] == len(same) <= best["of_all"]
 
 
 def test_the_games_board_places_each_game_inside_its_own_format(tmp_path):

@@ -1988,11 +1988,16 @@ actually ask a high-score screen: **what is the best anybody has ever done**, an
 all the same arithmetic read differently:
 
 - **Two overall records**, at the top, and they are **not the same kind of
-  claim**. The *all-time high* is the single biggest `capture` in the book on any
-  format — a record, not a rank: nothing makes two formats comparable, so it
-  names the format it was set on and the size of the field there (`first_of`), or
-  a record set where only one game was ever played reads like one that beat
-  everybody. The *best player ever* can be honest about "overall" where that one
+  claim**. The *best game ever* is the single most successful game there has
+  been, on any format: `capture` is the share of what a game's own island had on
+  the table, so the biggest one is a fact about the whole book — no table has
+  ever taken more of what was in front of it. It is still a record and not a
+  rank, because there is no league of every format and a game cannot beat one it
+  never had the chance to play against, so **both denominators travel with it**:
+  `of_all`, every ranked game, which is the field it is the best *of*, and
+  `first_of`, the games on its own format, which is the field it actually
+  *beat*. Without the second, a record set where only one game was ever played
+  reads like one that beat everybody. The *best player ever* can be honest about "overall" where that one
   cannot: a player's score is `u_i / autarky_i`, a pure number against their own
   baseline that does not carry the island with it, so it really is every format
   at once. What it still cannot claim is that every format is equally easy to
