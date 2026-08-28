@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The island — scoreboard</title>
+<title>The island — high scores</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏆</text></svg>">
 
@@ -11,6 +11,22 @@
 .tabs a { text-decoration: none; padding: 6px 11px; border-radius: 8px;
   border: 1px solid var(--line); color: var(--ink-2); font-size: 14px; }
 .tabs a.on { background: #2c3940; border-color: #4a5b63; color: var(--ink); }
+
+/* The two numbers the page is for. */
+.records { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.record { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.record .score { font-family: ui-monospace, monospace; font-size: 46px; font-weight: 700;
+  line-height: 1; color: var(--above); }
+.record .score.down { color: var(--below); }
+.record .what { flex: 1; min-width: 240px; }
+.record h2 { margin: 0 0 2px; }
+
+/* All time / this week */
+.window { display: flex; gap: 6px; margin: 0 0 12px; align-items: center; }
+.window button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--ink-2);
+  cursor: pointer; }
+.window button.on { background: #2c3940; border-color: #4a5b63; color: var(--ink); }
 
 .levels { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .level { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
@@ -35,66 +51,96 @@
 th.left, td.left { text-align: left; }
 td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow-wrap: anywhere; text-align: left; }
+td.big { font-family: ui-monospace, monospace; font-size: 16px; }
 .good { color: var(--good); }
 .bad { color: var(--critical); }
+.up { color: var(--above); }
+.down { color: var(--below); }
 .badge { display: inline-block; font-size: 10px; letter-spacing: .07em; padding: 1px 6px;
   border-radius: 9px; border: 1px solid var(--eff); color: var(--eff);
   text-transform: uppercase; }
 .badge.fault { border-color: var(--warning); color: var(--warning); }
 .feed td { vertical-align: top; }
 .empty { color: var(--muted); padding: 24px 0; text-align: center; }
-.legendline { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+details.how { margin-top: 10px; }
+details.how summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+details.how div { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
 </style>
 
 <div class="page">
   <div class="bar">
-    <h1>🏆 Scoreboard</h1>
+    <h1>🏆 High scores</h1>
     <span class="sub" id="totals">—</span>
     <span class="spacer"></span>
     <nav class="tabs">
       <a href="./">Island</a>
-      <a href="scores.html" class="on">Scoreboard</a>
+      <a href="scores.html" class="on">High scores</a>
     </nav>
   </div>
 
-  <div class="card">
-    <h2>Levels — best game on each format</h2>
-    <div class="note" style="margin:0 0 10px">
-      <strong>Gains captured</strong>: how much of what was actually on this island
-      got taken, with <strong>autarky at 0.0</strong> and the frontier at 1.0.
-      Not raw efficiency — two islands are not equally hard, and one where autarky
-      already scores 0.82 has almost nothing on the table while one at 0.60 has a
-      great deal, so ranking on raw efficiency ranks the draw. Below zero means the
-      traders ended up worse off than if they had never traded, which is a real
-      outcome and is not clamped.
-      <br>The level is the <strong>format</strong> — traders, goods, days — and
-      not the island: the island is drawn per round, so a seed is a roll rather than
-      a level, while four traders face a different frontier from two and thirty
-      days is more room to learn than three.
-      <br><strong>A game is one attempt</strong>, and may be more than one round:
-      a one-round game scores that round, a several-round game scores the median
-      of its rounds. The rounds have to be declared as one game before they are
-      played — ten rounds played and the best three called a game afterwards is
-      cherry-picking with a statistic on top.
-    </div>
-    <div class="levels" id="levels"></div>
+  <div class="window" id="window">
+    <button data-window="all" class="on">All time</button>
+    <button data-window="week">This week</button>
+    <span class="sub" id="window-note" style="align-self:center"></span>
+  </div>
+
+  <!-- The two overall records: the best a table has ever done, and the best a
+       single player has ever done, both across every format there is. -->
+  <div class="records">
+    <div class="card"><div class="record" id="record"></div></div>
+    <div class="card"><div class="record" id="record-player"></div></div>
   </div>
 
   <div class="card">
-    <h2>Traders — best game, as a multiple of playing alone</h2>
+    <h2>Best games</h2>
+    <div class="note" style="margin:0 0 10px">
+      A <strong>game</strong> is one table of players on one island. The score is
+      how much of the trade that was there for the taking they actually took:
+      <strong>0% is everyone staying home</strong> and never trading at all,
+      <strong>100% is a perfect day</strong> where nothing was left on the table.
+      A minus score means they traded themselves into a worse spot than if they
+      had done nothing — which happens, and is not hidden here.
+      <br>Games are only ever <em>placed</em> against the same size of island:
+      the <strong>place</strong> column says where a game came on its own format,
+      because two traders and four traders are not the same puzzle. The list is
+      sorted by score so you can read down it.
+    </div>
+    <table id="games"></table>
+    <div class="note" id="games-more"></div>
+  </div>
+
+  <div class="card">
+    <h2>Best players</h2>
     <div class="note" style="margin:0 0 8px">
-      Each trader against <em>their own</em> autarky, because raw Cobb-Douglas
-      utilities are not comparable between traders. <strong>1.00× is the line</strong>
-      — below it, trade left them worse off than never trading. Ranked on the best
-      round: a lucky island or a partner who happened to want what you could make
-      still counts, which is what a high score is. The median and the round count
-      sit beside it, so you can see whether a top score was one round or a habit.
+      Each player is scored against <em>themselves</em>: how much better they
+      ended up than if they had never traded with anyone.
+      <strong>1.00× is the line</strong> — below it they would have been better
+      off alone. The place goes to a player's <strong>best game</strong>, because
+      a high score is a high score; the typical and the worst sit beside it so
+      you can see whether the best was one lucky day or how they always play.
     </div>
     <table id="traders"></table>
   </div>
 
   <div class="card">
-    <h2>Recent rounds</h2>
+    <h2>Formats — the record on each size of island</h2>
+    <div class="note" style="margin:0 0 10px">
+      Each format is its own contest: more traders, more goods or more days make
+      a different puzzle, so each keeps its own record holder.
+      <details class="how"><summary>How the score is worked out</summary>
+        <div>Every island has a floor (what the traders would get with no trade
+        at all) and a ceiling (the best any set of trades could possibly do).
+        The score is where the day landed between those two, so a generous island
+        and a stingy one can sit on the same board. Nothing is taken on trust:
+        every score here is re-computed from the island's seed and the record of
+        what was traded.</div>
+      </details>
+    </div>
+    <div class="levels" id="levels"></div>
+  </div>
+
+  <div class="card">
+    <h2>Latest days played</h2>
     <table id="recent" class="feed"></table>
     <div class="note" id="denominators"></div>
   </div>
@@ -102,11 +148,19 @@ td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
 <script type="module">
 const $ = (id) => document.getElementById(id);
+// How many games the table shows. The rest are in the record and in every
+// count on this page; a leaderboard that has to be scrolled for a minute is
+// not read, and dropping them from the *counts* would be a different thing.
+const TOP = 25;
 const capture = (r) => (r.eff_round === null || r.autarky_floor === null ? null
   : (r.eff_round - r.autarky_floor) / (1 - r.autarky_floor));
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
-// When it was played; a round whose board was not kept falls back to when it was
-// written down, and says so rather than passing one off as the other.
+// The scores are fractions of what was on offer; a person reads them as a
+// percentage, so that is what the page shows. The fraction is still there in
+// the tooltip for anybody who wants it.
+const pct = (x) => (x === null || x === undefined ? "—"
+  : `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(0)}%`);
+const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 // Four traders from one entrant is one name four times, which reads as four
 // entrants until you look. Say it once, with the count.
 const roster = (ids) => {
@@ -114,9 +168,12 @@ const roster = (ids) => {
   for (const id of ids) seen.set(id, (seen.get(id) || 0) + 1);
   return [...seen].map(([id, n]) => (n > 1 ? `${id} ×${n}` : id)).join(" + ");
 };
-// A diverging bar around autarky: right and blue is gains taken, left and red is
-// worse than not trading. The track is [-1, +1]; a game past either end is
-// clamped to the rail and keeps its true number in the label above.
+// The format, in the game's own voice: an episode is a day to whoever is
+// watching. The manager still writes "episode" on the board.
+const format = (o) => `${plural(o.agents, "trader")} · ${plural(o.goods, "good")} · ${plural(o.episodes, "day")}`;
+// A diverging bar around doing nothing: right and blue is trade that paid,
+// left and red is trade that cost. The track is [-1, +1]; a game past either
+// end is clamped to the rail and keeps its true number in the label above.
 function diverging(value) {
   const span = Math.max(-1, Math.min(1, value ?? 0));
   const half = Math.abs(span) * 50;
@@ -124,22 +181,24 @@ function diverging(value) {
   const off = (value ?? 0) < -1;
   return `<div class="meter diverge">
     <i style="left:${left}%; width:${half}%; background:var(${span >= 0 ? "--above" : "--below"})"></i>
-    <u style="left:50%" title="autarky"></u>
+    <u style="left:50%" title="no trade at all"></u>
     ${off ? `<b title="past the end of the scale">◂</b>` : ""}
   </div>`;
 }
-
-const when = (r) => (r.played_at
-  ? r.played_at.slice(0, 16).replace("T", " ")
-  : `recorded ${r.recorded_at.slice(0, 16).replace("T", " ")}`);
+const day = (stamp) => (stamp ? stamp.slice(0, 16).replace("T", " ") : "—");
+// When it was played; a round whose board was not kept falls back to when it
+// was written down, and says so rather than passing one off as the other.
+const when = (r) => (r.played_at ? day(r.played_at) : `recorded ${day(r.recorded_at)}`);
 
 const state = await fetch("api/scores", { cache: "no-store" })
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
   .catch((err) => ({ error: err.message }));
 
 if (state.error) {
-  $("levels").innerHTML = `<div class="empty">no ledger yet — record a round with
+  $("record").innerHTML = `<div class="empty">no games recorded yet — add one with
     <code class="mono">python viewer/scores.py --ingest results/…/v3.json</code></div>`;
+  $("record-player").innerHTML = "";
+  $("window").hidden = true;
 } else {
   draw(state);
 }
@@ -148,88 +207,201 @@ function draw(data) {
   const t = data.totals;
   const faults = Object.entries(t.not_ranked || {});
   $("totals").textContent =
-    `${t.ranked} ranked of ${t.games} game${t.games === 1 ? "" : "s"} ` +
-    `over ${t.rounds} round${t.rounds === 1 ? "" : "s"} · ` +
-    `${t.levels} level${t.levels === 1 ? "" : "s"} · ${t.players} player${t.players === 1 ? "" : "s"}`;
+    `${plural(t.games, "game")} played · ${t.ranked} on the boards · ` +
+    `${plural(t.levels, "format")} · ${plural(t.players, "player")}`;
 
-  // Which round currently holds each island, so the feed can say so.
-  // Which game holds each level, so the feed can say so. A game of one round
-  // is held by that round's own id.
-  const holder = new Map(data.islands.map((i) => [i.game_id, i.label]));
+  levels(data.islands);
+  feed(data);
 
-  $("levels").innerHTML = data.islands.length ? data.islands.map((i, n) => `
-    <div class="level ${n === 0 ? "top" : ""}">
-      <h3><span class="seed">${i.agents} traders</span>
-        <span class="sub">${i.goods} goods · ${i.episodes} days</span></h3>
-      <div class="best ${i.best >= 0 ? "up" : "down"}">${i.best >= 0 ? "+" : ""}${fmt(i.best)}</div>
-      ${diverging(i.best)}
-      <div class="meter-legend"><span>−1</span>
-        <span>autarky 0</span><span>+1 frontier</span></div>
-      <div class="sub">raw efficiency ${fmt(i.best_eff_round)} against a floor of
-        ${fmt(i.floor, 2)}</div>
-      <div class="who">held by <span class="holder">${roster(i.by)}</span>
-        <span class="sub">· ${i.arm ?? "—"} · ${i.workspace}</span></div>
-      <div class="sub" style="margin-top:6px">
-        ${i.ranked} ranked of ${i.attempts} played${i.game_rounds > 1
-          ? ` · best is a ${i.game_rounds}-round game` : ""} · median ${fmt(i.median)} ·
-        ${i.seeds.length} island${i.seeds.length === 1 ? "" : "s"} rolled
-        <br>${i.above_autarky
-          ? `<span class="good">${i.above_autarky} of ${i.ranked} beat autarky</span>`
-          : `<span class="bad">nobody has beaten autarky on this format</span>`}</div>
-    </div>`).join("") : `<div class="empty">no ranked round yet</div>`;
+  // All time and this week are the same boards over different games, so one
+  // draw serves both and the two can never disagree about a rule.
+  const windows = { all: data, week: data.week };
+  const note = (key) => (key === "week" && data.week.since
+    ? `games played since ${day(data.week.since)}`
+    : "every game ever recorded");
+  const show = (key) => {
+    const w = windows[key];
+    const week = key === "week";
+    record(w.best_ever, week ? "Best game this week" : "Best game ever",
+           week ? "this week" : "ever");
+    playerRecord(w.best_player, week ? "Best player this week" : "Best player ever",
+                 week ? "this week" : "ever");
+    games(w.games);
+    traders(w.traders);
+    $("window-note").textContent = note(key);
+    for (const b of $("window").querySelectorAll("button")) {
+      b.classList.toggle("on", b.dataset.window === key);
+    }
+  };
+  $("window").addEventListener("click", (e) => {
+    const key = e.target.dataset?.window;
+    if (key) show(key);
+  });
+  show("all");
+}
 
-  $("traders").innerHTML = `
-    <tr><th class="rank"></th><th class="left">player</th><th>best</th><th>median</th><th>worst</th>
-      <th>games</th><th>rounds</th><th>below 1.0×</th><th>zero days</th>
-      <th>levels</th></tr>` +
-    (data.traders.length ? data.traders.map((p, n) => `
+// The headline: the single biggest score anybody has ever posted, on any
+// format. It is a record, not a league position -- nothing makes two formats
+// comparable -- so the card says which format it was set on and how big the
+// field on that format was.
+function record(best, title, scope) {
+  if (!best) {
+    $("record").innerHTML = `<div class="empty">no game has made the boards yet</div>`;
+    return;
+  }
+  $("record").innerHTML = `
+    <div class="score ${best.capture >= 0 ? "" : "down"}">${pct(best.capture)}</div>
+    <div class="what">
+      <h2>${title}</h2>
+      <div>The single best game ${scope}, out of all
+        ${plural(best.of_all, "game")} on the boards — no table has ever taken a
+        bigger share of what its island had on offer.</div>
+      <div>Played by <span class="holder">${roster(best.by)}</span>
+        on <strong>${format(best)}</strong>
+        <span class="sub">· ${day(best.played_at)}</span></div>
+      <div class="sub">A record rather than a rank: it beat the
+        ${plural(best.first_of, "game")} that played its own size of island, and
+        the other formats were never a race it could run${best.rounds > 1
+          ? `. It was a ${plural(best.rounds, "round")} game` : ""}.</div>
+    </div>`;
+}
+
+// The other record, and the one that really is across every format: a player's
+// score is what they ended with as a multiple of what they would have had
+// alone, which is a number about them and not about the island they drew.
+function playerRecord(best, title, scope) {
+  if (!best) {
+    $("record-player").innerHTML = `<div class="empty">nobody has made the boards yet</div>`;
+    return;
+  }
+  const others = (best.with || []).filter((id) => id !== best.id);
+  $("record-player").innerHTML = `
+    <div class="score ${best.best >= 1 ? "" : "down"}">${best.best.toFixed(2)}×</div>
+    <div class="what">
+      <h2>${title}</h2>
+      <div><span class="holder">${best.id}</span> ended a game with
+        <strong>${best.best.toFixed(2)}×</strong> what they would have had trading
+        with nobody${best.level ? ` — on ${format({agents: best.level[0], goods: best.level[1], episodes: best.level[2]})}` : ""}
+        <span class="sub">· ${day(best.played_at)}</span></div>
+      <div class="sub">Their best day ${scope}, out of ${plural(best.games, "game")} across
+        ${plural(best.levels, "format")}; they usually end at
+        ${best.median.toFixed(2)}×${others.length
+          ? `. That day they were at a table with ${roster(others)}` : ""}.
+        This one <em>does</em> count every format: a player's score is measured
+        against their own trading alone, not against the island.</div>
+    </div>`;
+}
+
+function games(list) {
+  $("games").innerHTML = `
+    <tr><th class="rank"></th><th>score</th><th class="left">format</th>
+      <th>place on it</th><th class="left">players</th><th class="left">played</th></tr>` +
+    (list.length ? list.slice(0, TOP).map((g, n) => `
       <tr>
         <td class="rank">${n + 1}</td>
-        <td class="id">${p.id}</td>
-        <td class="${p.best >= 1 ? "good" : "bad"}">${p.best.toFixed(3)}×</td>
-        <td>${p.median.toFixed(3)}×</td>
-        <td>${p.worst.toFixed(3)}×</td>
+        <td class="big ${g.capture >= 0 ? "up" : "down"}"
+            title="${fmt(g.capture)} of what was on the table">${pct(g.capture)}</td>
+        <td class="left">${format(g)}${g.rounds > 1
+          ? `<div class="sub">${plural(g.rounds, "round")}, scored on the middle one</div>` : ""}</td>
+        <td>${g.place} of ${g.of}</td>
+        <td class="id">${roster(g.by)}</td>
+        <td class="left sub">${day(g.played_at)}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="6" class="empty">no game on the board in this window</td></tr>`);
+  $("games-more").textContent = list.length > TOP
+    ? `Showing the top ${TOP} of ${plural(list.length, "game")} on the board.` : "";
+}
+
+function traders(list) {
+  $("traders").innerHTML = `
+    <tr><th class="rank"></th><th class="left">player</th><th>best</th><th>typical</th>
+      <th>worst</th><th>games</th><th>worse off than alone</th>
+      <th>days with nothing</th><th>formats</th></tr>` +
+    (list.length ? list.map((p, n) => `
+      <tr>
+        <td class="rank">${n + 1}</td>
+        <td class="id">${p.id}${p.best_level
+          ? `<div class="sub">best on ${p.best_level.replace(/episodes?/, "days")}</div>` : ""}</td>
+        <td class="big ${p.best >= 1 ? "good" : "bad"}">${p.best.toFixed(2)}×</td>
+        <td>${p.median.toFixed(2)}×</td>
+        <td>${p.worst.toFixed(2)}×</td>
         <td>${p.games}</td>
-        <td>${p.rounds}</td>
-        <td>${p.below_autarky} / ${p.games}</td>
-        <td>${p.zero_episodes} / ${p.agent_episodes}</td>
+        <td>${p.below_autarky} of ${p.games}</td>
+        <td>${p.zero_episodes} of ${p.agent_episodes}</td>
         <td>${p.levels}</td>
-      </tr>`).join("") : `<tr><td colspan="9" class="empty">nobody has played yet</td></tr>`);
+      </tr>`).join("")
+      : `<tr><td colspan="9" class="empty">nobody on the board in this window</td></tr>`);
+}
+
+function levels(list) {
+  $("levels").innerHTML = list.length ? list.map((i, n) => `
+    <div class="level ${n === 0 ? "top" : ""}">
+      <h3><span class="seed">${plural(i.agents, "trader")}</span>
+        <span class="sub">${plural(i.goods, "good")} · ${plural(i.episodes, "day")}</span></h3>
+      <div class="best ${i.best >= 0 ? "up" : "down"}"
+           title="${fmt(i.best)} of what was on the table">${pct(i.best)}</div>
+      ${diverging(i.best)}
+      <div class="meter-legend"><span>much worse than not trading</span>
+        <span>no trade</span><span>perfect</span></div>
+      <div class="who">record held by <span class="holder">${roster(i.by)}</span>
+        <span class="sub">· ${day(i.played_at)}</span></div>
+      <div class="sub" style="margin-top:6px">
+        ${i.ranked} of ${plural(i.attempts, "game")} on the board${i.game_rounds > 1
+          ? ` · the record is a ${plural(i.game_rounds, "round")} game` : ""} ·
+        typical ${pct(i.median)} · ${plural(i.seeds.length, "island")} played
+        <br>${i.above_autarky
+          ? `<span class="good">${i.above_autarky} of ${i.ranked} did better than not trading</span>`
+          : `<span class="bad">nobody has beaten not trading on this format</span>`}</div>
+    </div>`).join("") : `<div class="empty">no game on the board yet</div>`;
+}
+
+function feed(data) {
+  const t = data.totals;
+  const faults = Object.entries(t.not_ranked || {});
+  // Which game holds each format, so the feed can say so. A game of one round
+  // is held by that round's own id.
+  const holder = new Set(data.islands.map((i) => i.game_id));
 
   $("recent").innerHTML = `
-    <tr><th class="left">round</th><th class="left">level</th><th>captured</th>
-      <th class="left">traders</th><th></th></tr>` +
+    <tr><th class="left">table</th><th class="left">island</th><th>score</th>
+      <th class="left">players did</th><th></th></tr>` +
     data.recent.map((r) => {
       const ratios = Object.entries(r.ratios)
         .map(([slot, v]) => `${slot} ${v.toFixed(2)}×`).join("  ");
-      const best = holder.get(r.game?.id ?? r.round_id) !== undefined;
+      const best = holder.has(r.game?.id ?? r.round_id);
       return `<tr>
-        <td class="id">${r.workspace}<div class="sub">${r.arm ?? "—"} · ${when(r)}</div></td>
-        <td class="left sub">${r.island.seed} · ${r.island.agents}t · ${r.island.episodes}d</td>
-        <td class="${capture(r) >= 0 ? "good" : "bad"}">${capture(r) >= 0 ? "+" : ""}${fmt(capture(r))}
-          <div class="sub">eff ${fmt(r.eff_round, 2)} · floor ${fmt(r.autarky_floor, 2)}</div></td>
+        <td class="id">${r.workspace}<div class="sub">${when(r)}</div></td>
+        <td class="left sub">${format(r.island)}<br>island ${r.island.seed}</td>
+        <td class="${capture(r) >= 0 ? "good" : "bad"}">${pct(capture(r))}</td>
         <td class="id">${ratios || "—"}</td>
-        <td>${best ? `<span class="badge">level best</span>` : ""}
+        <td>${best ? `<span class="badge">format record</span>` : ""}
             ${r.status !== "complete" ? `<span class="badge fault">${r.status}</span>` : ""}</td>
       </tr>`;
     }).join("");
 
   $("denominators").innerHTML =
-    `Every recorded round is in these counts, including the ones that could not be
-     ranked${faults.length ? ` (${faults.map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}.
-     A round nobody reached is not a round somebody lost, and it is never dropped
-     from a denominator to make a board look better.` +
+    `Every game that was played is counted here, including the ones that could not
+     be given a place${faults.length ? ` (${faults.map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}.
+     A game nobody could reach is not a game somebody lost, and none of them are
+     dropped to make the boards look better.` +
+    (t.held_out?.practice
+      ? ` <span class="warn">${plural(t.held_out.practice, "practice game")}</span> — played
+          with everybody's hand face up, so it is kept and counted but never ranked.`
+      : "") +
+    (t.held_out?.company
+      ? ` <span class="warn">${plural(t.held_out.company, "game")} had somebody in the room
+          who had not taken a seat</span> — kept, counted, and not ranked.`
+      : "") +
     (t.unfinished_games
-      ? ` <span class="warn">${t.unfinished_games} game${t.unfinished_games === 1 ? "" : "s"}
-          short of the rounds it declared</span> — kept, counted, and not ranked:
-          abandoning the rounds that went badly is the cheapest way to launder a
-          median.`
+      ? ` <span class="warn">${plural(t.unfinished_games, "game")} stopped short of the
+          rounds it promised</span> — kept, counted, and not ranked: dropping the rounds
+          that went badly is the cheapest way to fake a good average.`
       : "") +
     (t.attendance_unrecorded
-      ? ` <span class="warn">Attendance is unrecorded on ${t.attendance_unrecorded} ranked
-          round${t.attendance_unrecorded === 1 ? "" : "s"}</span> — those ran before the
-          manager kept a list of who reached the board, so a session that never
-          started cannot be told from a trader that chose to say nothing.`
+      ? ` <span class="warn">We do not know who turned up in
+          ${plural(t.attendance_unrecorded, "ranked round")}</span> — they were played before
+          the game kept a list, so a player who never arrived cannot be told apart from
+          one who arrived and said nothing.`
       : "");
 }
 </script>

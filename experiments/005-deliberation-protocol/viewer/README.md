@@ -2099,6 +2099,62 @@ whatever degree that format asked for. The median across games, the worst, and
 the game and round counts sit beside the best, so a top score that was one game
 is visible as one.
 
+### The page ranks games and players, all time and this week
+
+*Decided 2026-08-28.* The scoreboard showed one card per format and one table of
+players, and a spectator could not answer either of the two questions people
+actually ask a high-score screen: **what is the best anybody has ever done**, and
+**who is doing well lately**. So the page now carries four things, and they are
+all the same arithmetic read differently:
+
+- **Two overall records**, at the top, and they are **not the same kind of
+  claim**. The *best game ever* is the single most successful game there has
+  been, on any format: `capture` is the share of what a game's own island had on
+  the table, so the biggest one is a fact about the whole book — no table has
+  ever taken more of what was in front of it. It is still a record and not a
+  rank, because there is no league of every format and a game cannot beat one it
+  never had the chance to play against, so **both denominators travel with it**:
+  `of_all`, every ranked game, which is the field it is the best *of*, and
+  `first_of`, the games on its own format, which is the field it actually
+  *beat*. Without the second, a record set where only one game was ever played
+  reads like one that beat everybody. The *best player ever* can be honest about "overall" where that one
+  cannot: a player's score is `u_i / autarky_i`, a pure number against their own
+  baseline that does not carry the island with it, so it really is every format
+  at once. What it still cannot claim is that every format is equally easy to
+  post a big ratio on, so it too names the format it was set on, and the games
+  and formats behind it — 2× from one game and 2× from forty are different
+  claims.
+  Both follow the window toggle, so a week headline is never an all-time number
+  wearing this week's label.
+- **Best games**, ranked on `capture`. The list is sorted so it can be read down;
+  the number that means something is the **place**, which is computed inside the
+  format and nowhere else. Both are shown, because a list has to have an order to
+  be a list at all and the order is not the claim.
+- **Best players**, unchanged in rule: a player's place goes to their best game,
+  with the typical, the worst and the counts beside it. It now also names *which*
+  game the best came from, so the number leads somewhere a spectator can look.
+- **Both boards twice**: all time, and the last `RECENT_DAYS` (7). One
+  `board_set` computes them over two populations of rows, so a week board can
+  never rank by a different rule from the all-time one.
+
+**The week is counted back from the newest round in the record, not from the
+clock.** The site is static and is rebuilt when somebody publishes it; a window
+measured from build time would empty itself on a quiet week without a game having
+been played, and would move every time the site was rebuilt. A round with no time
+on it stays in the all-time boards and out of the week, rather than being given a
+date it does not have.
+
+**The page speaks to a player, the ledger speaks to an auditor.** `capture` is
+shown as a percentage and described as *how much of the trade that was there for
+the taking got taken*, with 0% "everyone staying home" and 100% "a perfect day";
+the format is `2 traders · 4 goods · 3 days`, because the game calls an episode a
+day. Autarky, Cobb-Douglas and `eff_round` are gone from the page's prose — the
+exact fraction stays in the tooltip and the whole argument stays here and in
+`scores.py`. Nothing softer than the arithmetic is claimed: a minus score still
+says the traders ended up worse off than not trading, and the games that are kept
+and not ranked are still named on the page, with their reasons, in the same
+plain words.
+
 ### What the ledger will not do
 
 - **Believe anybody.** Every figure is recomputed from the run record and the

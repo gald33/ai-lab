@@ -77,7 +77,7 @@ import hashlib
 import json
 import statistics
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -114,7 +114,11 @@ SCHEMA = 1
 #: because a ranking rule that changes while the record does not is exactly the
 #: case where a cache keyed only on the record serves the old order forever.
 #: Bump it when `boards` changes what it produces.
-BOARDS_V = 5
+BOARDS_V = 8
+
+#: How far back "this week" reaches, counted from the newest round in the
+#: record rather than from the clock on the machine building the page.
+RECENT_DAYS = 7
 
 #: The recorded score and a freshly computed one will not match to the last bit
 #: -- they are the same arithmetic on the same numbers, so this is float noise
@@ -649,26 +653,61 @@ def standing(rows: list[dict], game_id: str) -> dict | None:
     return out
 
 
-def boards(rows: list[dict]) -> dict:
-    """The leaderboards, with their denominators attached to them.
+def when_played(item: dict) -> str | None:
+    """When a round or a game happened, preferring the board over the ingest.
 
-    Ranked entries are finished games whose every round was scorable; the counts
-    say how many were not, and those games stay in the file. A board that
-    quietly drops what went wrong is reporting on a population it chose after
-    seeing the results.
+    `recorded_at` is when somebody typed the command, which may be months later,
+    so a "this week" board built on it would be a list of when files were
+    touched rather than of what was played lately.
     """
-    played = games(rows)
-    ranked = [g for g in played if is_ranked(g)]
+    return item.get("played_at") or item.get("recorded_at")
 
+
+def within(item: dict, since: str | None) -> bool:
+    """Whether this round or game is inside the window. No stamp, no window.
+
+    A row with no time at all cannot be placed in a week, so it stays in the
+    all-time boards -- where it is comparable -- and out of the recent one,
+    rather than being given a date it does not have.
+    """
+    if since is None:
+        return True
+    stamp = when_played(item)
+    return bool(stamp) and stamp >= since
+
+
+def week_start(rows: list[dict], days: int = RECENT_DAYS) -> str | None:
+    """The cutoff for the recent board, counted back from the last game played.
+
+    From the newest round in the record rather than from the wall clock, so the
+    page a spectator opens on a quiet Tuesday still shows the last week that had
+    games in it instead of an empty board. Nothing here is served fresh anyway:
+    the static site is built when somebody publishes it, and a window measured
+    from build time would move every time the site was rebuilt without a round
+    being played.
+    """
+    stamps = [s for s in (when_played(r) for r in rows) if s]
+    if not stamps:
+        return None
+    newest = max(stamps)
+    try:
+        end = datetime.fromisoformat(newest.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return (end - timedelta(days=days)).isoformat(timespec="seconds")
+
+
+def level_rows(ranked: list[dict], played: list[dict]) -> list[dict]:
+    """One row per format: who holds it, and how the field did on it."""
     levels: dict[tuple, list[dict]] = {}
     for g in ranked:
         if g["level"]:
             levels.setdefault(tuple(g["level"]), []).append(g)
-    island_board = []
+    board = []
     for key, entries in sorted(levels.items()):
         best = max(entries, key=lambda e: e["capture"])
         attempts = sum(1 for g in played if g["level"] and tuple(g["level"]) == key)
-        island_board.append({
+        board.append({
             "level": list(key),
             "label": level_label(key),
             "agents": key[0], "goods": key[1], "episodes": key[2],
@@ -683,6 +722,7 @@ def boards(rows: list[dict]) -> dict:
             "arm": best["arm"],
             "game_id": best["game_id"],
             "game_rounds": best["rounds"],
+            "played_at": best["played_at"],
             "ranked": len(entries),
             "attempts": attempts,
             # The spread says whether the best is a result or a lucky draw.
@@ -691,8 +731,54 @@ def boards(rows: list[dict]) -> dict:
             # How often anybody beat doing nothing at all on this format.
             "above_autarky": sum(1 for e in entries if e["capture"] > 0),
         })
-    island_board.sort(key=lambda x: (-x["best"], x["level"]))
+    board.sort(key=lambda x: (-x["best"], x["level"]))
+    return board
 
+
+def game_rows(ranked: list[dict]) -> list[dict]:
+    """Every ranked game, best first, each carrying its place on its own format.
+
+    **The order is a display order, not a ranking across formats.** A place is
+    only ever against the same level -- four traders face a different frontier
+    from two -- so `place` and `of` are computed inside the format and the sort
+    is what a person reads down. Saying both is the point: the list has to be
+    orderable to be a list at all, and the number that means something has to be
+    the one attached to the row.
+    """
+    by_level: dict[tuple, list[dict]] = {}
+    for g in ranked:
+        if g["level"]:
+            by_level.setdefault(tuple(g["level"]), []).append(g)
+
+    out = []
+    for key, entries in by_level.items():
+        for g in entries:
+            # Ties share a place: two games that captured the same fraction of
+            # the same format are the same result.
+            ahead = sum(1 for p in entries if p["capture"] > g["capture"] + 1e-12)
+            out.append({
+                "game_id": g["game_id"],
+                "level": list(key),
+                "label": level_label(key),
+                "agents": key[0], "goods": key[1], "episodes": key[2],
+                "capture": g["capture"],
+                "eff_round": g["eff_round"],
+                "floor": g["floor"],
+                "place": ahead + 1,
+                "of": len(entries),
+                "by": [g["players"][s] for s in sorted(g["players"])],
+                "rounds": g["rounds"],
+                "seeds": g["seeds"],
+                "workspace": g["workspace"],
+                "arm": g["arm"],
+                "played_at": g["played_at"],
+            })
+    out.sort(key=lambda x: (-x["capture"], x["label"]))
+    return out
+
+
+def trader_rows(ranked: list[dict], rows: list[dict]) -> list[dict]:
+    """One row per player, ranked on their best game."""
     players: dict[str, dict] = {}
     for g in ranked:
         for slot, who in g["players"].items():
@@ -701,30 +787,41 @@ def boards(rows: list[dict]) -> dict:
             row = players.setdefault(who, {
                 "id": who, "scores": [], "games": 0, "below": 0,
                 "zero_episodes": 0, "agent_episodes": 0, "rounds": 0, "levels": set(),
+                "best_game": None, "best_level": None, "last": None,
             })
             ratio = g["ratios"][slot]
-            row["scores"].append(ratio)
             row["games"] += 1
             row["rounds"] += g["rounds"]
             row["below"] += 1 if ratio < 1.0 - 1e-9 else 0
+            # Which game the top score came from, so a player's best is a game
+            # a spectator can go and look at rather than a bare number.
+            if not row["scores"] or ratio > max(row["scores"]):
+                row["best_game"] = g["game_id"]
+                row["best_level"] = (level_label(tuple(g["level"]))
+                                     if g["level"] else None)
+            row["scores"].append(ratio)
+            row["last"] = max([t for t in (row["last"], g["played_at"]) if t],
+                              default=None)
             if g["level"]:
                 row["levels"].add(tuple(g["level"]))
-    for g in ranked:
-        for rid in g["round_ids"]:
-            r = next(x for x in rows if x["round_id"] == rid)
-            for p in r["players"]:
-                if p["id"] in players:
-                    players[p["id"]]["zero_episodes"] += r["zero_episodes"].get(p["slot"], 0)
-                    players[p["id"]]["agent_episodes"] += r["island"]["episodes"]
 
-    trader_board = []
+    wanted = {rid for g in ranked for rid in g["round_ids"]}
+    for r in rows:
+        if r["round_id"] not in wanted:
+            continue
+        for p in r["players"]:
+            if p["id"] in players:
+                players[p["id"]]["zero_episodes"] += r["zero_episodes"].get(p["slot"], 0)
+                players[p["id"]]["agent_episodes"] += r["island"]["episodes"]
+
+    board = []
     for row in players.values():
         # The best game holds the place. A lucky island, or a partner who
         # happened to want what you could make, is what a high score is made of
         # -- and inside a game of several rounds the median has already taken
         # the luck out to whatever degree that format asked for. The rest of the
         # row says whether a top score was one game or a habit.
-        trader_board.append({
+        board.append({
             "id": row["id"],
             "best": round(max(row["scores"]), 4),
             "median": round(statistics.median(row["scores"]), 4),
@@ -735,19 +832,133 @@ def boards(rows: list[dict]) -> dict:
             "zero_episodes": row["zero_episodes"],
             "agent_episodes": row["agent_episodes"],
             "levels": len(row["levels"]),
+            "best_game": row["best_game"],
+            "best_level": row["best_level"],
+            "last_played": row["last"],
         })
-    trader_board.sort(key=lambda x: (-x["best"], -x["median"], -x["games"]))
+    board.sort(key=lambda x: (-x["best"], -x["median"], -x["games"]))
+    return board
 
+
+def board_set(rows: list[dict], played: list[dict]) -> dict:
+    """The three rankings over one population of rounds.
+
+    All-time and the recent week are the *same* boards over different rows, so
+    they are computed once here and called twice. A week board with its own
+    arithmetic would eventually rank differently from the all-time one, and the
+    two would be right about different things.
+    """
+    ranked = [g for g in played if is_ranked(g)]
+    return {
+        "islands": level_rows(ranked, played),
+        "games": game_rows(ranked),
+        "traders": trader_rows(ranked, rows),
+        "counts": {"games": len(played), "ranked": len(ranked),
+                   "rounds": len(rows)},
+    }
+
+
+def best_ever(game_board: list[dict]) -> dict | None:
+    """The single most successful game there has ever been, on any format.
+
+    **It is a record, not a rank**, and the difference is the whole of this
+    function. `capture` says how much of what *its own island* had on the table
+    a game took, so the biggest one is a fact about the whole book: no game has
+    ever taken a larger share of what was in front of it. What it is not is
+    first place in a league of every format, because there is no such league --
+    two formats are not one contest, and a game cannot beat a game it never had
+    the chance to play against.
+
+    So both denominators travel with it. `of_all` is every ranked game in the
+    window, which is the field this is the best *of*; `first_of` is how many
+    played its own format, which is the field it actually *beat*. A headline set
+    on a format only one game ever played would otherwise read like a headline
+    that beat everybody.
+    """
+    if not game_board:
+        return None
+    top = dict(game_board[0])
+    top["first_of"] = top["of"]
+    top["of_all"] = len(game_board)
+    return top
+
+
+def best_player(trader_board: list[dict], game_board: list[dict]) -> dict | None:
+    """The best any single player has ever done, on any format.
+
+    The one number a player's board is asked for, and it can be given honestly
+    where the games board cannot: a ratio is what one trader ended with as a
+    multiple of what *they* would have had alone, which is a pure number against
+    their own baseline and does not carry the island it was drawn on with it.
+    So this really is every format together, and not a format's number wearing
+    an overall label.
+
+    What it still cannot say is that every format is equally easy to post a big
+    ratio on, so it names the one this was set on and how many games the player
+    has behind it -- a 2× from a single game and a 2× from forty are different
+    claims and the card has to be able to tell them apart.
+    """
+    if not trader_board:
+        return None
+    top = dict(trader_board[0])
+    held = next((g for g in game_board if g["game_id"] == top["best_game"]), None)
+    top["level"] = held["level"] if held else None
+    top["played_at"] = held["played_at"] if held else top.get("last_played")
+    top["with"] = held["by"] if held else []
+    return top
+
+
+def boards(rows: list[dict]) -> dict:
+    """The leaderboards, with their denominators attached to them.
+
+    Ranked entries are finished games whose every round was scorable; the counts
+    say how many were not, and those games stay in the file. A board that
+    quietly drops what went wrong is reporting on a population it chose after
+    seeing the results.
+
+    Two windows, the same rules: **all time**, which is every round ever played,
+    and **the last week**, which is the same boards over the rounds inside
+    `RECENT_DAYS` of the newest one. The week is a second view of one record and
+    never a second record.
+    """
+    played = games(rows)
+    all_time = board_set(rows, played)
+
+    since = week_start(rows)
+    recent_rows = [r for r in rows if within(r, since)]
+    recent_played = [g for g in played if within(g, since)]
+    week = board_set(recent_rows, recent_played)
+    week["since"] = since
+    week["days"] = RECENT_DAYS
+    week["best_ever"] = best_ever(week["games"])
+    week["best_player"] = best_player(week["traders"], week["games"])
+
+    levels = {tuple(g["level"]) for g in played
+              if g["level"] and is_ranked(g)}
+    players = {who for g in played if is_ranked(g)
+               for slot, who in g["players"].items() if slot in g["ratios"]}
     unfinished = sum(1 for g in played if not g["finished"])
     return {
-        "islands": island_board,
-        "traders": trader_board,
+        # The all-time boards keep the names they have always had: this is one
+        # record read two ways, and a reader that only knows about `islands` and
+        # `traders` still gets the all-time answer it always got.
+        "islands": all_time["islands"],
+        "games": all_time["games"],
+        "traders": all_time["traders"],
+        # The two overall records, one for a table and one for a player. They
+        # are different kinds of claim and are labelled as such: the game's is
+        # the biggest number in the book on a format nobody can compare to
+        # another, the player's is a ratio against their own baseline and is
+        # genuinely across every format.
+        "best_ever": best_ever(all_time["games"]),
+        "best_player": best_player(all_time["traders"], all_time["games"]),
+        "week": week,
         "recent": sorted(rows, key=lambda r: r.get("played_at") or r["recorded_at"],
                          reverse=True)[:12],
         "totals": {
             "rounds": len(rows),
             "games": len(played),
-            "ranked": len(ranked),
+            "ranked": all_time["counts"]["ranked"],
             "multi_round_games": sum(1 for g in played if g["declared"] > 1),
             "unfinished_games": unfinished,
             "not_ranked": {s: sum(1 for r in rows if r["status"] == s)
@@ -785,6 +996,21 @@ def table(data: dict) -> str:
     if t["attendance_unrecorded"]:
         out.append(f"  attendance not recorded on {t['attendance_unrecorded']} ranked round(s)")
 
+    top = data.get("best_ever")
+    if top:
+        out.append(f"\nBEST GAME EVER — {top['capture']:+.3f} captured by "
+                   f"{' + '.join(top['by'])} on {top['label']}")
+        out.append(f"  the most successful of all {top['of_all']} ranked game(s); "
+                   f"a record and not a rank, since it only ever played the "
+                   f"{top['first_of']} game(s) on its own format")
+    who = data.get("best_player")
+    if who:
+        out.append(f"\nBEST PLAYER — {who['id']} at {who['best']:.3f}x what they "
+                   f"would have had alone")
+        out.append(f"  over {who['games']} game(s) on {who['levels']} format(s); "
+                   f"their best was on "
+                   f"{level_label(tuple(who['level'])) if who['level'] else '?'}")
+
     out.append("\nLEVELS — best game on each format, as gains captured "
                "(autarky 0.0, frontier 1.0)")
     out.append(f"  {'best':>7}  {'median':>7}  {'>0':>7}  {'played':>6}  level")
@@ -793,14 +1019,34 @@ def table(data: dict) -> str:
                    f"{row['above_autarky']:>3}/{row['ranked']:<3}  "
                    f"{row['ranked']:>3}/{row['attempts']:<3}  {row['label']}")
 
-    out.append("\nTRADERS — best game, as a multiple of playing alone")
+    out += _ranking("ALL TIME", data)
+    week = data.get("week") or {}
+    if week.get("since"):
+        out += _ranking(f"LAST {week['days']} DAYS "
+                        f"(since {week['since'][:10]})", week)
+    return "\n".join(out)
+
+
+def _ranking(title: str, data: dict, top: int = 10) -> list[str]:
+    """One window's two rankings: the games, and the players who played them."""
+    out = [f"\n{title} — GAMES, as gains captured (place is within the format)"]
+    out.append(f"  {'captured':>8}  {'place':>7}  level")
+    for row in data["games"][:top]:
+        out.append(f"  {row['capture']:>+8.3f}  {row['place']:>3}/{row['of']:<3}  "
+                   f"{row['label']}  {' + '.join(row['by'])}")
+    if not data["games"]:
+        out.append("  (nothing ranked in this window)")
+
+    out.append(f"\n{title} — PLAYERS, best game as a multiple of playing alone")
     out.append(f"  {'best':>7}  {'median':>6}  {'worst':>6}  {'games':>6}  "
                f"{'<1.0x':>6}  {'zeros':>9}  id")
-    for row in data["traders"]:
+    for row in data["traders"][:top]:
         out.append(f"  {row['best']:>7.3f}  {row['median']:>6.3f}  {row['worst']:>6.3f}  "
                    f"{row['games']:>6}  {row['below_autarky']:>6}  "
                    f"{row['zero_episodes']:>4}/{row['agent_episodes']:<4}  {row['id']}")
-    return "\n".join(out)
+    if not data["traders"]:
+        out.append("  (nobody ranked in this window)")
+    return out
 
 
 def pack(results: Path | None = None) -> int:
