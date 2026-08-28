@@ -151,3 +151,84 @@ def test_the_start_block_shows_the_prompt_it_copies(hub):
     assert "OPEN traders=2" in page, "the text is on the page, not only behind it"
     # And the clipboard is not assumed: plain http and embedded browsers have none.
     assert "isSecureContext" in page and "Select-copy" in page
+
+
+def test_a_settled_table_gets_a_watch_button_when_a_live_board_is_served(hub, monkeypatch):
+    """The door to a game in progress, drawn as a door.
+
+    It used to be a `&middot;`-separated link at the tail of the "managed by"
+    line, which is the one place on the page a reader scanning for something
+    to look at does not read. A game nobody finds the door to is the failure
+    the viewer exists to prevent.
+    """
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live/")
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert "Watch this game live" in page
+    assert "watchbtn" in page
+    assert "https%3A%2F%2Fhost.example%2Flive%2Fg1.json" in page
+    assert "no key needed" in page, "a spectator reads and cannot write"
+    assert "class='t settled live'" in page, "the table itself is marked live"
+
+
+def test_the_live_base_is_read_at_render_time_not_at_import(hub, monkeypatch):
+    """As a module constant this was fixed by whatever the environment held
+    when the first import ran, so a host that exported it after start-up got
+    no button and no error saying why -- a feature shipped turned off."""
+    monkeypatch.delenv("ISLAND_LIVE_BASE", raising=False)
+    lobby = _settled(hub, generate_key())
+
+    assert "Watch this game live" not in lobby_page.render(lobby, now=1_000_000.0)
+
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+
+    assert "Watch this game live" in lobby_page.render(lobby, now=1_000_000.0)
+
+
+def test_a_lapsed_table_offers_nothing_to_watch(hub, monkeypatch):
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+    lobby = _settled(hub, generate_key())
+    lobby.tables["g1"].lapsed = True
+
+    assert "Watch this game live" not in lobby_page.render(lobby, now=1_000_000.0)
+
+
+def test_the_page_says_how_old_the_copy_in_front_of_the_reader_is(hub):
+    """A static page is stale the moment after it is written, and a lobby that
+    has stopped being rewritten looks exactly like one where nothing is
+    happening. The reload is one half of the fix; saying the age is the other,
+    because a frozen page carries a perfectly plausible-looking timestamp."""
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert f"http-equiv=refresh content={lobby_page.PAGE_REFRESH}" in page
+    assert "data-at='1000000'" in page
+    assert "STALE" in page and str(lobby_page.STALE_AFTER) in page
+
+
+def test_a_forming_table_names_what_it_is_waiting_for(hub):
+    """"1/2 seated" says how far along it is, not what would move it -- and an
+    empty seat and a missing manager are jobs for different people."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: 1_000_000.0)
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2")
+    lobby.drain()
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert "Waiting for 1 more entrant to sit down and somebody to offer to " \
+           "manage it." in page
+
+
+def test_the_header_counts_what_is_playing_and_what_is_forming(hub, monkeypatch):
+    monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
+    lobby = _settled(hub, generate_key())
+
+    page = lobby_page.render(lobby, now=1_000_000.0)
+
+    assert "1 playing now · 0 forming" in page
