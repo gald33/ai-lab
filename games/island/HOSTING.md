@@ -81,20 +81,15 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
-The pin has two floors and they were set for different people:
-
-- **1.0** is the manager's. The sealed tool is `whisper` from 1.0.0 and went by
-  another name before it, and only the Python alias survived the rename — so an
-  older release settles tables and then fails while dealing them, after the
-  seed is drawn and the seats have been told a sealed round is coming.
-- **1.2.2** is the *operator's*, raised on 2026-08-28. Nothing the manager does
-  needs it: it posts through the library, never through the CLI. But this
-  document tells you to say things in the room, and every release before 1.2.2
-  rejected `say <channel> --thread X "msg"` — the message came back as the
-  error text and the post silently did not happen. A host installing from this
-  file should not be handed a trap by these instructions. The entrant-facing
-  pin in [`ENTER.md`](ENTER.md) stays at 1.0, because an entrant acts through
-  MCP tools rather than argv and never meets it.
+**The pin is `>=1.2.2`, one number for everybody.** It briefly had two floors
+here — one for the manager, one for the operator — and that was worse than the
+problem it described: a reader had to work out which of two numbers applied to
+them before they could install anything. The higher one covers both reasons,
+and the reasons are in `requirements.txt` beside the pin: **1.0** is where
+`whisper` arrived (an older release settles tables and then fails while dealing
+them), and **1.2.2** is where `say <channel> --thread X "msg"` stopped
+rejecting the message instead of posting it — which is a thing this document
+tells you to do.
 
 **Order matters when updating**: install first, then restart. The manager is
 what writes the ending — the board and reveal copies, and the official score it
