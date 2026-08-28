@@ -737,20 +737,6 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         path = out / f"{table.id}.json"
         path.write_text(json.dumps(rec, indent=1) + "\n")
         sidecar = publish(table, invite, rec, out)
-        # The spectator's handover: whoever was watching this live is told, on
-        # the one file they were given, that the game is over and where its
-        # seed and its replay now are. It is a copy beside the live file
-        # because `--out` is not served and must not be -- it holds the seeds
-        # of games that are *still running*. Watching costs a game nothing, so
-        # a copy that fails is said out loud and the record stands.
-        if live_path is not None:
-            try:
-                finish_live(live_path,
-                            board=out / f"board-{table.workspace}.json",
-                            reveal=sidecar)
-            except Exception as exc:      # noqa: BLE001 -- see above
-                print(f"{table.id}: live handover not written: {exc!r}",
-                      flush=True)
         # **Published now, with the reveal.** Holding it back protects
         # nothing: the seed is revealed at this point anyway, and every line
         # in it was public to the room when it was written. What publishing
@@ -771,6 +757,27 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 path, players=rec["players"],
                 **({"ledger": ledger} if ledger is not None else {}))
         status = added[0]["status"] if added else "already recorded"
+        # The spectator's handover, and it goes **after** the ledger row on
+        # purpose. Whoever was watching this live is told, on the one file they
+        # were given, that the game is over, where its seed and its replay now
+        # are, and what it officially scored -- and the official score is the
+        # ledger's, read back out of the ledger this just wrote to, never a
+        # second reckoning computed here. `--out` is not served and must not
+        # be (it holds the seeds of games still running), so what a spectator
+        # can reach is a copy beside their own file.
+        if live_path is not None:
+            try:
+                finish_live(live_path,
+                            board=out / f"board-{table.workspace}.json",
+                            reveal=sidecar,
+                            standing=_scores.standing(
+                                _scores.load(ledger or _scores.LEDGER),
+                                rec["game"]["id"]))
+            except Exception as exc:      # noqa: BLE001 -- watching costs a
+                # game nothing, so a handover that fails is said out loud and
+                # the record stands.
+                print(f"{table.id}: live handover not written: {exc!r}",
+                      flush=True)
         print(f"{table.id}: wrote {path} and {sidecar.name}; "
               f"ledger says {status}", flush=True)
         if keep:

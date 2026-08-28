@@ -82,6 +82,15 @@ reached from the surface the watching happened on — see `games/island.md`,
 "Watching". A room read straight from a hub has no manager writing files
 beside it, so this is the local-viewer feed only.
 
+**The ending is the official one.** The handover carries `scores.py:standing`
+— the game's `capture`, its place among the games that played its own format,
+and each seat's place among every seat that played it — read out of the ledger
+the manager had just written the game into. The page prints it and computes no
+ranking of its own: two scoring surfaces would mean two official scores for one
+game. A game that may not be ranked (a practice table, a round somebody wrote
+into, an unfinished game) shows its numbers with the reason it has no place,
+which is the standing rule — kept, counted, never ranked.
+
 **Live from the hub** reads a room the same way the *published* Switchboard
 viewer does — sealed content opened in the browser, nothing trusted with a
 key but the tab it was typed into. `feeds.js` imports `snapshot()` straight
