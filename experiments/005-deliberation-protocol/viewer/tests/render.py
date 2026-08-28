@@ -564,6 +564,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += uncovered(browser, base, boards[0], out)
             problems += afloat(browser, base, boards[0], out)
             problems += nightfall(browser, base, out)
+            problems += twilight(browser, base, boards[0], out)
             problems += clockwork(browser, base, out)
             for board in boards:
                 problems += travelling(browser, base, board, out)
@@ -1402,6 +1403,106 @@ def nightfall(browser, base: str, out: Path) -> list[str]:
                    f"{seen['held']:.0f}); a dropped poll should not move the sun")
     return bad
 
+
+
+def twilight(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The grass is a leaf at every hour, and the warmth in the picture is the
+    light's.
+
+    **This is the check the reported bug needed and did not have.** The island
+    went yellow late in the day and it was looked for twice in the wrong
+    place: the materials are green, and a hand-rolled sum of the rig over a
+    flat, up-facing patch of grass says they stay green -- 100 to 128 degrees
+    of hue from dawn to dusk. The renderer disagreed. A canopy is a sphere and
+    a hill is a slope, the ambient reaches the faces the low sun has stopped
+    touching, and a warm ambient multiplied every one of them by an orange
+    nothing was casting.
+
+    So this measures the rendered pixels, which is the only thing a spectator
+    ever sees. The island is drawn with everything but the grass hidden --
+    meadow, upland, ridge, canopies, fronds -- so what comes back is exactly
+    the surface the report was about, on a transparent ground, and its hue is
+    counted at hours across the whole day.
+
+    The 90-degree line is where green becomes olive. Some yellow is allowed
+    and has to be: the campfire's own pool is orange light on grass and that
+    is what a fire does (see `island-life.js`, "A pool, not a floodlight"), so
+    the bar is on the *median* grass pixel and on how much of the island the
+    warm light may claim.
+    """
+    grass = r"^(meadow|upland|ridge)$|^tree_\d+_canopy|^palm_\d+_frond"
+    stem = board.name[len("board-"):-len(".json")]
+    page = browser.new_page(viewport={"width": 1100, "height": 760},
+                            reduced_motion="reduce")
+    bad: list[str] = []
+    page.goto(board_url(base, stem))
+    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_timeout(1200)
+    #: Counted in the page: the canvas is the measurement and reading it back
+    #: here would mean a PNG decoder in a test that does not need one.
+    seen = page.evaluate("""({ keep, hours }) => {
+      const st = window.__island;
+      if (!st) return { error: 'no model on this page' };
+      const re = new RegExp(keep);
+      const cv = document.createElement('canvas');
+      cv.width = st.canvas.width; cv.height = st.canvas.height;
+      const g = cv.getContext('2d');
+      const out = [];
+      for (const d of hours) {
+        st.setDay(d);
+        st.life.update(5, st.ctx());
+        const hidden = [];
+        st.island.traverse((n) => {
+          if (n.isMesh && !re.test(n.name) && n.visible) { n.visible = false; hidden.push(n); }
+        });
+        st.render();
+        g.clearRect(0, 0, cv.width, cv.height);
+        g.drawImage(st.canvas, 0, 0);
+        hidden.forEach((n) => { n.visible = true; });
+        const px = g.getImageData(0, 0, cv.width, cv.height).data;
+        const hues = [];
+        for (let i = 0; i < px.length; i += 4 * 2) {
+          const a = px[i + 3];
+          if (a < 200) continue;
+          const r = px[i] / 255, gr = px[i + 1] / 255, b = px[i + 2] / 255;
+          const M = Math.max(r, gr, b), m = Math.min(r, gr, b);
+          if ((M + m) / 2 < 0.03) continue;
+          const c = M - m;
+          if (!c) continue;
+          let h = M === r ? ((gr - b) / c + 6) % 6 : M === gr ? (b - r) / c + 2 : (r - gr) / c + 4;
+          hues.push(h * 60);
+        }
+        hues.sort((x, y) => x - y);
+        out.push({ day: d, px: hues.length,
+                   median: hues.length ? Math.round(hues[hues.length >> 1]) : null,
+                   olive: hues.length
+                     ? Math.round(100 * hues.filter((x) => x < 90).length / hues.length) : null });
+      }
+      st.setDay(null);
+      return { rows: out };
+    }""", {"keep": grass,
+           "hours": [round(i / 20, 2) for i in range(21)]})
+    page.close()
+    if seen.get("error"):
+        return [f"twilight: {seen['error']}"]
+    for row in seen["rows"]:
+        if not row["px"]:
+            bad.append(f"twilight: nothing green was drawn at day {row['day']}")
+            continue
+        #: The middle of the island's grass. At `day` 0.95 this measured 87
+        #: with the warm ambient in place -- olive, on more than half the
+        #: island at once -- and 107 without it.
+        if row["median"] < 100:
+            bad.append(f"twilight: the median grass pixel is {row['median']}° at day "
+                       f"{row['day']}; under 90° is olive and 100° is the floor "
+                       f"this island's greens sit on")
+        #: How much of it the warm light may claim. The fire's own pool is
+        #: most of what is left at the bell.
+        if row["olive"] > 25:
+            bad.append(f"twilight: {row['olive']}% of the grass is on the yellow side "
+                       f"of 90° at day {row['day']}; the campfire's pool is worth "
+                       f"about 12% and the rest of a day is worth none")
+    return bad
 
 
 def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:

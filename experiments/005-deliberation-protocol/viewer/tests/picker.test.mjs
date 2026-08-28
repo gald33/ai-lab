@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   FACETS, SORTS, groupOf, shortLabel, welfareBand, ruinBand,
   options, matches, apply, activeCount, organise, countOf, openingChoice,
+  openingCandidates,
 } from "../web/picker.js";
 
 const facet = (key) => FACETS.find((f) => f.key === key);
@@ -207,4 +208,22 @@ test("with nothing pinned the opening round is drawn at random", () => {
 
 test("an empty listing has nothing to open", () => {
   assert.equal(openingChoice([]), undefined);
+});
+
+test("the listing's live offer is not opened unless a game is in it", () => {
+  const offered = { label: "live — the running round", pinned: true, offered: true,
+                    value: "live" };
+  const listing = [offered, ...LISTING.filter((e) => !e.pinned)];
+  assert.equal(openingChoice(openingCandidates(listing, true)), offered);
+  const without = openingCandidates(listing, false);
+  assert.ok(!without.includes(offered));
+  assert.equal(without.length, listing.length - 1);
+  assert.ok(openingChoice(without, () => 0.5).label.startsWith("001-ceiling"));
+});
+
+test("a round the URL named is opened even with the live offer beside it", () => {
+  const linked = { label: "board somebody was sent", pinned: true, value: "linked" };
+  const listing = [linked, { label: "live", pinned: true, offered: true, value: "live" },
+                   ...LISTING.filter((e) => !e.pinned)];
+  assert.equal(openingChoice(openingCandidates(listing, false)), linked);
 });

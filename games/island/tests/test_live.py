@@ -240,3 +240,41 @@ def test_many_games_list_newest_first(tmp_path):
     assert len(games) == 3
     stamps = [g["finished_at"] for g in games]
     assert stamps == sorted(stamps, reverse=True)
+
+
+def test_an_evicted_game_keeps_a_row_that_says_it_was_played(tmp_path):
+    """A game evicted by a later, better game did nothing to deserve it, and a
+    link that fails into silence cannot say so. The files go; the row stays."""
+    path = _live_file(tmp_path)
+    for name in ("board.json", "reveal.json"):
+        (tmp_path / name).write_text("{}")
+    live.finish(path, board=tmp_path / "board.json", reveal=tmp_path / "reveal.json",
+                facets={"agents": 2})
+    beside = path.parent
+    assert (beside / "board-g1.json").exists()
+
+    gone = live.forget(beside, "g1")
+
+    assert sorted(p.name for p in gone) == ["board-g1.json", "g1.json",
+                                            "reveal-g1.json"]
+    row = json.loads((beside / live.INDEX).read_text())["games"][0]
+    assert row["label"] == "g1" and row["kept"] is False
+    assert row["dropped_at"].endswith("+00:00")
+    # What it was is still on the row; what it pointed at is not, because
+    # pointing at a deleted file is the failure this exists to prevent.
+    assert row["facets"] == {"agents": 2} and row["finished_at"]
+    assert "board" not in row and "reveal" not in row and "live" not in row
+
+
+def test_forgetting_twice_is_not_a_second_eviction(tmp_path):
+    path = _live_file(tmp_path)
+    for name in ("board.json", "reveal.json"):
+        (tmp_path / name).write_text("{}")
+    live.finish(path, board=tmp_path / "board.json", reveal=tmp_path / "reveal.json")
+
+    live.forget(path.parent, "g1")
+    again = live.forget(path.parent, "g1")
+
+    assert again == [], "a game already let go was let go a second time"
+    rows = json.loads((path.parent / live.INDEX).read_text())["games"]
+    assert len(rows) == 1 and rows[0]["kept"] is False

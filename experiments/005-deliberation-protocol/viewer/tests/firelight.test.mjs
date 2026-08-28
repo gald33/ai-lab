@@ -19,6 +19,16 @@
 // plus each light by its angle -- the same approximation `island-life.js`
 // already makes for the sea band, and for the same reason: it is checkable in
 // a test with no GPU in it.
+//
+// **And it is a bound on the fire, not a picture of the island.** A flat patch
+// of grass facing the sky is the one case this sum is right about; a canopy is
+// a sphere and a hill is a slope, and taking this file's word for the whole
+// island is exactly the mistake that let the twilight wash through -- it
+// passed here while more than half the rendered grass was olive at `day` 0.95.
+// What the island actually looks like at an hour is measured on the pixels, by
+// `twilight` in `viewer/tests/render.py`. Keep both: this one runs anywhere
+// and fails fast on the fire's reach, that one needs a browser and is the
+// truth.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

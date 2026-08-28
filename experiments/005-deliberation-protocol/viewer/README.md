@@ -557,13 +557,66 @@ curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
 
+### The warmth belongs to the light, not to the sky over the island
+
+*Corrected 2026-08-28. The section below said the day's own light never takes
+the greens off a leaf, and gave 100°–128° of hue across the whole arc as the
+measurement. That number was a **sum done by hand for a flat, up-facing patch
+of grass**, not a reading off the picture. It was wrong about the picture, the
+campfire fix shipped on the back of it, and the island was still yellow at the
+end of a day. The superseded reasoning stays here because it is the reason the
+second look went to the right place.*
+
+**What the pixels say.** Draw the island with everything but the grass hidden —
+meadow, upland, ridge, canopies, fronds — and count the hue of what is left:
+
+| `day` | median grass hue | on the yellow side of 90° |
+|---|---|---|
+| 0.25 – 0.80 | 102° – 116° | 0% |
+| 0.90 | 91° | 30% |
+| 0.95 | 87° | **64%** |
+| 1.00 | 92° | 40% |
+
+Two thirds of the island olive in the last stretch of the day, and turning the
+campfire off changed it by a few points — so the fire was never the half of it
+that a spectator was reporting.
+
+**It was the ambient.** The rig is a key, a fill and an ambient, and the
+ambient reaches every face, including all the ones a low sun has stopped
+touching. Its dusk colour was `0xa08a90` — a warm mauve — chosen so that a cool
+ambient held fixed would not make the last light of the day read *bluer* than
+midday. That reasoning is right and the fix for it was in the wrong place: it
+put the sunset in the light that falls on everything, and orange on green is
+yellow.
+
+Twilight is a cool sky with one warm light in it. The key keeps its sunset
+colour (`0xd9603a`) and does the warming; the ambient goes to `0x8497b0` at
+dusk and `0xb3bccb` at dawn, which is what the sky over an island is at those
+hours. The grass comes back — median 103°–128° at every hour of the day, with
+nothing below 100° — the sand still reads warm (hue ~22 at `day` 0.95, because
+the key is still on it), and dusk is still darker than noon by two thirds.
+
+**The check.** `twilight` in `viewer/tests/render.py` is the reproduction and
+the guard. It measures the rendered pixels, because that is the thing that was
+wrong while the arithmetic said otherwise:
+
+```bash
+python viewer/tests/render.py
+```
+
+It fails on the old ambient at seven hours of the day, and on the old campfire
+at two.
+
 ### The firelight is a pool, not a floodlight
 
 **The trees and the hill went yellow at nightfall, and it was the campfire.**
 Reported by eye twice, and looked for twice in the wrong place: the island's
-greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and
-the day's own light never takes them back — under the whole arc from dawn to
-dusk the grass stays between about 100° and 128° of hue, which is a leaf.
+greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and a
+sum done by hand said the day's own light never takes them back — under the
+whole arc from dawn to dusk the grass stays between about 100° and 128° of hue,
+which is a leaf. **That sum was of a flat patch of grass and was wrong about
+the picture** — see the section above, which is the other half of this bug. The
+fire below is real and was the near half of it.
 
 The fire's `PointLight` did. It was `(0xff9a3c, distance 4.2, decay 2)` driven
 to intensity 5.5 at the bell, and the fire stands *on* the hill: at half a unit
@@ -2028,6 +2081,137 @@ brightness.
 | over the bed it rises into | ×2.0 (floor ×1.4) |
 | brightness against the bed | ×0.9 (ceiling ×2.5) |
 
+### The world was a third of one chime
+
+Reported by ear, 2026-08-28: the sunrise, the day and the night are all barely
+heard. Measured, and the balance was plain —
+
+| | peak, after the master gain |
+|---|---|
+| the bell | 0.125 |
+| a settlement | 0.107 |
+| **the whole world** | **0.051** |
+
+The island was **half the height of a single accent**, and every check here
+had passed it, because every check compared the island to itself: a site was
+×1.6 over *the bed*, the sunrise ×2.0 over *the bed it rises into*. Nothing
+asked how loud the bed was against the things laid over it, so a world at any
+volume at all would have scored the same.
+
+`BED` went 0.5 → 1.15, and it is one number because of how the file is wired:
+the sites at work and the sunrise both hang off `this.gain`, so raising the
+bed lifts the whole world together and changes only its balance against the
+accents — which is exactly what was wrong. Every ratio the checks hold is
+untouched by it. The world now peaks at 0.130 against the bell's 0.125.
+
+Two checks were added, and both fail on the old value:
+
+- the bed's own RMS must sit in a band — **not below 0.04** (barely there) and
+  not above 0.09 (a spectator noticing the sea rather than the island);
+- the bed must peak at **at least 0.6× the loudest voice** laid over it.
+
+```
+FAIL: the bed is barely there (0.026): the world is the thing being listened
+      to, not the accents over it
+FAIL: the bed is dwarfed by the accents over it (the world peaks at 0.056,
+      one voice at 0.125)
+```
+
+### The checks were measuring a page nobody hears
+
+Reported 2026-08-28: all the sounds are too weak, I can't hear any of it. Then,
+minutes later, unprompted: *now I do hear everything. weird.*
+
+**Nothing in this repository had changed in between.** What changed was GitHub
+Pages: run 74 published the merge that took `BED` from 0.5 to 1.15 at
+09:07:44Z, and the report was made against the deploy before it. So the level
+that sounded broken is the level that sounds right, heard on a stale page, and
+the honest response was to change nothing — the sweep of `MASTER` values that
+was underway when the second message arrived was thrown away.
+
+*Worth writing down for the next time a sound report arrives:* **ask what is
+deployed before touching a number.** The viewer publishes on a push to `main`
+and a listener is usually a minute or two behind it.
+
+But the round found a real defect anyway, in the checks rather than the sound.
+`tests/audio.py` rendered the island straight at the destination and then
+multiplied by its own copy of `MASTER` — so it modelled the master gain and
+**ignored the limiter under it entirely**, and every number it had ever printed
+was a level no listener hears. Renders now go through `outputChain()`, exported
+from `island-sound.js` and used by the page itself, so there is one definition
+of what sits between the island and the speakers.
+
+That is also what let the band below be set honestly. The bed's floor is not a
+round number anybody liked:
+
+| heard | bed RMS out |
+|---|---|
+| `BED` 0.5, "I can't hear any of it" | 0.009 |
+| `BED` 1.15, "now I do hear everything" | 0.021 |
+
+The floor sits between them, at 0.015 — it fails the configuration a listener
+rejected and passes the one they accepted, and that is the whole of its
+justification. Every threshold in that file chosen by taste has been wrong at
+least once; these are the only two numbers in it that a pair of ears has ruled
+on directly. The ceiling (0.09) is still the old rule, still untested by
+anybody's ear, and worth remembering when it first fails.
+
+### Listening to it is part of the harness now
+
+`python viewer/tests/audio.py --wav DIR` writes the day bed, the night, the
+sunrise and every site at work as WAVs, through the page's own master gain and
+boosted for headphones.
+
+The files are what the page plays, at its own gain — **they used to be boosted
+3.2×**, which meant they sounded right while the page was 20dB down, and the
+boost was hiding the very thing it existed to reveal.
+
+It is in the repository for the reason the table above shows twice over:
+**every complaint that mattered was heard by a person and measured only
+afterwards** — the sites inaudible, the quarry harsh, the box in the air
+pitched over the bell, and now the whole world too quiet. Four for four. The
+checks are regression guards; they have never once been the thing that found
+the problem. So the harness that lets a person hear it belongs beside the one
+that measures it, rather than being rebuilt from memory every time somebody
+says it sounds wrong.
+
+### The bell is the top of the register
+
+Reported by ear, 2026-08-28: the box flying is too high against everything
+else. Measured at once, and it was not a close thing —
+
+| voice | rang at |
+|---|---|
+| **settled** | **~1019 Hz** |
+| offer | ~763 Hz |
+| bell | ~539 Hz |
+| refused | ~232 Hz |
+| produced | ~162 Hz |
+| open | ~97 Hz |
+
+`settled` was not merely the highest accent; it was **higher than the bell**,
+and the bell is the one voice this island lets sit over everything — the day
+ending is the loudest fact on the board. A settlement plays while goods cross
+the ground between two huts, and the offer's pill rides its rope to the same
+kind of sound, so what a spectator heard was **a box in the air pitched above
+the end of the day**.
+
+Both dropped an octave. The chords are unchanged in shape — a fifth with a
+third over it for a settlement, two notes up and unresolved for an offer —
+only their register moved: settled now rings at ~509 Hz and offer at ~378 Hz,
+both under the bell.
+
+The rule is now a check rather than a memory. `tests/audio.py` renders every
+voice alone, takes its pitch by zero-crossing rate (a fair proxy for signals
+this simple, and it needs no FFT) and fails any voice that rings above the
+bell. It fails on the old frequencies and passes on the new — verified by
+putting them back, which is the only way to know a check works.
+
+That is three ear-reports in a row that measurement had passed: the sites
+being inaudible, the quarry being harsh, and this. Each one became a check
+afterwards, and none of the three was found by one. **The ear goes first
+here; the checks are what stop a fixed thing from coming back.**
+
 ### The check is seeded, and judged on its worst seed
 
 Everything intermittent here is scheduled at random, and while tuning the
@@ -2265,6 +2449,25 @@ and otherwise a uniformly random record. Only the *opening* choice is random;
 filtering, sorting and the remembered selection are untouched, and a link that
 names a round still opens exactly that round.
 
+*Amended 2026-08-28, same day.* The first version of this preferred any
+pinned entry, and the listing's live pointer is pinned: `serve.py` publishes
+`live` whether or not a game is running, so an unadorned visit still opened the
+live room -- and when that room had said nothing, the page showed an empty
+island and `Cannot read properties of undefined (reading 'x')`. Two things were
+wrong and both are fixed. The pointer is now marked `offered` and
+`picker.js:openingCandidates` drops it from the opening choice unless one read
+of it finds a game in it; it stays in the listing, where picking it is the
+reader asking for it, and a `?live=`, an invite or a `?board=` still wins
+outright. And `scene.js:scenery` drew the worn track between huts from the
+first seat's `x` without checking there was a seat -- an island with nobody on
+it now simply has no track instead of throwing.
+
+To re-check by hand: run `python viewer/serve.py` with no game running (the
+live pointer 502s), or with the room answering `{"messages": []}`, and open the
+page with no query string -- it opens a record, and a different one each time.
+The choosing half is tested in `viewer/tests/picker.test.mjs`
+(`node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs`).
+
 ### Keeping many rounds
 
 Three different things scale differently, and only one of them was a problem.
@@ -2454,7 +2657,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/test_palette.py` | those gates, run — including that the comment matches the palette |
 | `tests/sound.test.mjs` | the voices and the button, against a fake `AudioContext` |
 | `tests/ambience.test.mjs` | the bed's hours, its scheduler, and one site sound per good |
-| `tests/audio.py` | the levels, rendered offline in a real browser; skips without one |
+| `tests/audio.py` | the levels, rendered offline in a real browser; `--wav DIR` to listen. Skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/clips.test.mjs` | what an event clip borrows off the island, and gives back |
 | `tests/render.py` | the drawing itself, in a real browser; skips without one |
