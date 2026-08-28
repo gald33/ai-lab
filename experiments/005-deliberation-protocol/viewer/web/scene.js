@@ -1102,12 +1102,20 @@ export class Scene {
   /**
    * How far through its episode this frame is, by the board's own clock.
    *
-   * `null` when the board has not said -- before the first episode, after the
-   * round, or on a board whose schedule line this page could not read. The
-   * caller leaves the sun where it is rather than putting it at dawn, because
-   * "we do not know the time" is not the same as "it is morning".
+   * `null` when the board has not said -- after the round, or on a board whose
+   * schedule line this page could not read. The caller leaves the sun where it
+   * is rather than putting it at dawn, because "we do not know the time" is not
+   * the same as "it is morning".
+   *
+   * **Before the first day opens is not one of those cases.** The round has
+   * not started, so the island is at dawn and nowhere else -- and an untold
+   * island is lit at noon by `island-life`, which meant the opening frames
+   * stood in full daylight and the first day then began in the dark of the
+   * dawn clip. Day, night, day, before anything had happened. The wait for the
+   * first line is morning now, and the first day just rolls on from it.
    */
   dayProgress(state) {
+    if (state?.phase === "before" || state?.phase === "ack") return 0;
     if (!state?.bell_at || !state.seconds || !state.at) return null;
     const bell = Date.parse(state.bell_at);
     const span = state.seconds * 1000;

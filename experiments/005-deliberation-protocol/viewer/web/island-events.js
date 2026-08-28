@@ -794,6 +794,14 @@ function belled(event, { island, anchors, traders, stock, life }) {
  * burned all night falls with it.
  */
 function opened(event, { island, anchors, traders, life }) {
+  //: **The round's first day does not lift a night that never fell.** This clip
+  //: is the mirror of the bell, and on day 1 there is no bell behind it: it
+  //: drew the island dark and then brought the light back up, so a spectator
+  //: watching a game start saw a day, a night and a day before a single line
+  //: had been played. Reported as an opening animation that should not be
+  //: there. Day 1 simply starts rolling -- the sun is already at dawn (see
+  //: `scene.dayProgress`) and travels from there.
+  if ((event.episode ?? 1) <= 1) return null;
   const c = clip(4.4);
   //: **The night lifts and last night's fire goes out.** The mirror of the
   //: bell and asked for the same way -- see the note there.

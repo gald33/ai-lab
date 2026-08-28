@@ -1433,6 +1433,31 @@ again and the island froze exactly as it stood — sun, clouds and camera — wi
 the canvas still showing the last thing drawn. It asks first now, and a frame
 that throws says so once instead of sixty times a second.
 
+### A game that started with a day, a night and a day
+
+Reported by eye, and decided by Gal, 2026-08-28: *"at the start of a game the
+animations show day becomes night and then day again. that's not needed. just
+start rolling the day."*
+
+Two halves of the fix above met and made it. An island that has not been told
+the hour is lit at **noon** (see the section before this one), and the page
+could not tell it the hour before the first day opened: `dayProgress()` returned
+`null` while the board was still announcing its schedule and waiting for
+acknowledgements. Then the first `open` arrived and `island-events.js:opened`
+played the dawn — a clip whose whole job is to *lift a night*, holding the light
+at full dark and letting it up over four seconds. On day 2 that is right and is
+the mirror of the bell. On day 1 there is no bell behind it.
+
+So the wait for the first line is **morning**, not an unknown hour:
+`dayProgress()` answers `0` in the `before` and `ack` phases, which is not a
+guess — the round has not started, so the island is at dawn and nowhere else.
+And `opened` returns no clip for day 1. The first day now simply rolls: the sun
+is at dawn from the first frame drawn and travels from there.
+
+The `null` rule is untouched and still means what it meant — a board whose
+schedule this page cannot read, or a live poll that brought nothing, leaves the
+light where it is.
+
 ### What a check can catch that could not exist before
 
 The island can now be *wrong* in ways it could not be as a prop layer: a box
