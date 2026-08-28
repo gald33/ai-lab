@@ -311,7 +311,14 @@ const ISLAND_ACROSS = 8.7;
 //: Measured off the model rather than derived from the tilt, and `island()`
 //: re-measures it every run against the card below it, so a change to the
 //: camera or the sea cannot leave these behind.
-const ISLAND_UP = 4.27, ISLAND_DOWN = 3.21;
+//: **Re-measured when the lagoon was widened.** `ISLAND_DOWN` was 3.21 for a
+//: shallows of 4.62; at 5.45 the island's drawn foot is 4.00 below its middle,
+//: and leaving the old number behind is exactly what `island()` fails on --
+//: it read the island's foot ten points *below* the first card on a phone.
+//: `ISLAND_UP` measures 4.07 now and is left at 4.27: over-reserving above
+//: costs a little room and under-reserving puts the island under the chrome,
+//: so the two errors are not worth the same.
+const ISLAND_UP = 4.27, ISLAND_DOWN = 4.00;
 
 //: Where the island's lowest drawn point falls inside a square box of side
 //: `D`, as a fraction of `D`. The stage fits the island to the box's short
