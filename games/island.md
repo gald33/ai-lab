@@ -720,6 +720,28 @@ its own would be a second thing to keep alive for a room whose whole state
 fits on a page. It shows only what the board shows — no seed, no lobby nonce,
 no score.
 
+**And it counts down to the start, which the board deliberately does not.**
+Every deadline the manager and the lobby post is an absolute UTC time, for the
+reason `schedule.stamp` gives: a board is append-only and a line saying "in
+120s" is only true at the instant it is written, which is not the instant it
+is read. A page is rewritten, so it can do what the board must not — `opens in
+1m 35s (19:40:00Z)`, ticking, with the absolute time kept beside it for a
+reader with no script and as the fixed point two readers can compare. The
+lapse clock on a forming table ticks the same way; it used to freeze at the
+moment the file was written.
+
+**It counts down from the server's number rather than towards the server's
+clock**, and that is the part worth writing down. The obvious version puts the
+instant in the page and has the browser subtract `Date.now()` — which reads a
+browser running three minutes fast as *the game has started* for a table that
+has not opened. Telling somebody the game began when it did not is worse than
+telling them nothing, so the page carries how long was left when it was
+written and the script subtracts only time it has measured itself. The error
+that can accumulate is bounded by `PAGE_REFRESH`, because the next rewrite
+replaces the number. `_age` reasons the opposite way on purpose: it measures
+the page's own staleness, and there trusting the reader's clock is exactly
+what makes a dead host visible.
+
 **`run_game --max-games` is the bill.** The lab pays for the manager of every
 table that settles here and `OPEN` costs its author nothing, so without a cap
 the spend is set by strangers. Two at once by default; a table that settles
