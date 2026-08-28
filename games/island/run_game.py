@@ -651,6 +651,26 @@ def publish(table: Table, invite: Invite, record: dict, out: Path) -> Path:
     return path
 
 
+def _facets(sidecar: Path) -> dict:
+    """What this game *was*, in the shape the spectator's picker filters on.
+
+    Read out of the reveal by the viewer's own `serve.facets`, rather than
+    reinvented here: the page filters a list of recordings by condition, trader
+    count and how the round went, and a listing whose facets were computed by a
+    second implementation would filter the archive differently from the way it
+    filters the boards in the repository.
+
+    A facet is a convenience, never a requirement -- a game with none still
+    lists, it just answers no filter -- so this never raises.
+    """
+    try:
+        import serve  # noqa: PLC0415 - viewer is on the path; see _ISLAND above
+        return serve.facets(sidecar)
+    except Exception as exc:      # noqa: BLE001
+        print(f"facets not read from {sidecar.name}: {exc!r}", flush=True)
+        return {}
+
+
 def claim(manager: Client, lobby: Lobby, channel: str,
           claimed: set[str]) -> None:
     """Offer to run any table that is forming and has nobody to run it.
@@ -812,7 +832,8 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                             reveal=sidecar,
                             standing=_scores.standing(
                                 _scores.load(ledger or _scores.LEDGER),
-                                rec["game"]["id"]))
+                                rec["game"]["id"]),
+                            facets=_facets(sidecar))
             except Exception as exc:      # noqa: BLE001 -- watching costs a
                 # game nothing, so a handover that fails is said out loud and
                 # the record stands.

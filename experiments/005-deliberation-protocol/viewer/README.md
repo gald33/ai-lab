@@ -72,6 +72,20 @@ advance any agent's cursor. `serve.py` forwards `api/state` so the two share an
 origin, which they must: `api/state` sends no CORS headers, so a page served
 from anywhere else cannot read it at all.
 
+**A finished game is a recording, and the list finds it.** The host's live
+directory *is* the archive — nothing there is pruned — so the manager lists
+each finished game in `index.json` beside the files it already wrote, and this
+page reads that index from `?games=<url>` or, failing that, from the directory
+of whatever `?live=` names. The URL a game was watched on is the URL its replay
+lives at; nothing is copied for that to be true. (`games/replays/` is still its
+own thing: games kept in git deliberately, a commit each.)
+
+**One control for search and list.** They used to be two: a ⌕ that filtered a
+list you could not see, and a dropdown that listed rounds you could not filter.
+The list now lives inside the drawer, under the search that narrows it, as a
+listbox rather than a dropdown — a dropdown that has to be opened to be read
+hides its own result.
+
 **A live game ends into its own replay.** The live file a manager writes
 (`games/island/live.py`) grows a `finished` block at the last bell naming the
 board and reveal it has just copied in beside itself. The page takes it: the

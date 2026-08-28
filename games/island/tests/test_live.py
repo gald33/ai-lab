@@ -116,8 +116,13 @@ def test_the_finished_game_points_at_its_own_reveal_and_board(tmp_path):
 
 
 def test_nothing_is_pointed_at_before_it_is_there(tmp_path, monkeypatch):
-    """A poll landing mid-handover must see a game still running, never a
-    pointer at a file that does not exist yet -- so the copies go first."""
+    """Nothing is ever pointed at before it is there.
+
+    A poll landing mid-handover must see a game still running rather than a
+    pointer at a file that is not written yet -- so the copies go first, the
+    live file that names them second, and the archive's index, which is what a
+    page believes about what is watchable, only once the game genuinely is.
+    """
     path = _live_file(tmp_path)
     board = tmp_path / "board.json"
     board.write_text("{}")
@@ -134,8 +139,9 @@ def test_nothing_is_pointed_at_before_it_is_there(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "replace", watched)
     live.finish(path, board=board, reveal=reveal)
 
-    assert seen == ["board-g1.json", "reveal-g1.json", "g1.json"], (
-        "the live file was updated before what it points at existed")
+    assert seen == ["board-g1.json", "reveal-g1.json", "g1.json", "index.json"], (
+        "something was pointed at before it existed: the copies come first, "
+        "then the live file that names them, then the index that lists the game")
 
 
 def test_the_official_score_travels_with_the_handover(tmp_path):
@@ -174,3 +180,63 @@ def test_a_game_with_no_standing_still_hands_over(tmp_path):
                 reveal=tmp_path / "reveal.json")
 
     assert "standing" not in json.loads(path.read_text())["finished"]
+
+
+# --- the live directory is the archive ----------------------------------------
+#
+# Nothing under --live is ever pruned, so the file a spectator polled while the
+# game ran is the file that keeps its replay afterwards. What was missing
+# between "a game ended" and "a recording anybody can watch" was a listing.
+
+def test_a_finished_game_is_listed_as_a_recording(tmp_path):
+    path = _live_file(tmp_path)
+    board = tmp_path / "board.json"
+    board.write_text('{"messages": []}')
+    reveal = tmp_path / "reveal.json"
+    reveal.write_text('{"seed": 7}')
+
+    live.finish(path, board=board, reveal=reveal,
+                standing={"capture": 0.4, "ranked": True},
+                facets={"agents": 2, "arm": "sealed"})
+
+    index = json.loads((path.parent / live.INDEX).read_text())
+    assert [g["label"] for g in index["games"]] == ["g1"]
+    row = index["games"][0]
+    # Named relative to the index, so a page reaching the archive from another
+    # origin resolves them against the URL it already has.
+    assert row["board"] == "board-g1.json" and row["reveal"] == "reveal-g1.json"
+    assert row["live"] == "g1.json"
+    assert row["standing"]["capture"] == 0.4 and row["facets"]["agents"] == 2
+    assert row["finished_at"].endswith("+00:00")
+
+
+def test_re_finishing_a_game_replaces_its_row_rather_than_doubling_it(tmp_path):
+    path = _live_file(tmp_path)
+    for name in ("board.json", "reveal.json"):
+        (tmp_path / name).write_text("{}")
+    args = {"board": tmp_path / "board.json", "reveal": tmp_path / "reveal.json"}
+
+    live.finish(path, **args)
+    live.finish(path, **args, standing={"capture": 0.9})
+
+    games = json.loads((path.parent / live.INDEX).read_text())["games"]
+    assert len(games) == 1, "the same game was listed twice"
+    assert games[0]["standing"] == {"capture": 0.9}, "the later reading lost"
+
+
+def test_many_games_list_newest_first(tmp_path):
+    """With everything kept forever, the one somebody wants is the last one."""
+    beside = tmp_path / "views"
+    for name in ("board.json", "reveal.json"):
+        (tmp_path / name).write_text("{}")
+    for label in ("g1", "g2", "g3"):
+        path = beside / f"{label}.json"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps({"channel": "island", "messages": []}))
+        live.finish(path, board=tmp_path / "board.json",
+                    reveal=tmp_path / "reveal.json")
+
+    games = json.loads((beside / live.INDEX).read_text())["games"]
+    assert len(games) == 3
+    stamps = [g["finished_at"] for g in games]
+    assert stamps == sorted(stamps, reverse=True)

@@ -799,6 +799,50 @@ Two rules hold this together and neither is new:
   game is placed among its own format and nowhere else. Ties share a place;
   breaking them by the clock would rank the clock.
 
+### The live file becomes the recording
+
+Decided by Gal, 2026-08-28, correcting what I had started doing — which was
+asking the host operator to hand me a finished game's board and reveal so I
+could commit them into `games/replays/`. That is the hand-copying path, and it
+does not scale past somebody remembering to ask.
+
+**A game becomes a recording by ending.** Its board and reveal are already
+written beside the live file at the bell; the manager now also lists it in
+`index.json` in that same directory, and the viewer reads that index — from
+`?games=<url>`, or automatically from the directory of whatever `?live=` names.
+So the URL somebody watched a game on is the URL its replay lives at
+afterwards, and nothing is copied for that to be true.
+
+This is what makes "saved forever" mean something. Keeping every file would be
+worth little if the only way to watch one were to know its filename; the index
+is the difference between an archive and a directory.
+
+`games/replays/` keeps its own meaning and is not replaced: a handful of games
+kept in git **deliberately**, one commit each, because somebody decided that
+game was worth carrying in the repository. The host's archive is everything it
+has ever played.
+
+### All games are saved forever
+
+Decided by Gal, 2026-08-28, when the host operator asked whether `--keep`
+should prune the live copies too. It should not, and neither should anything
+else: **a spectator link, once handed out, keeps working.**
+
+The reason is the one the host operator raised while arguing the other way:
+pruning a live copy breaks that game's link *silently*, because the `finished`
+block goes on naming files that are no longer there. A link that dies loudly is
+a promise kept badly; a link that dies quietly is the failure this repository
+keeps writing rules against. The alternative designs — a separate `--keep-live`
+number, or an "this replay has expired" state on the page — both exist to make
+deletion survivable, and neither is needed once nothing is deleted.
+
+It is cheap: 108K of records and 28K of live copies after one game, so a
+thousand games is about 25MB. It is written in `HOSTING.md` as well as here,
+because the person who needs it is running the box rather than reading this.
+
+*This also settles what `--keep` is for*: it is the flag for somebody else's
+disk, not for ours. The lab's own host leaves it unset.
+
 ### The board was ranking practice games, and had been all along
 
 *Corrected 2026-08-28, in the same change.* This document has said since the

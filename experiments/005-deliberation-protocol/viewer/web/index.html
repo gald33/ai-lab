@@ -100,6 +100,15 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .chip[aria-pressed="true"] .n { opacity: .8; }
 .chip:focus-visible, #picker input:focus-visible, .wide:focus-visible {
   outline: 2px solid var(--accent, #c8761f); outline-offset: 2px; }
+/* The list, under the search that narrows it. A listbox rather than a dropdown
+   because the whole point of the drawer is seeing what the filter left: a
+   dropdown that has to be opened to be read hides its own result. */
+#picker #source { width: 100%; margin: 0 0 12px; padding: 4px;
+  background: var(--panel, #12181c); color: var(--ink); font-size: 13px;
+  border: 1px solid var(--line); border-radius: 6px; }
+#picker #source option { padding: 3px 5px; border-radius: 4px; }
+#picker #source optgroup { font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3, #7d8b95); }
 #picker .wide { width: 100%; margin-top: 6px; }
 #picker .muted { margin: -4px 0 10px; font-size: 12px; color: var(--ink-3, #7d8b95); }
 #t-filter-n { font-size: 11px; font-variant-numeric: tabular-nums; margin-left: 3px; }
@@ -766,8 +775,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 
   <div class="chrome at-top-right">
     <button id="t-filter" aria-pressed="false" aria-controls="picker"
-            title="Choose a round by what happened in it">⌕<span id="t-filter-n"></span></button>
-    <select id="source" title="Which board" aria-label="Which board"></select>
+            title="Search the recordings">⌕<span id="t-filter-n"></span></button>
     <button id="reload" title="Read the source again">↻</button>
     <button id="t-sound" aria-pressed="false"
             title="Hear the island">🔇</button>
@@ -797,14 +805,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <!-- Both shut until asked for. -->
+  <!-- Searching and choosing were two controls in the chrome — a ⌕ that
+       filtered a list you could not see, and a dropdown that listed rounds you
+       could not filter. They are one thing and they are now in one place: the
+       list lives under the search that narrows it. -->
   <aside class="drawer side" id="picker" hidden>
     <div class="card">
-      <h2>Which round</h2>
+      <h2>Which recording</h2>
       <p class="muted" id="picker-count">—</p>
       <label class="find">
         <span class="sr">Name</span>
         <input id="find" type="search" placeholder="name, if you know it" spellcheck="false">
       </label>
+      <select id="source" size="10" title="Which recording"
+              aria-label="Which recording"></select>
       <div id="facets"></div>
       <div class="sorts">
         <span class="facet-h">Order</span>
@@ -1863,6 +1877,27 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft") player?.step(-1);
 });
 
+/**
+ * Where to look for archives of finished games.
+ *
+ * `?games=` names one outright. Otherwise the live file's own directory is the
+ * archive — that is the whole point of the arrangement: the manager keeps the
+ * finished game beside the file it was already writing, so a spectator who has
+ * a live URL already has the archive URL and needs to be told nothing.
+ */
+async function archiveIndexes() {
+  const urls = new Set();
+  const games = params.get("games");
+  if (games) urls.add(new URL(games, location.href).href);
+  const live = params.get("live");
+  // `api/state` is a local viewer's proxy, not a directory of files, so it has
+  // no archive beside it and asking would 404 on every load.
+  if (live && !live.startsWith("api/")) {
+    urls.add(new URL("index.json", new URL(live, location.href)).href);
+  }
+  return [...urls];
+}
+
 // Which board, and where from. `?live=` points at a viewer's state endpoint;
 // anything else replays a saved board.
 async function boot() {
@@ -1884,6 +1919,34 @@ async function boot() {
   } catch {
     // Opened without the little server: fall back to whatever the URL says.
   }
+  // The host's own archive. A game that ended is a recording: the manager
+  // wrote its board and reveal beside the live file nobody stopped polling,
+  // and listed it in `index.json` there. So the same URL a spectator watched
+  // live on is where its replay lives afterwards — nothing is copied anywhere
+  // for a finished game to become watchable. See `games/island/live.py`.
+  for (const url of await archiveIndexes()) {
+    try {
+      const answer = await fetch(url, { cache: "no-store" });
+      if (!answer.ok) continue;
+      const listing = await answer.json();
+      for (const g of listing.games || []) {
+        // Resolved against the index, because the page may be served from a
+        // different origin than the archive — which is the normal case: the
+        // viewer is on Pages and the archive is on the game's own host.
+        const at = new URL(g.board, url).href;
+        entries.push({
+          label: `${g.label} — played out`,
+          board: at,
+          facets: g.facets || {},
+          at: Date.parse(g.finished_at || "") / 1000 || 0,
+          value: JSON.stringify({ board: at, reveal: new URL(g.reveal, url).href }),
+        });
+      }
+    } catch {
+      // An archive that cannot be read is one source of many; the rest list.
+    }
+  }
+
   const board = params.get("board");
   if (board) {
     // Labelled the way the listing labels one. The path is what was asked for,
@@ -2012,7 +2075,14 @@ async function boot() {
     relist();
   };
   relist({ keep: false });
-  select.onchange = () => { picker.set(false); open(JSON.parse(select.value)); };
+  const choose = () => { picker.set(false); open(JSON.parse(select.value)); };
+  select.onchange = choose;
+  // A listbox fires no `change` when the row already selected is clicked
+  // again, which from the reader's side is the same gesture as any other pick
+  // -- and the one they make after a filter leaves them looking at what they
+  // are already watching.
+  select.ondblclick = choose;
+  select.onkeydown = (e) => { if (e.key === "Enter") choose(); };
   $("reload").onclick = () => open(JSON.parse(select.value));
   open(JSON.parse(select.value));
 }

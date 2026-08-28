@@ -118,6 +118,7 @@ seats.
 | `--out/archive-<workspace>.json` | the **second copy** of the board, read live by an archivist that took no seat, with its own blind spots declared | anybody checking what the manager left out |
 | `--live/<table>.json` | the running game's board, rewritten every drain, plus — at the last bell — a `finished` block naming the two files below | **anybody**: it is what `?live=<url>` reads |
 | `--live/board-<table>.json`, `--live/reveal-<table>.json` | copies of the finished game's board and reveal, written beside the live file so whoever watched the round can see its scores and replay it | the spectator's page |
+| `--live/index.json` | every finished game on this host, newest first, with its board, reveal, official standing and the facets the picker filters on | the spectator's page — this is what turns a finished game into a listed recording |
 | `--ledger` | append-only, one row per round | the scoreboard |
 | `--state` | seeds drawn and lines already acted on | only this process, across restarts |
 
@@ -150,9 +151,30 @@ and it has no back end.
 rather than links: `--out` holds the seeds of games that are **still
 running**, and serving it would publish them. A copy under `--live` is a
 finished game only, put there by the same call that publishes the sidecar.
-`--keep` does not prune those copies — they accumulate at tens of kilobytes a
-game, the same order as `--out`, and clearing them is a `rm` on a directory
-whose contents are all published anyway.
+**The live directory is the archive.** A game does not get copied anywhere to
+become watchable: it ends, its board and reveal land beside the live file
+nobody stopped polling, and `index.json` lists it. The viewer reads that index
+— `?games=<url>`, or automatically from the directory of whatever `?live=` was
+pointed at — so the URL a spectator watched a game on is the URL its recording
+lives at afterwards. `games/replays/` in the repository is a different thing
+and stays that way: a handful of games kept in git *deliberately*, with a
+commit behind each, rather than everything this host has ever played.
+
+**Nothing under `--live` is ever pruned, and `--keep` should stay unset.**
+Decided by Gal, 2026-08-28: *all games are saved forever*. A spectator link,
+once handed out, keeps working — and pruning a live copy breaks the link
+silently, because the `finished` block goes on naming files that are no longer
+there. The host operator asked for pruning to be wired into the runner rather
+than left to a timer on the box, on the sound ground that a retention policy
+split across two repositories is one nobody can find; the policy turned out to
+be *keep everything*, which is why it is written here rather than built. **Do
+not add a timer over the live directory.**
+
+The bill for that is small and measured: after one game, `results` is 108K and
+the live directory is 28K (host operator, 2026-08-28), so a thousand games is
+about 25MB. If a disk ever does fill, suspect something else first — the one
+incident so far, 87% to 91% overnight, was a Docker build cache and not the
+island.
 
 **Point `--page` into a directory of its own**, not at the state directory.
 Everything else in the table above is either private while a game is running
@@ -162,6 +184,13 @@ directory holding nothing but the page is a mistake that cannot be made; the
 running host does this, mounting `~/island/public/` with the state files one
 level up, and refuses any path but `/` and `/index.html` besides.
 
+**The live directory also needs `Access-Control-Allow-Origin`.** The viewer is
+published on GitHub Pages and fetches the live file from *this* host, so the
+request is cross-origin and the browser refuses it without the header — and
+what a spectator sees when it is missing is an empty island and a failed poll,
+not an error that names its own cause. Raised by the host operator, 2026-08-28,
+who had already worked it out and shipped it; nothing here said so.
+
 **Which means the live directory has to be let through that refusal.** A host
 serving only `/` and `/index.html` serves no spectator anything, whatever
 `--live` writes. Allow `/live/` under the same root — it is the one other
@@ -170,6 +199,29 @@ that are already over, and it is the same argument as the page: published on
 purpose, private things one level up. Serve it `Cache-Control: no-store` too;
 a cached live file is a game a spectator watches minutes behind, and a cached
 `finished` block is an ending that never arrives.
+
+The running host does all of this in Caddy, and this is the actual block rather
+than a description of one (host operator, 2026-08-28):
+
+```
+handle /robots.txt { respond "User-agent: * / Allow: /" }
+handle /live/* {
+    header Access-Control-Allow-Origin "https://gald33.github.io"
+    header Cache-Control "no-store"
+    file_server
+}
+@page path / /index.html
+handle @page { header Cache-Control "no-store"; file_server }
+handle { respond "not found" 404 }
+```
+
+Two paths by name, one prefix by directory, everything else 404. What makes
+that safe is not the shape of the config but the checks that were run against
+it: `lobby.json`, `results/`, a `../` traversal and a decoy file dropped into
+the public directory were each confirmed to 404 through the public URL, the
+mount is read-only, and the seeds live one directory *above* what is mounted.
+Re-run those four checks after any change to this block — "be careful with the
+web root" is not a check.
 
 ## Whether it is healthy
 
