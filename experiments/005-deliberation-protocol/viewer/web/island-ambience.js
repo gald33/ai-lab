@@ -42,10 +42,23 @@
  * home and gone a few seconds later.
  */
 
-//: The bed's own ceiling, under the master. Everything here is background by
-//: definition: if a spectator ever notices the sea rather than the island,
-//: this is too high.
-const BED = 0.5;
+//: The bed's own ceiling, under the master.
+//:
+//: **0.5 was a background nobody could hear.** Reported by ear, 2026-08-28 --
+//: the day, the night and the sunrise are all barely there -- and the numbers
+//: said the same thing at once: the whole world peaked at 0.051 after the
+//: master gain while a single settlement chimed at 0.107 and the bell at
+//: 0.125. The island was half the height of one accent.
+//:
+//: The fix is one number because of how this file is wired: the sites at work
+//: and the sunrise both hang off `this.gain`, so raising the bed lifts the
+//: whole world together and changes only its balance against the accents --
+//: which is exactly what was wrong. Every ratio the checks hold (a site over
+//: the bed, the sunrise over the bed it rises into) is untouched by it.
+//:
+//: The original note here still stands as the other wall: if a spectator ever
+//: notices the sea rather than the island, this is too high.
+const BED = 1.15;
 
 //: How long a production receipt keeps its site sounding. Long enough to
 //: outlast the clip that carries the crate home (`CARRY` in `scene.js` is
@@ -425,7 +438,7 @@ export class Ambience {
     open.frequency.exponentialRampToValueAtTime(2400, t + DUR * 0.8);
     open.Q.value = 0.5;
     swell.gain.setValueAtTime(0.0001, t);
-    swell.gain.exponentialRampToValueAtTime(0.34, t + DUR * 0.62);
+    swell.gain.exponentialRampToValueAtTime(0.42, t + DUR * 0.62);
     swell.gain.exponentialRampToValueAtTime(0.0001, t + DUR);
     swell.connect(open).connect(this.gain);
     for (const [f, at, level] of [[130.81, 0, 1], [196.00, 0.5, 0.8],
