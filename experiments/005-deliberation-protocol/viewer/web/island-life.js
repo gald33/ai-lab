@@ -183,7 +183,10 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       const s = 0.98 + p * 0.09;
       ring.scale.set(s, 0.5, s);
       ring.material.opacity = 0.9 * Math.sin(Math.PI * p) ** 0.7;
-      ring.position.y = 0.055 + Math.sin(p * Math.PI) * 0.02;
+      //: The ring's own resting height, set where the water was
+      //: measured -- see `shoreRing`. A constant here is a second
+      //: opinion about where the sea is, and it was the wrong one.
+      ring.position.y = ring.userData.restY + Math.sin(p * Math.PI) * 0.02;
     }));
   }
 

@@ -4550,7 +4550,39 @@ SURF = """async ({w, h}) => {
       spreads.push({name: ring.name, t, spread: hi - lo});
     }
   }
-  return {rings: rings.length, spreads};
+  //: **And that any of it can be seen.** The shape checks above pass on a
+  //: ring lying entirely inside the drawn sea, which is what the ring was
+  //: doing when this was written. Same question `whose` asks of a hut's
+  //: paint, and asked the same way: points on the ring's own surface,
+  //: raycast from the page's own camera, counted only when nothing else in
+  //: the scene stands in front. Nothing reads a pixel, so lighting and the
+  //: time of day cannot argue with it.
+  st.life.update(1.5, st.ctx());
+  st.aim(0);
+  st.camera.updateMatrixWorld(true);
+  st.island.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster();
+  const cam = st.camera;
+  const visible = [];
+  for (const ring of rings) {
+    const pos = ring.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(pos.count / 300));
+    let shown = 0, total = 0;
+    for (let i = 0; i < pos.count; i += step) {
+      const v = new THREE.Vector3().fromBufferAttribute(pos, i);
+      ring.localToWorld(v);
+      total++;
+      const dir = v.clone().sub(cam.position);
+      const far = dir.length();
+      ray.set(cam.position, dir.normalize());
+      const hit = ray.intersectObject(st.island, true)[0];
+      if (!hit || (hit.object !== ring && hit.distance < far - 0.02)) continue;
+      shown++;
+    }
+    visible.push({name: ring.name, shown, total,
+                  opacity: ring.material.opacity});
+  }
+  return {rings: rings.length, spreads, visible};
 }"""
 
 
@@ -4588,6 +4620,17 @@ def surf(browser, base: str, out: Path) -> list[str]:
             bad.append(f"surf: {row['name']} at t={row['t']} runs "
                        f"{row['spread']:.2f} nearer the sand on one bearing "
                        f"than another; it is not the coast\'s shape")
+    #: **A tenth of the ring, at the least.** The surf lay under the water
+    #: for its whole length and showed almost nothing through the swell's own
+    #: troughs; a ring on the surface shows most of its upper half. Ten per
+    #: cent is far below what a ring on the water gives and far above what a
+    #: submerged one can reach by accident.
+    for row in got.get("visible", []):
+        if row["opacity"] > 0.3 and row["shown"] < row["total"] * 0.10:
+            bad.append(f"surf: {row['name']} shows {row['shown']} of "
+                       f"{row['total']} points at opacity "
+                       f"{row['opacity']:.2f}; the white water is under the "
+                       f"sea rather than on it")
     page.close()
     return bad
 

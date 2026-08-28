@@ -474,6 +474,12 @@ function shoreRing(edge, thickness, y, material, name) {
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = name;
   mesh.position.y = y;
+  //: The height the swell bobs this ring about, on the mesh rather than in
+  //: the layer that moves it. `island-life` used to carry its own hard 0.055,
+  //: which is how the ring came to be resting a quarter of a unit under the
+  //: water it is supposed to lie on -- two files each holding half of one
+  //: number, and only one of them measured against anything.
+  mesh.userData.restY = y;
   // Flattened, as the torus was: surf lies on the water, it does not float
   // above it as a pipe.
   mesh.scale.y = 0.5;
@@ -883,8 +889,27 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: patches on the rest. It read as a few stray arcs floating near the shore
   //: rather than as surf, which is how it was reported. Following `dryEdge`
   //: it breaks along the whole shoreline, at every bearing, by construction.
+  //: **On the water's own surface, read off the water.** The ring is a tube
+  //: of radius 0.075 lying at half height, so it stands 0.0375 above wherever
+  //: it is put -- and it was put at 0.05 while the shallows slab, which is
+  //: the drawn sea it breaks on, has its top face at 0.14. The whole ring was
+  //: a quarter of a unit inside the water, and the surf was invisible.
+  //:
+  //: It did not look invisible, because `island-life` multiplied the ring's
+  //: *y* scale by the swell's factor as well -- which cancelled the flattening
+  //: and inflated the tube back to full height, poking about a hundredth of a
+  //: unit through the surface. That was the whole of the white water anyone
+  //: ever saw. Fixing the scale to grow the ring outward rather than upward
+  //: (`island-life.js`) took that hundredth away and the surf vanished, which
+  //: is how this was found -- reported by eye, twice over.
+  //:
+  //: So the height is the slab's own top face, measured from the mesh in the
+  //: scene rather than recomputed from `SHALLOWS` and the bevel arithmetic.
+  //: The ring's lower half is then submerged and its upper half is white
+  //: water on the sea, which is what surf is.
+  const waterTop = new THREE.Box3().setFromObject(shallows).max.y;
   island.add(shoreRing((t) => dryEdge(Math.cos(t), -Math.sin(t)) + 0.12,
-                       0.075, 0.05, M.surf, "surf_ring"));
+                       0.075, waterTop, M.surf, "surf_ring"));
 
   // — land —
   island.add(slab(SHELF.radius, 0.14, 0.14, SHELF.wobble, SHELF.phase, 0.0, M.sandWet, "shore_shelf"));
