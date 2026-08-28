@@ -10,6 +10,7 @@ the manager does on every drain anyway.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from switchboard.crypto import generate_key
 
@@ -72,3 +73,66 @@ def test_it_is_replaced_atomically(hub, tmp_path):
     saved = json.loads(path.read_text())
     assert [m["body"] for m in saved["messages"]] == ["first", "second"]
     assert not list(path.parent.glob("*.tmp")), "no leftover half-written file"
+
+
+# --- the handover at the last bell -------------------------------------------
+#
+# A live game shows no score and cannot: utility needs a taste. So the moment a
+# spectator most wants an answer is the moment the live file could least give
+# one, and the answer sat in `--out`, which is not served. `live.finish` is the
+# handover: at the last bell the seed is disclosed anyway, so the two files
+# that disclose it are copied beside the live one and the live file says so.
+
+def _live_file(tmp_path, body="first"):
+    path = tmp_path / "views" / "g1.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"channel": "island",
+                                "messages": [{"seq": 1, "body": body}]}) + "\n")
+    return path
+
+
+def test_the_finished_game_points_at_its_own_reveal_and_board(tmp_path):
+    """What a page polling the board needs to find its ending: the seed, and
+    the replay of the round it just watched, beside the file it already has."""
+    path = _live_file(tmp_path)
+    board = tmp_path / "out" / "board-island-game-g1.json"
+    board.parent.mkdir()
+    board.write_text('{"messages": []}')
+    reveal = tmp_path / "out" / "reveal-island-game-g1.json"
+    reveal.write_text('{"seed": 7}')
+
+    named = live.finish(path, board=board, reveal=reveal)
+
+    saved = json.loads(path.read_text())
+    assert saved["finished"] == named == {"board": "board-g1.json",
+                                          "reveal": "reveal-g1.json"}
+    # The board it was already showing is still there: the handover adds an
+    # ending, it does not replace the game with one.
+    assert saved["messages"][0]["body"] == "first"
+    beside = path.parent
+    assert json.loads((beside / "reveal-g1.json").read_text())["seed"] == 7
+    assert (beside / "board-g1.json").read_text() == '{"messages": []}'
+    assert not list(beside.glob("*.tmp"))
+
+
+def test_nothing_is_pointed_at_before_it_is_there(tmp_path, monkeypatch):
+    """A poll landing mid-handover must see a game still running, never a
+    pointer at a file that does not exist yet -- so the copies go first."""
+    path = _live_file(tmp_path)
+    board = tmp_path / "board.json"
+    board.write_text("{}")
+    reveal = tmp_path / "reveal.json"
+    reveal.write_text("{}")
+
+    seen = []
+    real = Path.replace
+
+    def watched(self, target):
+        seen.append(str(target.name))
+        return real(self, target)
+
+    monkeypatch.setattr(Path, "replace", watched)
+    live.finish(path, board=board, reveal=reveal)
+
+    assert seen == ["board-g1.json", "reveal-g1.json", "g1.json"], (
+        "the live file was updated before what it points at existed")

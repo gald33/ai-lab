@@ -54,3 +54,42 @@ def write(client, channel: str, path: Path, *, limit: int = 300) -> Path:
     tmp.write_text(json.dumps(snapshot(client, channel, limit=limit)) + "\n")
     tmp.replace(path)
     return path
+
+
+def finish(path: Path, *, board: Path, reveal: Path) -> dict:
+    """Say on the spectator's own file that the game is over, and where to read it.
+
+    A live round shows no score, and cannot: utility needs a taste and tastes
+    are never on the board. So the moment a spectator most wants -- *how did
+    they do?* -- is exactly the moment the live file stops being able to
+    answer, and until now the answer lived only in `--out`, which is not
+    served, under a filename nobody watching was given.
+
+    This is the handover. At the last bell the seed is disclosed anyway
+    (`run_game.publish`), so the two files that disclose it are copied beside
+    the live one and the live file grows a `finished` block pointing at them.
+    A page polling the board sees the game end, reads the reveal, and can show
+    the scores and the replay of what it just watched.
+
+    **The copy happens before the pointer.** A poll that lands in between must
+    see a game still running, never a pointer at a file that is not there yet.
+
+    Nothing here is published a moment earlier than `--out` publishes it: the
+    same rule ("a seed still in play is not replayable by anyone") is what
+    decides *when* this is called, and the caller is the last bell.
+    """
+    stem = path.name.split(".")[0]
+    copies = {}
+    for kind, src in (("board", board), ("reveal", reveal)):
+        dst = path.parent / f"{kind}-{stem}.json"
+        tmp = dst.with_suffix(".json.tmp")
+        tmp.write_bytes(src.read_bytes())
+        tmp.replace(dst)
+        copies[kind] = dst.name
+
+    state = json.loads(path.read_text()) if path.exists() else {}
+    state["finished"] = copies
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(state) + "\n")
+    tmp.replace(path)
+    return copies

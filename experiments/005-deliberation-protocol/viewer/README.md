@@ -72,6 +72,16 @@ advance any agent's cursor. `serve.py` forwards `api/state` so the two share an
 origin, which they must: `api/state` sends no CORS headers, so a page served
 from anywhere else cannot read it at all.
 
+**A live game ends into its own replay.** The live file a manager writes
+(`games/island/live.py`) grows a `finished` block at the last bell naming the
+board and reveal it has just copied in beside itself. The page takes it: the
+hidden half unlocks, the ending is redrawn with each trader's multiple of
+playing alone instead of "this board has no sidecar", and a button replays the
+round just watched. It is the disclosure that already happens at the bell,
+reached from the surface the watching happened on — see `games/island.md`,
+"Watching". A room read straight from a hub has no manager writing files
+beside it, so this is the local-viewer feed only.
+
 **Live from the hub** reads a room the same way the *published* Switchboard
 viewer does — sealed content opened in the browser, nothing trusted with a
 key but the tab it was typed into. `feeds.js` imports `snapshot()` straight

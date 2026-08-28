@@ -833,6 +833,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
       <p class="verdict" id="closing-verdict"></p>
       <div id="closing-traders"></div>
       <p class="note" id="closing-traffic"></p>
+      <!-- Only live, and only once the seed is out: the round somebody just
+           watched, played back with the half that was hidden while it ran. -->
+      <button class="wide" id="closing-replay" hidden>▶ watch the replay</button>
     </div>
   </div>
 </div>
@@ -905,6 +908,10 @@ let timeline = null, scene = null, player = null, live = null, reveal = null;
 //: What the last live poll carried -- its row count and the last row's seq --
 //: so the next one can tell whether anything actually happened.
 let lastRows = null;
+//: The rows that island was built from, kept so the handover below can rebuild
+//: it with the hidden half in it -- by then the board has stopped saying
+//: anything, so there is no later poll to carry them.
+let lastMounted = null;
 //: Which of the island and the cards this viewer asked for. Portrait only --
 //: landscape has margins down the sides and the cards stand in them, so the two
 //: are not competing there and there is nothing for a tap to re-divide. Kept
@@ -915,6 +922,10 @@ let focus = "even";
 //: into play clears it, so the card returns when the ending does.
 let dismissed = false;
 let mode = "replay";
+//: A live game's handover, once its manager has published one: where this
+//: page fetched the board from, which reveal it has already taken, and the
+//: replay it can offer of the round it just watched. See `island/live.py:finish`.
+let liveFrom = null, tookReveal = null, replayOf = null;
 
 // --- chrome ----------------------------------------------------------------
 
@@ -1081,6 +1092,7 @@ function closing(state) {
        which is zero utility however much of the rest they had.` : "") +
     `<br>The full reveal — tastes, capacities, efficiency per day — is under
      <b>▤</b>, and the scored board is under <b>🏆</b>.`;
+  $("closing-replay").hidden = !replayOf;
   box.hidden = false;
 }
 
@@ -1408,6 +1420,7 @@ function sameCast(a, b) {
 
 async function startReplay(boardUrl, revealUrl) {
   mode = "replay";
+  liveFrom = null; tookReveal = null; replayOf = null; lastMounted = null;
   $("transport").style.display = "";
   live?.stop();
   player?.stop();
@@ -1447,7 +1460,8 @@ async function startReplay(boardUrl, revealUrl) {
 
 function startLive(url, channel) {
   mode = "live";
-  lastRows = null;
+  liveFrom = url; tookReveal = null; replayOf = null;
+  lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1467,7 +1481,10 @@ function startLive(url, channel) {
 // `?hub=&workspace=&key=&token=` params `boot()` reads below.
 function startHub(config, channel) {
   mode = "live";
-  lastRows = null;
+  // A room read straight from a hub has no manager writing files beside it,
+  // so there is no handover to wait for: this one ends and stays ended.
+  liveFrom = null; tookReveal = null; replayOf = null;
+  lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
   reveal = null;
@@ -1493,7 +1510,7 @@ function startHub(config, channel) {
 // shared so `startLive` and `startHub` differ only in which feed they poll.
 function liveHandlers(statusWhenOk, statusOnError) {
   return {
-    update: ({ rows, sealed, hub, notes }) => {
+    update: ({ rows, sealed, hub, notes, raw }) => {
       $("where").textContent =
         `live · ${hub?.workspace || "?"} · ${rows.length} messages` +
         (sealed.length ? ` · ${sealed.length} sealed` : "");
@@ -1512,10 +1529,16 @@ function liveHandlers(statusWhenOk, statusOnError) {
       //: the count is pinned at 200 while the game carries on underneath it --
       //: and a page that skipped on the count would stop updating for the rest
       //: of the round, which is a far worse bug than the one this fixes.
+      // **Before the quiet-poll return, not after it.** The handover is
+      // written after the closing line, so the poll that carries it usually
+      // carries no new row -- and a check below the return would never run on
+      // the one board state that has an ending to take.
+      if (raw?.finished) takeHandover(raw.finished);
       const mark = `${rows.length}:${rows[rows.length - 1]?.seq ?? ""}`;
       if (!first && mark === lastRows) return;
       lastRows = mark;
       mount(rows);
+      lastMounted = rows;
       const last = timeline.frames.length - 1;
       $("status").innerHTML = notes?.length
         ? `<span class="warn">${notes.join(" · ")}</span>` : statusWhenOk();
@@ -1539,6 +1562,48 @@ function liveHandlers(statusWhenOk, statusOnError) {
     },
     error: (err) => { $("status").innerHTML = statusOnError(err); },
   };
+}
+
+/**
+ * A live game's manager published its reveal: read it, unlock the hidden half,
+ * and offer the replay.
+ *
+ * Paths in `finished` are relative to the live file, because the manager wrote
+ * them beside it and knows nothing about the URL a spectator reached it by.
+ * Fetched once -- `tookReveal` -- since the pointer stays on the file for
+ * every poll after the last bell.
+ */
+async function takeHandover(finished) {
+  if (!liveFrom || !finished?.reveal || tookReveal === finished.reveal) return;
+  tookReveal = finished.reveal;
+  const base = new URL(liveFrom, location.href);
+  const revealUrl = new URL(finished.reveal, base).href;
+  try {
+    const answer = await fetch(revealUrl, { cache: "no-store" });
+    if (!answer.ok) throw new Error(String(answer.status));
+    reveal = await answer.json();
+  } catch {
+    // Nothing is claimed on a fetch that failed: the page stays the live one
+    // that says it has no score, and the next poll tries again.
+    tookReveal = null;
+    return;
+  }
+  if (finished.board) {
+    replayOf = { board: new URL(finished.board, base).href, reveal: revealUrl };
+  }
+  // Rebuilt here rather than left to the next poll: the board has said its
+  // last line, so there is no next poll that changes anything, and a card with
+  // a score row is a different card rather than the same one with a blank in
+  // it. `paint` draws the ending too, with the numbers this just took.
+  if (lastMounted) {
+    mount(lastMounted);
+    drawReveal(reveal);
+    const last = timeline.frames.length - 1;
+    if (last >= 0) {
+      paint({ state: timeline.final, event: null, animate: false, index: last,
+              until: null, hold: 0 });
+    }
+  }
 }
 
 // --- the two drawers -------------------------------------------------------
@@ -1591,6 +1656,16 @@ function shutClosing() {
   $("closing").hidden = true;
 }
 $("closing-shut").addEventListener("click", shutClosing);
+
+// The round somebody just watched, from the top and with the hidden half in
+// it. The live poll stops here: the game is over, so there is nothing left to
+// read from it, and the replay is the same board with a transport on it.
+$("closing-replay").addEventListener("click", () => {
+  if (!replayOf) return;
+  const { board, reveal: sidecar } = replayOf;
+  shutClosing();
+  startReplay(board, sidecar);
+});
 
 // Rotating the phone rebuilds the island the other way up. Debounced, and a
 // no-op unless the boundary was actually crossed: mobile browsers fire `resize`
