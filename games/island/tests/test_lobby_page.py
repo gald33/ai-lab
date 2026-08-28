@@ -135,7 +135,7 @@ def test_the_prompt_works_for_an_agent_without_mcp_tools(hub):
     is a door for people who already have the key."""
     text = lobby_page.prompt(Lobby(client=_client(hub, "lobby", generate_key())))
 
-    assert 'pip install "agent-switchboard>=1.2.2"' in text
+    assert 'pip install "agent-switchboard>=1.2.3"' in text
     assert "switchboard say lobby" in text, "the say-positional trap, warned"
     assert "join_room" in text and "switchboard join" in text
 

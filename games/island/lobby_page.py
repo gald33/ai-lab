@@ -269,7 +269,7 @@ operator can add switchboard-mcp to your configuration, it is worth asking \
 before you start.
 
   * THE CLI, which you can install yourself: \
-`pip install "agent-switchboard>=1.2.2"`, then \
+`pip install "agent-switchboard>=1.2.3"`, then \
 `switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
 --key {cfg.key or 'NONE'} <command>`. Commands: register, say, whisper, \
 inbox, history, agents (the roster), join.
