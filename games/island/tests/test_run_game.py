@@ -1161,3 +1161,31 @@ def test_an_offer_names_the_command_that_accepts_it(settled, hub, tmp_path):
 
     assert "APPROVE p1" in offer, "the line says what to write next"
     assert verify.OFFER.match(offer), "and stays parseable for saved boards"
+
+
+def test_presence_ttl_covers_the_whole_round_and_then_some():
+    """The manager asks to stay listed for longer than it plays.
+
+    A round is not over at its last bell: the record is written and the
+    archive compared after it, and a manager doing that is still a peer
+    somebody may be trying to whisper to.
+    """
+    table = Table(id="g1", traders=2, episodes=8, rounds=1, opened_at=0.0)
+    ttl = run_game.presence_ttl(table, episode_seconds=60, ack_seconds=120)
+    played = 120 + 8 * 60
+    assert ttl > played
+    assert ttl == played + 120
+
+
+def test_presence_ttl_clamps_here_rather_than_trusting_the_hub():
+    """**The hub clamps at 3600 and says nothing.** So we clamp first.
+
+    Measured 2026-08-28: `--ttl 86400` comes back as 3599 with the same
+    success line as `--ttl 900`. Code that asks for more than the ceiling is
+    code whose model of its own presence is wrong, and nothing will tell it.
+    See `games/switchboard-what-an-entrant-already-holds.md` section 6.
+    """
+    huge = Table(id="g2", traders=2, episodes=500, rounds=1, opened_at=0.0)
+    assert run_game.presence_ttl(
+        huge, episode_seconds=60, ack_seconds=120) == run_game.PRESENCE_CEILING
+    assert run_game.PRESENCE_CEILING == 3600.0
