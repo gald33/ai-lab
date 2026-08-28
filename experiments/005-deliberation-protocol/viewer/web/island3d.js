@@ -918,11 +918,19 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   //: (`island-life.js`) took that hundredth away and the surf vanished, which
   //: is how this was found -- reported by eye, twice over.
   //:
-  //: So the height is the slab's own top face, measured from the mesh in the
-  //: scene rather than recomputed from `SHALLOWS` and the bevel arithmetic.
-  //: The ring's lower half is then submerged and its upper half is white
-  //: water on the sea, which is what surf is.
-  const waterTop = new THREE.Box3().setFromObject(shallows).max.y;
+  //: So the height is the water's own surface. That used to be the shallows
+  //: slab's top face, measured off the mesh rather than recomputed from
+  //: `SHALLOWS` and the bevel arithmetic -- and measuring it was the right
+  //: instinct for the wrong landmark, because the slab has since gone *under*
+  //: the swell (see where it is built) and its top face is no longer the
+  //: waterline. Reading it there now would put the surf a sixth of a unit
+  //: below the sea, which is the bug that note was written for.
+  //:
+  //: There is one waterline on this island and it is `SEA_Y`: the swell is a
+  //: single sheet at a single height over the whole sea, and the shallows are
+  //: a colour beneath it. The ring's lower half is then submerged and its
+  //: upper half is white water on the sea, which is what surf is.
+  const waterTop = SEA_Y;
   island.add(shoreRing((t) => dryEdge(Math.cos(t), -Math.sin(t)) + 0.12,
                        0.075, waterTop, M.surf, "surf_ring"));
 
