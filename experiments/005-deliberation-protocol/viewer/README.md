@@ -2746,6 +2746,16 @@ bottom, the legend in the corner. The two panels that used to sit beside it are
 steps aside when a drawer opens rather than being buried by it — a drawer that
 covers the control which shuts it is a trap.
 
+**The clouds cast nothing.** Three clouds cross the sky, and until
+2026-08-28 each towed a dark green disc across the meadow beneath it, faded
+with `sunUp` so it went out at dusk. Removed (Gal, 2026-08-28): a flat circle
+laid two centimetres over a heightfield reads as a patch stuck *to* the grass,
+not as sun being blocked, and it competes with the real shadows `stage.js`'s
+key light already casts from the actual props. The clouds themselves stay,
+sky-only. This is not the rectangle of roadmap item
+`005-viewer-flickering-shadow-rectangle` — these discs were circles and moved
+smoothly; that item stands.
+
 **The palette is checked, not claimed.** `tokens.css` used to carry its
 contrast and CVD numbers in a comment that nothing recomputed, and two of them
 were wrong: `--util` was *byte-identical* to `--good-5`, and `--eff` sat at CVD

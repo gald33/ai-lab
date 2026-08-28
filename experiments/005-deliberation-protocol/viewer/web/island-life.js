@@ -455,43 +455,25 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     b.userData.r.rotation.x = -flap;
   }));
 
-  //: **How much sun there is to cast anything**, on the day's own clock: 1
-  //: through the middle of the day, 0 for the first and last of it. Anything
-  //: that only exists because the sun is high reads this rather than `day`,
-  //: because "the sun is up" and "it is late" are not the same curve -- the
-  //: sun is up at dawn too, and casts almost nothing.
-  //:
-  //: 1 until the page says otherwise, so a board with no clock on it keeps the
-  //: island it already had rather than losing half of it to a missing number.
-  let sunUp = 1;
-
-  // — clouds, and their shadows crossing the meadow —
-  const shadowMat = new THREE.MeshStandardMaterial({
-    color: 0x3f6330, roughness: 1, transparent: true, opacity: 0.34 });
+  // — clouds, crossing the sky over the meadow —
+  //
+  //: **No shadows under them.** They had discs of dark green tracking the
+  //: meadow beneath them, faded by `sunUp` so they went with the light. They
+  //: are gone (Gal, 2026-08-28): a flat circle laid a couple of centimetres
+  //: over a heightfield reads as a patch stuck to the grass rather than as
+  //: sun being blocked, and it fights the real shadows `stage.js`'s key light
+  //: already casts. The clouds themselves stay.
   const clouds = [1.25, 0.9, 1.05].map((s, i) => {
     const cl = cloud(i, s);
     island.add(cl);
-    const sh = mesh(new THREE.CircleGeometry(0.5 * s, 24), shadowMat.clone(),
-      `cloud_shadow_${i}`, [0, GRASS_Y + 0.02, 0], [-Math.PI / 2, 0, 0]);
-    island.add(sh);
     // Same reason as the gulls, and a little higher: a cloud below this crosses
     // the island rather than the sky over it.
-    return { cl, sh, ph: i / 3, z: -1.4 + i * 1.5, h: 4.5 + i * 0.45 };
+    return { cl, ph: i / 3, z: -1.4 + i * 1.5, h: 4.5 + i * 0.45 };
   });
-  parts.push((t) => clouds.forEach(({ cl, sh, ph, z, h }) => {
+  parts.push((t) => clouds.forEach(({ cl, ph, z, h }) => {
     const p = ((t / 22) + ph) % 1;
-    const x = -6.4 + p * 12.8;
-    cl.position.set(x, h, z);
+    cl.position.set(-6.4 + p * 12.8, h, z);
     cl.userData.m.opacity = 0.9 * clamp01(Math.sin(Math.PI * p) * 2.2);
-    const sx = x * 0.72, sz = z * 0.85;
-    sh.position.set(sx, high(sx, sz) + 0.03, sz);
-    //: **Gone by dusk.** A shadow is the sun being blocked, so a hard dark
-    //: patch crossing the meadow at the bell -- while the key has swung almost
-    //: to the horizon and every other shadow on the island has gone long and
-    //: soft -- is the one thing on screen still claiming it is noon. It fades
-    //: out with the light and comes back with it.
-    sh.material.opacity = 0.26 * clamp01(Math.sin(Math.PI * p) * 1.8)
-      * (Math.hypot(x * 0.72, z * 0.85) < 3.0 ? 1 : 0.15) * sunUp;
   }));
 
   // — goats, on the meadow and out of everyone's way —
@@ -852,14 +834,12 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       //: **Resolved before the parts run, and the parts run either way.** The
       //: loose animations are the island being alive and none of them need a
       //: clock -- gulls, goats, boats keep going on a board that never said
-      //: what time it is -- but the one that does read the sun has to read
-      //: *this* frame's, not the last one's, or a bell leaves a shadow behind
-      //: for a frame.
+      //: what time it is. (One of them used to read the sun: the cloud
+      //: shadows, removed 2026-08-28. Nothing does now, but the resolution
+      //: still happens here, before the parts, so that whatever reads it next
+      //: gets this frame's number rather than the last one's.)
       if (lit === null && !told) lit = NOON;
-      if (lit !== null) {
-        told = true;
-        sunUp = clamp01((Math.sin(Math.PI * clamp01(lit)) - 0.1) / 0.45);
-      }
+      if (lit !== null) told = true;
       //: The hour the shadows point at. Only the clock moves it, and a frame
       //: whose clock has gone quiet keeps the last one -- a dropped poll is
       //: not an island turning back to morning.
