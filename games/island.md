@@ -913,6 +913,64 @@ The wrapper stays a separate project that plugs into the published viewer for
 its data stream rather than living inside Switchboard, and a hosted game points
 at the managed hub by default.
 
+### The island has no horizon, and is not getting one
+
+Decided 2026-08-28, after asking whether the sun could be shown rising and
+setting at sea. It cannot, and the reason is worth writing down because it is
+structural rather than a matter of effort — three separate things in
+`viewer/web/stage.js` each make a visible horizon impossible on their own:
+
+- **the camera never looks up.** `TILT` is a fixed 0.68 rad and `aim()` orbits
+  at that elevation always looking at the origin, so the frustum's far edge
+  lands on water;
+- **`flood()` exists to guarantee exactly that.** It projects the sea disc as
+  an ellipse under the tilt, takes the furthest frustum corner, and scales the
+  mesh until water covers it — with the note that an uncovered corner is "the
+  void this page has been told twice it must not have". Sky in frame is that
+  void arriving a third time;
+- **the tilt is load-bearing.** The camera is orthographic so that
+  ground→viewBox is affine and independent of the viewport, which is what lets
+  `groundAt()` put a hut exactly under a card the SVG has already placed. Tilt
+  toward the horizon and every hut slides out from under its card, with the
+  ropes and the offer pills.
+
+The rejected option was a matte: paint a graded sky and a sun into the
+letterbox bands. Those bands are already a fiction — `island-life.js` computes
+the lit sea colour and clears them to it — but that fiction is a flat colour
+nobody can disprove, and a painted horizon line claims a distance the geometry
+does not have, against an island whose own water plane is a different
+projection. Declined on those grounds.
+
+**What was built instead: the colour, on the day's own clock.** The sky-burn
+and the light ramps carry dawn and dusk, and `burnAt(p)` in `scene.js` is the
+one curve both read — zero through the middle 52% of the day, all of it in the
+last quarter at each end — so the drawn island and the modelled one cannot
+disagree about the hour. Previously the burn was a *state*: off, then on at
+`.closed`. The island had a sunset and no sunrise at all.
+
+**And the measurement that shaped it, which came out the opposite way round to
+the plan.** The intent was to put the warmth in the lights, where a sunset
+belongs, and leave the overlay small. The lights have almost no room: the
+ambient reaches every face, so it warms the grass exactly as much as the sand,
+and `island3d.js` ("Green, not olive") plus `viewer/tests/firelight.test.mjs`
+hold the meadow above hue 90. Measured at the bell the island already sits at
+93 — **three degrees of headroom in the whole day.** A skyDusk of `0xc4826a`,
+barely orange to look at, took the trees to 65.
+
+So the ambient's end colours are unchanged, the key takes what little it can
+(it grazes at dusk, so it costs ~1 degree on the meadow and lands on the
+vertical faces, which is where a sunset is read off a landscape anyway), and
+the rest is the burn — raised from .14 to .22 under `.has-3d`, because
+soft-light over the frame warms the *water*, which is most of what is on
+screen and whose hue nothing depends on. Re-check with:
+
+    node --test experiments/005-deliberation-protocol/viewer/tests/firelight.test.mjs
+
+The lesson generalises past the sun: **on this island the lights are a shared
+resource and the greens have first claim on them.** Anything that wants to
+tint the whole scene should expect three degrees and plan to spend the rest
+somewhere the materials are not.
+
 ## Open
 
 - **Element size on the viewer should scale with element count.** The

@@ -23,6 +23,12 @@
 
 import * as THREE from "./vendor/three/three.module.js";
 import { onMeadow, GRASS_Y, SAND_Y } from "./island3d.js";
+//: The day's own colour curve, shared with the drawn island so that the burn
+//: over the fallback and the lights over the model turn warm at the same hour.
+//: `scene.js` owns the day -- it owns the sun's arc and its overshoot too --
+//: and this is the one thing taken from it; nothing in that file is imported
+//: back, so the two are not a cycle.
+import { burnAt } from "./scene.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const rng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
@@ -564,15 +570,51 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     }
   });
 
-  const dawn = new THREE.Color(0xffb07a);
+  //: **The ends of the day are saturated, and the middle of it is not.**
+  //:
+  //: These were 0xffb07a and 0xd9603a and were lerped straight from noon on
+  //: `lit`, which spread whatever warmth they had evenly across the morning
+  //: and the afternoon: the island was faintly orange from the open to the
+  //: bell and never plainly orange at either. The lerp is on `burnAt` now, so
+  //: the middle of the day holds `noon` outright and the whole of the warmth
+  //: is spent in the last quarter at each end -- which is where a person
+  //: actually reads a sunrise off a landscape.
+  //:
+  //: **The key is pushed and the ambient is not, and that asymmetry is a
+  //: measurement, not a taste.** Warming the ambient was tried first and is
+  //: what a sunset looks like it wants -- it lands on every face, so the sand
+  //: and the shaded walls turn with the hour rather than only the faces the
+  //: key points at. It cannot be had. The ambient lights the grass exactly as
+  //: much as the sand, and `island3d.js` ("Green, not olive") and
+  //: `tests/firelight.test.mjs` between them hold the meadow above the
+  //: yellow-green line at 90 degrees. Measured: the island sits at hue 93 at
+  //: the bell before any of this, so the ambient has **three degrees of
+  //: headroom in the whole day** -- a skyDusk of 0xc4826a, which is barely
+  //: orange to look at, took the trees to 65 and the hill to 79.
+  //:
+  //: So the ambient's end colours are left exactly where they were, the key
+  //: carries what warmth the lights can carry -- it grazes at dusk, so it
+  //: costs almost nothing on the meadow and lands on the vertical faces,
+  //: which is where a sunset is actually read off a landscape -- and the rest
+  //: of the orange is the burn over the frame, where the water is and where
+  //: no material's hue is at stake. Reproduce with `node --test
+  //: viewer/tests/firelight.test.mjs`, which fails on an ambient pushed past
+  //: this.
+  const dawn = new THREE.Color(0xffa15c);
   const noon = new THREE.Color(0xfff6e2);
-  const dusk = new THREE.Color(0xd9603a);
+  const dusk = new THREE.Color(0xdd5c33);
   // The sky the key is under, which has to travel with it. Moving the key
   // alone does not make a sunset: by the bell the key comes in almost
   // horizontally and lights nothing the camera can see, so the island's colour
   // is whatever the ambient and the fill say it is -- and a cool ambient held
   // fixed makes the last light of the day read *bluer* than midday, which is
   // the one thing dusk is not.
+  //: These were 0xd8c2c6 and 0xa08a90 -- greys with a rumour of pink in them,
+  //: which is what a warm sky looks like once it has been averaged over half a
+  //: day. On the curve they can be the sky they are named after. This is the
+  //: half of the change that reaches the *sand*: the ambient lands on every
+  //: face, lit or not, so the shore and the shaded walls turn with the hour
+  //: instead of only the faces the key happens to be pointing at.
   const skyDawn = new THREE.Color(0xd8c2c6);
   const skyNoon = new THREE.Color(0xbcd2dd);
   const skyDusk = new THREE.Color(0xa08a90);
@@ -711,6 +753,8 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
       // The sun's own arc, not a twelve-second loop: dawn in the east, highest
       // at midday, and down in the west by the bell.
       const a = Math.PI * (0.08 + lit * 0.84);
+      //: How far the day is into its own colour. Shared with the drawn island.
+      const warm = burnAt(lit);
       if (key) {
         /*
          * Where the light stands, **reckoned from the camera and not from the
@@ -736,16 +780,25 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         // A floor under it: the island still has to be readable at dusk, and
         // the cards standing on it are the part that matters most then.
         key.intensity = 0.75 + Math.sin(a) * 1.55;
-        key.color.copy(lit < 0.5 ? dawn.clone().lerp(noon, lit / 0.5)
-                                 : noon.clone().lerp(dusk, (lit - 0.5) / 0.5));
+        //: On the day's colour curve rather than straight off `lit`: `warm`
+        //: is 0 through the middle of the day and 1 at the open and the bell,
+        //: so noon is noon-coloured and the ends carry the whole of it. See
+        //: `burnAt` in `scene.js`, which the drawn island's burn reads too.
+        key.color.copy(noon.clone().lerp(lit < 0.5 ? dawn : dusk, warm));
       }
       if (ambient) {
         ambient.intensity = 0.62 + Math.sin(a) * 0.7;
-        ambient.color.copy(lit < 0.5 ? skyDawn.clone().lerp(skyNoon, lit / 0.5)
-                                     : skyNoon.clone().lerp(skyDusk, (lit - 0.5) / 0.5));
+        ambient.color.copy(skyNoon.clone().lerp(lit < 0.5 ? skyDawn : skyDusk, warm));
       }
       if (fill) {
         fill.intensity = 0.75 * (0.55 + Math.sin(a) * 0.45);
+        //: The fill stays on `lit` and off the curve, and that asymmetry is
+        //: the point. It is the far side of the sky -- the cold half -- and it
+        //: is what keeps a shaded face darker than a lit one at dusk. Put it
+        //: on the curve too and the cold arrives all at once in the last
+        //: quarter, which reads as the island being switched off rather than
+        //: as an evening; the note below on not dimming it to nothing is the
+        //: same worry from the other side.
         fill.color.copy(lit < 0.5 ? seaDusk.clone().lerp(seaDay, lit / 0.5)
                                   : seaDay.clone().lerp(seaDusk, (lit - 0.5) / 0.5));
       }

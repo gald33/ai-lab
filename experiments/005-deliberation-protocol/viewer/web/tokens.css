@@ -33,6 +33,11 @@
   --sun:        #ffb45e;
   --sun-core:   #fff2cf;
   --sky-set:    #d9603a;   /* the sky at the moment the sun goes */
+  /* And the other end of the day, which is not the same colour. A sunrise is
+     the thinner, pinker one -- there is less air-borne dust in a morning and
+     the light is bluer for it -- and using the sunset's orange at both ends
+     made the island's opening read as a second evening. */
+  --sky-rise:   #e79274;   /* the sky as the sun comes up */
 
   /* Categorical slots. Validated against --panel on the adjacent pairlist:
      worst CVD ΔE 9.6 across slots 1–5, all ≥4.3:1 on the surface. They do NOT
