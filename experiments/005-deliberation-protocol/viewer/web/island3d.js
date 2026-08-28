@@ -595,8 +595,12 @@ function palm(i) {
 function boat(i, sailMat) {
   const g = new THREE.Group();
   g.name = `boat_${i}`;
+  //: 0.85 deep, not 0.55. A dish that shallow has barely a finger of hull
+  //: between its floor and its bottom, so there is no height at which the
+  //: deck is dry and the hull is in the water -- the two constraints cross.
+  //: Deeper gives it a draught to sit in and a side to be seen.
   add(g, new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-    M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.55, 2.1]);
+    M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.85, 2.1]);
   //: **A hull is a bowl with its top open, so without this you see the sea
   //: through it and the boat reads as full of water.** Reported by eye, and
   //: it is exactly what was drawn: the hull is the *lower* half of a sphere
@@ -609,9 +613,14 @@ function boat(i, sailMat) {
   //: showing through and left a flat disc inside a ring -- a lily pad with a
   //: flag on it, reported by eye in its turn. At 0.03 there is a visible
   //: depth of hull to see into, which is what says boat rather than marker.
-  //: It still has to clear the water: the slab's top is at 0.04, this lands
-  //: at 0.10 with the boat at its mooring, and 0.07 at the bottom of
-  //: `island-life`'s bob.
+  //: It still has to clear the water -- and where the water *is* was got
+  //: wrong twice. `slab()` extrudes with `bevelThickness` as well as
+  //: `bevelSize`, so a bevel adds height as much as it adds width: the
+  //: shallows' top is `-0.05 + 0.09 + 2 * 0.05 = 0.14`, not the `baseY +
+  //: depth` of 0.04 this file assumed. Every boat floated with its deck
+  //: 0.038 *under* the surface and its gunwale 0.036 clear of it, which is a
+  //: swamped boat, and it is what a spectator saw. The height is read off the
+  //: slab now rather than worked out -- see `waterline` below.
   add(g, new THREE.CircleGeometry(0.26, 24), M.timber, `boat_${i}_deck`,
     [0, 0.03, 0], [-Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
@@ -621,6 +630,18 @@ function boat(i, sailMat) {
 }
 
 export const GRASS_Y = 0.70, HILL_Y = 1.12, SAND_Y = 0.40;
+
+/**
+ * Where the open sea rests, outside the shallows.
+ *
+ * `island-life` lays the swell sheet at this height and moves it about this
+ * height; the boats have to float against it out past the lagoon's rim. It
+ * lives here rather than there because `island-life` already imports this
+ * module and the reverse would be a cycle -- and because two copies of the
+ * sea's height is one of them out of phase with the water, which is the
+ * argument `island-life` itself makes for having one `seaAt`.
+ */
+export const SEA_Y = -0.02;
 
 /** Where a good is made. Four are the design's; the rest are built to fit. */
 const SITES = {
@@ -1314,6 +1335,25 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   const STEP = (2 * HALF_WID + 0.26)
                / dryEdge(Math.cos(DOCK_BEARING), Math.sin(DOCK_BEARING));
   const onLand = lander(island);
+  //: **Where the water actually is, read off the slab.** Twice this file has
+  //: floated the boats against `baseY + depth`, which is not the top of an
+  //: extruded slab: `bevelThickness` adds the bevel to each end, so the
+  //: shallows stand 0.10 higher than that arithmetic says. Raycasting the
+  //: thing settles it, and carries a change to the slab's depth or bevel
+  //: without anyone remembering to come back here.
+  //: **Per boat, because the water is not one height.** The shallows are a
+  //: raised shelf -- their top stands 0.16 above the open sea's rest -- so a
+  //: boat inside the lagoon and one outside it float at heights that differ
+  //: by more than a hull's draught. Asked at the boat's own position, which
+  //: also means nothing has to remember which side of the rim it is on.
+  const shallowsMesh = island.getObjectByName("shallows");
+  const surfaceRay = new THREE.Raycaster();
+  const surfaceAt = (x, z) => {
+    if (!shallowsMesh) return SEA_Y;
+    surfaceRay.set(new THREE.Vector3(x, 12, z), new THREE.Vector3(0, -1, 0));
+    const hit = surfaceRay.intersectObject(shallowsMesh, false)[0];
+    return hit ? hit.point.y : SEA_Y;
+  };
   //: Outward along the bearing until the hull's whole footprint is off the
   //: land, asked of the slabs rather than of a radius. It starts at the drawn
   //: shore and steps by a twentieth, so a berth is as close in as the water
@@ -1366,13 +1406,23 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
     //: island rather than as a harbour. Turned to face the sea each takes only
     //: its beam, and the same seven sit inside a third of that arc.
     const t = berth(i);
-    const r = afloatAt(t);
-    const x = Math.cos(t) * r, z = Math.sin(t) * r;
+    //: **Two at the jetty, the rest at anchor beyond the rim.** Asked for by
+    //: eye: the boats out on the open water read better than the ones tucked
+    //: against the sand, but a harbour with nothing in it is not a harbour.
+    //: So the first pair take the lagoon berths either side of the jetty and
+    //: everything after them lies outside the shallows, a clear hull-length
+    //: past the edge so nothing straddles the step in the water.
+    const ux = Math.cos(t), uz = Math.sin(t);
+    const r = i < 2 ? afloatAt(t) : wetEdge(ux, uz) + HALF_LEN + 0.15;
+    const x = ux * r, z = uz * r;
     const b = boat(i + 1, seatMat(name, i, traders.length));
-    //: Higher than the old 0.02. The hull's floor has to be under the water
-    //: and its deck above it, and at 0.02 the deck cleared the shallows by
-    //: only three hundredths.
-    b.position.set(x, 0.08, z);
+    //: **Floated against the waterline, not against a number.** The hull's
+    //: floor has to be under the surface and its deck above it, and
+    //: `island-life` bobs it 0.035 either way, so both have to hold through
+    //: the whole of that. At this lift the deck clears the water by 0.078 and
+    //: still by 0.043 at the bottom of the bob, and the hull sits 0.061 into
+    //: it.
+    b.position.set(x, surfaceAt(x, z) + 0.055, z);
     //: Facing out to sea, which is along the radius -- and a mooring line is
     //: never quite square, so no two lie at exactly the same angle.
     b.rotation.y = Math.atan2(Math.cos(t), Math.sin(t)) + (i % 3 - 1) * 0.06;

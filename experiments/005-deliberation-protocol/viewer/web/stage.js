@@ -109,19 +109,21 @@ export class Stage {
     //:
     //: **Six held everything that cast when the lagoon was 0.4 wide and the
     //: boats were pushed up against the sand.** Widening the water moved the
-    //: harbour out with it -- at eight traders the far row reaches 6.14 --
-    //: and a caster outside the box does not lose its shadow, it gets the
+    //: harbour out with it, and mooring most of the fleet at anchor beyond
+    //: the lagoon's rim moved it out again: the outermost boat reaches 7.0.
+    //: A caster outside the box does not lose its shadow -- it gets the
     //: frustum's own edge drawn across the island as a straight line.
     //: `render.py:island` fails on every caster that leaves this box, which
-    //: is how that was caught rather than seen.
+    //: is how both of those were caught rather than seen.
     Object.assign(this.key.shadow.camera,
-      { left: -6.6, right: 6.6, top: 6.6, bottom: -6.6, near: 0.5, far: 40 });
+      { left: -7.2, right: 7.2, top: 7.2, bottom: -7.2, near: 0.5, far: 40 });
     //: 1024, not 2048. The light moves with the camera, so the map is redrawn
     //: every frame and its cost is paid sixty times a second on a phone --
-    //: and at this scale, an island in a map thirteen units wide, a quarter of
-    //: the pixels is still about a centimetre of island each. The box grew a
-    //: tenth with the lagoon and this did not; the trade is a tenth coarser
-    //: shadows against redrawing a 2048 map every frame on a phone.
+    //: and at this scale, an island in a map fourteen units wide, a quarter of
+    //: the pixels is still not far off a centimetre of island each. The box
+    //: has grown a fifth to follow the water and the harbour and this has
+    //: not; the trade is that much coarser shadows against redrawing a 2048
+    //: map every frame on a phone.
     this.key.shadow.mapSize.set(1024, 1024);
     //: Off the surface it is cast on, or every lit face shadows itself in
     //: stripes. Small, because a large one detaches a shadow from its own tree.
