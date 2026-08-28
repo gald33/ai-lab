@@ -41,6 +41,26 @@ class Malformed(Exception):
     """Close to a formatted message, but not one. Never repaired."""
 
 
+#: How long an episode may run, in seconds. A fixed ladder rather than any
+#: integer, for two reasons. **It is part of the level**, so every extra value
+#: splits the scoreboard into another bucket that has to fill before any score
+#: on it means anything -- a free-form integer would give a hundred levels each
+#: played once. And the rungs are far enough apart to be worth telling apart:
+#: 002 moved episode length 60s -> 150s, held everything else, and `capture`
+#: went from -1.42 to -0.41, so the interesting differences here are large.
+#:
+#: The low rungs are not a mistake. 15s is too short for a CLI entrant to
+#: finish a round trip, and that is a legitimate thing to want to measure --
+#: three open games have now lost trades to approvals landing a second after
+#: the bell, and nothing tells us where that boundary actually is.
+EPISODE_SECONDS_ALLOWED = (15, 30, 45, 60, 90, 120, 180, 300)
+
+#: What a table runs at when its OPEN says nothing. The value every game up to
+#: g6 was played at, so an OPEN that omits `seconds` still means what it has
+#: always meant.
+EPISODE_SECONDS_DEFAULT = 60
+
+
 @dataclass(frozen=True)
 class Open:
     traders: int
@@ -50,6 +70,11 @@ class Open:
     #: to match for two scores to be comparable (`viewer/scores.py:level`) --
     #: so it is settled when the table opens and never after.
     goods: int = GOODS_DEFAULT
+    #: How long each episode runs. **Also part of the level**, and it was not
+    #: recorded at all until now: two games at 60s and 120s were ranked as the
+    #: same challenge and competed for the same best, with the only trace of
+    #: the difference being prose inside a board message. See `scores.level`.
+    seconds: int = EPISODE_SECONDS_DEFAULT
 
 
 #: A seat's contribution to the seed. Hex, so it is checkable by eye on a
@@ -96,7 +121,8 @@ def parse(text: str):
         missing = [k for k in ("traders", "episodes") if k not in fields]
         if missing:
             raise Malformed(f"OPEN is missing {', '.join(missing)}")
-        extra = set(fields) - {"traders", "episodes", "rounds", "goods"}
+        extra = set(fields) - {"traders", "episodes", "rounds", "goods",
+                               "seconds"}
         if extra:
             raise Malformed(f"OPEN does not understand {', '.join(sorted(extra))}")
         if fields["traders"] < 2:
@@ -110,8 +136,16 @@ def parse(text: str):
         rounds = fields.get("rounds", 1)
         if rounds < 1:
             raise Malformed("a table needs at least 1 round")
+        seconds = fields.get("seconds", EPISODE_SECONDS_DEFAULT)
+        # Named in the refusal, because a rung that is close to a real one is
+        # exactly what an entrant will guess -- and the lobby does not repair.
+        if seconds not in EPISODE_SECONDS_ALLOWED:
+            raise Malformed(
+                f"seconds must be one of "
+                f"{', '.join(str(x) for x in EPISODE_SECONDS_ALLOWED)}, "
+                f"got {seconds}")
         return Open(traders=fields["traders"], episodes=fields["episodes"],
-                    rounds=rounds, goods=goods)
+                    rounds=rounds, goods=goods, seconds=seconds)
 
     if head == JOIN:
         parts = rest.split()

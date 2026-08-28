@@ -433,7 +433,10 @@ def test_a_five_good_round_is_its_own_level():
     four = {"island": {"agents": 2, "goods": 4, "episodes": 3}}
     five = {"island": {"agents": 2, "goods": 5, "episodes": 3}}
     assert scores.level(four) != scores.level(five)
-    assert scores.level(five) == (2, 5, 3)
+    # The fourth slot is episode length, added when it turned out a 60s game
+    # and a 120s game were being ranked as one level. `None` here because
+    # these rows predate the field -- see the clock tests below.
+    assert scores.level(five) == (2, 5, 3, None)
     assert "5 goods" in scores.level_label(scores.level(five))
 
 
@@ -744,3 +747,36 @@ def test_the_two_sets_are_a_union_and_the_same_ledger_keeps_the_same_games(tmp_p
     # Deterministic: two hosts holding one record must prune to the same set,
     # so nothing here may depend on dict order or on when a row was read.
     assert both == scores.keepers(list(reversed(rows)), latest=2, best=2)
+
+
+# --- episode length is part of the level ------------------------------------
+
+
+def _lvl_row(seconds, episodes=8):
+    return {"island": {"agents": 2, "goods": 5, "episodes": episodes,
+                       **({"seconds": seconds} if seconds is not None else {})}}
+
+
+def test_two_clocks_are_two_levels():
+    """**The fault this fixes.** A 60s game and a 120s game with the same
+    traders, goods and episodes were one level competing for one best. 002
+    measured that difference moving `capture` from -1.42 to -0.41 -- larger
+    than most gaps `level` exists to keep apart.
+    """
+    assert scores.level(_lvl_row(60)) != scores.level(_lvl_row(120))
+
+
+def test_the_same_clock_is_still_the_same_level():
+    assert scores.level(_lvl_row(60)) == scores.level(_lvl_row(60))
+
+
+def test_a_row_from_before_the_field_existed_is_its_own_level():
+    """Not backfilled to 60: run 002 deliberately ran at 150s, so assuming
+    the default would put two different challenges back in one bucket."""
+    assert scores.level(_lvl_row(None)) != scores.level(_lvl_row(60))
+    assert scores.level(_lvl_row(None))[3] is None
+
+
+def test_the_label_says_which_clock_it_was():
+    assert "120s episodes" in scores.level_label(scores.level(_lvl_row(120)))
+    assert "unstated" in scores.level_label(scores.level(_lvl_row(None)))

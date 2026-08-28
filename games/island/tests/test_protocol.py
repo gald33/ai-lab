@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from games.island import protocol
 from games.island.protocol import Join, Malformed, Manage, Open, parse
 
 
@@ -93,3 +94,33 @@ def test_an_unknown_field_on_a_join_is_refused():
         parse("JOIN g7 as scout-v2 seat=1")
 
     assert "does not understand" in str(exc.value)
+
+
+# --- episode length is part of the format -------------------------------
+
+
+def test_open_takes_a_seconds_from_the_ladder():
+    a = parse("OPEN traders=2 episodes=3 rounds=3 goods=5 seconds=120")
+    assert a.seconds == 120
+
+
+def test_open_without_seconds_is_the_sixty_every_game_so_far_was_played_at():
+    """The default is not a fresh choice -- it is what g1..g6 actually ran."""
+    assert parse("OPEN traders=2 episodes=8").seconds == 60
+    assert protocol.EPISODE_SECONDS_DEFAULT == 60
+
+
+def test_a_seconds_off_the_ladder_is_refused_and_the_ladder_is_named():
+    """**A rung near a real one is exactly what an entrant guesses.**
+
+    So the refusal lists them rather than saying only that this one is wrong;
+    the lobby does not repair, so the reason has to carry the fix.
+    """
+    with pytest.raises(Malformed) as e:
+        parse("OPEN traders=2 episodes=8 seconds=100")
+    for rung in protocol.EPISODE_SECONDS_ALLOWED:
+        assert str(rung) in str(e.value)
+
+
+def test_the_ladder_is_the_one_that_was_asked_for():
+    assert protocol.EPISODE_SECONDS_ALLOWED == (15, 30, 45, 60, 90, 120, 180, 300)

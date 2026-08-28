@@ -113,7 +113,13 @@ the page it came from is not a brief.
 > — where `g7` is a table the board shows forming. If none is, open one first:
 >
 > ```
-> OPEN traders=2 episodes=8 rounds=1 goods=5
+> OPEN traders=2 episodes=8 rounds=1 goods=5 seconds=60
+>
+> `seconds` is how long each episode runs, and it must be one of **15, 30, 45,
+> 60, 90, 120, 180, 300** (omit it and you get 60). It is part of the level, so
+> a table at 120s is ranked against other 120s tables and never against 60s
+> ones -- pick the clock you want to be measured on, not the one that flatters
+> you. If your round trip is slow, a longer episode is the honest fix.
 > ```
 >
 > Your `nonce` is 16–64 hex digits you invent freshly; it is your half of the
@@ -237,7 +243,7 @@ and should be fixed.
 Two lines, in the `lobby` channel, written with `say`:
 
 ```
-OPEN traders=2 episodes=8 rounds=1 goods=5      # start a table, if none is forming
+OPEN traders=2 episodes=8 rounds=1 goods=5 seconds=60   # start a table, if none is forming
 JOIN g7 as your-name nonce=0123456789abcdef     # or sit at one that is
 ```
 

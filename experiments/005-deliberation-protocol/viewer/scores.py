@@ -359,7 +359,8 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         "recorded_at": recorded,
         "workspace": rnd["workspace"],
         "arm": rnd.get("arm"),
-        "island": {"seed": seed, "agents": agents, "goods": goods, "episodes": k},
+        "island": {"seed": seed, "agents": agents, "goods": goods, "episodes": k,
+                   "seconds": record.get("episode_seconds")},
         "players": [{"slot": n,
                      "id": who.get(n, record.get("model", "unknown")),
                      "model": record.get("model")} for n in names],
@@ -423,12 +424,25 @@ def level(row: dict) -> tuple:
     scoring each against what its own island had on the table.
     """
     i = row["island"]
-    return (i["agents"], i["goods"], i["episodes"])
+    # **Episode length is part of the format and was missing from it.** A 60s
+    # game and a 120s game with the same traders, goods and episode count were
+    # ranked as one challenge and competed for the same best; the only trace
+    # of the difference was prose inside a board message. 002 measured that
+    # difference moving `capture` from -1.42 to -0.41, which is larger than
+    # most gaps this function exists to keep apart.
+    #
+    # `None` for a row recorded before the field existed, and NOT backfilled to
+    # 60: run 002 deliberately ran at 150s, so "it was probably the default" is
+    # exactly the kind of guess that would put two different challenges back in
+    # one bucket. An unstated length is its own bucket and says so.
+    return (i["agents"], i["goods"], i["episodes"], i.get("seconds"))
 
 
 def level_label(key: tuple) -> str:
-    agents, goods, episodes = key
-    return f"{agents} traders · {goods} goods · {episodes} episodes"
+    agents, goods, episodes = key[0], key[1], key[2]
+    seconds = key[3] if len(key) > 3 else None
+    clock = f"{seconds}s episodes" if seconds else "episode length unstated"
+    return f"{agents} traders · {goods} goods · {episodes} episodes · {clock}"
 
 
 def captured(eff_round: float | None, floor: float | None) -> float | None:
@@ -571,7 +585,8 @@ def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
         "workspace": rnd.get("workspace"), "arm": rnd.get("arm"),
         "island": {"seed": rnd.get("seed"), "agents": record.get("agents"),
                    "goods": record.get("goods"),
-                   "episodes": len(rnd.get("trajectory") or [])},
+                   "episodes": len(rnd.get("trajectory") or []),
+                   "seconds": record.get("episode_seconds")},
         "players": [], "eff_round": None, "autarky_floor": None,
         "ratios": {}, "zero_episodes": {}, "trajectory": rnd.get("trajectory") or [],
         "status": "unscored", "why": why, "attendance": "unrecorded",
@@ -906,6 +921,7 @@ def level_rows(ranked: list[dict], played: list[dict]) -> list[dict]:
             "level": list(key),
             "label": level_label(key),
             "agents": key[0], "goods": key[1], "episodes": key[2],
+            "seconds": key[3] if len(key) > 3 else None,
             # Which islands this level has actually been rolled on, so a level
             # played once is not mistaken for a level played ten times.
             "seeds": sorted({seed for e in entries for seed in e["seeds"]}),
@@ -958,6 +974,7 @@ def game_rows(ranked: list[dict]) -> list[dict]:
                 "level": list(key),
                 "label": level_label(key),
                 "agents": key[0], "goods": key[1], "episodes": key[2],
+                "seconds": key[3] if len(key) > 3 else None,
                 "capture": g["capture"],
                 "eff_round": g["eff_round"],
                 "floor": g["floor"],

@@ -430,7 +430,16 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     on its own -- but a caller that plays a table in-line still does, or the
     lobby goes deaf for the length of the game: every OPEN and JOIN waits for
     the last bell, and nothing lapses on time either.
+
+    **``episode_seconds`` is the host's default, and the table overrides it.**
+    Episode length is settled at OPEN now, like `goods`, because it is part of
+    the level: an entrant has to know it before it sits down, and two rounds
+    are only comparable if their bells were the same distance apart. The
+    argument stays for callers that build a Table by hand, and for a table
+    settled before `seconds` existed -- those carry the dataclass default,
+    which is the 60s every game up to g6 was played at.
     """
+    episode_seconds = getattr(table, "seconds", None) or episode_seconds
     client = Client.from_invite(invite, agent_id=MANAGER)
     # **The manager registers too, and not only for the roster line.** Sealing
     # is pairwise: a seat opens what was sealed to it by deriving a secret
@@ -604,6 +613,13 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "agents": table.traders,
         "goods": len(dealer.goods),
         "episodes_per_round": table.episodes,
+        # **Recorded because it is part of the level and never was.** Until
+        # now the only trace of how long an episode ran was prose inside a
+        # board message ("the bell is at 12:19:41Z (60s)"), so a 60s game and
+        # a 120s game were ranked as the same challenge and competed for the
+        # same best. 002 measured that difference moving `capture` from -1.42
+        # to -0.41 -- larger than most gaps this scoreboard exists to rank.
+        "episode_seconds": table.seconds,
         #: Seat slot -> entrant, for `scores.ingest(..., players=...)`.
         "players": players(table),
         # A practice game is kept and counted and never ranked: the private
