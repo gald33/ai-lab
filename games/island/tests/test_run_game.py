@@ -18,6 +18,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from switchboard import signing
@@ -25,7 +26,7 @@ from switchboard.client import Client
 from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 
-from games.island import run_game
+from games.island import live, run_game
 from games.island.lobby import Lobby, Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
@@ -1189,3 +1190,63 @@ def test_presence_ttl_clamps_here_rather_than_trusting_the_hub():
     assert run_game.presence_ttl(
         huge, episode_seconds=60, ack_seconds=120) == run_game.PRESENCE_CEILING
     assert run_game.PRESENCE_CEILING == 3600.0
+
+
+# --- the latest and the best --------------------------------------------------
+
+def test_a_good_old_game_survives_a_run_of_newer_ones(tmp_path):
+    """Retention is the union of two sets, so being good is a way to survive
+    ceasing to be recent. The verdict comes from the ledger, which is where
+    every game's score lives -- a game's own file does not know how it did."""
+    out = tmp_path / "out"
+    out.mkdir()
+    for i, gid in enumerate(("g1", "g2", "g3")):
+        _finished_game(out, gid, f"w{i}", 1_000_000 + i)
+
+    spared = {"g1"}                      # the ledger's verdict, mocked at its seam
+    with mock.patch.object(run_game._scores, "load", return_value=[]), \
+         mock.patch.object(run_game._scores, "keepers", return_value=spared):
+        dropped = run_game.prune(out, keep=0, best=5, ledger=tmp_path / "l.jsonl")
+
+    left = sorted(p.name for p in out.iterdir())
+    assert left == ["board-w0.json", "g1.json", "reveal-w0.json"]
+    assert len(dropped) == 6, ("two games went, and each was a record, "
+                               "a board and a reveal")
+
+
+def test_a_ledger_that_cannot_be_read_prunes_nothing(tmp_path):
+    """"Cannot judge" reads as "keep". Deleting on a failed read would make an
+    unreachable ledger delete the archive it exists to describe."""
+    out = tmp_path / "out"
+    out.mkdir()
+    _finished_game(out, "g1", "w1", 1_000_000)
+
+    with mock.patch.object(run_game._scores, "load",
+                           side_effect=OSError("no ledger here")):
+        dropped = run_game.prune(out, keep=0, best=5, ledger=tmp_path / "gone.jsonl")
+
+    assert dropped == []
+    assert (out / "g1.json").exists()
+
+
+def test_pruning_lets_the_spectator_s_copies_go_and_says_so(tmp_path):
+    """The files a link names go with the record, and the archive index keeps
+    a row saying the game was played -- never a link that fails into silence."""
+    out = tmp_path / "out"
+    live_dir = tmp_path / "live"
+    out.mkdir()
+    live_dir.mkdir()
+    _finished_game(out, "g1", "w1", 1_000_000)
+    (live_dir / "g1.json").write_text(json.dumps({"channel": "island", "messages": []}))
+    (out / "board-w1.json").write_text("{}")
+    live.finish(live_dir / "g1.json", board=out / "board-w1.json",
+                reveal=out / "reveal-w1.json")
+
+    with mock.patch.object(run_game._scores, "load", return_value=[]), \
+         mock.patch.object(run_game._scores, "keepers", return_value=set()):
+        run_game.prune(out, keep=0, best=5, ledger=tmp_path / "l.jsonl",
+                       live_dir=live_dir)
+
+    assert not (live_dir / "board-g1.json").exists()
+    row = json.loads((live_dir / live.INDEX).read_text())["games"][0]
+    assert row["kept"] is False, "the game vanished instead of being marked gone"

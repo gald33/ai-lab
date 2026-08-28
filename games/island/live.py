@@ -83,7 +83,7 @@ def _remember(directory: Path, label: str, copies: dict, standing: dict | None,
     except (OSError, ValueError):
         rows = []
     rows = [r for r in rows if r.get("label") != label]
-    rows.append({"label": label, "finished_at": when,
+    rows.append({"label": label, "finished_at": when, "kept": True,
                  "board": copies["board"], "reveal": copies["reveal"],
                  "live": f"{label}.json",
                  **({"standing": standing} if standing else {}),
@@ -92,6 +92,49 @@ def _remember(directory: Path, label: str, copies: dict, standing: dict | None,
     tmp = index.with_suffix(".json.tmp")
     tmp.write_text(json.dumps({"games": rows}, indent=1) + "\n")
     tmp.replace(index)
+
+
+def forget(directory: Path, label: str) -> list[Path]:
+    """Delete a game's copies, and leave a row saying it was played.
+
+    Retention keeps the latest and the best, which means **a game can be
+    evicted by a later, better game**: a link handed out today stops working on
+    a day nobody touched that game, for a reason that has nothing to do with
+    it. Raised by the host operator, 2026-08-28, as the thing that makes merit
+    retention worse than an expiry date -- an expiry can at least be stated in
+    advance.
+
+    So the files go and the row stays, with `kept: false` and the date it went.
+    A page that asks for an evicted game gets an index that says *this game was
+    played and is no longer kept*, which is a different sentence from a 404 and
+    from silence. The row is small; the board and reveal were the bulk.
+    """
+    index = directory / INDEX
+    try:
+        state = json.loads(index.read_text())
+    except (OSError, ValueError):
+        return []
+    rows = state.get("games", [])
+    row = next((r for r in rows if r.get("label") == label), None)
+    if row is None or row.get("kept") is False:
+        return []
+
+    gone: list[Path] = []
+    for name in (row.get("board"), row.get("reveal"), row.get("live")):
+        if not name:
+            continue
+        path = directory / name
+        if path.exists():
+            path.unlink()
+            gone.append(path)
+    row["kept"] = False
+    row["dropped_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for key in ("board", "reveal", "live"):
+        row.pop(key, None)
+    tmp = index.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"games": rows}, indent=1) + "\n")
+    tmp.replace(index)
+    return gone
 
 
 def finish(path: Path, *, board: Path, reveal: Path,
