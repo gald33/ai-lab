@@ -189,7 +189,20 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   //: is what shows through the troughs -- and so a dolphin under it is a shape
   //: in the water rather than nothing at all.
   const SEA_Y = -0.02;
-  const swellGeo = new THREE.RingGeometry(4.4, 17, 128, 16);
+  //: **The inner edge is a circle and the coast is not**, which is the same
+  //: mistake the surf ring was rebuilt to fix -- see `shoreRing` in
+  //: `island3d.js`. At 4.4 the sheet cleared the drawn shallows on three
+  //: quarters of the bearings and fell *outside* them on the rest: on those,
+  //: an annulus up to 0.44 wide had neither the shallows above it nor the
+  //: sheet under it, so the deep disc at y = -0.30 showed through as a step
+  //: in the water a little way off the sand. Reported by eye as the waves
+  //: near the shore looking wrong.
+  //:
+  //: The narrowest the drawn shallows ever get is 3.96, so an inner edge at
+  //: 3.86 is tucked under them on every bearing and the gap cannot open. The
+  //: sheet under the island is hidden by the slabs above it, which is what
+  //: "tucked" has always meant here.
+  const swellGeo = new THREE.RingGeometry(3.86, 17, 128, 16);
   swellGeo.rotateX(-Math.PI / 2);
   const swellRest = swellGeo.attributes.position.array.slice();
   const swell = mesh(swellGeo, new THREE.MeshStandardMaterial({

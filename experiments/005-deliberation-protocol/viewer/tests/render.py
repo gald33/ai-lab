@@ -2139,7 +2139,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: `worldToLocal` reads a `matrixWorld` this has not asked anyone to
   //: refresh, so on a frame the stage had moved it would answer about where
   //: the island used to be, and answer confidently.
-  const moored = [];
+  const moored = [], aground = {};
   {
     //: Composed up through whatever parents a part has, rather than assuming
     //: one. The boats were children of the dock and are not any more, and a
@@ -2153,6 +2153,39 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
       }
       return v;
     };
+    //: **And whether a hull is over land, asked of the slabs themselves.**
+    //: Every check here used to compare a radius with `silhouette()` -- and a
+    //: silhouette is not the edge that gets drawn: `slab()` extrudes with a
+    //: bevel that pushes the solid outward by up to 0.20. So the formulas ran
+    //: short, and boats sat on the wet sand with four separate assertions
+    //: calling them afloat, until a spectator sent a picture of them aground.
+    //: A raycast cannot be wrong about this in the way a formula can.
+    //:
+    //: Nine points, not the centre: a hull is 1.17 long and it is the ends
+    //: that touch the sand first. The centre is what the radius checks looked
+    //: at, and it is why they were happy.
+    const LAND = /^(meadow|beach|shore_shelf|upland)$/;
+    const land = made.island.children.filter(c => c.isMesh && LAND.test(c.name));
+    const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
+    const onLand = (x, z) => {
+      ray.set(new THREE.Vector3(x, 12, z), down);
+      return ray.intersectObjects(land, false).length > 0;
+    };
+    made.island.traverse((o) => {
+      if (!/^boat_\d+$/.test(o.name)) return;
+      const hull = o.getObjectByName(`${o.name}_hull`);
+      if (!hull) return;
+      hull.geometry.computeBoundingBox();
+      const bb = hull.geometry.boundingBox, v = new THREE.Vector3();
+      let n = 0;
+      for (const sx of [-1, 0, 1]) for (const sz of [-1, 0, 1]) {
+        v.set(sx < 0 ? bb.min.x : sx > 0 ? bb.max.x : 0, 0,
+              sz < 0 ? bb.min.z : sz > 0 ? bb.max.z : 0).applyMatrix4(hull.matrixWorld);
+        if (onLand(v.x, v.z)) n++;
+      }
+      aground[o.name] = n;
+    });
+
     const parts = [];
     const d = made.island.getObjectByName('dock');
     if (d) parts.push(...d.children);
@@ -2240,6 +2273,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
   return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps, moored, harbour,
+          aground,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -3029,10 +3063,17 @@ def island(browser, base: str, out: Path) -> list[str]:
                            f"{m['r']:.2f} where the grass reaches "
                            f"{m['grass']:.2f}; it is inside the island, "
                            f"under the meadow")
-            elif m["name"].startswith("boat_") and m["r"] <= m["water"]:
-                bad.append(f"island {label}: {m['name']} floats at "
-                           f"{m['r']:.2f} where the water starts at "
-                           f"{m['water']:.2f}; it is a hull on wet sand")
+        #: **Aground is asked of the terrain, not of a radius.** The radius
+        #: form of this check lived here first and passed every boat while
+        #: they sat on the sand: it compared a hull's *centre* against
+        #: `silhouette()`, and a silhouette is not the drawn edge -- `slab()`
+        #: bevels the solid outward by up to 0.20 -- while a hull is 1.17 long
+        #: and touches down at its ends. Two errors compounding, both in the
+        #: direction of saying yes. Reported by eye, with a picture.
+        for name, points in sorted((built.get("aground") or {}).items()):
+            if points:
+                bad.append(f"island {label}: {name} has {points} of 9 hull "
+                           f"points over land; it is beached, not moored")
         #: And there is a dock at all. The loop above is vacuously happy about
         #: an empty one, and the boats are read off it by name.
         if not [m for m in (built.get("moored") or []) if m["name"].startswith("boat_")]:
@@ -3056,10 +3097,15 @@ def island(browser, base: str, out: Path) -> list[str]:
         #: of them. The boats used to be laid against a list of three hand
         #: written positions, so a fourth seat simply had no boat -- reported
         #: as sails carrying the agents' colours but not all of the agents'.
+        #: Against the traders the island was actually built for, not against
+        #: the shape's requested `n` -- a loop variable above was named `n`
+        #: too and quietly rebound it, so this compared every count against
+        #: zero and failed thirteen times on a correct scene.
         boats = [h for h in harbour if h["name"].startswith("boat_")]
-        if len(boats) != n:
-            bad.append(f"island {label}: {len(boats)} boats for {n} traders; "
-                       f"every seat arrived somehow and wears its own colour")
+        if len(boats) != len(built["traders"]):
+            bad.append(f"island {label}: {len(boats)} boats for "
+                       f"{len(built['traders'])} traders; every seat arrived "
+                       f"somehow and wears its own colour")
 
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
