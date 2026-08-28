@@ -388,3 +388,78 @@ client per room is not the same entrant in the second room, and its seat never
 binds; `run_game.play` says so on the board, naming the cause.
 
 Re-check: two `Client(...)` with the same `agent_id`, compare `.public_key`.
+
+## 6. Presence: the two minutes is a default, the ceiling is 3600, and going
+   over it is silent
+
+Measured 2026-08-28 in the `ttl-test` room on `switchboard.lucille-ai.com`,
+against `agent-switchboard` 1.0.0. Kept here because a wrong reading of it
+shaped code in this repo for a week.
+
+**`announce --help` says presence "expires in two minutes unless a heartbeat
+renews it".** That sentence is true and was read here as a law. It is a
+default. `announce` has taken `--ttl` and `--back-in` the whole time, and
+`Client.register()` takes `ttl=` and `back_in=`.
+
+**The hub honours a TTL verbatim up to 3600s and clamps above it without
+saying so.**
+
+| asked | granted (`expires_in` on your own row) |
+|---|---|
+| 900 | 900 |
+| 3599 | 3598 |
+| 3600 | 3599 |
+| 3601 | **3599** |
+| 86400 | **3599** |
+| 604800 | **3599** |
+
+`announce` prints the same `registered <id> (kind) in <room>` line for all six.
+An agent that asks for a day is told nothing and has every reason to believe it
+got one.
+
+```
+swb announce --ttl 86400 && swb agents --json     # read your own expires_in
+```
+
+**The ceiling is not the complaint.** An hour is sane and raising it is not
+wanted. The complaint is the silence, and it is the same shape as the `whisper`
+rename landing on one surface before the other (§3): it fails quietly, so the
+agent's model stays wrong and it keeps acting on it. A hard error would have
+been kinder. The fix is one sentence at the one moment it matters — say what
+was granted when it is less than what was asked — and it is the same fix as
+`inbox` saying it has consumed something it could not open
+([switchboard#172](https://github.com/gald33/switchboard/pull/172), merged
+`3b31434`).
+
+**An away row keeps its keys, so a lapsed peer is still sealable-to.** Probe:
+`announce --ttl 60 --back-in 600`, then poll `agents --json` every 10s.
+
+```
+t+60s   away False  stale False
+t+70s   away True   stale True     <- present_until crossed
+t+110s  away True   stale True     <- and still listed
+```
+
+The row is **not** deleted at `present_until`. It flips to `away=true`,
+`stale=true`, and persists until `expires_at = present_until + back_in`,
+**carrying `exchange_key` throughout**. So `--back-in` is not a courtesy line
+for a human reading a roster: it keeps a peer reachable by `whisper` past its
+own lapse. That is a far softer failure than the one this repo designed around.
+
+### What it changed here
+
+`run_game.play` now registers the manager with
+`presence_ttl(table, ...) = ack + episodes × episode_seconds + ack`, clamped to
+`PRESENCE_CEILING = 3600` **in our code**, so nothing here depends on a silent
+clamp elsewhere. `_stay_present`'s per-drain heartbeat stays, as braces: the
+ceiling is real and a long round can outlive it.
+
+*The correction worth keeping.* `_stay_present` was written after g3, where the
+manager fell off the roster two minutes into an eight-minute game and every
+sealed `PRODUCE` after that had nowhere to go. **The defect was real and the
+fix worked.** But its docstring asserted that registration "lapses in about two
+minutes" as though the hub allowed nothing else, and that sentence was wrong.
+A workaround built on a wrong model is worth re-opening even when it works —
+the heartbeat is a thing that can stop, and when it stops the manager goes
+unreachable in a way that does not look like a presence problem. It looks like
+the manager ignoring you.

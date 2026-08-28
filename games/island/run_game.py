@@ -205,18 +205,56 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
     return True
 
 
+#: The hub's ceiling on presence, measured rather than read: `--ttl` is
+#: honoured verbatim up to 3600s and **silently clamped** above it -- 3601,
+#: 86400 and 604800 all come back as 3599, and `announce` prints the same
+#: success line for every one of them. Reproduce with
+#: `swb announce --ttl 86400` then `swb agents --json`, and read `expires_in`.
+#:
+#: Measured 2026-08-28 in the `ttl-test` room against
+#: switchboard.lucille-ai.com, on agent-switchboard 1.0.0.
+PRESENCE_CEILING = 3600.0
+
+
+def presence_ttl(table: Table, *, episode_seconds: int, ack_seconds: int) -> float:
+    """How long the manager asks to stay on the roster: the whole round.
+
+    **The two minutes is a default, not a law.** That distinction cost a game.
+    `register()` takes a `ttl`, and asking for one that covers the round is
+    the right shape: a heartbeat is a thing that can stop, and when it stops
+    the manager goes unreachable in a way that does not look like a presence
+    problem -- it looks like the manager ignoring you. A TTL that outlives the
+    round cannot stop.
+
+    Padded by one ack window because a round is not over at its last bell: the
+    record is written and the archive compared after it, and the manager that
+    is doing that is still a peer somebody may be trying to reach.
+
+    Clamped to `PRESENCE_CEILING` here, deliberately, so this code never
+    depends on a silent clamp elsewhere: a round longer than the ceiling gets
+    a TTL of the ceiling and keeps its heartbeat, which is exactly right.
+    """
+    whole = ack_seconds + table.episodes * episode_seconds + ack_seconds
+    return min(float(whole), PRESENCE_CEILING)
+
+
 def _stay_present(client) -> None:
     """Keep the manager on the roster, every drain.
 
-    **Registration lapses in about two minutes; a round runs eight.** So a
-    manager that registers once at the start is absent from the roster for
-    most of its own game -- and a peer that is not on the roster cannot be
-    whispered to, because sealing needs its exchange key from there. Every
-    sealed PRODUCE after the first couple of minutes therefore had nowhere to
-    go.
+    **Belt and braces, and the braces are new.** The manager now asks at
+    registration for a TTL covering the whole round (`presence_ttl`), so this
+    heartbeat is no longer the only thing standing between a sealed PRODUCE
+    and nowhere to go. It stays because the TTL is capped at
+    `PRESENCE_CEILING` and a long round can outlive it, and because a
+    heartbeat costs one call on a loop that is draining anyway.
 
-    Found by the trader in g3, who reported that "one early whisper worked and
-    later ones failed" and had reasonably blamed its own setup. It was this.
+    *Corrected 2026-08-28.* This docstring used to assert that "registration
+    lapses in about two minutes" as though the hub allowed nothing else. It
+    is the default and always was; `--ttl` was there the whole time. The
+    original defect was real -- the g3 trader's "one early whisper worked and
+    later ones failed" was this -- but the fix was shaped by a misreading of
+    `announce --help`, and a workaround built on a wrong model is worth
+    re-examining even when it works.
 
     Never raises: a failed heartbeat is a manager that may go unreachable, and
     a manager that dies of one is a round that certainly ends.
@@ -375,7 +413,9 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     # publishes no such key and every half it seals arrives unreadable. It
     # cost a test to find, and it would have cost a game.
     client.register(name=MANAGER, kind="local", branch="main",
-                    task=f"running {table.id}")
+                    task=f"running {table.id}",
+                    ttl=presence_ttl(table, episode_seconds=episode_seconds,
+                                     ack_seconds=ack_seconds))
     # The first `table.goods` of the vocabulary. The table settled its own
     # count when it opened, and the entrants were briefed on that number -- so
     # this must follow the table rather than a default of its own.
