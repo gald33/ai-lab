@@ -29,30 +29,59 @@ from pathlib import Path
 #: What the viewer's `rowsFromState` reads. Kept to that shape deliberately:
 #: it is the same contract Switchboard's own browser room-reader returns, so a
 #: page can take either source without knowing which it got.
-def snapshot(client, channel: str, *, limit: int = 300) -> dict:
+def snapshot(client, channel: str, *, limit: int = 300,
+             names: dict[str, str] | None = None) -> dict:
     """The channel as the viewer wants it: `{messages: [...]}`.
 
     Read fresh from the hub rather than accumulated, so a spectator sees the
     board as it stands and not one process's memory of it.
+
+    **`names` is the manager's alias, and without it a live game is drawn
+    silent.** A hub names a line by the room's agent id -- `scout-v2` -- while
+    the schedule seats `T1..Tn` and every receipt is written in those seat
+    names. The viewer takes its cast from the schedule, so an author it has
+    never heard of is not one of the traders: `reducer.js` reads those lines as
+    the manager's, they classify as `unknown`, and nothing is drawn. The whole
+    visible symptom is that **nobody talks during a live game and everybody
+    talks in the replay** -- which is exactly where the two differ, because
+    `run_game.save_board` has always mapped peer to seat through this same
+    alias and this did not.
+
+    So the seat name goes in `from.name`, which is the field
+    `rowsFromState` already prefers, and the raw id stays in `from.id`: a
+    spectator's file loses nothing, and the live board finally names its
+    authors the way the recording of it does.
+
+    The mapping is given whole rather than assembled here -- the manager's own
+    id included, if the caller wants it named -- because this module knows
+    about a board and a file and deliberately nothing about seats.
     """
     rows = sorted(client.history(channel, limit=limit),
                   key=lambda r: r.get("seq", 0))
+    seats = dict(names or {})
+
+    def who(peer: str) -> dict:
+        seat = seats.get(peer)
+        return {"id": peer, **({"name": seat} if seat else {})}
+
     return {
         "channel": channel,
         "messages": [{"seq": m.get("seq"),
                       "created_at": m.get("created_at"),
                       "channel": channel,
-                      "from": {"id": str(m.get("from") or "?")},
+                      "from": who(str(m.get("from") or "?")),
                       "body": m.get("body")}
                      for m in rows if isinstance(m.get("body"), str)],
     }
 
 
-def write(client, channel: str, path: Path, *, limit: int = 300) -> Path:
+def write(client, channel: str, path: Path, *, limit: int = 300,
+          names: dict[str, str] | None = None) -> Path:
     """Replace the spectator's file atomically, so nobody reads half a board."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(snapshot(client, channel, limit=limit)) + "\n")
+    tmp.write_text(json.dumps(
+        snapshot(client, channel, limit=limit, names=names)) + "\n")
     tmp.replace(path)
     return path
 

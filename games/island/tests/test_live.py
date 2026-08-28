@@ -58,6 +58,51 @@ def test_it_carries_the_board_and_cannot_carry_the_sealed_half(hub):
     assert not any("PRODUCE" in b for b in bodies), "the sealed half never was"
 
 
+def test_it_names_authors_by_seat_so_a_live_game_is_not_drawn_silent(hub):
+    """The bug: nobody talked live and everybody talked in the replay.
+
+    The hub names a line by the room's agent id; the schedule seats `T1..Tn`.
+    The viewer takes its cast from the schedule, so a line from `scout-v2` was
+    read as the manager's, classified `unknown`, and drawn as nothing at all --
+    while `run_game.save_board` mapped the same peers to seats and made the
+    replay talk. Same board, two names for its authors, one of them unusable.
+    """
+    key = generate_key()
+    mgr = _client(hub, "mgr", key)
+    mgr.register(name="mgr", kind="local", branch="m", task="")
+    t1 = _client(hub, "scout-v2", key)
+    t1.register(name="scout-v2", kind="local", branch="m", task="")
+    mgr.post("island", "Schedule for this round. 1 traders: T1.")
+    t1.post("island", "morning, all")
+
+    names = {t1.agent_id: "T1", mgr.agent_id: "manager"}
+    said = {m["body"]: m["from"] for m in
+            live.snapshot(mgr, "island", names=names)["messages"]}
+
+    assert said["morning, all"]["name"] == "T1"
+    assert said["morning, all"]["id"] == t1.agent_id, "the raw id is not lost"
+    assert said["Schedule for this round. 1 traders: T1."]["name"] == "manager"
+
+
+def test_an_author_it_has_no_seat_for_keeps_its_own_name(hub):
+    """A line from a key that took no seat is not renamed into a trader.
+
+    The manager refuses those by design (`games/island.md`, "A key that was
+    handed on"); a spectator's copy has to leave them exactly as unplaceable as
+    they are, not quietly seat them.
+    """
+    key = generate_key()
+    mgr = _client(hub, "mgr", key)
+    mgr.register(name="mgr", kind="local", branch="m", task="")
+    other = _client(hub, "gatecrasher", key)
+    other.register(name="gatecrasher", kind="local", branch="m", task="")
+    other.post("island", "hello")
+
+    row = live.snapshot(mgr, "island", names={})["messages"][0]
+
+    assert row["from"] == {"id": other.agent_id}
+
+
 def test_it_is_replaced_atomically(hub, tmp_path):
     """A spectator polls it every few seconds; nobody reads half a board."""
     c = _client(hub, "mgr", generate_key())

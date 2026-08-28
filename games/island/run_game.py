@@ -277,7 +277,13 @@ def _show(mgr: Manager, live: Path | None) -> None:
     if live is None:
         return
     try:
-        write_live(mgr.client, mgr.channel, live)
+        # Named the way `save_board` names the same board afterwards: seat by
+        # seat off the manager's alias, plus the manager itself. A spectator
+        # watching live and a spectator watching the replay are looking at the
+        # same island, and an unnamed author is one the viewer cannot place --
+        # see `live.snapshot`.
+        write_live(mgr.client, mgr.channel, live,
+                   names={**mgr.alias, str(mgr.client.agent_id): MANAGER})
     except Exception as exc:      # noqa: BLE001 -- see the docstring
         print(f"live view not written: {exc!r}", flush=True)
 
