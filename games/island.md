@@ -1219,6 +1219,23 @@ the only surface, and the shallows are what they should always have been — a
 lighter colour showing through where the water is shallow. `surfaceAt` is a
 constant.
 
+**The glade was then tuned against rendered frames, not numbers.** Four widths
+and brightnesses were rendered at the bell and at the open and looked at. Two
+things came out of it that the arithmetic would not have given:
+
+- **Half strength was invisible.** It ran at `burnAt * 0.55`, and the sea at
+  the bell is nearly black while the key's colour by then is a dim orange — so
+  half an additive pass over it came to almost nothing. It is at full `burnAt`
+  now.
+- **Lifting the colour toward white to make it brighter turns it into
+  moonlight.** At a lift of 0.45 and above the path goes silver, and a silver
+  path on dark water is the moon, not the sun. The lift is 0.12: the sun keeps
+  its colour, and what changes is how much of it there is.
+
+The width came down from 7.5 to 3.4 for the same reason the flat tint was
+dropped — a broad warm haze reads as the sea being tinted, and the shape only
+becomes a *path* at about half the island's width.
+
 The lesson generalises past the sun: **on this island the lights are a shared
 resource and the greens have first claim on them.** Anything that wants to tint
 the whole scene should tint the one light that is actually casting, not the one

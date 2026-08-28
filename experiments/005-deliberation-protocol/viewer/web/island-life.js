@@ -269,13 +269,19 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     t.needsUpdate = true;
     return t;
   })();
+  const WHITE = new THREE.Color(0xffffff);
   const gladeMat = new THREE.MeshBasicMaterial({
     map: gladeTex, transparent: true, opacity: 0,
     blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   //: Long down the sun's bearing and narrow across it. Wider than the island
   //: is across so the path runs out of frame rather than ending in the water,
   //: which is what a horizon-less picture has instead of a horizon.
-  const glade = mesh(new THREE.PlaneGeometry(7.5, 34), gladeMat, "swell_glade",
+  //: **Narrower and longer than it started** (7.5 x 34). Tuned against the
+  //: rendered frames rather than by eye on the numbers: at the original width
+  //: the path was a broad warm haze that read as the sea being tinted -- the
+  //: thing this exists to avoid -- and the shape only became a *path* once it
+  //: was about half as wide as the island and ran well past the frame.
+  const glade = mesh(new THREE.PlaneGeometry(3.4, 39), gladeMat, "swell_glade",
                      [0, SEA_Y + 0.012, 0]);
   glade.rotation.x = -Math.PI / 2;
   glade.castShadow = false;
@@ -901,10 +907,19 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
         //: Only at the ends of the day, and strongest when the sun is lowest.
         //: `burnAt` is the curve the drawn island's sky reads, so the glitter
         //: arrives at the same hour the sky turns.
-        gladeMat.opacity = burnAt(lit) * 0.55;
+        //:
+        //: Full strength at the ends, where it was 0.55. The sea at the bell
+        //: is nearly black and the key's colour by then is a dim orange, so
+        //: half an additive pass over it came to almost nothing: the glade was
+        //: there in the pixels and not there to a reader.
+        gladeMat.opacity = burnAt(lit);
         //: The colour of the light making it, so a dawn glade is pinker than
-        //: a bell's and neither is ever a colour the sun is not.
-        gladeMat.color.copy(key.color);
+        //: a bell's and neither is ever a colour the sun is not -- lifted a
+        //: *little* toward white for the core, and only a little. Lifting it
+        //: far enough to read as bright gold (0.45 and up, tried) turns the
+        //: path silver, and a silver path on dark water is moonlight. The sun
+        //: keeps its colour; what changes is how much of it there is.
+        gladeMat.color.copy(key.color).lerp(WHITE, 0.12);
         // A floor under it: the island still has to be readable at dusk, and
         // the cards standing on it are the part that matters most then.
         key.intensity = 0.75 + Math.sin(a) * 1.55;
