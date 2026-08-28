@@ -941,35 +941,75 @@ nobody can disprove, and a painted horizon line claims a distance the geometry
 does not have, against an island whose own water plane is a different
 projection. Declined on those grounds.
 
-**What was built instead: the colour, on the day's own clock.** The sky-burn
-and the light ramps carry dawn and dusk, and `burnAt(p)` in `scene.js` is the
-one curve both read — zero through the middle 52% of the day, all of it in the
-last quarter at each end — so the drawn island and the modelled one cannot
-disagree about the hour. Previously the burn was a *state*: off, then on at
-`.closed`. The island had a sunset and no sunrise at all.
+**What was built instead: the colour, on the day's own clock.** `burnAt(p)` in
+`scene.js` — zero through the middle 52% of the day, all of it in the last
+quarter at each end — drives the sky-burn over the frame. Previously the burn
+was a *state*: off, then on at `.closed`. The island had a sunset and no
+sunrise at all.
+
+**The lights are deliberately not on that curve.** They were put on it, to stop
+a warm ambient tinting the whole day — and by then #141 had already removed the
+warm ambient, so the reason was gone and all the curve did was hold the light
+at noon for half the day. The distinction that survives: **the day's light is
+continuous, and only the sky's colour wash is an end-of-day event.** A curve
+that is right for a wash over the frame is wrong for the light on the ground.
 
 **And the measurement that shaped it, which came out the opposite way round to
 the plan.** The intent was to put the warmth in the lights, where a sunset
 belongs, and leave the overlay small. The lights have almost no room: the
 ambient reaches every face, so it warms the grass exactly as much as the sand,
-and `island3d.js` ("Green, not olive") plus `viewer/tests/firelight.test.mjs`
-hold the meadow above hue 90. Measured at the bell the island already sits at
-93 — **three degrees of headroom in the whole day.** A skyDusk of `0xc4826a`,
-barely orange to look at, took the trees to 65.
+and `island3d.js` ("Green, not olive") holds the meadow above hue 90. A skyDusk
+of `0xc4826a`, barely orange to look at, took the trees to 65.
 
-So the ambient's end colours are unchanged, the key takes what little it can
-(it grazes at dusk, so it costs ~1 degree on the meadow and lands on the
-vertical faces, which is where a sunset is read off a landscape anyway), and
-the rest is the burn — raised from .14 to .22 under `.has-3d`, because
-soft-light over the frame warms the *water*, which is most of what is on
-screen and whose hue nothing depends on. Re-check with:
+*Superseded while this branch was open, and the superseding is the more useful
+half.* #141 ("The island was yellow at dusk because the sunset was in the
+ambient") reached the same finding independently, measured it better — over
+rendered pixels across all 21 hours rather than one hand-shaded sample, which
+is why it caught canopies and slopes that a flat up-facing patch never
+could — and **went one step further than this branch did.** The conclusion
+here was "the ambient has almost no room, so hold it where it is". The right
+conclusion was that the ambient should go *cool*: twilight is a cool sky with
+one warm light in it, and a warm ambient held back to what it can get away
+with still multiplies every green by an orange nothing is casting. `skyDusk`
+is `0x8497b0` now, and this branch takes that side.
+
+The near-miss is left visible because it is the instructive part: **stopping at
+"there is no headroom" is how you end up with a dim noon instead of an
+evening.** The question was never how much warmth the ambient can carry, it
+was whether the ambient should be carrying warmth at all.
+
+So the key carries the warmth alone, and the rest is the burn — raised from .14
+to .22 under `.has-3d`, because soft-light over the frame warms the *water*,
+which is most of what is on screen and whose hue nothing depends on. Held by
+two checks, and the second is the one that would have caught the original bug:
 
     node --test experiments/005-deliberation-protocol/viewer/tests/firelight.test.mjs
+    python experiments/005-deliberation-protocol/viewer/tests/render.py   # `twilight`
+
+**Left unfixed, and named here because it is a conflict between two checks
+rather than a bug in either.** `alive` in `viewer/tests/render.py` asserts the
+island is warmer with the sun down than with it up, by 0.08 of red-over-blue on
+the land. It fails on `main` as of 0c92592 — 0.37 against 0.37 on one board and
+0.33 against 0.36 on the other — and it fails because of #141: cooling the
+ambient to `0x8497b0` is what stopped the meadow going olive, and it is also
+what removed most of the land's warmth at dusk. The model's twilight is now a
+cool sky with one grazing warm light, which is what #141 argued for and what
+`twilight` measures, and `alive` was written when dusk was warm all over.
+
+So the two checks now pull against each other and only one of them can be
+right about what a modelled evening is. That is a decision, not a patch, and it
+is not this branch's to make: this branch improves the margin (0.03 → 0.05 on
+`002b`, by saturating the key) without clearing the bar, and does not touch the
+ambient #141 tuned. **Do not fix it by loosening `alive`'s threshold** — the
+question is whether the island should read warm at dusk on its own pixels, and
+if the answer is yes the fix is in the light, not in the bar.
 
 The lesson generalises past the sun: **on this island the lights are a shared
-resource and the greens have first claim on them.** Anything that wants to
-tint the whole scene should expect three degrees and plan to spend the rest
-somewhere the materials are not.
+resource and the greens have first claim on them.** Anything that wants to tint
+the whole scene should tint the one light that is actually casting, not the one
+that reaches every face — and should measure it on rendered pixels, because a
+hand-rolled sum over a flat patch of grass said the island was fine while the
+renderer disagreed.
 
 ## Open
 

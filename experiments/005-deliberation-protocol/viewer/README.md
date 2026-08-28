@@ -136,7 +136,7 @@ settlement per seat, a site per good, a dock and boats. Ported from a design
 delivered as `island.html`; `island3d.js` holds the geometry and `stage.js`
 puts it under the scene.
 
-Two things about it are worth knowing before changing either.
+Three things about it are worth knowing before changing any of them.
 
 **The camera is orthographic, and that is not a style choice.** The cards,
 ropes and sun are SVG drawn in viewBox coordinates. Under perspective, the map
@@ -151,6 +151,36 @@ each into a point on the island, and the card goes back at `toViewBox()` of the
 hut. Placing them on a ring in island coordinates was tried first and put both
 huts on nearly the same pixel — the ring's axis and the camera's happened to
 line up. A spectator does not care which compass point a hut is on.
+
+**Anything standing on the coast is placed against the outline, never against
+a radius.** The slabs are cut to `silhouette()`, whose two wobble terms can add
+to nearly a quarter of the nominal radius — so on some bearings the meadow's
+`3.25` reaches `3.70`, and on a few of them the grass reaches past the sand.
+The dock was placed at a hand-picked point whose radius, 3.43, cleared 3.25 and
+so looked offshore; it was inside the coastline, under the meadow's surface,
+along with its bollard and two of its three boats, and `island-life.js` bobbed
+them through soil for as long as the page was open. Only the third boat was
+ever in water, so the scene read as a lone dinghy off an island with no dock.
+Reported by eye, which is the argument for the check.
+
+`meadowEdge`, `beachEdge`, `shelfEdge` and `shallowsEdge` are the four outlines
+to ask, and `dockAxis()` is the worked example: it takes a bearing, seats the
+root against whichever of the grass and the sand reaches furthest, and returns
+both the rotation that aims the thing out to sea and how far it may reach
+before it leaves the water. **A length is as much a placement as a position
+is** — seating the root correctly while leaving the old hand-picked length of
+1.54 in place moved the failure rather than fixing it: the jetty then reached
+past the shallows, and since a dock is not weather, `render.py:island` counts
+it as the island's own silhouette and found the island's foot below the first
+card on a phone. The drawn water outside the sand is about `0.7` wide on every
+bearing, so that is how long a jetty can be, and boats moor broadside because a
+hull is 1.26 long and does not fit bow-out in 0.7 of water at any scale.
+
+`tests/render.py:island` measures every part of the dock against those
+outlines: nothing inside the grass, and no boat short of the waterline. They
+are separate assertions because they fail separately — a boat can clear the
+grass and still be a hull sitting on wet sand, which is exactly what the one
+un-buried boat was.
 
 **Without WebGL the page draws the island as it always did.** `.has-3d` is set
 only once a model is actually up, so the drawn world is hidden exactly when it
@@ -527,13 +557,66 @@ curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
 
+### The warmth belongs to the light, not to the sky over the island
+
+*Corrected 2026-08-28. The section below said the day's own light never takes
+the greens off a leaf, and gave 100°–128° of hue across the whole arc as the
+measurement. That number was a **sum done by hand for a flat, up-facing patch
+of grass**, not a reading off the picture. It was wrong about the picture, the
+campfire fix shipped on the back of it, and the island was still yellow at the
+end of a day. The superseded reasoning stays here because it is the reason the
+second look went to the right place.*
+
+**What the pixels say.** Draw the island with everything but the grass hidden —
+meadow, upland, ridge, canopies, fronds — and count the hue of what is left:
+
+| `day` | median grass hue | on the yellow side of 90° |
+|---|---|---|
+| 0.25 – 0.80 | 102° – 116° | 0% |
+| 0.90 | 91° | 30% |
+| 0.95 | 87° | **64%** |
+| 1.00 | 92° | 40% |
+
+Two thirds of the island olive in the last stretch of the day, and turning the
+campfire off changed it by a few points — so the fire was never the half of it
+that a spectator was reporting.
+
+**It was the ambient.** The rig is a key, a fill and an ambient, and the
+ambient reaches every face, including all the ones a low sun has stopped
+touching. Its dusk colour was `0xa08a90` — a warm mauve — chosen so that a cool
+ambient held fixed would not make the last light of the day read *bluer* than
+midday. That reasoning is right and the fix for it was in the wrong place: it
+put the sunset in the light that falls on everything, and orange on green is
+yellow.
+
+Twilight is a cool sky with one warm light in it. The key keeps its sunset
+colour (`0xd9603a`) and does the warming; the ambient goes to `0x8497b0` at
+dusk and `0xb3bccb` at dawn, which is what the sky over an island is at those
+hours. The grass comes back — median 103°–128° at every hour of the day, with
+nothing below 100° — the sand still reads warm (hue ~22 at `day` 0.95, because
+the key is still on it), and dusk is still darker than noon by two thirds.
+
+**The check.** `twilight` in `viewer/tests/render.py` is the reproduction and
+the guard. It measures the rendered pixels, because that is the thing that was
+wrong while the arithmetic said otherwise:
+
+```bash
+python viewer/tests/render.py
+```
+
+It fails on the old ambient at seven hours of the day, and on the old campfire
+at two.
+
 ### The firelight is a pool, not a floodlight
 
 **The trees and the hill went yellow at nightfall, and it was the campfire.**
 Reported by eye twice, and looked for twice in the wrong place: the island's
-greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and
-the day's own light never takes them back — under the whole arc from dawn to
-dusk the grass stays between about 100° and 128° of hue, which is a leaf.
+greens were moved off olive long ago (`island3d.js`, "Green, not olive"), and a
+sum done by hand said the day's own light never takes them back — under the
+whole arc from dawn to dusk the grass stays between about 100° and 128° of hue,
+which is a leaf. **That sum was of a flat patch of grass and was wrong about
+the picture** — see the section above, which is the other half of this bug. The
+fire below is real and was the near half of it.
 
 The fire's `PointLight` did. It was `(0xff9a3c, distance 4.2, decay 2)` driven
 to intensity 5.5 at the bell, and the fire stands *on* the hill: at half a unit
@@ -2034,11 +2117,54 @@ FAIL: the bed is dwarfed by the accents over it (the world peaks at 0.056,
       one voice at 0.125)
 ```
 
+### The checks were measuring a page nobody hears
+
+Reported 2026-08-28: all the sounds are too weak, I can't hear any of it. Then,
+minutes later, unprompted: *now I do hear everything. weird.*
+
+**Nothing in this repository had changed in between.** What changed was GitHub
+Pages: run 74 published the merge that took `BED` from 0.5 to 1.15 at
+09:07:44Z, and the report was made against the deploy before it. So the level
+that sounded broken is the level that sounds right, heard on a stale page, and
+the honest response was to change nothing — the sweep of `MASTER` values that
+was underway when the second message arrived was thrown away.
+
+*Worth writing down for the next time a sound report arrives:* **ask what is
+deployed before touching a number.** The viewer publishes on a push to `main`
+and a listener is usually a minute or two behind it.
+
+But the round found a real defect anyway, in the checks rather than the sound.
+`tests/audio.py` rendered the island straight at the destination and then
+multiplied by its own copy of `MASTER` — so it modelled the master gain and
+**ignored the limiter under it entirely**, and every number it had ever printed
+was a level no listener hears. Renders now go through `outputChain()`, exported
+from `island-sound.js` and used by the page itself, so there is one definition
+of what sits between the island and the speakers.
+
+That is also what let the band below be set honestly. The bed's floor is not a
+round number anybody liked:
+
+| heard | bed RMS out |
+|---|---|
+| `BED` 0.5, "I can't hear any of it" | 0.009 |
+| `BED` 1.15, "now I do hear everything" | 0.021 |
+
+The floor sits between them, at 0.015 — it fails the configuration a listener
+rejected and passes the one they accepted, and that is the whole of its
+justification. Every threshold in that file chosen by taste has been wrong at
+least once; these are the only two numbers in it that a pair of ears has ruled
+on directly. The ceiling (0.09) is still the old rule, still untested by
+anybody's ear, and worth remembering when it first fails.
+
 ### Listening to it is part of the harness now
 
 `python viewer/tests/audio.py --wav DIR` writes the day bed, the night, the
 sunrise and every site at work as WAVs, through the page's own master gain and
 boosted for headphones.
+
+The files are what the page plays, at its own gain — **they used to be boosted
+3.2×**, which meant they sounded right while the page was 20dB down, and the
+boost was hiding the very thing it existed to reveal.
 
 It is in the repository for the reason the table above shows twice over:
 **every complaint that mattered was heard by a person and measured only

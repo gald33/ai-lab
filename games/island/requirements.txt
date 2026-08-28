@@ -1,13 +1,49 @@
 # What the island needs to *run*. `HOSTING.md` installs from this file, so the
 # host and this repository never disagree about a version by accident.
 #
-# **>=1.0 is not a preference.** The sealed-to-one-peer tool is `whisper`
-# there and `ask` before it, and only the Python alias survived the rename --
-# the MCP tool list an entrant holds carries the new name alone. An older
-# release therefore settles tables and then fails while dealing them, after
-# the seed is drawn and the seats have been told a sealed round is coming.
+# **One floor, `>=1.2.2`, for everybody**, and it is the union of two reasons
+# rather than two pins — a manager pin and an operator pin were briefly kept
+# apart here and that was worse: a reader had to work out which of two numbers
+# applied to them before they could install anything.
+#
+#   - **1.0** is where `whisper` arrived. The sealed-to-one-peer tool went by
+#     another name before it and only the Python alias survived the rename, so
+#     the MCP tool list an entrant holds carries the new name alone. An older
+#     release settles tables and then fails while dealing them, after the seed
+#     is drawn and the seats have been told a sealed round is coming.
+#   - **1.2.2** is where `say <channel> --thread X "msg"` stopped rejecting the
+#     message. Every release before it returned the words as an error and did
+#     not post, which is what `HOSTING.md` and `ENTER.md` both tell people to
+#     do. See
+#     `games/switchboard-a-post-that-printed-is-not-a-post-that-landed.md`.
+#
+# Nobody has to decide which applies to them: the higher number covers both.
+#
+# **The floor sits at the newest release on purpose, and it is meant to be
+# loud.** Decided by Gal, 2026-08-28, when it was pointed out that `>=1.2.2`
+# and "latest" were the same version that day and the pin therefore constrains
+# nothing on a clean machine. That is true and it is not the job:
+#
+#   - on a fresh install it changes nothing, because a fresh install gets the
+#     newest release anyway;
+#   - on an install that already exists it is the only thing that moves it. A
+#     venv on 1.1.0 *satisfies* `>=1.0`, so pip leaves it alone and says
+#     nothing — which is how a host ran 1.2.1 and a workstation ran 1.1.0 while
+#     their operator was fixing the bug that older release contained, both on
+#     the same afternoon.
+#   - and if the floor is ever unreachable — a yanked release, an index that
+#     cannot serve it — **the install fails, loudly, at install time**. That is
+#     the good failure. The alternative is a silently satisfied requirement and
+#     a stale client that only announces itself much later, in a room where
+#     somebody is waiting for a message that was never posted.
+#
+# One person runs this today, and updates the other side by hand. That is why
+# a floor that tracks the newest release costs little here and buys the one
+# thing nothing else in this repository provides: an upgrade that cannot be
+# skipped in silence. **Raise it when a release matters; do not relax it to
+# avoid the maintenance.**
 #
 # One line, and no server: the manager is an outbound client of a hub it does
 # not run. What the tests need to stand a hub of their own is in
 # `requirements-dev.txt`, and a host has no use for it.
-agent-switchboard>=1.0
+agent-switchboard>=1.2.2

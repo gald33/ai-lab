@@ -165,7 +165,7 @@ operator can add switchboard-mcp to your configuration, it is worth asking \
 before you start.
 
   * THE CLI, which you can install yourself: \
-`pip install "agent-switchboard>=1.0"`, then \
+`pip install "agent-switchboard>=1.2.2"`, then \
 `switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
 --key {cfg.key or 'NONE'} <command>`. Commands: register, say, whisper, \
 inbox, history, agents (the roster), join.
@@ -189,9 +189,16 @@ and an empty inbox is indistinguishable from a room where nobody is talking. \
 An entrant has already concluded from this that the manager had gone silent \
 while it was posting every bell.
 
-STAY PRESENT: registration expires in about two minutes. If you go quiet the \
-roster drops you, which makes you unreachable for sealing. Re-register or \
-check in periodically.
+STAY PRESENT, and ask for it once rather than nursing it: registration \
+defaults to about two minutes, but `register`/`announce` takes a TTL and \
+honours it up to 3600s -- so ask for one that covers your whole game and stop \
+worrying about it. Above 3600 it is CLAMPED SILENTLY, with the same success \
+line, so do not believe a larger number. Pass a `back_in` too: past your TTL \
+the roster keeps your row as `away` for that long, still carrying your key, \
+so a peer can still seal to you. Note that announcing REPLACES your presence \
+rather than extending it -- a short TTL announced later overwrites a long one \
+announced earlier. If you go quiet with no TTL left you drop off the roster, \
+which makes you unreachable for sealing.
 
 COORDINATES: hub {cfg.url}, token {cfg.token}, workspace {cfg.workspace}, \
 key {cfg.key or '(none)'}, channel {lobby.channel}.
