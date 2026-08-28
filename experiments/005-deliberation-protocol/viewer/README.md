@@ -1030,8 +1030,9 @@ That is fine, because neither event was ever carried by the island:
 * an **offer** is the **rope** — a line across the frame from the maker to the
   taker, labelled with what is on the table, its dashes crawling toward the
   trader it is addressed to;
-* a **refusal** is the **bubble over the hut** with a cross in it, and the red
-  outline round the trader's card.
+* a **refusal** is the **offer blinking red** with a ✗ on its pill — and, only
+  when the manager named no offer this page is holding, the **bubble over the
+  hut** with a cross in it, and the red outline round the trader's card.
 
 Both are SVG over the canvas. So `mechanics` — which drives a bare stage with
 no scene on it, and cannot see either — lets those two off its 1.2% floor and
@@ -1062,7 +1063,7 @@ What each clip carries itself now:
 | a production | the site works, boxes are made there and hop home, and **they open where they land** |
 | an offer | a post and a notice beside the maker's hut, the crates it offers lifting off the pile — and **the rope**, which is the picture |
 | a settlement | the boxes cross the island and **open where they land**, and the fire flares once |
-| a refusal | the post shakes and the notice tears, and **a bubble over the hut with a cross in it** |
+| a refusal | the post shakes and the notice tears, and **the offer blinks red with a ✗ on its pill** (a bubble over the hut only when no offer is named) |
 | a remark | **a bubble over the hut, with three dots in it** |
 | the bell | **nightfall**, and the campfire taking over |
 | a new day | **the night lifting**, and last night's fire going out |
@@ -1110,8 +1111,8 @@ contrast of the wheels against the body, not its parts.
 ### A bubble belongs over the hut
 
 The two things a trader does that leave no goods behind — refusing an offer, and
-simply speaking — are drawn as a speech bubble: a cross for the refusal, and for
-a remark **three dots and nothing else**, because the island's job is to say
+simply speaking — were both drawn as a speech bubble: a cross for the refusal, and
+for a remark **three dots and nothing else**, because the island's job is to say
 *that* somebody spoke, not what they said. What they said is in the ticker, and
 printing the manager's sentence across the sand was the thing this replaced.
 
@@ -1127,6 +1128,14 @@ overwrite the position sixty times a second, and the bubble would sit where the
 hut was at the moment it opened — which matters, because a bubble lives about a
 second and a half and the camera covers a few pixels of its revolution in that
 time.
+
+**The refusal half of that is now the exception, not the rule** (2026-08-28,
+Gal's ask): the red blink on the offer is enough, so the bubble is drawn for a
+refusal only when `refuse()` finds nothing on the square to blink — which is
+every refusal at *proposal* time, where the offer does not exist yet and
+something must still say it happened. When there is a rope, drawing the bubble
+too said the same refusal twice, a frame away from the square it happened on.
+The remark's three dots are unchanged.
 
 `render.py:overhead` drives a real refusal on the real page and asks that the
 bubble opens on the settlement, is still on it a second later, and carries the
@@ -1258,7 +1267,14 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
   refusals, and in the fourth it names the good, where the offer is the open one
   addressed to that trader asking for it. Marked on the **live** rope, since a
   refusal does not close the offer, and a red copy laid over the orange original
-  would blink to the wrong colour between flashes.
+  would blink to the wrong colour between flashes. **This is the whole
+  indicator** since 2026-08-28: `refuse()` returns whether it marked anything,
+  and the badge over the hut is drawn only when it did not. It hangs a ✗ on the
+  pill as well as the colour, carrying the manager's reason as the cross's
+  `<title>` — red on its own is a colour a viewer reads as "an answer", and the
+  cross is *which* answer. `render.py:motion` drives both halves: an offer the
+  manager named blinks, carries the cross, and raises no badge; the
+  proposal-time refusal above it still raises one.
 * **A settlement blinks it green.** A settled offer is out of `this.ropes` by
   the time `play()` runs, because `paint()` draws only open offers — so the
   green copy is spawned from `paint()`, beside the lapsed one.
@@ -2410,6 +2426,60 @@ exact fraction stays in the tooltip and the whole argument stays here and in
 says the traders ended up worse off than not trading, and the games that are kept
 and not ranked are still named on the page, with their reasons, in the same
 plain words.
+
+### The ledger holds every experiment's rounds, not this one's
+
+*Decided 2026-08-28, after `island-e-plan-1-0823T1105` — a game where one trader
+ended at 2.01× — turned out not to be on the board at all.* It had been played,
+scored and kept; it had simply never been ingested, because it belongs to 007
+and the ledger held whatever somebody had run `--ingest` on, which was 005's
+runs. **A leaderboard of who remembered to type a command is worse than a wrong
+one**, because its denominators look right: the page said "72 games played" and
+meant "72 games somebody ingested".
+
+    python viewer/scores.py --sweep      # every run record in the tree
+    python viewer/scores.py --upgrade    # re-derive rows from an older version
+
+`--sweep` is now the normal way to feed the ledger and naming one record is the
+exception. Re-ingesting is free — a round's id is a hash of its own content — so
+a sweep adds what is new and skips what is there. Four things had to hold first:
+
+- **Paths that resolve in somebody else's checkout.** A row from outside this
+  experiment would have stored an absolute path, and `--verify` degrades to "the
+  file moved" for every one of them. Rows store a path relative to the
+  experiment while they are inside it — which is what every row written before
+  this says — then to the experiments tree, then to the checkout; `resolve`
+  tries all three.
+- **Boards in either shape.** This experiment writes `{"messages": [...]}`
+  beside its run record; 006 and 007 write the room's rows as a bare list under
+  `boards/`, named by arm and seed rather than by workspace, so they are found
+  by reading the workspace off the rows themselves. A dict board is returned
+  untouched, or every digest already written down would report as changed.
+- **A round that never started is still a round.** 007 records those as
+  `{"failed": true, "error": ...}` with no workspace and no trajectory, and they
+  crashed the ingest outright. They are kept, never ranked, and carry their
+  error — and when there is no workspace the run and cell name the row, so two
+  failures in one run cannot hash to one id and quietly shrink the very
+  denominator they are there to show.
+- **A date that is a date.** `recorded_at` is when somebody typed the command,
+  so falling back to it dated an August game as played today and put it in
+  "this week". The round is asked instead: the board's last line where the board
+  was kept, else the manager's own `run_stamp` for the round, and `played_from`
+  says which. The page writes *about* for a stamp and *recorded* when the round
+  says nothing at all, rather than showing the weaker answer as the stronger.
+
+**`--upgrade` re-derives rows written by an older schema**, in place, keeping
+`recorded_at` — when a round was first written down is a fact about this file
+that re-deriving must not overwrite — and refusing to replace a row whose id
+moves, which would be a different round wearing an old row's name. It exists
+because `--verify` skips old rows, and a file that quietly accumulates unchecked
+rows stops being a record anybody can defend. Three rows resist it and are
+reported every time: they name `games/results/g1.json`, a run record that is not
+in this repository, so they cannot be re-derived from anything.
+
+What the sweep did to the boards, first time out: **75 rounds became 327**, 238
+of them ranked across 7 formats, and both overall records changed hands — the
+best game went from +64% to +99.5%, and the best player from 1.83× to 3.16×.
 
 ### What the ledger will not do
 

@@ -191,6 +191,21 @@ export const shallowsEdge = (x, z) =>
  * assumed. `tests/render.py:island` fails on any part of the dock that is not
  * where this says it is.
  */
+/**
+ * A point in open water on a bearing: half way between the wet sand and the
+ * shallows' edge, which is where something that floats belongs.
+ *
+ * Both ends are read on the bearing rather than taken as radii, and the inner
+ * one is the *outer* of the sand and the grass, because on some bearings the
+ * meadow reaches past the beach -- see `dockAxis`, which was caught by that.
+ */
+export function midWater(bearing) {
+  const ux = Math.cos(bearing), uz = Math.sin(bearing);
+  const r = (Math.max(shelfEdge(ux, uz), meadowEdge(ux, uz))
+             + shallowsEdge(ux, uz)) / 2;
+  return { r, x: ux * r, z: uz * r };
+}
+
 export function dockAxis(bearing, scale = 1) {
   const ux = Math.cos(bearing), uz = Math.sin(bearing);
   //: **Against whichever outline reaches furthest, not against the beach's.**
@@ -507,6 +522,17 @@ function boat(i, sailMat) {
   g.name = `boat_${i}`;
   add(g, new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
     M.timber, `boat_${i}_hull`, [0, 0.1, 0], [0, 0, 0], [1, 0.55, 2.1]);
+  //: **A hull is a bowl with its top open, so without this you see the sea
+  //: through it and the boat reads as full of water.** Reported by eye, and
+  //: it is exactly what was drawn: the hull is the *lower* half of a sphere
+  //: (`phiStart = PI/2`), its rim at y = 0.1 and its floor below the
+  //: waterline, so the shallows' own surface passed straight through the
+  //: opening. A floor just under the rim is what a boat has, and it has to
+  //: sit above the water rather than merely inside the hull -- the slab's top
+  //: is at y = 0.04 and this lands at 0.124 with the boat at its mooring,
+  //: still 0.089 at the bottom of `island-life`'s bob.
+  add(g, new THREE.CircleGeometry(0.28, 24), M.timber, `boat_${i}_deck`,
+    [0, 0.075, 0], [-Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.TorusGeometry(0.3, 0.028, 8, 28), M.thatchLit, `boat_${i}_gunwale`, [0, 0.1, 0], [Math.PI / 2, 0, 0], [1, 2.1, 1]);
   add(g, new THREE.CylinderGeometry(0.018, 0.022, 0.8, 10), M.timber, `boat_${i}_mast`, [0, 0.5, 0]);
   add(g, new THREE.BoxGeometry(0.012, 0.44, 0.32), sailMat, `boat_${i}_sail`, [0, 0.62, 0.14]);
@@ -1091,37 +1117,61 @@ export function buildIsland({ traders = ["T1", "T2"], goods = ["bread", "cloth",
   }
   add(dock, new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), M.thatchLit,
     "dock_bollard", [0.3, 0.5, axis.reach - 0.08]);
-  //: One boat per seat, up to what the jetty holds: the traders arrived
-  //: somehow. **Broadside along the planks, not nose-out at the head.**
-  //:
-  //: A hull is 1.26 long and 0.6 wide, and the water outside the sand is only
-  //: about 0.7 deep -- so a boat moored bow-out simply does not fit between
-  //: the wet sand and the shallows' edge, and pointing them out to sea is
-  //: what put a bow at r = 5.50 and the island's foot under the first card.
-  //: Turned broadside it is the hull's *width* that has to fit, and it very
-  //: nearly does. Which is also how a boat ties up to a jetty.
-  //:
-  //: They are also a size down. At full size the width alone is wider than
-  //: the water; 0.85 is what fits, and a smaller boat beside a short jetty is
-  //: the same picture at a smaller scale.
-  //: Staggered outward along the planks so no hull's inner side is back on
-  //: the wet sand: the innermost clears the shelf by 0.11 and the outermost
-  //: overhangs the shallows by 0.15, which is the best trade this water
-  //: allows. Re-derive with `node` against the four edge functions above if
-  //: any of the slabs move.
-  const MOORINGS = [[-0.62, 0.26, 1], [0.64, 0.40, -1], [-0.70, 0.52, 1]];
-  traders.slice(0, MOORINGS.length).forEach((name, i) => {
-    const b = boat(i + 1, seatMat(name, i, traders.length));
-    const [bx, bz, side] = MOORINGS[i];
-    b.position.set(bx, 0.02, bz);
-    //: Along the shore, give or take: a mooring line is never quite square,
-    //: and three boats at exactly the same angle read as a car park.
-    b.rotation.y = side * (Math.PI / 2) + (i - 1) * 0.07;
-    b.scale.setScalar(0.85);
-    dock.add(b);
-  });
   dock.scale.setScalar(DOCK_SCALE);
   island.add(dock);
+
+  //: — a boat for every seat, along the shore either side of the jetty —
+  //:
+  //: **One per trader, not three.** They used to be `traders.slice(0, 3)`
+  //: against three hand-written positions, so on any table above three seats
+  //: the later traders had no boat at all -- reported by eye as sails wearing
+  //: the agents' colours but not all of the agents'. Nothing caps a table at
+  //: three, and the palette has said so since `seats.js` took the colours
+  //: over.
+  //:
+  //: **And they are not children of the dock.** Moored to it, they were three
+  //: hulls 1.17 long lying broadside across a deck 0.7 wide: every boat cut
+  //: through the planks, and two of them cut through each other by 1.09 --
+  //: measured, not guessed, and reported by eye first as boats without room
+  //: at the mooring. Alongside is the wrong place for more than about one
+  //: boat a side; along the shore there is as much room as the coast is long.
+  //:
+  //: So a berth is a bearing, and the spacing is arc length: each hull needs
+  //: `2 * halfLen + gap` of coast, which at this radius is an angle. Slots
+  //: alternate sides and start three-quarters of a slot out, so the jetty
+  //: keeps a slot of its own and no boat is laid across it.
+  const BOAT_SCALE = 0.85;
+  //: The hull's own half-extents, from `boat()` above: the gunwale is the
+  //: widest ring on it (0.3 + its tube) and the hull is stretched 2.1 along
+  //: its length. Read off the geometry rather than measured off the picture,
+  //: so a change to the model moves the spacing with it.
+  const HALF_LEN = (0.3 + 0.028) * 2.1 * BOAT_SCALE;
+  const HALF_WID = (0.3 + 0.028) * BOAT_SCALE;
+  const moorings = new THREE.Group();
+  moorings.name = "moorings";
+  traders.forEach((name, i) => {
+    //: Alternating sides, outwards: 0 and 1 flank the jetty, 2 and 3 sit
+    //: beyond them, and so on for as many seats as the table has.
+    const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2);
+    //: The radius is read first at the dock's own bearing, because the slot
+    //: width depends on it and the slot decides the bearing. A tenth of a
+    //: unit either way does not move the angle enough to matter.
+    const step = (2 * HALF_LEN + 0.18) / midWater(DOCK_BEARING).r;
+    const t = DOCK_BEARING + side * (rank + 0.75) * step;
+    const { x, z } = midWater(t);
+    const b = boat(i + 1, seatMat(name, i, traders.length));
+    //: Higher than the old 0.02. The hull's floor has to be under the water
+    //: and its deck above it, and at 0.02 the deck cleared the shallows by
+    //: only three hundredths.
+    b.position.set(x, 0.06, z);
+    //: Along the shore, which is across the radius -- and a mooring line is
+    //: never quite square, so no two lie at exactly the same angle.
+    b.rotation.y = Math.atan2(Math.cos(t), Math.sin(t)) + Math.PI / 2
+                   + (i % 3 - 1) * 0.06;
+    b.scale.setScalar(BOAT_SCALE);
+    moorings.add(b);
+  });
+  island.add(moorings);
   //: The footprint the spacing rule keeps clear, taken from where the dock
   //: actually is rather than from a copy of the old hand-picked point.
   placed.push([axis.at[0] * 0.94, axis.at[1] * 0.94, 0.9]);

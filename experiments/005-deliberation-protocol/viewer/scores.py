@@ -90,6 +90,20 @@ from island.score import score as score_round  # noqa: E402
 
 LEDGER = HERE / "scores" / "ledger.jsonl"
 
+#: The experiments tree. A ledger that only holds one experiment's rounds is a
+#: leaderboard of who remembered to run the ingest command, so run records from
+#: anywhere in the repo are ingestable -- and a row from outside this experiment
+#: has to store a path that still resolves in somebody else's checkout, which is
+#: what this is for. Rows already written stay relative to the experiment and
+#: are still read: `resolve` tries both.
+ROOT = HERE.parent.parent
+
+#: The checkout above it. Three rows in the ledger name `games/results/g1.json`
+#: -- the island's own games, whose run records are not in the repository -- and
+#: a path from outside the experiments tree has to be resolvable for the day one
+#: of them is.
+REPO = ROOT.parent
+
 #: Reading the ledger is O(rounds) and computing the boards is O(rounds); doing
 #: both per request is a page that gets slower every time somebody plays. The
 #: record stays append-only and cold, and what the page actually reads is a
@@ -108,7 +122,7 @@ INDEX = "index.json"
 #: an unversioned ledger reports that as ten boards having changed. A row that
 #: predates the current version is re-ingestable, not suspect, and the
 #: difference has to be visible.
-SCHEMA = 1
+SCHEMA = 2
 
 #: How the boards are computed. The cache is keyed on the ledger *and* on this,
 #: because a ranking rule that changes while the record does not is exactly the
@@ -140,49 +154,138 @@ def round_id(workspace: str, seed: int, trajectory: list[list[float]]) -> str:
 
 
 def relative(path: Path | None) -> str | None:
-    """Paths are stored relative to the experiment, not to whoever ran this.
+    """Paths are stored relative to the checkout, not to whoever ran this.
 
     A ledger row has to still resolve when it is read from another checkout, or
-    `--verify` degrades into "the file moved" for every row.
+    `--verify` degrades into "the file moved" for every row. Inside this
+    experiment the path stays relative to the experiment, which is what every
+    row written before rounds from elsewhere were ingestable already says;
+    outside it, relative to the repository.
     """
     if not path:
         return None
-    try:
-        return path.resolve().relative_to(HERE.parent).as_posix()
-    except ValueError:
-        return str(path)
+    resolved = path.resolve()
+    for base in (HERE.parent, ROOT, REPO):
+        try:
+            return resolved.relative_to(base).as_posix()
+        except ValueError:
+            continue
+    return str(path)
+
+
+def resolve(stored: str | None) -> Path | None:
+    """A stored path, read back. Tried against both bases, experiment first."""
+    if not stored:
+        return None
+    for base in (HERE.parent, ROOT, REPO):
+        candidate = base / stored
+        if candidate.is_file() or candidate.with_suffix(
+                candidate.suffix + ".gz").is_file():
+            return candidate
+    return HERE.parent / stored
 
 
 def read_board(path: Path) -> dict | None:
-    """A saved board, whether or not it has been packed.
+    """A saved board, whether or not it has been packed, in either shape.
 
     `--pack` gzips boards in place, so every reader has to accept both names or
     packing a directory quietly breaks the tools that read it.
+
+    Two shapes, because two runners wrote them. This experiment saves
+    `{"messages": [...]}` beside its run record with `at` on each row; 006 and
+    007 save the room's rows as a bare list under `boards/`, with `created_at`.
+    They are the same board, so they are read into the same shape here rather
+    than every caller learning both. A dict board is returned untouched: its
+    `digest` is already in rows that have been written down, and normalising it
+    would report every one of them as changed.
     """
     for candidate in (path, path.with_suffix(path.suffix + ".gz")):
         if candidate.is_file():
             try:
                 raw = (gzip.decompress(candidate.read_bytes())
                        if candidate.name.endswith(".gz") else candidate.read_bytes())
-                return json.loads(raw)
+                saved = json.loads(raw)
             except (ValueError, OSError):
                 return None
+            if isinstance(saved, list):
+                return {"messages": [{"seq": m.get("seq"),
+                                      "at": m.get("created_at") or m.get("at"),
+                                      "from": str(m.get("from") or "?"),
+                                      "body": m.get("body"),
+                                      "workspace": m.get("workspace")}
+                                     for m in saved]}
+            return saved if isinstance(saved, dict) else None
     return None
 
 
-def played_at(board: Path | None) -> str | None:
-    """When the round actually ran, from the last thing said on its board.
+#: Boards found by reading them, kept per directory. Without it a sweep re-reads
+#: every board in a run for every round in that run.
+_BOARD_INDEX: dict[Path, dict[str, Path]] = {}
+
+
+def board_for(source: Path, workspace: str) -> Path | None:
+    """The board this round was played on, in either place it might be kept.
+
+    Beside the run record as `board-<workspace>.json`, which is what this
+    experiment writes; or in a `boards/` directory next to it under a name built
+    from the arm and the seed, which is what 006 and 007 write. The second
+    cannot be found by name, so it is found by reading: every row of those
+    boards carries the workspace it belongs to.
+    """
+    beside = source.with_name(f"board-{workspace}.json")
+    if beside.is_file() or beside.with_suffix(".json.gz").is_file():
+        return beside
+
+    folder = source.parent / "boards"
+    if folder not in _BOARD_INDEX:
+        index: dict[str, Path] = {}
+        for candidate in sorted(folder.glob("*.json*")) if folder.is_dir() else []:
+            saved = read_board(candidate)
+            for row in (saved or {}).get("messages", []):
+                if row.get("workspace"):
+                    index.setdefault(row["workspace"], candidate)
+                    break
+        _BOARD_INDEX[folder] = index
+    return _BOARD_INDEX[folder].get(workspace)
+
+
+def played_at(board: Path | None, rnd: dict | None = None,
+              now: str | None = None) -> tuple[str | None, str | None]:
+    """When the round actually ran, and where that answer came from.
 
     `recorded_at` is when somebody typed the ingest command, which may be months
-    later; a feed sorted by that is a list of when files were touched.
+    later; a feed sorted by that is a list of when files were touched, and a
+    "this week" board built on it would call a game from March a game from
+    Tuesday. So the date is taken from the round itself, best source first:
+
+    - **the board** -- the last thing said in the room, exact to the second;
+    - **`run_stamp`** -- the manager's own `MMDDThhmm` for the round, which is
+      all there is when the board was not kept. It carries no year, so the year
+      comes from when the row is being written, stepped back once if that puts
+      the round in the future.
+
+    The source is returned with the answer and stored beside it, because a date
+    good to the minute from a stamp and a date read off the board are not the
+    same evidence, and a page that showed both as a bare timestamp would be
+    claiming the weaker one is the stronger.
     """
-    if not board:
-        return None
-    saved = read_board(board)
-    if not saved:
-        return None
-    stamps = [m.get("at") for m in saved.get("messages", []) if m.get("at")]
-    return max(stamps) if stamps else None
+    saved = read_board(board) if board else None
+    stamps = [m.get("at") for m in (saved or {}).get("messages", []) if m.get("at")]
+    if stamps:
+        return max(stamps), "board"
+
+    stamp = (rnd or {}).get("run_stamp")
+    if isinstance(stamp, str) and len(stamp) == 9 and stamp[4] == "T":
+        end = datetime.fromisoformat(now) if now else datetime.now(timezone.utc)
+        try:
+            ran = datetime(end.year, int(stamp[:2]), int(stamp[2:4]),
+                           int(stamp[5:7]), int(stamp[7:]), tzinfo=timezone.utc)
+        except ValueError:
+            return None, None
+        if ran > end:                      # a stamp that has not happened yet
+            ran = ran.replace(year=end.year - 1)   # belongs to last year
+        return ran.isoformat(timespec="seconds"), "run_stamp"
+    return None, None
 
 
 def digest(path: Path | None) -> str | None:
@@ -204,10 +307,15 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     seed = rnd["seed"]
     agents = record.get("agents", 2)
     goods = record.get("goods", 4)
-    trajectory = rnd["trajectory"]
+    trajectory = rnd.get("trajectory") or []
     if not trajectory:
-        raise ValueError(f"{rnd.get('workspace')}: a round with no closed episode "
-                         f"cannot be scored")
+        # Either no episode ever closed, or the round never started: 006 and 007
+        # write a round that failed to launch as `{"failed": true, "error": ...}`
+        # with no workspace and no trajectory at all. Both are kept and neither
+        # is ranked, and the reason travels with the row.
+        raise ValueError(f"{rnd.get('workspace') or 'a round that never started'}: "
+                         + (str(rnd.get("error")) if rnd.get("failed")
+                            else "a round with no closed episode cannot be scored"))
 
     island = draw_island(agents, goods, seed=seed)
     names = [f"T{i + 1}" for i in range(agents)]
@@ -230,9 +338,10 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     # rescaled onto the one-episode frontier, then read against autarky.
     ratios = [(totals[i] / k) / auto[i] for i in range(agents)]
 
-    board = source.with_name(f"board-{rnd['workspace']}.json") if source else None
-    kept = board is not None and (board.is_file()
-                                  or board.with_suffix(".json.gz").is_file())
+    board = board_for(source, rnd["workspace"]) if source else None
+    kept = board is not None
+    recorded = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    ran, ran_from = played_at(board, rnd, recorded)
     who = players or {}
     # Which attempt this round belongs to. Declared by whatever ran it; a round
     # nobody grouped is a game of one, which is a real format and not a default
@@ -243,8 +352,11 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         "v": SCHEMA,
         "round_id": rid,
         "game": {"id": game.get("id", rid), "rounds": int(game.get("rounds", 1))},
-        "played_at": played_at(board),
-        "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "played_at": ran,
+        # `board`, `run_stamp`, or absent when the round says nothing about when
+        # it ran. Never inferred from when somebody typed the ingest command.
+        "played_from": ran_from,
+        "recorded_at": recorded,
         "workspace": rnd["workspace"],
         "arm": rnd.get("arm"),
         "island": {"seed": seed, "agents": agents, "goods": goods, "episodes": k},
@@ -439,9 +551,19 @@ def ingest(result: Path, *, ledger: Path = LEDGER,
 
 
 def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
+    """A round that happened and cannot be scored. Kept, counted, never ranked.
+
+    A round that never started has no workspace to be named by, and two of them
+    in one run would otherwise hash to one id and be deduplicated -- which would
+    quietly shrink the denominator by exactly the failures it is there to show.
+    So when there is no workspace, the run it came from and the cell it was
+    stands in for one.
+    """
+    name = rnd.get("workspace") or (f"{source.parent.name}:{rnd.get('arm')}:"
+                                    f"{rnd.get('seed')}:failed")
     return {
         "v": SCHEMA,
-        "round_id": (rid := round_id(rnd.get("workspace", "?"), rnd.get("seed", -1),
+        "round_id": (rid := round_id(name, rnd.get("seed", -1),
                                      rnd.get("trajectory") or [])),
         "game": {"id": rid, "rounds": 1},
         "played_at": None,
@@ -455,6 +577,77 @@ def unscored(record: dict, rnd: dict, source: Path, why: str) -> dict:
         "status": "unscored", "why": why, "attendance": "unrecorded",
         "source": {"result": relative(source), "board": None, "board_sha256": None},
     }
+
+
+def sweep(root: Path = ROOT) -> list[Path]:
+    """Every run record in the tree, oldest path first.
+
+    **A ledger that holds one experiment's rounds is a leaderboard of who
+    remembered to run the ingest command.** A game that was played and scored
+    but never ingested is invisible on a board that claims to hold every game,
+    and invisible in the denominators too, which is worse: the page says "72
+    games played" and means "72 games somebody typed a command for". So the
+    sweep is the normal way to feed the ledger, and naming one record is the
+    exception.
+
+    Re-ingesting is free: a round's id is a hash of its own content, so a sweep
+    adds what is new and skips what is there.
+    """
+    return sorted(root.glob("*/results/**/v3.json"))
+
+
+def upgrade(ledger: Path = LEDGER) -> tuple[int, list[str]]:
+    """Re-derive rows written by an older version of this file, in place.
+
+    `--verify` skips a row whose schema predates the current one, because a
+    field that did not exist yet is not tampering -- but a skipped row is an
+    unchecked row, and a file that quietly accumulates them stops being a record
+    anybody can defend. Re-ingesting cannot fix them: a round's id is a hash of
+    its own content, so the sweep correctly skips a round it already holds.
+
+    So the row is rebuilt from the run record it names, and **`recorded_at` is
+    kept**: when a round was first written down is a fact about this file that
+    re-deriving it must not overwrite. The id is recomputed too, and a row whose
+    id moves is reported rather than replaced -- that would be a different round
+    wearing an old row's name.
+    """
+    rows = load(ledger)
+    if len(parts(ledger)) > 1:
+        return 0, ["the ledger has rolled-off parts; upgrade them before packing"]
+    changed, problems = 0, []
+    out = []
+    for row in rows:
+        source = resolve((row.get("source") or {}).get("result"))
+        if row.get("v") == SCHEMA or not source or not source.is_file():
+            out.append(row)
+            if row.get("v") != SCHEMA:
+                problems.append(f"{row['round_id']}: v{row.get('v')} and its run "
+                                f"record is not where the row says it is")
+            continue
+        record = json.loads(source.read_text())
+        rnd = next((r for r in record.get("rounds", [])
+                    if r.get("workspace") == row["workspace"]), None)
+        if rnd is None:
+            problems.append(f"{row['round_id']}: {row['workspace']} is not in "
+                            f"{row['source']['result']} any more")
+            out.append(row)
+            continue
+        try:
+            fresh = entry(record, rnd, source=source)
+        except ValueError as exc:
+            fresh = unscored(record, rnd, source, str(exc))
+        if fresh["round_id"] != row["round_id"]:
+            problems.append(f"{row['round_id']}: re-derives to "
+                            f"{fresh['round_id']}, which is a different round")
+            out.append(row)
+            continue
+        fresh["recorded_at"] = row["recorded_at"]     # a fact about this file
+        out.append(fresh)
+        changed += 1
+    if changed:
+        ledger.write_text("".join(json.dumps(r) + "\n" for r in out))
+        write_boards(ledger)
+    return changed, problems
 
 
 def verify(ledger: Path = LEDGER) -> list[str]:
@@ -476,7 +669,7 @@ def verify(ledger: Path = LEDGER) -> list[str]:
             problems.append(f"{row['round_id']}: eff_round {row['eff_round']} "
                             f"but recomputes to {fresh.eff_round:.6f}")
         board = row["source"].get("board")
-        if board and (d := digest(HERE.parent / board)) and d != row["source"]["board_sha256"]:
+        if board and (d := digest(resolve(board))) and d != row["source"]["board_sha256"]:
             problems.append(f"{row['round_id']}: the board it came from has changed")
     if stale:
         print(f"{stale} row(s) written by an older ledger version were not "
@@ -546,7 +739,9 @@ def games(rows: list[dict]) -> list[dict]:
             "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
             "workspace": members[0]["workspace"],
             "arm": members[0]["arm"],
-            "played_at": members[-1].get("played_at") or members[-1]["recorded_at"],
+            "played_at": members[-1].get("played_at"),
+            "played_from": members[-1].get("played_from"),
+            "recorded_at": members[-1]["recorded_at"],
             "round_ids": [m["round_id"] for m in members],
         })
     return out
@@ -723,6 +918,8 @@ def level_rows(ranked: list[dict], played: list[dict]) -> list[dict]:
             "game_id": best["game_id"],
             "game_rounds": best["rounds"],
             "played_at": best["played_at"],
+            "played_from": best["played_from"],
+            "recorded_at": best["recorded_at"],
             "ranked": len(entries),
             "attempts": attempts,
             # The spread says whether the best is a result or a lucky draw.
@@ -772,6 +969,8 @@ def game_rows(ranked: list[dict]) -> list[dict]:
                 "workspace": g["workspace"],
                 "arm": g["arm"],
                 "played_at": g["played_at"],
+                "played_from": g["played_from"],
+                "recorded_at": g["recorded_at"],
             })
     out.sort(key=lambda x: (-x["capture"], x["label"]))
     return out
@@ -904,6 +1103,8 @@ def best_player(trader_board: list[dict], game_board: list[dict]) -> dict | None
     held = next((g for g in game_board if g["game_id"] == top["best_game"]), None)
     top["level"] = held["level"] if held else None
     top["played_at"] = held["played_at"] if held else top.get("last_played")
+    top["played_from"] = held["played_from"] if held else None
+    top["recorded_at"] = held["recorded_at"] if held else None
     top["with"] = held["by"] if held else []
     return top
 
@@ -1143,12 +1344,19 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ingest", type=Path, nargs="*", metavar="RESULT",
                     help="run records to add; a round already in the ledger is skipped")
+    ap.add_argument("--sweep", action="store_true",
+                    help="ingest every run record in the experiments tree, so the "
+                         "boards do not depend on who ran the command")
     ap.add_argument("--player", action="append", default=[], metavar="SLOT=ID",
                     help="who played a slot, e.g. --player T1=haiku-scout")
     ap.add_argument("--ledger", type=Path, default=LEDGER)
     ap.add_argument("--table", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--upgrade", action="store_true",
+                    help="re-derive rows written by an older version of this "
+                         "file, so --verify checks every row rather than "
+                         "skipping the old ones")
     ap.add_argument("--refresh", action="store_true",
                     help="rebuild the derived boards and index from the record")
     ap.add_argument("--results", type=Path, default=None,
@@ -1161,10 +1369,23 @@ def main(argv: list[str] | None = None) -> int:
 
     players = dict(p.split("=", 1) for p in args.player)
 
+    if args.sweep:
+        found = sweep()
+        print(f"sweeping {len(found)} run record(s)")
+        args.ingest = list(args.ingest or []) + found
+
     if args.ingest:
         for result in args.ingest:
             added, skipped = ingest(result, ledger=args.ledger, players=players)
             print(f"{result}: {len(added)} added, {len(skipped)} already there")
+
+    if args.upgrade:
+        changed, problems = upgrade(args.ledger)
+        for p in problems:
+            print(p, file=sys.stderr)
+        print(f"{changed} row(s) re-derived to v{SCHEMA}; {len(problems)} could not be")
+        if problems:
+            return 1
 
     if args.verify:
         problems = verify(args.ledger)

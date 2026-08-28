@@ -386,6 +386,12 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .rope.refused .chip-bg { stroke: var(--critical); }
 .rope.refused .chip-seat { fill: var(--critical); }
 .rope.refused .rope-chip { animation: blink-no .3s steps(1) 4; }
+/* The ✗ beside the pill (`scene.js:refuse`). The blink is the refusal now --
+   the bubble over the hut that used to carry the cross is only drawn for a
+   refusal with no rope to blink -- and red on its own is a colour some viewers
+   read as "an answer" rather than as "no". */
+.chip-cross { stroke: var(--critical); stroke-width: 3.2; stroke-linecap: round;
+  fill: none; }
 @keyframes blink-yes { 0%, 49% { opacity: 1; filter: brightness(1.7); }
                        50%, 100% { opacity: .25; filter: none; } }
 @keyframes blink-no  { 0%, 49% { opacity: 1; filter: brightness(1.7); }
@@ -435,7 +441,9 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    across the sand at 12px, where it is unreadable and where it is already
    sitting in the ticker underneath; and a trader who merely spoke drew nothing
    at all, so a board where two agents talked looked like one where nobody
-   turned up. The reason survives as the badge's <title>. */
+   turned up. The reason survives as the badge's <title>. The bad badge is now
+   the fallback for a refusal with no offer to blink (`scene.js:play`); the
+   talk badge is every remark. */
 .pop-bubble { fill: #0e1519; fill-opacity: .96; stroke: var(--line); stroke-width: 1.2; }
 .pop.bad .pop-bubble { stroke: var(--critical); }
 .pop.talk .pop-bubble { stroke: #4a5b63; }
@@ -807,6 +815,11 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <button id="t-log" aria-pressed="false" aria-controls="log"
             title="Every line on the board">☰</button>
     <a class="tab" href="scores.html" title="The scoreboard">🏆</a>
+    <!-- The door. The lobby is a live surface on its own domain, written by
+         the process that reads the board; this viewer is static files. They
+         owe each other a link and only one direction of it existed. -->
+    <a class="tab" href="https://island.lucille-ai.com/" title="The lobby: tables forming now"
+       rel="noopener">🚪</a>
   </div>
 
   <div class="note" id="status"></div>

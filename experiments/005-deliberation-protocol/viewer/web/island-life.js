@@ -477,11 +477,16 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
   }));
 
   // — the boats at their moorings —
-  const dock = island.getObjectByName("dock");
-  const boats = dock ? dock.children.filter((c) => /^boat_/.test(c.name)).map((b, i) => ({
-    b, ph: i * 2.1, y0: b.position.y })) : [];
-  if (boats.length) {
-    parts.push((t) => boats.forEach(({ b, ph, y0 }) => {
+  //: Found by name across the island rather than off the dock's child list.
+  //: They were children of the jetty and are not any more -- a boat a side is
+  //: all a 0.7-wide deck can take, so they moor along the shore now -- and a
+  //: lookup through `dock` silently returned none of them, which is a bob
+  //: that quietly stops rather than an error anyone would see.
+  const boats = [];
+  island.traverse((o) => { if (/^boat_\d+$/.test(o.name)) boats.push(o); });
+  const bobbing = boats.map((b, i) => ({ b, ph: i * 2.1, y0: b.position.y }));
+  if (bobbing.length) {
+    parts.push((t) => bobbing.forEach(({ b, ph, y0 }) => {
       b.position.y = y0 + Math.sin(t * 1.5 + ph) * 0.035;
       b.rotation.z = Math.sin(t * 1.2 + ph) * 0.07;
       b.rotation.x = Math.cos(t * 1.7 + ph) * 0.04;
