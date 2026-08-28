@@ -1730,6 +1730,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h; document.body.appendChild(cv);
   const { layout } = await import('./scene.js');
+  const { meadowEdge, shelfEdge } = await import('./island3d.js');
   // The same bands the page reserves, read the same way the page reads them.
   // A stage built without them frames the island where nothing on the real
   // page ever frames it, and every question asked of it is then about a
@@ -1952,6 +1953,37 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   //: In world coordinates, like the boxes above, and with the radius carried
   //: through whatever the island itself is scaled to. Local numbers compared
   //: against world boxes is a check that passes for the wrong reason.
+  //: **Every part of the dock, and every boat, against the outlines the
+  //: island is actually cut to.** The dock was placed at a hand-picked point
+  //: whose radius, 3.43, cleared `MEADOW.radius` of 3.25 -- and on that
+  //: bearing the wobble terms add and the grass reaches 3.70, so the whole
+  //: jetty, its bollard and two of the three boats stood inside the coastline
+  //: and under the meadow's surface. `island-life` bobbed two of them through
+  //: soil. Nothing measured it; it was reported by eye, as an island with one
+  //: dinghy off it and no dock.
+  //:
+  //: Read in the island's own coordinates, because the outline functions are
+  //: written in them and the stage scales and moves the island underneath --
+  //: world numbers against island outlines is the mistake the trail check
+  //: names above, arrived at from a different direction. Composed through the
+  //: dock's own matrix rather than round-tripped through the world and back:
+  //: `worldToLocal` reads a `matrixWorld` this has not asked anyone to
+  //: refresh, so on a frame the stage had moved it would answer about where
+  //: the island used to be, and answer confidently.
+  const moored = [];
+  {
+    const d = made.island.getObjectByName('dock');
+    if (d) {
+      d.updateMatrix();
+      for (const part of d.children) {
+        const l = part.position.clone().applyMatrix4(d.matrix);
+        moored.push({ name: part.name, r: +Math.hypot(l.x, l.z).toFixed(3),
+                      grass: +meadowEdge(l.x, l.z).toFixed(3),
+                      water: +shelfEdge(l.x, l.z).toFixed(3) });
+      }
+    }
+  }
+
   const steps = made.island.getObjectByName('trails').children.map(o => {
     const w = o.getWorldPosition(new THREE.Vector3());
     return [+w.x.toFixed(3), +w.z.toFixed(3), +(0.11 * made.island.scale.x).toFixed(3)];
@@ -1961,7 +1993,7 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
   // whether any two of them are standing in the same spot.
   const sited = Object.fromEntries(Object.entries(made.anchors)
     .map(([k, v]) => [k, [v.x, v.z]]));
-  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps,
+  return {traders, decks, sited, flags, flagFace, casters, foot, sunk, steps, moored,
           //: The meadow's own area, to say what "crowded" is a share of.
           meadow: Math.PI * 3.2 * 3.2,
           shadowReach: Math.min(shadowBox.right, shadowBox.top,
@@ -2713,6 +2745,32 @@ def island(browser, base: str, out: Path) -> list[str]:
                                f"({sx:.2f}, {sz:.2f}) lies inside "
                                f"{one['name']} by {-gap:.2f}; it is a sand "
                                f"disc drawn under a prop")
+        #: **The jetty is outside the coastline and the boats are in water.**
+        #: Two separate claims, because they fail separately: a dock inside the
+        #: grass is buried, and a boat that has cleared the grass but not the
+        #: wet sand is a hull sitting on a beach. Both were true at once -- the
+        #: dock was dropped at a radius that cleared `MEADOW.radius` but not
+        #: the wobbled outline that is drawn, *and* it was rotated to run
+        #: inland, so the head the boats moor at was the end nearest the fire.
+        #: Neither was measured; a spectator said the island had one dinghy and
+        #: no dock, which is what two buried boats and a buried jetty look
+        #: like from outside.
+        for m in built.get("moored") or []:
+            if m["r"] <= m["grass"]:
+                bad.append(f"island {label}: {m['name']} stands at "
+                           f"{m['r']:.2f} where the grass reaches "
+                           f"{m['grass']:.2f}; it is inside the island, "
+                           f"under the meadow")
+            elif m["name"].startswith("boat_") and m["r"] <= m["water"]:
+                bad.append(f"island {label}: {m['name']} floats at "
+                           f"{m['r']:.2f} where the water starts at "
+                           f"{m['water']:.2f}; it is a hull on wet sand")
+        #: And there is a dock at all. The loop above is vacuously happy about
+        #: an empty one, and the boats are read off it by name.
+        if not [m for m in (built.get("moored") or []) if m["name"].startswith("boat_")]:
+            bad.append(f"island {label}: no boats are moored at the dock; "
+                       f"the traders arrived somehow")
+
         covered = sum((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1])
                       for f in feet)
         #: A share, not an area: what "crowded" means is how much of the grass
