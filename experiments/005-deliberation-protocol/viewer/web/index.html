@@ -481,13 +481,36 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    fraction, so the sky still turns without painting over the island. */
 .has-3d .island.closed .night { opacity: .2; }
 .has-3d .island.closed .vignette { opacity: 1.1; }
-.has-3d .island.closed .sky-burn { opacity: .14; }
+/* A fraction of that with a model underneath -- but a larger fraction than it
+   was (.14), and this is now where most of a modelled sunset comes from.
+   The plan was the other way round: warm the lights and leave the overlay
+   alone, because a sunset belongs in the light and an overlay strong enough to
+   see flattens the island into one orange shape. The lights turned out to have
+   almost no room -- see `island-life.js`, which measures it: the ambient has
+   three degrees of hue before the meadow goes olive and `firelight.test.mjs`
+   fails. The overlay has room, because soft-light over a rendered frame warms
+   the *water* -- which is most of what is on screen, and which no material's
+   hue depends on -- without beating down a green channel.
+   Still a fraction, and still capped well short of the drawn island's .5: the
+   flattening the old note warned about is real, it is just not what .22 does. */
+.has-3d .sky-burn { opacity: calc(var(--burn, 0) * .22); }
+.has-3d .island.closed .sky-burn { opacity: max(.22, calc(var(--burn, 0) * .22)); }
 .vignette { pointer-events: none; transition: opacity 2.4s ease; }
 .island.closed .vignette { opacity: 1.35; }
-/* The sky burns as the sun touches the water, then goes out. */
-.sky-burn { pointer-events: none; opacity: 0; fill: var(--sky-set);
+/* The sky burns at both ends of the day, not only at the bell.
+   It used to be a state -- off, then on at `.closed` -- so the island opened
+   in flat noon light, went orange when the bell rang, and had no morning at
+   all. `--burn` is `scene.sky()` putting `burnAt(day)` here on every paint, so
+   the colour is on the clock the sun is on: warm at the open, out through the
+   middle of the day, and warm again as the bell comes up.
+   The `.closed` rule stays as a floor rather than as the only source. A board
+   whose schedule this page cannot read never gets a `--burn` -- `sky()` leaves
+   it alone the same way it leaves the disc alone -- and a closed island with
+   no clock must still be an evening. */
+.sky-burn { pointer-events: none; fill: var(--burn-hue, var(--sky-set));
+  opacity: calc(var(--burn, 0) * .5);
   mix-blend-mode: soft-light; transition: opacity 1.6s ease; }
-.island.closed .sky-burn { opacity: .5; }
+.island.closed .sky-burn { opacity: max(.5, calc(var(--burn, 0) * .5)); }
 /* And the fire is what is left -- brighter, not dimmer, once the sun is gone.
    It is drawn above the dark for exactly this reason (scene.js:campfire). */
 .firelight { transition: opacity 1.6s ease; }

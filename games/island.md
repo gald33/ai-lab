@@ -958,6 +958,104 @@ The wrapper stays a separate project that plugs into the published viewer for
 its data stream rather than living inside Switchboard, and a hosted game points
 at the managed hub by default.
 
+### The island has no horizon, and is not getting one
+
+Decided 2026-08-28, after asking whether the sun could be shown rising and
+setting at sea. It cannot, and the reason is worth writing down because it is
+structural rather than a matter of effort — three separate things in
+`viewer/web/stage.js` each make a visible horizon impossible on their own:
+
+- **the camera never looks up.** `TILT` is a fixed 0.68 rad and `aim()` orbits
+  at that elevation always looking at the origin, so the frustum's far edge
+  lands on water;
+- **`flood()` exists to guarantee exactly that.** It projects the sea disc as
+  an ellipse under the tilt, takes the furthest frustum corner, and scales the
+  mesh until water covers it — with the note that an uncovered corner is "the
+  void this page has been told twice it must not have". Sky in frame is that
+  void arriving a third time;
+- **the tilt is load-bearing.** The camera is orthographic so that
+  ground→viewBox is affine and independent of the viewport, which is what lets
+  `groundAt()` put a hut exactly under a card the SVG has already placed. Tilt
+  toward the horizon and every hut slides out from under its card, with the
+  ropes and the offer pills.
+
+The rejected option was a matte: paint a graded sky and a sun into the
+letterbox bands. Those bands are already a fiction — `island-life.js` computes
+the lit sea colour and clears them to it — but that fiction is a flat colour
+nobody can disprove, and a painted horizon line claims a distance the geometry
+does not have, against an island whose own water plane is a different
+projection. Declined on those grounds.
+
+**What was built instead: the colour, on the day's own clock.** `burnAt(p)` in
+`scene.js` — zero through the middle 52% of the day, all of it in the last
+quarter at each end — drives the sky-burn over the frame. Previously the burn
+was a *state*: off, then on at `.closed`. The island had a sunset and no
+sunrise at all.
+
+**The lights are deliberately not on that curve.** They were put on it, to stop
+a warm ambient tinting the whole day — and by then #141 had already removed the
+warm ambient, so the reason was gone and all the curve did was hold the light
+at noon for half the day. The distinction that survives: **the day's light is
+continuous, and only the sky's colour wash is an end-of-day event.** A curve
+that is right for a wash over the frame is wrong for the light on the ground.
+
+**And the measurement that shaped it, which came out the opposite way round to
+the plan.** The intent was to put the warmth in the lights, where a sunset
+belongs, and leave the overlay small. The lights have almost no room: the
+ambient reaches every face, so it warms the grass exactly as much as the sand,
+and `island3d.js` ("Green, not olive") holds the meadow above hue 90. A skyDusk
+of `0xc4826a`, barely orange to look at, took the trees to 65.
+
+*Superseded while this branch was open, and the superseding is the more useful
+half.* #141 ("The island was yellow at dusk because the sunset was in the
+ambient") reached the same finding independently, measured it better — over
+rendered pixels across all 21 hours rather than one hand-shaded sample, which
+is why it caught canopies and slopes that a flat up-facing patch never
+could — and **went one step further than this branch did.** The conclusion
+here was "the ambient has almost no room, so hold it where it is". The right
+conclusion was that the ambient should go *cool*: twilight is a cool sky with
+one warm light in it, and a warm ambient held back to what it can get away
+with still multiplies every green by an orange nothing is casting. `skyDusk`
+is `0x8497b0` now, and this branch takes that side.
+
+The near-miss is left visible because it is the instructive part: **stopping at
+"there is no headroom" is how you end up with a dim noon instead of an
+evening.** The question was never how much warmth the ambient can carry, it
+was whether the ambient should be carrying warmth at all.
+
+So the key carries the warmth alone, and the rest is the burn — raised from .14
+to .22 under `.has-3d`, because soft-light over the frame warms the *water*,
+which is most of what is on screen and whose hue nothing depends on. Held by
+two checks, and the second is the one that would have caught the original bug:
+
+    node --test experiments/005-deliberation-protocol/viewer/tests/firelight.test.mjs
+    python experiments/005-deliberation-protocol/viewer/tests/render.py   # `twilight`
+
+**Left unfixed, and named here because it is a conflict between two checks
+rather than a bug in either.** `alive` in `viewer/tests/render.py` asserts the
+island is warmer with the sun down than with it up, by 0.08 of red-over-blue on
+the land. It fails on `main` as of 0c92592 — 0.37 against 0.37 on one board and
+0.33 against 0.36 on the other — and it fails because of #141: cooling the
+ambient to `0x8497b0` is what stopped the meadow going olive, and it is also
+what removed most of the land's warmth at dusk. The model's twilight is now a
+cool sky with one grazing warm light, which is what #141 argued for and what
+`twilight` measures, and `alive` was written when dusk was warm all over.
+
+So the two checks now pull against each other and only one of them can be
+right about what a modelled evening is. That is a decision, not a patch, and it
+is not this branch's to make: this branch improves the margin (0.03 → 0.05 on
+`002b`, by saturating the key) without clearing the bar, and does not touch the
+ambient #141 tuned. **Do not fix it by loosening `alive`'s threshold** — the
+question is whether the island should read warm at dusk on its own pixels, and
+if the answer is yes the fix is in the light, not in the bar.
+
+The lesson generalises past the sun: **on this island the lights are a shared
+resource and the greens have first claim on them.** Anything that wants to tint
+the whole scene should tint the one light that is actually casting, not the one
+that reaches every face — and should measure it on rendered pixels, because a
+hand-rolled sum over a flat patch of grass said the island was fine while the
+renderer disagreed.
+
 ## Open
 
 - **Element size on the viewer should scale with element count.** The

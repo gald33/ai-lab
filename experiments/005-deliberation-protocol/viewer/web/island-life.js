@@ -582,9 +582,25 @@ export function enliven(island, { ground = null, seed = 20260825 } = {}) {
     }
   });
 
-  const dawn = new THREE.Color(0xffb07a);
+  //: A little more saturated than they were (0xffb07a and 0xd9603a). The
+  //: ramp below is unchanged and stays linear in `lit`, so this is the whole
+  //: of the change: the ends of the day are the same shape of day, in a
+  //: slightly stronger colour. See the note under the sky colours for why the
+  //: warmth is the key's and nothing else's.
+  //:
+  //: **These lights are deliberately not on `burnAt`.** `scene.js` has a
+  //: curve -- flat through the middle of the day, all of it in the last
+  //: quarter at each end -- and the drawn island's burn reads it. Running the
+  //: lights off it too was tried, to stop a warm ambient tinting the whole
+  //: day. The reason evaporated: the ambient below is *cool* now (see the
+  //: note under the sky colours), so there is nothing bleeding across the day
+  //: to hold back, and all a flat-middle curve does to the lights is hold
+  //: them at noon for half the day. The distinction worth keeping is that the
+  //: day's light is continuous while the sky's *colour wash* is an
+  //: end-of-day event, so one curve does not fit both.
+  const dawn = new THREE.Color(0xffa15c);
   const noon = new THREE.Color(0xfff6e2);
-  const dusk = new THREE.Color(0xd9603a);
+  const dusk = new THREE.Color(0xdd5c33);
   // The sky the key is under, which has to travel with it. Moving the key
   // alone does not make a sunset: by the bell the key comes in almost
   // horizontally and lights nothing the camera can see, so the island's colour

@@ -656,6 +656,34 @@ export function sunAt(g, p) {
   };
 }
 
+/**
+ * How far the day is into its own colour, 0 through the middle of it and 1 at
+ * the open and at the bell.
+ *
+ * **The page has no horizon and is not getting one.** Considered and declined:
+ * the model's camera is a fixed tilt looking down, `Stage.flood()` exists
+ * specifically to guarantee water reaches every corner of the frustum, and the
+ * ground-to-viewBox map that puts a hut under its card is affine only while
+ * that tilt does not move. A sun on the water would have been a matte painted
+ * over the letterbox bands claiming a distance the geometry does not have. So
+ * the dawn and the dusk are carried by *light* instead -- the burn over the
+ * drawn island, and the key, ambient and fill over the modelled one -- and
+ * this is the one curve both of them read, so the two halves of the page
+ * cannot disagree about how far through the day the colour is.
+ *
+ * Flat across the middle rather than linear from noon: a straight ramp spreads
+ * the warmth over the whole morning, which reads as an island that is orange
+ * all day and never as one that is orange *now*. Zero for the middle 52% of
+ * the day and all of it in the last quarter at each end.
+ *
+ * Past the bell it stays at 1. The day does not stop at the horizon -- see
+ * `SET` above, which is the disc's own overshoot on the same clock.
+ */
+export function burnAt(p) {
+  const d = Math.abs(2 * Math.max(0, Math.min(1, p)) - 1);
+  return Math.max(0, Math.min(1, (d - 0.52) / 0.48));
+}
+
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
@@ -1176,6 +1204,21 @@ export class Scene {
   sky(state, until = null, ms = 0) {
     if (!this.sunNode) return;
     const closed = state.phase === "closed" || state.phase === "over";
+    //: The sky's colour is on the same clock as the disc, and is set here for
+    //: both paths -- the burn reads it in the stylesheet, and `island-life`
+    //: reads `burnAt` itself for the model's lights. Left alone when the board
+    //: has no clock, exactly as the disc is: not knowing the hour is not the
+    //: same as it being noon, and a frame that guessed would put the island
+    //: back in full daylight between two evening events.
+    const at = closed ? 1 : this.dayAhead(state, until);
+    if (at !== null) {
+      this.root?.style.setProperty("--burn", String(burnAt(at)));
+      //: Which end of the day this is. The two are not one colour -- see
+      //: `--sky-rise` in the tokens -- and a single orange at both ends made
+      //: the morning read as a second evening.
+      this.root?.style.setProperty("--burn-hue",
+                                   at < 0.5 ? "var(--sky-rise)" : "var(--sky-set)");
+    }
     const from = this.sunP ?? 0;
     let to;
     if (closed) {
