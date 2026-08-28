@@ -3048,6 +3048,27 @@ def island(browser, base: str, out: Path) -> list[str]:
                                f"({sx:.2f}, {sz:.2f}) lies inside "
                                f"{one['name']} by {-gap:.2f}; it is a sand "
                                f"disc drawn under a prop")
+        #: **And no stone of the trail touches another stone.** Two discs that
+        #: overlap are one puddle of sand, and a trail of them end to end is a
+        #: paved road; what the island is meant to show is stepping stones,
+        #: with grass between them. Both ways of getting there were drawn at
+        #: once and reported by eye as too many stepping stones: the count was
+        #: a flat seven however short the trail, which on the near ring is a
+        #: stone every 0.14 with a stone 0.22 across, and every trail starts at
+        #: the one fire, so at thirteen of them the first stones sat 0.20 apart
+        #: on a circle. Measured on the drawn positions, jitter included, since
+        #: the jitter is what closes the last of the gap. It fails 12 times
+        #: on the drawing this was written against, and the stone count falls
+        #: with it: 47 to 26 at two traders, 84 to 46 at eight.
+        steps = built.get("steps") or []
+        for k, (sx, sz, sr) in enumerate(steps):
+            for tx, tz, tr in steps[k + 1:]:
+                gap = math.hypot(sx - tx, sz - tz) - sr - tr
+                if gap <= 0:
+                    bad.append(f"island {label}: trail steps at "
+                               f"({sx:.2f}, {sz:.2f}) and ({tx:.2f}, "
+                               f"{tz:.2f}) overlap by {-gap:.2f}; that is "
+                               f"paving, not stepping stones")
         #: **The jetty is outside the coastline and the boats are in water.**
         #: Two separate claims, because they fail separately: a dock inside the
         #: grass is buried, and a boat that has cleared the grass but not the
