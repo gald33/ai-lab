@@ -815,6 +815,35 @@ address is written into the HTML because the viewer is static files with
 nothing to read a constant out of; moving the lobby means editing those two
 links.
 
+### Live, nobody talked; in the replay, everybody did
+
+Found by Gal watching a live game, 2026-08-28. The island drew stocks, ropes,
+receipts and bells while it ran, and **not one speech bubble** — and the replay
+of the same game, watched afterwards, was full of them.
+
+The cause is one field. A hub names a line by the room's agent id, which is the
+entrant's own name (`scout-v2`); the schedule seats `T1..Tn` and every receipt
+the manager writes is in those seat names. `reducer.js` takes its cast from the
+schedule, so an author it has never heard of is *not a trader* — it falls into
+the manager branch, matches no receipt, classifies as `unknown`, and draws
+nothing. `run_game.save_board` has always mapped peer to seat through
+`Manager.alias` when it writes the recording, which is exactly why the replay
+talked. `live.snapshot` did not, which is exactly why the live game did not.
+
+Fixed where the two differ, not in the viewer: the live snapshot now takes the
+same alias and puts the seat name in `from.name` — the field `rowsFromState`
+already prefers — while `from.id` keeps the raw hub id, so a spectator's file
+loses nothing. An author with no seat (a key that took no seat, an entrant that
+has not bound yet) is left unnamed rather than seated, because the viewer must
+not place a line the manager itself will refuse.
+
+The lesson is the one already written above about `whisper`'s rename: **two
+surfaces built from one source of truth drift silently when only one of them is
+maintained.** A live game and its replay are the same board; anything that
+names its authors has to be shared by both. Re-check with
+`python3 -m pytest games/island/tests/test_live.py -q` — two tests pin the seat
+naming and the refusal to seat a stranger.
+
 ### The live file becomes the recording
 
 Decided by Gal, 2026-08-28, correcting what I had started doing — which was
