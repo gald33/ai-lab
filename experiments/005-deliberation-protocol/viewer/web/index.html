@@ -874,7 +874,7 @@ import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer } from "./feeds.js";
 import { Stage } from "./stage.js";
-import { FACETS, SORTS, options, organise, countOf, activeCount } from "./picker.js";
+import { FACETS, SORTS, options, organise, countOf, activeCount, openingChoice } from "./picker.js";
 import { accumulate, audit, TOLERANCE } from "./utility.js";
 import { Sound } from "./island-sound.js";
 
@@ -2075,6 +2075,13 @@ async function boot() {
     relist();
   };
   relist({ keep: false });
+  // Nothing in the URL named a round, so the page picks one rather than
+  // opening whichever sorted first every single time. See
+  // `picker.js:openingChoice`.
+  const opening = openingChoice(entries);
+  if (opening && [...select.options].some((o) => o.value === opening.value)) {
+    select.value = opening.value;
+  }
   const choose = () => { picker.set(false); open(JSON.parse(select.value)); };
   select.onchange = choose;
   // A listbox fires no `change` when the row already selected is clicked

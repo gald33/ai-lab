@@ -2181,6 +2181,18 @@ plain words.
   that changes while the record does not is exactly when a cache keyed only on
   the record keeps answering with the old order.
 
+### The page opens on a round, and picks one at random when nothing named one
+
+Decided 2026-08-28. A visit with no `?board=`, no `?live=` and no invite used
+to open whichever round happened to sort first, which meant every unadorned
+visit for months showed the same round -- and the listing has over a hundred
+and fifty. There is no canonical round to show, so the page draws one:
+`picker.js:openingChoice` returns the pinned entry when there is one (a live
+game, or a round somebody was linked to -- that is what the reader came for),
+and otherwise a uniformly random record. Only the *opening* choice is random;
+filtering, sorting and the remembered selection are untouched, and a link that
+names a round still opens exactly that round.
+
 ### Keeping many rounds
 
 Three different things scale differently, and only one of them was a problem.

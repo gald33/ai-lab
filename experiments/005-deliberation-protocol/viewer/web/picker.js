@@ -169,3 +169,21 @@ export function organise(entries, selection = {}, sort = "newest") {
 export function countOf(organised) {
   return organised.reduce((n, g) => n + g.items.length, 0);
 }
+
+/** Which round the page opens on when the URL named none.
+ *
+ * A pinned entry -- a live game, a `?board=` somebody was linked to -- is what
+ * the reader came for, so it always wins. With nothing pinned the page used to
+ * open whatever happened to sort first, which made every unadorned visit the
+ * same round forever; a random record is the cheap fix, and it is also the
+ * honest one, since no round in the listing is the canonical one to show.
+ *
+ * `random` is injected so this is testable and so a caller can make the choice
+ * reproducible; it must behave like `Math.random`.
+ */
+export function openingChoice(entries = [], random = Math.random) {
+  if (!entries.length) return undefined;
+  const pinned = entries.find((e) => e.pinned);
+  if (pinned) return pinned;
+  return entries[Math.floor(random() * entries.length)] || entries[0];
+}
