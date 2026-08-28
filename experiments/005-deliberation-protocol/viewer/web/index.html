@@ -915,6 +915,12 @@ const chromeBands = () => {
 };
 const params = new URLSearchParams(location.search);
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
+//: A share of what was on the table, as a percentage: one decimal at most, and
+//: none when it lands on a whole one. Three decimals of a fraction is a figure
+//: nobody reads out loud -- the ending is a result, not a printout. Negative is
+//: not clamped, because doing worse than never trading is a real outcome.
+const pct = (x) => (x === null || x === undefined
+  ? "—" : `${(Math.round(x * 1000) / 10).toFixed(1).replace(/\.0$/, "")}%`);
 
 const GOOD_VARS = ["--good-1", "--good-2", "--good-3", "--good-4", "--good-5",
                    "--good-6", "--good-7"];
@@ -1091,17 +1097,17 @@ function officially() {
   box.className = `official${s.ranked ? "" : " unranked"}`;
   box.innerHTML = `
     <div class="level">${s.label || "unrecorded format"}</div>
-    <div class="headline">captured <b>${fmt(s.capture, 3)}</b> of what this
+    <div class="headline">captured <b>${pct(s.capture)}</b> of what this
       island had on the table` +
     (s.ranked
       ? ` — <span class="place">${place} of ${s.of}</span>
           game${s.of > 1 ? "s" : ""} on this format${
-            s.first ? "" : `, best ${fmt(s.best, 3)}`}</div>`
+            s.first ? "" : `, best ${pct(s.best)}`}</div>`
       : `</div><div class="note">Kept, counted, and <b>not ranked</b>:
           ${WHY[s.why] || s.why}</div>`) +
-    `<div class="note">efficiency ${fmt(s.eff_round, 3)} against an autarky
-      floor of ${fmt(s.floor, 3)} — 0.0 is never having traded, 1.0 is
-      everything there was to take.</div>`;
+    `<div class="note">efficiency ${pct(s.eff_round)} against an autarky floor
+      of ${pct(s.floor)} — 0% is never having traded, 100% is everything there
+      was to take.</div>`;
   box.hidden = false;
 }
 

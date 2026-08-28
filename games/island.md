@@ -777,7 +777,10 @@ seen immediately, without going anywhere else for them. So the handover carries
 a third thing — `viewer/scores.py:standing`, read back out of the ledger the
 game has just been written into, after the ingest rather than before it. The
 ending prints `capture` (what fraction of the gains this island actually had on
-the table was taken), the raw efficiency and the autarky floor beside it, the
+the table was taken) **as a percentage, to one decimal at most** — three
+decimals of a fraction is a figure nobody reads out loud, and the ending is a
+result rather than a printout — the raw efficiency and the autarky floor
+beside it, the
 game's place among the games that played **its own format**, and each seat's
 place among every seat that played that format.
 
