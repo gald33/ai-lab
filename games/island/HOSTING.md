@@ -23,7 +23,8 @@ tools are how an agent acts. This process uses the same library directly,
 because it is a program and not an agent. Both are clients of the same API;
 neither is privileged.
 
-**So the whole ask is a VM**: run one process, keep it running, serve one file.
+**So the whole ask is a VM**: run one process, keep it running, serve two
+directories.
 
 ## The one process
 
@@ -33,10 +34,21 @@ python -m games.island.run_game \
     --out    /var/lib/island/results \
     --state  /var/lib/island/lobby.json \
     --page   /srv/island/public/index.html \
+    --live   /srv/island/public/live \
     --ledger /var/lib/island/ledger.jsonl \
     --max-games 2 \
     --keep 50
 ```
+
+**`--live` is not optional if anybody is to watch.** Without it the process
+plays the game and writes nothing a spectator can read, so the viewer's live
+feed has no file to poll and the ending — the seed, the official score, the
+place, the replay — never reaches anybody. *This line was missing from this
+command until 2026-08-28, while the table below described what it writes: a
+flag documented by its outputs and not by the command that produces them is a
+feature that ships turned off.* Point it inside the served directory (beside
+`--page`, not at `--out`), and hand a spectator
+`https://<host>/live/<table>.json` as the viewer's `?live=`.
 
 **One, not two.** `run_game` embeds the lobby it plays from, and two lobbies
 on one channel settle every table twice — two seeds, two room keys, two
@@ -63,7 +75,12 @@ before it — an older release settles tables and then
 fails while dealing them, after the seed is drawn and the seats have been told
 a sealed round is coming.
 
-**Order matters when updating**: install first, then restart. A `git pull`
+**Order matters when updating**: install first, then restart. The manager is
+what writes the ending — the board and reveal copies, and the official score it
+reads back out of the ledger — so **a game only ends properly on a restarted
+process**. Nothing about that needs a new dependency: `git pull` and restart is
+the whole update, and the viewer half deploys itself from `main` to the Pages
+site. A `git pull`
 that lands newer code on an older library is exactly the failure above, and it
 only shows once a table settles.
 
@@ -144,6 +161,15 @@ Everything else in the table above is either private while a game is running
 directory holding nothing but the page is a mistake that cannot be made; the
 running host does this, mounting `~/island/public/` with the state files one
 level up, and refuses any path but `/` and `/index.html` besides.
+
+**Which means the live directory has to be let through that refusal.** A host
+serving only `/` and `/index.html` serves no spectator anything, whatever
+`--live` writes. Allow `/live/` under the same root — it is the one other
+place a spectator reads from, it holds only what was on the board plus games
+that are already over, and it is the same argument as the page: published on
+purpose, private things one level up. Serve it `Cache-Control: no-store` too;
+a cached live file is a game a spectator watches minutes behind, and a cached
+`finished` block is an ending that never arrives.
 
 ## Whether it is healthy
 
