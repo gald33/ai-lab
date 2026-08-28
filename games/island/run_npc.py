@@ -126,6 +126,7 @@ def play(client: Client, channel: str, *, name: str,
         policy = schedule.policy_at(time.time() - started)
         for line in npc.lines(policy, board, board.partners()):
             client.post(channel, line)
+            npc.wrote(board, line)
             log(f"{name}: [{policy}] {line}", flush=True)
 
         if board.over:

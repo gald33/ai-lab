@@ -322,6 +322,17 @@ class Board:
     #: and only ever relative.
     prices: dict[str, float] = field(default_factory=dict)
     produced_this_episode: bool = False
+    #: A PRODUCE or PROPOSE this seat has written and not yet seen settled.
+    #: **Optimistic, and it has to be.** A receipt takes a poll or two to come
+    #: back, and a seat that waits for one before deciding again writes the
+    #: same line each time it looks -- which the manager settles, because
+    #: labour may be committed in pieces. So the first real sealed round had
+    #: one seat spend its budget three times over. The cost of assuming a post
+    #: landed is an episode's production lost if it did not; the cost of
+    #: assuming it did not is spending a budget several times, which is worse
+    #: and is silent.
+    posted_produce: bool = False
+    posted_offer: bool = False
 
     @property
     def goods(self) -> tuple[str, ...]:
@@ -376,6 +387,7 @@ class Board:
             self.episode, self.episodes = int(m.group(1)), int(m.group(2))
             self.episode_open = True
             self.produced_this_episode = False
+            self.posted_produce = self.posted_offer = False
             self.labour_left = 1.0
             # The bell eats everything held and returns the labour, so an
             # episode starts from nothing whatever the last one ended on.
@@ -470,11 +482,35 @@ def _after(holdings: dict[str, float], give: dict[str, float],
     return out
 
 
+def budgeted(shares: dict[str, float]) -> dict[str, float]:
+    """Shares rounded to what a board can carry, and still inside the budget.
+
+    **Rounding each share on its own can break the budget**, and the manager
+    refuses the whole line when it does: tastes of 0.136, 0.8595 and 0.0046
+    sum to exactly 1 and their rounded forms sum to 1.0001, which is over by
+    1e-4 and therefore not a production plan. That is not a hypothetical --
+    it is what one seat wrote every poll for a whole round, collecting fifteen
+    refusals and ending at zero utility while its partner, whose shares
+    happened to round down, played normally.
+
+    So the excess comes off the largest share, which is the one it changes
+    least, and a share that rounds to nothing is dropped rather than written.
+    """
+    plan = {g: round(a, 4) for g, a in shares.items() if a > 0}
+    plan = {g: v for g, v in plan.items() if v > 0}
+    excess = round(sum(plan.values()) - 1.0, 6)
+    if plan and excess > 0:
+        largest = max(plan, key=lambda g: plan[g])
+        plan[largest] = round(plan[largest] - excess, 4)
+        if plan[largest] <= 0:
+            del plan[largest]
+    return plan
+
+
 def autarky_plan(board: Board) -> dict[str, float]:
     """Shares equal to tastes -- the closed-form optimum for a trader who will
     not trade, under `sum(alpha) == 1` and linear production."""
-    plan = {g: round(a, 4) for g, a in board.tastes.items() if a > 0}
-    return {g: s for g, s in plan.items() if s > 0}
+    return budgeted(board.tastes)
 
 
 def _prices(board: Board) -> dict[str, float]:
@@ -496,7 +532,7 @@ def specialise_plan(board: Board) -> dict[str, float]:
     if not board.capacity:
         return {}
     best = max(board.capacity, key=lambda g: prices.get(g, 1.0) * board.capacity[g])
-    return {best: 1.0}
+    return budgeted({best: 1.0})
 
 
 def demand(board: Board) -> dict[str, float]:
@@ -601,6 +637,18 @@ def _num(x: float) -> str:
     return text + "0" if text.endswith(".") else text
 
 
+def wrote(board: Board, line: str) -> None:
+    """Record that a line went to the board, so it is not written twice.
+
+    Called by whatever carries the line, because only that knows it was
+    actually posted. See `Board.posted_produce` for why this is optimistic.
+    """
+    if line.startswith("PRODUCE"):
+        board.posted_produce = True
+    elif line.startswith("PROPOSE"):
+        board.posted_offer = True
+
+
 def lines(policy: str, board: Board, partners: list[str]) -> list[str]:
     """Everything this policy would write right now, in order, as board text.
 
@@ -612,7 +660,7 @@ def lines(policy: str, board: Board, partners: list[str]) -> list[str]:
     if board.over or not board.episode_open or not board.tastes:
         return out
 
-    if not board.produced_this_episode:
+    if not (board.produced_this_episode or board.posted_produce):
         plan = plan_for(policy, board)
         if plan:
             out.append("PRODUCE " + " ".join(f"{g}={_num(s)}"
@@ -624,7 +672,7 @@ def lines(policy: str, board: Board, partners: list[str]) -> list[str]:
             out.append(f"APPROVE {pid}")
             return out
 
-    if not board.outstanding:
+    if not board.outstanding and not board.posted_offer:
         made = propose(policy, board, partners)
         if made:
             partner, give, want = made

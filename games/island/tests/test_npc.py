@@ -8,6 +8,7 @@ Everything here is `npc.py` alone, because that is where the decisions are.
 from __future__ import annotations
 
 import json
+import random
 
 import pytest
 
@@ -294,3 +295,63 @@ def test_the_trace_is_json_and_says_which_policy_was_live_when():
     assert len(trace) > 3
     assert [seg["at"] for seg in trace] == sorted(seg["at"] for seg in trace)
     json.dumps(trace)
+
+
+def test_a_plan_written_once_is_not_written_again_while_the_receipt_travels():
+    """Labour may be committed in pieces, so the manager settles a second
+    PRODUCE rather than refusing it. A seat that re-decided every poll until
+    its receipt came back therefore spent its budget several times over --
+    which is what the first real sealed round did, three times in one episode.
+    """
+    board = _seated()
+    plan = npc.lines("greedy", board, ["T1"])
+    assert plan and plan[0].startswith("PRODUCE")
+    npc.wrote(board, plan[0])
+    assert npc.lines("greedy", board, ["T1"]) == []
+
+    # The receipt arrives late and changes nothing; the next episode re-arms.
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
+    assert not any(l.startswith("PRODUCE")
+                   for l in npc.lines("greedy", board, ["T1"]))
+    board.read("episode 2 of 8 is open; the bell is at 12:02:00Z (60s).")
+    assert npc.lines("greedy", board, ["T1"])[0].startswith("PRODUCE")
+
+
+def test_an_offer_written_once_is_not_written_again_either():
+    board = _seated(taste={"bread": 0.3, "iron": 0.7})
+    board.read("@T2 produced {'bread': 0.9, 'iron': 0.02}; 0.0 labour unspent")
+    offer = npc.lines("greedy", board, ["T1"])
+    assert offer and offer[0].startswith("PROPOSE")
+    npc.wrote(board, offer[0])
+    assert npc.lines("greedy", board, ["T1"]) == []
+
+
+def test_no_plan_any_taste_vector_produces_is_ever_over_the_budget():
+    """The refusal is total -- the manager rejects the whole line, not the
+    excess -- so a plan over by 1e-4 is a plan that produces nothing. One seat
+    wrote exactly that every poll for a whole round: fifteen refusals, zero
+    utility, while its partner's shares happened to round down and it played
+    normally.
+    """
+    parse = _manager_parser()
+    rng = random.Random(5)
+    for _ in range(2000):
+        raw = [rng.random() for _ in range(rng.randint(2, 7))]
+        total = sum(raw)
+        tastes = {g: v / total for g, v in
+                  zip(("bread", "cloth", "iron", "salt", "fish", "a", "b"), raw)}
+        board = npc.Board(player="npc-1", tastes=tastes,
+                          capacity={g: 1.0 for g in tastes},
+                          episode_open=True)
+        for policy in npc.POLICIES:
+            for line in npc.lines(policy, board, []):
+                action = parse(line)
+                assert sum(action.plan.values()) <= 1.0 + 1e-9, line
+
+
+def test_the_awkward_vector_from_the_first_real_round():
+    """0.136 + 0.8595 + 0.0046 sums to 1 and rounds to 1.0001."""
+    board = _seated(taste={"bread": 0.136, "cloth": 0.8595, "iron": 0.0046},
+                    cap={"bread": 1.0, "cloth": 1.0, "iron": 1.0})
+    plan = _manager_parser()(npc.lines("autarky", board, ["T1"])[0])
+    assert sum(plan.plan.values()) <= 1.0
