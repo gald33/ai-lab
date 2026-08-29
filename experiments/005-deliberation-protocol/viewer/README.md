@@ -602,6 +602,27 @@ Two tests in `viewer/tests/clips.test.mjs`, both of which fail on the old code:
 node --test viewer/tests/clips.test.mjs
 ```
 
+**And a whole game, because that is how it was seen.** `palette` in
+`viewer/tests/render.py` plays a board from its first frame to its last at 16×
+and reads the island's palette back all the way through. It reaches for one of
+007's rounds, because the two boards under `games/replays` settle nothing and a
+clip only borrows a field when somebody produces; on a checkout without them it
+still plays a whole game and says that it could not see this.
+
+On the code that had the bug, played through
+`004-ladder-a-l-protocol-seed11` (162 frames, four days):
+
+| | before | after |
+|---|---|---|
+| `M.grass` | gold from **frame 11** of 162 — the game's first production | unchanged |
+| `M.wheat` | driven to the clip's green, then gold | unchanged |
+| `M.salt` | driven brine-blue by the salt clip | unchanged |
+| the meadow at the end | `#c9a86a` | `#4c8049` |
+
+The sea is excluded on purpose: `island-life` writes `M.sea` and `M.seaDeep`
+every frame, because the water is on the day's clock. Everything else in the
+palette belongs to the island and no clip may write to it.
+
 **What the two earlier fixes were worth.** Not nothing, and they stay: the
 campfire really was a floodlight and the dusk ambient really did put the sunset
 in the light that falls on every face. But the lesson is the one at the top of
