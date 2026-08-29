@@ -5068,10 +5068,10 @@ def whose(browser, base: str, out: Path) -> list[str]:
 #: and are tracked rather than fixed here.
 #:
 #: **This is not a way to make a check quieter.** It exists so `render.py` can
-#: be a required check at all: the two it was opened with predated CI ever
-#: running this file, and without somewhere to put them the choice was between
-#: never running the suite and deleting the checks that catch them -- and
-#: deleting a check to get green is the one thing this repo does not do.
+#: be run by CI at all: the two it was opened with predated anything running
+#: this file, and without somewhere to put them the choice was between never
+#: running the suite and deleting the checks that catch them -- and deleting a
+#: check to get green is the one thing this repo does not do.
 #:
 #: **It is empty, and an empty list is the intended state.** Both entries were
 #: fixed rather than aged: the inverted daylight was a real bug in `stage.js`
