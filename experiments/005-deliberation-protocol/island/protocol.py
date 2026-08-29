@@ -1,12 +1,13 @@
 """What the manager recognises when it reads the board.
 
-Three formats, and nothing else on the board means anything to the economy. A
+Four formats, and nothing else on the board means anything to the economy. A
 line that does not parse is talk, which is a legitimate and expected thing for
 a line to be -- most lines will be talk.
 
     PRODUCE bread=0.5 iron=0.5
     PROPOSE to=T2 give=iron:0.4 want=salt:0.3
     APPROVE p3
+    DECLINE p3
 
 The manager enforces **format**: a line that is nearly one of these is not
 repaired into one. It also enforces **timing**: a well-formed line that arrives
@@ -20,6 +21,11 @@ import re
 from dataclasses import dataclass
 
 PRODUCE, PROPOSE, APPROVE = "PRODUCE", "PROPOSE", "APPROVE"
+#: The fourth (2026-08-29). An offer escrows the maker's goods for as long as
+#: it is open, and the maker cannot free them -- committing is the whole point.
+#: The trader it was addressed to is the only one who can say the deal is not
+#: happening, so `DECLINE` is what hands those goods back before the bell.
+DECLINE = "DECLINE"
 
 _BUNDLE = re.compile(r"^([a-z]+):([0-9]*\.?[0-9]+)$")
 _SHARE = re.compile(r"^([a-z]+)=([0-9]*\.?[0-9]+)$")
@@ -46,6 +52,11 @@ class Approve:
     proposal_id: str
 
 
+@dataclass(frozen=True)
+class Decline:
+    proposal_id: str
+
+
 def _bundle(raw: str, label: str) -> dict[str, float]:
     out: dict[str, float] = {}
     for part in raw.split(","):
@@ -65,14 +76,14 @@ def _bundle(raw: str, label: str) -> dict[str, float]:
 
 
 def parse(text: str):
-    """Return a Produce/Propose/Approve, or None if this line is just talk.
+    """Return a Produce/Propose/Approve/Decline, or None if this line is talk.
 
     Raises ``Malformed`` when a line opens with a keyword but does not parse --
     the agent tried to act and got the format wrong, which it should be told.
     """
     stripped = text.strip()
     head = stripped.split(None, 1)[0].upper() if stripped else ""
-    if head not in (PRODUCE, PROPOSE, APPROVE):
+    if head not in (PRODUCE, PROPOSE, APPROVE, DECLINE):
         return None
     rest = stripped[len(head):].strip()
 
@@ -104,5 +115,6 @@ def parse(text: str):
                        want=_bundle(fields["want"], "want"))
 
     if not rest or len(rest.split()) != 1:
-        raise Malformed("APPROVE wants exactly one proposal id")
-    return Approve(proposal_id=rest.split()[0])
+        raise Malformed(f"{head} wants exactly one proposal id")
+    pid = rest.split()[0]
+    return Approve(proposal_id=pid) if head == APPROVE else Decline(proposal_id=pid)

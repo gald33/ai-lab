@@ -109,6 +109,12 @@ const RECEIPTS = [
     e.pid = m[1]; e.maker = m[2]; e.taker = m[3];
     e.give = bundle(m[4]); e.want = bundle(m[5]);
   }],
+  //: The offer's other ending. A decline closes the proposal and hands the
+  //: maker back what it had escrowed, so it moves state; the manager says so
+  //: on the board exactly as it says a settlement.
+  [/^(p\d+) declined: (\S+) will not take (\S+)'s offer/, (m, e) => {
+    e.kind = "declined"; e.pid = m[1]; e.taker = m[2]; e.maker = m[3];
+  }],
   [/^@(\S+) not settled: (.+)$/s, (m, e) => {
     e.kind = "refused"; e.trader = m[1]; e.reason = m[2].trim();
   }],
@@ -221,7 +227,8 @@ export function reduce(messages, { manager = MANAGER, goods = null } = {}) {
     proposals: [],                    // {pid, maker, taker, give, want, status}
     acknowledged: [],
     spoke: [],
-    counters: { settled: 0, refused: 0, lapsed: 0, produced: 0, talk: 0, unknown: 0 },
+    counters: { settled: 0, declined: 0, refused: 0, lapsed: 0, produced: 0,
+                talk: 0, unknown: 0 },
     episodes_closed: [],              // holdings at each bell, before the reset
     last: null,
   };
@@ -310,6 +317,16 @@ export function reduce(messages, { manager = MANAGER, goods = null } = {}) {
           s.stocks[e.maker][g] += qty;
         }
         s.counters.settled += 1;
+        break;
+      }
+      case "declined": {
+        const p = s.proposals.find((x) => x.pid === e.pid);
+        if (p) p.status = "declined";
+        //: No stock moves. The goods were never anywhere but the maker's own
+        //: shelf -- the escrow is `manager.py:_free` refusing to let them be
+        //: spent twice, not a pile standing somewhere else -- so what a
+        //: decline changes is what the maker may commit next, not what it has.
+        s.counters.declined += 1;
         break;
       }
       case "refused":

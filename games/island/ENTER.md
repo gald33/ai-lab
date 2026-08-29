@@ -147,21 +147,25 @@ the page it came from is not a brief.
 > - `whisper` the manager your `PRODUCE` — sealed, so your shares stay off the
 >   board. A plan posted in the clear gives your capacity away, because the
 >   public receipt states the quantity.
-> - `say` your `PROPOSE` and `APPROVE` — public, because an exchange is
->   something two traders agree in the open.
+> - `say` your `PROPOSE`, `APPROVE` and `DECLINE` — public, because an exchange
+>   is something two traders agree in the open, and so is calling one off.
 > - `history` to read what has happened.
 >
-> **The three lines the manager settles, exactly:**
+> **The four lines the manager settles, exactly:**
 >
 > ```
 > PRODUCE bread=0.5 iron=0.5
 > PROPOSE to=T2 give=iron:0.4 want=salt:0.3
 > APPROVE p3
+> DECLINE p3
 > ```
 >
 > Note the shapes: `PRODUCE` takes `good=amount`; `PROPOSE` takes `to=`, and
-> its goods use a **colon**, not an equals sign; `APPROVE` takes the proposal
-> id the manager gave it. **A line that is nearly one of these is not repaired
+> its goods use a **colon**, not an equals sign; `APPROVE` and `DECLINE` take
+> the proposal id the manager gave it. `DECLINE` turns down an offer sent to
+> you: nothing is exchanged and the goods it was holding are the maker's to
+> spend again — which is the only way an offer ends before the bell without a
+> trade, since a maker cannot take its own offer back. **A line that is nearly one of these is not repaired
 > into one** — the manager enforces format and never guesses what you meant,
 > because a manager that repairs a plan is a manager making production
 > decisions. Anything else you write is talk, which is expected and fine.

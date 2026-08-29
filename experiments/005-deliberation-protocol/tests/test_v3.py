@@ -18,8 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]
 from barter.economy import draw_island  # noqa: E402
 from island.dealer import Dealer  # noqa: E402
 from island.manager import MANAGER, Manager  # noqa: E402
-from island.protocol import (Approve, Malformed, Produce,  # noqa: E402
-                             Propose, parse)
+from island.protocol import (Approve, Decline, Malformed,  # noqa: E402
+                             Produce, Propose, parse)
 from island.score import score, trajectory_from  # noqa: E402
 
 
@@ -99,6 +99,8 @@ def test_the_three_shapes_parse():
     assert parse("PROPOSE to=T2 give=iron:0.4 want=salt:0.3") == Propose(
         "T2", {"iron": 0.4}, {"salt": 0.3})
     assert parse("APPROVE p3") == Approve("p3")
+    assert parse("DECLINE p3") == Decline("p3")
+    assert parse("decline p3") == Decline("p3"), "the verb is case-insensitive"
 
 
 @pytest.mark.parametrize("bad", [
@@ -107,7 +109,7 @@ def test_the_three_shapes_parse():
     "PROPOSE to=T2 give=bread:0.02 cloth:0.15 want=salt:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
     "PROPOSE to=T2 give=iron want=salt:0.3",
     "PROPOSE to=T2 give=iron:0 want=salt:0.3",
-    "APPROVE", "APPROVE p1 p2",
+    "APPROVE", "APPROVE p1 p2", "DECLINE", "DECLINE p1 p2",
 ])
 def test_a_near_miss_is_malformed_and_never_guessed(bad):
     with pytest.raises(Malformed):
@@ -253,6 +255,104 @@ def test_approving_moves_goods_both_ways_and_settles_once():
     m.hub.as_("T2", "APPROVE p1")
     m.drain()
     assert m.refused == 1
+
+
+# --- declining ----------------------------------------------------------
+
+def test_declining_frees_what_the_offer_was_holding():
+    """The point of DECLINE, and the reason it is a command at all.
+
+    An offer escrows the maker's goods for as long as it is open, and the maker
+    cannot take it back -- that commitment is what makes an offer worth
+    anything. So before this, an offer the other trader plainly did not want
+    still held those goods hostage until the bell. The trader it was addressed
+    to is the one party who can honestly end it.
+    """
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    assert m._free("T1", "bread") == pytest.approx(free - 0.05), "escrowed"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "declined"
+    assert m.declined == 1
+    assert m._free("T1", "bread") == pytest.approx(free), "and handed back"
+    # Nothing moved between shelves: the escrow was never a pile somewhere
+    # else, only goods the maker was not allowed to spend twice.
+    assert m.holders["T1"].holdings[m._good("bread")] == pytest.approx(free)
+
+
+def test_a_decline_is_said_on_the_board():
+    """Announced, as a settlement is, because it changes what a maker may do.
+
+    A maker that had to infer from silence that its goods were free again would
+    be sizing its next offer blind.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    said = [r["body"] for r in m.hub.history("c") if r["body"].startswith("p1 declined")]
+    assert said, "a decline the board does not carry is one no maker can act on"
+
+
+def test_only_the_addressee_can_decline_and_only_once():
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    # Not the maker's to end: committing is the whole point of an offer.
+    m.hub.as_("T1", "DECLINE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "declined"
+    # And a declined offer is not takeable afterwards, by anybody.
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 2
+    assert m.proposals["p1"].status == "declined"
+
+
+def test_the_episode_ledger_tells_a_decline_from_a_lapse():
+    """Two ways an offer dies without a trade, and they are not the same fact.
+
+    A lapse is nobody acting; a decline is somebody deciding. A round where
+    every offer was declined and one where every offer was ignored look
+    identical in `settled`, and they are not the same game.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=cloth:0.05")
+    m.drain()
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    m.close_episode()
+    log = m.episode_log[-1]
+    assert log["declined"] == ["p1"]
+    assert log["lapsed"] == ["p2"], "the one nobody answered"
+
+
+def test_a_declined_offer_stops_being_the_reason_you_are_short():
+    """The escrow being freed is a thing the *next* command can use."""
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=cloth:0.01")
+    m.drain()
+    m.hub.as_("T2", "PROPOSE to=T1 give=cloth:0.02 want=bread:0.02")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.refused == 1, "short, because p1 is holding the bread"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.proposals["p2"].status == "settled"
 
 
 # --- the bell -----------------------------------------------------------
