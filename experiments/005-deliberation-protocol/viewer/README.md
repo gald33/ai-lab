@@ -2950,145 +2950,84 @@ python viewer/tests/render.py                    # the drawing, in a real browse
 python viewer/tests/render.py --require          # ... and as CI runs it
 ```
 
-### All three run in CI now, and two of them did not
+### `viewer/tests` runs in CI now. `render.py` does not, yet.
 
 *Decided 2026-08-29.*
 
 `.github/workflows/tests.yml` ran `games/island/tests` and
 `experiments/005-deliberation-protocol/tests`. It did **not** run
-`viewer/tests/`, and nothing anywhere ran `render.py` — so a green tick on a
-pull request said nothing about 200 Python tests, and nothing at all about
-what the island actually draws. That is the same gap the workflow's own header
-describes closing for the node tests, left open for these two.
+`viewer/tests/`, and nothing anywhere ran `render.py` — so a green tick said
+nothing about 200 Python tests, and nothing at all about what the island draws.
+That is the same gap the workflow's own header describes closing for the node
+tests, left open for these two.
 
-It had already hidden a real failure long enough to be found by accident:
+**The first half is closed.** `viewer/tests/` is in the `island` job. It had
+already hidden a real failure long enough to be found by accident:
 `test_adding_a_five_good_level_leaves_the_recorded_ones_alone` asserted that
-every round on the ledger was played over four goods, and four five-good
-rounds have since been recorded. The test said in its own message that when
-that stopped being true the test was the wrong shape rather than the ledger,
-so it was reshaped to the property it was guarding — a round's level is a
-function of its own island, so a level added for some other round cannot reach
-in and relabel it. That form does not depend on what the ledger happens to
-hold, which is what made the old one expire.
+every round on the ledger was played over four goods, and four five-good rounds
+have since been recorded. The test said in its own message that when that
+stopped being true the test was the wrong shape rather than the ledger, so it
+was reshaped to the property it was guarding — a round's level is a function of
+its own island, so a level added for some other round cannot reach in and
+relabel it. That form does not expire as the ledger grows, which is what the old
+one did.
 
-**The job carries a `timeout-minutes`**, for the same reason it carries
-`--require`. A run that never ends reports nothing, exactly like a run that
-checked nothing, and GitHub's default would let it sit for six hours first.
+**The second half is not, and the reason is measured.** `render.py` was put in a
+CI job and run twice on the same commit. It failed both times, with a
+*different* failure each time:
 
-The number came from measurement. The suite takes about eight minutes on a
-developer machine; the first CI run went past thirty. That is expected rather
-than alarming — a runner has no GPU, so Chromium falls back to SwiftShader and
-every frame of a three.js island is drawn on the CPU. What that first run could
-*not* say is whether it was slow or stuck, because logs only arrive when a job
-ends. The limit is the instrument that separates the two: finish under it and
-the suite is merely slow, trip it and something is hung. Raise it if the honest
-number turns out higher; never raise it to paper over a hang.
+| run | unexpected failure |
+|---|---|
+| 1 | `ring/4: the labour went in one step` |
+| 2 | `ring/4: the bell did not bring night` |
 
-**`--require` is why the drawing job is worth having.** `render.py` skips
-cleanly when there is no playwright, no browser or no replay — right locally,
-and exactly the failure mode a CI job must not have, because a skip and a pass
-are the same tick. The flag turns each of those into a failure, so the job
-cannot go green having rendered nothing.
+Not a bug in the island, and not one bug at all — the suite is **flaky on a
+runner with no GPU**. The cause is one number: a headless page with the three.js
+stage running renders at **2.5 frames a second**, measured on a developer
+machine, and a CI runner is slower still. Every animation assertion in `ring`
+samples a scene whose frames are 400ms apart, while the motions it measures last
+220ms to 3.6s. Some land and some do not, and which is which changes run to run.
 
-### `KNOWN_FAILURES`, and the two rules that stop it rotting
+`ring` removes the `has-3d` *class* to isolate the drawn SVG scene — "the
+fallback a browser with no WebGL gets" — but the stage's own render loop keeps
+running behind it, eating the frame budget the check needs. `Stage.pause()`
+exists and nothing calls it from a test.
 
-Two failures predate CI ever running `render.py`: a portrait framing check
-that misses its floor by a fraction of a percent on one board, and a lighting
-check whose sign is inverted — the island reads *cooler* with the sun down
-than up. The second is a real bug and its own piece of work.
+So the job is **not added**. A check that goes red at random teaches everyone to
+ignore CI, and `continue-on-error` is worse: GitHub draws that as a green tick,
+which is the weaker thing wearing the stronger one's face — the one move this
+lab does not make. It goes in when the races are fixed, which means stopping the
+stage for the isolated-SVG checks and converting the remaining absolute-time
+samples to watchers.
 
-Without somewhere to put them the choice was between never running the suite
-and deleting the checks that catch them, and **deleting a check to get green is
-the one thing this repo does not do**. So they are listed, dated, and each
-carries the reason it is there. `verdict` enforces two rules:
+### What `render.py` gained anyway
 
-- anything **not** listed fails the run, exactly as before;
-- anything listed that **stops failing** also fails the run, with a message
-  saying to delete the entry.
+The three pieces that job will need are in, and are useful locally now.
 
-The second is what keeps the list honest. A known-failures list whose entries
-outlive their bugs is a list nobody trusts a month later, and by then it will
-swallow a real regression. `tests/test_render_gate.py` holds both rules, plus
-the requirement that every entry carries a date and a reason long enough to
-act on — and it runs in the `island` job, so the gate is covered by the same
-tick it makes possible.
+**`--require`** turns render.py's three silent skips — no playwright, no
+browser, no replays — into failures. A skip and a pass are the same tick, and
+that is the failure mode a CI job must not have.
 
-The ones that matter: a self-report moves nothing, a line that is
-nearly a receipt is not repaired into one, **every saved board parses with
-nothing left over** — which is what will fail if `island/manager.py` or
-`run_v3.py` is reworded, rather than the island quietly emptying — and **every
-board with a sidecar reproduces the manager's scored trajectory** through the
-page's own reducer and utility code.
+**`KNOWN_FAILURES`** holds failures that are real, are not the fault of the
+branch running, and are tracked rather than fixed. Two are listed: a portrait
+framing check that misses its floor by a fraction of a percent, and a lighting
+check whose sign is inverted — the island reads *cooler* with the sun down than
+up, which is a real bug and its own work. Deleting a check to get green is the
+one thing this repo does not do, so they are listed, dated, and each carries its
+reason. `verdict` enforces two rules: anything **not** listed fails the run, and
+anything listed that **stops failing** also fails it, saying to delete the
+entry. The second is what keeps the list honest — entries that outlive their
+bugs make a list nobody trusts, and by then it will swallow a real regression.
+`tests/test_render_gate.py` holds both rules and runs in the `island` job.
 
-On the pacing: **an eventful frame is held until its animation has played**,
-under every pace. Before that, `feeds.js` stepped every `MIN_STEP / speed` --
-35ms at the default `4x` -- while a parcel took a second to cross the square,
-so a busy stretch played six animations on top of each other and read as a
-flicker. `scene.js:DWELL` names how long each event needs and `feeds.js` reads
-it, so the floor cannot drift from the durations it mirrors.
-
-On the drawing: the geometry is pure arithmetic and is checked as such --
-every card and hut **fits on the canvas** and **no two cards overlap** at one
-through eight traders, and **scenery lands on neither a card nor the fire**.
-That last one is a bug that shipped: placement used to test a circle around the
-seat while a card is a tall box hanging *below* it, so palms rendered on top of
-the shelves. `render.py` covers what arithmetic cannot -- it loads a replay in
-Chromium, asserts the page raises nothing and has one hut per trader and one
-shelf cell per good, plays a receipt at the scene to confirm the **event
-animations actually run**, and renders a four-trader board, which no saved
-replay is. It **skips** when Playwright or Chromium is absent, so a checkout
-never has to install a browser to run the free suites.
-
-**The island's clock is checked on the light, not on a screenshot.**
-`render.py:clockwork` drives a stage through a bell and the dawn after it, a
-midday and a bell, and a day told where it is going, and reads the key light's
-bearing, a flame's emissive level and `Stage.dayNow()` straight off the stage.
-All three were reported by eye against `island-game-001d-g1` and none of them
-is a brightness: a picture can say how bright a frame came out, not where the
-sun is standing. What it holds shut: a hold does not move the bearing, the fire
-is dark at midday and up at the bell, and the day travels between two board
-events instead of freezing at the last line.
-
-`clockwork` drives the stage directly, which would hold the glide shut without
-ever asking whether the page uses it — and the wiring was the whole bug, so
-`travelling` plays a real replay and watches `window.__island` cross a gap
-between two lines. Both were confirmed against the behaviour they describe
-before it was fixed: the bearing check reports the 2.16-radian sweep, the fire
-check reports it alight at midday, and `travelling` reports a day that never
-travelled at all.
-
-**Measured on the land, not on the canvas.** Several of these checks used to
-ask "is this pixel opaque?" and mean "is this the island?", which was true while
-the model drew on a transparent canvas with a disc of water a little wider than
-the shore. The sea reaches the frame's edge now, so opacity answers *yes*
-everywhere and those questions stopped being questions. Two answers, depending
-on what is being asked: `uncovered` and `alive` classify by colour — water is
-the only strongly blue surface a spectator sees much of, and it stays blue under
-every hour's light because the fill is the sea's own colour — and `mechanics`
-crops its shots to the rectangle the island is drawn into, which is exactly the
-denominator it had before. A card over open sea was always fine; the cards live
-in the margins and the margins are water.
-
-That sweep missed one, and `mobile` went on measuring the island by alpha for
-long enough to make every island-size assertion in it vacuous — it was reporting
-the island as 2.3 times the band it was given, because it was reporting the
-whole canvas. Found while adding `focusing`, and written up
-[above](#a-check-that-could-not-fail). The lesson is not "grep harder": it is
-that a check whose numbers nobody looks at can pass for weeks on a question it
-has stopped asking.
-
-And on the live side: `rowsFromState` against `tests/fixtures/snapshot-sample.json`,
-a real snapshot from a real hub rather than a shape assumed by hand — this is
-what fails if either Switchboard viewer ever changed the fields it hands this
-page, instead of the live view quietly going blank. Regenerated the same way
-`switchboard`'s own `tests/test_web_snapshot.py` builds one, captured once
-rather than reimplemented here.
-
-On the ledger side: every round in every run record is re-scored from its seed
-and has to come out equal to what the manager recorded — including the
-per-trader ratios, which are checked against the gains it wrote down at the
-time — plus the refusals: a record that disagrees with its seed, a re-ingest
-that would duplicate, an edited row, and a denominator that drops a failure.
+**The labour wheel is watched, not sampled.** It used to be read once, 620ms
+after the receipt, on naps accumulating from the sample site rather than from
+the receipt — the same defect the `production` docstring describes for the
+symbols, in the one place it had not been fixed. It now watches every value the
+wheel takes and asserts it was seen at something other than its final one, which
+holds however slow the machine is. **This did not fix the CI flakiness** — the
+second run failed elsewhere — and it is kept because the old form was wrong on
+its own terms, not because it was the cause.
 
 ## Files
 
