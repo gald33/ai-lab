@@ -441,15 +441,35 @@ def test_a_five_good_round_is_its_own_level():
 
 
 def test_adding_a_five_good_level_leaves_the_recorded_ones_alone():
-    """The 72 rounds on disk keep the levels they were played at."""
+    """Every round on disk keeps the level it was played at.
+
+    **Reshaped 2026-08-29**, and the reshape is the point of it. It used to
+    assert `all(key[1] == 4)` over the whole ledger -- true only for as long as
+    nobody played a five-good round -- and its own comment said that when that
+    stopped being true the test was the wrong shape, not the ledger. Four
+    five-good rounds arrived with `fab5419` and it went red, and **nothing
+    noticed through the three pull requests merged after it**, because this
+    suite had never run in CI. It is the failure that started
+    `.github/workflows/tests.yml:viewer-python`.
+
+    The shape it should always have had is the one the docstring claims: a
+    round's level reports the goods it was actually played over, and rounds
+    over different goods never share a board. That holds whatever is on disk
+    tomorrow.
+    """
     rows = scores.load(scores.LEDGER)
     if not rows:
         pytest.skip("no ledger to read")
-    before = {scores.level(r) for r in rows}
-    assert all(key[1] == 4 for key in before), (
-        "every recorded round was played over four goods; if that stops being "
-        "true this test is the wrong shape, not the ledger")
-    assert (2, 5, 3) not in before
+    for row in rows:
+        assert scores.level(row)[1] == row["island"]["goods"], (
+            "a round's level must report the goods it was played over")
+    by_goods = {}
+    for row in rows:
+        by_goods.setdefault(row["island"]["goods"], set()).add(scores.level(row))
+    assert 4 in by_goods, "the four-good rounds are still on four-good levels"
+    seen = [key for keys in by_goods.values() for key in keys]
+    assert len(seen) == len(set(seen)), (
+        "no level key is shared by rounds played over different goods")
 
 
 # --- the official score, and who may have one ---------------------------------

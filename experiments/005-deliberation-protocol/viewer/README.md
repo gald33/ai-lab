@@ -2774,10 +2774,91 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"            # the page: 162
-python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
+node --test "viewer/tests/*.test.mjs"            # the page: 185
+python -m pytest viewer/tests/ -q                # the ledger and the roots: 194
 python viewer/tests/render.py                    # the drawing, in a real browser
+python viewer/tests/render.py --must-run         # the same, refusing to skip
 ```
+
+### All four run in CI, and two of them did not until 2026-08-29
+
+`.github/workflows/tests.yml` had two jobs and neither of them ran either of
+this directory's two largest suites: the 194 pytest tests above were not on
+the `island` job's path, and nothing anywhere ran `render.py`. A green tick on
+a pull request therefore said nothing about the ledger, the scoreboard, the
+palette gates, `serve.py`, or **anything the island draws** — which is the
+same hole this workflow's own header describes for the state before it
+existed, left open in a smaller room.
+
+It cost the usual thing, and the bill was already on the table when this was
+written. `test_scores.py` asserted that every round in `scores/ledger.jsonl`
+was played over four goods. Four five-good rounds arrived with `fab5419`,
+the test went red, and it stayed red through the three pull requests merged
+after it because no machine was reading it. The test's own comment had said in
+advance that this was the shape that would go wrong; nothing was listening.
+It is reshaped to ask what it meant — a round's level reports the goods it was
+played over, and rounds over different goods never share a board — which is
+true whatever lands on disk tomorrow.
+
+Four jobs now: `island`, `viewer-python`, `viewer`, `render`.
+
+**`render` passes `--must-run`, and that flag is the whole reason the job is
+worth having.** `render.py` skips and exits 0 when playwright or a browser is
+missing, which is right for a checkout — nobody should have to install
+Chromium to run the free suites — and is exactly how a CI job passes by
+drawing nothing at all. A job that cannot fail is worse than no job, because
+its tick is a lie rather than an absence. `--must-run` turns every skip
+(no playwright, no browser, no replays) into a failure, so a browser that
+fails to install turns the check red.
+
+### Two failures the browser check reports, and why they are written down rather than fixed
+
+**Decided 2026-08-29.** Running `render.py` on `main` at `68071bb` — before
+any of the CI work — reported two failures, and reproduced them on `0b16c03`:
+
+```
+FAIL island-game-001d-g1 @safari 393x660: the island fills 85% of the 202px band
+     between the chrome and the cards; the rest is dead sky and dead sea
+FAIL island-game-001d-g1 alive: the island is no warmer with the sun down than
+     with it up (tint 0.42 -> 0.34); the light is not on the day's clock
+```
+
+Both reproduce on `0b16c03`. The tints are read off a rendered frame and move
+a little from run to run — the second one came back `0.42 -> 0.35` on one
+repetition here and `0.42 -> 0.34` on the next — so `KNOWN` matches on the
+check's name and the wording of its complaint, never on the numbers.
+
+The job cannot be required while they are red, and there were two honest ways
+out: fix them, or record them. **They are recorded**, in `render.py:KNOWN`,
+with the date and the reason. What was *not* on the table is the third option
+— moving the thresholds until the run goes green — because these are the only
+two defects these checks have ever caught here, and a threshold widened to
+admit the defect it was written for is a check that has been deleted while
+still appearing in the output. The weaker thing is allowed; it is not allowed
+to look like the stronger one.
+
+Why each is recorded rather than fixed:
+
+- **the phone's band.** The island fills ~85% of its 202px band and the gate
+  is 85%, so it fails by a fraction of a percent. The check's own comment
+  already says what the fix is — *"the answer then is to take room back off
+  the chrome rather than to move this number"* — and that is a layout change
+  to `--chrome-top` on a 393×660 viewport that nobody has designed. Doing it
+  badly in a CI commit would trade a recorded failure for an undesigned page.
+- **the day's clock.** The tint falls from about 0.42 with the sun up to about
+  0.35 with it down: the model's evening is not warmer than its midday, and it
+  is the *direction* that is wrong rather than the margin — a check that was
+  merely a shade too strict would at least be reading the right way. This is a
+  real defect in `scene.js`'s light — the kind this file was written to
+  find — and it wants somebody in the lighting, which is more work than
+  wiring up a workflow and should not ride in on it.
+
+**The list cannot rot, because a known failure that stops failing fails the
+run.** `render.py:sort_known` prints a fixed one as `STALE` and exits 1, so
+whoever fixes either of these gets a red check telling them to delete its
+line. Entries match on the check's name and a fragment of its message, never
+on the measured numbers, which drift with the machine — and never across
+boards, so the same complaint about a different replay is a fresh failure.
 
 The ones that matter: a self-report moves nothing, a line that is
 nearly a receipt is not repaired into one, **every saved board parses with
@@ -2803,7 +2884,9 @@ Chromium, asserts the page raises nothing and has one hut per trader and one
 shelf cell per good, plays a receipt at the scene to confirm the **event
 animations actually run**, and renders a four-trader board, which no saved
 replay is. It **skips** when Playwright or Chromium is absent, so a checkout
-never has to install a browser to run the free suites.
+never has to install a browser to run the free suites — and **`--must-run`
+turns that skip into a failure**, which is how CI drives it, since a job that
+skips is a job that passes by doing nothing.
 
 **The island's clock is checked on the light, not on a screenshot.**
 `render.py:clockwork` drives a stage through a bell and the dawn after it, a
@@ -2883,7 +2966,7 @@ that would duplicate, an edited row, and a denominator that drops a failure.
 | `tests/audio.py` | the levels, rendered offline in a real browser; `--wav DIR` to listen. Skips without one |
 | `tests/scene.test.mjs` | the island's geometry — seats, cards, coastline, scenery placement |
 | `tests/clips.test.mjs` | what an event clip borrows off the island, and gives back |
-| `tests/render.py` | the drawing itself, in a real browser; skips without one |
+| `tests/render.py` | the drawing itself, in a real browser; skips without one, or `--must-run` to refuse to. Two known failures, dated, in `KNOWN` |
 | `tests/live.test.mjs` | `rowsFromState` against a real snapshot, not an assumed shape |
 | `tests/fixtures/snapshot-sample.json` | that snapshot — a real hub, captured once |
 | `reveal.py` | the hidden half, after the fact, with `--check` |

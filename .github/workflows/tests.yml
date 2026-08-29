@@ -5,6 +5,13 @@
 # green tick therefore said nothing about the 192 tests, which had only ever
 # passed on whichever machine happened to run them by hand.
 #
+# That gap was closed for the game's pytest and the viewer's node tests, and
+# **left open for the viewer's two largest suites** -- which is the same
+# mistake in a smaller room, and it cost the usual thing: `test_scores.py`
+# went red when the first five-good round was recorded and stayed red through
+# the three pull requests merged after it, because nothing was reading it.
+# Both suites are jobs now.
+#
 # The hub these tests drive is a real one on a loopback port, so nothing here
 # reaches the network and nothing here touches the live lobby.
 name: tests
@@ -25,6 +32,22 @@ jobs:
       - run: pip install -r games/island/requirements-dev.txt
       - run: python -m pytest games/island/tests experiments/005-deliberation-protocol/tests -q
 
+  # The viewer's own Python: the ledger and its refusals, the scoreboard, the
+  # roots, `freeze_static`, the palette gates and `serve.py`. Its own job
+  # rather than another path on `island`'s line, because it needs none of the
+  # game's dependencies -- `pytest` and the standard library are the whole
+  # list -- and because 194 tests that take a minute and a half should not be
+  # queued behind an install they do not use.
+  viewer-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest experiments/005-deliberation-protocol/viewer/tests -q
+
   # The viewer's own tests, which are node's and were never run by anything
   # but a hand. They are the checks on what the island *draws* -- what a clip
   # borrows and gives back, what the light does to the colour of the grass --
@@ -38,3 +61,41 @@ jobs:
         with:
           node-version: "20"
       - run: node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs
+
+  # What the island actually draws, in a real Chromium. The only check on hut
+  # and card placement, on scenery staying off the shelves, on the chrome not
+  # covering the cards, and on the light being on the day's clock -- and until
+  # now the only one of the four suites that no machine ran on its own.
+  #
+  # **`--must-run` is the whole reason this job is worth having.** `render.py`
+  # skips and exits 0 when playwright or a browser is missing, which is right
+  # for a checkout and is exactly how a CI job passes by drawing nothing at
+  # all -- worse than no job, because the tick would then be a lie. The flag
+  # turns every skip into a failure, so a browser that fails to install turns
+  # this red rather than green.
+  #
+  # `render.py` exits 1 on any problem it did not already know about, which is
+  # what fails the step; the two it does know about are recorded in its
+  # `KNOWN` list with a date and a reason, and a known failure that stops
+  # failing turns the job red too. See `viewer/README.md`, "Two failures the
+  # browser check reports, and why they are written down rather than fixed".
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: |
+          python experiments/005-deliberation-protocol/viewer/tests/render.py \
+            --must-run --out "$RUNNER_TEMP/island-shots"
+      # The PNGs are not asserted on -- they are for a person to look at when
+      # the run says something went wrong, which is when they are wanted.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: island-shots
+          path: ${{ runner.temp }}/island-shots
+          if-no-files-found: warn
