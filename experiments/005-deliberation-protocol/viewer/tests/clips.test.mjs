@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 
 import * as THREE from "../web/vendor/three/three.module.js";
 import { stageEvent } from "../web/island-events.js";
+import { M } from "../web/island3d.js";
 
 /** An island with one bread site, and one plot standing in its field. */
 function world() {
@@ -96,4 +97,70 @@ test("a clip that starts mid-way through another grows from the field's own size
   second.update(1.4);
   assert.ok(Math.abs(plot.scale.y - grown) < 1e-9,
             "the second clip ripens the same field to the same height, not off the first's");
+});
+
+
+test("a clip retiring under a later one does not hand the island's own material to it", () => {
+  // **The one that turned the whole island wheat-gold**, and the reason the
+  // yellow was looked for in the lights twice before it was found here.
+  //
+  // Two productions over one field, the first retiring while the second is
+  // still playing. Restore put the island's own `M.grass` back on the plot --
+  // and the second clip, which looks the material up off the node every frame,
+  // painted its next frame straight onto it. `M.grass` is the meadow and two
+  // of every tree's three canopy spheres, so the island's grass and most of
+  // its leaves went the colour of ripe wheat and stayed there for the round.
+  // `M.grassDark` -- the upland, the ridge, the third canopy -- is a different
+  // material and stayed green, which is exactly what "the trees and the hill
+  // are yellow" looks like.
+  //
+  // A shared material, deliberately: the plot holds the island's own `M.grass`
+  // here the way `island3d.js` gives it out.
+  const island = new THREE.Group();
+  const site = new THREE.Group();
+  site.name = "site_bread";
+  const plot = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), M.grass);
+  plot.name = "field_plot_0";
+  plot.position.set(0, 0.5, 0);
+  site.add(plot);
+  island.add(site);
+  const w = { island, goods: ["bread"], stock: null,
+              anchors: { A: new THREE.Vector3(), B: new THREE.Vector3(),
+                         site_bread: new THREE.Vector3(2, 0, 0) } };
+  const was = M.grass.color.getHex();
+
+  const first = stageEvent(made("A"), w);
+  first.update(1.4);
+  const second = stageEvent(made("B"), w);
+  first.restore();          // the first retires while the second is still up
+  second.update(1.2);       // ...and the second paints its next frame
+
+  assert.equal(M.grass.color.getHex(), was,
+               "the island's own grass was painted by a clip that did not own it");
+  assert.notEqual(plot.material, M.grass,
+                  "the plot was handed the island's material while a clip still held it");
+
+  second.restore();
+  assert.equal(plot.material, M.grass, "and the island has it back at the end");
+  assert.equal(M.grass.color.getHex(), was);
+});
+
+test("a clip paints its own clone, not whatever is on the node", () => {
+  // The rule the test above is one consequence of: a clip reads the material
+  // it is going to write once, when it borrows. Looking it up per frame is
+  // what let one clip write through another's borrow.
+  const { plot, world: w } = world();
+  const own = plot.material;
+  const clip = stageEvent(made("A"), w);
+  const mine = plot.material;
+  assert.notEqual(mine, own, "the clip should be holding a clone");
+
+  // Somebody else puts a different material on the node mid-play.
+  const other = own.clone();
+  plot.material = other;
+  const hex = other.color.getHex();
+  clip.update(1.2);
+
+  assert.equal(other.color.getHex(), hex, "the clip painted a material it does not own");
+  assert.notEqual(mine.color.getHex(), own.color.getHex(), "and it did paint its own");
 });

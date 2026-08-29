@@ -557,6 +557,79 @@ curve — and still comes up a little before the light has quite gone, which is
 what the last stretch of the day buys. What changed is how much of the day
 counts as "before the light has quite gone": an eighth of it, not half.
 
+### The island turned wheat-gold because a clip painted a material it did not own
+
+**This is the yellow that was actually reported**, and it took three looks to
+find because two plausible wrong answers were in the way: the campfire's reach
+(real, fixed) and the warm dusk ambient (real, fixed). Both changed the
+picture. Neither was this.
+
+The screenshot that settled it: the meadow the colour of sand, most of the tree
+canopies the same, and the raised middle of the island still green. That is not
+a light — a light does not pick out two of a tree's three canopy spheres. It is
+a **material**. `M.grass` draws the meadow and a tree's `canopy_a` and
+`canopy_c`; `M.grassDark` draws the upland, the ridge and `canopy_b`. Exactly
+the split in the picture, and the colour everything on the wrong side of it
+went was `0xc9a86a` — the gold a field of bread ripens to.
+
+**How a clip reaches the island's own material.** A production clip borrows the
+field plots and paints them green to gold. Borrowing gives the clip a *clone*
+to scribble on and hands the island's own material back when the clip retires,
+which is what stops the fields staying gold (see "fields stuck gold", above).
+Two productions over one field overlap all the time — one settlement making
+bread twice inside five seconds is enough — and then:
+
+1. clip A borrows the plot and puts its clone on it,
+2. clip B borrows the same plot and puts *its* clone on it,
+3. **A retires and hands the island's own `M.grass` back to the node**,
+4. B's next frame reads `node.material` — which is now `M.grass` — and paints
+   it gold.
+
+`M.grass` is shared by every mesh that uses it, so one frame of that turns the
+meadow and two thirds of every canopy the colour of ripe wheat, for the rest of
+the round. The restore in step 3 is the yank; step 4 is the write that lands.
+
+**Both halves are closed.** A clip now reads the material it is going to write
+**once**, when it borrows (`paint()` in `island-events.js`), so a clip can only
+ever paint the clone it owns — looking the material up per frame is what let
+one clip write through another's borrow. And a clip's restore now only puts the
+island's material back **if the node still holds that clip's own clone**;
+otherwise a later clip owns the node and will hand it back itself.
+
+Two tests in `viewer/tests/clips.test.mjs`, both of which fail on the old code:
+
+```bash
+node --test viewer/tests/clips.test.mjs
+```
+
+**And a whole game, because that is how it was seen.** `palette` in
+`viewer/tests/render.py` plays a board from its first frame to its last at 16×
+and reads the island's palette back all the way through. It reaches for one of
+007's rounds, because the two boards under `games/replays` settle nothing and a
+clip only borrows a field when somebody produces; on a checkout without them it
+still plays a whole game and says that it could not see this.
+
+On the code that had the bug, played through
+`004-ladder-a-l-protocol-seed11` (162 frames, four days):
+
+| | before | after |
+|---|---|---|
+| `M.grass` | gold from **frame 11** of 162 — the game's first production | unchanged |
+| `M.wheat` | driven to the clip's green, then gold | unchanged |
+| `M.salt` | driven brine-blue by the salt clip | unchanged |
+| the meadow at the end | `#c9a86a` | `#4c8049` |
+
+The sea is excluded on purpose: `island-life` writes `M.sea` and `M.seaDeep`
+every frame, because the water is on the day's clock. Everything else in the
+palette belongs to the island and no clip may write to it.
+
+**What the two earlier fixes were worth.** Not nothing, and they stay: the
+campfire really was a floodlight and the dusk ambient really did put the sunset
+in the light that falls on every face. But the lesson is the one at the top of
+this file — the report said *the trees and the hill*, and both times that was
+read as a claim about light. It was a claim about **which meshes**, and the
+meshes were saying which material.
+
 ### The warmth belongs to the light, not to the sky over the island
 
 *Corrected 2026-08-28. The section below said the day's own light never takes

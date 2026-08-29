@@ -199,16 +199,46 @@ function borrow(c, node, { material = false } = {}) {
   node.position.copy(was.p);
   node.rotation.copy(was.r);
   node.scale.copy(was.s);
+  //: The clone this clip paints on, and the only material it may write to.
+  //: See `paint` below for why that distinction is the whole bug.
+  let mine = null;
   if (material && node.material) {
-    node.material = own(c, was.m.clone());
+    mine = own(c, was.m.clone());
+    node.material = mine;
   }
   c.borrowed.push(() => {
     node.position.copy(was.p);
     node.rotation.copy(was.r);
     node.scale.copy(was.s);
-    if (was.m) node.material = was.m;
+    //: **Only if the node still holds this clip's own clone.** A clip that
+    //: started later has borrowed the same plot since and put *its* clone on
+    //: the node; handing the island's material back now hands it to a clip
+    //: that is still painting, and the next frame it paints is on the island's
+    //: own `M.grass` -- shared by the meadow and by two thirds of every tree
+    //: canopy, so the whole island turns wheat-gold and stays that way.
+    //: Reported by eye as the trees and the hill going yellow, which is what
+    //: it looks like: `M.grassDark` (the upland, the ridge, the third canopy)
+    //: is a different material and stays green while everything on `M.grass`
+    //: goes. The later clip owns the node now and puts the island's own back
+    //: when it retires.
+    if (was.m && (!mine || node.material === mine)) node.material = was.m;
   });
   return node;
+}
+
+/**
+ * A node this clip is going to recolour, and the material to recolour.
+ *
+ * **A clip writes to the material it holds, never to `node.material`.** Those
+ * are the same object right up until another clip borrows the same node, and
+ * a clip that looks the material up every frame is a clip that will sooner or
+ * later paint on whatever somebody else left there -- including the island's
+ * own. Reading it once, here, is what makes that impossible rather than
+ * unlikely.
+ */
+function paint(c, node) {
+  borrow(c, node, { material: true });
+  return node.material;
 }
 
 /**
@@ -417,16 +447,14 @@ function siteWork(good, site, c) {
 
   if (good === "bread") {
     const green = new THREE.Color(0x55803f), gold = new THREE.Color(0xc9a86a);
-    const plots = part(/^field_plot_/).map((p, i) => {
-      borrow(c, p, { material: true });
-      return { p, k: i / 12, y0: p.position.y, s0: p.scale.y };
-    });
-    return [(t) => plots.forEach(({ p, k, y0, s0 }) => {
+    const plots = part(/^field_plot_/).map((p, i) => (
+      { p, m: paint(c, p), k: i / 12, y0: p.position.y, s0: p.scale.y }));
+    return [(t) => plots.forEach(({ p, m, k, y0, s0 }) => {
       const grow = easeOut(win(t, 0.1 + k * 0.7, 1.4 + k * 0.7));
       const cut = easeInOut(win(t, 2.2 + k * 0.4, 2.7 + k * 0.4));
       p.scale.y = s0 * (0.55 + grow * 1.5) * (1 - cut * 0.72);
       p.position.y = y0 * (p.scale.y / s0);
-      p.material.color.copy(green).lerp(gold, grow);
+      m.color.copy(green).lerp(gold, grow);
     })];
   }
   if (good === "cloth") {
@@ -465,19 +493,17 @@ function siteWork(good, site, c) {
   }
   if (good === "salt") {
     const brine = new THREE.Color(0x6fa8b8), crust = new THREE.Color(0xe9eef0);
-    const pans = part(/_brine$/).map((b, i) => {
-      borrow(c, b, { material: true });
-      return { b, k: i / 4, y0: b.position.y, s0: b.scale.y };
-    });
+    const pans = part(/_brine$/).map((b, i) => (
+      { b, m: paint(c, b), k: i / 4, y0: b.position.y, s0: b.scale.y }));
     const heap = named("salt_heap");
     if (heap) borrow(c, heap);
     const h0 = heap?.scale.x ?? 1;
     return [(t) => {
-      pans.forEach(({ b, k, y0, s0 }) => {
+      pans.forEach(({ b, m, k, y0, s0 }) => {
         const dry = easeInOut(win(t, 0.1 + k * 0.5, 2.2 + k * 0.5));
         b.scale.y = s0 * (1 - dry * 0.78);
         b.position.y = y0 - dry * 0.02;
-        b.material.color.copy(brine).lerp(crust, dry);
+        m.color.copy(brine).lerp(crust, dry);
       });
       if (heap) heap.scale.setScalar(h0 * (0.4 + easeOut(win(t, 2.1, 3.1)) * 0.6));
     }];

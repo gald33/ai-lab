@@ -623,6 +623,7 @@ def run(out: Path, headed: bool = False) -> int:
             problems += afloat(browser, base, boards[0], out)
             problems += nightfall(browser, base, out)
             problems += twilight(browser, base, boards[0], out)
+            problems += palette(browser, base, boards[0], out)
             problems += clockwork(browser, base, out)
             for board in boards:
                 problems += travelling(browser, base, board, out)
@@ -1688,6 +1689,102 @@ def twilight(browser, base: str, board: Path, out: Path) -> list[str]:
             bad.append(f"twilight: {row['olive']}% of the grass is on the yellow side "
                        f"of 90° at day {row['day']}; the campfire's pool is worth "
                        f"about 12% and the rest of a day is worth none")
+    return bad
+
+
+def palette(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A whole game played through, and the island's own palette at the end of
+    it.
+
+    **The bug this exists for turned the island the colour of ripe wheat.** A
+    production clip borrows the field plots and ripens them green to gold. It
+    is handed a clone to paint so the island keeps its own; two productions
+    over one field overlap (a settlement making bread twice inside five seconds
+    is enough), the first clip retires and hands the island's `M.grass` back to
+    a plot the second clip is still painting, and the second's next frame goes
+    straight onto the shared material. `M.grass` is the meadow and two of every
+    tree's three canopy spheres, so the meadow and most of the leaves go gold
+    and stay gold. `M.grassDark` -- the upland, the ridge, the third canopy --
+    is a different material and stays green: "the trees and the hill are
+    yellow" is what that looks like from outside.
+
+    Two unit tests in `clips.test.mjs` pin the mechanism. This is the same
+    thing asked of a whole game, which is how it was actually seen: play a
+    board from its first frame to its last at speed and read the palette back.
+    On the code that had the bug, `M.grass` was gold from the first production
+    of the game -- frame 12 of 162 -- and `M.wheat` and `M.salt` went with it.
+
+    The sea is excluded on purpose: `island-life` writes `M.sea` and
+    `M.seaDeep` every frame because the water is on the day's clock. Everything
+    else in the palette is the island's and no clip may write to it.
+    """
+    #: **A game with production in it**, because production is what borrows a
+    #: field. The two boards kept under `games/replays` are short and settle
+    #: nothing, so this reaches for one of 007's rounds -- served here by the
+    #: viewer's own `ceiling` root -- and falls back to the given board if that
+    #: tree is not in the checkout. The fallback still plays a whole game; it
+    #: just cannot see this particular bug, and says so.
+    busy = (REPO / "experiments" / "007-execution-ceiling" / "replays" / "004-ladder-a"
+            / "board-004-ladder-a-l-protocol-seed11.json")
+    stem = board.name[len("board-"):-len(".json")]
+    url = (f"{base}/?board=ceiling/004-ladder-a/{busy.name}" if busy.exists()
+           else board_url(base, stem))
+    page = browser.new_page(viewport={"width": 1100, "height": 760})
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.goto(url)
+    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_timeout(1200)
+    page.evaluate("async () => { window.__M = (await import('./island3d.js')).M; }")
+    read = """() => {
+      const out = {};
+      for (const [k, m] of Object.entries(window.__M))
+        if (!/^sea/.test(k)) out[k] = '#' + m.color.getHexString();
+      const s = document.getElementById('scrub');
+      return { mats: out, i: s ? Number(s.value) : -1, max: s ? Number(s.max) : -1,
+               clips: window.__island ? window.__island.clips.length : -1 };
+    }"""
+    was = page.evaluate(read)["mats"]
+    #: Sixteen times, because a game is minutes long and this is watching for a
+    #: write that never comes back on its own -- once it has happened, any
+    #: later sample sees it.
+    page.evaluate("""() => { const b = [...document.querySelectorAll('button')]
+      .find((x) => x.textContent.trim() === '16×'); if (b) b.click(); }""")
+    page.click("#play")
+    bad: list[str] = []
+    seen = dict(was)
+    frames, done = 0, -1
+    for _ in range(900):
+        now = page.evaluate(read)
+        frames += 1
+        for k, v in now["mats"].items():
+            if v != seen[k]:
+                #: Reported once per entry per change, with where in the game
+                #: it happened: a palette entry that moves and comes back is
+                #: still a clip writing to the island's own material.
+                bad.append(f"palette: M.{k} was {seen[k]} and is {v} at frame "
+                           f"{now['i']}/{now['max']} with {now['clips']} clip(s) in "
+                           f"flight; a clip may only paint the clone it borrowed")
+                seen[k] = v
+        done = now["i"]
+        if now["max"] >= 0 and done >= now["max"]:
+            break
+        page.wait_for_timeout(120)
+    page.wait_for_timeout(2500)
+    end = page.evaluate(read)["mats"]
+    page.close()
+    bad = list(dict.fromkeys(bad))[:12] + [f"palette: {e}" for e in errs]
+    for k, v in end.items():
+        if v != was[k]:
+            bad.append(f"palette: the game ended with M.{k} at {v}, not {was[k]}; "
+                       f"the island does not get its own colour back")
+    if done < 1:
+        bad.append(f"palette: the replay never advanced ({done} frames in "
+                   f"{frames} samples); nothing was actually played")
+    if not busy.exists():
+        print("  note: palette played "
+              f"{stem} -- 007's replays are not in this checkout, and the "
+              "boards that are do not produce, so a clip never borrows a field")
     return bad
 
 
