@@ -313,6 +313,97 @@ and `Stage.dayNow()` reads the light off it per frame. It never travels
 backwards, for the same reason the disc does not: a new day is a jump, not a
 rewind.
 
+#### And it lands where the disc lands
+
+**Half of that journey was still only the disc's.** `sky()` and `setDay()` are
+handed the same two ends — where the day is now, and where it will be when the
+next line lands — and where there is time to animate, both travel. Where there
+is *not*, they parted: `sky()` puts the disc straight at the far end
+(`placeSun(to)`), and `setDay` kept the light at the near one, because a glide
+it would not run left `this.day` at the hour the frame arrived with. A frame
+with no animation in it is not a corner case — it is **every scrub**
+(`player.seek` emits with `animate: false`, so `hold` is `0`) and **every frame
+for a viewer who asked for less motion**.
+
+So the island had two clocks again, and the size of the disagreement is the
+size of the silence the frame is sitting in front of. Measured on
+`island-game-001d-g1` at 1200×800, scrubbing to six points of the replay and
+reading the disc's own `.sun` box against the hour the model was lit by:
+
+| scrub | the model's hour | the disc, `.sun` top | tint of the land |
+|---|---|---|---|
+| 0.15 | 0 (before the round) | 94px — lowest | 0.394 |
+| 0.30 | 0.28 | 27px — high | 0.368 |
+| 0.35 | 0.38 | 94px — lowest | 0.333 |
+| 0.45 | 0.013 | 20px — highest | 0.397 |
+| 0.80 | 0.29 | 35px — high | 0.385 |
+| 1.00 | 1 (the bell) | 304px — set | 0.349 |
+
+Read the last two columns together: at scrub 0.45 the light is at dawn and warm
+while the disc stands at noon, and at 0.35 the light is at mid-afternoon and
+cool while the disc is on the horizon. **The island was coolest exactly where
+its sun was lowest** — the day inverted, which is what `alive` reports:
+
+    island-game-001d-g1 alive: the island is no warmer with the sun down than
+    with it up (tint 0.41 -> 0.35); the light is not on the day's clock
+
+*The check was right and the drawing was wrong.* The sun-height proxy it uses
+is not the weak link: the disc is on `dayAhead` deliberately, it is the whole
+of the clock a fallback island has, and a model whose light disagrees with it
+is the two-suns defect this section already exists to hold shut.
+
+**Why it failed on one board and not the other.** Nothing about the boards'
+layout: it is where their lines fall. `island-game-002b-g1` is dense enough
+that `dayAhead` is close to `dayProgress` at most frames — its disc tracked its
+light to within a step across the same six scrubs — while `001d`'s three days
+each go quiet after their last event (0.38, 0.84 and 0.69 of the day), so a
+scrub into one of those silences puts the disc a whole afternoon ahead of the
+light. **A board that passes here is a board with no long silences in it**,
+which is not the same as a page that is right.
+
+`setDay` now resolves the far end first and, when there is no journey to run,
+lands on it — the same `placeSun(to)` the disc gets. Both suns, one clock, in
+the still frame as well as the moving one. `tests/daylight.test.mjs` is that
+rule with no browser in it (`node --test viewer/tests/daylight.test.mjs`); the
+pixels are `alive` in `render.py`.
+
+#### A sun that has set is not a low sun
+
+One thing in the check *did* have to change, and it is worth stating plainly
+because it is a change to a check: which frames count. `alive` took the six it
+samples, found the highest and lowest drawn sun among them, and asked for the
+low one to be the warmer. With the two clocks agreed, the lowest sun on both
+boards is the frame **past the bell** — `sky()` sends the disc on down to `SET`
+there, 304px against a sky the sun crosses between 20 and 94 — and the island
+after the bell is drawn *cool on purpose*: a night with one fire in it, which
+is the whole of "Twilight is a cool sky with one warm light" above and what
+`twilight` measures. The same applies at the other end, where `dayProgress` is
+`0` before the round opens and the island is waiting rather than at dawn.
+
+So the check was asserting that the night should be the warmest hour of the
+day, which is the opposite of what this page is drawn to do, and it was
+deciding the whole thing on that one frame: 0.356 against noon's 0.277 on
+`001d` and 0.359 against 0.334 on `002b`, either side of a bar of 0.08.
+
+`sunAt` already says which frames are a time of day: `dim`, the disc's own
+opacity, is zero for the first minutes of a day and zero again once the disc
+has gone down behind the island. Counting only the frames where the sun is
+**in the sky** leaves the claim the check is named for, on the hours it is
+about:
+
+| board | sun low | sun high | margin | bar |
+|---|---|---|---|---|
+| `island-game-001d-g1` | 0.377 (day 0.29) | 0.277 (day 0.49) | **+0.100** | 0.08 |
+| `island-game-002b-g1` | 0.437 (day 0.15) | 0.334 (day 0.66) | **+0.103** | 0.08 |
+
+**The bar is untouched at 0.08.** What changed is the population, and the
+argument for changing it is not that the numbers were inconvenient — it is that
+two of the six frames were not hours of a day at all. And the restriction alone
+does not paper over the bug: applied to the *unfixed* page it leaves `001d` at
+**−0.012**, still inverted and still failing, while `002b` passes at +0.117 as
+it always did. The drawing had to be fixed first, and it was; the frames it is
+judged on had to be hours of a day, and now they are.
+
 ### A hold is a level of night, not an hour
 
 A clip that wants the island dark says so with `life.hold(v)`, and that value
@@ -549,6 +640,61 @@ the defect the check was written for — dead sky above it and dead sea below.
 `island()` re-measures the silhouette off the model's own vertices at twelve
 bearings and fails if it climbs into the chrome's band; `uncovered()` counts the
 model's pixels behind every pill.
+
+### The band the island was given
+
+The size check above was **measuring the phone, not the layout** — the mistake
+its own comment says it was written to avoid — and it took a required CI job to
+show it, as a failure on one board at one viewport by a fraction of a percent:
+
+    island-game-001d-g1 @safari 393x660: the island fills 85% of the 202px band
+    between the chrome and the cards; the rest is dead sky and dead sea
+
+It asked for 85% of the strip from the chrome's foot to the top of the first
+card. But that strip is not all the island's: `cardPlan` keeps a fixed
+clearance below the island's foot so a card hangs clear of the hut above it —
+16 units of gap plus `CARD_TOP`'s 22, **38 units, measured at exactly 38 on
+every board and viewport below**. Thirty-eight units is a constant number of
+*viewBox* units, so as a share of a strip it grows as the frame gets shorter,
+and the same page with no dead sky anywhere in it scores:
+
+| board | 390×844 | 360×640 | 393×660 |
+|---|---|---|---|
+| `island-game-001d-g1` | 0.912 | 0.852 | **0.846** |
+| `island-game-002b-g1` | 0.912 | 0.852 | **0.846** |
+| synthesised, 3 traders | 0.855 | **0.830** | **0.824** |
+| synthesised, 5 traders | **0.827** | **0.821** | **0.828** |
+
+Two things fall out of that table. The floor was not a hair too tight: at three
+traders it misses by three points and at five by nearly three on *every*
+portrait viewport, so any number that passed the boards on disk would have been
+a number chosen to pass them. And **the other board was never passing** — it
+was never measured: `run()` calls `mobile(browser, base, boards[0], out)`, one
+board only, and `002b` scores 0.846 exactly like `001d` when you ask it. The
+known-failure entry said it passed on the other board. It does not; nothing
+asked it.
+
+So the ratio is split into the two claims it was standing in for, and neither
+depends on the window's height:
+
+- **the drawn land fills the band the island was given** — the chrome's foot
+  down to the island's own, read off `geo.islandFoot` through the viewBox's own
+  fit. Measured at **0.984 to 0.993** across both replays, synthesised boards
+  of three, four and five traders, and all three portrait viewports; the floor
+  is `BAND_FILL = 0.95`. That is a stronger claim than the old one at every
+  size, not a weaker one.
+- **the strip below the island is the card's clearance and nothing more** —
+  `CARD_CLEAR = 38` units, with six units of slack for a rounded pixel. This is
+  the half that stops a layout dumping dead sea between the island and the
+  cards and passing anyway.
+
+Dead sky is caught by the first: the island's box begins *at* the chrome's
+band on every frame measured, and a box pushed down would grow the band without
+growing the land in it.
+
+To re-measure: `python viewer/tests/render.py` (the numbers above came from the
+same `landMask` the check uses, over the two replays in `games/replays` plus
+synthetic boards built with `render.synthetic`).
 
 `tests/render.py` drives seven viewports and checks what a screenshot cannot:
 that nothing scrolls sideways, that **no two pieces of chrome overlap**, that

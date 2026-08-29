@@ -417,9 +417,26 @@ export class Stage {
     //:
     //: Never backwards, for the same reason `scene.sky` refuses to travel
     //: back: a new day is a jump, not a rewind.
-    this.glide = (!this.still && day !== null && ms > 0
-                  && typeof until === "number" && until > day)
-      ? { from: day, to: until, t0: performance.now(), ms } : null;
+    //:
+    //: **And where there is no journey to run, the light lands at the far end
+    //: of it rather than the near one** -- which is what `scene.sky` does with
+    //: the disc, and the two have to be one clock. A frame with no animation
+    //: to it (a scrub, or a viewer who asked for less motion) arrives with
+    //: `ms` at zero and the same two ends of the same silence: the disc goes
+    //: straight to the end of it, and the light used to stay at the start.
+    //: On a board whose lines cluster early in a day that is most of a day
+    //: apart -- measured on `island-game-001d-g1`, where a scrub to the
+    //: middle of day one put the disc at the bell and the light at 0.38 --
+    //: and it inverts the whole thing the day is for: the island read
+    //: *cooler* with the sun at its lowest than with it high. Caught by
+    //: `alive` in `viewer/tests/render.py`; the reasoning and the numbers are
+    //: in `viewer/README.md`, "And it lands where the disc lands".
+    const far = (day !== null && typeof until === "number" && until > day)
+      ? until : null;
+    const travels = !this.still && ms > 0 && far !== null;
+    if (!travels && far !== null) this.day = far;
+    this.glide = travels
+      ? { from: day, to: far, t0: performance.now(), ms } : null;
     if (this.still) { this.life?.update(0, this.ctx()); this.render(); }
   }
 

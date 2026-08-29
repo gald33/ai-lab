@@ -62,9 +62,11 @@ jobs:
   # skip and a pass look identical in a tick. With the flag each of those is a
   # failure instead, so this job cannot go green having rendered nothing.
   #
-  # Two failures predate this job and are tracked in `KNOWN_FAILURES` rather
-  # than fixed here or silenced -- see `render.py`. Anything else fails, and so
-  # does a listed failure that stops reproducing.
+  # The two failures that predated this job -- the inverted daylight and the
+  # portrait band -- are fixed, and `KNOWN_FAILURES` is empty again. The
+  # mechanism stays: anything unlisted fails the run, and so does a listed
+  # failure that stops reproducing. See `render.py`, and `viewer/README.md`
+  # for what the two came to.
   drawing:
     runs-on: ubuntu-latest
     steps:
