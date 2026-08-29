@@ -141,10 +141,88 @@ seats.
   minutes of silence is no longer a blink, so past that it exits and this
   bullet's restart is right again.
 - **~100 MB of memory and almost no CPU** between games. A game costs one
-  thread and a poll every few seconds for the length of its episodes.
+  thread and a poll every few seconds for the length of its episodes. Measured
+  rather than guessed — see "What a game and an NPC actually cost" below.
 - **A clock that is roughly right.** Every deadline it posts is absolute UTC
   and the checker compares announced bells against hub timestamps; a badly
   skewed clock makes honest games look like early bells.
+
+## What a game and an NPC actually cost
+
+Measured 2026-08-28 against a local hub, so the numbers are the processes'
+own and not a shared machine's. **Reproduce with `python -m games.island.cost`**
+— it stands its own hub, plays a real game on it, and prints the table below
+as JSON. The game measured is **4 episodes × 15s, 5 goods, 2 seats**; the last
+column says what each figure scales with, which matters more than the figure. What it costs in *money* rather than in machine is "What it
+costs to leave running", further down.
+
+| | peak RSS | CPU | hub requests | hub bytes | scales with |
+|---|---|---|---|---|---|
+| **lobby, idle** | 54 MB | 1.5% of one core | 2.0/s | 2.0 kB/s | nothing — constant |
+| **a managed game** (`run_game`, one table) | 62 MB | 1.4% of one core | 4.9/s | 29–46 kB/s | board length × duration |
+| **one NPC seat** (`run_npc`), waiting | 51 MB | 1.2% of one core | 2.5/s | 3.6 kB/s | nothing — constant |
+| **one NPC seat**, in a game | 51 MB | ~1% of one core | ~2.2/s | ~17 kB/s † | board length × duration |
+| **an agent seat** (`run_entrant`) | one interpreter, plus a model | — | — | — | **tokens**, and nothing here |
+
+Every row but one was measured directly. † the in-game seat is the only
+derived figure: the full game moved 9.5 requests/s and 65 kB/s across four
+processes, and taking off the manager's own 4.9/s and the filler's poll leaves
+about 2.2/s a seat — which agrees with the 2.5/s a waiting NPC was measured at,
+so the derivation is checked rather than assumed.
+
+**Memory is a Python interpreter and nothing else.** 51–62 MB is roughly what
+`python -m` costs before any of this repository is loaded; the board, the
+holdings and the proposals are kilobytes. Four processes playing a game came
+to 223 MB together, which is four interpreters. **So the memory question is
+how many processes, never how big a game** — and a table of four NPCs is four
+interpreters whatever its episodes are set to.
+
+**CPU is not the constraint and will not become one.** A whole managed game
+spent **2.59 CPU-seconds over 185 seconds** of wall clock, and a good share of
+that is the interpreter starting. Everything either process does between polls
+is parsing a few dozen short lines.
+
+**Network is the one that grows, and it grows with the square of the game.**
+Nothing here holds a cursor: every poll re-reads the whole board —
+`history(limit=200)` for a seat, `limit=500` for the manager — so traffic is
+about *polls × mean board length*, and both terms rise as a game runs. A full
+table moved **12.5 MB in 192 seconds** at an average of **6.9 kB a request**.
+
+That the manager's own row reads *29–46 kB/s* is this effect caught in the
+act, not sloppiness: the same process on the same schedule moved 29 kB/s
+measured against a fresh lobby and 46 kB/s measured against one that already
+had a game's worth of lines on it. **Nobody wrote more; there was simply more
+to re-read.** Extending the shape, an 8 × 60s game is on the order of 150 MB
+and an 8 × 150s game several hundred, for one table. That is the number to
+watch when a host runs several at once, and the fix if it ever bites is a
+cursor on `history` — **not** a longer poll interval, which buys bandwidth
+with trades lost at the bell, and three open games have already paid that.
+
+**Disk is negligible and permanent.** One 4-episode game wrote **34 kB**
+across every file it produces — board 15 kB, the archivist's second copy
+11 kB, the run record 3.6 kB, the reveal 2.0 kB, and ~0.4 kB per NPC policy
+trace. `--keep`/`--keep-best` prune the large ones; ledger rows are never
+pruned, and at a few hundred bytes each they do not need to be.
+
+**An NPC seat costs no tokens, and that is the whole point of it.** An agent
+seat is a `claude` session with `--max-turns max(400, 40 × episodes)` and a
+~1,650-token brief, re-reading the board on every turn: the model is the
+entire cost of an entrant and the reason `run_game --max-games` exists. An
+NPC is billed in a different unit altogether — one more interpreter, a couple
+of requests a second, and nothing metered. **A table that would otherwise
+lapse for want of a seat is cheap to fill.**
+
+**What was measured, and how.** Four windows against one local hub, with an
+ASGI wrapper counting every request and its bytes and `/proc/<pid>/stat`
+sampled twice a second: the lobby with no tables, one NPC polling for a table,
+a full game, and the manager alone. **The fourth exists because subtraction
+was the obvious way to get the manager's share and would have been wrong** —
+an NPC in a game polls more than one waiting for a table, so "the game minus
+twice a waiting NPC" charges the manager for the difference. So it was
+measured on a hub with nobody else on it: a table settled and played to seats
+that never bound. CPU is cumulative from process start over each process's
+whole life, so startup is included and every figure is an upper bound on the
+steady state rather than a flattering one.
 
 ## What it writes, and who needs it
 
@@ -881,6 +959,10 @@ Pruning `--out` never touches those, and neither does anything else here:
 that directory is a deliberate handful, not a mirror of what a host holds.
 
 ## What it costs to leave running
+
+**Money, not machine** — for CPU, memory and bandwidth see "What a game and an
+NPC actually cost" above; the two are different bills and only this one grows
+with strangers.
 
 The lab pays for the manager of every table that settles, and `OPEN` costs its
 author nothing — so the bill is bounded by `--max-games` (how many run at
