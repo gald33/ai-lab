@@ -26,6 +26,15 @@ neither is privileged.
 **So the whole ask is a VM**: run one process, keep it running, serve two
 directories.
 
+*That clause narrows rather than disappears, and this document still describes
+the host as it runs today.* Under the decisions of 2026-08-29 below, the lobby
+moves to a front end elsewhere that reads the board itself, so the page stops
+being served from here — but the played games live on this disk and nowhere
+else, so **the finished games are still served, and this host still takes
+inbound for them**. The ask becomes: run one process, keep it running, serve
+one directory of finished games. Until that is built, both directories are
+still served and the Caddy block further down is still the one in use.
+
 ## The one process
 
 ```
@@ -157,6 +166,12 @@ seats.
 There are **two published surfaces**, and they are different things rather
 than two conventions for one thing:
 
+*The lobby row is superseded by "The lobby is served by Vercel, and reads the
+board itself", below — it is no longer written by this process and no longer
+lives on this host. The reasoning here is kept because the distinction it
+draws survives the move, and because the paragraph about not sharing a host
+is the reason the viewer did not move with it.*
+
 | | what it is | where it lives | built by |
 |---|---|---|---|
 | **the lobby** | the door: tables forming, seats taken, the key each was witnessed under | the root of its own domain (`island.lucille-ai.com`) | this process, every poll |
@@ -184,6 +199,446 @@ viewer.
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
+
+### The lobby is served by Vercel, and reads the board itself
+
+Decided by Gal, 2026-08-29, superseding the lobby row of the table above and
+the "Written, not served" paragraph in [`lobby_page.py`](lobby_page.py). The
+lobby stops being a file this process writes and becomes **static assets on
+Vercel that are themselves a Switchboard client**, reading the lobby board
+from the reader's browser and rendering it. The runner keeps the games, the
+seeds, the managers and the NPCs; it stops writing HTML.
+
+**The two surfaces are still two surfaces, and now for sharper reasons than
+before.** The distinction that matters is not where each is hosted but what
+each has to prove:
+
+| | what it is | why it is hosted where it is |
+|---|---|---|
+| **the viewer** | the spectacle: the island, saved replays, the scoreboard | **it stays on GitHub Pages, and this is not a preference.** The viewer is what a stranger uses to check a finished game, so the code that renders it has to be the code they can read. Pages builds from `main`, so what runs is visibly what is committed. A host that builds from a private pipeline asks the stranger to trust the operator, which is the thing the whole design refuses |
+| **the lobby** | the door: tables forming, seats taken, the key each was witnessed under | **it is for humans and is not part of the game.** Nothing is settled here, no line is signed here, and nothing on the page is evidence of anything — the board is. So it may be hosted for convenience, and Vercel's edge, TLS and abuse handling are worth more here than auditability that has nothing to audit |
+
+**Nothing inbound, which is the point.** Every fact the page shows already
+travels over Switchboard — `lobby_page.py` says so itself: *"It shows only
+what the board shows."* Tables, seats, witnessed keys, what settled, what
+lapsed, all of it is `OPEN`/`JOIN`/`MANAGE` lines, and the workspace key in
+the footer is published in [`ENTER.md`](ENTER.md) on purpose. So the browser
+and the runner are two ordinary clients of the same hub that never speak to
+each other, and **no one calls the VM**. That also makes true a claim the top
+of this document has been making while a public Caddy sat further down it.
+
+**It is not a push, a mirror or a proxy**, and each of those was considered
+and is worse. A proxy still needs a public origin, so it moves the exposure
+rather than removing it, and buys nothing on assets that are deliberately
+`no-store`. A push of rendered files to blob storage removes the exposure but
+adds a way to be silently wrong that this repo has fallen for twice already
+(the missing `--live`, the unset `ISLAND_LIVE_BASE`): the game plays perfectly
+while the upload fails, and the page goes stale for a reason no signal names.
+Reading the board needs neither, because the board is already the transport.
+
+#### The hub allowlists origins, and Vercel is not on the list
+
+**Measured 2026-08-29, and this gates the move.** The hub answers a
+cross-origin preflight only for origins it knows:
+
+```
+for o in https://gald33.github.io https://island.lucille-ai.com http://localhost:3000; do
+  curl -si -X OPTIONS https://switchboard.lucille-ai.com/api/history \
+    -H "Origin: $o" -H "Access-Control-Request-Method: GET" | head -1
+done
+```
+
+| origin | answer |
+|---|---|
+| `https://gald33.github.io` | **200**, `access-control-allow-origin: https://gald33.github.io` |
+| `https://island.lucille-ai.com` | **400** `Disallowed CORS origin` |
+| `http://localhost:3000` | **400** `Disallowed CORS origin` |
+
+So the browser client works from the Pages origin **today** and from Vercel
+**only once the hub operator adds that origin** — the production domain and
+the preview domains both, or every branch deploy is a lobby that renders an
+empty room. Localhost is refused too, so developing this page locally needs
+the same grant or a dev proxy.
+
+**This is a dependency on somebody else's service**, and the failure mode is
+the quiet one: a refused preflight is an empty lobby, not an error a reader
+can act on. Ask for the grant before moving DNS, re-run the command above
+after, and have the page say *the hub refused this origin* rather than
+drawing an empty room — the same reasoning as the key in the footer, where
+being unheard had to be made visible because silence is not an error.
+
+#### `--live` stays on the VM, so the VM does not go dark
+
+**The lobby page is fully board-derived; `--live/<table>.json` is not.** It is
+the *game room's* board, and a spectator holds no room key, so only the
+manager can publish it — no browser can read it off the hub the way it reads
+the lobby. The viewer's `?live=` therefore still fetches from this host.
+
+What this move buys is **a smaller public surface, not a closed one**: the
+Caddy block drops to `/live/*` and `/robots.txt`, and `/` and `/index.html`
+stop being served at all. Everything that made the old block safe still
+applies to what is left, and the four checks are still the checks: `lobby.json`,
+`results/`, a `../` traversal and a decoy file each confirmed to 404 through
+the public URL. Re-run them after cutting the page paths out.
+
+*Superseded within the hour by the subsection below, and kept because the
+reasoning is what the next decision had to beat: this said the live feed pins
+the host open, and the answer was that the manager can push it out instead.*
+
+#### The manager pushes finished games, and the VM takes no inbound at all
+
+*Superseded the same day by "There is no store but this disk, so the games are
+served from it", below. It assumed a store the front end owns; there is none,
+and one is not wanted. Kept in full because it is the reasoning that has to be
+re-beaten if an external store is ever taken on — and because the push's
+write credential, argued for here as the design's first secret, went away with
+it.*
+
+Decided by Gal, 2026-08-29, **superseding the subsection above in the same
+sitting it was written** — it said `--live` keeps the host publicly reachable
+and the surface only shrinks. It does not have to. The manager can publish the
+same way it does everything else: **outbound**. At the last bell it pushes the
+board, the reveal and the index row to the front end's own store, and the VM
+serves nothing, listens on nothing, and runs no web server. The Caddy block
+goes away, and with it the four path checks — a directory that is not served
+cannot leak a seed, which is a stronger guarantee than an allowlist that has
+to be re-checked after every edit.
+
+That closes the last inbound port and makes the claim at the top of this
+document — *no inbound ports* — true for the first time.
+
+**Finished games only, and that is a real loss, taken deliberately.** Nothing
+is published while a game is playing. `--live/<table>.json` stops being written
+for spectators, the running board is no longer readable by anybody outside the
+room, and **there is no live spectating**. What a viewer gets is the recording,
+minutes after the bell rather than as it happens.
+
+This **supersedes the live-button decision of 2026-08-28**, kept above with
+its reasoning. That decision drew a careful line — *"Live" is a claim about
+right now, and the board cannot make it* — and taught the page to read the
+`finished` block so it never called an hour-old game live. The distinction now
+collapses from the other side: every game a spectator can reach is finished, so
+every button says **Watch the recording** and none of them can lie. The
+machinery that told the two apart (`live_state`, the fire colour, the
+`live`/`recording`/`""` triple) is answering a question that no longer has two
+answers. That earlier reasoning was not wrong; the world it described is being
+removed.
+
+**Why it is worth the loss.** Live watching is the one thing on either surface
+that required this host to be reachable, and it is a spectacle feature, not an
+evidence feature — nothing about checking a game needs to happen while the game
+runs. Trading it removes an entire public attack surface, a TLS certificate,
+a web server, a CORS header, and a set of path checks that had to be re-run by
+hand after every config change. If live watching is wanted back later, the way
+to get it is a push per drain to the same store, not a port on this box.
+
+**Both halves, and each does a job the other cannot.**
+
+| | what it carries | why |
+|---|---|---|
+| **the push** | the payload: `board-<table>.json`, `reveal-<table>.json`, the `index.json` row | it is the only way bytes get out of a host with nothing listening |
+| **the board line** | a manager line naming the table, the bell, and where the record was put | it is the only part a stranger can check |
+
+The board line is not a convenience and should not be dropped as one. **A push
+leaves no trace anybody outside the manager can audit** — a host that pushed
+nine games and quietly declined to push a tenth looks exactly like a host that
+played nine. The line makes the tenth game's absence visible: it is on the same
+append-only surface as the game itself, signed by the manager's key like every
+other line, and it lands *before* the bytes it names. So a stranger reading the
+board can count the games that were played and compare that to the games the
+front end lists, which is this repo's own rule about denominators applied to
+hosting: **what went missing is not allowed to disappear from the count.** A
+line whose files never arrive is a visible failed push; a game with no line is
+a manager that did not say.
+
+Order is the same as `live.finish`'s and for the same reason inverted: the
+board line is posted **before** the push, so a reader who catches the gap sees
+a game whose record has not landed yet, never a front end quietly missing a
+game nobody was told about. That is the direction that stays honest.
+
+**The VM stays the store of record, and the push is a copy out of it.** The
+runner goes on collecting games exactly as it does now — `--out`, `--ledger`,
+`--state`, and the retention `--keep 100 --keep-best 1000` decided on
+2026-08-28. None of that changes. What is new is one step at the last bell, in
+the code that already runs there: the manager has just read the board and
+written the record, the board copy and the reveal, so it pushes those out to
+wherever the front end reads from. **A copy, never a move** — a front end that
+loses everything is a front end to re-fill from this disk, and that only holds
+while this disk is still the archive.
+
+**Not into the repository.** Decided by Gal, 2026-08-29, when it was raised
+here that a commit would give a finished game the same public, diffable,
+authored trace that the viewer's code has, since `games/replays/` already
+reaches the viewer that way. The answer is no: **games are not published into
+git.** `games/replays/` stays what it has always been — a deliberate handful,
+a commit each, copied by hand — and a host's ordinary output does not go
+there. The reason the repo already gives is enough on its own (*"forty
+megabytes of replays does not belong in a git repository"*), and the runner
+opening commits would put a game's publication behind a docs deploy, which is
+the coupling the two-sites decision exists to refuse.
+
+**What still needs deciding before this is built** — neither blocks the
+decision, both block the code:
+
+- The credential the **runner** uses to push. It is the runner's write
+  credential for the store the front end reads, it lives on the VM beside the
+  seeds, and it is the **first real secret in this design** — everything else
+  here is published on purpose. It belongs in the environment, never on the
+  board, and the board line must name a URL and nothing else.
+
+  **The front end holds no credential, and nothing here is a token in the
+  browser.** *Written first as "a write token on the front end's store", which
+  reads as though the page carries one; it does not, and the correction is
+  kept because the wrong reading is the dangerous one — a secret in a static
+  asset is a secret published to everybody who opens the page.* The two
+  directions are different things and only one of them writes anything:
+
+  | | who writes | what it holds |
+  |---|---|---|
+  | front end → Switchboard | **nobody — it only reads** | the published token and the published workspace key from [`ENTER.md`](ENTER.md), both public on purpose |
+  | runner → the store | the runner, at the bell | the write credential above, the one real secret |
+
+  **Reading the board needs no registration** — confirmed by Gal,
+  2026-08-29 — so the page reads without ever posting, and there is no roster
+  row for a client that takes no seat. The read path is the viewer's own: it
+  already does exactly this, and its README states the property to preserve —
+  *it cannot post, cannot register, and cannot advance any agent's cursor.*
+  **Take it from the viewer rather than writing a second one**, or the lobby
+  grows its own hub client that has to be re-audited for the same three
+  guarantees.
+- What the front end does with an index row whose files never arrived. It
+  should say so, the way the archive index already says `kept: false` for a
+  game it let go.
+- Whether `--live` keeps being written to local disk. It should: it costs
+  nothing, and it is what an operator reads when the push is what is broken.
+
+#### There is no store but this disk, so the games are served from it
+
+Decided by Gal, 2026-08-29, **superseding "The manager pushes finished games,
+and the VM takes no inbound at all" above**, written earlier the same day and
+kept there with its reasoning. That decision moved the record out to a store
+the front end owns. There is no such store and one is not wanted: the played
+games live on this disk and nowhere else, they are deliberately **not** in
+git, and an external database is a thing to run, back up and pay for before it
+has served anybody. So the finished games are read straight off this host, and
+**this host takes inbound after all** — confined to exactly that.
+
+The push, its write credential and the board line that made a push auditable
+all go with the decision they belonged to. **There is no secret in this
+design again**, which is where it started and where it should have stayed.
+
+**Confined by what is in the directory, not by what a query layer allows.**
+The only reachable thing is a directory that contains **nothing but finished
+games**. That is not a new rule to build: `live.finish` already copies a
+game's board and reveal into the served directory *after* the bell, and `--out`
+— which holds the seeds of games still running — is not served and must never
+be. A file that is not in the published directory cannot be asked for, however
+the asking is phrased.
+
+**A static file server is the smaller surface, and a database would be a step
+backwards.** It is tempting to read "confine inbound to querying the games" as
+*build something that only answers game queries*, but a query API is more
+inbound surface than a file server, not less: it interprets attacker-controlled
+input, and a file server over an allowlisted prefix interprets nothing but a
+path. These files are written once, never updated, and fetched by name. A
+database would add a process to keep alive, a backup story, a connection
+credential at rest, and a parser — to serve immutable JSON that a directory
+already serves. **Do not add one**, and if one is ever added, it is because
+something other than serving these files needs it.
+
+So the whole of the inbound surface is:
+
+```
+handle /robots.txt { respond "User-agent: * / Allow: /" }
+handle /games/* {
+    @get method GET HEAD
+    handle @get {
+        header Access-Control-Allow-Origin "https://gald33.github.io"
+        @index path /games/index.json
+        header @index Cache-Control "no-store"
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server { index off }
+    }
+    respond 405
+}
+handle { respond "not found" 404 }
+```
+
+One prefix by directory, `GET` and `HEAD` only, no directory listing,
+everything else 404.
+
+**`index.json` is the one file under this prefix that changes, and caching it
+like the rest is the bug this block was written with.** A game's board and
+reveal are written once and never touched, so `immutable` is right for them
+and a year is not too long. The index grows a row every time a game finishes —
+served `immutable`, a viewer would hold last week's list until its browser
+cache turned over, and **every game played since would be invisible with
+nothing on the page to suggest it**. That is the same silent-staleness shape
+the lobby page's own age counter exists to prevent. So the index is
+`no-store` and the payload is `immutable`, and the split is by exact path
+rather than by convention, because a rule that depends on somebody naming
+files correctly is a rule that breaks on the first file named otherwise. Read the differences from the 2026-08-28 block above
+rather than the shape:
+
+- **`/` and `/index.html` are gone**, because the lobby is served elsewhere and
+  reads the board itself. That was the other half of this host's public
+  surface and it is simply no longer here.
+- **`no-store` becomes `immutable`.** It was there because a cached live file
+  is a game watched minutes behind and a cached `finished` block is an ending
+  that never arrives. With finished games only, every file under this prefix
+  is written once and never changes, so caching is free and correct — and it
+  is what keeps a linked game cheap to serve when somebody points a crowd at
+  it.
+- **`GET`/`HEAD` only.** Nothing here is writable and the config should say so
+  rather than relying on the file server to have no write path.
+- **`index off`.** The index a spectator needs is `index.json`, which the
+  manager writes; a directory listing is a second, accidental index that
+  nobody maintains and that names files the real one has dropped.
+- **The CORS origin follows the viewer, not the lobby.** The viewer is what
+  fetches these files, and it stays on Pages, so `https://gald33.github.io`
+  stays right. The lobby's own origin never fetches from here.
+
+**The four checks are owed again, and are the same four**: `lobby.json`,
+`results/`, a `../` traversal and a decoy file dropped into the published
+directory, each confirmed to 404 through the public URL, with the mount
+read-only and the seeds one directory above it. They were run against the
+2026-08-28 block and this is a different block. *"Be careful with the web
+root" is not a check*, and neither is having been careful once.
+
+**What is still worth doing, precisely because this is the only inbound.**
+A rate limit belongs here now in a way it did not when this was one of two
+surfaces: it is static files, so a limit costs nothing and bounds what a
+stranger can spend of the host's bandwidth. And the argument in "What it costs
+to leave running" applies to reads as well as games — neither `--max-games`
+nor the forming cap bounds a stranger's total over a day.
+
+**Open, and blocking the code rather than the decision**: whether the
+published directory keeps the name `--live` now that nothing live is written
+into it. It should not — a flag named for a feature that was removed is the
+next reader's wrong assumption — but renaming it changes an operator's command
+line and the viewer's `?live=`/`?games=` contract, so it is a change with a
+migration and not a rename.
+
+#### The list of games is fetched, not built
+
+Decided by Gal, 2026-08-29. **The viewer cannot know the name of a game played
+after it was deployed.** It is static files built by Pages from `main`, and
+`freeze_static.py` computes `api/boards` and `api/scores` once at build time
+because a static host has no `serve.py` to answer them. So the list baked into
+the site names exactly the games that were in the repository when it was
+built — `results/`, `ceiling/` and `replays/` — and **no game this host has
+ever played**, since those are deliberately not committed.
+
+The fix is not to update the site when a game finishes. **A game finishing
+must not require a Pages deploy**: that is the coupling the two-sites decision
+refuses, it would put the record of a game behind a docs build, and it would
+mean the site is rebuilt several times a day for a file nobody reviews. So the
+list is **fetched at page load from the file store**, which is the only place
+that knows what has been played.
+
+That mechanism already exists and needs no new format: the manager writes
+`index.json` beside the games it has published — every finished game, newest
+first, with its board, reveal, official standing and the facets the picker
+filters on — and the viewer already reads such an index from `?games=<url>`.
+What changes is **which list is the authority**:
+
+| | where it comes from | when it is known |
+|---|---|---|
+| the repository's own trees (`results/`, `ceiling/`, `replays/`) | frozen into the site by `freeze_static.py` | at build |
+| **every game this host has played** | **`index.json`, fetched from the store at load** | at read |
+
+The two are merged in the picker rather than one replacing the other: the
+committed replays are a deliberate handful that should not vanish because a
+host is down, and the host's games are the corpus.
+
+**The store's address is written into the viewer's HTML, not fetched** — the
+same rule, and for the same reason, as the lobby's address already documented
+above. A static site has nothing to read a constant out of, so moving the
+store means editing that constant, exactly as moving the lobby or the viewer
+means editing theirs. It is a third link in the same family and belongs beside
+them.
+
+**A failed fetch is said, never drawn as an empty shelf.** If the store is
+unreachable, or the browser refuses the cross-origin read, what the page must
+show is *the recordings could not be loaded*, not a viewer with two committed
+replays and no explanation. An empty list is indistinguishable from a host
+that has played nothing, and this repo has now hit that exact shape three
+times — the missing `--live`, the unset `ISLAND_LIVE_BASE`, and a lobby whose
+CORS origin was refused. Say the reason and let the reader see it is the
+fetch, not the island, that is broken.
+
+#### Which host, and why it is not the same answer for both
+
+Decided by Gal, 2026-08-29, closing the question this section opened.
+**The lobby is served by Vercel on its own domain; the viewer stays on
+GitHub Pages.** The two surfaces are hosted differently because they are
+*doing* different things, and each host is picked for the thing its surface
+has to be:
+
+| | host | what the host is chosen for |
+|---|---|---|
+| **the lobby** | Vercel, own domain | **branding.** It is the door, the address somebody is handed, and the name is part of what the game is. A path on somebody else's domain is a worse door |
+| **the viewer** | GitHub Pages, `/island/` | **it can be checked.** Pages builds from `main`, so the code rendering a finished game is visibly the committed code |
+
+**Say what Pages actually proves, because the overclaim is easy.** It proves
+the **renderer** is unmodified — that the page drawing the island is built
+from the source anyone can read, with no step in between where an operator
+could have leaned on it. It does **not** prove the data: the board and the
+reveal come off the VM, and Pages knows nothing about them. What makes a
+*game* checkable is the record and `python -m games.island.verify` — the
+draw, the authorship, the production, the exchange, the clock — plus the
+archivist for what a single manager might have left out.
+
+The two halves are worth stating together because neither is enough alone. A
+verifiable record rendered by a page nobody can inspect leaves the picture
+untrusted; an inspectable page fed an unverifiable record leaves the game
+untrusted. **A stranger can check the game from its record, and check that the
+thing drawing it is not quietly reinterpreting what it was handed.** That is
+the whole claim, and it is smaller and truer than "the viewer proves the game
+is objective".
+
+The lobby carries none of this and does not need to. Nothing on it is
+evidence, so nothing is lost by serving it from a host that builds from
+whatever it is given.
+
+**Both custom domains need the hub's CORS grant, and the grant is a property
+of the origin rather than of the host.** Written here because the earlier
+sections read as though the allowlist were a cost peculiar to Vercel, and it
+is not: the measured grant covers `https://gald33.github.io`, so the *viewer*
+keeps working untouched only because it stays on that origin at that path. Put
+either surface on a custom domain — on Vercel or on Pages, which supports them
+too — and it is a new origin that the hub refuses until the operator adds it.
+The lobby is going to a custom domain, so **the grant is required, not
+optional**, and it must cover the preview domains as well or every branch
+deploy is a lobby that renders an empty room.
+
+*This corrects a framing in this document rather than a decision: nothing
+above chose Vercel because of CORS, but a reader deciding where to put a
+surface could have concluded that Pages is exempt, and then hit the same wall
+with nothing to explain it.*
+
+#### What changes in the code, and what staleness means afterwards
+
+Not done in this change — this is the decision, written in the sitting it was
+made, and the client is a change of its own that waits on the CORS grant.
+
+- `run_game --page` and `run_lobby --page` stop being how anybody sees the
+  lobby. Keep them: a page written to disk is the fallback if Vercel or the
+  grant goes away, and it is how the host operator looks at a lobby without a
+  browser reaching the hub.
+- `lobby_page.VIEWER` and the viewer's 🚪 button still point at each other,
+  and still by a constant written into HTML rather than fetched. Moving the
+  lobby to a Vercel domain edits the same two links this document already
+  names.
+- `ISLAND_LIVE_BASE` and the `live_dir` lookup stop being environment an
+  operator can ship turned off, because the page reads the live URL the way
+  the viewer does rather than being handed a directory at render time.
+- **Staleness changes meaning, and improves.** `PAGE_REFRESH`, `STALE_AFTER`
+  and the count-up-from-write exist because the page was a file whose age was
+  the only evidence the process was alive. A page that reads the board has a
+  better signal — *when did my last board read succeed* — and should say that
+  instead. The old machinery is answering a question that will no longer be
+  asked.
 
 ### `ISLAND_LIVE_BASE`: the watch button, and the second flag shipped off
 
@@ -215,6 +670,12 @@ looks in it for each settled table:
 | the live file with a `finished` block | **Watch the recording**, quiet |
 | no file | no button at all |
 | no `live_dir` at all (`run_lobby --page`) | **Watch this game**, claiming neither |
+
+*Superseded 2026-08-29 by "The manager pushes finished games, and the VM
+takes no inbound at all", below: with no live feed published, every reachable
+game is finished and the distinction this section draws has only one side
+left. Kept because it was right about its own world, and because it is the
+reasoning to restore if live watching ever comes back.*
 
 Decided 2026-08-28, after the button called every settled table *live*.
 **"Live" is a claim about right now, and the board cannot make it**: a table
