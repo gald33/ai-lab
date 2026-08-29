@@ -2937,6 +2937,19 @@ function of its own island, so a level added for some other round cannot reach
 in and relabel it. That form does not depend on what the ledger happens to
 hold, which is what made the old one expire.
 
+**The job carries a `timeout-minutes`**, for the same reason it carries
+`--require`. A run that never ends reports nothing, exactly like a run that
+checked nothing, and GitHub's default would let it sit for six hours first.
+
+The number came from measurement. The suite takes about eight minutes on a
+developer machine; the first CI run went past thirty. That is expected rather
+than alarming — a runner has no GPU, so Chromium falls back to SwiftShader and
+every frame of a three.js island is drawn on the CPU. What that first run could
+*not* say is whether it was slow or stuck, because logs only arrive when a job
+ends. The limit is the instrument that separates the two: finish under it and
+the suite is merely slow, trip it and something is hung. Raise it if the honest
+number turns out higher; never raise it to paper over a hang.
+
 **`--require` is why the drawing job is worth having.** `render.py` skips
 cleanly when there is no playwright, no browser or no replay — right locally,
 and exactly the failure mode a CI job must not have, because a skip and a pass

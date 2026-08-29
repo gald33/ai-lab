@@ -67,6 +67,22 @@ jobs:
   # does a listed failure that stops reproducing.
   drawing:
     runs-on: ubuntu-latest
+    # **A job that cannot skip silently must not be able to hang silently
+    # either.** That is the same failure mode wearing a different hat: a run
+    # that never ends reports nothing, exactly like a run that checked nothing,
+    # and GitHub's own default would let it sit for six hours first.
+    #
+    # The number is set from measurement, not taste. The suite takes about
+    # eight minutes on a developer machine and the first CI run went well past
+    # thirty, which is expected rather than alarming -- a runner has no GPU, so
+    # Chromium falls back to SwiftShader and every frame of a three.js island
+    # is drawn on the CPU. What that first run could not tell anyone is whether
+    # it was slow or stuck, because logs only arrive when a job ends.
+    #
+    # So this is the instrument that answers it: a run that finishes under the
+    # limit was slow, and one that trips it was stuck. Raise it if the honest
+    # number turns out to be higher; do not raise it to paper over a hang.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
