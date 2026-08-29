@@ -512,6 +512,13 @@ stranger can spend of the host's bandwidth. And the argument in "What it costs
 to leave running" applies to reads as well as games — neither `--max-games`
 nor the forming cap bounds a stranger's total over a day.
 
+*Answered below in "Rate limiting: the ceiling is iptables, and the real
+defence is the edge", and not the way this paragraph assumed.* The limit does
+not belong in Caddy — the Caddy on that host is stock and has no `rate_limit`
+directive — and bandwidth is the wrong thing to bound: what fell over on that
+VM was the **connection table**. The answer is the edge cache in front, with
+the existing per-source connection ceiling as the backstop.
+
 **Open, and blocking the code rather than the decision**: whether the
 published directory keeps the name `--live` now that nothing live is written
 into it. It should not — a flag named for a feature that was removed is the
@@ -815,6 +822,143 @@ the public directory were each confirmed to 404 through the public URL, the
 mount is read-only, and the seeds live one directory *above* what is mounted.
 Re-run those four checks after any change to this block — "be careful with the
 web root" is not a check.
+
+### Rate limiting: the ceiling is iptables, and the real defence is the edge
+
+Gal asked for this to be done properly rather than invented, so it was asked
+for: the **Lucille-side agent** answered on a Switchboard room on 2026-08-29,
+and everything in this section that describes the VM comes from that
+conversation. **It is that agent's account of its own repository, not
+something read off the box** — it said plainly that it could not reach the VM
+from its session either, and marked its own answer to the open question below
+as inference. Treat the numbers as authoritative (they are from
+`connlimit/entrypoint.sh`) and the question of what is *currently* protected
+as unverified until somebody runs the two commands.
+
+**The Caddy serving this host is stock — `image: caddy:alpine`, no build
+context, no `xcaddy`, no modules.** So the `rate_limit` directive is simply
+not available, and neither is the Cloudflare DNS module. That settles a plan
+this document was one step from adopting: **do not add a Caddy rate limit
+here.** It would mean replacing the binary on a host whose entire job is
+staying up, to add what the box already does better one layer down.
+
+*Switchboard's own sidecar on the same VM is a **separate** Caddy in its own
+directory, and that is the one carrying a DNS plugin. Do not reason from it to
+the binary serving the island.*
+
+#### What is already there: `lucille-connlimit`
+
+A container that installs a **per-source concurrent-connection ceiling** in the
+host iptables chain `LUCILLE_CONNLIMIT`, from `connlimit/entrypoint.sh`:
+
+| port | max | what it is |
+|---|---|---|
+| 22 | 10 | SSH |
+| 443 | 40 | public HTTPS |
+| 8444 | 20 | switchboard's own origin port |
+
+Overridable by `LUCILLE_CONNLIMIT_*`. `127/8` and RFC1918 are always exempt.
+The chain is **re-asserted every 60 seconds**, because a `ufw` reload or a
+docker network change rebuilds `INPUT` and silently drops the jump.
+
+**It is a ceiling on concurrent connections per source `/32`, not a request
+rate**, and that is the whole of how to size it: *above* what one legitimate
+client holds at peak, *below* what one source needs to exhaust the box.
+Switchboard got 20 because a long-polling agent legitimately holds a
+connection open for up to 25 seconds. **The island wants a lower number than
+switchboard, not a higher one** — its reads are immutable `GET`s that hold a
+connection for milliseconds, so a source sitting on many at once is not a
+spectator.
+
+**Why this matters more than it sounds: an unlisted port is outside the
+ceiling but still shares the VM's connection table**, so a flood against it can
+starve real traffic on `:443`. That is not hypothetical — it is the 2026-07-28
+outage, through a different door.
+
+**The trap, and it is silent.** `expected_rule_count()` returns `n + 4`, where
+the 4 is three `DROP`s plus the trailing `RETURN`. Add a fourth `DROP` without
+bumping that to 5 and `chain_intact()` is false forever, so the 60-second loop
+rebuilds the chain every minute — **which resets the packet counters, and those
+counters are the only visibility there is into whether the ceiling is ever
+being hit.** Change both in the same edit.
+
+Adding a port is a PR against `connlimit/entrypoint.sh` in the Lucille
+repository — the one place the island touches it. `deploy-vm.yml` lists
+`connlimit/**` in its paths, so the change actually reaches the VM; that path
+entry exists because once it did not (their PR #1019).
+
+#### Open, and it decides whether a door is standing open today
+
+`build_chain()` installs `DROP`s for **exactly three ports — 22, 443, 8444.
+There is no wildcard.** So everything depends on one fact nobody in that
+conversation could observe:
+
+- **If the island is served through Lucille's Caddy on the public `:443`**, it
+  is already covered by `HTTPS_MAX 40` and nothing is open.
+- **If the island has its own origin port**, the way switchboard has `:8444`,
+  then it is **not in the chain**, and that is the 2026-07-28 door standing
+  open right now — independently of anything in this document.
+
+Two commands settle it, and they are owed before anything else here is acted
+on:
+
+```
+ss -lnt
+docker exec lucille-connlimit iptables -L LUCILLE_CONNLIMIT -n -v
+```
+
+**Verify the effect, never the process.** A green `docker ps` proves nothing —
+that is exactly how their fail2ban jails were "running" while matching
+nothing. Moving counters are the evidence.
+
+#### The edge is the defence; the ceiling is the backstop
+
+The Lucille agent's judgement, and it is right: **put the caching ahead of the
+rate limiting rather than beside it.** Everything under the games prefix is
+immutable by construction — written once at the bell, never modified — so a
+one-year edge TTL is not a risk, it is the truth about the file. Behind
+Cloudflare, a flood of game reads then terminates at the edge and **never
+reaches the VM's connection table at all** — and the connection table, not
+CPU, is what fell over on 2026-07-28.
+
+That inverts the roles this section started with. The iptables ceiling stops
+being the defence and becomes the **backstop for traffic that bypasses the
+edge**, which is the job it is actually good at.
+
+Two conditions on that, both of which are the difference between it working
+and merely looking like it works:
+
+- **The origin must not be reachable directly by IP.** If it is, the edge
+  cache is optional for an attacker, and a defence an attacker may decline is
+  not one.
+- **`Cache-Control: public, max-age=31536000, immutable` on the games,
+  `no-store` on `index.json`.** The `immutable` keyword is doing real work
+  rather than decorating: it suppresses revalidation on reload, which is
+  precisely the case where a spectator refreshing a page would otherwise walk
+  every conditional request back to the origin.
+
+The split is already the one in the block above, and this is the second
+independent reason for it: `index.json` is the only file under the prefix that
+changes.
+
+**Also unconfirmed: whether the island's DNS record is proxied
+(orange-clouded).** The `lucille-ai.com` zone is on Cloudflare and switchboard
+uses a proxied record plus an Origin Rule, but the island's own record has to
+be checked. If it is grey-clouded, none of the paragraph above is true yet.
+
+#### A correction inherited from that conversation
+
+The Lucille agent first gave **DNS-01 as an unconditional requirement** for
+certificates on that VM, then retracted it: the requirement is conditional on a
+**non-standard origin port**. HTTP-01 and TLS-ALPN-01 hard-require `:80`/`:443`
+by specification, so switchboard on `:8444` had no other option — but an island
+served on the standard public `:443` through the existing Caddy needs no DNS
+plugin, no Cloudflare API token and no Origin Rule.
+
+It is recorded here rather than quietly dropped because the retraction and the
+open question above are the same fact seen twice: **which shape the island is
+determines both whether it needs DNS-01 and whether it is inside the
+connection ceiling.** Answer it once and both follow.
 
 ## Saying something in the room, and knowing it arrived
 
