@@ -287,6 +287,19 @@ def motion(page, where: str) -> list[str]:
       found.blinked = document.querySelectorAll('.rope.refused').length;
       found.chipCross = document.querySelectorAll('.chip-cross').length;
       found.badOnBlink = watch('.pop.bad') - badBefore;
+      //: And then it goes, as an approved offer does. The rope is still open in
+      //: the state -- a refusal does not close the offer -- so what is checked
+      //: is that neither the rope that was there nor one the next paint lays is
+      //: visible once the blink is over.
+      const { DWELL } = await import('./scene.js');
+      await nap(DWELL.refused + 700);
+      const seen_ = (pid) => [...document.querySelectorAll(`.rope[data-pid="${pid}"]`)]
+        .filter(n => n.getBoundingClientRect().width || n.getBoundingClientRect().height)
+        .length;
+      found.ropeAfterBlink = seen_('p6');
+      scene.draw({ ...t.final, phase: 'market', proposals: [offer] }, t);
+      await nap(60);
+      found.ropeRelaid = seen_('p6');
       scene.draw({ ...t.final, phase: 'market' }, t);
 
       scene.play({ kind: 'said', author: scene.traders[0], attempt: false });
@@ -356,6 +369,14 @@ def motion(page, where: str) -> list[str]:
     if not seen["chipCross"]:
         bad.append(f"{where}: the blinked offer carries no cross, so red is the "
                    f"only thing saying which answer it got")
+    # An answered offer goes: the blink ends in the rope leaving the square,
+    # the same as an approved one, and a paint after that does not lay it again.
+    if seen["ropeAfterBlink"]:
+        bad.append(f"{where}: the refused offer is still on the square after its "
+                   f"blink, so a refusal leaves the board looking unanswered")
+    if seen["ropeRelaid"]:
+        bad.append(f"{where}: a paint after the refusal laid the refused offer "
+                   f"again, orange, as though nothing had been said")
     if seen["badOnBlink"]:
         bad.append(f"{where}: {seen['badOnBlink']} refusal badge(s) drawn over an "
                    f"offer that was already blinking")

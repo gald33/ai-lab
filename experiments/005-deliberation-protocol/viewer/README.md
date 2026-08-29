@@ -1275,6 +1275,18 @@ said on the rope and the pill themselves (2026-08-27, Gal's ask):
   cross is *which* answer. `render.py:motion` drives both halves: an offer the
   manager named blinks, carries the cross, and raises no badge; the
   proposal-time refusal above it still raises one.
+* **And then it goes** (2026-08-29, Gal's ask). The blink ended with the rope
+  back to orange and still hanging there, so a board a moment after a refusal
+  looked like one where the offer had never been answered — while an approved
+  offer *leaves*. A refused one now leaves too: the live rope fades out when
+  the blink is over and `withdrawn` keeps the next paint from laying it again.
+  It is hidden rather than dropped, because a refusal does **not** close the
+  offer — it is still open in the state, and keeping the node in `paint()`'s
+  `placed` map is what lets a later settlement or the bell draw its copy from
+  where the pill had got to. Those copies clear the class: hiding the offer on
+  the square never hides the bell taking it or the manager settling it after
+  all. `render.py:motion` checks both halves — nothing visible for that pid
+  once the blink is over, and nothing laid again by the paint after it.
 * **A settlement blinks it green.** A settled offer is out of `this.ropes` by
   the time `play()` runs, because `paint()` draws only open offers — so the
   green copy is spawned from `paint()`, beside the lapsed one.

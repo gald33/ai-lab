@@ -392,6 +392,11 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
    read as "an answer" rather than as "no". */
 .chip-cross { stroke: var(--critical); stroke-width: 3.2; stroke-linecap: round;
   fill: none; }
+/* And then the offer goes. A refused offer is still open on the board, so the
+   next paint lays its rope again -- hidden rather than left off, which keeps it
+   in `scene.js:paint`'s `placed` map so a settlement or a bell can still draw
+   its copy from where the pill had got to. */
+.rope.withdrawn { display: none; }
 @keyframes blink-yes { 0%, 49% { opacity: 1; filter: brightness(1.7); }
                        50%, 100% { opacity: .25; filter: none; } }
 @keyframes blink-no  { 0%, 49% { opacity: 1; filter: brightness(1.7); }

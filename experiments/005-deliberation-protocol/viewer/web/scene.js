@@ -798,6 +798,12 @@ export class Scene {
     //: carrying the message, and is the whole indicator now. Held here and
     //: re-applied by `rope()` for as long as the mark is meant to be up.
     this.noUntil = new Map();
+    //: The offers a refusal has taken off the square. A refusal does not close
+    //: the offer -- the manager would still settle it -- so it is still open in
+    //: the state and `paint()` would lay it again on the next frame, orange, as
+    //: though nothing had been said. An answered offer goes (Gal, 2026-08-29),
+    //: the same as an approved one: the red blink ends in the rope leaving.
+    this.withdrawn = new Set();
     //: Which of the island and the cards this viewer asked for. Portrait only:
     //: landscape has margins for the cards and the two are not competing.
     this.focus = focus;
@@ -1745,6 +1751,11 @@ export class Scene {
     for (const pid of [...this.spot.keys()]) {
       if (!placed.has(pid) && !this.wasStack?.has(pid)) this.spot.delete(pid);
     }
+    //: An offer that is no longer open needs no hiding, and keeping it here
+    //: would hide a *new* offer that reuses the pid on a later scrub.
+    for (const pid of [...this.withdrawn]) {
+      if (!placed.has(pid)) this.withdrawn.delete(pid);
+    }
     // Kept so a refusal played straight after this paint can find what was
     // open at the moment it happened.
     this.state = state;
@@ -1757,6 +1768,10 @@ export class Scene {
     //: and a pill that started its slide again on the way out would leave the
     //: hut it had been waiting over.
     const node = this.rope(p, fan, 1);
+    //: The copy is never the hidden one. `withdrawn` hides the offer *on the
+    //: square*; the bell taking it, or the manager settling it after all, is a
+    //: thing that still has to be seen.
+    node.classList.remove("withdrawn");
     node.classList.add("lapsing");
     this.flights.append(node);
     //: **Dissolved, not switched off.** A plain fade read as the page dropping
@@ -1785,6 +1800,7 @@ export class Scene {
    */
   verdict(p, fan, kind) {
     const node = this.rope(p, fan, 1);
+    node.classList.remove("withdrawn");
     node.classList.add("answered", kind);
     this.flights.append(node);
     const anim = node.animate(
@@ -2071,8 +2087,11 @@ export class Scene {
     if (prog >= 1) g.classList.add("delivered");
     else this.ride();
     //: A rope rebuilt while its refusal is still on screen is re-marked here,
-    //: or the blink would last one frame.
+    //: or the blink would last one frame; one the refusal has already taken
+    //: off the square is built and hidden, so it stays in `placed` and a later
+    //: settlement or bell can still draw its copy from where the pill was.
     if ((this.noUntil.get(p.pid) || 0) > performance.now()) this.markNo(g);
+    else if (this.withdrawn.has(p.pid)) g.classList.add("withdrawn");
     return g;
   }
 
@@ -2201,10 +2220,23 @@ export class Scene {
     this.refuseTimer = setTimeout(() => {
       for (const pid of pids) {
         this.noUntil.delete(pid);
+        //: And then it goes, as an approved offer does. An approved one leaves
+        //: because it stopped being open and `verdict()` fades its copy; a
+        //: refused one is still open, so it is the live rope that fades and
+        //: `withdrawn` keeps the next paint from laying it again.
+        this.withdrawn.add(pid);
         const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
         if (!rope) continue;
-        rope.classList.remove("answered", "refused");
         rope.querySelector(".chip-no")?.remove();
+        const gone = () => {
+          rope.classList.remove("answered", "refused");
+          rope.classList.add("withdrawn");
+        };
+        if (still()) { gone(); continue; }
+        const anim = rope.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 420, easing: "ease-out", fill: "forwards" });
+        anim.finished.then(gone, gone);
       }
     }, DWELL.refused);
     return true;
