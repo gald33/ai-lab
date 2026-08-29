@@ -50,6 +50,36 @@ const GLIDE = 110;
 //: first time its target moves.
 const GLIDE_CAP = 48;
 
+/**
+ * How long a card stays open after the event that opened it has finished.
+ *
+ * **The animation ending is not the moment the card has done its job.** A
+ * settlement's symbols land on the bars and the numbers under them change on
+ * the last frame of the flight -- so a card held for exactly `dwellFor` shuts
+ * on the frame the thing worth reading appears. The point of opening it was the
+ * new number, and the new number is the last thing to arrive.
+ *
+ * Long enough to read four quantities and a utility, short enough that a busy
+ * market is not just every card open. It is deliberately *not* divided by the
+ * pace: like `dwellFor`, this is time the picture needs rather than time the
+ * clock is spending, and the same argument applies (see `PACES` in `feeds.js`).
+ */
+export const CARD_LINGER = 1400;
+
+/**
+ * How long a shut card stays open for one event: the animation, then the
+ * linger.
+ *
+ * A function rather than an expression inside `play()` so the rule can be
+ * stated once and checked without a browser -- the timing was wrong the first
+ * time (the card shut on the frame the new number appeared) and the fix is a
+ * relation between two constants, which is exactly the kind of thing that
+ * drifts back.
+ */
+export function cardHold(event, isStill = false) {
+  return dwellFor(event, isStill) + CARD_LINGER;
+}
+
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -1269,6 +1299,11 @@ export class Scene {
    *
    * It reverts to what the *viewer* chose, not to shut, so a card somebody
    * clicked open is not closed by a trade landing in it.
+   *
+   * `ms` is the animation plus `CARD_LINGER` -- see `play()`. Re-flashing a
+   * card that is already open restarts the clock without rebuilding it, so two
+   * settlements in a row on one trader read as one continuous opening rather
+   * than a card that blinks between them.
    */
   flashCard(name, ms) {
     if (!this.shutCards() || !this.traders.includes(name)) return;
@@ -2378,7 +2413,14 @@ export class Scene {
     //: player is holding the frame for, so the card is not shut under an
     //: animation that is still running.
     if (this.shutCards()) {
-      const ms = dwellFor(event, still());
+      //: **Open before the symbols arrive, and still open after they land.**
+      //: The card is opened here, at the top of `play()`, so it is already
+      //: showing its shelf when the first symbol is built -- `barAt` reads the
+      //: open card's bars rather than aiming at a shut one. And it is held for
+      //: the animation *plus* `CARD_LINGER`, because the number the opening
+      //: was for is the last thing to change: held for exactly `dwellFor` it
+      //: shut on the frame the new quantity appeared.
+      const ms = cardHold(event, still());
       if (event.kind === "produced") this.flashCard(event.trader, ms);
       if (event.kind === "settled") {
         this.flashCard(event.maker, ms);

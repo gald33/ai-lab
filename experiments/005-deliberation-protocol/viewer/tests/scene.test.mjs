@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP,
-         NAME_ROW_DEEP,
+         NAME_ROW_DEEP, cardHold, CARD_LINGER,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
@@ -705,4 +705,32 @@ test("a live island's shut card is sized for what a live card actually has", () 
             "this test no longer describes the bug it was written for");
   assert.ok(CARD_TOP + CARD_H_SHUT_BARE / 2 < CARD_TOP + CARD_H_SHUT_BARE,
             "the aim point is outside the card it aims at");
+});
+
+test("a card opened by an event outlives the animation that opened it", () => {
+  // The bug, stated as an assertion. The hold was `dwellFor` exactly -- which
+  // is when the animation *ends*, and the animation ending is the frame the
+  // new quantity appears on the bar. So the card shut on the one frame the
+  // thing it was opened for became readable.
+  for (const e of [{ kind: "settled" }, { kind: "produced" },
+                   { kind: "settled", give: { bread: 1, cloth: 1 }, want: { iron: 1 } }]) {
+    assert.ok(cardHold(e) > dwellFor(e),
+              `a ${e.kind} card shuts as its last number lands`);
+    assert.equal(cardHold(e) - dwellFor(e), CARD_LINGER,
+                 "the linger is not the whole of the difference");
+  }
+  // Long enough to read four quantities and a utility. If this ever drops to
+  // something reflex-speed the card is flashing, not showing.
+  assert.ok(CARD_LINGER >= 800, "too short to read the numbers it opened for");
+  // And not so long that a busy market is simply every card open.
+  assert.ok(CARD_LINGER <= 3000, "the card is no longer shut by default");
+});
+
+test("reduced motion still holds the card long enough to read", () => {
+  // With motion off `dwellFor` is 0 -- there is no animation to wait for -- so
+  // the linger is the whole hold. Without it a card would open and shut inside
+  // one frame for a viewer who asked for less movement, not more.
+  const e = { kind: "settled" };
+  assert.equal(dwellFor(e, true), 0);
+  assert.equal(cardHold(e, true), CARD_LINGER);
 });

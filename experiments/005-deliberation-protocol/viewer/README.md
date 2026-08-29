@@ -437,9 +437,23 @@ across a click.
 
 `produced` and `settled`, and nothing else. Those are the two that animate the
 shelf -- crates into a yard, symbols on and off a bar -- so a shut card would
-play them against a row of bars nobody can see. The card is open for the
-event's own `dwellFor`, the same number the player is holding the frame for, so
-it is never shut under an animation still running.
+play them against a row of bars nobody can see.
+
+**It opens before the symbols arrive and stays open after they land.** The card
+is opened at the top of `play()`, before `flight()` or `produce()` build
+anything, so `barAt` reads the open card's real bars rather than aiming at a
+shut one. And the hold is `cardHold` -- `dwellFor` *plus* `CARD_LINGER` -- not
+`dwellFor` alone, which is how it was written first and was wrong: `dwellFor`
+ends when the animation ends, and the animation ending is the frame the new
+quantity appears on the bar. The card shut on the one frame the thing it was
+opened for became readable. Measured after the fix: a settlement on game 002
+holds its cards 6.4-7.0s, against a `dwellFor` of 5.0-5.6s for those bundles.
+
+`CARD_LINGER` is deliberately not divided by the playback pace, for the same
+reason `dwellFor` is not: it is time the *picture* needs, not time the clock is
+spending. It also carries the whole hold when motion is reduced, where
+`dwellFor` is zero -- without it a viewer who asked for less movement would get
+a card that opened and shut inside a frame.
 
 **Not "any activity", which was the first idea and is the wrong rule.** A
 `said`, an `ack`, a proposal and a refusal move no goods, and on an open market
