@@ -1,0 +1,27 @@
+id: shared-coding-tasks
+title: 008 — do conventions help agents who share a codebase and do not share permissions, knowledge or context?
+refs:
+  - experiments/001-switchboard-coordination/README.md
+  - reports/2026-08-24-hypothesis-ledger.md
+  - reports/2026-08-24-lessons-for-a-paper.md
+narrative: |
+  The lab's question started here and left. 001 asked whether coordination
+  improves because agents reason harder about each other or because good
+  primitives leave them less to reason about, on agents sharing a codebase; it
+  was run, never published, and closed with its numbers uncleaned. The island
+  (002–007) was built because "better coordination" on a codebase is hard to
+  define independently of the task, and an economy has an answer key.
+
+  Five experiments later the island has answered what it can. Nine questions of
+  the form "do they do it at all" have clean answers; seven of the form "does
+  it help, and by how much" are inside an instrument whose run-to-run sd is
+  1.03 on its own outcome measure. The one treatment that repeatedly beat its
+  control was the one that handed over numbers computed from every trader's
+  private data.
+
+  This arc returns to the codebase with what that taught. The design factor is
+  the asymmetry the island never had — agents differing in permissions, in
+  what they know, and in what context they carry — because that is what makes
+  a coding group need a convention at all. Conventions are the first treatment
+  family; helper tools that do part of the reasoning are the second, and are
+  deliberately not run first.

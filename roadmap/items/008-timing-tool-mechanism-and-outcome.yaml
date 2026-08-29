@@ -1,0 +1,47 @@
+id: 008-timing-tool-mechanism-and-outcome
+title: Measure Switchboard's timing convergence as a mechanism and as an outcome, separately
+arc: shared-coding-tasks
+priority: next
+status: ready
+blocked_on:
+  - 008-coding-task-with-an-answer-key
+refs:
+  - experiments/001-switchboard-coordination/README.md
+  - games/switchboard-what-an-entrant-already-holds.md
+  - CLAUDE.md
+evidence: |
+  Switchboard grew a timing facility — agents converging on a time to talk —
+  and it is the first lab-built coordination primitive that a coding group
+  would plausibly use. It arrives with a warning already written: 001's
+  preserved negative result is that its timing predictor became **well
+  calibrated without improving completion time at all**. Not a broken
+  predictor — one that solved a problem the task did not have. Reported as a
+  single number, that is indistinguishable from a working mechanism whose
+  outcome got lost in noise, and 001 recorded it first precisely because it is
+  the result most likely to be dropped.
+
+  So the timing tool is measured on two ledgers that are never added together:
+
+  - **mechanism** — did the group converge on a time, how fast, how often, and
+    did anyone act outside it. Counts and rates: the endpoint class the
+    hypothesis ledger says survives this lab's noise.
+  - **outcome** — did the shared task go better. Read from settled repo state,
+    against the solo reference and the group ceiling, with the instrument's own
+    between-run movement stated beside it.
+
+  The interesting cell is the one where they disagree. A tool that converges
+  perfectly and buys nothing says the task was not timing-bound, which is a
+  finding about the task and a constraint on every later primitive; a tool that
+  converges poorly and still helps says the coordination benefit is in the
+  asking, not the answer.
+
+  This also pins down where the timing facility sits relative to CLAUDE.md's
+  standing decisions. It is a Switchboard primitive agents hold, like `whisper`
+  or `board_*` — not a scheduler, not a turn, and not a second surface. If
+  measuring it starts to require the runner to drive agents to a rendezvous,
+  that is the forbidden thing arriving in new clothes; the tool may hold a
+  time, and the bell still rings on the clock.
+
+  Done when both ledgers are pre-registered as separate metrics with separate
+  thresholds, and the run reports them side by side even when they point in
+  opposite directions.

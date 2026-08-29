@@ -1,0 +1,49 @@
+id: 008-convention-ladder-start-at-the-end
+title: Run the convention arm as a ladder from a handed-over plan downwards, not from a hint upwards
+arc: shared-coding-tasks
+priority: next
+status: ready
+blocked_on:
+  - 008-carry-forward-what-survives
+  - 008-noise-before-thresholds
+refs:
+  - experiments/007-execution-ceiling/README.md
+  - reports/2026-08-24-hypothesis-ledger.md
+  - experiments/001-switchboard-coordination/README.md
+evidence: |
+  The hypothesis is that conventions — strategies and protocols agreed in
+  advance — help coordination. The island tested subtle versions of that first
+  and spent five experiments learning it could not resolve them; 007 then
+  inverted the order and got answers immediately by starting at the most
+  informative instruction possible and dismantling it. That inversion is the
+  method to import, and it is cheap: a rung is only run if the rung above it
+  worked, so a dead arm is discovered on the first rung rather than the fifth.
+
+  The ladder for a shared coding task, top down, with 001's five stages as the
+  bottom half of it:
+
+  | rung | what the group is handed |
+  |---|---|
+  | 1 | the full partition — who does which slice, in what order, with what interfaces |
+  | 2 | the partition without assignments — the slices, find your own owner |
+  | 3 | a protocol only — how to claim, how to yield, how to announce done; no slices |
+  | 4 | a disposition — "coordinate before you edit"; no slots named |
+  | 5 | nothing — the control |
+
+  Rung 1 is the feasibility question and answers something the island cannot:
+  whether a group of asymmetric agents executes a partition at all, and where
+  execution breaks when it does not. 007's answer on the island was that
+  partners and goods were nearly always right and **quantities** were wrong
+  53% of the time — the failure was in the magnitudes, not the plan. The coding
+  analogue of that question is what rung 1 buys.
+
+  Rung 4 is where the ledger says to expect nothing: told only what is worth
+  saying, agents said almost nothing (7 messages in 200 trader-episodes). If a
+  convention works at rung 3 and not rung 4, the finding is that conventions
+  must name the slot rather than the topic — which is a publishable statement
+  about what a convention *is*, and is the shape of answer this lab can
+  actually resolve.
+
+  Done when the rungs are written and frozen by hash before the first run, each
+  carries its own manipulation check, and each is run only on the evidence that
+  the rung above it produced an effect.
