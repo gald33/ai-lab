@@ -835,16 +835,31 @@ as inference. Treat the numbers as authoritative (they are from
 `connlimit/entrypoint.sh`) and the question of what is *currently* protected
 as unverified until somebody runs the two commands.
 
-**The Caddy serving this host is stock — `image: caddy:alpine`, no build
-context, no `xcaddy`, no modules.** So the `rate_limit` directive is simply
-not available, and neither is the Cloudflare DNS module. That settles a plan
-this document was one step from adopting: **do not add a Caddy rate limit
-here.** It would mean replacing the binary on a host whose entire job is
-staying up, to add what the box already does better one layer down.
+**Lucille's own Caddy is stock — `image: caddy:alpine`, no build context, no
+`xcaddy`, no modules** — so it has neither `rate_limit` nor the Cloudflare DNS
+module.
 
-*Switchboard's own sidecar on the same VM is a **separate** Caddy in its own
-directory, and that is the one carrying a DNS plugin. Do not reason from it to
-the binary serving the island.*
+***That is not the Caddy serving the island, and this section said it was.***
+Corrected 2026-08-29, hours after being written, on a measurement rather than
+an argument: the island has **its own ingress Caddy** — `~/island/ingress` on
+the VM, container `ingress-caddy-1`, its own Caddyfile, listening on
+`0.0.0.0:2096` — and **it carries the Cloudflare DNS plugin**, so it is a
+custom build, not `caddy:alpine`. The Lucille agent had warned in the same
+breath as giving me the stock finding that switchboard's sidecar is a separate
+binary and not to reason from one to the other; I wrote the warning down and
+then did exactly that about the island's.
+
+**What survives the correction, and what does not.** The conclusion — *don't
+add a Caddy rate limit here* — survives, but no longer for the reason given: it
+is not that the binary cannot be rebuilt, it is that the connection ceiling one
+layer down is the right tool and already exists. What does **not** survive is
+the inference: the island's Caddy is a custom build, so whether it carries a
+rate-limiting module is an open question rather than a settled no. Nobody has
+listed its modules.
+
+*The lesson is the one this repository keeps relearning: a fact about one
+component is not a fact about a component beside it, and "the Caddy on that
+host" was never a well-formed subject — there are at least three.*
 
 #### What is already there: `lucille-connlimit`
 
@@ -899,8 +914,34 @@ conversation could observe:
   then it is **not in the chain**, and that is the 2026-07-28 door standing
   open right now — independently of anything in this document.
 
-Two commands settle it, and they are owed before anything else here is acted
-on:
+**Answered 2026-08-29, and both ways it could have gone badly, it did.**
+Measured on the VM by the Lucille-side agent:
+
+- The island's origin is `0.0.0.0:2096` — **its own port, not the public
+  `:443`** — so it is the second case, and `:2096` was **absent from
+  `LUCILLE_CONNLIMIT` entirely. No ceiling at all.**
+- `island.lucille-ai.com` **is** Cloudflare-proxied. But **the origin answered
+  a direct request to the VM's IP on `:2096` with no `cf-ray`**, so the edge is
+  optional for anyone who declines it.
+- A fix exists — Lucille's PR #1371, which adds the ceiling and drops
+  non-Cloudflare sources on `:2096` — but it is **merged to the `candidate`
+  branch, not `main`, and `deploy-vm.yml` triggers on `main` only.** Nothing is
+  live. Both holes are open.
+
+**That second finding invalidates an argument made earlier in this section.**
+The edge-cache defence below was written as the primary control, on the
+assumption that reads terminate at Cloudflare. While the origin answers on its
+IP, **an attacker simply does not use the edge**, and the caching is a
+performance feature rather than a defence. The condition attached to it — *the
+origin must not be reachable directly by IP* — was not a caveat. It was the
+whole thing, and it is currently false.
+
+Kept as written below rather than quietly repaired, because the ordering
+mistake is the instructive part: a defence was designed, and the question of
+whether it could be bypassed was recorded as a footnote to it instead of as
+its precondition.
+
+The commands that settled it, still the right ones to re-run after any fix:
 
 ```
 ss -lnt
