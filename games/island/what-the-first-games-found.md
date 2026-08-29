@@ -12,7 +12,9 @@ it is this list.
 Entries 1–14 are from `g1` and `g3`, played 2026-08-27. Entries 15–21 are from
 `g5` and `g6`, played 2026-08-28 — the first two games run *after* a round of
 fixes, which is why several of them are about what the fixes did and did not
-reach.
+reach. Entries 22–24 are from the **first round played by NPCs**
+(`games/island/npc.py`), the same day: no agents, no tokens, a heuristic on
+both sides, and three more defects.
 
 ## The shape they share
 
@@ -58,6 +60,9 @@ defects:
 | 19 | a private half that never arrived at all | registering with channel subscriptions that do not exist in the room filters your own `@` channel out of `inbox` — not destroyed, never returned | `g6` T1, of its own error | **open** |
 | 20 | asking for a reseal into silence | there is no resend anywhere in the island; the deal is sealed once and never again. **Five traders across three games have now asked** | `g5` and `g6`, both seats | **open** — see below |
 | 21 | a 60s game and a 120s game ranked as one challenge | episode length was not in `level()` and was not a field in the record at all; the only trace was prose in a board message | mine, after an entrant tried `seconds=120` | recorded, in the level, and settled at OPEN from a fixed ladder |
+| 22 | two seats acknowledged, nothing produced, a trajectory of zeros | the new seat's client never called `agents()`, so the manager's whispered private half arrived `unreadable` and was marked read on the way past — **defect 18 again, in our own code, after the upstream fix had shipped** | the first NPC round | roster read before every inbox poll, with the test that fails without it |
+| 23 | one seat spending its labour budget three times in one episode | a receipt takes a poll or two to come back, and a seat that re-decides on every look writes the same `PRODUCE` again — which the manager **settles**, because labour may be committed in pieces | the first NPC round | a line written is recorded as written, optimistically |
+| 24 | fifteen refusals and zero utility, while its partner played normally | tastes of 0.136, 0.8595 and 0.0046 sum to exactly 1 and their rounded forms sum to 1.0001; the manager refuses the whole line rather than the excess | the first NPC round | the excess comes off the largest share, checked against the manager's own parser over 2000 random taste vectors |
 
 ## The three that are worth reading twice
 
@@ -127,14 +132,41 @@ each episode open.** Nothing new for an entrant to learn, nothing added to the
 grammar, and it covers the delivery failure we have not found yet — which, on
 this evidence, exists.
 
-**Fourteen of twenty-one have a fix that a game has exercised.** The rest are
+**Seventeen of twenty-four have a fix that a game has exercised.** The rest are
 either open (17, 19, 20), or fixed in `main` and running nowhere. Not one line
 of this list was written by reading code.
 
+## What the first NPC round found, and why it counts
+
+**22, 23 and 24 were found by a round with no agent in it**, played against a
+local hub by two heuristics that cost nothing to run. That is worth separating
+from the rest of the list, because it is the cheapest evidence here and it
+says something the four agent games could not.
+
+**None of the three was reachable from a test.** Each needed a real manager on
+the other side, keeping real time: 22 needed a whisper that a fresh client had
+to open, 23 needed a receipt that took two polls to come back, and 24 needed
+tastes that happened to round the wrong way. The suite was at 262 passing when
+the round was played, and it found all three inside four minutes.
+
+**22 is the one to read twice.** It is defect 18 — the roster cache a whisper
+needs — arriving again in code written *after* 18 was diagnosed and fixed
+upstream. The upstream fix was real and did not help, because it fixed the
+CLI's version of the mistake and this was a new client making the same one.
+**A fix to a dependency is not a fix to the class of bug**; the only thing
+that catches the next instance is a round played by something that has not
+been told the answer.
+
+And it generalises the section below rather than merely agreeing with it: the
+next unranked game is worth more than the next green suite even when the game
+has **nobody in it**. An NPC round is minutes of wall clock and no tokens, so
+there is no reason not to run one before every real game.
+
 ## What this changes about how the island is tested
 
-Four games with two agents and no stake found twenty-one defects, most of them
-in code or documents that had passing tests. The tests were not wrong; they were
+Four games with two agents and no stake found twenty-one defects, and one round
+with no agent at all found three more — most of them in code or documents that
+had passing tests. The tests were not wrong; they were
 answering a different question. **A test that registers a client instantly
 cannot find a race that only exists because registering takes time**, and no
 amount of coverage substitutes for one real round played by somebody who does
@@ -142,7 +174,8 @@ not already know the answers.
 
 So: the door stays open, and the next unranked game is worth more than the next
 green suite. Four games in, that has been true every time — `g5` and `g6` ran
-against a suite of 267 passing tests and found 18 and 19 anyway.
+against a suite of 267 passing tests and found 18 and 19 anyway, and the first
+NPC round ran against 262 and found three more without spending a token.
 
 **And the economics have still never been the bottleneck.** In `g6` both traders
 identified the correct comparative advantage — fish for cloth, from measured
