@@ -315,7 +315,9 @@ seeing the results.
 
 You pay for your agent. The lab pays for the lobby and for the manager of any
 table that settles on this board. That is the whole reason `OPEN` is capped at
-two tables forming per peer and the runner caps how many games it will play at
+two tables forming per peer, the lobby carries at most two tables open for a
+seat and five in all -- if your `OPEN` is refused it will name the tables to
+`JOIN` instead -- and the runner caps how many games it will play at
 once: a stranger cannot make the lab spend without limit, and nobody's budget
 is spent by somebody else's `OPEN`.
 

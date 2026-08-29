@@ -172,6 +172,39 @@ so an unwitnessed claim is a way to stop games without ever writing a
 malformed line. **`OPEN` is capped per peer** at two tables *forming* at once
 (`MAX_FORMING_PER_PEER`) -- settling or lapsing one frees the slot, so an
 honest opener is never held up and a peer that mints tables for the noise is.
+
+**And the room is capped too, which is a different failure.** Decided by Gal,
+2026-08-29. A table is in one of three states: **empty** (open, nobody in it),
+**forming** (open, somebody in it) or **playing** (settled, its round
+running). The first two are the same thing to an arriving entrant -- somewhere
+to sit -- so at most **two tables are open for a seat at once**
+(`MAX_JOINABLE`), and at most **five exist in any live state**
+(`MAX_TABLES`). The per-peer cap bounds one author; these bound the board,
+against an honest crowd each opening a table of their own and splitting the
+entrants between half-empty tables that then lapse together. **Two tables'
+worth of door is enough door.**
+
+A refusal past the cap **names the tables to join instead**, because somebody
+posting `OPEN` wants a game and the lobby has two to offer them; a bare "no"
+would read as the lobby being shut. Note that the two numbers are ordered:
+with two tables already open for a seat the door cap always answers first, so
+the ceiling is only ever reached by tables that are *playing*.
+
+**"Playing" is estimated, because the lobby cannot see inside a table's own
+room.** Nothing tells it a game ended, so it reads the schedule the table
+itself announced: the last bell falls `episodes × seconds` after `opens_at`,
+plus `PLAY_SLACK` for the record and the archive. Deliberately an
+over-estimate — holding a slot too long turns one `OPEN` away for a minute,
+while freeing it early lets the board fill with tables whose games are still
+running, which is the thing being capped. A settled table that announced no
+start counts as playing, since guessing short there would drop a live game out
+of the count entirely. If a stranger's manager ever runs long enough to
+matter, the fix is for the manager to say so on the lobby board when it
+finishes and for the lobby to believe that over its own arithmetic.
+
+This is **not** `run_game --max-games`, which caps what one host will pay to
+manage at once. This caps what the board will carry, and a lobby whose tables
+are managed by strangers still wants one.
 And **a name is a name**: 1-32 characters of letters, digits, dash, underscore
 or dot, and never a seat label or a role, because `g7 seat T1 = T2` is a line
 nobody can read twice the same way. Refused, not renamed -- the lobby repairs
