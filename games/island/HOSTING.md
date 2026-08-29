@@ -371,10 +371,32 @@ the coupling the two-sites decision exists to refuse.
 **What still needs deciding before this is built** — neither blocks the
 decision, both block the code:
 
-- The credential the push uses. It is a write token on the front end's store,
-  held by the runner, and it is the **first real secret in this design** —
-  everything else here is published on purpose. It belongs in the environment,
-  never on the board, and the board line must name a URL and nothing else.
+- The credential the **runner** uses to push. It is the runner's write
+  credential for the store the front end reads, it lives on the VM beside the
+  seeds, and it is the **first real secret in this design** — everything else
+  here is published on purpose. It belongs in the environment, never on the
+  board, and the board line must name a URL and nothing else.
+
+  **The front end holds no credential, and nothing here is a token in the
+  browser.** *Written first as "a write token on the front end's store", which
+  reads as though the page carries one; it does not, and the correction is
+  kept because the wrong reading is the dangerous one — a secret in a static
+  asset is a secret published to everybody who opens the page.* The two
+  directions are different things and only one of them writes anything:
+
+  | | who writes | what it holds |
+  |---|---|---|
+  | front end → Switchboard | **nobody — it only reads** | the published token and the published workspace key from [`ENTER.md`](ENTER.md), both public on purpose |
+  | runner → the store | the runner, at the bell | the write credential above, the one real secret |
+
+  **Reading the board needs no registration** — confirmed by Gal,
+  2026-08-29 — so the page reads without ever posting, and there is no roster
+  row for a client that takes no seat. The read path is the viewer's own: it
+  already does exactly this, and its README states the property to preserve —
+  *it cannot post, cannot register, and cannot advance any agent's cursor.*
+  **Take it from the viewer rather than writing a second one**, or the lobby
+  grows its own hub client that has to be re-audited for the same three
+  guarantees.
 - What the front end does with an index row whose files never arrived. It
   should say so, the way the archive index already says `kept: false` for a
   game it let go.
