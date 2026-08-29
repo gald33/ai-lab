@@ -62,9 +62,19 @@ jobs:
   # skip and a pass look identical in a tick. With the flag each of those is a
   # failure instead, so this job cannot go green having rendered nothing.
   #
-  # Two failures predate this job and are tracked in `KNOWN_FAILURES` rather
-  # than fixed here or silenced -- see `render.py`. Anything else fails, and so
-  # does a listed failure that stops reproducing.
+  # **Held back once, and back because the reason it was held is fixed.** #187
+  # removed this job after it failed twice on one commit with a different
+  # failure each time: the suite was flaky on a runner with no GPU, and a check
+  # that goes red at random teaches everyone to ignore CI. That is now root-
+  # caused and fixed -- the page renders at 2 frames a second with the stage
+  # running and 25 with it paused, and the samples that raced those frames are
+  # observers and watchers now. `--require` on one commit gives the same result
+  # on four consecutive runs, and `ring` alone on five more with every core
+  # saturated. `viewer/README.md` carries the measurements and the reproduction.
+  #
+  # `KNOWN_FAILURES` is empty as of #186 and #188, which fixed both entries, so
+  # this job is green on nothing but a clean run: anything failing fails it, and
+  # so would a listed failure that stopped reproducing.
   drawing:
     runs-on: ubuntu-latest
     # **A job that cannot skip silently must not be able to hang silently

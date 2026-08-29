@@ -1302,6 +1302,41 @@ PHONES = [("portrait", 390, 844), ("small", 360, 640), ("landscape", 844, 390),
           #: over the bottom of the island moves up with it.
           ("safari", 393, 660)]
 
+#: How much of the band the layout gave the island the drawn land has to fill.
+#:
+#: **Against the band the island was given, not the strip up to the cards.**
+#: The two are not the same: `cardPlan` keeps a fixed clearance below the
+#: island's foot so a card hangs clear of the hut above it, and that clearance
+#: is a constant number of *viewBox units* -- so as a share of a strip measured
+#: in pixels it grows as the window gets shorter. A single floor on that share
+#: is therefore a threshold on the phone rather than on the layout, which is
+#: the mistake this check was written to avoid, and it is why the same page
+#: scored 0.912 on a 390x844 window, 0.852 on 360x640 and 0.846 on 393x660
+#: with no dead sky anywhere in it. The 0.85 floor did not catch a defect on
+#: the short frames; it caught their arithmetic.
+#:
+#: Split in two instead, and both halves are size-independent. This is the
+#: first: how much of its own band the drawn land covers. Measured at
+#: **0.984 to 0.993** across both replays on disk and synthesised boards of
+#: three, four and five traders, on all three portrait viewports -- so a floor
+#: here is a real claim about the drawing rather than a restatement of the
+#: frame. The reproduction is `mobile` in this file:
+#: `python viewer/tests/render.py`.
+BAND_FILL = 0.95
+
+#: The clearance the layout keeps between the island's foot and the top of a
+#: card's box, in viewBox units: the 16 `cardPlan` leaves and `CARD_TOP`'s 22,
+#: which is the card hanging clear of the hut rather than pasted onto it.
+#: Measured at exactly 38 on every board and viewport above. This is the other
+#: half -- the strip below the island is the card's clearance and nothing more,
+#: which is what stops a layout dumping dead sea there and passing.
+CARD_CLEAR = 38
+
+#: Room over `CARD_CLEAR` before it reads as a strip of sea. Not a measurement:
+#: the measurement is exact, and this is what a rounded pixel and a changed
+#: card head are allowed to cost.
+CLEAR_SLACK = 6
+
 #: The chrome that floats over the island. Any two of these overlapping is the
 #: bug this exists to hold shut -- it happened twice while the breakpoints were
 #: being written, once because a media block was authored above the rules it
@@ -1615,8 +1650,10 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
             for frac in (0.15, 0.3, 0.45, 0.6, 0.8, 1.0):
                 at(page, frac)
                 shot = page.evaluate(SAMPLE)
-                shot["sun"] = page.evaluate(
-                    "() => document.querySelector('.sun').getBoundingClientRect().top")
+                shot.update(page.evaluate(
+                    "() => { const s = document.querySelector('.sun');"
+                    " return { sun: s.getBoundingClientRect().top,"
+                    "          up: Number(getComputedStyle(s).opacity) }; }"))
                 read.append(shot)
             page.screenshot(path=str(out / f"{stem}-dusk3d.png"))
             # Warmth *relative to brightness*. Red-minus-blue on its own falls
@@ -1625,8 +1662,29 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
             # dimmer, not the colour. Divided through, it is the tint.
             for r in read:
                 r["tint"] = r["warm"] / max(1.0, r["lum"])
-            high = min(read, key=lambda r: r["sun"])   # smallest top: sun highest
-            low = max(read, key=lambda r: r["sun"])    # largest top: sun lowest
+            #: **Frames with the sun actually in the sky**, which is what
+            #: `sunAt`'s own `dim` says: zero before the day's first minutes
+            #: and zero again once the disc has gone down behind the island
+            #: past the bell (`SET`). Both ends were being counted as "the sun
+            #: is low", and neither is an hour of a day: one is the island
+            #: waiting for a round that has not opened, the other is the night
+            #: after the bell -- which this page draws *cool*, a sky with one
+            #: warm fire under it, on purpose. Comparing that night against
+            #: noon asserted the opposite of what the island is drawn to do,
+            #: and it is the frame the check kept picking as its low sun: 0.36
+            #: against 0.28 on `001d` and 0.36 against 0.33 on `002b`, either
+            #: side of a bar of 0.08. Dropping it leaves the claim the check is
+            #: named for -- **a low sun is a warm island** -- with 0.10 and
+            #: 0.10 of margin on the same two boards. The bar is untouched.
+            day = [r for r in read if r["up"] > 0.05]
+            if len(day) < 2:
+                bad.append(f"{where}: only {len(day)} of {len(read)} frames had "
+                           f"the sun in the sky at all; nothing checked the "
+                           f"light against it")
+                page.close()
+                continue
+            high = min(day, key=lambda r: r["sun"])   # smallest top: sun highest
+            low = max(day, key=lambda r: r["sun"])    # largest top: sun lowest
             if high["sun"] == low["sun"]:
                 bad.append(f"{where}: the sun never moved across the replay, so "
                            f"nothing checked the light against it")
@@ -4302,11 +4360,24 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
           const cards = [...document.querySelectorAll('.card-bg')]
             .map(n => n.getBoundingClientRect()).filter(r => r.width && r.height);
           const cardTop = cards.length ? Math.min(...cards.map(r => r.y)) : innerHeight;
+          // Where the island's own band ends, in the window's pixels -- which
+          // is **not** where the cards start: the layout leaves a fixed
+          // clearance between the two so a card hangs clear of the hut above
+          // it. Mapped through the viewBox's own fit, so this asks the page
+          // where it put the island rather than recomputing the layout.
+          const svg = document.getElementById('island');
+          const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+          const sr = svg.getBoundingClientRect();
+          const unit = Math.min(sr.width / vb[2], sr.height / vb[3]);
+          const oy = sr.y + (sr.height - vb[3] * unit) / 2;
+          const geo = window.__island ? window.__island.geo : null;
+          const islandFoot = geo && typeof geo.islandFoot === 'number'
+            ? oy + geo.islandFoot * unit : null;
           return {
             scrollW: document.documentElement.scrollWidth, winW: innerWidth,
             winH: innerHeight, boxes: chrome.map(box).filter(Boolean),
             land: lb ? { w: lb.width, h: lb.height } : null, drawn, span,
-            box: drawnBox,
+            box: drawnBox, islandFoot, unit,
             chromeTop, cardTop,
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
@@ -4347,15 +4418,39 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             bad.append(f"{where}: the model drew nothing at all")
         elif seen["box"]:
             band = seen["cardTop"] - seen["chromeTop"]
-            fill = seen["box"]["h"] / band if band > 0 else 0
             if band <= 0:
                 bad.append(f"{where}: the cards start at {seen['cardTop']:.0f} and "
                            f"the chrome's band ends at {seen['chromeTop']:.0f}; "
                            f"there is no island band at all")
-            elif fill < 0.85:
-                bad.append(f"{where}: the island fills {fill:.0%} of the "
-                           f"{band:.0f}px band between the chrome and the cards; "
-                           f"the rest is dead sky and dead sea")
+            elif seen["islandFoot"] is not None:
+                #: The band the island was **given** -- the chrome's foot down
+                #: to the island's own -- and the clearance the layout keeps
+                #: below it, asked separately. Together they are the whole of
+                #: the strip and neither depends on how tall the phone is.
+                given = seen["islandFoot"] - seen["chromeTop"]
+                clear = seen["cardTop"] - seen["islandFoot"]
+                fill = seen["box"]["h"] / given if given > 0 else 0
+                if given <= 0:
+                    bad.append(f"{where}: the island's band ends at "
+                               f"{seen['islandFoot']:.0f}, at or above the "
+                               f"chrome's own foot at {seen['chromeTop']:.0f}")
+                elif fill < BAND_FILL:
+                    bad.append(f"{where}: the island fills {fill:.0%} of the "
+                               f"{given:.0f}px band it was given; the rest is "
+                               f"dead sky and dead sea")
+                elif clear > (CARD_CLEAR + CLEAR_SLACK) * seen["unit"]:
+                    bad.append(f"{where}: {clear / seen['unit']:.0f} units of sea "
+                               f"between the island's foot and the cards, where a "
+                               f"card's own clearance is {CARD_CLEAR}")
+            elif seen["box"]["h"] / band < 0.85:
+                #: Landscape, where the cards stand in the margins and the
+                #: layout reserves no band for the island to be measured
+                #: against. Its share of the strip above the first card is the
+                #: only question there is to ask.
+                bad.append(f"{where}: the island fills "
+                           f"{seen['box']['h'] / band:.0%} of the {band:.0f}px "
+                           f"band between the chrome and the cards; the rest is "
+                           f"dead sky and dead sea")
             #: A drawn island narrower than this has stopped being the picture
             #: whatever the arithmetic says, and the answer then is to take
             #: room back off the chrome rather than to move this number.
@@ -5234,10 +5329,18 @@ def whose(browser, base: str, out: Path) -> list[str]:
 #: and are tracked rather than fixed here.
 #:
 #: **This is not a way to make a check quieter.** It exists so `render.py` can
-#: be a required check at all: the two below predate CI ever running this file,
-#: and without somewhere to put them the choice was between never running the
-#: suite and deleting the checks that catch these -- and deleting a check to
-#: get green is the one thing this repo does not do.
+#: be run by CI at all: the two it was opened with predated anything running
+#: this file, and without somewhere to put them the choice was between never
+#: running the suite and deleting the checks that catch them -- and deleting a
+#: check to get green is the one thing this repo does not do.
+#:
+#: **It is empty, and an empty list is the intended state.** Both entries were
+#: fixed rather than aged: the inverted daylight was a real bug in `stage.js`
+#: (the light stayed at the near end of a silence the disc had already crossed)
+#: and the portrait band was a floor whose denominator grew with the phone. The
+#: reasoning and the measurements for both are in `viewer/README.md` -- "And it
+#: lands where the disc lands" and "The band the island was given". Anything
+#: added here again is a debt with a date on it, not a place to put a failure.
 #:
 #: Two rules keep it from rotting into a dumping ground, and both are enforced
 #: in `verdict` below:
@@ -5250,23 +5353,7 @@ def whose(browser, base: str, out: Path) -> list[str]:
 #: Keyed by the stable half of the failure line -- the board and the check --
 #: because the half after the colon carries measured numbers that move between
 #: runs. Every entry carries the date it was admitted and why.
-KNOWN_FAILURES = {
-    "island-game-001d-g1 @safari 393x660": (
-        "2026-08-29",
-        "The island fills ~85% of its band against a 0.85 floor, so it fails by "
-        "a fraction of a percent on this board and passes on the other. Either "
-        "the layout leaves a sliver of dead sky on a 393x660 portrait frame or "
-        "the floor is a hair too tight; deciding which needs the band measured "
-        "across more boards than the two on disk.",
-    ),
-    "island-game-001d-g1 alive": (
-        "2026-08-29",
-        "The island reads *cooler* with the sun down than up (tint ~0.41 -> "
-        "~0.35) where the check wants it warmer by 0.08. Not a threshold: the "
-        "sign is inverted, so the model's light is not tracking the drawn sun "
-        "on this board. A real bug in the lighting, and its own piece of work.",
-    ),
-}
+KNOWN_FAILURES: dict[str, tuple[str, str]] = {}
 
 
 def verdict(problems: list[str]) -> tuple[int, list[str]]:
