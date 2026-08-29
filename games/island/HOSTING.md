@@ -850,12 +850,21 @@ binary and not to reason from one to the other; I wrote the warning down and
 then did exactly that about the island's.
 
 **What survives the correction, and what does not.** The conclusion — *don't
-add a Caddy rate limit here* — survives, but no longer for the reason given: it
-is not that the binary cannot be rebuilt, it is that the connection ceiling one
-layer down is the right tool and already exists. What does **not** survive is
-the inference: the island's Caddy is a custom build, so whether it carries a
-rate-limiting module is an open question rather than a settled no. Nobody has
-listed its modules.
+add a Caddy rate limit here* — survives; both reasons given for it do not.
+
+*Measured shortly after, closing the question this correction opened:* the
+island's Caddy is **v2.11.4, an xcaddy build carrying exactly one plugin,
+`caddy-dns/cloudflare`, and no rate-limit module.** So the module is genuinely
+absent — but **the second reason was wrong too, and worse than the first**: I
+argued against adding one because it would mean rebuilding a binary on an
+uptime-critical box. **The island already builds its own binary, in its own
+Dockerfile.** Adding a module is a line in a build it already runs.
+
+So the honest statement is the plain one: **do not add a Caddy rate limit
+because it is unnecessary, not because it is dangerous.** The ceiling one layer
+down is the right tool and already exists. Two wrong reasons for a right
+conclusion is not a small thing — it is how a conclusion survives the
+disappearance of everything that justified it.
 
 *The lesson is the one this repository keeps relearning: a fact about one
 component is not a fact about a component beside it, and "the Caddy on that
@@ -880,10 +889,41 @@ docker network change rebuilds `INPUT` and silently drops the jump.
 rate**, and that is the whole of how to size it: *above* what one legitimate
 client holds at peak, *below* what one source needs to exhaust the box.
 Switchboard got 20 because a long-polling agent legitimately holds a
-connection open for up to 25 seconds. **The island wants a lower number than
-switchboard, not a higher one** — its reads are immutable `GET`s that hold a
-connection for milliseconds, so a source sitting on many at once is not a
-spectator.
+connection open for up to 25 seconds.
+
+From which I concluded that **the island wants a lower number than switchboard**
+— immutable `GET`s hold a connection for milliseconds, so a source sitting on
+many at once is not a spectator — and proposed 8.
+
+***That is wrong wherever the port is locked to Cloudflare, and the reason is
+worth more than the number.*** Corrected by the Lucille agent, 2026-08-29.
+Behind a proxied record with a CF-only lock on the port, **every packet the
+rule ever sees has already come from a Cloudflare edge node.** So "source" is
+not a reader — it is an edge PoP aggregating an unknown number of real
+readers. A ceiling of 8 would not restrain one greedy scraper; it would drop
+legitimate readers in bulk, the moment more than a handful of them happened to
+share a PoP, **while stopping nothing** — because the abuser arrives through
+the same PoPs. The correct value there is **100**, from Lucille's PR #1371.
+
+**The general lesson, which this document should have known from its own
+material:** a per-source limit means nothing until you say what a source *is*,
+and putting a proxy in front changes the answer without changing the rule.
+
+**And the two are not independent, which is the real defect.** The port's
+ceiling is one number, but what it counts flips with `ISLAND_CF_ONLY`:
+
+| | what the ceiling counts | right value |
+|---|---|---|
+| `ISLAND_CF_ONLY=true` | Cloudflare edge nodes | 100 |
+| `ISLAND_CF_ONLY=false` (the emergency hatch) | **real clients, directly** | ~8 |
+
+So the escape hatch — the thing reached for when Cloudflare is the problem —
+**silently makes the port looser than Lucille's own `:443` at 40**, using a
+number chosen for aggregated PoPs against unaggregated clients. One value,
+two meanings, and the dangerous meaning is the one that appears under
+pressure. Lucille owns the fix (a second variable, in a follow-up to
+`candidate`); it is recorded here because the island is the port it applies
+to.
 
 **Why this matters more than it sounds: an unlisted port is outside the
 ceiling but still shares the VM's connection table**, so a flood against it can
@@ -927,6 +967,33 @@ Measured on the VM by the Lucille-side agent:
   non-Cloudflare sources on `:2096` — but it is **merged to the `candidate`
   branch, not `main`, and `deploy-vm.yml` triggers on `main` only.** Nothing is
   live. Both holes are open.
+
+*Both confirmed a second time from the host: a direct request to the origin IP
+on `:2096` returns 200 with zero `cf-ray` and a real 63ms handshake. And the
+chain is demonstrably live while not covering this port — the `:22` counter
+moved 707 → 989 over two hours, so the method works and `:2096` is simply
+outside it.*
+
+**On the deploy, and on a deadlock I called wrong.** I reported that Lucille's
+CI has been red repo-wide since 2026-08-24 (Actions minutes exhausted) and
+concluded that a don't-merge-red rule made #1371 unmergeable — a deadlock only
+Gal could break. **The deadlock is real in general and already solved here.**
+The VM runs commit `70e13c1b`, whose message is *"Promote candidate: 16 commits
+verified as a batch while CI was capped"*: there is an established route —
+batch on `candidate`, verify as a unit, promote to `main`, deploy — and it has
+carried 16 commits at least once. #1371 is **queued, not blocked**; it missed
+the last promote by ninety minutes.
+
+*Recorded because the error is instructive: I inferred a policy deadlock from
+two facts and never asked whether the people involved already had a way
+through. A repository's actual practice is visible in its history, and I
+reasoned about its rules instead of reading it.*
+
+**And merged is not deployed, applied to the fix itself**: `lucille-connlimit`
+has been up since 2026-08-24 and still logs its three-port line, so a promote
+must **rebuild and recreate that container**, not merely land the commit. The
+first check after any promote is that log line growing a fourth port. If it has
+not, nothing downstream is worth testing.
 
 **That second finding invalidates an argument made earlier in this section.**
 The edge-cache defence below was written as the primary control, on the
