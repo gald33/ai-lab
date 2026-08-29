@@ -2910,10 +2910,61 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"            # the page: 162
-python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
+node --test "viewer/tests/*.test.mjs"            # the page: 180
+python -m pytest viewer/tests/ -q                # the ledger and the roots: 200
 python viewer/tests/render.py                    # the drawing, in a real browser
+python viewer/tests/render.py --require          # ... and as CI runs it
 ```
+
+### All three run in CI now, and two of them did not
+
+*Decided 2026-08-29.*
+
+`.github/workflows/tests.yml` ran `games/island/tests` and
+`experiments/005-deliberation-protocol/tests`. It did **not** run
+`viewer/tests/`, and nothing anywhere ran `render.py` — so a green tick on a
+pull request said nothing about 200 Python tests, and nothing at all about
+what the island actually draws. That is the same gap the workflow's own header
+describes closing for the node tests, left open for these two.
+
+It had already hidden a real failure long enough to be found by accident:
+`test_adding_a_five_good_level_leaves_the_recorded_ones_alone` asserted that
+every round on the ledger was played over four goods, and four five-good
+rounds have since been recorded. The test said in its own message that when
+that stopped being true the test was the wrong shape rather than the ledger,
+so it was reshaped to the property it was guarding — a round's level is a
+function of its own island, so a level added for some other round cannot reach
+in and relabel it. That form does not depend on what the ledger happens to
+hold, which is what made the old one expire.
+
+**`--require` is why the drawing job is worth having.** `render.py` skips
+cleanly when there is no playwright, no browser or no replay — right locally,
+and exactly the failure mode a CI job must not have, because a skip and a pass
+are the same tick. The flag turns each of those into a failure, so the job
+cannot go green having rendered nothing.
+
+### `KNOWN_FAILURES`, and the two rules that stop it rotting
+
+Two failures predate CI ever running `render.py`: a portrait framing check
+that misses its floor by a fraction of a percent on one board, and a lighting
+check whose sign is inverted — the island reads *cooler* with the sun down
+than up. The second is a real bug and its own piece of work.
+
+Without somewhere to put them the choice was between never running the suite
+and deleting the checks that catch them, and **deleting a check to get green is
+the one thing this repo does not do**. So they are listed, dated, and each
+carries the reason it is there. `verdict` enforces two rules:
+
+- anything **not** listed fails the run, exactly as before;
+- anything listed that **stops failing** also fails the run, with a message
+  saying to delete the entry.
+
+The second is what keeps the list honest. A known-failures list whose entries
+outlive their bugs is a list nobody trusts a month later, and by then it will
+swallow a real regression. `tests/test_render_gate.py` holds both rules, plus
+the requirement that every entry carries a date and a reason long enough to
+act on — and it runs in the `island` job, so the gate is covered by the same
+tick it makes possible.
 
 The ones that matter: a self-report moves nothing, a line that is
 nearly a receipt is not repaired into one, **every saved board parses with

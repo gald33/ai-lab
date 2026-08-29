@@ -23,7 +23,18 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r games/island/requirements-dev.txt
-      - run: python -m pytest games/island/tests experiments/005-deliberation-protocol/tests -q
+      # `viewer/tests` was missing from this line and had never been run by
+      # anything but a hand -- 194 tests on the ledger, the roots, the
+      # scoreboard and the palette, none of them behind a green tick. It hid a
+      # real failure for long enough to be found by accident: a test asserting
+      # every recorded round was four-good, against a ledger that had since
+      # grown four five-good rounds.
+      - run: >
+          python -m pytest
+          games/island/tests
+          experiments/005-deliberation-protocol/tests
+          experiments/005-deliberation-protocol/viewer/tests
+          -q
 
   # The viewer's own tests, which are node's and were never run by anything
   # but a hand. They are the checks on what the island *draws* -- what a clip
@@ -38,3 +49,39 @@ jobs:
         with:
           node-version: "20"
       - run: node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs
+
+
+  # What the island *draws*, in a real browser. `render.py` is the only check
+  # on card and hut placement, on scenery not landing on a shelf, on the chrome
+  # not covering the cards and on the light being on the day's clock -- and
+  # until now nothing ran it, so none of that was covered by a green tick.
+  #
+  # **`--require` is the whole point of the invocation.** `render.py` skips
+  # cleanly when there is no playwright, no browser or no replay, which is
+  # right locally and is exactly the failure mode a CI job must not have: a
+  # skip and a pass look identical in a tick. With the flag each of those is a
+  # failure instead, so this job cannot go green having rendered nothing.
+  #
+  # Two failures predate this job and are tracked in `KNOWN_FAILURES` rather
+  # than fixed here or silenced -- see `render.py`. Anything else fails, and so
+  # does a listed failure that stops reproducing.
+  drawing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: >
+          python experiments/005-deliberation-protocol/viewer/tests/render.py
+          --require --out "$RUNNER_TEMP/island-shots"
+      # The pictures the run measured, kept whether it passed or failed: a
+      # threshold on a rendered image is not arguable without the image.
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: island-shots
+          path: ${{ runner.temp }}/island-shots
+          if-no-files-found: warn
