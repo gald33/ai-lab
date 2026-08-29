@@ -26,6 +26,13 @@ neither is privileged.
 **So the whole ask is a VM**: run one process, keep it running, serve two
 directories.
 
+*That last clause is on its way out and this document still describes the host
+as it runs today.* Under the decisions of 2026-08-29 below, the lobby moves to
+a front end elsewhere and the manager pushes each finished game out to it, so
+the ask becomes **run one process and keep it running** — nothing served,
+nothing inbound. Until that is built, the two directories are still served and
+the Caddy block further down is still the one in use.
+
 ## The one process
 
 ```
@@ -340,14 +347,34 @@ board line is posted **before** the push, so a reader who catches the gap sees
 a game whose record has not landed yet, never a front end quietly missing a
 game nobody was told about. That is the direction that stays honest.
 
-**What still needs deciding before this is built** — none of it blocks the
-decision, all of it blocks the code:
+**The VM stays the store of record, and the push is a copy out of it.** The
+runner goes on collecting games exactly as it does now — `--out`, `--ledger`,
+`--state`, and the retention `--keep 100 --keep-best 1000` decided on
+2026-08-28. None of that changes. What is new is one step at the last bell, in
+the code that already runs there: the manager has just read the board and
+written the record, the board copy and the reveal, so it pushes those out to
+wherever the front end reads from. **A copy, never a move** — a front end that
+loses everything is a front end to re-fill from this disk, and that only holds
+while this disk is still the archive.
 
-- Where the push lands, and the credential it uses. It is a write token on the
-  front end's store, held by the runner, and it is the **first real secret in
-  this design** — everything else here is published on purpose. It belongs in
-  the environment, never on the board, and the line above must name a URL and
-  nothing else.
+**Not into the repository.** Decided by Gal, 2026-08-29, when it was raised
+here that a commit would give a finished game the same public, diffable,
+authored trace that the viewer's code has, since `games/replays/` already
+reaches the viewer that way. The answer is no: **games are not published into
+git.** `games/replays/` stays what it has always been — a deliberate handful,
+a commit each, copied by hand — and a host's ordinary output does not go
+there. The reason the repo already gives is enough on its own (*"forty
+megabytes of replays does not belong in a git repository"*), and the runner
+opening commits would put a game's publication behind a docs deploy, which is
+the coupling the two-sites decision exists to refuse.
+
+**What still needs deciding before this is built** — neither blocks the
+decision, both block the code:
+
+- The credential the push uses. It is a write token on the front end's store,
+  held by the runner, and it is the **first real secret in this design** —
+  everything else here is published on purpose. It belongs in the environment,
+  never on the board, and the board line must name a URL and nothing else.
 - What the front end does with an index row whose files never arrived. It
   should say so, the way the archive index already says `kept: false` for a
   game it let go.
