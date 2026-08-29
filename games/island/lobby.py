@@ -98,6 +98,42 @@ HOLD = "LOBBY holding this channel: "
 #: never held back for long.
 MAX_FORMING_PER_PEER = 2
 
+#: How many tables may be **open for a seat** at once, across the whole lobby.
+#: A table is open for a seat while it is neither settled nor lapsed --
+#: *empty* if nobody has joined it yet, *forming* once somebody has; both are
+#: a place an entrant can sit down, and that is the only difference this cap
+#: cares about.
+#:
+#: Decided by Gal, 2026-08-29. `MAX_FORMING_PER_PEER` bounds one peer and this
+#: bounds the room, which are different failures: the first is somebody
+#: minting tables for the noise, the second is an honest crowd each opening
+#: one and leaving a page of half-empty tables that split the entrants between
+#: them and lapse together. **Two seats' worth of door is enough door**: an
+#: arriving entrant should be choosing between a couple of tables, not
+#: scrolling. Past that, opening is refused *and told where to sit instead* --
+#: a refusal that names the tables you could join is not an obstruction.
+MAX_JOINABLE = 2
+
+#: How many tables may exist at once in any live state -- open for a seat, or
+#: settled and still being played. Five, so that two forming plus a few in
+#: progress is ordinary and a runaway is not. It is not the same limit as
+#: `run_game --max-games`, which caps what **one host will pay to manage** at
+#: once; this caps what the **board will carry**, and a lobby whose tables are
+#: managed by strangers still wants one.
+MAX_TABLES = 5
+
+#: How long after its last bell a settled table still counts against
+#: `MAX_TABLES`. The lobby cannot see the table's own room, so it cannot be
+#: told the game ended -- what it has is the schedule it announced itself:
+#: play starts at `opens_at` and runs `episodes x seconds`. This is the slack
+#: after that for the bell, the record, the archive comparison and a manager
+#: that started a little late.
+#:
+#: Deliberately an over-estimate. Holding a slot slightly too long turns one
+#: extra `OPEN` away for a minute; freeing it too early lets the board fill
+#: with tables whose games are still running, which is the thing being capped.
+PLAY_SLACK = 180.0
+
 #: How many messages one drain reads. The hub keeps a board for about an hour,
 #: and this is the slice of it a poll takes; a board busier than this between
 #: two polls loses its middle, which `Lobby._window` notices out loud rather
@@ -201,6 +237,35 @@ class Table:
 
     def full(self) -> bool:
         return len(self.seats) >= self.traders
+
+    def joinable(self) -> bool:
+        """Somewhere an entrant can still sit down: **empty** if no seat has
+        been claimed, **forming** once one has. Neither settled nor lapsed."""
+        return not (self.settled or self.lapsed)
+
+    def playing(self, now: float, slack: float = PLAY_SLACK) -> bool:
+        """Settled, and its announced round has not plainly finished yet.
+
+        **Estimated from the schedule this table itself announced**, because
+        the lobby has no view into the table's own room and nothing tells it a
+        game ended. `opens_at` is on the board, `episodes` and `seconds` were
+        settled at `OPEN`, so the last bell falls at
+        `opens_at + episodes x seconds` and this allows `slack` past it.
+
+        A table settled without an announced start counts as playing: that is
+        the one case where guessing short would drop a live game out of the
+        count entirely.
+
+        If a stranger's manager ever runs long enough for this to matter, the
+        fix is for the manager to say so on the lobby board when it finishes
+        -- a board write, in keeping with everything else here -- and for this
+        to believe that in preference to its own arithmetic.
+        """
+        if not self.settled or self.lapsed:
+            return False
+        if self.opens_at is None:
+            return True
+        return now < self.opens_at + self.episodes * self.seconds + slack
 
     def ready(self) -> bool:
         return self.full() and self.manager is not None and not self.settled
@@ -460,13 +525,35 @@ class Lobby:
     # --- settling --------------------------------------------------------
 
     def _open(self, peer: str, action: Open) -> None:
+        now = self.clock()
         forming = [t for t in self.tables.values()
-                   if t.opened_by == peer and not (t.settled or t.lapsed)]
+                   if t.opened_by == peer and t.joinable()]
         if len(forming) >= MAX_FORMING_PER_PEER:
             raise Refused(
                 f"you already have {len(forming)} tables forming "
                 f"({', '.join(t.id for t in forming)}) -- fill one, or wait "
                 f"for it to lapse, before opening another")
+
+        # **The room's cap, not the peer's**, and the reason it names the
+        # tables: somebody posting OPEN wants a game, and a lobby with two
+        # tables already waiting for seats has one to offer them. Turning them
+        # away without saying where to sit would make the cap read as the
+        # lobby being closed.
+        joinable = sorted((t.id for t in self.tables.values() if t.joinable()))
+        if len(joinable) >= MAX_JOINABLE:
+            raise Refused(
+                f"{len(joinable)} tables are already open for a seat "
+                f"({', '.join(joinable)}) -- JOIN one of those rather than "
+                f"opening a third. A table opens again as soon as one of them "
+                f"fills or lapses")
+
+        live = joinable + sorted(t.id for t in self.tables.values()
+                                 if t.playing(now))
+        if len(live) >= MAX_TABLES:
+            raise Refused(
+                f"this lobby is at its limit of {MAX_TABLES} tables "
+                f"({', '.join(live)}) -- some are still being played. Wait "
+                f"for one to finish, or JOIN one that is open for a seat")
         table = Table(id=f"g{self._next}", traders=action.traders,
                      episodes=action.episodes, rounds=action.rounds,
                      goods=action.goods, seconds=action.seconds,

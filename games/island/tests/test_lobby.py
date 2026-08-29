@@ -498,9 +498,19 @@ def test_one_peer_cannot_mint_tables_without_limit(hub):
     assert "already have 2 tables forming" in lobby.refusals[-1]["reason"]
 
 
-def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub):
+def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub, monkeypatch):
+    """The per-peer cap, with the room's own cap lifted out of its way.
+
+    `MAX_JOINABLE` (2) and `MAX_FORMING_PER_PEER` (2) are the same number, so
+    on a default lobby the room's cap always bites first and this one can
+    never be observed. It is kept because it is the narrower guard -- it bounds
+    *one peer* rather than the board -- and it is what would still hold if the
+    room's cap were ever raised. So this test raises it, which is exactly the
+    circumstance the per-peer cap exists for.
+    """
     now = [1_000_000.0]
     key = generate_key()
+    monkeypatch.setattr(lobby_module, "MAX_JOINABLE", 5)
     lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
     a, b = _client(hub, "a", key), _client(hub, "b", key)
     for _ in range(2):
@@ -509,12 +519,151 @@ def test_the_cap_is_per_peer_and_a_lapse_frees_a_slot(hub):
     lobby.drain()
     assert list(lobby.tables) == ["g1", "g2", "g3"] and lobby.refused == 0
 
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert "g4" not in lobby.tables, "a's own third table is refused"
+    assert "already have 2 tables forming" in lobby.refusals[-1]["reason"]
+
     now[0] += lobby.table_ttl + 1
     lobby.drain()  # sweeps a's two tables
     a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
     lobby.drain()
 
     assert "g4" in lobby.tables and lobby.tables["g4"].opened_by
+
+
+def test_two_tables_are_enough_door_and_a_third_is_told_where_to_sit(hub):
+    """**Decided by Gal, 2026-08-29.** Two tables open for a seat is a choice;
+    a page of half-empty tables is entrants split between tables that then all
+    lapse together. So the third OPEN is refused -- and the refusal names the
+    tables to join instead, because somebody posting OPEN wants a game and
+    this lobby has two to offer them.
+    """
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    a, b, c = (_client(hub, "a", key), _client(hub, "b", key),
+               _client(hub, "c", key))
+
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    b.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert list(lobby.tables) == ["g1", "g2"] and lobby.refused == 0
+
+    c.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    assert list(lobby.tables) == ["g1", "g2"]
+    reason = lobby.refusals[-1]["reason"]
+    assert "already open for a seat" in reason
+    assert "g1, g2" in reason, "a refusal that does not say where to sit"
+    assert "JOIN" in reason
+
+
+def test_an_empty_table_and_a_forming_one_both_count_as_door(hub):
+    """`empty` and `forming` are the same thing to this cap: somewhere an
+    entrant can sit down. The difference is only how far along it is."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    a, b = _client(hub, "a", key), _entrant(hub, "b", key)
+
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    a.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    b.post("lobby", "JOIN g1 as scout-v2")      # g1 forming, g2 still empty
+    lobby.drain()
+
+    assert lobby.tables["g1"].joinable() and lobby.tables["g2"].joinable()
+    assert len(lobby.tables["g1"].seats) == 1 and not lobby.tables["g2"].seats
+
+    _client(hub, "c", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert "g3" not in lobby.tables
+
+
+def test_a_settled_table_frees_the_door_and_still_holds_a_place(hub):
+    """Settling is what makes room at the door -- and the table has not gone
+    anywhere, it is being played, so it still counts against the total."""
+    now = [1_000_000.0]
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    _client(hub, "opener2", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b")
+    _entrant(hub, "m", key).post("lobby", "MANAGE g1")
+    lobby.drain()
+    assert lobby.tables["g1"].settled
+
+    # One seat's worth of door freed, so a third table opens now.
+    _client(hub, "c", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    assert "g3" in lobby.tables
+    assert lobby.tables["g1"].playing(now[0]), "settled, and its round is running"
+
+
+def test_the_total_counts_tables_being_played_and_not_ones_long_finished(hub):
+    """The lobby cannot see a table's own room, so it reads the schedule it
+    announced itself: the last bell falls `episodes x seconds` after
+    `opens_at`, and `PLAY_SLACK` covers the record being written after it."""
+    now = [1_000_000.0]
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
+    _client(hub, "opener", key).post(
+        "lobby", "OPEN traders=2 episodes=3 rounds=1 seconds=60")
+    lobby.drain()
+    _entrant(hub, "t1", key).post("lobby", "JOIN g1 as scout-v2")
+    _entrant(hub, "t2", key).post("lobby", "JOIN g1 as trader-b")
+    _entrant(hub, "m", key).post("lobby", "MANAGE g1")
+    lobby.drain()
+    table = lobby.tables["g1"]
+
+    assert table.playing(table.opens_at), "the moment it opens"
+    assert table.playing(table.opens_at + 3 * 60 - 1), "before the last bell"
+    assert table.playing(table.opens_at + 3 * 60 + 1), "the record is written"
+    assert not table.playing(table.opens_at + 3 * 60 + lobby_module.PLAY_SLACK + 1)
+
+    # A settled table that never announced a start is counted as playing --
+    # guessing short there would drop a live game out of the total entirely.
+    table.opens_at = None
+    assert table.playing(now[0] + 10_000)
+
+
+def test_five_tables_is_the_ceiling_and_a_finished_game_frees_a_place(hub):
+    key = generate_key()
+    now = [1_000_000.0]
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: now[0])
+    manager = _entrant(hub, "m", key)
+
+    # **Four playing plus one open for a seat.** Not two open: with two the
+    # door cap bites first and the ceiling is never reached, which is the
+    # right order of refusals and the reason this arrangement is the only one
+    # that tests the ceiling at all.
+    for n in range(4):
+        _client(hub, f"o{n}", key).post(
+            "lobby", "OPEN traders=2 episodes=2 rounds=1 seconds=15")
+        lobby.drain()
+        table = f"g{n + 1}"
+        _entrant(hub, f"a{n}", key).post("lobby", f"JOIN {table} as a{n}")
+        _entrant(hub, f"b{n}", key).post("lobby", f"JOIN {table} as b{n}")
+        manager.post("lobby", f"MANAGE {table}")
+        lobby.drain()
+    _client(hub, "p0", key).post("lobby", "OPEN traders=2 episodes=2 rounds=1")
+    lobby.drain()
+    assert len(lobby.tables) == 5
+
+    _client(hub, "late", key).post("lobby", "OPEN traders=2 episodes=2 rounds=1")
+    lobby.drain()
+    assert len(lobby.tables) == 5, "the sixth is refused"
+    assert "at its limit of 5 tables" in lobby.refusals[-1]["reason"]
+
+    # Once the three games have plainly finished, the ceiling has room again --
+    # the two forming tables still hold the door shut, so lapse them too.
+    now[0] += lobby.table_ttl + lobby_module.PLAY_SLACK + 1
+    lobby.drain()
+    _client(hub, "late", key).post("lobby", "OPEN traders=2 episodes=2 rounds=1")
+    lobby.drain()
+    assert "g6" in lobby.tables
 
 
 def test_two_lobbies_cannot_hold_one_state_file(hub, tmp_path):

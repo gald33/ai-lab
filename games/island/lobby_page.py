@@ -41,7 +41,8 @@ import time
 from urllib.parse import quote
 from pathlib import Path
 
-from .lobby import Lobby, MAX_FORMING_PER_PEER, TABLE_TTL
+from .lobby import (Lobby, MAX_FORMING_PER_PEER, MAX_JOINABLE,
+                    MAX_TABLES, TABLE_TTL)
 from .protocol import EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT
 
 #: Where a finished game can be watched. **A second site, on purpose.**
@@ -784,6 +785,7 @@ to manage it. Then its island is drawn from every nonce at the table, the
 lobby's own included, and its room is minted with a key that goes only to its
 seats.</p>
 <p>{lobby.settled} lines settled · {lobby.refused} refused · at most
+{MAX_JOINABLE} tables open for a seat at once · {MAX_TABLES} tables in all ·
 {MAX_FORMING_PER_PEER} tables forming per peer · a table lapses after
 {int(TABLE_TTL) // 60} minutes.</p>
 {_heard(lobby)}
