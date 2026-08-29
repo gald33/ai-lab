@@ -1,0 +1,56 @@
+id: 008-carry-forward-what-survives
+title: Write down which coordination lessons survive the island, as the design input to 008
+arc: lab-practice
+priority: now
+status: ready
+refs:
+  - reports/2026-08-24-hypothesis-ledger.md
+  - reports/2026-08-24-lessons-for-a-paper.md
+  - experiments/001-switchboard-coordination/README.md
+  - CLAUDE.md
+evidence: |
+  The lab is about to move from the island to shared coding tasks, and the
+  thing that carries across is not a harness — it is a short list of what has
+  actually been established about instruction and conventions. That list exists
+  today only as two long reports and a 16-row ledger, which is the exact
+  condition CLAUDE.md's first standing decision was written against: a decision
+  that lives in a document nobody reads at design time gets made again from
+  scratch.
+
+  What the ledger supports, and what 008 must therefore assume rather than
+  re-test:
+
+  - **Instruction changes behaviour, immediately and exactly** (rows 2–5).
+    214/214 settled productions matched a handed plan against 0/215 in control;
+    told *where* and *when* to disclose, 20/20 wrote the key, and two cells
+    holding the identical tool wrote 0/20. A granted capability nobody mentions
+    is not used. So a convention's *manipulation* will succeed; that is not a
+    result and must not be reported as one.
+  - **Telling agents only *what* is worth saying does not work** (row 4): 7 free
+    messages across 200 trader-episodes. Conventions have to name the slot, not
+    the topic.
+  - **The loss is in production, not exchange** (row 7): alone, an agent hits
+    0.972 of its closed-form optimum; in company that falls to 0.49–0.78 and
+    trade recovers only +0.09 to +0.13. The company is what costs, and a coding
+    analogue of this — how much worse an agent's own work gets when others are
+    on the repo — is the effect 008 is looking for.
+  - **The only replicated win was the one that cheated** (row 14). Every
+    treatment that stayed inside what an agent could legitimately know landed
+    inside the noise (rows 15, 16).
+  - **Nine "did they do it at all" answers are clean; seven "how much did it
+    help" are not** (the ledger's own summary). That split is a property of
+    counts against means-of-heavy-tailed-ratios, and it should decide what 008
+    measures before its instrument is written.
+
+  And one from 001, which is the negative result that experiment preserved
+  ahead of its numbers: **a timing predictor became well calibrated without
+  improving completion time at all.** Calibration and performance are separate
+  claims needing separate metrics; reported as one number a working mechanism
+  and a flat outcome are indistinguishable.
+
+  Done when this list is a document under `experiments/008-*/` (or a report
+  linked from it) that 008's design cites by row, each entry carrying its
+  evidence and its strength grade, and each marked *assumed* or *under test* in
+  008. Not done by pointing at the ledger: the ledger grades the island's
+  hypotheses, and the carry-forward is the subset that constrains a different
+  task.
