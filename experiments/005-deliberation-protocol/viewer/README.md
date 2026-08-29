@@ -453,6 +453,40 @@ completes between two frames and *nothing* appears to move whether it is
 working or not. `scoreAt` now builds the string from the numbers in one place,
 and `tests/scene.test.mjs` asserts its shape.
 
+### The shelf and the number wait for the goods
+
+*Reported by Gal, 2026-08-29: the bars fill before the symbols arrive, and so
+does the utility.* Two separate faults with the same face.
+
+**One was a regression from shutting cards.** Every bar keeps `now` — what it
+should be showing — and `was`, the value before it; `hand()` rewinds a gaining
+bar to `was` and holds it there until its symbol lands. `draw()` shifts that
+history once per frame (`b.was = b.now`). A card opened by a settlement is
+rebuilt from inside `play()`, and `redrawCard` called `draw()` to put the
+numbers back — **a second shift inside one frame**, which moves `was` onto the
+already-new `now`. The rewind then rewinds to the new value, which is no rewind
+at all, and the shelf filled the instant the receipt was read.
+
+`draw()` takes `advance` now. A repaint is not a new frame and passes
+`advance: false`. In the same place, a bar being restored after a rebuild goes
+back to `was` when it is holding rather than to `now`, which was the same
+mistake one line further down.
+
+**The other was never right.** The utility was read straight off
+`state.stocks`, so it jumped on the frame the receipt landed while the bars
+underneath it sat still — the card saying the trade had happened above a shelf
+saying it had not. `score()` now computes it from what the card is *showing*: a
+bar that is holding contributes what it is drawing. The number arrives with the
+goods. `fly_`'s landing calls `score()` alongside `setBar`, because the hold is
+released there and not on a frame boundary.
+
+**What checks this.** `render.py:production` already asserts the shelf does not
+fill early, in three places — 120ms after the receipt, across a repaint
+mid-flight, and while the symbol is still rising — and it still passes, and
+still fails when the animation is disabled, so it can still catch this. It does
+**not** cover the shut-card path, because `ring` builds an unmodelled scene
+where cards never shut. That gap is worth closing.
+
 ### What a click does, and what it must never do
 
 A click on a hut or on the card hanging under it opens that trader's shelf;

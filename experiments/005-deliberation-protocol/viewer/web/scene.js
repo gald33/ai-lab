@@ -1393,7 +1393,13 @@ export class Scene {
       //: through empty on its way to the value it already had. `draw()` would
       //: do this on the next paint anyway, but "anyway" is a frame away and
       //: this one is on screen now.
-      if (kept.now) this.setBar(b, kept.now.qty, kept.now.free);
+      //:
+      //: **`was` while it is holding, not `now`.** A bar mid-flight is drawing
+      //: the value it had before the trade and waiting for its symbol to land;
+      //: putting it back at `now` is filling the shelf before the goods
+      //: arrive, which is the whole thing the hold exists to prevent.
+      const at = kept.holding ? kept.was : kept.now;
+      if (at) this.setBar(b, at.qty, at.free);
     }
     //: **Filled now, not on the next frame.** The quantities, the labour dial,
     //: the utility and its ALONE mark are all written by `draw()`, and a card
@@ -1406,7 +1412,11 @@ export class Scene {
     //: Safe to repeat: `draw` is called once per paint already and writes
     //: everything from state. It has to come after the carry above, because it
     //: derives `was` from `now` and a fresh slot has neither.
-    if (this.state) this.draw(this.state, this.timeline);
+    //: **Not a new frame.** A rebuilt card needs its numbers back, but the
+    //: bars' `was`/`now` history belongs to the paint that is already in
+    //: progress -- advancing it here is what filled a shelf before its goods
+    //: landed. See `draw`.
+    if (this.state) this.draw(this.state, this.timeline, { advance: false });
   }
 
   /**
@@ -2018,12 +2028,65 @@ export class Scene {
   }
 
   /** One slot's two bars, at a stock and a free-to-offer part. */
+  /**
+   * What this trader's shelf is worth, written into the card's score row.
+   *
+   * **Computed from what the card is *showing*, not from what the board
+   * says.** A settled exchange changes the state on the frame it lands, but
+   * the goods take a second and a half to cross the island, and the bars are
+   * deliberately held at their old values until the symbols arrive (see
+   * `hand`). The utility was read straight off `state.stocks`, so the number
+   * jumped the moment the receipt was read while the bars underneath it sat
+   * still -- the card saying the trade had happened above a shelf saying it
+   * had not. Reported by Gal.
+   *
+   * So a bar that is holding contributes what it is drawing, and the number
+   * arrives with the goods. `fly_`'s landing calls this again, because the
+   * hold is released there and not on a frame boundary.
+   *
+   * `shelf` is the fallback for a slot with no drawn state yet -- the first
+   * paint, and after the bell, where `draw` passes the closing holdings.
+   */
+  score(name, shelf, blameZero = false) {
+    const label = this.labels[name];
+    if (!this.reveal || !label?.score) return;
+    const shown = {};
+    for (const good of this.goods) {
+      const b = this.bars[name]?.[good];
+      const held = b && (b.holding ? b.was : b.now);
+      shown[good] = held ? held.qty : (shelf?.[good] || 0);
+    }
+    const u = utilityOf(this.reveal, name, shown);
+    const w = CARD_W - 26;
+    label.score.setAttribute("width",
+      (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
+    label.scoreText.textContent = u === null ? "—" : u.toFixed(3);
+    // Zero before anybody has produced is not a failed episode, for the same
+    // reason an empty shelf is not a starved one: there has been no play yet.
+    // The critical colour waits for there to be some.
+    label.scoreText.classList.toggle("zero",
+      blameZero && u !== null && u <= 1e-12);
+  }
+
   setBar(b, qty, free, top = this.top) {
     b.bar.style.transform = `scaleY(${Math.min(1, qty / top)})`;
     b.held.style.transform = `scaleY(${Math.min(1, free / top)})`;
   }
 
-  draw(state, timeline) {
+  /**
+   * Paint the whole island from a state.
+   *
+   * `advance` is the frame boundary. Each bar keeps `now` -- what it should be
+   * showing -- and `was`, the value before it, and `hand()` rewinds a gaining
+   * bar to `was` and holds it there until its symbol lands. Shifting that
+   * history twice in one frame moves `was` onto the already-new `now`, so the
+   * rewind rewinds to the new value and **the shelf fills before the goods
+   * arrive**. Which is what happened the moment a card could be rebuilt
+   * mid-frame: `redrawCard` repaints, and a repaint is not a new frame.
+   *
+   * So a repaint passes `advance: false` and leaves the history alone.
+   */
+  draw(state, timeline, { advance = true } = {}) {
     // Cached: the ceiling is a property of the round, and on a live board it
     // only ever rises, so recomputing it per paint would be the frame-local
     // scale this deliberately avoids.
@@ -2063,7 +2126,7 @@ export class Scene {
         // the time production is animated the shelf has already been filled
         // by it -- which is why the goods used to arrive at a bar that had
         // finished growing half a second earlier.
-        b.was = b.now ?? { qty: 0, free: 0 };
+        if (advance) b.was = b.now ?? { qty: 0, free: 0 };
         b.now = { qty, free };
         if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
@@ -2094,16 +2157,7 @@ export class Scene {
         // After the bell the shelf is empty and a live reading would say zero,
         // which is true and useless: what the episode was worth is what it
         // closed holding. Hold that until the next episode opens.
-        const u = utilityOf(this.reveal, name, shelf);
-        const w = CARD_W - 26;
-        label.score.setAttribute("width",
-          (w * Math.max(0, Math.min(1, (u || 0) / this.utilityTop))).toFixed(2));
-        label.scoreText.textContent = u === null ? "—" : u.toFixed(3);
-        // Zero before anybody has produced is not a failed episode, for the
-        // same reason an empty shelf is not a starved one: there has been no
-        // play yet. The critical colour waits for there to be some.
-        label.scoreText.classList.toggle("zero",
-          started && spentLabour && u !== null && u <= 1e-12);
+        this.score(name, shelf, started && spentLabour);
       }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));
@@ -2966,6 +3020,10 @@ export class Scene {
       mark.remove();
       slot.holding = false;
       this.setBar(slot, slot.now.qty, slot.now.free);
+      //: The utility arrives with the goods, not with the receipt -- the bar
+      //: and the number it is scored into have to move together, and the hold
+      //: is released here rather than on a frame boundary.
+      this.score(name, this.state?.stocks?.[name]);
       if (way === "in") {
         slot.cell.classList.add("grew");
         setTimeout(() => slot.cell.classList.remove("grew"), 700);
