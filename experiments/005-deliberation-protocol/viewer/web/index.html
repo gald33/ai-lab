@@ -656,6 +656,41 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 .card.mini .score-value { font-size: calc(12px / var(--card-scale, .55)); }
 .card.mini .score .card-sub { font-size: calc(9.5px / var(--card-scale, .55)); }
 .score-value.zero { fill: var(--critical); }
+
+/* --- a card that is shut --------------------------------------------------
+   Landscape's answer to the question portrait answers with `FOCUS`: the cards
+   are two dark panels carrying four numbers each, and for most of a round
+   nobody is reading them -- a round is mostly silence, and the thing worth
+   looking at is the island. So a card is shut until it is asked for.
+
+   What goes is the shelf: the bars, the glyphs naming them, the quantities and
+   the plank they stand on. What stays is whose card it is, the labour dial
+   *with its caption*, and the utility against the ALONE mark -- the one number
+   the round is scored on, and the one that makes a settlement landing mean
+   something rather than being a rope and a pill.
+
+   The caption stays because without it the dial is an unexplained number in a
+   ring: on an open card the shelf underneath makes it obvious what was spent
+   on what, and a shut card has no shelf to make it obvious. It costs one word
+   on a row that has room for it.
+
+   `scene.js` sets the height and moves the score row, because those are
+   positions rather than visibility; everything here is a mark that is already
+   in the right place and only needs to stop being drawn. */
+.card.shut .cell, .card.shut .plank { display: none; }
+
+/* The cards and the huts are the only things on the island a click does
+   anything to, and a cursor is the whole of how a page says so. */
+.hut { cursor: pointer; }
+/* A card under the pointer lifts its own border out of the sea, so it is clear
+   *which* card the click is about to open on an island holding several. */
+.hut:hover .card-bg { stroke-opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .card-bg { transition: stroke-opacity .12s ease; }
+}
+/* Nothing here is a touch target on a phone: portrait keeps `FOCUS`, where a
+   tap on a card means something else entirely. */
+
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 /* --- a narrow window ------------------------------------------------------
    The chrome is laid out for a desk: a title row across the top with the
@@ -1919,19 +1954,57 @@ function say(what) {
   saying = setTimeout(() => note.classList.remove("on"), 2600);
 }
 
+/** Where a click landed, in the island's own coordinates. */
+function pointIn(e) {
+  const ctm = $("island").getScreenCTM();
+  if (!ctm) return null;
+  return new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+}
+
 $("island").addEventListener("click", (e) => {
-  // Portrait only, and only with a model behind the page: without one the cards
-  // hang under their own drawn huts rather than standing in the frame's
-  // margins, so there is no margin to re-divide and `cardScale` is 1 whatever
-  // this says.
-  if (!scene?.portrait || !scene.modelled) return;
-  const svg = $("island");
-  const ctm = svg.getScreenCTM();
-  if (!ctm) return;
-  const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-  const hit = scene.tapped(at.x, at.y);
-  // The sea around them is not a third state. A tap there is a tap on nothing.
-  if (hit) refocus(focus === hit ? "even" : hit);
+  // No model behind the page means the cards hang under their own drawn huts
+  // rather than standing in the frame's margins, so there is no margin to
+  // re-divide and nothing a click can give back either way up.
+  if (!scene?.modelled) return;
+  const at = pointIn(e);
+  if (!at) return;
+
+  //: **The two ways up ask different questions of the same click.**
+  //:
+  //: Portrait has one screen for an island and a card per trader, and neither
+  //: fits at the size that leaves; the click says *which of the two* the
+  //: viewer is looking at, and the frame is re-divided (`FOCUS`). Landscape
+  //: has margins down the sides where the cards already stand, so nothing is
+  //: competing -- and the click says *which trader* instead, opening one
+  //: card's shelf without moving anything else.
+  //:
+  //: They are not the same gesture wearing two hats. Making portrait's tap
+  //: open a single card would take away the only way to give the island the
+  //: screen, and making landscape's re-divide a frame that has room for
+  //: everything would be motion for nothing.
+  if (scene.portrait) {
+    const hit = scene.tapped(at.x, at.y);
+    // The sea around them is not a third state. A tap there is a tap on nothing.
+    if (hit) refocus(focus === hit ? "even" : hit);
+    return;
+  }
+
+  //: A hut and the card hanging under it are one target. The card is the
+  //: thing being opened, but the hut is what a viewer looking for a trader
+  //: points at -- and on a shut card the hut is the larger half of what is
+  //: drawn there. `closest` catches both: the model's own settlement is on the
+  //: canvas underneath, so this is the drawn hut and the card, which share a
+  //: group carrying `data-trader`.
+  const onHut = e.target.closest?.("[data-trader]")?.getAttribute("data-trader");
+  const who = onHut && scene.traders.includes(onHut)
+    ? onHut : scene.cardAt(at.x, at.y);
+  if (!who || !scene.toggleCard(who)) return;
+  //: Repainted from the last frame rather than through the player: live has no
+  //: player at all, and a card just rebuilt is empty until something fills it
+  //: from state. Never animated -- the settlement that filled this shelf may
+  //: have been twenty frames ago, and replaying its flight because somebody
+  //: opened a card would be the page inventing an event.
+  if (lastPaint) paint({ ...lastPaint, animate: false });
 });
 
 addEventListener("keydown", (e) => {

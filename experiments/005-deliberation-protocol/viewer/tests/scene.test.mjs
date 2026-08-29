@@ -17,6 +17,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
+         CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP,
+         NAME_ROW_DEEP, cardHold, CARD_LINGER,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
@@ -631,4 +633,104 @@ test("a day begins with the sun still out of sight", () => {
     assert.ok(sunAt(g, 0.02).dim < 0.4);
     assert.equal(sunAt(g, 0.1).dim, 1);
   }
+});
+
+
+// --- a card that is shut ---------------------------------------------------
+//
+// Landscape's answer to the question portrait answers with `FOCUS`. The
+// geometry that can be wrong without anything throwing is the relation between
+// where the score row is put and how tall the card is drawn: get it backwards
+// and the ALONE mark hangs through the card's bottom edge, which is a thing a
+// browser renders perfectly happily.
+
+test("a shut card is tall enough for the row it keeps", () => {
+  // Card coordinates start at the seat, so a card's box runs from CARD_TOP to
+  // CARD_TOP + height -- the height is the box's depth, not the drop to its
+  // foot. Written as a literal 88 first, and right by luck; this is the
+  // relation it was lucky about.
+  const CARD_TOP = 22;
+  const foot = CARD_TOP + CARD_H_SHUT;
+  assert.ok(SHUT_SCORE_Y + SCORE_ROW_DEEP <= foot,
+            `the score row reaches ${SHUT_SCORE_Y + SCORE_ROW_DEEP} and the `
+            + `card ends at ${foot}: the ALONE mark is through the edge`);
+  // And not so tall that the card is mostly empty, which is the whole point of
+  // shutting it. One padding's worth of slack, no more.
+  assert.ok(foot - (SHUT_SCORE_Y + SCORE_ROW_DEEP) <= 12,
+            "a shut card is carrying dead height");
+});
+
+test("a shut card is shorter than the card it shuts", () => {
+  // If this ever stops being true the mechanism is costing height rather than
+  // giving it back, and there is no reason to have it.
+  const g = layout(2);
+  const open = cardBox(g.seats[0]);
+  assert.ok(CARD_H_SHUT < open.h,
+            `shut ${CARD_H_SHUT} is not shorter than open ${open.h}`);
+  // Worth roughly half the card: less than that and the island gains too
+  // little to be worth a click, and the number is here so that a change to
+  // either height has to look at this.
+  assert.ok(CARD_H_SHUT < open.h * 0.6,
+            `shut is ${(CARD_H_SHUT / open.h * 100) | 0}% of open`);
+});
+
+test("the score row moves rather than hides when a card shuts", () => {
+  // The one mark whose *position* depends on the state. Everything else on a
+  // shut card is where it always was and is only not drawn, which is why the
+  // stylesheet can do the rest and cannot do this.
+  const BASE = 104;
+  assert.ok(SHUT_SCORE_Y < BASE + 52,
+            "the shut row is not above where the open row sits");
+});
+
+test("a live island's shut card is sized for what a live card actually has", () => {
+  // Live has no score row at all -- tastes are private and never reach the
+  // board -- so a shut card there is a name and a labour dial and nothing
+  // else. Sized at the scored height it was two dark rectangles holding one
+  // word each, with 55 units of empty box underneath. Reported by eye.
+  const CARD_TOP = 22;
+  assert.ok(CARD_H_SHUT_BARE < CARD_H_SHUT,
+            "a card with no utility row is not shorter than one with it");
+  assert.ok(CARD_H_SHUT_BARE >= NAME_ROW_DEEP,
+            "the labour dial is through the bottom of a bare shut card");
+  // And no more than a padding taller than the row it holds, which is the
+  // whole complaint: the box must not be mostly empty.
+  assert.ok(CARD_H_SHUT_BARE - NAME_ROW_DEEP <= 12,
+            `a bare shut card carries ${CARD_H_SHUT_BARE - NAME_ROW_DEEP} `
+            + "units of dead height");
+  // The symbol a settlement flies at a shut card aims at the card's middle.
+  // On a bare card the old target -- the score row at SHUT_SCORE_Y -- is below
+  // the card's own foot, so every symbol landed just under the card.
+  assert.ok(SHUT_SCORE_Y > CARD_TOP + CARD_H_SHUT_BARE,
+            "this test no longer describes the bug it was written for");
+  assert.ok(CARD_TOP + CARD_H_SHUT_BARE / 2 < CARD_TOP + CARD_H_SHUT_BARE,
+            "the aim point is outside the card it aims at");
+});
+
+test("a card opened by an event outlives the animation that opened it", () => {
+  // The bug, stated as an assertion. The hold was `dwellFor` exactly -- which
+  // is when the animation *ends*, and the animation ending is the frame the
+  // new quantity appears on the bar. So the card shut on the one frame the
+  // thing it was opened for became readable.
+  for (const e of [{ kind: "settled" }, { kind: "produced" },
+                   { kind: "settled", give: { bread: 1, cloth: 1 }, want: { iron: 1 } }]) {
+    assert.ok(cardHold(e) > dwellFor(e),
+              `a ${e.kind} card shuts as its last number lands`);
+    assert.equal(cardHold(e) - dwellFor(e), CARD_LINGER,
+                 "the linger is not the whole of the difference");
+  }
+  // Long enough to read four quantities and a utility. If this ever drops to
+  // something reflex-speed the card is flashing, not showing.
+  assert.ok(CARD_LINGER >= 800, "too short to read the numbers it opened for");
+  // And not so long that a busy market is simply every card open.
+  assert.ok(CARD_LINGER <= 3000, "the card is no longer shut by default");
+});
+
+test("reduced motion still holds the card long enough to read", () => {
+  // With motion off `dwellFor` is 0 -- there is no animation to wait for -- so
+  // the linger is the whole hold. Without it a card would open and shut inside
+  // one frame for a viewer who asked for less movement, not more.
+  const e = { kind: "settled" };
+  assert.equal(dwellFor(e, true), 0);
+  assert.equal(cardHold(e, true), CARD_LINGER);
 });

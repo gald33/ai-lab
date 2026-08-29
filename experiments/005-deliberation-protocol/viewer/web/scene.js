@@ -50,6 +50,36 @@ const GLIDE = 110;
 //: first time its target moves.
 const GLIDE_CAP = 48;
 
+/**
+ * How long a card stays open after the event that opened it has finished.
+ *
+ * **The animation ending is not the moment the card has done its job.** A
+ * settlement's symbols land on the bars and the numbers under them change on
+ * the last frame of the flight -- so a card held for exactly `dwellFor` shuts
+ * on the frame the thing worth reading appears. The point of opening it was the
+ * new number, and the new number is the last thing to arrive.
+ *
+ * Long enough to read four quantities and a utility, short enough that a busy
+ * market is not just every card open. It is deliberately *not* divided by the
+ * pace: like `dwellFor`, this is time the picture needs rather than time the
+ * clock is spending, and the same argument applies (see `PACES` in `feeds.js`).
+ */
+export const CARD_LINGER = 1400;
+
+/**
+ * How long a shut card stays open for one event: the animation, then the
+ * linger.
+ *
+ * A function rather than an expression inside `play()` so the rule can be
+ * stated once and checked without a browser -- the timing was wrong the first
+ * time (the card shut on the frame the new number appeared) and the fix is a
+ * relation between two constants, which is exactly the kind of thing that
+ * drifts back.
+ */
+export function cardHold(event, isStill = false) {
+  return dwellFor(event, isStill) + CARD_LINGER;
+}
+
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -708,8 +738,66 @@ const CARD_H = 140, CARD_H_SCORED = 186;
 //: units of band that the island cannot have while a number nobody tapped for
 //: is standing in it. One tap brings the whole card back.
 const CARD_H_GLANCE = 112;
+/**
+ * A shut card: the name, the labour dial, and what the shelf came to.
+ *
+ * **Not the glance card above, and the difference is the point.**
+ * `CARD_H_GLANCE` keeps the shelf and drops the utility, because a viewer who
+ * tapped the island wanted the island and the shelf is the picture. This drops
+ * the *shelf* and keeps the utility, because a card that is shut by default has
+ * to leave the one number the round is scored on standing: a settlement lands,
+ * and if the only thing on screen is a rope and a pill then nothing says what
+ * it did to anybody.
+ *
+ * So a shut card still says whose it is, how much labour went in, and where
+ * that trader stands against never having traded at all. What it stops saying
+ * is which four things are on the shelf and how much of each -- which is what
+ * the height was going on, and what one click brings back.
+ */
 //: The card hangs below the seat, clear of the hut rather than pasted onto it.
+//: Every other number here is in *card* coordinates, which start at the seat --
+//: so a card's own box runs from `CARD_TOP` to `CARD_TOP + height`, and a
+//: height is the box's depth rather than the distance down to its foot.
 const CARD_TOP = 22;
+//: Where the score row sits on a shut card, in card coordinates: straight under
+//: the name, where the shelf's first bar would have been. On an open card it is
+//: at `BASE + 52`, under the shelf it is scoring.
+export const SHUT_SCORE_Y = 72;
+//: How far the score row reaches below its own origin: the utility caption and
+//: value sit on it, the track six under it, and the ALONE label's baseline at
+//: 27. Named because two things have to agree with it and neither can see the
+//: other -- the card's height below, and `render.py`, which measures the drawn
+//: row against the drawn card.
+export const SCORE_ROW_DEEP = 30;
+//: The gap between the last mark on a card and the card's own edge.
+const CARD_PAD = 8;
+//: How far the name row reaches below the card's top: the name's own baseline
+//: sits 25 down and descends about three, and the labour dial is centred 19
+//: down with a radius of 12 and a stroke either side of that. The dial is the
+//: lower of the two, which is not obvious from reading either line.
+export const NAME_ROW_DEEP = 34;
+//: **Derived, not chosen.** It was written as a literal 88 first, and the
+//: number was right by luck: the row's foot and the card's foot are in card
+//: coordinates and the height is not, so the two are a `CARD_TOP` apart and
+//: getting that backwards puts the ALONE mark through the card's bottom edge.
+//: `tests/scene.test.mjs` holds the relation from the other side.
+export const CARD_H_SHUT =
+  SHUT_SCORE_Y + SCORE_ROW_DEEP + CARD_PAD - CARD_TOP;
+/**
+ * And a shut card on a board with no utility on it, which is every live one.
+ *
+ * **Live has no score row at all**, because tastes are private and never reach
+ * the board -- `hut()` builds the row only when there is a reveal to build it
+ * from. So a shut card live is a name and a labour dial and nothing else, and
+ * sizing it at `CARD_H_SHUT` left fifty-five units of empty box under them:
+ * two dark rectangles holding one word each. Reported by Gal, who pointed out
+ * that the live version has no utility bar -- which is also the premise the
+ * shut card was designed around, so it needed saying.
+ *
+ * The open card already draws this distinction -- `CARD_H` against
+ * `CARD_H_SCORED` -- and the shut one now draws it in the same place.
+ */
+export const CARD_H_SHUT_BARE = NAME_ROW_DEEP + CARD_PAD;
 //: How far above a settlement a bubble floats, in viewBox units. The model
 //: draws a hut a little under a unit tall and the island's short side is 8.7
 //: units across the frame, so this is about a hut and a half -- clear of the
@@ -806,6 +894,18 @@ export class Scene {
     //: Which of the island and the cards this viewer asked for. Portrait only:
     //: landscape has margins for the cards and the two are not competing.
     this.focus = focus;
+    //: Which seats the *viewer* has opened, and which an event has opened for
+    //: them. Two sets rather than one because they answer to different things:
+    //: a card somebody clicked open stays open, and one a settlement opened
+    //: closes again when the settlement has finished playing -- back to
+    //: whatever the viewer had chosen, not to shut.
+    //:
+    //: Kept off `build()` and `replace()` on purpose. The island is rebuilt on
+    //: every reframe -- a resized window, a turned phone, a drawer opening --
+    //: and a viewer who opened a card did not close it by dragging a window
+    //: edge.
+    this.opened = new Set();
+    this.flashed = new Set();
     this.geo = layout(this.traders.length, portrait, aspect, chrome, focus);
     // Where the settlements actually are, when there is a model underneath.
     // The island decides where its own huts stand; the cards stand in the
@@ -1128,6 +1228,148 @@ export class Scene {
   }
 
   /**
+   * Whether cards on this island are shut until asked for.
+   *
+   * **Landscape only, and only with a model.** Portrait already answers this
+   * exact question -- the island and the cards competing for one screen -- with
+   * `FOCUS`, which is measured, tested, and cycles on the same tap this would
+   * want. Two mechanisms for one question on one screen is how a tap stops
+   * meaning anything, so portrait keeps the one it has.
+   *
+   * Without a model the cards hang under their own drawn huts rather than
+   * standing in the frame's margins, so there is no margin being spent and
+   * nothing for shutting one to give back.
+   */
+  shutCards() {
+    return this.modelled && !this.portrait;
+  }
+
+  /** Whether this seat's card is showing its shelf. */
+  cardOpen(name) {
+    return !this.shutCards() || this.opened.has(name) || this.flashed.has(name);
+  }
+
+  /**
+   * How tall a shut card is on this board.
+   *
+   * Two answers, for the same reason the open card has two: with a reveal
+   * there is a utility row to keep, and live there is not.
+   */
+  shutH() {
+    return this.reveal ? CARD_H_SHUT : CARD_H_SHUT_BARE;
+  }
+
+  /** How tall this seat's card is drawn, which is not the same for every seat. */
+  cardBoxHFor(name) {
+    return this.cardOpen(name) ? this.cardBoxH() : this.shutH();
+  }
+
+  /**
+   * Open or shut one seat's card, and say whether anything changed.
+   *
+   * The caller repaints -- this owns which cards are open and how one is
+   * drawn, and the page owns the gesture and the frame. `hut()` reads
+   * `cardOpen` as it builds, so the card is rebuilt at the new height rather
+   * than restyled into it: the shelf, the plank and the score row all move,
+   * and a rule that could express that would be longer than building it.
+   */
+  toggleCard(name) {
+    if (!this.shutCards() || !this.traders.includes(name)) return false;
+    if (this.opened.has(name)) this.opened.delete(name);
+    else this.opened.add(name);
+    //: A click is the viewer taking the card back off the event that opened
+    //: it. Without this, clicking a card a settlement had just opened would
+    //: put it in `opened` while `flashed` still held it, and the click would
+    //: look like it had done nothing until the settlement finished.
+    this.flashed.delete(name);
+    this.redrawCard(name);
+    return true;
+  }
+
+  /**
+   * Open a seat's card for as long as an event needs it, then give it back.
+   *
+   * **Only for events that move goods**, which is `produced` and `settled` and
+   * nothing else. Those are the two that animate the shelf -- crates into a
+   * yard, symbols on and off a bar -- so a shut card would play them against a
+   * row of bars nobody can see. A `said`, an `ack` or a proposal moves no
+   * goods and leaves the card alone: on an open market those are most of the
+   * board, and opening a card for each one is the flicker that made "open on
+   * any activity" the wrong rule.
+   *
+   * It reverts to what the *viewer* chose, not to shut, so a card somebody
+   * clicked open is not closed by a trade landing in it.
+   *
+   * `ms` is the animation plus `CARD_LINGER` -- see `play()`. Re-flashing a
+   * card that is already open restarts the clock without rebuilding it, so two
+   * settlements in a row on one trader read as one continuous opening rather
+   * than a card that blinks between them.
+   */
+  flashCard(name, ms) {
+    if (!this.shutCards() || !this.traders.includes(name)) return;
+    clearTimeout(this.flashing?.get(name));
+    const already = this.cardOpen(name);
+    this.flashed.add(name);
+    if (!already) this.redrawCard(name);
+    const gen = this.gen;
+    (this.flashing ??= new Map()).set(name, setTimeout(() => {
+      this.flashed.delete(name);
+      //: The island may have been rebuilt under this timer -- a reframe, or a
+      //: new board -- and redrawing a card on a scene that has moved on would
+      //: put a stale seat back on screen.
+      if (gen === this.gen && !this.opened.has(name)) this.redrawCard(name);
+    }, Math.max(0, ms)));
+  }
+
+  /**
+   * Rebuild one settlement in place, keeping every other one as it stands.
+   *
+   * **A bar's own memory survives the rebuild, and has to.** `hut()` builds
+   * fresh slots with no `was`, `now` or `holding` on them, and those are not
+   * decoration: `draw()` writes `now` and keeps the frame before it in `was`,
+   * and `hand()` reads `was` to hold a bar at what it *was* until the symbol
+   * flying towards it lands. So a card rebuilt between `draw()` and the
+   * animation handed a fresh slot to `hand()`, which read `slot.was.qty` off
+   * `undefined` and threw -- found by playing a board through and watching a
+   * settlement open a card mid-flight.
+   *
+   * Carrying the three across makes this safe from *any* caller, which is the
+   * property worth having: a click can land in the middle of an animation just
+   * as easily as an auto-open can.
+   */
+  redrawCard(name) {
+    const node = this.root.querySelector(`.hut[data-trader="${cssName(name)}"]`);
+    const seat = this.seats[name];
+    if (!node || !seat) return;
+    const before = this.bars[name] ?? {};
+    const carry = Object.fromEntries(Object.entries(before).map(([good, b]) =>
+      [good, { was: b.was, now: b.now, holding: b.holding }]));
+    node.replaceWith(this.hut(name, seat));
+    for (const [good, kept] of Object.entries(carry)) {
+      const b = this.bars[name]?.[good];
+      if (!b) continue;
+      Object.assign(b, kept);
+      //: Put back at the height it was drawn at, so the card does not flash
+      //: through empty on its way to the value it already had. `draw()` would
+      //: do this on the next paint anyway, but "anyway" is a frame away and
+      //: this one is on screen now.
+      if (kept.now) this.setBar(b, kept.now.qty, kept.now.free);
+    }
+    //: **Filled now, not on the next frame.** The quantities, the labour dial,
+    //: the utility and its ALONE mark are all written by `draw()`, and a card
+    //: opened by a settlement is opened from inside `play()` -- which runs
+    //: *after* `draw()` has been and gone for this frame. Without this the
+    //: shelf a viewer just watched open stood there with no numbers on it
+    //: until the next line landed on the board, which under `real time` can be
+    //: forty seconds.
+    //:
+    //: Safe to repeat: `draw` is called once per paint already and writes
+    //: everything from state. It has to come after the carry above, because it
+    //: derives `was` from `now` and a fresh slot has neither.
+    if (this.state) this.draw(this.state, this.timeline);
+  }
+
+  /**
    * Where one good's bar stands, in scene coordinates.
    *
    * The bar's own `x` and the shelf's `BASE` are **card** coordinates, and the
@@ -1135,8 +1377,22 @@ export class Scene {
    * the one place the conversion happens: every symbol that flies between a
    * pile on the island and the bar counting it starts or ends here.
    */
-  barAt(seat, slot) {
+  barAt(seat, slot, name = null) {
     const s = this.cardScale();
+    //: **A shut card has no shelf, so a symbol cannot land on one.** The bars
+    //: are still built and still hold their quantities -- `draw()` fills every
+    //: one of them whether or not it is drawn -- so the only thing missing is
+    //: somewhere on screen for the symbol to arrive at. It goes to the middle
+    //: of the shut card instead. Flying to the bar's own `x` would put it in
+    //: open sea beside a card that is not showing that bar.
+    //:
+    //: The card's *middle*, and not the score row it used to aim at: a live
+    //: board has no score row, and `SHUT_SCORE_Y` is 72 against a bare shut
+    //: card whose foot is at 64 -- so every symbol on a live island would have
+    //: flown to a point just under the card it was going to.
+    if (name !== null && !this.cardOpen(name)) {
+      return { x: seat.x, y: seat.y + (CARD_TOP + this.shutH() / 2) * s };
+    }
     return { x: seat.x + slot.x * s, y: seat.y + (CARD_TOP + BASE - 10) * s };
   }
 
@@ -1149,6 +1405,33 @@ export class Scene {
    * tested first: the two boxes do not overlap by construction, but a tap near
    * the edge of one should land on the thing that was drawn there.
    */
+  /**
+   * Whose card is at a point in the frame, or `null` for anywhere else.
+   *
+   * The sibling of `tapped` and deliberately not folded into it: that one
+   * answers portrait's question -- *which of the island and the cards* -- and
+   * this one answers landscape's -- *which trader*. One method returning
+   * either a seat name or one of two magic strings would be a signature that
+   * has to be read twice at every call.
+   *
+   * Measured against the card each seat is actually drawn at, not the tallest
+   * one it could be: a shut card is 88 units where an open one is 186, and
+   * testing the open box would put a click on the sea below a shut card onto
+   * that card.
+   */
+  cardAt(x, y) {
+    const s = this.cardScale();
+    const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
+    const inside = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+    for (const [i, seat] of (seats ?? []).entries()) {
+      const name = this.traders[i];
+      if (name === undefined) continue;
+      if (inside({ x: seat.x - (CARD_W / 2) * s, y: seat.y + CARD_TOP * s,
+                   w: CARD_W * s, h: this.cardBoxHFor(name) * s })) return name;
+    }
+    return null;
+  }
+
   tapped(x, y) {
     const s = this.cardScale();
     const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
@@ -1460,8 +1743,16 @@ export class Scene {
     //: Applied to the card's own group rather than to the whole settlement, so
     //: that a drawn hut -- the fallback with no model behind the page -- is
     //: never scaled by a number chosen for the thing hanging under it.
+    //: **Shut is a class as well as a height.** The rects below are built at
+    //: the shut height so the card's own ground is the right size, and the
+    //: stylesheet takes the shelf, the plank and the labour caption off it --
+    //: those are marks whose positions are already right and only need to stop
+    //: being drawn. What the stylesheet cannot do is move the score row, which
+    //: is why that is a transform below rather than a rule.
+    const shut = !this.cardOpen(name);
     const card = el("g", {
-      class: this.cardScale() !== 1 && this.geo.cardMini ? "card mini" : "card" });
+      class: (this.cardScale() !== 1 && this.geo.cardMini ? "card mini" : "card")
+             + (shut ? " shut" : "") });
     if (this.cardScale() !== 1) {
       card.setAttribute("transform", `scale(${this.cardScale()})`);
       //: The scale, handed to the stylesheet. A glance card holds its marks at
@@ -1472,7 +1763,7 @@ export class Scene {
       //: its card and a check that has to be told the new number.
       card.style.setProperty("--card-scale", String(this.cardScale()));
     }
-    const tall = this.cardBoxH();
+    const tall = this.cardBoxHFor(name);
     card.append(el("rect", { class: "card-shadow", x: -CARD_W / 2 + 3, y: CARD_TOP + 5,
                              width: CARD_W, height: tall, rx: 13 }));
     card.append(el("rect", { class: "card-bg", x: -CARD_W / 2, y: CARD_TOP,
@@ -1550,7 +1841,15 @@ export class Scene {
       // What this shelf is worth to the trader who owns it. Computed here from
       // the revealed tastes and the receipts -- the manager's own scored
       // trajectory is in the rail, and `audit()` holds the two together.
-      const row = el("g", { class: "score", transform: `translate(0 ${BASE + 52})` });
+      //: **Up under the name when the card is shut.** The row scores the shelf,
+      //: so on an open card it sits below it; with the shelf gone there is
+      //: nothing above it to score and 52 units of empty card underneath. This
+      //: is the one mark on the card whose *position* depends on the state
+      //: rather than only its visibility, which is why `CARD_H_SHUT` and
+      //: `SHUT_SCORE_Y` are declared together -- the height is this offset plus
+      //: what the row itself comes to.
+      const row = el("g", { class: "score",
+                            transform: `translate(0 ${shut ? SHUT_SCORE_Y : BASE + 52})` });
       const w = CARD_W - 26;
       row.append(el("text", { x: -CARD_W / 2 + 13, y: 0, class: "card-sub" }, "utility"));
       row.append(el("text", { x: CARD_W / 2 - 13, y: 0, class: "score-value",
@@ -2108,6 +2407,26 @@ export class Scene {
   // --- what an event looks like ---------------------------------------------
 
   play(event) {
+    //: The two events that move goods open the cards they move them on and off
+    //: of, for as long as the event is on screen. See `flashCard` for why it is
+    //: only these two, and `dwellFor` for the length -- the same number the
+    //: player is holding the frame for, so the card is not shut under an
+    //: animation that is still running.
+    if (this.shutCards()) {
+      //: **Open before the symbols arrive, and still open after they land.**
+      //: The card is opened here, at the top of `play()`, so it is already
+      //: showing its shelf when the first symbol is built -- `barAt` reads the
+      //: open card's bars rather than aiming at a shut one. And it is held for
+      //: the animation *plus* `CARD_LINGER`, because the number the opening
+      //: was for is the last thing to change: held for exactly `dwellFor` it
+      //: shut on the frame the new quantity appeared.
+      const ms = cardHold(event, still());
+      if (event.kind === "produced") this.flashCard(event.trader, ms);
+      if (event.kind === "settled") {
+        this.flashCard(event.maker, ms);
+        this.flashCard(event.taker, ms);
+      }
+    }
     switch (event.kind) {
       case "settled": return this.flight(event);
       case "produced": return this.produce(event);
@@ -2502,7 +2821,7 @@ export class Scene {
   /** The symbol itself, built at the instant it leaves. */
   fly_(name, good, qty, way, span, seat, slot) {
     const yard = this.yards[`${name}:${good}`] ?? { x: seat.x, y: seat.y - 12 };
-    const { x, y: at } = this.barAt(seat, slot);
+    const { x, y: at } = this.barAt(seat, slot, name);
     const mark = el("g", { class: `sheaf ${way}` });
     mark.append(el("circle", { class: "sheaf-puff", r: 13 }));
     mark.append(el("text", { y: 0, class: "sheaf-glyph" }, GLYPH[good] || "▪"));
