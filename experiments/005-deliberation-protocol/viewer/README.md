@@ -585,11 +585,19 @@ item bars do.* Making the two arrive together was right and still read as one
 simultaneous jump; the value is a consequence of the goods and should be seen
 as one.
 
-`SCORE_SETTLE` is 420ms — deliberately shorter than the bars' own 0.55s
-travel. Their easing is a hard ease-out, so a bar is within a few percent of
-its target well before it stops, and waiting the full duration puts a dead beat
-between the two. Starting the number while the bars settle reads as *because*
-rather than *and then*.
+**The first attempt was too short and Gal could see it.** It was 420ms against
+a 550ms travel, on the reasoning that a hard ease-out puts a bar within a few
+percent of its target well before it stops. That is true and it is not the
+point: the two were still moving together for the last 130ms, so the pair went
+on reading as one simultaneous jump — the whole thing the wait exists to avoid.
+The arithmetic only explains the report; it did not predict it.
+
+The wait is the bars' own travel plus a 90ms beat. **The travel is read off the
+stylesheet, not copied** — `--bar-travel` is declared beside the transition that
+spends it, the same arrangement as `--chrome-top`, because a copy in the script
+is a second place to change and it had already been wrong once. Measured after
+the fix: the number starts 534ms after the bars stop on the tightest case, and
+never overlaps them.
 
 **Debounced per trader**, because an exchange lands its goods one at a time,
 `CARRY.step` apart. Scoring on each arrival walks the number up in steps that

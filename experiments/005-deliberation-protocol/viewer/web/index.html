@@ -24,6 +24,16 @@
    rather than quietly cropping the island. */
 :root { --chrome-top: 0px; --chrome-foot: 0px; }
 
+/* How long a shelf's bar takes to travel to a new quantity.
+   **Declared here, where the transition that spends it is**, and read by
+   `scene.js` -- the same arrangement as `--chrome-top` above and for the same
+   reason: the utility waits for the bars to arrive before it moves, and a copy
+   of this number in the script is a second place to change it. It was a copy
+   for one commit, at 420ms against a 550ms travel, and the two overlapped for
+   the last 130ms -- which still reads as one simultaneous jump, which is the
+   whole thing the wait exists to avoid. */
+:root { --bar-travel: 550ms; }
+
 /* The island is the page. Nothing sits beside it; everything sits on it. */
 html, body { height: 100%; overflow: hidden; background: var(--sea-far); }
 .app { position: fixed; inset: 0; }
@@ -296,9 +306,9 @@ svg.island, canvas.stage { transition: none; }
 /* Two bars share a slot: everything held, and the part of it not already
    promised to an open offer. The gap between them is the commitment. */
 .bar { fill: var(--c); opacity: .34; transform-box: fill-box; transform-origin: bottom;
-  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+  transition: transform var(--bar-travel) cubic-bezier(.22,1,.36,1); }
 .bar-held { fill: var(--c); transform-box: fill-box; transform-origin: bottom;
-  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+  transition: transform var(--bar-travel) cubic-bezier(.22,1,.36,1); }
 /* Nothing at all, said out loud. A dark trough reads as "a little"; the
    difference between a little and none is the whole of Cobb-Douglas. */
 .bar-zero { fill: none; stroke: var(--critical); stroke-width: 1.5;

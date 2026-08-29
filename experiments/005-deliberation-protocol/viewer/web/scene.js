@@ -80,20 +80,35 @@ export const CARD_LINGER = 1400;
 const CARD_SWING = 220;
 
 /**
- * How long the utility waits after a shelf has moved, in ms.
+ * The beat between a shelf arriving and the number that scores it moving.
  *
- * **The number is a consequence of the goods, and should be read as one.** The
- * bars and the score used to change on the same tick -- correct, and the pair
- * still read as one simultaneous jump rather than as the shelf changing and
- * the value following from it. Gal asked for the second.
+ * On top of the bars' own travel, which is read off the stylesheet rather than
+ * copied -- see `--bar-travel`, declared beside the transition that spends it.
  *
- * Shorter than the bars' own 0.55s travel on purpose. Their easing is a hard
- * ease-out, so a bar is within a few percent of its target well before it
- * stops, and waiting for the full duration puts a visible dead beat between
- * the two. This starts the number while the bars are settling into place,
- * which reads as *because* rather than as *and then*.
+ * **It was a copy, and it was too short.** 420ms against a 550ms travel, on the
+ * reasoning that a hard ease-out puts a bar within a few percent of its target
+ * well before it stops. That is true and it is not the point: the two were
+ * still moving together for the last 130ms, so the pair went on reading as one
+ * simultaneous jump -- which is the whole thing the wait exists to avoid.
+ * Reported by Gal, who could see it; the arithmetic only says why.
+ *
+ * So the number now starts when the bars have actually stopped, plus enough of
+ * a beat to read as a consequence rather than a coincidence.
  */
-const SCORE_SETTLE = 420;
+const SCORE_BEAT = 90;
+
+//: How long a bar takes to reach a new quantity, from the stylesheet that
+//: spends it. Falls back to the value declared there, for a page whose CSS has
+//: not loaded when the first receipt lands.
+function barTravel() {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue("--bar-travel").trim();
+  const m = /^([\d.]+)(ms|s)$/.exec(v);
+  return m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : 550;
+}
+
+/** How long the utility waits after a shelf has moved, in ms. */
+export const scoreSettle = () => barTravel() + SCORE_BEAT;
 
 /**
  * Where the score row sits, as a **CSS** transform.
@@ -2111,7 +2126,7 @@ export class Scene {
       //: The island may have been rebuilt under this timer -- a reframe, a new
       //: board -- and the labels this would write into are off the page.
       if (gen === this.gen) this.score(name, this.state?.stocks?.[name]);
-    }, SCORE_SETTLE));
+    }, scoreSettle()));
   }
 
   setBar(b, qty, free, top = this.top) {
