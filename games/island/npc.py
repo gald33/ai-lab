@@ -244,6 +244,8 @@ _ADDRESSED = re.compile(r"^@(T\d+) \(([^)]*)\)")
 _SEATS = re.compile(r"^Schedule for this round\. \d+ traders: ([^.]+)\.")
 #: `p3: T1 offers {'iron': 0.4} to T2 for {'salt': 0.3} — open until the bell.`
 _OFFER = re.compile(r"^(p\d+): (\S+) offers (\{[^}]*\}) to (\S+) for (\{[^}]*\})")
+#: `p3 declined: T2 will not take T1's offer; {'iron': 0.4} is free again`
+_DECLINED = re.compile(r"^(p\d+) declined: ")
 _SETTLED = re.compile(r"^(p\d+) settled: (\S+) and (\S+) exchanged "
                       r"(\{[^}]*\}) for (\{[^}]*\})")
 #: `@T1 produced {'bread': 0.25}; 0.0 labour unspent`
@@ -333,6 +335,9 @@ class Board:
     #: and is silent.
     posted_produce: bool = False
     posted_offer: bool = False
+    #: Offers this seat has written a DECLINE for and not yet seen closed.
+    #: Optimistic for the same reason and with the same trade-off.
+    posted_decline: set[str] = field(default_factory=set)
 
     @property
     def goods(self) -> tuple[str, ...]:
@@ -388,6 +393,7 @@ class Board:
             self.episode_open = True
             self.produced_this_episode = False
             self.posted_produce = self.posted_offer = False
+            self.posted_decline.clear()
             self.labour_left = 1.0
             # The bell eats everything held and returns the labour, so an
             # episode starts from nothing whatever the last one ended on.
@@ -420,6 +426,17 @@ class Board:
                 self.outstanding[offer.pid] = offer
             return
 
+        m = _DECLINED.match(line)
+        if m:
+            # Nothing changes hands, so no holdings move. What it frees is
+            # *escrow*: an open offer of ours had its giving side committed
+            # (`committed`), and closing it hands that back for this episode.
+            pid = m.group(1)
+            self.inbox.pop(pid, None)
+            self.outstanding.pop(pid, None)
+            self.posted_decline.discard(pid)
+            return
+
         m = _SETTLED.match(line)
         if m:
             pid = m.group(1)
@@ -433,6 +450,7 @@ class Board:
                 self._move(want, -1.0)
             self.inbox.pop(pid, None)
             self.outstanding.pop(pid, None)
+            self.posted_decline.discard(pid)
             self.learn_price(give, want)
             return
 
@@ -637,6 +655,44 @@ def _num(x: float) -> str:
     return text + "0" if text.endswith(".") else text
 
 
+def declines(policy: str, board: Board) -> list[str]:
+    """Offers this seat should answer with a `DECLINE` rather than sit on.
+
+    **An offer escrows the maker's goods and only the taker can end it.** The
+    maker cannot take it back -- committing is the whole point of an offer --
+    so an offer nobody answers keeps those goods locked up until the bell. A
+    seat that has decided not to take one and says nothing is imposing a real
+    cost on its partner for no gain of its own, and the partner sizes its next
+    offer blind.
+
+    So when to say no, given that "no" is final and holdings move during an
+    episode? Two cases, and the line between them is whether the answer can
+    still change:
+
+    * **`autarky` declines at once.** It will not trade at any holdings, so
+      there is no state of the world in which it would take this. Holding the
+      offer open would be a lie told by silence.
+    * **Everything else waits until it has produced**, and then declines what
+      it still will not take. Before production a seat is holding almost
+      nothing and would refuse offers it would gladly take a moment later;
+      after it, holdings only move through trades, and an offer that does not
+      help now is unlikely to start helping.
+
+    That is a judgement about *when*, not about *whether*, and it is the
+    cautious side of it: the cost of declining too late is some escrow held a
+    few seconds longer, and the cost of declining too early is a trade that
+    should have happened and cannot now.
+    """
+    if not board.inbox:
+        return []
+    if policy != "autarky" and not (board.produced_this_episode
+                                    or board.posted_produce):
+        return []
+    return [f"DECLINE {pid}" for pid, offer in sorted(board.inbox.items())
+            if pid not in board.posted_decline
+            and not approve(policy, board, offer)]
+
+
 def wrote(board: Board, line: str) -> None:
     """Record that a line went to the board, so it is not written twice.
 
@@ -647,6 +703,8 @@ def wrote(board: Board, line: str) -> None:
         board.posted_produce = True
     elif line.startswith("PROPOSE"):
         board.posted_offer = True
+    elif line.startswith("DECLINE "):
+        board.posted_decline.add(line.split(None, 1)[1].strip())
 
 
 def lines(policy: str, board: Board, partners: list[str]) -> list[str]:
@@ -671,6 +729,12 @@ def lines(policy: str, board: Board, partners: list[str]) -> list[str]:
         if approve(policy, board, offer):
             out.append(f"APPROVE {pid}")
             return out
+
+    # Approving comes first and returns above, so nothing is declined in the
+    # same look as a deal this seat would rather take.
+    said_no = declines(policy, board)
+    if said_no:
+        return said_no[:1]
 
     if not board.outstanding and not board.posted_offer:
         made = propose(policy, board, partners)

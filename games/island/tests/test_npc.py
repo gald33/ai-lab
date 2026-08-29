@@ -165,12 +165,18 @@ def test_autarky_spends_its_labour_in_the_proportions_of_its_tastes():
     assert npc.lines("autarky", board, ["T1"]) == ["PRODUCE bread=0.3 iron=0.7"]
 
 
-def test_autarky_never_trades_however_good_the_offer():
+def test_autarky_never_trades_however_good_the_offer_and_says_so_at_once():
+    """It will not trade at any holdings, so there is no state of the world in
+    which it would take this. Sitting on the offer would keep the maker's goods
+    escrowed until the bell for nothing -- a no told by silence."""
     board = _seated()
     board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
     board.read("p1: T1 offers {'iron': 5.0} to T2 for {'bread': 0.01} — open "
                "until the bell. T2 takes it by writing exactly: APPROVE p1")
-    assert npc.lines("autarky", board, ["T1"]) == []
+
+    assert npc.lines("autarky", board, ["T1"]) == ["DECLINE p1"]
+    assert not any(l.startswith("APPROVE")
+                   for l in npc.lines("autarky", board, ["T1"]))
 
 
 def test_greedy_takes_an_offer_that_helps_and_leaves_one_that_does_not():
@@ -355,3 +361,86 @@ def test_the_awkward_vector_from_the_first_real_round():
                     cap={"bread": 1.0, "cloth": 1.0, "iron": 1.0})
     plan = _manager_parser()(npc.lines("autarky", board, ["T1"])[0])
     assert sum(plan.plan.values()) <= 1.0
+
+
+# --- DECLINE: the offer's other ending -------------------------------------
+
+def test_a_trading_policy_waits_until_it_has_produced_before_saying_no():
+    """Before production a seat holds almost nothing and would refuse offers it
+    would gladly take a moment later. The cost of declining late is escrow held
+    a few seconds longer; the cost of declining early is a trade that should
+    have happened and now cannot."""
+    board = _seated(taste={"bread": 0.3, "iron": 0.7})
+    board.read("p1: T1 offers {'bread': 0.001} to T2 for {'iron': 0.9} — open "
+               "until the bell.")
+
+    assert npc.declines("greedy", board) == [], "it has not produced yet"
+    assert npc.lines("greedy", board, ["T1"])[0].startswith("PRODUCE")
+
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.63}; 0.0 labour unspent")
+    assert npc.declines("greedy", board) == ["DECLINE p1"]
+
+
+def test_an_offer_worth_taking_is_approved_and_never_declined():
+    board = _seated()
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
+    board.read("p1: T1 offers {'iron': 0.3} to T2 for {'bread': 0.05} — open "
+               "until the bell.")
+
+    assert npc.declines("greedy", board) == []
+    assert npc.lines("greedy", board, ["T1"]) == ["APPROVE p1"]
+
+
+def test_a_decline_is_written_once_while_the_receipt_travels():
+    board = _seated()
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
+    board.read("p1: T1 offers {'iron': 0.001} to T2 for {'bread': 0.2} — open "
+               "until the bell.")
+
+    said = npc.lines("greedy", board, ["T1"])
+    assert said == ["DECLINE p1"]
+    npc.wrote(board, said[0])
+    assert npc.declines("greedy", board) == []
+
+
+def test_the_managers_decline_receipt_frees_this_seats_own_escrow():
+    """The goods never moved, so no holding changes -- what comes back is what
+    an open offer had committed. A maker that could not see that would size its
+    next offer against goods it still believes are promised away."""
+    board = _seated(taste={"bread": 0.3, "iron": 0.7})
+    board.read("@T2 produced {'bread': 0.9, 'iron': 0.02}; 0.0 labour unspent")
+    offer = npc.lines("greedy", board, ["T1"])[0]
+    assert offer.startswith("PROPOSE")
+    board.read("p4: T2 offers {'bread': 0.225} to T1 for {'iron': 0.5} — open "
+               "until the bell.")
+    assert board.free("bread") == pytest.approx(0.675), "escrowed while open"
+
+    board.read("p4 declined: T1 will not take T2's offer; "
+               "{'bread': 0.225} is free again")
+
+    assert board.free("bread") == pytest.approx(0.9), "and free again after"
+    assert board.outstanding == {}
+
+
+def test_a_decline_is_a_line_the_manager_parses():
+    parse = _manager_parser()
+    board = _seated()
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
+    board.read("p7: T1 offers {'iron': 0.001} to T2 for {'bread': 0.2} — open "
+               "until the bell.")
+
+    written = npc.lines("greedy", board, ["T1"])
+    assert written == ["DECLINE p7"]
+    assert parse(written[0]).proposal_id == "p7"
+
+
+def test_the_bell_forgets_what_was_declined():
+    board = _seated()
+    board.read("@T2 produced {'bread': 0.27, 'iron': 0.14}; 0.0 labour unspent")
+    board.read("p1: T1 offers {'iron': 0.001} to T2 for {'bread': 0.2} — open "
+               "until the bell.")
+    npc.wrote(board, "DECLINE p1")
+    assert board.posted_decline == {"p1"}
+
+    board.read("episode 2 of 8 is open; the bell is at 12:02:00Z (60s).")
+    assert board.posted_decline == set() and board.inbox == {}
