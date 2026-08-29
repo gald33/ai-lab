@@ -123,9 +123,10 @@ and its sidecar if one exists. Boards come from every tree named in
 `serve.py:ROOTS`, each served under its own URL prefix: `results/` is this
 experiment's, `replays/` is `games/replays`, where a finished game's board is
 kept on purpose so it has a link after its Switchboard room is gone. The page
-never learns which tree a board came from. Transport, scrubbing, episode chapters,
-1×/4×/16×. Silence is compressed (a 60s gap between two messages is not 60s of
-still picture) and the pause is labelled rather than hidden.
+never learns which tree a board came from. Transport, scrubbing, episode
+chapters, and a **pace** — see "Three rules, not three numbers" below. Silence
+is compressed under two of the three paces, and where it is, the pause is
+labelled rather than hidden.
 
 ## The island is a model
 
@@ -200,6 +201,62 @@ the ledger records. Renaming either would change what agents read or what the
 numbers are called. `tests/render.py:vocabulary` holds the line in both
 directions — the game's own voice says day, and the transcript still says
 episode.
+
+## Three rules, not three numbers
+
+*Decided 2026-08-29, replacing `1×/4×/16×`.*
+
+The transport carried three speed buttons. **Two of them were the same
+control, and the one worth having was not on the bar at all.**
+
+`stepDelay` divides only the gap term and never the animation — deliberately,
+and for a good reason kept below. But that means at `16×` the gap came to
+`MAX_STEP / 16` = 162ms, which is under almost every `dwellFor`. So on any
+stretch where something was actually happening, **`4×` and `16×` rendered
+identically**; they diverged only across silence. `tests/scene.test.mjs` states
+that as an assertion now — "the old speeds collapsed into each other on a busy
+board" — so the shape cannot come back under new names.
+
+And the gap was clamped to `MAX_STEP` *before* the speed divided it, so a
+forty-second silence and a three-second silence played the same at every
+speed. **No setting anywhere showed a round at the pace it was actually
+played.** On these boards — 150s days in which two traders say three things
+each — that is most of what happened. Measured on game 002's own board: gaps of
+6.6s, 18s, 24s and 38s all rendered as the same 2.6s pause.
+
+So the control is now a **pace**, and the three are rules rather than rates:
+
+| pace | the waiting | what it answers |
+|---|---|---|
+| `live` — *real time* | the real gap, uncompressed | was the board busy, or was everyone thinking? |
+| `tight` — *tightened* | clamped, then divided by 4 | what happened, without the sitting about |
+| `step` — *one at a time* | none at all | the round as a sequence, for reading rather than watching |
+
+`tight` is the default and is exactly the old `4×`, so a page somebody opens
+plays as it did before. The choice is remembered in `localStorage`, because it
+is a way of watching rather than a place in a round.
+
+**The animation floor is the same under all three**, which is the old reasoning
+and still right: a frame that draws a parcel crossing the square needs the time
+that crossing takes, whatever the clock is doing. Speed never had any business
+compressing the events, and neither does pace.
+
+**`live` could not have existed before the sun did.** Real time is minutes of
+near-stillness, and a still page reads as a stalled one — unless something on
+it is visibly keeping time. The island has that now: the sun crosses on
+`dayProgress` (see "The shadows tell the time"), so a silence reads as an
+afternoon passing. That is what makes the pace watchable, and why it arrives
+with the model rather than with the transport.
+
+**`QUIET` is finally used.** It was declared in `feeds.js` in the same line as
+`MIN_STEP` and `MAX_STEP`, with a comment saying the clamp is reported "so the
+page can say a pause happened rather than pretend the board was busy" — and
+then nothing imported it and the page never said so. `quietBefore` is that
+sentence made true: a gap over four seconds is named in the transport (`· after
+38s quiet`), and **only under a pace that compressed it**. Under `live` the
+viewer has just sat through the pause and does not need to be told there was
+one. An empty slot is therefore a claim in its own right: the board really was
+busy here.
 
 ## The shadows tell the time
 
@@ -2367,13 +2424,13 @@ still has said nothing about hearing it. `stage.fire()` is silent under that
 setting, so sound is fired from `paint()` beside the clip rather than inside
 it.
 
-**Two throttles on the accents.** At 16× a scrub pushes events through in a few
-frames; without a floor between two soundings of the same voice (90 ms) and a
-ceiling on all voices at once (6 in 700 ms), the bell rings forty times in a
-second. `tests/sound.test.mjs` and `tests/ambience.test.mjs` hold those, the
-off-by-default, the hidden-tab stop, one voice per animated event kind and one
-site sound per good the island can draw — all against a fake `AudioContext`, so
-neither needs a browser.
+**Two throttles on the accents.** A scrub, or `one at a time`, pushes events
+through in a few frames; without a floor between two soundings of the same
+voice (90 ms) and a ceiling on all voices at once (6 in 700 ms), the bell
+rings forty times in a second. `tests/sound.test.mjs` and
+`tests/ambience.test.mjs` hold those, the off-by-default, the hidden-tab stop,
+one voice per animated event kind and one site sound per good the island can
+draw — all against a fake `AudioContext`, so neither needs a browser.
 
 ## Deploying
 
@@ -2730,13 +2787,11 @@ board with a sidecar reproduces the manager's scored trajectory** through the
 page's own reducer and utility code.
 
 On the pacing: **an eventful frame is held until its animation has played**,
-at every speed. Before that, `feeds.js` stepped every `MIN_STEP / speed` --
+under every pace. Before that, `feeds.js` stepped every `MIN_STEP / speed` --
 35ms at the default `4x` -- while a parcel took a second to cross the square,
 so a busy stretch played six animations on top of each other and read as a
 flicker. `scene.js:DWELL` names how long each event needs and `feeds.js` reads
-it, so the floor cannot drift from the durations it mirrors. Speed still
-compresses the silence between events; it no longer compresses the events, so
-`16x` is not sixteen times faster on a busy board. That is deliberate.
+it, so the floor cannot drift from the durations it mirrors.
 
 On the drawing: the geometry is pure arithmetic and is checked as such --
 every card and hut **fits on the canvas** and **no two cards overlap** at one

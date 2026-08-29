@@ -19,7 +19,8 @@ import assert from "node:assert/strict";
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
-import { stepDelay, MIN_STEP, MAX_STEP } from "../web/feeds.js";
+import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
+         MIN_STEP, MAX_STEP, QUIET } from "../web/feeds.js";
 
 const overlaps = (a, b) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -348,6 +349,68 @@ test("a frame with nothing to watch still gets out of the way", () => {
 test("a long silence is still clamped", () => {
   // A round is mostly silence; replaying it at wall speed is a still picture.
   assert.equal(stepDelay(60_000, 1, { kind: "acknowledged" }), MAX_STEP);
+});
+
+
+// --- three rules, not three numbers ----------------------------------------
+//
+// `1x / 4x / 16x` were a rate on the waiting only, which is why the top two
+// were the same control wherever anything was happening -- the assertion for
+// that is `the old speeds collapsed` below, kept as the reason these exist.
+
+test("the old speeds collapsed into each other on a busy board", () => {
+  // The defect, stated as an assertion so it cannot come back under new names:
+  // once the gap term falls under the animation's own dwell, the rate stops
+  // changing anything at all.
+  const busy = { kind: "settled" };
+  assert.equal(stepDelay(MAX_STEP, 4, busy), stepDelay(MAX_STEP, 16, busy),
+               "4x and 16x held a settle for different lengths of time");
+});
+
+test("live is the pace that was missing: a real gap, uncompressed", () => {
+  const quiet = { kind: "acknowledged" };
+  // The whole point. Every old speed clamped this to MAX_STEP before dividing.
+  assert.equal(paceDelay(60_000, "live", quiet), 60_000);
+  assert.ok(paceDelay(60_000, "live", quiet) > paceDelay(60_000, "tight", quiet),
+            "a minute of silence plays no longer than a compressed one");
+  // Two silences of different lengths must look different, which is the
+  // question the pace exists to answer.
+  assert.ok(paceDelay(40_000, "live", quiet) > paceDelay(3_000, "live", quiet));
+  assert.equal(paceDelay(40_000, "tight", quiet), paceDelay(3_000, "tight", quiet),
+               "tightened is expected to flatten them -- that is what it is for");
+});
+
+test("step drops the waiting and keeps the picture", () => {
+  const quiet = { kind: "acknowledged" };
+  assert.equal(paceDelay(60_000, "step", quiet), MIN_STEP,
+               "a silent line still gets out of the way, and no faster");
+  // A board with no timestamps has every gap at zero; a floor is what stops
+  // that playing as one skipped frame.
+  assert.equal(paceDelay(0, "step", quiet), MIN_STEP);
+});
+
+test("no pace cuts an animation short", () => {
+  // The one rule all three share, and the reason speed never touched it.
+  const settled = { kind: "settled" };
+  for (const pace of Object.keys(PACES)) {
+    assert.equal(paceDelay(0, pace, settled), DWELL.settled,
+                 `a settle is cut short under ${pace}`);
+  }
+});
+
+test("an unknown pace is the default rather than a stopped player", () => {
+  const quiet = { kind: "acknowledged" };
+  assert.ok(PACES[PACE_DEFAULT], "the default names a pace that exists");
+  assert.equal(paceDelay(60_000, "nonsense", quiet),
+               paceDelay(60_000, PACE_DEFAULT, quiet));
+});
+
+test("a compressed silence is owned up to, and a lived-through one is not", () => {
+  // `QUIET` was declared to draw exactly this distinction and then never used.
+  assert.equal(quietBefore(QUIET + 1, "tight"), QUIET + 1);
+  assert.equal(quietBefore(QUIET - 1, "tight"), 0, "a short gap is not a pause");
+  assert.equal(quietBefore(60_000, "live"), 0,
+               "real time announced a silence the viewer just sat through");
 });
 
 

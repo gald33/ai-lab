@@ -129,6 +129,79 @@ function pollFeed(fetchState, { channel, every }, on) {
 //: the board was busy.
 export const MIN_STEP = 140, MAX_STEP = 2600, QUIET = 4000;
 
+//: How much `tightened` compresses a silence by. It was the transport's
+//: default speed when the transport had speeds, and it stays the default
+//: pace, so the page a viewer opens plays exactly as it did before.
+const TIGHTEN = 4;
+
+/**
+ * The three ways the replay can be paced.
+ *
+ * **They replaced 1x / 4x / 16x, which were not three things.** `stepDelay`
+ * divides only the gap term and never the animation, so at 16x the gap came to
+ * `MAX_STEP / 16` = 162ms -- under almost every `dwellFor`. On any stretch
+ * where something was actually happening, 4x and 16x rendered identically and
+ * differed only across silence: two controls doing one job, and neither of them
+ * the one that was missing.
+ *
+ * The missing one is `live`. The gap was clamped at `MAX_STEP` *before* speed
+ * touched it, so a forty-second silence and a three-second silence played the
+ * same at every speed, and no setting anywhere showed a round at the pace it
+ * was actually played. On these boards -- 150s days in which two traders say
+ * three things each -- that is most of what happened.
+ *
+ * So these are three *rules*, not three numbers, and each looks different on
+ * every board:
+ *
+ * | pace | the waiting | the animation |
+ * |---|---|---|
+ * | `live` | the real gap, uncompressed | never cut short |
+ * | `tight` | clamped, then divided by `TIGHTEN` | never cut short |
+ * | `step` | none at all | never cut short |
+ *
+ * The animation floor is the same in all three because it was never about
+ * speed: a frame that draws a parcel crossing the square needs the time that
+ * crossing takes, whatever the clock is doing.
+ */
+export const PACES = {
+  //: The island already has a clock -- the sun crosses on `dayProgress` -- so
+  //: stillness here reads as time passing rather than as a stalled page. That
+  //: is what makes real time watchable at all, and it is why this pace can
+  //: exist now and could not have before the sun did.
+  live: { label: "real time", says: "The round at the pace it was played" },
+  tight: { label: "tightened", says: "Silences compressed, animations kept whole" },
+  step: { label: "one at a time", says: "No waiting: each line held only for what it draws" },
+};
+
+/** The pace a viewer who has chosen nothing gets. */
+export const PACE_DEFAULT = "tight";
+
+/**
+ * How long to hold one frame, under a given pace.
+ *
+ * `gap` is the real time since the previous board message, in ms.
+ */
+export function paceDelay(gap, pace, event, isStill = false) {
+  const dwell = dwellFor(event, isStill);
+  if (pace === "live") return Math.max(gap, dwell);
+  //: A floor even here, or a board with no timestamps -- every gap zero --
+  //: plays every silent line in one frame and reads as a page that skipped.
+  if (pace === "step") return Math.max(MIN_STEP, dwell);
+  return stepDelay(gap, TIGHTEN, event, isStill);
+}
+
+/**
+ * Whether a frame arrived after a silence long enough to be worth saying so.
+ *
+ * Only under a pace that compressed it. Under `live` the viewer has just sat
+ * through the pause and does not need to be told there was one -- and saying it
+ * anyway is the page narrating what the viewer can see, which is the habit
+ * `QUIET` was declared to break and then never used to break.
+ */
+export function quietBefore(gap, pace) {
+  return pace !== "live" && gap >= QUIET ? gap : 0;
+}
+
 /**
  * How long to hold one frame: the compressed gap, or the time its animation
  * needs -- whichever is longer.
@@ -149,7 +222,7 @@ export function stepDelay(gap, speed, event, isStill = false) {
 
 export function replayPlayer(timeline, on = {}) {
   let index = -1;
-  let speed = 4;
+  let pace = PACE_DEFAULT;
   let playing = false;
   let timer = null;
 
@@ -164,7 +237,7 @@ export function replayPlayer(timeline, on = {}) {
   //: The frame being *stepped to* is the one about to be animated, so it is
   //: that frame's event that decides how long the step takes.
   const delayTo = (i) =>
-    stepDelay(gapBefore(i), speed, timeline.frames[i]?.event, still());
+    paceDelay(gapBefore(i), pace, timeline.frames[i]?.event, still());
 
   function emit(animate) {
     const frame = timeline.frames[index];
@@ -177,6 +250,10 @@ export function replayPlayer(timeline, on = {}) {
       // what makes a silence look long instead of being counted out in a pill.
       until: timeline.frames[index + 1]?.event?.at ?? null,
       hold: animate ? delayTo(index + 1) : 0,
+      //: How long the board was silent before this line, when the pace just
+      //: compressed that silence away. Zero otherwise -- including under
+      //: `live`, where the viewer sat through it.
+      quiet: quietBefore(gapBefore(index), pace),
     });
   }
 
@@ -194,11 +271,19 @@ export function replayPlayer(timeline, on = {}) {
   return {
     get index() { return index; },
     get playing() { return playing; },
-    get speed() { return speed; },
+    get pace() { return pace; },
     play() { if (index >= timeline.frames.length - 1) index = -1; playing = true; schedule(); on.state?.(); },
     pause() { playing = false; clearTimeout(timer); on.state?.(); },
     toggle() { this.playing ? this.pause() : this.play(); },
-    setSpeed(x) { speed = x; if (playing) schedule(); on.state?.(); },
+    //: A pace change reschedules the frame in flight rather than waiting for
+    //: it to land. Switching to `step` in the middle of a forty-second `live`
+    //: silence should not make the viewer sit out the rest of the silence they
+    //: just asked to stop sitting through.
+    setPace(name) {
+      pace = PACES[name] ? name : PACE_DEFAULT;
+      if (playing) schedule();
+      on.state?.();
+    },
     step(delta) {
       this.pause();
       index = Math.max(0, Math.min(timeline.frames.length - 1, index + delta));
