@@ -27,11 +27,25 @@
 /* The island is the page. Nothing sits beside it; everything sits on it. */
 html, body { height: 100%; overflow: hidden; background: var(--sea-far); }
 .app { position: fixed; inset: 0; }
-svg.island { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
+/* How much of the frame's right edge something else is standing on. A side
+   drawer sets it; nothing else does, and it is 0 the rest of the time. */
+.app { --frame-right: 0px; }
+/* **Both axes are sized explicitly, and that is load-bearing.** An `<svg>` with
+   a viewBox has an intrinsic ratio, so left to `inset: 0` alone it takes its
+   *height* from that ratio rather than from the box -- and the viewBox is
+   computed from the measured height (`frameBox`). The two chase each other to
+   a fixed point: the frame settled at 1440x720 inside a 1440x900 window and
+   the island was laid out for a shape it was not being drawn at. Give it a
+   width and a height and there is no loop. */
+svg.island, canvas.stage {
+  position: absolute; top: 0; left: 0; display: block;
+  width: calc(100% - var(--frame-right)); height: 100%;
+}
+svg.island { z-index: 1; }
 /* The model, behind the drawing. The two cover the same box and frame the same
-   rectangle of island, which is what lets a hut stand under its own card. */
-canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
-  display: block; }
+   rectangle of island, which is what lets a hut stand under its own card --
+   so they take the same width, off the same variable. */
+canvas.stage { z-index: 0; }
 /* With a model underneath, the scene stops drawing the world and keeps what it
    is actually for: the cards, the ropes between them, the sun, and what is in
    flight. The hut becomes a building rather than a glyph of one. */
@@ -132,10 +146,25 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   .drawer.side, .drawer.foot { animation: none; }
 }
 /* A drawer must never cover the control that shuts it, and the chrome should
-   not be buried by something it opened. Everything steps aside instead. */
+   not be buried by something it opened. Everything steps aside instead.
+
+   **And so does the island.** The chrome stepped aside from the first; the
+   picture underneath it did not, so a side drawer sat squarely on top of the
+   right-hand trader's card -- 313px of a 287px card at 1440x900, which is all
+   of it. The frame is narrowed instead, and `frameBox` measures *this* box
+   rather than the window, so the layout re-divides what is left and the cards
+   come back inside it.
+
+   The canvas goes with the SVG or the model and the drawing stop framing the
+   same rectangle, and a hut stops standing under its own card. */
 .chrome, .counts { transition: right .22s ease, bottom .22s ease; }
 .app.rail-open .at-top-right,
 .app.rail-open .counts { right: calc(min(340px, 86vw) + 16px); }
+.app.rail-open { --frame-right: min(340px, 86vw); }
+/* Deliberately not transitioned. The scene is re-laid out once, on the toggle;
+   animating the box would make every frame of the slide a different layout to
+   solve, and the island would be rebuilt sixty times on the way. */
+svg.island, canvas.stage { transition: none; }
 .app.log-open .at-bottom { bottom: calc(min(38vh, 360px) + 14px); }
 /* The transcript is a reading mode and the legend explains the picture. Raised
    with the transport it would sit on the shelves, so it stands down instead. */
@@ -986,7 +1015,24 @@ const $ = (id) => document.getElementById(id);
  * -- at about a third of a readable size. Taller than it is wide means the
  * huts stack instead of standing in a row.
  */
-const isPortrait = () => innerHeight > innerWidth;
+/**
+ * The box the island is actually drawn into, in CSS pixels.
+ *
+ * **Not the window.** A side drawer takes 340px off the right and the island
+ * used to keep its whole width underneath it, so opening the reveal rail put
+ * the drawer squarely on top of the right-hand trader's card -- 313px of a
+ * 287px card, which is all of it. Measured, not guessed: see `.rail-open`
+ * in the stylesheet, which is what narrows this box.
+ *
+ * Falls back to the window before the element has been laid out, which is the
+ * one moment this is asked and there is nothing to measure.
+ */
+const frameBox = () => {
+  const r = $("island")?.getBoundingClientRect();
+  return { w: Math.max(1, Math.round(r?.width) || innerWidth),
+           h: Math.max(1, Math.round(r?.height) || innerHeight) };
+};
+const isPortrait = () => { const f = frameBox(); return f.h > f.w; };
 /**
  * The window's shape, for the layout to fit its viewBox to.
  *
@@ -1003,7 +1049,8 @@ const isPortrait = () => innerHeight > innerWidth;
  * above and below and move every band.
  */
 const frameAspect = () => {
-  const a = innerWidth / innerHeight;
+  const f = frameBox();
+  const a = f.w / f.h;
   return a < 1 ? Math.floor(a * 100) / 100 : Math.round(a * 20) / 20;
 };
 /**
@@ -1018,7 +1065,11 @@ const frameAspect = () => {
 const chromeBands = () => {
   const css = getComputedStyle(document.documentElement);
   const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
-  const h = Math.max(1, innerHeight);
+  //: Against the box the island is drawn into, not the window: the chrome's
+  //: bands are a fixed number of pixels, so the same band is a larger share of
+  //: a frame a drawer has narrowed. The two have to be measured the same way
+  //: or the band lands somewhere other than where the chrome is.
+  const h = frameBox().h;
   //: Never more than half the frame between them. A stylesheet that declared
   //: a band taller than the window would otherwise leave the island a
   //: negative box.
@@ -1844,6 +1895,13 @@ function drawer(button, panel, cls) {
     el.hidden = !want;
     $(button).setAttribute("aria-pressed", String(want));
     document.querySelector(".app").classList.toggle(cls, want);
+    //: **A drawer that narrows the frame is a reshaped frame**, and the island
+    //: has to re-divide what is left or the drawer lands on top of a card.
+    //: `refit` is a no-op when the box did not actually change, so the foot
+    //: drawer -- which takes height the island was not using -- costs nothing
+    //: here. Synchronous on purpose: `frameBox` reads a layout that the class
+    //: above has just invalidated, and asking for it is what flushes it.
+    refit();
   };
   $(button).onclick = () => set(!open());
   return { set, open };
@@ -1897,19 +1955,29 @@ $("closing-replay").addEventListener("click", () => {
 // on every scroll and on every address-bar nudge, and rebuilding the scene on
 // each one would throw away every animation in flight.
 let reflowing = null;
+/**
+ * Re-fit the island to the box it is drawn into, whatever changed the box.
+ *
+ * A rotated phone, a dragged window edge, and a side drawer opening are the
+ * same event to the scene: the frame is a different shape and the layout has
+ * to re-divide it. Written once because it was already written twice -- the
+ * resize handler and `refocus` -- and a drawer would have been the third.
+ */
+function refit() {
+  // Repainted from the last frame rather than through the player, because live
+  // has no player at all and a rebuilt island would otherwise stay empty until
+  // the next line arrived on the board.
+  if (scene?.reflow(isPortrait(), frameAspect(), chromeBands(), focus) && lastPaint) {
+    // A differently-shaped frame puts the settlements somewhere else; the scene
+    // takes the new places.
+    scene.replace(raise(scene.traders, scene.goods, isPortrait()));
+    paint({ ...lastPaint, animate: false });
+  } else stage?.resize();
+}
+
 addEventListener("resize", () => {
   clearTimeout(reflowing);
-  reflowing = setTimeout(() => {
-    // Repainted from the last frame rather than through the player, because
-    // live has no player at all and a rebuilt island would otherwise stay empty
-    // until the next line arrived on the board.
-    if (scene?.reflow(isPortrait(), frameAspect(), chromeBands()) && lastPaint) {
-      // A rotated phone is a differently-shaped frame, so the island is reframed
-      // and its settlements land somewhere else; the scene takes the new places.
-      scene.replace(raise(scene.traders, scene.goods, isPortrait()));
-      paint({ ...lastPaint, animate: false });
-    } else stage?.resize();
-  }, 180);
+  reflowing = setTimeout(refit, 180);
 });
 
 /**

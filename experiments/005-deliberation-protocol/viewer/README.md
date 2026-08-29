@@ -607,6 +607,37 @@ Verified by patching `Scene.prototype.score` in a live page and recording every
 write that changed the number: the settlement writes arrive through the staged
 timer, and the immediate ones are all card-open fills.
 
+### A side drawer narrows the frame instead of covering it
+
+*Fixed 2026-08-29.* The chrome stepped aside for a drawer from the start; the
+picture underneath it did not. At 1440x900 the reveal rail and the recording
+picker are 340px wide and the right-hand trader's card runs x1126–1413 — so a
+drawer covered **313px of a 287px card**, which is all of it. Measured, not
+noticed by eye.
+
+The frame is narrowed now: `--frame-right` takes the drawer's width off the SVG
+and the canvas together, `frameBox` measures *that* box rather than the window,
+and the layout re-divides what is left. Both cards come back inside it. The
+foot drawer needs none of this — since cards shut to 88 units they end at y499
+and the transcript starts below them, so that collision fixed itself.
+
+**Both axes are sized explicitly, and that is load-bearing.** An `<svg>` with a
+viewBox has an intrinsic ratio, so under `inset: 0` alone it takes its *height*
+from that ratio rather than from its box — while the viewBox is computed from
+the measured height. The two chase each other to a fixed point: the frame
+settled at 1440x720 inside a 1440x900 window and the island was laid out for a
+shape it was not drawn at. A width and a height break the loop.
+
+The box is **not** transitioned. The scene is re-laid out once on the toggle;
+animating the width would make every frame of the slide a different layout to
+solve and rebuild the island sixty times on the way.
+
+**A pre-existing thing this makes visible.** `widen()` only ever widens, so a
+frame *taller* than the viewBox's ratio letterboxes, and the bands read as
+seams above and below the sea. Unmodified `main` at 1100x900 shows exactly the
+same bands — this change did not cause them, it just puts the frame into an
+aspect where they show. Worth its own fix.
+
 ### What a click does, and what it must never do
 
 A click on a hut or on the card hanging under it opens that trader's shelf;
