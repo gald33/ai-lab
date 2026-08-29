@@ -39,6 +39,30 @@ VIEWER = HERE.parent
 REPO = VIEWER.parents[2]
 REPLAYS = REPO / "games" / "replays"
 
+#: How long to wait for the island to appear before calling the page hung.
+#:
+#: **A deadline, not a check.** Nothing in this file is asserted by this
+#: timeout -- every claim is made after the page is up -- so waiting longer
+#: cannot weaken any of them, while a deadline that is too short fails a run on
+#: a slow machine that is drawing exactly the right thing.
+#:
+#: Which is what the 10s and 15s scattered here did. `emerging` opens the one
+#: page in this suite with animation fully on (`reduced_motion="no-preference"`)
+#: and no board named, so it mounts a random round with the whole stage running;
+#: on a GPU-less runner that took longer than 15s to draw its first hut, and the
+#: run died there 22 minutes in with every check before it passed. Not a flake
+#: in the drawing and not a hang: a deadline nobody had measured.
+#:
+#: Measured on a headless GPU-less machine under load: `.hut` appears 7 to 10
+#: seconds after `goto` on that page. Against 15s that is a margin of 1.5x, and
+#: 1.5x is not a margin. 60s is six times the measured mount and still well
+#: inside the job's own `timeout-minutes`, so a page that never mounts fails as
+#: a page that never mounted rather than eating the job's whole budget.
+#:
+#: One constant rather than nineteen literals, because the next one to be too
+#: short would have been found the same way this one was.
+MOUNT_MS = 60_000
+
 #: Where the replay is stepped to. Chosen for what is on screen, not evenly:
 #: the open shows an empty island, the middle shows production and an open
 #: offer, and the end shows the bell's aftermath.
@@ -958,7 +982,7 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
                 if m.type == "error" else None)
         page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=10_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(1800)
         total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
         for name, at in STOPS:
@@ -1084,7 +1108,7 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
             if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1800)
     if not page.evaluate("() => document.querySelector('.app')"
                          ".classList.contains('has-3d')"):
@@ -1139,7 +1163,7 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
             other = elsewhere()
             if other:
                 page.goto(f"{base}/?board={other['board']}")
-                page.wait_for_selector(".hut", timeout=15_000)
+                page.wait_for_selector(".hut", timeout=MOUNT_MS)
                 page.wait_for_timeout(1800)
                 at = other["at"]
                 print(f"NOTE {where}: driven from {other['board']}")
@@ -1365,7 +1389,7 @@ def daylight(browser, base: str, board: Path, out: Path) -> list[str]:
             if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1200)
     page.evaluate("u => { window.__boardUrl = u; }", f"replays/{board.name}")
     seen = page.evaluate("""async () => {
@@ -1444,7 +1468,7 @@ def vocabulary(browser, base: str, board: Path) -> list[str]:
     page = browser.new_page(viewport={"width": 1500, "height": 1000},
                             reduced_motion="reduce")
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1000)
     page.evaluate("() => { const s = document.getElementById('scrub');"
                   " s.value = s.max; s.dispatchEvent(new Event('input')); }")
@@ -1620,7 +1644,7 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
         page = browser.new_page(viewport={"width": 1200, "height": 800},
                                 reduced_motion="reduce" if still else "no-preference")
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(1800)
         at(page, 0.55)
         first = page.evaluate(SAMPLE)
@@ -1768,7 +1792,7 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
                         ("phone", 393, 660), ("phone-tall", 390, 844)):
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(2000)
         if not page.evaluate("() => document.querySelector('.app')"
                              ".classList.contains('has-3d')"):
@@ -1977,7 +2001,7 @@ def twilight(browser, base: str, board: Path, out: Path) -> list[str]:
                             reduced_motion="reduce")
     bad: list[str] = []
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1200)
     #: Counted in the page: the canvas is the measurement and reading it back
     #: here would mean a PNG decoder in a test that does not need one.
@@ -2087,7 +2111,7 @@ def palette(browser, base: str, board: Path, out: Path) -> list[str]:
     errs: list[str] = []
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(url)
-    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1200)
     page.evaluate("async () => { window.__M = (await import('./island3d.js')).M; }")
     read = """() => {
@@ -2178,7 +2202,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
                         ("landscape", 844, 390)):
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(1800)
         if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
             page.close()
@@ -2364,7 +2388,7 @@ def turning(browser, base: str, board: Path, out: Path) -> list[str]:
         page = browser.new_page(viewport={"width": 1200, "height": 800},
                                 reduced_motion="reduce" if still else "no-preference")
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
             page.close()
             return bad          # no model, nothing to turn
@@ -3117,7 +3141,7 @@ def emerging(browser, base: str, out: Path) -> list[str]:
     errs: list[str] = []
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     at = page.evaluate("""async () => {
       const { reduce } = await import('./reducer.js');
       const list = await (await fetch('api/boards', {cache: 'no-store'})).json();
@@ -3133,7 +3157,7 @@ def emerging(browser, base: str, out: Path) -> list[str]:
         page.close()
         return []
     page.goto(f"{base}/?board={at['board']}")
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1800)
     page.evaluate("(i) => { const s = document.getElementById('scrub');"
                   " s.value = String(i); s.dispatchEvent(new Event('input')); }", at["at"] - 1)
@@ -4194,7 +4218,7 @@ def living(browser, base: str, board: Path, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     try:
         page.goto(f"{base}/?live=api/state")
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(2200)
         seen = page.evaluate("""() => ({
           huts: document.querySelectorAll('.hut').length,
@@ -4247,7 +4271,7 @@ def fallback(browser, base: str, board: Path, out: Path) -> list[str]:
     errs: list[str] = []
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1400)
     seen = page.evaluate("""() => ({
       modelled: document.querySelector('.app').classList.contains('has-3d'),
@@ -4295,7 +4319,7 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
                 if m.type == "error" else None)
         page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
         page.goto(board_url(base, stem))
-        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(1400)
         seen = page.evaluate("""(chrome) => {""" + LAND_JS + MASK_JS + """
           const box = (s) => { const n = document.querySelector(s);
@@ -4564,7 +4588,7 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
             if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1400)
 
     #: The island's own pixels and the cards' boxes, in one read. The island is
@@ -4776,7 +4800,7 @@ def bare(browser, base: str, board: Path, out: Path) -> list[str]:
             if m.type == "error" else None)
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/?board=replays/board-{stem}.json")   # no &reveal=
-    page.wait_for_selector(".hut", timeout=10_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
     page.evaluate("i => { const s = document.getElementById('scrub');"
                   " s.value = String(i); s.dispatchEvent(new Event('input')); }", total)
@@ -5024,7 +5048,7 @@ def travelling(browser, base: str, board: Path, out: Path) -> list[str]:
     bad: list[str] = []
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     page.goto(board_url(base, stem))
-    page.wait_for_selector(".hut", timeout=15_000)
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     page.wait_for_timeout(1200)
     seen = page.evaluate(TRAVEL)
     page.close()

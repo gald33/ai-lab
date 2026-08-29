@@ -3328,6 +3328,28 @@ stylesheet where it would go stale the first time somebody changes the wind —
 and a full period is the stronger question for both halves, the crown's true
 peak-to-peak and every chance to catch a trunk that moves.
 
+**And one more of the same shape, found by the restored job itself.** The first
+CI run of the job after all of the above died 22 minutes in, with every check
+before it passed, on `Page.wait_for_selector: Timeout 15000ms exceeded, waiting
+for locator(".hut")` inside `emerging`. Not a flake in the drawing: a
+**deadline nobody had measured**. `emerging` opens the one page in this suite
+with animation fully on -- `reduced_motion="no-preference"`, no board named, so
+it mounts a random round with the whole stage running -- and a GPU-less runner
+took longer than 15s to draw its first hut.
+
+A timeout like that is a hang guard, not a check: nothing is asserted by it,
+every claim is made after the page is up, so waiting longer cannot weaken any
+of them while too short a wait fails a run on a machine that is drawing exactly
+the right thing. Measured here under load, `.hut` appears **7 to 10 seconds**
+after `goto` on that page — against 15s, a margin of 1.5×, which is not a
+margin. It is one named `MOUNT_MS = 60_000` now rather than nineteen literals
+of 10s and 15s, because the next one to be too short would have been found the
+same way this one was: by a red tick after twenty-two minutes.
+
+Reproduced before it was fixed, by squeezing the same constant to 5s on this
+machine — same call, same exception — and `emerging` then passes at the
+measured value with nothing else changed.
+
 **Proven by repetition, not by one green run.** `--require` was run four times
 on the same commit, on a headless GPU-less machine -- the same SwiftShader path
 a runner takes -- and gave the same result each time:
