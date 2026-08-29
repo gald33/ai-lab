@@ -124,3 +124,27 @@ def test_a_seconds_off_the_ladder_is_refused_and_the_ladder_is_named():
 
 def test_the_ladder_is_the_one_that_was_asked_for():
     assert protocol.EPISODE_SECONDS_ALLOWED == (15, 30, 45, 60, 90, 120, 180, 300)
+
+
+# --- a table may not open on goods the island does not have -------------
+
+
+def test_the_goods_ceiling_is_the_islands_vocabulary():
+    """Five is what `island.dealer.GOODS` holds, so five is the most.
+
+    The ceiling used to be the palette's seven, which let `goods=6` parse and
+    fail later at brief-building. The bound belongs to the vocabulary.
+    """
+    from games.island.brief import vocabulary  # noqa: PLC0415
+
+    assert protocol.GOODS_MAX == len(vocabulary()) == 5
+
+
+def test_more_goods_than_the_island_has_is_refused_at_the_line():
+    with pytest.raises(Malformed) as e:
+        parse("OPEN traders=2 episodes=8 goods=6")
+    assert "goods must be between 2 and 5" in str(e.value)
+
+
+def test_five_goods_is_still_a_table_that_opens():
+    assert parse("OPEN traders=2 episodes=8 goods=5").goods == 5

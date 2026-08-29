@@ -30,8 +30,11 @@ import palette  # noqa: E402
 
 TOKENS = palette.tokens()
 SERIES = [f"--good-{i}" for i in range(1, 8)]
-#: The slots the island can actually draw today: `protocol.GOODS_MAX` is 7, and
-#: a game is the first N of the vocabulary.
+#: Seven slots, of which the island can draw the first five today:
+#: `protocol.GOODS_MAX` is 5, the length of `island.dealer.GOODS`, and a game is
+#: the first N of that vocabulary. The palette keeps the two spare colours so a
+#: sixth or seventh good would arrive already drawable; the gate below holds all
+#: seven to contrast regardless.
 METRICS = ["--eff", "--util"]
 
 #: `--above` is the same blue as `--good-1`, deliberately: it is drawn only on

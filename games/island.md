@@ -1307,6 +1307,15 @@ renderer disagreed.
   `(agents, goods, episodes)`, so a five-good round is a different challenge on
   its own board rather than a row polluting the four-good one.
 
+  **Five is also the ceiling.** Decided by Gal, 2026-08-29. `protocol.GOODS_MAX`
+  was 7 — the number of distinct colours in the viewer's palette — so
+  `OPEN ... goods=6` parsed at the lobby and then failed at brief-building with
+  `the island has 5 goods, not 6`. A count the lobby accepts and the island
+  cannot deal is a malformed line the protocol failed to refuse, and the lobby
+  does not repair, so the bound is the vocabulary's length and not the
+  palette's. Raising it is adding names to `island.dealer.GOODS` first; the
+  palette keeps its seven slots, which now simply exceed what can be drawn.
+
 - **A key that was handed on.** Settled, as far as it can be. Once a seat
   holds the room key it is theirs: they can pass it to a confederate or run a
   second client of their own, and nothing prevents either — not a permission
