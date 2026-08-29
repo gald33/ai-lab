@@ -72,7 +72,7 @@ const LIMIT = { threshold: -14, ratio: 8 };
 //: went back to being a picture with chimes over it.
 const ACCENT = 0.42;
 
-//: A floor between two soundings of the same voice. At 16x a scrub pours
+//: A floor between two soundings of the same voice. A scrub pours
 //: events through in a few frames, and without this the bell rings forty
 //: times in a second and reads as a fault in the page.
 const FLOOR_MS = 90;

@@ -56,7 +56,20 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   background: #0b1116cc; border: 1px solid var(--line); border-radius: 14px;
   padding: 8px 12px; backdrop-filter: blur(8px); pointer-events: auto; }
 .at-bottom #scrub { flex: 1; min-width: 90px; }
-.at-bottom .speeds { display: flex; gap: 4px; }
+/* What the pace just skipped over. Only ever set under a pace that compressed
+   a silence -- see `quietBefore` -- so an empty slot here means the board
+   really was busy, which is the distinction `QUIET` was declared for and then
+   never used to draw.
+
+   **Out of the transport's flow, above its right edge.** In the row it was a
+   word that appears and vanishes every few frames, and the scrub is the one
+   control on that row with `flex: 1` -- so every silence long enough to name
+   stole 110px from the scrub and gave it back, and the thing a viewer was
+   trying to drag moved under their hand. */
+.at-bottom .quiet { position: absolute; right: 14px; top: -19px;
+  color: var(--muted); font-size: 11.5px; white-space: nowrap;
+  text-shadow: 0 1px 10px #000c; pointer-events: none; }
+.at-bottom .quiet[hidden] { display: none; }
 .chrome button, .chrome select, .chrome .tab { background: #0e1519cc; backdrop-filter: blur(6px); }
 .at-top-right select { max-width: 230px; }
 /* Narrow by default: the list is the control, and this only earns its width
@@ -649,7 +662,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
    counters beside it, a 760px transport centred at the bottom, and a legend in
    the corner clear of both. On a phone all three land on each other -- the
    title wraps under the counters, the board select runs off the left edge, and
-   the transport's speeds and chapter menu run off the right.
+   the transport's pace and chapter menus run off the right.
 
    Nothing is dropped for being small; it is re-stacked. The one thing that does
    go is the pair of explanatory notes under the legend, which are a caption for
@@ -836,12 +849,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     <button id="fwd" title="One message on">⏵</button>
     <input type="range" id="scrub" min="0" max="0" value="0">
     <span class="sub mono" id="pos">0 / 0</span>
-    <span class="speeds">
-      <button class="sp" data-x="1" aria-pressed="false">1×</button>
-      <button class="sp" data-x="4" aria-pressed="true">4×</button>
-      <button class="sp" data-x="16" aria-pressed="false">16×</button>
-    </span>
+    <!-- Three rules, not three numbers. `1x / 4x / 16x` were a rate applied to
+         the waiting only, so the top two rendered identically wherever
+         anything was actually happening, and the pace nobody could ask for --
+         the real one -- was clamped out before the rate saw it. See `PACES`. -->
+    <select id="pace" title="How the replay is paced"
+            aria-label="How the replay is paced"></select>
     <select id="chapters" title="Jump to a day"></select>
+    <!-- Out of the row on purpose, so naming a silence never moves the scrub
+         out from under the hand dragging it. See `.at-bottom .quiet`. -->
+    <span class="quiet mono" id="quiet" role="status" aria-live="polite" hidden></span>
   </div>
 
   <!-- Both shut until asked for. -->
@@ -913,7 +930,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 import { reduce } from "./reducer.js";
 import { Scene, GLYPH, bundleText, layout } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer,
-         rowsFromState } from "./feeds.js";
+         rowsFromState, PACES, PACE_DEFAULT } from "./feeds.js";
 import { Stage } from "./stage.js";
 import { FACETS, SORTS, options, organise, countOf, activeCount, openingChoice,
          openingCandidates } from "./picker.js";
@@ -1322,8 +1339,11 @@ function raise(traders, goods, portrait) {
 
 let lastPaint = null;
 
-function paint({ state, event, animate, index, until = null, hold = 0 }) {
+function paint({ state, event, animate, index, until = null, hold = 0, quiet = 0 }) {
   lastPaint = { state, event, animate: false, index };
+  //: Live has no player and no compression, so there is never a silence to
+  //: own up to there -- the board is as quiet as it is and the sun says so.
+  sayQuiet(quiet);
   scene.draw(state, timeline);
   // The day's own clock, before the event: `play()` may take the sun down at a
   // bell or bring it up at an open, and that has to win over the glide.
@@ -1607,6 +1627,10 @@ async function startReplay(boardUrl, revealUrl) {
     ended: () => { $("play").textContent = "▶ replay"; },
     state: () => { $("play").textContent = player.playing ? "⏸ pause" : "▶ play"; },
   });
+  //: The viewer's own pace, not the player's default: a board opened after one
+  //: that was being watched in real time is still being watched by the same
+  //: person, who has not changed their mind by loading a file.
+  player.setPace($("pace").value);
   $("chapters").replaceChildren(
     new Option("jump to a day…", "-1"),
     ...player.episodes().map((c) => new Option(`day ${c.episode}`, String(c.index))));
@@ -1928,13 +1952,54 @@ $("chapters").onchange = (e) => {
   const i = +e.target.value;
   if (i >= 0) player?.seek(i);
 };
-for (const b of document.querySelectorAll(".sp")) {
-  b.onclick = () => {
-    player?.setSpeed(+b.dataset.x);
-    for (const o of document.querySelectorAll(".sp")) {
-      o.setAttribute("aria-pressed", String(o === b));
-    }
-  };
+/**
+ * How the replay is paced, and what the choice means.
+ *
+ * A select rather than the three buttons it replaced. The buttons were a rate
+ * -- `1x / 4x / 16x` -- and these are rules with names, which do not fit on a
+ * button at 390 points; the transport already carries a select beside it, and
+ * two compact menus read better in that bar than three word-width buttons that
+ * would have to be abbreviated back into ambiguity.
+ *
+ * **Remembered, because it is a way of watching rather than a place in a
+ * round.** Somebody who wants real time wants it for the next board too.
+ */
+const PACE_KEY = "island:pace";
+const savedPace = () => {
+  try {
+    const want = localStorage.getItem(PACE_KEY);
+    return PACES[want] ? want : PACE_DEFAULT;
+  } catch { return PACE_DEFAULT; }
+};
+
+$("pace").replaceChildren(...Object.entries(PACES).map(([key, p]) => {
+  const o = new Option(p.label, key);
+  o.title = p.says;
+  return o;
+}));
+$("pace").value = savedPace();
+$("pace").onchange = (e) => {
+  const want = e.target.value;
+  player?.setPace(want);
+  try { localStorage.setItem(PACE_KEY, want); } catch { /* private window */ }
+  //: The marker says a silence *was* compressed, and under `live` none is --
+  //: so a switch to real time clears whatever the last frame left standing
+  //: rather than leaving a stale claim under a pace that cannot make it.
+  if (want === "live") sayQuiet(0);
+};
+
+/**
+ * How long the board was silent before the frame now on screen -- when the
+ * pace just skipped that silence.
+ *
+ * Nothing under four seconds (`QUIET`), and nothing at all under `live`, where
+ * the viewer has just sat through the pause. An empty slot is therefore a
+ * claim in its own right: the board really was busy here.
+ */
+function sayQuiet(ms) {
+  const el = $("quiet");
+  el.hidden = !ms;
+  if (ms) el.textContent = `· after ${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s quiet`;
 }
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select")) return;
