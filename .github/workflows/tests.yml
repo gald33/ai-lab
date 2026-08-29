@@ -82,6 +82,13 @@ jobs:
     # So this is the instrument that answers it: a run that finishes under the
     # limit was slow, and one that trips it was stuck. Raise it if the honest
     # number turns out to be higher; do not raise it to paper over a hang.
+    #
+    # Re-measured 2026-08-29, after the flake fix. Four consecutive runs of
+    # `--require` on one commit, on a headless GPU-less machine -- the same
+    # SwiftShader path a runner takes -- took 1506s, 1509s, 1497s and 1519s:
+    # about 25 minutes, agreeing to within twenty-two seconds. 40 leaves the
+    # headroom a busier runner needs without letting a hang sit for anything
+    # like six hours. The flake write-up is in `viewer/README.md`.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4

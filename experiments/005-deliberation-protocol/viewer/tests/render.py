@@ -233,45 +233,167 @@ def motion(page, where: str) -> list[str]:
 
     Driven the way `index.html:paint` drives it: `draw()` then `play()`, in that
     order, because night is a state `draw()` sets and only the passage is played.
+
+    **Nothing here is read at a fixed offset from the event that causes it.**
+    Every sample in this check used to be, and the whole of this file's
+    flakiness was in those offsets: a headless page draws the island about
+    twice a second, and the motions asserted below last between 220ms and 3.6s,
+    so a nap of 150 or 400 or 2900 landed before, during or after depending on
+    what the machine was doing. Two runs of the same commit failed differently,
+    which is the tell.
+
+    So each claim is asked in the form that survives any frame rate. Everything
+    transient is **observed** rather than polled for, since a node that lives
+    only as long as its animation cannot be caught by a loop that comes round
+    more slowly than that. On top of the observer: a thing that should appear is
+    **waited for** (`till`); a thing that should never appear is asked **after
+    the whole dwell** it would have lived for, since a nap under load runs long
+    rather than short; and a thing a CSS transition carries somewhere is
+    **watched until it stops moving** (`landed`, for the night and the sun). A
+    cap turns each of those into a failure rather than a hang. This is the
+    pattern `production()` already uses for the symbols and the labour wheel,
+    applied here.
     """
     bad = []
     seen = page.evaluate("""async (reason) => {
       // This drives the *drawn* scene in isolation -- the fallback a browser
       // with no WebGL gets -- so the model's class comes off for it. With it on,
       // the scenery is hidden and the palm check has nothing to measure.
+      //
+      //: **And the model is stopped, not merely hidden.** Taking the class off
+      //: hides the island; the WebGL loop behind it goes on drawing a frame
+      //: nobody can see, and on a machine with no GPU that loop *is* the frame
+      //: budget. Measured on this headless page: 2 frames a second with it
+      //: running, 25 with it paused -- against animations here lasting 220ms.
+      //: Every flaky failure this file had was a sample that fell between two
+      //: frames. `window.__island` is the page's own stage; `pause()` is the
+      //: page's own method. See the note beside it in `index.html`.
       document.querySelector('.app').classList.remove('has-3d');
+      window.__island?.pause();
       const scene = window.__probe, t = window.__timeline;
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const island = document.getElementById('island');
       const watch = (cls) => document.querySelectorAll('.flights ' + cls).length;
       const found = {};
+      const { DWELL } = await import('./scene.js');
 
-      //: A receipt's symbol leaves when its crate has landed, which is
-      //: `madeBy(0)` after the receipt and not 150ms -- and the animation only
-      //: begins on the page's next paint. Waited for rather than timed, for
-      //: the reason spelled out in `production()`.
-      const { madeBy } = await import('./scene.js');
+      //: **Everything transient is observed, not polled for.** Almost every
+      //: count below is of something that exists only while its animation runs
+      //: -- a symbol for `IN_LEG`, a bubble for `DWELL.said`, a rope wearing
+      //: `refused` for `DWELL.refused` -- and a poll can only catch those if it
+      //: comes round faster than they last. On a starved page a `nap(50)` comes
+      //: round in about a second, which is not fast enough for any of them:
+      //: this file reported "nothing was in flight during production" on a page
+      //: that had flown the symbol and landed it between two polls.
+      //:
+      //: A `MutationObserver` cannot miss one. It is delivered at a microtask
+      //: checkpoint whether or not a frame is ever painted, so what it counts
+      //: is what the page *did*, at any frame rate -- and that is the question
+      //: these checks are actually asking. "Was a bubble ever drawn" is a
+      //: better assertion than "was a bubble on screen at the instant a nap
+      //: happened to end", and it is the one that cannot go two ways on two
+      //: runs of the same commit. Class changes are watched as well as inserted
+      //: nodes, because a refused offer is an existing rope given a class.
+      //:
+      //: **The whole inserted subtree, not the node that was inserted.** A
+      //: `MutationObserver` reports the top of an added subtree and nothing
+      //: under it, and the page appends wrappers: a bubble is a `.pop` inside
+      //: an anchor, a cross is a `.chip-cross` inside a pill. Matching only the
+      //: added node found neither -- which passed the positives loudly and the
+      //: negatives *silently*, and a negative that cannot fail is worse than no
+      //: check. Counted per node rather than per record, so a class set twice
+      //: is one bubble; the flighted selectors are checked against `.flights`
+      //: with `closest` because a descendant selector cannot see an ancestor
+      //: that is outside the subtree being searched.
+      const ever = {}, already = {};
+      const bump = (k, el) => {
+        (already[k] ||= new Set());
+        if (already[k].has(el)) return;
+        already[k].add(el);
+        ever[k] = (ever[k] || 0) + 1;
+      };
+      const SELS = [['sheaf', '.sheaf', 1], ['pop', '.pop', 1],
+                    ['bad', '.pop.bad', 1], ['talk', '.pop.talk', 1],
+                    ['parcel', '.parcel', 1],
+                    ['refused', '.rope.refused', 0], ['cross', '.chip-cross', 0]];
+      const note = (n) => {
+        if (n.nodeType !== 1 || !n.matches) return;
+        for (const [k, sel, flighted] of SELS) {
+          const hits = n.matches(sel) ? [n, ...n.querySelectorAll(sel)]
+                                      : [...n.querySelectorAll(sel)];
+          for (const el of hits) if (!flighted || el.closest('.flights')) bump(k, el);
+        }
+      };
+      const eyes = new MutationObserver((recs) => {
+        for (const r of recs) {
+          for (const n of r.addedNodes) note(n);
+          if (r.type === 'attributes') note(r.target);
+        }
+      });
+      eyes.observe(island, { childList: true, subtree: true,
+                             attributes: true, attributeFilter: ['class'] });
+      //: Counts are read as differences from a mark, so each event is measured
+      //: against what it drew rather than against everything the page has ever
+      //: drawn.
+      const mark = () => ({ ...ever });
+      const since = (m, k) => (ever[k] || 0) - (m[k] || 0);
+
+      //: Waiting is still needed -- an observer says what happened, not when --
+      //: but only ever in the direction that is safe. A **positive** claim waits
+      //: for the count to move, with a cap that turns "never" into a failure
+      //: below rather than a hang here. A **negative** claim waits out the whole
+      //: dwell of the thing that would have been drawn, and a nap under load
+      //: runs *long*, never short, so a wider window only makes it stronger.
       const till = async (want, cap) => {
         const t1 = performance.now() + cap;
         while (performance.now() < t1) { if (want()) return true; await nap(50); }
         return false;
       };
+      //: And the third form, for a value that is carried to its destination by
+      //: a CSS transition: the destination is the claim, so read until the
+      //: value stops moving. **Counted in samples, not in milliseconds.** Three
+      //: consecutive reads that agree cannot land inside a transition however
+      //: slowly they come round, where any rule phrased as a duration can --
+      //: `getComputedStyle` forces the style recalculation that starts the
+      //: transition, so the read after a fresh one always differs from the read
+      //: before it. The cap makes a transition that never finishes a failure
+      //: below rather than a hang here; it is not a guess at how long one takes.
+      const landed = async (read, cap) => {
+        const t1 = performance.now() + cap;
+        let last = read(), same = 0;
+        while (performance.now() < t1 && same < 3) {
+          await nap(80);
+          const now = read();
+          same = now === last ? same + 1 : 0;
+          last = now;
+        }
+        return last;
+      };
+      //: A receipt's symbol leaves when its crate has landed, which is
+      //: `madeBy(0)` after the receipt and not 150ms.
+      const { madeBy } = await import('./scene.js');
+      let m = mark();
       scene.play({ kind: 'produced', trader: scene.traders[0],
                    made: { [scene.goods[0]]: 1.25 }, unspent: 0 });
-      await till(() => watch('.sheaf'), madeBy(0) + 4000);
-      found.sheaf = watch('.sheaf');
-      found.popOnProduce = watch('.pop');
+      await till(() => since(m, 'sheaf'), madeBy(0) + 8000);
+      found.sheaf = since(m, 'sheaf');
+      //: Production captions itself or it does not, across the whole receipt.
+      found.popOnProduce = since(m, 'pop');
       //: And gone again before the next event is played, so what the refusal
-      //: and the remark below count is their own.
-      await till(() => !watch('.sheaf'), 4000);
+      //: and the remark below count is their own. A state that persists, so it
+      //: is safe to poll for.
+      await till(() => !watch('.sheaf'), 8000);
 
+      m = mark();
       scene.play({ kind: 'refused', trader: scene.traders[0], reason });
-      await nap(150);
       //: **No badge for a refusal, at all.** Only what the manager announces
       //: has a picture on the island, and a refusal answers one trader about
       //: one line it wrote -- by whisper, where the roster allows. It is in the
       //: ticker; what the island says is which offer, in red.
-      found.bad = watch('.pop.bad');
+      //: A negative, so it is asked after the whole dwell a badge would have
+      //: lived for -- and of every badge drawn in it, not of one instant.
+      await nap(DWELL.refused);
+      found.bad = since(m, 'bad');
       found.svgText = [...island.querySelectorAll('text')].map(n => n.textContent).join(' ');
 
       //: The refusal the manager named an offer in: it blinks red, carries the
@@ -283,12 +405,21 @@ def motion(page, where: str) -> list[str]:
                       want: { [scene.goods[1]]: .25 } };
       const board = { ...t.final, phase: 'market', proposals: [offer] };
       scene.draw(board, t);
+      m = mark();
       scene.play({ kind: 'refused', trader: tk, reason: 'p6 is already settled' });
-      await nap(150);
-      found.blinked = document.querySelectorAll('.rope.refused').length;
-      found.chipCross = document.querySelectorAll('.chip-cross').length;
-      const { DWELL } = await import('./scene.js');
-      await nap(DWELL.refused + 700);
+      //: The blink is a class put on the rope for `DWELL.refused` and taken off
+      //: again; reading it off the document 150ms later was asking whether that
+      //: window happened to contain a nap. Observed instead, so it is the blink
+      //: that is counted rather than the timing of the look.
+      await till(() => since(m, 'refused'), DWELL.refused + 3000);
+      found.blinked = since(m, 'refused');
+      found.chipCross = since(m, 'cross');
+      //: And gone again: the class comes off on a timer, and what the next two
+      //: counts mean depends on this one having finished. A state that
+      //: persists, so polling is safe; the cap makes a mark that never lifts a
+      //: failure below rather than a hang here.
+      await till(() => !document.querySelectorAll('.rope.refused').length,
+                 DWELL.refused + 4000);
       //: **Inside `.ropes`, not anywhere on the page.** The copy `verdict()`
       //: spawns to leave with lives in `.flights` and carries the same pid --
       //: counting that as "still laid on the square" failed this check on a
@@ -304,25 +435,43 @@ def motion(page, where: str) -> list[str]:
       //: the offer and hands the maker's goods back, so the page draws it the
       //: way it draws an approval: a copy that blinks and fades, spawned by
       //: `paint()` from the frame where the offer stopped being open.
+      m = mark();
       scene.draw({ ...t.final, phase: 'market',
                    proposals: [{ ...offer, status: 'declined' }] }, t);
-      await nap(120);
-      found.declinedCopy = document.querySelectorAll('.rope.refused').length;
+      //: Observed. The red copy is spawned by `paint()` from the frame where
+      //: the offer stopped being open, lives `DWELL.declined` and goes; 120ms
+      //: was under one frame here, and even a correct nap would only have been
+      //: asking whether it was still there rather than whether it was drawn.
+      await till(() => since(m, 'refused'), DWELL.declined + 3000);
+      found.declinedCopy = since(m, 'refused');
       found.ropeAfterDecline = seen_('p6');
       scene.draw({ ...t.final, phase: 'market' }, t);
 
+      m = mark();
       scene.play({ kind: 'said', author: scene.traders[0], attempt: false });
-      await nap(150);
-      found.talk = watch('.pop.talk');
+      await till(() => since(m, 'talk'), DWELL.said + 3000);
+      found.talk = since(m, 'talk');
+      //: An attempt draws no bubble of its own. A negative, so it is asked of
+      //: everything drawn across a whole remark's dwell -- the single sample it
+      //: used to be was the weaker reading twice over, since a bubble that had
+      //: not been built yet counted the same as one that never would be.
+      m = mark();
       scene.play({ kind: 'said', author: scene.traders[0], attempt: true });
-      await nap(150);
-      found.talkAfterAttempt = watch('.pop.talk');
+      await nap(DWELL.said);
+      found.talkAfterAttempt = found.talk + since(m, 'talk');
 
+      m = mark();
       scene.play({ kind: 'settled', pid: 'p1', maker: scene.traders[0],
                    taker: scene.traders[1] || scene.traders[0],
                    give: { [scene.goods[0]]: .5 }, want: { [scene.goods[1]]: .25 } });
-      await nap(300);
-      found.parcel = watch('.parcel');
+      //: Two parcels -- one each way -- built as the exchange's legs come round
+      //: rather than all at once, and each gone again when its leg finishes. So
+      //: the count that means anything is of parcels *drawn*, not of parcels on
+      //: screen at the moment a 300ms nap ended: on a slow page the first had
+      //: already left before the second was built, and the two were never on
+      //: the island together for any nap to find.
+      await till(() => since(m, 'parcel') >= 2, DWELL.settled + 6000);
+      found.parcel = since(m, 'parcel');
 
       // The day ends. The bell brings the night; it does not move the sun --
       // the sun is on its own clock and `sky()` carries it down while the
@@ -333,29 +482,58 @@ def motion(page, where: str) -> list[str]:
       scene.sky({ ...t.final, phase: 'market', bell_at: null }, null, 0);
       found.sunBefore = sunY();
       scene.play({ kind: 'bell', episode: 1, lapsed: 0 });
-      await nap(400);
-      found.sunAfterBellOnly = sunY();
+      //: **Watched across the bell, not sampled 400ms into it.** The claim is
+      //: that the disc never moves while the bell plays, and one sample can
+      //: only say it was back where it started at that instant -- it would
+      //: miss an animation that seized the sun and gave it back, which is the
+      //: shape of the regression this exists for. So: the furthest the disc
+      //: gets from where it started, over the bell's whole dwell.
+      let strayed = found.sunBefore;
+      for (const t1 = performance.now() + DWELL.bell; performance.now() < t1;) {
+        const y = sunY();
+        if (Math.abs(y - found.sunBefore) > Math.abs(strayed - found.sunBefore)) {
+          strayed = y;
+        }
+        await nap(40);
+      }
+      found.sunAfterBellOnly = strayed;
       scene.draw({ ...t.final, phase: 'closed' }, t);
       scene.sky({ ...t.final, phase: 'closed' }, null, 0);
-      // The night overlay is a CSS transition on `.closed`, which is applied
-      // here rather than by the bell -- so it needs its own time to land.
-      // Past the end of the 2.4s transition, not part-way into it: a sample
-      // taken mid-glide measures how busy the machine is as much as it
-      // measures the page, and it is the landed value that is the assertion.
-      await nap(2900);
+      //: **The night is waited for, not timed.** It is a CSS transition on
+      //: `.closed`, applied here rather than by the bell. This used to nap 2900
+      //: -- past the end of the 2.4s transition -- and read the landed value,
+      //: which is right arithmetic and the wrong instrument: a transition does
+      //: not begin until the page recalculates style, and a page drawing two
+      //: frames a second can spend the whole nap before that happens. It did,
+      //: on a CI runner, and reported `nightOpacity 0.00096` -- a night that
+      //: had started one frame earlier -- on a page doing exactly the right
+      //: thing. So the transition is watched to where it lands instead, by
+      //: `landed` above -- and what makes that frame-rate-proof is that it
+      //: counts *samples* rather than milliseconds. Three consecutive reads
+      //: with the value unchanged cannot happen part-way through a transition,
+      //: however far apart those reads fall; a rule written as "quiet for a
+      //: second" can, and did.
+      found.nightOpacity = await landed(() => Number(getComputedStyle(
+        document.querySelector('.night')).opacity), 12000);
       found.closed = island.classList.contains('closed');
       found.sunSetting = sunY() > found.sunBefore;
-      found.nightOpacity = Number(getComputedStyle(
-        document.querySelector('.night')).opacity);
 
       // And a new day. The sun does not slide back across the sky to get
       // there: it is dark at both ends of the night, and rises in the east.
       scene.draw({ ...t.final, phase: 'market' }, t);
       scene.sky({ ...t.final, phase: 'market' }, null, 0);
       scene.play({ kind: 'open', episode: 2, of: 3 });
-      await nap(300);
       found.reopened = !island.classList.contains('closed');
-      found.dawnDim = Number(getComputedStyle(scene.sunNode).opacity);
+      //: `placeSun` writes the disc's opacity as an inline style and `.sun`
+      //: carries it there over 1.2s -- so this read is of a transition too, and
+      //: the 300ms nap it used to take could return the value the sun was
+      //: *leaving*. That is how this reported a day opening at 1.00 opacity on
+      //: a loaded machine: the night before it had been given up on early, so
+      //: the disc was still on its way down when the new day started it back up.
+      //: Landed, like the night.
+      found.dawnDim = await landed(
+        () => Number(getComputedStyle(scene.sunNode).opacity), 6000);
+      eyes.disconnect();
       return found;
     }""", REASON)
 
@@ -421,7 +599,17 @@ def production(page, where: str) -> list[str]:
     finished filling a second before anything landed on it, and nothing on
     screen connected the flying glyph to the bar that grew.
 
-    **It waits on the page's own table, not on naps of its own.** This check
+    **The symbol is observed, and the bar is read at the instant it appears.**
+    A `.sheaf` exists only while it flies, so a poll can only catch it if it
+    comes round faster than `IN_LEG` -- and on a starved page a `nap(50)` comes
+    round in about a second. That reported "nothing was in flight during
+    production" on a page that had flown the symbol and landed it between two
+    polls. A `MutationObserver` is delivered at a microtask checkpoint whether
+    or not a frame is painted, so it cannot miss it; and it gives the one
+    instant worth reading the bar at, which is the moment the symbol appears
+    rather than whenever the harness next looked.
+
+    **And it waits on the page's own table, not on naps of its own.** This check
     used to look for a symbol in flight 620ms after the receipt and read the
     filled bar at 3.8s, which were the old hard-coded production timings
     written out a second time here. When production was put on one schedule
@@ -438,7 +626,17 @@ def production(page, where: str) -> list[str]:
       // This drives the *drawn* scene in isolation -- the fallback a browser
       // with no WebGL gets -- so the model's class comes off for it. With it on,
       // the scenery is hidden and the palm check has nothing to measure.
+      //
+      //: **And the model is stopped, not merely hidden.** Taking the class off
+      //: hides the island; the WebGL loop behind it goes on drawing a frame
+      //: nobody can see, and on a machine with no GPU that loop *is* the frame
+      //: budget. Measured on this headless page: 2 frames a second with it
+      //: running, 25 with it paused -- against animations here lasting 220ms.
+      //: Every flaky failure this file had was a sample that fell between two
+      //: frames. `window.__island` is the page's own stage; `pause()` is the
+      //: page's own method. See the note beside it in `index.html`.
       document.querySelector('.app').classList.remove('has-3d');
+      window.__island?.pause();
       const scene = window.__probe, t = window.__timeline;
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const who = scene.traders[0], good = scene.goods[0];
@@ -464,6 +662,50 @@ def production(page, where: str) -> list[str]:
                       stocks: { ...t.final.stocks, [who]: made },
                       labour: { ...t.final.labour, [who]: 0 } };
       scene.draw(after, t);
+
+      //: **The symbol is observed, not polled for.** A `.sheaf` is built at
+      //: the moment it flies and taken away when its animation finishes, so
+      //: its whole life is `IN_LEG` long. A polling loop can only catch it if
+      //: it comes round faster than that, and on a starved page a `nap(50)`
+      //: comes round in about a second: this reported "nothing was in flight
+      //: during production" on a page that had flown the symbol and landed it
+      //: between two polls. A `MutationObserver` cannot miss it -- it is
+      //: delivered at a microtask checkpoint whether or not a frame is ever
+      //: painted -- and it also gives the one instant worth reading the bar
+      //: at, which is the instant the symbol appears rather than "soon after".
+      //: `hand()` appends the `.sheaf` itself rather than a wrapper round it,
+      //: so matching the added node is enough here -- unlike `motion()`, where
+      //: a bubble arrives inside an anchor and the whole subtree has to be
+      //: searched. If that ever changes this fails loudly, which is the right
+      //: way round for a positive claim.
+      const flight = { count: 0, mid: null, redrawn: null, gone: false };
+      const eyes = new MutationObserver((recs) => {
+        for (const r of recs) {
+          for (const n of r.addedNodes) {
+            if (!n.classList?.contains('sheaf') || flight.count) continue;
+            flight.count = document.querySelectorAll('.flights .sheaf').length;
+            // The thing this whole check exists for, asked at the one moment
+            // it can be wrong: the bar is still low while the symbol rises.
+            flight.mid = bar();
+            // A live board repaints while the goods are still in the air. The
+            // shelf has to stay held through that, or the next poll fills it
+            // early and the arriving sheaf lands on a bar that already grew.
+            // Driven from here so the repaint is certainly *during* the
+            // flight, rather than 300ms after the receipt and hoping.
+            scene.draw(after, t);
+            flight.redrawn = bar();
+          }
+          for (const n of r.removedNodes) {
+            if (n.classList?.contains('sheaf') && flight.count
+                && !document.querySelectorAll('.flights .sheaf').length) {
+              flight.gone = true;
+            }
+          }
+        }
+      });
+      eyes.observe(document.getElementById('island'),
+                   { childList: true, subtree: true });
+
       scene.play({ kind: 'produced', trader: who, made, unspent: 0 });
       //: **The wheel is watched, not sampled at an instant.** It fills over
       //: `madeBy(0) - MAKE.rest` -- about 3.6s -- and this used to read it once,
@@ -491,26 +733,19 @@ def production(page, where: str) -> list[str]:
         while (performance.now() < stop) { wheelSeen.add(wheel()); await nap(40); }
       })();
 
-      await nap(120);
+      //: `produce()` adds `working` and holds the bar in the same synchronous
+      //: call as the receipt, so these two are read straight after it. There is
+      //: no animation between the event and them for a nap to fall the wrong
+      //: side of, and the 120ms this used to take was measuring nothing.
       const early = bar();
       const working = document.querySelector(`.hut[data-trader="${who}"]`)
                         .classList.contains('working');
 
-      // A live board repaints while the goods are still in the air. The shelf
-      // has to stay held through that, or the next poll fills it early and the
-      // arriving sheaf lands on a bar that already grew.
-      await nap(300);
-      scene.draw(after, t);
-      await nap(200);
-      const redrawn = bar();
-
-      //: **Waited for, not timed.** The symbol is built at the moment it flies
-      //: -- `madeBy(0)` after the receipt -- and a WAAPI animation does not
-      //: start until the page paints, which this harness does about four times
-      //: a second. Sampling on absolute times therefore races the animation
-      //: rather than measuring it. So: wait for a symbol to be in the air,
-      //: read the bar *then*, and wait for it to land before reading the bar
-      //: again. Both claims survive any frame rate.
+      //: The observer above cannot miss the symbol; what is waited for here is
+      //: only the *end* of the journey, which is a state that persists. The cap
+      //: is what makes a symbol that never lands a failure below rather than a
+      //: hang here, and it is generous because the whole point is that this
+      //: machine's clock is not to be trusted.
       const till = async (want, cap) => {
         const t1 = performance.now() + cap;
         while (performance.now() < t1) {
@@ -519,15 +754,12 @@ def production(page, where: str) -> list[str]:
         }
         return false;
       };
-      const airborne = await till(
-        () => document.querySelectorAll('.flights .sheaf').length, madeBy(0) + 4000);
-      const flying = document.querySelectorAll('.flights .sheaf').length;
-      // The bar is still low while the symbol is rising -- the thing this
-      // whole check exists for, asked at the moment it can be wrong.
-      const mid = bar();
-      const landed = await till(
-        () => !document.querySelectorAll('.flights .sheaf').length, IN_LEG + 4000);
-      await nap(120);
+      const landed = await till(() => flight.gone, madeBy(0) + IN_LEG + 8000);
+      eyes.disconnect();
+      const airborne = flight.count > 0;
+      const flying = flight.count;
+      const mid = flight.mid;
+      const redrawn = flight.redrawn;
       const settled = bar();
       const wheelDone = wheel();
       await watching;
@@ -571,15 +803,41 @@ def palms(page, where: str) -> list[str]:
 
     The sway used to be on the whole palm group, so the trunk and its shadow
     slid about with the fronds -- a tree walking rather than a tree in wind.
-    Sampled over a second of animation, because at any one instant both are
-    simply somewhere.
+    Sampled over the sway, because at any one instant both are simply
+    somewhere.
+
+    **Over the sway's own period, read off the running animation.** This used
+    to take twelve samples 90ms apart -- about 1.1 seconds -- against
+    `.palm .crown`'s `animation: sway 7s ease-in-out infinite`. A sixth of an
+    eased cycle, and which sixth was pure luck: land on the slow part at either
+    extreme and a crown that is swaying perfectly well reports half a pixel
+    against a 0.6px floor. It only started failing once the stage was paused,
+    because the *starved* page was accidentally covering more of the cycle --
+    the flake was there the whole time and slowness was hiding it.
+
+    So the window is the animation's own duration, taken from
+    `getAnimations()` rather than copied out of the stylesheet, where it would
+    go stale the first time somebody changes the wind. A full period is also
+    the stronger question for both halves: the crown's true peak-to-peak, and
+    every chance for a trunk that moves to be caught at it.
     """
     spread = page.evaluate("""async () => {
       const nap = (ms) => new Promise(r => setTimeout(r, ms));
       const of = (sel) => [...document.querySelectorAll(sel)]
         .map(n => n.getBoundingClientRect().left);
+      //: The sway's period, from the animation the page is running. Falls back
+      //: to the stylesheet's 7s only if there is no animation to ask, which is
+      //: itself a failure the crown assertion below will report.
+      const span = (() => {
+        const a = document.querySelector('.palm .crown')?.getAnimations?.()[0];
+        const d = a?.effect?.getTiming?.().duration;
+        return Number.isFinite(d) && d > 0 ? d : 7000;
+      })();
       const trunks = [], crowns = [];
-      for (let i = 0; i < 12; i++) {
+      //: On the clock rather than on a count of naps: a page drawing two
+      //: frames a second runs a 90ms timer late, and a fixed number of them
+      //: covers a different slice of the sway on every machine.
+      for (const t1 = performance.now() + span * 1.05; performance.now() < t1;) {
         trunks.push(of('.palm .trunk')); crowns.push(of('.palm .crown'));
         await nap(90);
       }
@@ -587,14 +845,17 @@ def palms(page, where: str) -> list[str]:
         const col = rows.map(r => r[c]);
         return Math.max(...col) - Math.min(...col);
       });
-      return { trunk: Math.max(...range(trunks)), crown: Math.max(...range(crowns)) };
+      return { trunk: Math.max(...range(trunks)), crown: Math.max(...range(crowns)),
+               span, samples: crowns.length };
     }""")
     bad = []
     if spread["trunk"] > 0.6:
         bad.append(f"{where}: the trunk moves with the fronds "
                    f"(drifts {spread['trunk']:.2f}px); only the leaves should")
     if spread["crown"] < 0.6:
-        bad.append(f"{where}: the crown does not stir ({spread['crown']:.2f}px)")
+        bad.append(f"{where}: the crown does not stir ({spread['crown']:.2f}px "
+                   f"across {spread['samples']} samples of a "
+                   f"{spread['span']:.0f}ms sway)")
     return bad
 
 

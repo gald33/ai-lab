@@ -2990,6 +2990,151 @@ and exactly the failure mode a CI job must not have, because a skip and a pass
 are the same tick. The flag turns each of those into a failure, so the job
 cannot go green having rendered nothing.
 
+### The drawing job was flaky, and the flake was the frame rate
+
+*Decided 2026-08-29.* The `drawing` job above was written, run twice on the
+same commit, and failed **differently** each time:
+
+```
+run 1   FAIL ring/4: the labour went in one step
+run 2   FAIL ring/4: the bell did not bring night   (nightOpacity 0.00096)
+```
+
+Two runs of one commit disagreeing is the tell, and the cause is measurable in
+one paste. On a headless page with the three.js stage running:
+
+```js
+// on http://127.0.0.1:8790/ after the island has mounted
+let n = 0; const t0 = performance.now();
+const tick = () => { n++; performance.now() - t0 < 2000 ? requestAnimationFrame(tick)
+                     : console.log(n / 2, 'fps'); };
+requestAnimationFrame(tick);
+```
+
+**2 frames a second**, measured on a headless GPU-less machine -- which is the
+same SwiftShader path a GitHub runner takes, and the reason it reproduces there
+at all. Every
+animation assertion in `ring` was sampling a scene whose frames are about
+400ms apart, and the motions it measures last from 220ms (a card swing) to
+3.6s (the labour wheel). Some samples landed inside their animation and some
+did not, and which was which changed between runs.
+
+Nothing was weakened to get green. Two things were fixed.
+
+**1. The stage is stopped, not just hidden.** `ring`'s isolated checks --
+`production` and `motion` -- take `.has-3d` off the app to unhide the drawn SVG
+scene, which is "the fallback a browser with no WebGL gets". Hiding the model
+does not stop it: the WebGL loop went on drawing an island nobody could see,
+and on a machine with no GPU that loop *is* the frame budget. `Stage.pause()`
+already existed and nothing had ever called it from a test.
+
+The hook is `window.__island`, which `index.html:paint` already publishes and
+which `clockwork` and `travelling` already read. It is the stage the page is
+drawing and `pause()` is the page's own method, so no second handle was added
+for the harness; the comment beside it in `index.html` now says that a harness
+may stop the loop, and why. Measured on the same page, same command:
+
+| | frames per second |
+|---|---|
+| stage running | 2 |
+| `.has-3d` removed, stage still running | 2 |
+| `window.__island.pause()` | **25** |
+
+The middle row is the point: taking the class off is not what was costing the
+frames, so hiding the model without stopping it fixed nothing.
+
+**2. The remaining fixed-offset samples became watchers, and the transient
+ones became observers.** Twelve times the frame rate is still not sixty, so the
+pause alone is a machine getting luckier rather than a check getting honest.
+`production`'s docstring already named this defect and `wheelSeen`/`wheelMoved`
+already fixed it for the labour wheel; `motion` was where it was left. Every
+`nap(150)`, `nap(400)`, `nap(2900)` in it is gone, and each claim is now asked
+in the form that survives any frame rate.
+
+The sharpest version of the problem is not that a nap lands in the wrong place.
+It is that **almost everything these checks count exists only while its
+animation runs** — a symbol for `IN_LEG`, a bubble for `DWELL.said`, a rope
+wearing `refused` for `DWELL.refused`, a parcel for one leg of an exchange. A
+poll can only catch those if it comes round faster than they last, and on a
+starved page a `nap(50)` comes round in about a second. So polling was replaced
+outright:
+
+- **a `MutationObserver` on the island counts what was drawn**, not what was on
+  screen when a nap happened to end. It is delivered at a microtask checkpoint
+  whether or not a frame is painted, so it cannot miss a node however slow the
+  page is — and "was a bubble ever drawn" is the better question anyway, since
+  it is the one that cannot come out two ways on two runs of one commit;
+- **a positive claim then waits for that count to move** (`till`), with a cap
+  that turns "never" into a failure rather than a hang;
+- **a negative claim waits out the whole dwell** of the thing that would have
+  been drawn. A nap under load runs *long*, never short, so for a negative a
+  wider window is only ever stronger;
+- **a value a CSS transition carries somewhere is watched until it stops
+  moving** (`landed`), because the destination is the claim.
+
+Two things that went wrong while doing this are worth keeping, because both
+were silent.
+
+**`landed` counts samples, not milliseconds.** The first attempt stopped
+watching once a second had passed with no change — a rule about the clock the
+naps run on, and at two frames a second two reads can straddle it with the
+transition still going. Three consecutive reads that *agree* cannot fall inside
+a transition however far apart they are, because `getComputedStyle` forces the
+style recalculation that starts one.
+
+**The observer must count the whole inserted subtree.** A `MutationObserver`
+reports the top of an added subtree and nothing under it, and this page appends
+wrappers: a bubble is a `.pop` inside an anchor, a cross is a `.chip-cross`
+inside a pill. Matching only the added node found neither — which broke the
+positives loudly and the negatives *silently*. A negative assertion that cannot
+fail is worse than no assertion, and it passed a full run before the probe that
+printed the raw counts caught it.
+
+**And the night's failure was hiding a second one.** Fixing `nightOpacity`
+under load surfaced `a new day started with the sun already at 1.00 opacity`,
+which had never been seen. `.sun` carries `transition: opacity 1.2s`, so
+`placeSun` writing an inline opacity is the *start* of a journey and the
+`nap(300)` after it was reading a value in transit — and the value it was in
+transit *from* was the previous night, which the earlier bug had given up on
+early. One timing defect was masking another; both are `landed` now.
+
+**Speeding the page up broke a third check, which is the useful part.** With
+the stage paused, `palms` began failing: `the crown does not stir (0.50px)`
+against a 0.6px floor. It samples twelve times 90ms apart — about 1.1 seconds —
+against `.palm .crown`'s `animation: sway 7s ease-in-out infinite`. A sixth of
+an eased cycle, and which sixth was luck: land on the slow part at either
+extreme and a crown swaying perfectly well reports half a pixel. The *starved*
+page had been accidentally covering more of the cycle, so the flake was there
+the whole time and slowness was hiding it. The window is now the animation's
+own duration, read off `getAnimations()` rather than copied out of the
+stylesheet where it would go stale the first time somebody changes the wind —
+and a full period is the stronger question for both halves, the crown's true
+peak-to-peak and every chance to catch a trunk that moves.
+
+**Proven by repetition, not by one green run.** `--require` was run four times
+on the same commit, on a headless GPU-less machine -- the same SwiftShader path
+a runner takes -- and gave the same result each time:
+
+```
+0 unexpected, 2 known, 0 stale entries     1506s
+0 unexpected, 2 known, 0 stale entries     1509s
+0 unexpected, 2 known, 0 stale entries     1497s
+0 unexpected, 2 known, 0 stale entries     1519s
+```
+
+The two known ones are the `KNOWN_FAILURES` entries below, which are separate
+work and unaffected by any of this. About 25 minutes, agreeing to within
+twenty-two seconds across the four. The job's `timeout-minutes: 40` is that number with
+room for a busier runner -- close enough to be an instrument, far enough not to
+trip on a slow day. It is not raised to paper over a hang.
+
+`ring` alone was then run five more times with every core saturated -- roughly
+half the frame rate again -- and came back clean five times out of five. That
+is the run that mattered: three runs of the *old* code under that same load
+failed every one of the three, with a different failure each time, and it was
+the loaded runs that turned up the sun and the palms. A single green run is not
+evidence about a flake; a loaded run that repeats is.
+
 ### `KNOWN_FAILURES`, and the two rules that stop it rotting
 
 Two failures predate CI ever running `render.py`: a portrait framing check
