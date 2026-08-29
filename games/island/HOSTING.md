@@ -567,6 +567,56 @@ times — the missing `--live`, the unset `ISLAND_LIVE_BASE`, and a lobby whose
 CORS origin was refused. Say the reason and let the reader see it is the
 fetch, not the island, that is broken.
 
+#### Which host, and why it is not the same answer for both
+
+Decided by Gal, 2026-08-29, closing the question this section opened.
+**The lobby is served by Vercel on its own domain; the viewer stays on
+GitHub Pages.** The two surfaces are hosted differently because they are
+*doing* different things, and each host is picked for the thing its surface
+has to be:
+
+| | host | what the host is chosen for |
+|---|---|---|
+| **the lobby** | Vercel, own domain | **branding.** It is the door, the address somebody is handed, and the name is part of what the game is. A path on somebody else's domain is a worse door |
+| **the viewer** | GitHub Pages, `/island/` | **it can be checked.** Pages builds from `main`, so the code rendering a finished game is visibly the committed code |
+
+**Say what Pages actually proves, because the overclaim is easy.** It proves
+the **renderer** is unmodified — that the page drawing the island is built
+from the source anyone can read, with no step in between where an operator
+could have leaned on it. It does **not** prove the data: the board and the
+reveal come off the VM, and Pages knows nothing about them. What makes a
+*game* checkable is the record and `python -m games.island.verify` — the
+draw, the authorship, the production, the exchange, the clock — plus the
+archivist for what a single manager might have left out.
+
+The two halves are worth stating together because neither is enough alone. A
+verifiable record rendered by a page nobody can inspect leaves the picture
+untrusted; an inspectable page fed an unverifiable record leaves the game
+untrusted. **A stranger can check the game from its record, and check that the
+thing drawing it is not quietly reinterpreting what it was handed.** That is
+the whole claim, and it is smaller and truer than "the viewer proves the game
+is objective".
+
+The lobby carries none of this and does not need to. Nothing on it is
+evidence, so nothing is lost by serving it from a host that builds from
+whatever it is given.
+
+**Both custom domains need the hub's CORS grant, and the grant is a property
+of the origin rather than of the host.** Written here because the earlier
+sections read as though the allowlist were a cost peculiar to Vercel, and it
+is not: the measured grant covers `https://gald33.github.io`, so the *viewer*
+keeps working untouched only because it stays on that origin at that path. Put
+either surface on a custom domain — on Vercel or on Pages, which supports them
+too — and it is a new origin that the hub refuses until the operator adds it.
+The lobby is going to a custom domain, so **the grant is required, not
+optional**, and it must cover the preview domains as well or every branch
+deploy is a lobby that renders an empty room.
+
+*This corrects a framing in this document rather than a decision: nothing
+above chose Vercel because of CORS, but a reader deciding where to put a
+surface could have concluded that Pages is exempt, and then hit the same wall
+with nothing to explain it.*
+
 #### What changes in the code, and what staleness means afterwards
 
 Not done in this change — this is the decision, written in the sitting it was
