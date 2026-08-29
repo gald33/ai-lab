@@ -454,6 +454,8 @@ handle /games/* {
     @get method GET HEAD
     handle @get {
         header Access-Control-Allow-Origin "https://gald33.github.io"
+        @index path /games/index.json
+        header @index Cache-Control "no-store"
         header Cache-Control "public, max-age=31536000, immutable"
         file_server { index off }
     }
@@ -463,7 +465,19 @@ handle { respond "not found" 404 }
 ```
 
 One prefix by directory, `GET` and `HEAD` only, no directory listing,
-everything else 404. Read the differences from the 2026-08-28 block above
+everything else 404.
+
+**`index.json` is the one file under this prefix that changes, and caching it
+like the rest is the bug this block was written with.** A game's board and
+reveal are written once and never touched, so `immutable` is right for them
+and a year is not too long. The index grows a row every time a game finishes —
+served `immutable`, a viewer would hold last week's list until its browser
+cache turned over, and **every game played since would be invisible with
+nothing on the page to suggest it**. That is the same silent-staleness shape
+the lobby page's own age counter exists to prevent. So the index is
+`no-store` and the payload is `immutable`, and the split is by exact path
+rather than by convention, because a rule that depends on somebody naming
+files correctly is a rule that breaks on the first file named otherwise. Read the differences from the 2026-08-28 block above
 rather than the shape:
 
 - **`/` and `/index.html` are gone**, because the lobby is served elsewhere and
@@ -504,6 +518,54 @@ into it. It should not — a flag named for a feature that was removed is the
 next reader's wrong assumption — but renaming it changes an operator's command
 line and the viewer's `?live=`/`?games=` contract, so it is a change with a
 migration and not a rename.
+
+#### The list of games is fetched, not built
+
+Decided by Gal, 2026-08-29. **The viewer cannot know the name of a game played
+after it was deployed.** It is static files built by Pages from `main`, and
+`freeze_static.py` computes `api/boards` and `api/scores` once at build time
+because a static host has no `serve.py` to answer them. So the list baked into
+the site names exactly the games that were in the repository when it was
+built — `results/`, `ceiling/` and `replays/` — and **no game this host has
+ever played**, since those are deliberately not committed.
+
+The fix is not to update the site when a game finishes. **A game finishing
+must not require a Pages deploy**: that is the coupling the two-sites decision
+refuses, it would put the record of a game behind a docs build, and it would
+mean the site is rebuilt several times a day for a file nobody reviews. So the
+list is **fetched at page load from the file store**, which is the only place
+that knows what has been played.
+
+That mechanism already exists and needs no new format: the manager writes
+`index.json` beside the games it has published — every finished game, newest
+first, with its board, reveal, official standing and the facets the picker
+filters on — and the viewer already reads such an index from `?games=<url>`.
+What changes is **which list is the authority**:
+
+| | where it comes from | when it is known |
+|---|---|---|
+| the repository's own trees (`results/`, `ceiling/`, `replays/`) | frozen into the site by `freeze_static.py` | at build |
+| **every game this host has played** | **`index.json`, fetched from the store at load** | at read |
+
+The two are merged in the picker rather than one replacing the other: the
+committed replays are a deliberate handful that should not vanish because a
+host is down, and the host's games are the corpus.
+
+**The store's address is written into the viewer's HTML, not fetched** — the
+same rule, and for the same reason, as the lobby's address already documented
+above. A static site has nothing to read a constant out of, so moving the
+store means editing that constant, exactly as moving the lobby or the viewer
+means editing theirs. It is a third link in the same family and belongs beside
+them.
+
+**A failed fetch is said, never drawn as an empty shelf.** If the store is
+unreachable, or the browser refuses the cross-origin read, what the page must
+show is *the recordings could not be loaded*, not a viewer with two committed
+replays and no explanation. An empty list is indistinguishable from a host
+that has played nothing, and this repo has now hit that exact shape three
+times — the missing `--live`, the unset `ISLAND_LIVE_BASE`, and a lobby whose
+CORS origin was refused. Say the reason and let the reader see it is the
+fetch, not the island, that is broken.
 
 #### What changes in the code, and what staleness means afterwards
 
