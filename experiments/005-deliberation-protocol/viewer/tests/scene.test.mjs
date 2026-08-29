@@ -17,7 +17,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         CARD_H_SHUT, SHUT_SCORE_Y, SCORE_ROW_DEEP,
+         CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP,
+         NAME_ROW_DEEP,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
@@ -680,4 +681,28 @@ test("the score row moves rather than hides when a card shuts", () => {
   const BASE = 104;
   assert.ok(SHUT_SCORE_Y < BASE + 52,
             "the shut row is not above where the open row sits");
+});
+
+test("a live island's shut card is sized for what a live card actually has", () => {
+  // Live has no score row at all -- tastes are private and never reach the
+  // board -- so a shut card there is a name and a labour dial and nothing
+  // else. Sized at the scored height it was two dark rectangles holding one
+  // word each, with 55 units of empty box underneath. Reported by eye.
+  const CARD_TOP = 22;
+  assert.ok(CARD_H_SHUT_BARE < CARD_H_SHUT,
+            "a card with no utility row is not shorter than one with it");
+  assert.ok(CARD_H_SHUT_BARE >= NAME_ROW_DEEP,
+            "the labour dial is through the bottom of a bare shut card");
+  // And no more than a padding taller than the row it holds, which is the
+  // whole complaint: the box must not be mostly empty.
+  assert.ok(CARD_H_SHUT_BARE - NAME_ROW_DEEP <= 12,
+            `a bare shut card carries ${CARD_H_SHUT_BARE - NAME_ROW_DEEP} `
+            + "units of dead height");
+  // The symbol a settlement flies at a shut card aims at the card's middle.
+  // On a bare card the old target -- the score row at SHUT_SCORE_Y -- is below
+  // the card's own foot, so every symbol landed just under the card.
+  assert.ok(SHUT_SCORE_Y > CARD_TOP + CARD_H_SHUT_BARE,
+            "this test no longer describes the bug it was written for");
+  assert.ok(CARD_TOP + CARD_H_SHUT_BARE / 2 < CARD_TOP + CARD_H_SHUT_BARE,
+            "the aim point is outside the card it aims at");
 });

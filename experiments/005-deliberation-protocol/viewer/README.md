@@ -379,13 +379,37 @@ utility against the ALONE mark. What goes is the shelf -- the bars, the glyphs
 naming them, the quantities, the plank. `CARD_H_SHUT` is 88 units against 186
 open, so the two dark panels lose more than half their height.
 
-**It keeps the utility, and that is the difference from the glance card.**
-`CARD_H_GLANCE` -- what portrait's island focus draws -- does the opposite: it
-keeps the shelf and drops the utility, because a viewer who tapped the island
-wanted the picture. A card that is shut *by default* cannot drop the utility,
-because then a settlement lands and the only things on screen are a rope and a
-pill, and nothing says what the trade did to anybody. The number the round is
-scored on has to stay standing whether or not anyone clicked.
+**On a replay it keeps the utility, and that is the difference from the glance
+card.** `CARD_H_GLANCE` -- what portrait's island focus draws -- does the
+opposite: it keeps the shelf and drops the utility, because a viewer who tapped
+the island wanted the picture. A card shut *by default* cannot drop the
+utility, because then a settlement lands and the only things on screen are a
+rope and a pill, and nothing says what the trade did to anybody.
+
+### Live has no utility, so a shut card there is a nameplate
+
+**Reported by Gal**, and it is the premise the paragraph above was built on, so
+it needed saying: on a live board there is no score row at all. Tastes are
+private and never reach the board, so `hut()` builds the row only when there is
+a reveal to build it from. A shut card live is a name and a labour dial and
+nothing else -- and sized at the scored height it was two dark rectangles
+holding one word each with fifty-five units of empty box underneath.
+
+The open card already draws this distinction, `CARD_H` against
+`CARD_H_SCORED`, and the shut one now draws it in the same place:
+`CARD_H_SHUT_BARE` is 42 against 88. It is derived the same way -- the name
+row's depth plus the padding -- and `NAME_ROW_DEEP` is measured off the *dial*,
+which reaches lower than the name beside it and is not the one you would guess.
+
+That fixed a second thing with it. A symbol flying at a shut card aimed at the
+score row (`SHUT_SCORE_Y`, 72), which on a bare shut card is **below the card's
+own foot at 64** -- so on a live island every symbol a settlement threw would
+have landed just underneath the card it was going to. It aims at the middle of
+whatever height the card actually is now.
+
+So live, shutting a card hides everything it had. That is the honest cost, and
+what makes it acceptable is the auto-open below: live is exactly when goods
+move, and goods moving is what opens the shelf.
 
 **The height is derived, not chosen.** It was written as a literal 88 first and
 was right by luck: the score row's foot and the card's foot are in card

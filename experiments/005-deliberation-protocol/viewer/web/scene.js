@@ -741,6 +741,11 @@ export const SHUT_SCORE_Y = 72;
 export const SCORE_ROW_DEEP = 30;
 //: The gap between the last mark on a card and the card's own edge.
 const CARD_PAD = 8;
+//: How far the name row reaches below the card's top: the name's own baseline
+//: sits 25 down and descends about three, and the labour dial is centred 19
+//: down with a radius of 12 and a stroke either side of that. The dial is the
+//: lower of the two, which is not obvious from reading either line.
+export const NAME_ROW_DEEP = 34;
 //: **Derived, not chosen.** It was written as a literal 88 first, and the
 //: number was right by luck: the row's foot and the card's foot are in card
 //: coordinates and the height is not, so the two are a `CARD_TOP` apart and
@@ -748,6 +753,21 @@ const CARD_PAD = 8;
 //: `tests/scene.test.mjs` holds the relation from the other side.
 export const CARD_H_SHUT =
   SHUT_SCORE_Y + SCORE_ROW_DEEP + CARD_PAD - CARD_TOP;
+/**
+ * And a shut card on a board with no utility on it, which is every live one.
+ *
+ * **Live has no score row at all**, because tastes are private and never reach
+ * the board -- `hut()` builds the row only when there is a reveal to build it
+ * from. So a shut card live is a name and a labour dial and nothing else, and
+ * sizing it at `CARD_H_SHUT` left fifty-five units of empty box under them:
+ * two dark rectangles holding one word each. Reported by Gal, who pointed out
+ * that the live version has no utility bar -- which is also the premise the
+ * shut card was designed around, so it needed saying.
+ *
+ * The open card already draws this distinction -- `CARD_H` against
+ * `CARD_H_SCORED` -- and the shut one now draws it in the same place.
+ */
+export const CARD_H_SHUT_BARE = NAME_ROW_DEEP + CARD_PAD;
 //: How far above a settlement a bubble floats, in viewBox units. The model
 //: draws a hut a little under a unit tall and the island's short side is 8.7
 //: units across the frame, so this is about a hut and a half -- clear of the
@@ -1199,9 +1219,19 @@ export class Scene {
     return !this.shutCards() || this.opened.has(name) || this.flashed.has(name);
   }
 
+  /**
+   * How tall a shut card is on this board.
+   *
+   * Two answers, for the same reason the open card has two: with a reveal
+   * there is a utility row to keep, and live there is not.
+   */
+  shutH() {
+    return this.reveal ? CARD_H_SHUT : CARD_H_SHUT_BARE;
+  }
+
   /** How tall this seat's card is drawn, which is not the same for every seat. */
   cardBoxHFor(name) {
-    return this.cardOpen(name) ? this.cardBoxH() : CARD_H_SHUT;
+    return this.cardOpen(name) ? this.cardBoxH() : this.shutH();
   }
 
   /**
@@ -1318,11 +1348,15 @@ export class Scene {
     //: are still built and still hold their quantities -- `draw()` fills every
     //: one of them whether or not it is drawn -- so the only thing missing is
     //: somewhere on screen for the symbol to arrive at. It goes to the middle
-    //: of the shut card instead, which is where the number it is changing is:
-    //: the utility row. Flying to the bar's own `x` would put it in open sea
-    //: beside a card that is not showing that bar.
+    //: of the shut card instead. Flying to the bar's own `x` would put it in
+    //: open sea beside a card that is not showing that bar.
+    //:
+    //: The card's *middle*, and not the score row it used to aim at: a live
+    //: board has no score row, and `SHUT_SCORE_Y` is 72 against a bare shut
+    //: card whose foot is at 64 -- so every symbol on a live island would have
+    //: flown to a point just under the card it was going to.
     if (name !== null && !this.cardOpen(name)) {
-      return { x: seat.x, y: seat.y + (CARD_TOP + SHUT_SCORE_Y) * s };
+      return { x: seat.x, y: seat.y + (CARD_TOP + this.shutH() / 2) * s };
     }
     return { x: seat.x + slot.x * s, y: seat.y + (CARD_TOP + BASE - 10) * s };
   }
