@@ -289,7 +289,11 @@ def motion(page, where: str) -> list[str]:
       found.chipCross = document.querySelectorAll('.chip-cross').length;
       const { DWELL } = await import('./scene.js');
       await nap(DWELL.refused + 700);
-      const seen_ = (pid) => [...document.querySelectorAll(`.rope[data-pid="${pid}"]`)]
+      //: **Inside `.ropes`, not anywhere on the page.** The copy `verdict()`
+      //: spawns to leave with lives in `.flights` and carries the same pid --
+      //: counting that as "still laid on the square" failed this check on a
+      //: page that was doing exactly the right thing.
+      const seen_ = (pid) => [...document.querySelectorAll(`.ropes .rope[data-pid="${pid}"]`)]
         .filter(n => n.getBoundingClientRect().width || n.getBoundingClientRect().height)
         .length;
       scene.draw(board, t);
