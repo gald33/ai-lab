@@ -93,12 +93,20 @@ jobs:
     # limit was slow, and one that trips it was stuck. Raise it if the honest
     # number turns out to be higher; do not raise it to paper over a hang.
     #
-    # Re-measured 2026-08-29, after the flake fix. Four consecutive runs of
-    # `--require` on one commit, on a headless GPU-less machine -- the same
-    # SwiftShader path a runner takes -- took 1506s, 1509s, 1497s and 1519s:
-    # about 25 minutes, agreeing to within twenty-two seconds. 40 leaves the
-    # headroom a busier runner needs without letting a hang sit for anything
-    # like six hours. The flake write-up is in `viewer/README.md`.
+    # Re-measured 2026-08-29, after the flake fix, and **on the runner rather
+    # than by proxy**. This job's own green run took 32m04s. A headless GPU-less
+    # developer machine takes about 25 minutes for the same three consecutive
+    # runs (1509s, 1515s, 1508s, agreeing to within seven seconds), so that
+    # machine was under-reporting the runner by about a quarter -- which is
+    # exactly the kind of gap that put the old 15s mount deadline over the edge
+    # on a runner while passing everywhere else. The runner's number is the one
+    # this limit is set from.
+    #
+    # 40 against a measured 32 is a quarter again in hand, which is enough for a
+    # busy runner and still nowhere near the six hours GitHub would allow. Not
+    # raised: 32 is under 40, and the rule above says to raise this only for an
+    # honest number, never to paper over a hang. The flake write-up, and the
+    # reproduction for every measurement here, is in `viewer/README.md`.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4

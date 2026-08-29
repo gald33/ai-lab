@@ -3350,22 +3350,19 @@ Reproduced before it was fixed, by squeezing the same constant to 5s on this
 machine — same call, same exception — and `emerging` then passes at the
 measured value with nothing else changed.
 
-**Proven by repetition, not by one green run.** `--require` was run four times
+**Proven by repetition, not by one green run.** `--require` was run three times
 on the same commit, on a headless GPU-less machine -- the same SwiftShader path
 a runner takes -- and gave the same result each time:
 
 ```
-0 unexpected, 2 known, 0 stale entries     1506s
-0 unexpected, 2 known, 0 stale entries     1509s
-0 unexpected, 2 known, 0 stale entries     1497s
-0 unexpected, 2 known, 0 stale entries     1519s
+0 unexpected, 0 known, 0 stale entries     1509s
+0 unexpected, 0 known, 0 stale entries     1515s
+0 unexpected, 0 known, 0 stale entries     1508s
 ```
 
-The two known ones are the `KNOWN_FAILURES` entries below, which are separate
-work and unaffected by any of this. About 25 minutes, agreeing to within
-twenty-two seconds across the four. The job's `timeout-minutes: 40` is that number with
-room for a busier runner -- close enough to be an instrument, far enough not to
-trip on a slow day. It is not raised to paper over a hang.
+Nothing unexpected, nothing known -- `KNOWN_FAILURES` is empty, and the run says
+so rather than being trusted to. About 25 minutes, agreeing to within seven
+seconds across the three.
 
 `ring` alone was then run five more times with every core saturated -- roughly
 half the frame rate again -- and came back clean five times out of five. That
@@ -3373,6 +3370,16 @@ is the run that mattered: three runs of the *old* code under that same load
 failed every one of the three, with a different failure each time, and it was
 the loaded runs that turned up the sun and the palms. A single green run is not
 evidence about a flake; a loaded run that repeats is.
+
+**And then the runner, which is the only measurement that settles the
+`timeout-minutes`.** The restored job's green run took **32m04s** -- a quarter
+longer than this machine's 25 minutes for the same work. That gap is not an
+aside: it is the same quarter that put the old 15s mount deadline over the edge
+on a runner while it passed on every local run, and it is the reason a proof
+gathered on one machine is evidence about that machine before it is evidence
+about the check. Repetition here answers "is this check deterministic"; only the
+runner answers "is it fast enough". The limit stays at 40 against a measured 32,
+which is a quarter in hand and not a number raised to cover a hang.
 
 ### What `render.py` gained on the way
 
