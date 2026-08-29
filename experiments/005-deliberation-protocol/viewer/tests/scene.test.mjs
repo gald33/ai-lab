@@ -17,6 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
+         CARD_H_SHUT, SHUT_SCORE_Y, SCORE_ROW_DEEP,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
@@ -631,4 +632,52 @@ test("a day begins with the sun still out of sight", () => {
     assert.ok(sunAt(g, 0.02).dim < 0.4);
     assert.equal(sunAt(g, 0.1).dim, 1);
   }
+});
+
+
+// --- a card that is shut ---------------------------------------------------
+//
+// Landscape's answer to the question portrait answers with `FOCUS`. The
+// geometry that can be wrong without anything throwing is the relation between
+// where the score row is put and how tall the card is drawn: get it backwards
+// and the ALONE mark hangs through the card's bottom edge, which is a thing a
+// browser renders perfectly happily.
+
+test("a shut card is tall enough for the row it keeps", () => {
+  // Card coordinates start at the seat, so a card's box runs from CARD_TOP to
+  // CARD_TOP + height -- the height is the box's depth, not the drop to its
+  // foot. Written as a literal 88 first, and right by luck; this is the
+  // relation it was lucky about.
+  const CARD_TOP = 22;
+  const foot = CARD_TOP + CARD_H_SHUT;
+  assert.ok(SHUT_SCORE_Y + SCORE_ROW_DEEP <= foot,
+            `the score row reaches ${SHUT_SCORE_Y + SCORE_ROW_DEEP} and the `
+            + `card ends at ${foot}: the ALONE mark is through the edge`);
+  // And not so tall that the card is mostly empty, which is the whole point of
+  // shutting it. One padding's worth of slack, no more.
+  assert.ok(foot - (SHUT_SCORE_Y + SCORE_ROW_DEEP) <= 12,
+            "a shut card is carrying dead height");
+});
+
+test("a shut card is shorter than the card it shuts", () => {
+  // If this ever stops being true the mechanism is costing height rather than
+  // giving it back, and there is no reason to have it.
+  const g = layout(2);
+  const open = cardBox(g.seats[0]);
+  assert.ok(CARD_H_SHUT < open.h,
+            `shut ${CARD_H_SHUT} is not shorter than open ${open.h}`);
+  // Worth roughly half the card: less than that and the island gains too
+  // little to be worth a click, and the number is here so that a change to
+  // either height has to look at this.
+  assert.ok(CARD_H_SHUT < open.h * 0.6,
+            `shut is ${(CARD_H_SHUT / open.h * 100) | 0}% of open`);
+});
+
+test("the score row moves rather than hides when a card shuts", () => {
+  // The one mark whose *position* depends on the state. Everything else on a
+  // shut card is where it always was and is only not drawn, which is why the
+  // stylesheet can do the rest and cannot do this.
+  const BASE = 104;
+  assert.ok(SHUT_SCORE_Y < BASE + 52,
+            "the shut row is not above where the open row sits");
 });

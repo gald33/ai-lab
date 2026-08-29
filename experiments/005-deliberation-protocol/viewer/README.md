@@ -362,6 +362,104 @@ of every episode. The date now comes from the timestamp of the line that
 announced it, and a bell earlier in the day than its own announcement is
 tomorrow's.
 
+## A card is shut until it is asked for
+
+*Decided 2026-08-29, on Gal's suggestion that the cards could usually be hidden
+and open on a click or on the trader acting.*
+
+**Landscape only.** Portrait already answers this exact question -- an island
+and a card per trader competing for one screen -- with the measured tap-to-focus
+mechanism in "On a phone" below. Two mechanisms for one question on one screen
+is how a tap stops meaning anything, so portrait keeps the one it has and
+nothing here applies there.
+
+A round is mostly silence, and for most of it nobody is reading the shelves.
+So a card is drawn shut: whose it is, the labour dial with its caption, and the
+utility against the ALONE mark. What goes is the shelf -- the bars, the glyphs
+naming them, the quantities, the plank. `CARD_H_SHUT` is 88 units against 186
+open, so the two dark panels lose more than half their height.
+
+**It keeps the utility, and that is the difference from the glance card.**
+`CARD_H_GLANCE` -- what portrait's island focus draws -- does the opposite: it
+keeps the shelf and drops the utility, because a viewer who tapped the island
+wanted the picture. A card that is shut *by default* cannot drop the utility,
+because then a settlement lands and the only things on screen are a rope and a
+pill, and nothing says what the trade did to anybody. The number the round is
+scored on has to stay standing whether or not anyone clicked.
+
+**The height is derived, not chosen.** It was written as a literal 88 first and
+was right by luck: the score row's foot and the card's foot are in card
+coordinates and a height is not, so the two are a `CARD_TOP` apart and getting
+that backwards puts the ALONE mark through the card's bottom edge -- which a
+browser renders perfectly happily. It is now `SHUT_SCORE_Y + SCORE_ROW_DEEP +
+CARD_PAD - CARD_TOP`, and `tests/scene.test.mjs` holds the relation from the
+other side.
+
+### What a click does, and what it must never do
+
+A click on a hut or on the card hanging under it opens that trader's shelf;
+another shuts it. **A click only ever opens, filters or highlights. It never
+changes what the page reads, what it computes, or what it settles** -- the page
+is a painting of `reducer.js`'s state and a viewer poking at it is not an
+input to the island.
+
+**The frame is never re-divided by a click.** Portrait's tap re-divides a band
+because there is no room and something has to give; landscape has margins where
+the cards already stand, so opening one moves nothing else. Verified rather
+than assumed: the viewBox, the canvas and every hut transform are byte-identical
+across a click.
+
+### Which events open a card, and which do not
+
+`produced` and `settled`, and nothing else. Those are the two that animate the
+shelf -- crates into a yard, symbols on and off a bar -- so a shut card would
+play them against a row of bars nobody can see. The card is open for the
+event's own `dwellFor`, the same number the player is holding the frame for, so
+it is never shut under an animation still running.
+
+**Not "any activity", which was the first idea and is the wrong rule.** A
+`said`, an `ack`, a proposal and a refusal move no goods, and on an open market
+those are most of the board -- opening a card for each one is today's layout
+plus flicker. The two sets are kept apart for the same reason: a card the
+viewer opened stays open, and one an event opened reverts to *what the viewer
+chose*, not to shut.
+
+### Two bugs this found, kept because both are the same shape
+
+Both are about a card being rebuilt while something still points into the old
+one. `hut()` builds fresh slots, and a rebuilt card is a new set of nodes.
+
+1. **`slot.was` off `undefined`.** `draw()` writes each bar's `now` and keeps
+   the frame before it in `was`; `hand()` reads `was` to hold a bar at what it
+   *was* until the symbol flying at it lands. A card opened by a settlement is
+   opened from inside `play()`, which runs after `draw()` -- so `hand()` got a
+   slot with no `was` and threw. Found by playing a board through, not by
+   reading. `redrawCard` carries `was`, `now` and `holding` across, which makes
+   it safe from any caller: a click can land mid-animation just as easily.
+2. **A shelf with no numbers on it.** Same cause, other half: the quantities,
+   the dial and the utility are all written by `draw()`, so a card opened after
+   `draw()` had been and gone stood there blank until the next line landed --
+   which under `real time` can be forty seconds. `redrawCard` re-runs `draw`.
+
+**A symbol cannot land on a shelf that is not drawn.** `barAt` sends it to the
+middle of a shut card instead, where the utility row is -- the number it is
+about to change. Flying to the bar's own `x` would put it in open sea beside a
+card not showing that bar.
+
+### What this does not do yet
+
+**It gives the island no width.** Measured at 1440x900 with two traders: the
+island's box is `w - col*4` where `col` is set by `CARD_W`, and that comes out
+520 against a height of 560 -- so the island is width-limited by the cards, and
+a shut card that is *the same width* as an open one does not move that by a
+pixel. The whole gain here is vertical calm.
+
+Getting the width needs a shut card that is narrower, which means the card's
+interior re-lays on every toggle and an open card has to grow inward over the
+sea. Worth about 8% at two traders and roughly a third more island at five,
+where the frame is `268 * n + 300` and most of that is card. It is a second
+change and should be measured on its own.
+
 ## On a phone
 
 The page is a link you hand somebody, and most people open a link on a phone.
