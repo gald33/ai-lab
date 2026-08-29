@@ -161,7 +161,12 @@ export const DWELL = {
   //: home and lands, and the symbol rises off it. `dwellFor` measures a wider
   //: receipt, exactly as it does a wider bundle.
   produced: madeBy(0) + IN_LEG,
-  refused: 1500,   // one badge, rising
+  //: The offer blinking red, which is the whole of what a refusal draws now
+  //: that the badge is gone.
+  refused: 1500,
+  //: The other ending: the offer blinks red and its copy fades off the square,
+  //: the same shape as an approved one leaving, so it is held as long.
+  declined: 1500,
   said: 1300,      // one bubble, rising
   bell: 3600,      // the sun goes down. Not a thing to hurry
   open: 2400,      // and comes back up
@@ -1731,6 +1736,10 @@ export class Scene {
       // `play()` runs -- only open offers are drawn -- so the answer an offer
       // got is said here, on a copy, or it is not said at all.
       else if (p.status === "settled") this.verdict(p, was.get(p.pid), "approved");
+      //: And the other ending. A decline closes the offer -- the trader it was
+      //: addressed to has said no and the maker's goods are free again -- so it
+      //: leaves the square the way an approved one does, red instead of green.
+      else if (p.status === "declined") this.verdict(p, was.get(p.pid), "refused");
     }
     this.shown = placed;
     //: A pill's clock lives as long as its offer is open. Dropping it when the
@@ -2071,7 +2080,7 @@ export class Scene {
     if (prog >= 1) g.classList.add("delivered");
     else this.ride();
     //: A rope rebuilt while its refusal is still on screen is re-marked here,
-    //: or the blink would last one frame.
+    //: or the blink would last one frame;.
     if ((this.noUntil.get(p.pid) || 0) > performance.now()) this.markNo(g);
     return g;
   }
@@ -2105,6 +2114,10 @@ export class Scene {
       // A symbol, and the reason kept as the badge's title rather than printed
       // over the sand. What the manager wrote is in the ticker; the island says
       // *that* it refused, and whose.
+      //: Drawn by `paint()` from the state, beside the settled one: the copy
+      //: has to be spawned from the frame where the offer stopped being open,
+      //: because `this.ropes` holds only open offers by the time `play()` runs.
+      case "declined": return undefined;
       case "refused": {
         this.blame(event.trader, event.reason);
         //: The red blink on the offer *is* the refusal (Gal, 2026-08-28). The
@@ -2113,8 +2126,13 @@ export class Scene {
         //: refusals that have no rope to blink -- a refusal at proposal time is
         //: about an offer that does not exist yet, and something must still say
         //: it happened.
-        const blinked = this.refuse(event.trader, event.reason);
-        return blinked ? undefined : this.mark(event.trader, "bad", event.reason);
+        this.refuse(event.trader, event.reason);
+        //: **And no badge, ever** (Gal, 2026-08-29). Only what the manager
+        //: *announces* has a picture on the island; a refusal is an answer to
+        //: one trader about one line it wrote, whispered when the roster
+        //: allows, and it is already in the ticker. What the island still says
+        //: is which offer it was about, in red, on the offer itself.
+        return undefined;
       }
       // An attempt draws nothing: what it attempted arrives as the receipt or
       // the refusal, and drawing both says it twice.
@@ -2201,6 +2219,12 @@ export class Scene {
     this.refuseTimer = setTimeout(() => {
       for (const pid of pids) {
         this.noUntil.delete(pid);
+        //: **And the offer stays.** It was made to vanish here for a day, on
+        //: the reading that a refusal ends the deal. It does not: the manager
+        //: refusing an `APPROVE` rejects one line and the proposal is still
+        //: open, still escrowing the maker's goods, still takeable by the same
+        //: trader a moment later. The ending that takes an offer off the square
+        //: is `DECLINE`, and that is drawn from the state by `paint()`.
         const rope = this.ropes.querySelector(`.rope[data-pid="${pid}"]`);
         if (!rope) continue;
         rope.classList.remove("answered", "refused");
@@ -2245,14 +2269,14 @@ export class Scene {
                           d: "M -21 -17 h 42 a 9 9 0 0 1 9 9 v 15 a 9 9 0 0 1 -9 9 " +
                              "h -14 l -7 8 l -7 -8 h -14 a 9 9 0 0 1 -9 -9 v -15 " +
                              "a 9 9 0 0 1 9 -9 z" }));
-    if (kind === "bad") {
-      g.append(el("path", { class: "pop-cross", d: "M -7 -7 L 7 7 M 7 -7 L -7 7" }));
-    } else {
-      [-9, 0, 9].forEach((dx, i) => g.append(el("circle", {
-        class: "pop-dot", cx: dx, cy: 0, r: 2.6,
-        style: `animation-delay: ${i * 0.16}s`,
-      })));
-    }
+    //: Three dots and nothing else. The ✗ badge that used to share this shape
+    //: is gone -- only what the manager announces has a picture on the island,
+    //: and a refusal is an answer to one trader, not an announcement -- so a
+    //: bubble now means one thing: somebody spoke.
+    [-9, 0, 9].forEach((dx, i) => g.append(el("circle", {
+      class: "pop-dot", cx: dx, cy: 0, r: 2.6,
+      style: `animation-delay: ${i * 0.16}s`,
+    })));
     anchor.append(g);
     this.flights.append(anchor);
     //: Purely vertical, and relative to the anchor. `POP_UP` clears the roof of

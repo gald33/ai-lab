@@ -41,14 +41,15 @@ def test_five_goods_says_five_everywhere_it_counts() -> None:
 
 
 def test_nothing_else_moves() -> None:
-    # Exactly three sentences count the goods. "Exactly three shapes of line"
-    # and "all three lines settle" are about PRODUCE/PROPOSE/APPROVE, and the
-    # worked examples name goods that are still goods -- so they must survive.
+    # Exactly three sentences count the goods. "Exactly four shapes of line"
+    # and "all four lines settle" count the *commands* -- PRODUCE, PROPOSE,
+    # APPROVE and DECLINE -- and the worked examples name goods that are still
+    # goods, so all of them must survive a rewrite of the goods.
     four = B.brief(B.FROZEN_GOODS).splitlines()
     five = B.brief(B.FROZEN_GOODS + ("fish",)).splitlines()
     assert len(four) == len(five)
     assert sum(1 for a, b in zip(four, five) if a != b) == 3
-    for keep in ("Exactly three shapes of line", "all three lines settle",
+    for keep in ("Exactly four shapes of line", "all four lines settle",
                  "PRODUCE bread=0.5 iron=0.5"):
         assert any(keep in ln for ln in five), f"{keep!r} was rewritten"
 

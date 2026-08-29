@@ -269,8 +269,8 @@ test("surf and wet sand come off the same coast", () => {
 test("every event that draws something is held long enough to watch", () => {
   // Read off `play()` in scene.js. A kind that draws and is missing here is a
   // frame that flashes past, which is the whole bug.
-  for (const kind of ["settled", "produced", "refused", "said", "bell", "open",
-                      "over", "fault"]) {
+  for (const kind of ["settled", "produced", "refused", "declined", "said",
+                      "bell", "open", "over", "fault"]) {
     assert.ok(DWELL[kind] > 0, `${kind} draws something and has no dwell`);
   }
 });

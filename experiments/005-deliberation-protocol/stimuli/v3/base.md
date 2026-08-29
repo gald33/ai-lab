@@ -52,10 +52,10 @@ Nobody is called on. Nobody takes turns. Write when you have something to
 write, read when you want to know what has happened. If you say nothing, you
 have said nothing, and the clock runs anyway.
 
-## Three lines the manager acts on
+## Four lines the manager acts on
 
 Most of what is written on the board is talk between traders, and the manager
-ignores it. Exactly three shapes of line cause something to happen. Write them
+ignores it. Exactly four shapes of line cause something to happen. Write them
 exactly:
 
     PRODUCE bread=0.5 iron=0.5
@@ -73,8 +73,10 @@ exactly:
         moment the proposal is open: they cannot back a second proposal, and
         they cannot pay for a proposal you want to approve. If you are short
         when you try to approve, an offer of your own is probably holding what
-        you need — cancelling is not possible, so size your offers with that
-        in mind.
+        you need. **You cannot take your own offer back** — that commitment is
+        what makes it worth anything — so size your offers with that in mind.
+        The trader you sent it to can end it with DECLINE, and until they do,
+        or the bell rings, those goods stay committed.
 
     APPROVE p3
         Accepts a proposal **another trader addressed to you**, by its id. The
@@ -84,6 +86,17 @@ exactly:
         yourself is not a trade; only the trader it was sent to can take it. If
         you want a deal, either send an offer and wait for them to approve it,
         or approve one of theirs.
+
+    DECLINE p3
+        Turns down a proposal **another trader addressed to you**, by its id.
+        Nothing is exchanged, the offer is closed, and the goods it was holding
+        are the maker's to spend again.
+
+        This is the only way an offer ends before the bell without a trade. You
+        cannot decline your own offer, and an offer you have declined cannot be
+        approved afterwards — by you or anyone. Saying nothing is not the same
+        thing: an offer you ignore keeps the maker's goods committed until the
+        bell.
 
 Say them on the **island** channel; that is where the manager reads. A private
 `dm` is real and nobody else sees it, but the manager does not read it, so an
@@ -103,7 +116,7 @@ The manager says the schedule on the island channel before the round begins.
 Read it and acknowledge it by writing a line beginning `ACK`.
 
 There are **no stages inside an episode**. From the moment it opens until the
-bell, all three lines settle. The only deadline is the bell itself: after it
+bell, all four lines settle. The only deadline is the bell itself: after it
 nothing from that episode settles, open proposals lapse, and whatever you were
 holding has been eaten.
 

@@ -113,6 +113,38 @@ test("the bell lapses what is open and eats what is held", () => {
   assert.deepEqual(s.episodes_closed[0].starved, ["T1", "T2"]);
 });
 
+test("a decline closes the offer and moves nothing", () => {
+  //: The escrow is `manager.py:_free` refusing to let goods be spent twice,
+  //: not a pile standing somewhere else -- so what a decline hands back is
+  //: what the maker may commit next, and no stock crosses the square.
+  const t = reduce([
+    say(1, "manager", "Schedule for this round. 2 traders: T1, T2. 8 episodes, 60s each."),
+    say(2, "manager", "episode 1 of 8 is open."),
+    say(3, "manager", "@T1 produced {'cloth': 1.0}; 0.0 labour unspent"),
+    say(4, "manager", "p1: T1 offers {'cloth': 0.4} to T2 for {'salt': 0.3} — open until the bell"),
+    say(5, "manager", "p1 declined: T2 will not take T1's offer; {'cloth': 0.4} is free again"),
+  ]);
+  const s = t.final;
+  assert.equal(s.proposals[0].status, "declined");
+  assert.equal(s.counters.declined, 1);
+  assert.equal(s.counters.refused, 0, "a decline is not a refusal");
+  assert.equal(round(s.stocks.T1.cloth), 1.0);
+  assert.equal(round(s.stocks.T2.cloth), 0);
+});
+
+test("a declined offer does not lapse at the bell as well", () => {
+  const t = reduce([
+    say(1, "manager", "Schedule for this round. 2 traders: T1, T2. 8 episodes, 60s each."),
+    say(2, "manager", "episode 1 of 8 is open."),
+    say(3, "manager", "@T1 produced {'cloth': 1.0}; 0.0 labour unspent"),
+    say(4, "manager", "p1: T1 offers {'cloth': 0.4} to T2 for {'salt': 0.3} — open until the bell"),
+    say(5, "manager", "p1 declined: T2 will not take T1's offer; {'cloth': 0.4} is free again"),
+    say(6, "manager", "bell — episode 1 closed. 0 proposal(s) lapsed."),
+  ]);
+  assert.equal(t.final.counters.lapsed, 0, "it was already over");
+  assert.equal(t.final.proposals[0].status, "declined");
+});
+
 test("a refusal is counted and kept with its reason", () => {
   const t = reduce([
     say(1, "manager", "Schedule for this round. 2 traders: T1, T2. 8 episodes, 60s each."),

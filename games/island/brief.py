@@ -111,9 +111,9 @@ def brief(goods: tuple[str, ...] | list[str], source: Path = BASE) -> str:
 
     Three sentences in the frozen text count the goods: the one that names them,
     the utility product, and the one that says how many others are left. Nothing
-    else does -- "exactly three shapes of line" and "all three lines settle" are
-    about PRODUCE/PROPOSE/APPROVE, and the worked examples name goods that are
-    still goods.
+    else does -- "exactly four shapes of line" and "all four lines settle" count
+    the commands (PRODUCE, PROPOSE, APPROVE, DECLINE), and the worked examples
+    name goods that are still goods.
     """
     goods = tuple(goods)
     if len(goods) not in COUNT:

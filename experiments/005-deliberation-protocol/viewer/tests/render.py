@@ -267,26 +267,44 @@ def motion(page, where: str) -> list[str]:
 
       scene.play({ kind: 'refused', trader: scene.traders[0], reason });
       await nap(150);
+      //: **No badge for a refusal, at all.** Only what the manager announces
+      //: has a picture on the island, and a refusal answers one trader about
+      //: one line it wrote -- by whisper, where the roster allows. It is in the
+      //: ticker; what the island says is which offer, in red.
       found.bad = watch('.pop.bad');
-      found.cross = watch('.pop-cross');
       found.svgText = [...island.querySelectorAll('text')].map(n => n.textContent).join(' ');
-      found.titled = [...island.querySelectorAll('.pop.bad title')]
-        .some(n => n.textContent === reason);
 
-      //: A refusal the manager named an offer in: the red blink on that offer
-      //: is the whole indicator, and the badge over the hut is not drawn on
-      //: top of it. The ✗ rides the pill so the answer is not colour alone.
+      //: The refusal the manager named an offer in: it blinks red, carries the
+      //: ✗ on its pill so the answer is not colour alone -- and *stays*, since
+      //: a refusal rejects one line and leaves the offer open and takeable.
       const mk = scene.traders[0], tk = scene.traders[1] || scene.traders[0];
       const offer = { pid: 'p6', maker: mk, taker: tk, status: 'open',
                       give: { [scene.goods[0]]: .5 },
                       want: { [scene.goods[1]]: .25 } };
-      scene.draw({ ...t.final, phase: 'market', proposals: [offer] }, t);
-      const badBefore = watch('.pop.bad');
+      const board = { ...t.final, phase: 'market', proposals: [offer] };
+      scene.draw(board, t);
       scene.play({ kind: 'refused', trader: tk, reason: 'p6 is already settled' });
       await nap(150);
       found.blinked = document.querySelectorAll('.rope.refused').length;
       found.chipCross = document.querySelectorAll('.chip-cross').length;
-      found.badOnBlink = watch('.pop.bad') - badBefore;
+      const { DWELL } = await import('./scene.js');
+      await nap(DWELL.refused + 700);
+      const seen_ = (pid) => [...document.querySelectorAll(`.rope[data-pid="${pid}"]`)]
+        .filter(n => n.getBoundingClientRect().width || n.getBoundingClientRect().height)
+        .length;
+      scene.draw(board, t);
+      await nap(60);
+      found.ropeAfterRefusal = seen_('p6');
+
+      //: And the ending that *does* take it off the square. `DECLINE` closes
+      //: the offer and hands the maker's goods back, so the page draws it the
+      //: way it draws an approval: a copy that blinks and fades, spawned by
+      //: `paint()` from the frame where the offer stopped being open.
+      scene.draw({ ...t.final, phase: 'market',
+                   proposals: [{ ...offer, status: 'declined' }] }, t);
+      await nap(120);
+      found.declinedCopy = document.querySelectorAll('.rope.refused').length;
+      found.ropeAfterDecline = seen_('p6');
       scene.draw({ ...t.final, phase: 'market' }, t);
 
       scene.play({ kind: 'said', author: scene.traders[0], attempt: false });
@@ -337,7 +355,7 @@ def motion(page, where: str) -> list[str]:
       return found;
     }""", REASON)
 
-    for key, want in (("sheaf", 1), ("parcel", 2), ("bad", 1), ("cross", 1), ("talk", 1)):
+    for key, want in (("sheaf", 1), ("parcel", 2), ("talk", 1)):
         if seen[key] < want:
             bad.append(f"{where}: {seen[key]} .{key} node(s) during play, expected >= {want}")
     # The whole point of the symbols: the island shows *that* it refused, not
@@ -346,19 +364,28 @@ def motion(page, where: str) -> list[str]:
         if fragment in seen["svgText"]:
             bad.append(f"{where}: the refusal reason is printed on the island "
                        f"({fragment!r} found in its text)")
-    if not seen["titled"]:
-        bad.append(f"{where}: the refusal badge lost the reason as its title")
-    # And when there *is* an offer to blink, that is the indicator: the badge
-    # over the hut would be the same refusal said twice, a frame away from the
-    # square it happened on.
+    # Only what the manager announces has a picture. A refusal is an answer to
+    # one trader about one line, and the badge that used to rise over its hut
+    # said it a second time, out where the talk bubbles are.
+    if seen["bad"]:
+        bad.append(f"{where}: {seen['bad']} refusal badge(s) drawn; a refusal has "
+                   f"no bubble any more, only the offer in red")
     if not seen["blinked"]:
         bad.append(f"{where}: a refusal naming an open offer did not blink it")
     if not seen["chipCross"]:
         bad.append(f"{where}: the blinked offer carries no cross, so red is the "
                    f"only thing saying which answer it got")
-    if seen["badOnBlink"]:
-        bad.append(f"{where}: {seen['badOnBlink']} refusal badge(s) drawn over an "
-                   f"offer that was already blinking")
+    # A refusal rejects one line; the offer is still open, still escrowing the
+    # maker's goods, and still takeable by the same trader a moment later.
+    if not seen["ropeAfterRefusal"]:
+        bad.append(f"{where}: the offer left the square after a refusal, which "
+                   f"says the deal is over when it is still open")
+    # A decline is the deal being over, and leaves the way an approval does.
+    if not seen["declinedCopy"]:
+        bad.append(f"{where}: a declined offer drew no red copy leaving")
+    if seen["ropeAfterDecline"]:
+        bad.append(f"{where}: the declined offer is still laid on the square, "
+                   f"though nobody can take it now")
     if seen["popOnProduce"]:
         bad.append(f"{where}: production still captions itself "
                    f"({seen['popOnProduce']} bubble(s)); the rising goods say it")
@@ -698,12 +725,11 @@ OVERHEAD = """(want) => {
     //: A refusal the manager named an offer in draws no bubble at all: the red
     //: blink on that offer is the indicator, and the bubble is what is left
     //: when there is nothing on the square to blink.
-    const blinked = [...document.querySelectorAll('.rope.refused')].map(n => n.dataset.pid);
-    if (blinked.length) {
-      return { blinkedOnly: true, blinked,
-               chipCross: document.querySelectorAll('.chip-cross').length };
-    }
-    return { error: 'no bubble was drawn at all' };
+    //: No bubble is the *right* answer for a refusal, so what comes back with
+    //: the error is what the island said instead: which offers are in red.
+    return { error: 'no bubble was drawn at all',
+             blinked: [...document.querySelectorAll('.rope.refused')].map(n => n.dataset.pid),
+             chipCross: document.querySelectorAll('.chip-cross').length };
   }
   const who = at.getAttribute('data-trader');
   const here = spot(at);
@@ -800,6 +826,11 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
     #: search for a remark -- which navigates. The other way round left the
     #: refusal being looked for on a board that does not contain it, and the
     #: check reported no bubble at all rather than the wrong board.
+    #:
+    #: The refusal half no longer measures a bubble, because there is not one:
+    #: only what the manager announces has a picture on the island. What it
+    #: checks on a real refusal is that none was drawn; the placement half --
+    #: which is what this whole check exists for -- rides on the remark.
     for kind in ("bad", "talk"):
         at = found.get(kind)
         where = f"{stem} overhead {kind}"
@@ -822,17 +853,20 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
         page.click("#fwd")
         page.wait_for_timeout(250)
         seen = page.evaluate(OVERHEAD, kind)
-        #: The blink is the whole refusal when the manager named an offer, and
-        #: then there is no bubble to measure -- what is checked instead is
-        #: that the offer is marked and carries its cross.
-        if seen.get("blinkedOnly"):
-            print(f"NOTE {where}: the offer blinked; no bubble is drawn for it")
-            if not seen["chipCross"]:
-                bad.append(f"{where}: the blinked offer carries no cross")
+        if kind == "bad":
+            #: A real refusal, on a real board, driven through the page's own
+            #: transport: nothing over the hut, and the offer it named -- when
+            #: it named one this page is holding -- in red.
+            if not seen.get("error"):
+                bad.append(f"{where}: a refusal drew a bubble over "
+                           f"{seen.get('who')}; refusals have no bubble")
+            elif seen.get("blinked"):
+                print(f"NOTE {where}: no bubble, and it blinked {seen['blinked']}")
+                if not seen["chipCross"]:
+                    bad.append(f"{where}: the blinked offer carries no cross")
+            else:
+                print(f"NOTE {where}: no bubble, and no offer of its own to blink")
             continue
-        if seen.get("blinked") and kind == "bad":
-            bad.append(f"{where}: a bubble was drawn over {seen['blinked']}, "
-                       f"which was already blinking, so the refusal is said twice")
         if seen.get("error"):
             bad.append(f"{where}: {seen['error']}")
             continue
@@ -851,10 +885,7 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
         elif far < 60:
             bad.append(f"{where}: {seen['who']}'s settlement and card are only "
                        f"{far:.0f} apart, so this frame cannot tell them apart")
-        # The right mark for the right thing: a cross for a refusal, and for a
-        # remark three dots that say a trader spoke without saying what.
-        if kind == "bad" and not seen["cross"]:
-            bad.append(f"{where}: a refusal drew no cross")
+        # A remark says three dots: that a trader spoke, without saying what.
         if kind == "talk" and seen["dots"] < 3:
             bad.append(f"{where}: a remark drew {seen['dots']} dot(s), not three")
         # And it goes with the settlement as the camera turns.
@@ -951,15 +982,11 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
         # is the blinking offer with a cross on its pill -- the badge over the
         # hut only for a refusal with no offer to blink. One of the two, never
         # neither and never both.
-        if lit["blinked"]:
-            if not lit["cross"]:
-                bad.append(f"{tag}: the blinked offer carries no cross")
-            if lit["badge"]:
-                bad.append(f"{tag}: a badge was drawn over an offer that was "
-                           f"already blinking, so the refusal is said twice")
-        elif not lit["badge"]:
-            bad.append(f"{tag}: the refusal drew neither a blinking offer nor a "
-                       f"badge, so nothing on the page says it happened")
+        if lit["badge"]:
+            bad.append(f"{tag}: a refusal badge was drawn; a refusal has no "
+                       f"bubble any more, only the offer and the slot in red")
+        if lit["blinked"] and not lit["cross"]:
+            bad.append(f"{tag}: the blinked offer carries no cross")
     bad += [f"{where}: {e}" for e in errs]
     page.close()
     return bad

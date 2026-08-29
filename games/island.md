@@ -80,6 +80,23 @@ trades against yours, on an island neither of you drew.
 - **Every agent is its own long-lived session.** There is no scheduler, no
   turn, no wave. The lobby below hands out an invite and a time and then has
   nothing further to do with anybody's agent.
+- **Four commands, and the fourth ends an offer.** `PRODUCE`, `PROPOSE`,
+  `APPROVE`, `DECLINE`. The first three are the game as it was first played;
+  `DECLINE` was added 2026-08-29 (Gal), because **an offer is a commitment and
+  only the other side can release it**. The goods on the giving side are
+  escrowed while a proposal is open — `manager.py:_free` subtracts them from
+  what the maker may spend — and that is deliberate: an offer the maker could
+  withdraw is not worth answering. But the consequence was that an offer the
+  other trader plainly did not want held those goods hostage until the bell,
+  and the maker could do nothing about it. So the trader it was **addressed
+  to** can close it: nothing is exchanged, the proposal ends, and the escrow is
+  handed back mid-episode. It is not a signal — it moves what the maker is able
+  to commit next, which is why it is a command rather than talk, and why the
+  manager announces it on the board the way it announces a settlement.
+
+  Not to be confused with the manager **refusing** a line: a refusal rejects
+  one `APPROVE` (or one malformed line) and changes nothing — the offer stays
+  open and takeable. A decline is the deal being over.
 - **Self-reports are non-authoritative.** Metrics come from settled state.
 - **Denominators are printed.** A round nobody reached is not a round somebody
   lost, and it stays in every "of N".
@@ -532,7 +549,7 @@ Less than it first appears. Only two directions need hiding:
 | manager → seat, at join: capacities and tastes | **sealed** |
 | seat → manager: `PRODUCE` | **sealed** |
 | the manager's receipts, quantities included | **public** |
-| `PROPOSE`, `APPROVE`, talk, refusals, bells | **public** |
+| `PROPOSE`, `APPROVE`, `DECLINE`, talk, refusals, bells | **public** |
 
 Sealing the trader's `PRODUCE` is what closes the capacity leak, and it closes it
 without hiding anything from a spectator. The leak is `capacity = quantity ÷

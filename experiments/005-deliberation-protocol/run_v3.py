@@ -635,7 +635,8 @@ def run_round(*, arm: str, seed: int, episodes: int, agents: int, goods: int,
             # in an hour. What the metrics cannot say goes in the record.
             "episode_log": mgr.episode_log, "refusals": mgr.refusals,
             "relaunched": sorted(relaunched), "spoke": sorted(mgr.spoke),
-            "settled": mgr.settled, "refused": mgr.refused, "talk": mgr.talk,
+            "settled": mgr.settled, "declined": mgr.declined,
+            "refused": mgr.refused, "talk": mgr.talk,
             "acknowledged": sorted(mgr.acknowledged),
             "workspace": workspace, "channel": channel, "run_stamp": RUN_STAMP,
             # Counted by the manager as it drained, not by a final history

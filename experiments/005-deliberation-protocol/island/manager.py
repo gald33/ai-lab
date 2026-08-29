@@ -44,7 +44,8 @@ from switchboard.client import Client, SwitchboardError  # noqa: E402
 TRANSPORT_FAULTS = (httpx.TransportError, httpx.RemoteProtocolError)
 from switchboard.timing import unwrap_forecast  # noqa: E402
 
-from .protocol import Approve, Malformed, Produce, Propose, parse  # noqa: E402
+from .protocol import (Approve, Decline, Malformed, Produce, Propose,  # noqa: E402
+                       parse)
 
 #: Whether labour may be committed in several pieces within one episode.
 #: **Off by default**: every run before 007's run 002 settled one production per
@@ -164,6 +165,7 @@ class Manager:
     #: Cleared at every bell -- see `_point_at_inbox`.
     _pointed: dict[str, int] = field(default_factory=dict)
     settled: int = 0
+    declined: int = 0
     refused: int = 0
     talk: int = 0
     #: One record per episode, written at the bell. The screen had to be
@@ -434,6 +436,8 @@ class Manager:
                 self._propose(author, action)
             elif isinstance(action, Approve):
                 self._approve(author, action)
+            elif isinstance(action, Decline):
+                self._decline(author, action)
         except Refused as exc:
             self._refuse(author, type(action).__name__.lower(), str(exc), text)
 
@@ -672,6 +676,40 @@ class Manager:
         self.say(f"{p.pid} settled: {p.maker} and {author} "
                                 f"exchanged {p.give} for {p.want}")
 
+    def _decline(self, author: str, action: Decline) -> None:
+        """Say no to an offer, and hand the maker back what it was holding.
+
+        **Because an offer is a commitment and only the other side can end
+        it.** The goods on the giving side are escrowed for as long as the
+        proposal is open -- `_free` subtracts them from what the maker can
+        spend -- and that is deliberate: an offer nobody could rely on is not
+        an offer. So the maker cannot take it back, and before this the goods
+        stayed locked up until the bell however plainly the other trader had
+        said no. The trader it was addressed to is the one party that can end
+        it honestly, and `DECLINE` is that: the same checks as `APPROVE`,
+        without the exchange.
+
+        The offer is then *closed*, which is what makes this different from
+        the manager refusing an `APPROVE`: a refusal rejects one line and
+        leaves the offer standing, and a decline is the deal being over.
+        """
+        if not self.episode_open:
+            raise Refused("this episode has closed")
+        p = self.proposals.get(action.proposal_id)
+        if p is None:
+            raise Refused(f"no such proposal {action.proposal_id!r}")
+        if p.status != "open":
+            raise Refused(f"{p.pid} is already {p.status}")
+        if p.taker != author:
+            raise Refused(f"{p.pid} was not addressed to you")
+        p.status = "declined"
+        self.declined += 1
+        #: Announced on the board, as a settlement is. The goods it hands back
+        #: are the maker's to spend again this episode, and a maker that had to
+        #: infer that from silence would be sizing its next offer blind.
+        self.say(f"{p.pid} declined: {author} will not take "
+                 f"{p.maker}'s offer; {p.give} is free again")
+
     # --- the clock ---------------------------------------------------------
 
     def open_episode(self) -> None:
@@ -691,6 +729,8 @@ class Manager:
         """
         self.drain()
         lapsed = [p.pid for p in self.proposals.values() if p.status == "open"]
+        declined_here = [p.pid for p in self.proposals.values()
+                         if p.status == "declined" and p.episode == self.episode]
         for p in self.proposals.values():
             if p.status == "open":
                 p.status = "lapsed"
@@ -717,6 +757,11 @@ class Manager:
                                for i in range(len(self.goods)))},
             "produced": [n for n in self.names if self.holders[n].produced],
             "lapsed": lapsed,
+            #: Which offers the addressee ended before the bell. Beside
+            #: `lapsed` because they are the two ways an offer dies without a
+            #: trade, and telling them apart is the point: a lapse is nobody
+            #: acting, a decline is somebody deciding.
+            "declined": declined_here,
             "settled": self._settled_this_episode,
         })
         self._settled_this_episode = 0

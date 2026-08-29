@@ -45,6 +45,7 @@ from pathlib import Path
 PRODUCE = re.compile(r"^PRODUCE\s+(.*)$", re.IGNORECASE)
 RECEIPT = re.compile(r"^@(T\d+) produced (\{.*?\}); ([0-9.]+) labour unspent")
 OFFER = re.compile(r"^(p\d+): (T\d+) offers (\{.*?\}) to (T\d+) for (\{.*?\})")
+DECLINED = re.compile(r"^(p\d+) declined: (T\d+) will not take (T\d+)'s offer")
 SETTLED = re.compile(r"^(p\d+) settled: (T\d+) and (T\d+) exchanged "
                      r"(\{.*?\}) for (\{.*?\})")
 BELL = re.compile(r"^bell — episode (\d+) closed")
@@ -249,6 +250,7 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
 def check_exchange(board: dict, report: Report) -> None:
     """A settlement must move exactly what its offer named, both ways."""
     offers: dict[str, tuple[str, dict, str, dict]] = {}
+    declined: set[str] = set()
     for msg in board["messages"]:
         body = msg.get("body", "")
         offer = OFFER.match(body)
@@ -256,8 +258,28 @@ def check_exchange(board: dict, report: Report) -> None:
             offers[offer.group(1)] = (offer.group(2), _vector(offer.group(3)),
                                       offer.group(4), _vector(offer.group(5)))
             continue
+        #: An offer the addressee ended. It moves nothing, so there is nothing
+        #: to recompute -- what is checkable is that it is *over*: a pid that
+        #: settles after it was declined would mean the manager traded goods it
+        #: had already handed back.
+        gone = DECLINED.match(body)
+        if gone:
+            pid = gone.group(1)
+            if pid not in offers:
+                report.bad("exchange", f"{pid} declined with no offer before it")
+            else:
+                who = offers[pid][2]
+                if gone.group(2) != who:
+                    report.bad("exchange", f"{pid} was addressed to {who}, "
+                                           f"declined by {gone.group(2)}")
+                declined.add(pid)
+                offers.pop(pid)
+            continue
         done = SETTLED.match(body)
         if not done:
+            continue
+        if done.group(1) in declined:
+            report.bad("exchange", f"{done.group(1)} settled after it was declined")
             continue
         pid, a, b = done.group(1), done.group(2), done.group(3)
         gave, got = _vector(done.group(4)), _vector(done.group(5))

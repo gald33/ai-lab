@@ -102,6 +102,38 @@ def test_a_settlement_that_moves_more_than_the_offer_named_fails(tmp_path):
     assert any("offered" in f and "settled" in f for f in report.failures)
 
 
+def test_a_settlement_after_a_decline_fails(tmp_path):
+    """The one thing about a decline a board can be checked for.
+
+    A decline moves nothing, so there is no arithmetic to redo. What it does is
+    end the offer and hand the maker's goods back -- so a settlement of the same
+    proposal afterwards would be the manager trading goods it had already
+    released, and the ledger downstream would not add up.
+    """
+    board = _board()
+    board["messages"][6]["body"] = "DECLINE p1"
+    board["messages"][7]["body"] = (
+        "p1 declined: T2 will not take T1's offer; {'bread': 0.1} is free again")
+    board["messages"].insert(8, _line(
+        9, "manager", "p1 settled: T1 and T2 exchanged {'bread': 0.1} for {'cloth': 0.2}"))
+
+    report = _run(tmp_path, board)
+
+    assert not report.passed
+    assert any("after it was declined" in f for f in report.failures)
+
+
+def test_a_decline_by_somebody_it_was_not_addressed_to_fails(tmp_path):
+    board = _board()
+    board["messages"][7]["body"] = (
+        "p1 declined: T1 will not take T1's offer; {'bread': 0.1} is free again")
+
+    report = _run(tmp_path, board)
+
+    assert not report.passed
+    assert any("declined by T1" in f for f in report.failures)
+
+
 def test_a_line_attributed_to_a_seat_it_did_not_come_from_fails(tmp_path):
     board = _board()
     board["messages"][4]["signature"]["key"] = "key-two"  # T1's line, T2's key
