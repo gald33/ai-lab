@@ -26,12 +26,14 @@ neither is privileged.
 **So the whole ask is a VM**: run one process, keep it running, serve two
 directories.
 
-*That last clause is on its way out and this document still describes the host
-as it runs today.* Under the decisions of 2026-08-29 below, the lobby moves to
-a front end elsewhere and the manager pushes each finished game out to it, so
-the ask becomes **run one process and keep it running** — nothing served,
-nothing inbound. Until that is built, the two directories are still served and
-the Caddy block further down is still the one in use.
+*That clause narrows rather than disappears, and this document still describes
+the host as it runs today.* Under the decisions of 2026-08-29 below, the lobby
+moves to a front end elsewhere that reads the board itself, so the page stops
+being served from here — but the played games live on this disk and nowhere
+else, so **the finished games are still served, and this host still takes
+inbound for them**. The ask becomes: run one process, keep it running, serve
+one directory of finished games. Until that is built, both directories are
+still served and the Caddy block further down is still the one in use.
 
 ## The one process
 
@@ -285,6 +287,13 @@ the host open, and the answer was that the manager can push it out instead.*
 
 #### The manager pushes finished games, and the VM takes no inbound at all
 
+*Superseded the same day by "There is no store but this disk, so the games are
+served from it", below. It assumed a store the front end owns; there is none,
+and one is not wanted. Kept in full because it is the reasoning that has to be
+re-beaten if an external store is ever taken on — and because the push's
+write credential, argued for here as the design's first secret, went away with
+it.*
+
 Decided by Gal, 2026-08-29, **superseding the subsection above in the same
 sitting it was written** — it said `--live` keeps the host publicly reachable
 and the surface only shrinks. It does not have to. The manager can publish the
@@ -402,6 +411,99 @@ decision, both block the code:
   game it let go.
 - Whether `--live` keeps being written to local disk. It should: it costs
   nothing, and it is what an operator reads when the push is what is broken.
+
+#### There is no store but this disk, so the games are served from it
+
+Decided by Gal, 2026-08-29, **superseding "The manager pushes finished games,
+and the VM takes no inbound at all" above**, written earlier the same day and
+kept there with its reasoning. That decision moved the record out to a store
+the front end owns. There is no such store and one is not wanted: the played
+games live on this disk and nowhere else, they are deliberately **not** in
+git, and an external database is a thing to run, back up and pay for before it
+has served anybody. So the finished games are read straight off this host, and
+**this host takes inbound after all** — confined to exactly that.
+
+The push, its write credential and the board line that made a push auditable
+all go with the decision they belonged to. **There is no secret in this
+design again**, which is where it started and where it should have stayed.
+
+**Confined by what is in the directory, not by what a query layer allows.**
+The only reachable thing is a directory that contains **nothing but finished
+games**. That is not a new rule to build: `live.finish` already copies a
+game's board and reveal into the served directory *after* the bell, and `--out`
+— which holds the seeds of games still running — is not served and must never
+be. A file that is not in the published directory cannot be asked for, however
+the asking is phrased.
+
+**A static file server is the smaller surface, and a database would be a step
+backwards.** It is tempting to read "confine inbound to querying the games" as
+*build something that only answers game queries*, but a query API is more
+inbound surface than a file server, not less: it interprets attacker-controlled
+input, and a file server over an allowlisted prefix interprets nothing but a
+path. These files are written once, never updated, and fetched by name. A
+database would add a process to keep alive, a backup story, a connection
+credential at rest, and a parser — to serve immutable JSON that a directory
+already serves. **Do not add one**, and if one is ever added, it is because
+something other than serving these files needs it.
+
+So the whole of the inbound surface is:
+
+```
+handle /robots.txt { respond "User-agent: * / Allow: /" }
+handle /games/* {
+    @get method GET HEAD
+    handle @get {
+        header Access-Control-Allow-Origin "https://gald33.github.io"
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server { index off }
+    }
+    respond 405
+}
+handle { respond "not found" 404 }
+```
+
+One prefix by directory, `GET` and `HEAD` only, no directory listing,
+everything else 404. Read the differences from the 2026-08-28 block above
+rather than the shape:
+
+- **`/` and `/index.html` are gone**, because the lobby is served elsewhere and
+  reads the board itself. That was the other half of this host's public
+  surface and it is simply no longer here.
+- **`no-store` becomes `immutable`.** It was there because a cached live file
+  is a game watched minutes behind and a cached `finished` block is an ending
+  that never arrives. With finished games only, every file under this prefix
+  is written once and never changes, so caching is free and correct — and it
+  is what keeps a linked game cheap to serve when somebody points a crowd at
+  it.
+- **`GET`/`HEAD` only.** Nothing here is writable and the config should say so
+  rather than relying on the file server to have no write path.
+- **`index off`.** The index a spectator needs is `index.json`, which the
+  manager writes; a directory listing is a second, accidental index that
+  nobody maintains and that names files the real one has dropped.
+- **The CORS origin follows the viewer, not the lobby.** The viewer is what
+  fetches these files, and it stays on Pages, so `https://gald33.github.io`
+  stays right. The lobby's own origin never fetches from here.
+
+**The four checks are owed again, and are the same four**: `lobby.json`,
+`results/`, a `../` traversal and a decoy file dropped into the published
+directory, each confirmed to 404 through the public URL, with the mount
+read-only and the seeds one directory above it. They were run against the
+2026-08-28 block and this is a different block. *"Be careful with the web
+root" is not a check*, and neither is having been careful once.
+
+**What is still worth doing, precisely because this is the only inbound.**
+A rate limit belongs here now in a way it did not when this was one of two
+surfaces: it is static files, so a limit costs nothing and bounds what a
+stranger can spend of the host's bandwidth. And the argument in "What it costs
+to leave running" applies to reads as well as games — neither `--max-games`
+nor the forming cap bounds a stranger's total over a day.
+
+**Open, and blocking the code rather than the decision**: whether the
+published directory keeps the name `--live` now that nothing live is written
+into it. It should not — a flag named for a feature that was removed is the
+next reader's wrong assumption — but renaming it changes an operator's command
+line and the viewer's `?live=`/`?games=` contract, so it is a change with a
+migration and not a rename.
 
 #### What changes in the code, and what staleness means afterwards
 
