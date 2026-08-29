@@ -65,6 +65,35 @@ const GLIDE_CAP = 48;
  * clock is spending, and the same argument applies (see `PACES` in `feeds.js`).
  */
 export const CARD_LINGER = 1400;
+/**
+ * How long a card takes to open or shut, in ms.
+ *
+ * Long enough to be read as the card *changing size* rather than as two
+ * different cards swapped over -- which is what an instant toggle looked like,
+ * and on an island where a settlement can open a card by itself that reads as
+ * a glitch rather than as a consequence. Short enough that clicking through
+ * four traders is not a wait.
+ *
+ * The same easing as a parcel's glide, so the two motions on this page belong
+ * to each other.
+ */
+const CARD_SWING = 220;
+
+/**
+ * Where the score row sits, as a **CSS** transform.
+ *
+ * Its own name because of how it went wrong. The row is positioned with an SVG
+ * `transform` *attribute* -- `translate(0 156)` -- and handing that string to
+ * `Element.animate` gives keyframes the engine drops on the floor: CSS wants
+ * units. The animation still exists, still reports its duration, and moves
+ * nothing. That is the worst shape a bug can take here, because every visible
+ * sign says it is working, and it was found by reading the keyframes back off
+ * the running animation rather than by watching the card.
+ *
+ * So the string is built from the numbers, in one place, with the units on it.
+ */
+export const scoreAt = (open) =>
+  `translate(0px, ${open ? BASE + 52 : SHUT_SCORE_Y}px)`;
 
 /**
  * How long a shut card stays open for one event: the animation, then the
@@ -1344,7 +1373,18 @@ export class Scene {
     const before = this.bars[name] ?? {};
     const carry = Object.fromEntries(Object.entries(before).map(([good, b]) =>
       [good, { was: b.was, now: b.now, holding: b.holding }]));
+    //: What the card looked like before it was rebuilt, so the new one can be
+    //: animated *from* it. The rebuild is what makes the toggle simple -- the
+    //: shelf, the plank and the score row all move, and building it is shorter
+    //: than a rule that could express that -- but a replaced node has no
+    //: previous state to transition from, so the previous state is taken here
+    //: and handed to `swingCard` below.
+    const was = {
+      h: node.querySelector(".card-bg")?.getAttribute("height"),
+      shelf: node.querySelector(".card")?.classList.contains("shut") ? 0 : 1,
+    };
     node.replaceWith(this.hut(name, seat));
+    this.swingCard(name, was);
     for (const [good, kept] of Object.entries(carry)) {
       const b = this.bars[name]?.[good];
       if (!b) continue;
@@ -1367,6 +1407,70 @@ export class Scene {
     //: everything from state. It has to come after the carry above, because it
     //: derives `was` from `now` and a fresh slot has neither.
     if (this.state) this.draw(this.state, this.timeline);
+  }
+
+  /**
+   * Move a just-rebuilt card from the shape the old one had into its own.
+   *
+   * Three things change when a card opens or shuts and each is animated on the
+   * property that actually moves: the card's ground grows or shrinks, the score
+   * row slides between the two heights it sits at, and the shelf fades.
+   *
+   * **WAAPI rather than CSS, for the same reason `produce()` animates the
+   * labour dial that way.** The node is new on every toggle, so there is no
+   * previous computed value for a transition to start from -- a rule would
+   * simply land it at the end state. Given both ends explicitly, the animation
+   * runs on a node that appeared this frame.
+   *
+   * Nothing here is load-bearing: if `animate` is unavailable or motion is not
+   * wanted, the card is already drawn correctly and only arrives without the
+   * travel.
+   */
+  swingCard(name, was) {
+    if (still() || !was?.h) return;
+    const node = this.root.querySelector(`.hut[data-trader="${cssName(name)}"]`);
+    const card = node?.querySelector(".card");
+    if (!card?.animate) return;
+    const ease = { duration: CARD_SWING, easing: "cubic-bezier(.4,0,.3,1)" };
+
+    //: `height` on a rect is a CSS property in SVG2, so it interpolates. Both
+    //: rects move together or the shadow detaches from the card casting it.
+    const now = String(this.cardBoxHFor(name));
+    if (was.h !== now) {
+      for (const sel of [".card-bg", ".card-shadow"]) {
+        card.querySelector(sel)?.animate(
+          [{ height: `${was.h}px` }, { height: `${now}px` }], ease);
+      }
+    }
+
+    //: The one mark whose position depends on the state -- see `SHUT_SCORE_Y`.
+    //: It slides rather than jumping between the two rows it can occupy.
+    //:
+    //: **Built from the numbers, not from the attribute it is drawn with.**
+    //: An SVG `transform` attribute is `translate(0 156)` and a CSS transform
+    //: needs units -- `translate(0px, 156px)` -- so handing the attribute
+    //: straight to `animate` gives keyframes the engine drops silently. The
+    //: animation then exists, reports the right duration, and moves nothing,
+    //: which is the failure that is hardest to see: caught by reading the
+    //: keyframes back off the running animation rather than by watching it.
+    const row = card.querySelector(".score");
+    if (row) {
+      const from = scoreAt(!!was.shelf);
+      const to = scoreAt(!card.classList.contains("shut"));
+      if (from !== to) row.animate([{ transform: from }, { transform: to }], ease);
+    }
+
+    //: The shelf fades on its own opacity rather than riding the card's, so the
+    //: name and the utility stay legible the whole way through. Faster than the
+    //: box: a shelf still fading inside a card that has finished resizing reads
+    //: as lag, while one gone early reads as the card closing over it.
+    const shelf = card.classList.contains("shut") ? 0 : 1;
+    if (was.shelf !== shelf) {
+      for (const el of card.querySelectorAll(".cell, .plank")) {
+        el.animate([{ opacity: was.shelf }, { opacity: shelf }],
+                   { ...ease, duration: Math.round(CARD_SWING * 0.75) });
+      }
+    }
   }
 
   /**

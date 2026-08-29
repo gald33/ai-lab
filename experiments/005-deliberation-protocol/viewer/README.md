@@ -419,6 +419,40 @@ browser renders perfectly happily. It is now `SHUT_SCORE_Y + SCORE_ROW_DEEP +
 CARD_PAD - CARD_TOP`, and `tests/scene.test.mjs` holds the relation from the
 other side.
 
+### Opening and shutting are animated
+
+*Added 2026-08-29, on Gal's ask.* An instant toggle read as two different cards
+swapped over rather than one card changing size — and on an island where a
+settlement can open a card by itself, a jump reads as a glitch instead of as a
+consequence. `CARD_SWING` is 220ms, on the same easing as a parcel's glide, so
+the two motions on the page belong to each other.
+
+Three things move and each is animated on the property that actually changes:
+the card's ground grows or shrinks (`height` on the two rects), the score row
+slides between the two rows it can occupy, and the shelf fades — on its own
+opacity rather than the card's, so the name and the utility stay legible the
+whole way through. The shelf's fade is a little quicker than the box: a shelf
+still fading inside a card that has finished resizing reads as lag.
+
+**WAAPI rather than CSS**, for the same reason `produce()` animates the labour
+dial that way: the node is new on every toggle, so there is no previous
+computed value for a transition to start from and a rule would simply land it
+at the end state. `redrawCard` takes the old card's shape before replacing it
+and hands it to `swingCard`. The shelf hides by `opacity`, not `display`, since
+`display` cannot fade.
+
+**A bug worth keeping, because of its shape.** The score row is *positioned*
+with an SVG `transform` attribute — `translate(0 156)` — and handing that
+string to `Element.animate` gives keyframes the engine drops on the floor: CSS
+wants units. The animation still existed, still reported its 220ms duration,
+and moved nothing. Every visible sign said it worked. It was found by reading
+the keyframes back off the running animation, not by watching the card, and it
+would never have been found by watching in this environment at all — a headless
+page runs the island at under 2.5 frames a second, so a 220ms animation
+completes between two frames and *nothing* appears to move whether it is
+working or not. `scoreAt` now builds the string from the numbers in one place,
+and `tests/scene.test.mjs` asserts its shape.
+
 ### What a click does, and what it must never do
 
 A click on a hut or on the card hanging under it opens that trader's shelf;
@@ -2910,10 +2944,74 @@ the reason the replay shows the *recorded* score rather than its own.
 ## Tests
 
 ```bash
-node --test "viewer/tests/*.test.mjs"            # the page: 162
-python -m pytest viewer/tests/ -q                # the ledger and the roots: 104
+node --test "viewer/tests/*.test.mjs"            # the page: 180
+python -m pytest viewer/tests/ -q                # the ledger and the roots: 200
 python viewer/tests/render.py                    # the drawing, in a real browser
+python viewer/tests/render.py --require          # ... and as CI runs it
 ```
+
+### All three run in CI now, and two of them did not
+
+*Decided 2026-08-29.*
+
+`.github/workflows/tests.yml` ran `games/island/tests` and
+`experiments/005-deliberation-protocol/tests`. It did **not** run
+`viewer/tests/`, and nothing anywhere ran `render.py` — so a green tick on a
+pull request said nothing about 200 Python tests, and nothing at all about
+what the island actually draws. That is the same gap the workflow's own header
+describes closing for the node tests, left open for these two.
+
+It had already hidden a real failure long enough to be found by accident:
+`test_adding_a_five_good_level_leaves_the_recorded_ones_alone` asserted that
+every round on the ledger was played over four goods, and four five-good
+rounds have since been recorded. The test said in its own message that when
+that stopped being true the test was the wrong shape rather than the ledger,
+so it was reshaped to the property it was guarding — a round's level is a
+function of its own island, so a level added for some other round cannot reach
+in and relabel it. That form does not depend on what the ledger happens to
+hold, which is what made the old one expire.
+
+**The job carries a `timeout-minutes`**, for the same reason it carries
+`--require`. A run that never ends reports nothing, exactly like a run that
+checked nothing, and GitHub's default would let it sit for six hours first.
+
+The number came from measurement. The suite takes about eight minutes on a
+developer machine; the first CI run went past thirty. That is expected rather
+than alarming — a runner has no GPU, so Chromium falls back to SwiftShader and
+every frame of a three.js island is drawn on the CPU. What that first run could
+*not* say is whether it was slow or stuck, because logs only arrive when a job
+ends. The limit is the instrument that separates the two: finish under it and
+the suite is merely slow, trip it and something is hung. Raise it if the honest
+number turns out higher; never raise it to paper over a hang.
+
+**`--require` is why the drawing job is worth having.** `render.py` skips
+cleanly when there is no playwright, no browser or no replay — right locally,
+and exactly the failure mode a CI job must not have, because a skip and a pass
+are the same tick. The flag turns each of those into a failure, so the job
+cannot go green having rendered nothing.
+
+### `KNOWN_FAILURES`, and the two rules that stop it rotting
+
+Two failures predate CI ever running `render.py`: a portrait framing check
+that misses its floor by a fraction of a percent on one board, and a lighting
+check whose sign is inverted — the island reads *cooler* with the sun down
+than up. The second is a real bug and its own piece of work.
+
+Without somewhere to put them the choice was between never running the suite
+and deleting the checks that catch them, and **deleting a check to get green is
+the one thing this repo does not do**. So they are listed, dated, and each
+carries the reason it is there. `verdict` enforces two rules:
+
+- anything **not** listed fails the run, exactly as before;
+- anything listed that **stops failing** also fails the run, with a message
+  saying to delete the entry.
+
+The second is what keeps the list honest. A known-failures list whose entries
+outlive their bugs is a list nobody trusts a month later, and by then it will
+swallow a real regression. `tests/test_render_gate.py` holds both rules, plus
+the requirement that every entry carries a date and a reason long enough to
+act on — and it runs in the `island` job, so the gate is covered by the same
+tick it makes possible.
 
 The ones that matter: a self-report moves nothing, a line that is
 nearly a receipt is not repaired into one, **every saved board parses with

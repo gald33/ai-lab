@@ -441,15 +441,47 @@ def test_a_five_good_round_is_its_own_level():
 
 
 def test_adding_a_five_good_level_leaves_the_recorded_ones_alone():
-    """The 72 rounds on disk keep the levels they were played at."""
+    """A level added for a new good-count must not relabel rounds already played.
+
+    **Reshaped 2026-08-29.** This used to assert that every row on the ledger
+    was four-good, with a note saying that when that stopped being true the
+    test was the wrong shape rather than the ledger. It stopped being true:
+    four five-good rounds have since been played and recorded, and the test
+    began failing on a correct ledger. The note was right, so this is the
+    reshape it asked for -- the property it was guarding, stated so that it
+    does not depend on what mix of rounds the ledger happens to hold.
+
+    The old form is kept in the history rather than deleted quietly: a test
+    that encodes today's data as an invariant will do it again, and the tell is
+    an assertion about the *contents* of a growing file.
+    """
     rows = scores.load(scores.LEDGER)
     if not rows:
         pytest.skip("no ledger to read")
-    before = {scores.level(r) for r in rows}
-    assert all(key[1] == 4 for key in before), (
-        "every recorded round was played over four goods; if that stops being "
-        "true this test is the wrong shape, not the ledger")
-    assert (2, 5, 3) not in before
+
+    # A round's level is a function of its own island and nothing else, so a
+    # level that exists for some other round cannot reach in and relabel it.
+    # This is the half that actually bites: it fails the moment `level` starts
+    # consulting anything outside the island block.
+    for row in rows:
+        mine = scores.level(row)
+        meddled = dict(row)
+        meddled["capture"] = 999.0
+        meddled["eff_round"] = 999.0
+        meddled["game"] = {"id": "somebody-elses-game", "rounds": 99}
+        assert scores.level(meddled) == mine, (
+            f"a round's level moved when a field outside its island changed: "
+            f"{mine} -> {scores.level(meddled)}")
+
+    # And rounds played over different numbers of goods are never the same
+    # challenge, which is what the five-good level was added to keep apart.
+    goods_in = {}
+    for row in rows:
+        goods_in.setdefault(scores.level(row), set()).add(row["island"]["goods"])
+    for key, seen in goods_in.items():
+        assert len(seen) == 1, (
+            f"level {scores.level_label(key)} holds rounds played over "
+            f"{sorted(seen)} goods")
 
 
 # --- the official score, and who may have one ---------------------------------
