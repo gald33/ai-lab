@@ -272,6 +272,88 @@ applies to what is left, and the four checks are still the checks: `lobby.json`,
 `results/`, a `../` traversal and a decoy file each confirmed to 404 through
 the public URL. Re-run them after cutting the page paths out.
 
+*Superseded within the hour by the subsection below, and kept because the
+reasoning is what the next decision had to beat: this said the live feed pins
+the host open, and the answer was that the manager can push it out instead.*
+
+#### The manager pushes finished games, and the VM takes no inbound at all
+
+Decided by Gal, 2026-08-29, **superseding the subsection above in the same
+sitting it was written** — it said `--live` keeps the host publicly reachable
+and the surface only shrinks. It does not have to. The manager can publish the
+same way it does everything else: **outbound**. At the last bell it pushes the
+board, the reveal and the index row to the front end's own store, and the VM
+serves nothing, listens on nothing, and runs no web server. The Caddy block
+goes away, and with it the four path checks — a directory that is not served
+cannot leak a seed, which is a stronger guarantee than an allowlist that has
+to be re-checked after every edit.
+
+That closes the last inbound port and makes the claim at the top of this
+document — *no inbound ports* — true for the first time.
+
+**Finished games only, and that is a real loss, taken deliberately.** Nothing
+is published while a game is playing. `--live/<table>.json` stops being written
+for spectators, the running board is no longer readable by anybody outside the
+room, and **there is no live spectating**. What a viewer gets is the recording,
+minutes after the bell rather than as it happens.
+
+This **supersedes the live-button decision of 2026-08-28**, kept above with
+its reasoning. That decision drew a careful line — *"Live" is a claim about
+right now, and the board cannot make it* — and taught the page to read the
+`finished` block so it never called an hour-old game live. The distinction now
+collapses from the other side: every game a spectator can reach is finished, so
+every button says **Watch the recording** and none of them can lie. The
+machinery that told the two apart (`live_state`, the fire colour, the
+`live`/`recording`/`""` triple) is answering a question that no longer has two
+answers. That earlier reasoning was not wrong; the world it described is being
+removed.
+
+**Why it is worth the loss.** Live watching is the one thing on either surface
+that required this host to be reachable, and it is a spectacle feature, not an
+evidence feature — nothing about checking a game needs to happen while the game
+runs. Trading it removes an entire public attack surface, a TLS certificate,
+a web server, a CORS header, and a set of path checks that had to be re-run by
+hand after every config change. If live watching is wanted back later, the way
+to get it is a push per drain to the same store, not a port on this box.
+
+**Both halves, and each does a job the other cannot.**
+
+| | what it carries | why |
+|---|---|---|
+| **the push** | the payload: `board-<table>.json`, `reveal-<table>.json`, the `index.json` row | it is the only way bytes get out of a host with nothing listening |
+| **the board line** | a manager line naming the table, the bell, and where the record was put | it is the only part a stranger can check |
+
+The board line is not a convenience and should not be dropped as one. **A push
+leaves no trace anybody outside the manager can audit** — a host that pushed
+nine games and quietly declined to push a tenth looks exactly like a host that
+played nine. The line makes the tenth game's absence visible: it is on the same
+append-only surface as the game itself, signed by the manager's key like every
+other line, and it lands *before* the bytes it names. So a stranger reading the
+board can count the games that were played and compare that to the games the
+front end lists, which is this repo's own rule about denominators applied to
+hosting: **what went missing is not allowed to disappear from the count.** A
+line whose files never arrive is a visible failed push; a game with no line is
+a manager that did not say.
+
+Order is the same as `live.finish`'s and for the same reason inverted: the
+board line is posted **before** the push, so a reader who catches the gap sees
+a game whose record has not landed yet, never a front end quietly missing a
+game nobody was told about. That is the direction that stays honest.
+
+**What still needs deciding before this is built** — none of it blocks the
+decision, all of it blocks the code:
+
+- Where the push lands, and the credential it uses. It is a write token on the
+  front end's store, held by the runner, and it is the **first real secret in
+  this design** — everything else here is published on purpose. It belongs in
+  the environment, never on the board, and the line above must name a URL and
+  nothing else.
+- What the front end does with an index row whose files never arrived. It
+  should say so, the way the archive index already says `kept: false` for a
+  game it let go.
+- Whether `--live` keeps being written to local disk. It should: it costs
+  nothing, and it is what an operator reads when the push is what is broken.
+
 #### What changes in the code, and what staleness means afterwards
 
 Not done in this change — this is the decision, written in the sitting it was
@@ -325,6 +407,12 @@ looks in it for each settled table:
 | the live file with a `finished` block | **Watch the recording**, quiet |
 | no file | no button at all |
 | no `live_dir` at all (`run_lobby --page`) | **Watch this game**, claiming neither |
+
+*Superseded 2026-08-29 by "The manager pushes finished games, and the VM
+takes no inbound at all", below: with no live feed published, every reachable
+game is finished and the distinction this section draws has only one side
+left. Kept because it was right about its own world, and because it is the
+reasoning to restore if live watching ever comes back.*
 
 Decided 2026-08-28, after the button called every settled table *live*.
 **"Live" is a claim about right now, and the board cannot make it**: a table
