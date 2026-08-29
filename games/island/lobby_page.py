@@ -10,6 +10,23 @@ already reads the board, and any web server -- or the viewer's own static
 roots -- can hand it out. A lobby view that needed a service of its own would
 be a second thing to keep alive for a room whose whole state fits on a page.
 
+*Superseded 2026-08-29, and the reasoning above is kept because only half of
+it was wrong.* Gal decided the lobby is served by Vercel as static assets that
+are **themselves a Switchboard client**, reading the board in the reader's
+browser. That is not "a service of its own" -- there is nothing to keep alive,
+which is what the paragraph above was actually objecting to -- and it means no
+one calls the VM to see the lobby. What makes it allowed is the line below
+that has always been true: this page shows only what the board shows, so it is
+for humans and is not part of the game, and nothing on it is evidence of
+anything. The viewer is the opposite and stays on Pages, where the code a
+stranger checks a game with is the code they can read. See `HOSTING.md`, "The
+lobby is served by Vercel, and reads the board itself" -- including the
+measured obstacle, that the hub allowlists CORS origins and Vercel is not yet
+one.
+
+This module stays regardless: a page written to disk is the fallback if that
+grant or that host goes away.
+
 It shows only what the board shows. No score, no judgement, and nothing about
 a game in progress: the island is the viewer's job and a seed in play is
 nobody's.

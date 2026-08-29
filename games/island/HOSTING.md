@@ -157,6 +157,12 @@ seats.
 There are **two published surfaces**, and they are different things rather
 than two conventions for one thing:
 
+*The lobby row is superseded by "The lobby is served by Vercel, and reads the
+board itself", below — it is no longer written by this process and no longer
+lives on this host. The reasoning here is kept because the distinction it
+draws survives the move, and because the paragraph about not sharing a host
+is the reason the viewer did not move with it.*
+
 | | what it is | where it lives | built by |
 |---|---|---|---|
 | **the lobby** | the door: tables forming, seats taken, the key each was witnessed under | the root of its own domain (`island.lucille-ai.com`) | this process, every poll |
@@ -184,6 +190,110 @@ viewer.
 The page is the only file that wants serving. A plain static server, or a
 directory the existing viewer already publishes, is enough — it is one file
 and it has no back end.
+
+### The lobby is served by Vercel, and reads the board itself
+
+Decided by Gal, 2026-08-29, superseding the lobby row of the table above and
+the "Written, not served" paragraph in [`lobby_page.py`](lobby_page.py). The
+lobby stops being a file this process writes and becomes **static assets on
+Vercel that are themselves a Switchboard client**, reading the lobby board
+from the reader's browser and rendering it. The runner keeps the games, the
+seeds, the managers and the NPCs; it stops writing HTML.
+
+**The two surfaces are still two surfaces, and now for sharper reasons than
+before.** The distinction that matters is not where each is hosted but what
+each has to prove:
+
+| | what it is | why it is hosted where it is |
+|---|---|---|
+| **the viewer** | the spectacle: the island, saved replays, the scoreboard | **it stays on GitHub Pages, and this is not a preference.** The viewer is what a stranger uses to check a finished game, so the code that renders it has to be the code they can read. Pages builds from `main`, so what runs is visibly what is committed. A host that builds from a private pipeline asks the stranger to trust the operator, which is the thing the whole design refuses |
+| **the lobby** | the door: tables forming, seats taken, the key each was witnessed under | **it is for humans and is not part of the game.** Nothing is settled here, no line is signed here, and nothing on the page is evidence of anything — the board is. So it may be hosted for convenience, and Vercel's edge, TLS and abuse handling are worth more here than auditability that has nothing to audit |
+
+**Nothing inbound, which is the point.** Every fact the page shows already
+travels over Switchboard — `lobby_page.py` says so itself: *"It shows only
+what the board shows."* Tables, seats, witnessed keys, what settled, what
+lapsed, all of it is `OPEN`/`JOIN`/`MANAGE` lines, and the workspace key in
+the footer is published in [`ENTER.md`](ENTER.md) on purpose. So the browser
+and the runner are two ordinary clients of the same hub that never speak to
+each other, and **no one calls the VM**. That also makes true a claim the top
+of this document has been making while a public Caddy sat further down it.
+
+**It is not a push, a mirror or a proxy**, and each of those was considered
+and is worse. A proxy still needs a public origin, so it moves the exposure
+rather than removing it, and buys nothing on assets that are deliberately
+`no-store`. A push of rendered files to blob storage removes the exposure but
+adds a way to be silently wrong that this repo has fallen for twice already
+(the missing `--live`, the unset `ISLAND_LIVE_BASE`): the game plays perfectly
+while the upload fails, and the page goes stale for a reason no signal names.
+Reading the board needs neither, because the board is already the transport.
+
+#### The hub allowlists origins, and Vercel is not on the list
+
+**Measured 2026-08-29, and this gates the move.** The hub answers a
+cross-origin preflight only for origins it knows:
+
+```
+for o in https://gald33.github.io https://island.lucille-ai.com http://localhost:3000; do
+  curl -si -X OPTIONS https://switchboard.lucille-ai.com/api/history \
+    -H "Origin: $o" -H "Access-Control-Request-Method: GET" | head -1
+done
+```
+
+| origin | answer |
+|---|---|
+| `https://gald33.github.io` | **200**, `access-control-allow-origin: https://gald33.github.io` |
+| `https://island.lucille-ai.com` | **400** `Disallowed CORS origin` |
+| `http://localhost:3000` | **400** `Disallowed CORS origin` |
+
+So the browser client works from the Pages origin **today** and from Vercel
+**only once the hub operator adds that origin** — the production domain and
+the preview domains both, or every branch deploy is a lobby that renders an
+empty room. Localhost is refused too, so developing this page locally needs
+the same grant or a dev proxy.
+
+**This is a dependency on somebody else's service**, and the failure mode is
+the quiet one: a refused preflight is an empty lobby, not an error a reader
+can act on. Ask for the grant before moving DNS, re-run the command above
+after, and have the page say *the hub refused this origin* rather than
+drawing an empty room — the same reasoning as the key in the footer, where
+being unheard had to be made visible because silence is not an error.
+
+#### `--live` stays on the VM, so the VM does not go dark
+
+**The lobby page is fully board-derived; `--live/<table>.json` is not.** It is
+the *game room's* board, and a spectator holds no room key, so only the
+manager can publish it — no browser can read it off the hub the way it reads
+the lobby. The viewer's `?live=` therefore still fetches from this host.
+
+What this move buys is **a smaller public surface, not a closed one**: the
+Caddy block drops to `/live/*` and `/robots.txt`, and `/` and `/index.html`
+stop being served at all. Everything that made the old block safe still
+applies to what is left, and the four checks are still the checks: `lobby.json`,
+`results/`, a `../` traversal and a decoy file each confirmed to 404 through
+the public URL. Re-run them after cutting the page paths out.
+
+#### What changes in the code, and what staleness means afterwards
+
+Not done in this change — this is the decision, written in the sitting it was
+made, and the client is a change of its own that waits on the CORS grant.
+
+- `run_game --page` and `run_lobby --page` stop being how anybody sees the
+  lobby. Keep them: a page written to disk is the fallback if Vercel or the
+  grant goes away, and it is how the host operator looks at a lobby without a
+  browser reaching the hub.
+- `lobby_page.VIEWER` and the viewer's 🚪 button still point at each other,
+  and still by a constant written into HTML rather than fetched. Moving the
+  lobby to a Vercel domain edits the same two links this document already
+  names.
+- `ISLAND_LIVE_BASE` and the `live_dir` lookup stop being environment an
+  operator can ship turned off, because the page reads the live URL the way
+  the viewer does rather than being handed a directory at render time.
+- **Staleness changes meaning, and improves.** `PAGE_REFRESH`, `STALE_AFTER`
+  and the count-up-from-write exist because the page was a file whose age was
+  the only evidence the process was alive. A page that reads the board has a
+  better signal — *when did my last board read succeed* — and should say that
+  instead. The old machinery is answering a question that will no longer be
+  asked.
 
 ### `ISLAND_LIVE_BASE`: the watch button, and the second flag shipped off
 
