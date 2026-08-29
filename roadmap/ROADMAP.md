@@ -14,6 +14,8 @@ Claim before starting: `roadmap claim <key>`
 
 - `now` **`005-render-precision-fix`** — Stop the instrument handing every agent the same printed number
 - `now` **`005-viewer-first-view-has-no-hierarchy`** — Give the viewer a first-view hierarchy — nothing currently says where to look first
+- `now` **`008-carry-forward-what-survives`** — Write down which coordination lessons survive the island, as the design input to 008
+- `now` **`008-coding-task-with-an-answer-key`** — Build a shared coding task whose outcome is read off settled state and has a reference point
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
@@ -37,8 +39,18 @@ _Nothing claimed._
 
 - **`005-rerun-at-twenty-one-rounds`** — Re-run 005's four cells at twenty-one rounds  
   waiting on `005-render-precision-fix`
+- **`008-noise-before-thresholds`** — Measure the coding instrument's own run-to-run movement before any treatment is compared on it  
+  waiting on `008-coding-task-with-an-answer-key`
+- **`008-asymmetry-is-the-design-factor`** — Make permissions, knowledge and context the manipulated factor, one at a time  
+  waiting on `008-coding-task-with-an-answer-key`
+- **`008-convention-ladder-start-at-the-end`** — Run the convention arm as a ladder from a handed-over plan downwards, not from a hint upwards  
+  waiting on `008-carry-forward-what-survives`, `008-noise-before-thresholds`
+- **`008-timing-tool-mechanism-and-outcome`** — Measure Switchboard's timing convergence as a mechanism and as an outcome, separately  
+  waiting on `008-coding-task-with-an-answer-key`
 - **`lab-roadmap-core-0-2-0`** — Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI  
   waiting on `lab-roadmap-adoption`
+- **`008-helper-tools-after-conventions`** — Open a second treatment family — helper tools that do part of the reasoning  
+  waiting on `008-convention-ladder-start-at-the-end`
 
 ## Dependency graph
 
@@ -56,10 +68,23 @@ graph TD
   006_standby_alarm_has_never_rung["Find a substrate where a self-scheduled wake actually fires, or conclude an agent cannot hold its own clock"]
   007_replicate_the_control["Replicate the bare control so the lab's best difference rests on more than one draw"]
   007_third_pass_on_ruin["A third ladder pass, to separate the ruin reduction from the control's own movement"]
+  008_asymmetry_is_the_design_factor["Make permissions, knowledge and context the manipulated factor, one at a time"]
+  008_carry_forward_what_survives["Write down which coordination lessons survive the island, as the design input to 008"]
+  008_coding_task_with_an_answer_key["Build a shared coding task whose outcome is read off settled state and has a reference point"]
+  008_convention_ladder_start_at_the_end["Run the convention arm as a ladder from a handed-over plan downwards, not from a hint upwards"]
+  008_helper_tools_after_conventions["Open a second treatment family — helper tools that do part of the reasoning"]
+  008_noise_before_thresholds["Measure the coding instrument's own run-to-run movement before any treatment is compared on it"]
+  008_timing_tool_mechanism_and_outcome["Measure Switchboard's timing convergence as a mechanism and as an outcome, separately"]
   island_viewer_density_scaled_spacing["Scale element size to element count on the island viewer, so huts and production sites are never crowded together"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
   005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
+  008_coding_task_with_an_answer_key --> 008_asymmetry_is_the_design_factor
+  008_carry_forward_what_survives --> 008_convention_ladder_start_at_the_end
+  008_noise_before_thresholds --> 008_convention_ladder_start_at_the_end
+  008_convention_ladder_start_at_the_end --> 008_helper_tools_after_conventions
+  008_coding_task_with_an_answer_key --> 008_noise_before_thresholds
+  008_coding_task_with_an_answer_key --> 008_timing_tool_mechanism_and_outcome
   lab_roadmap_adoption --> lab_roadmap_core_0_2_0
   005_display_precision_artifact -.- 005_word_cap_fits_the_protocol
   005_episodes_to_threshold -.- 005_paired_statistic_choice
@@ -705,6 +730,378 @@ graph TD
 > a number, and `l-both` is called resolved or unresolved against it.
 >
 > Cost: 192 agent sessions, about 80 minutes.
+
+</details>
+
+### `008-asymmetry-is-the-design-factor`
+
+- **title:** Make permissions, knowledge and context the manipulated factor, one at a time
+- **status:** blocked
+- **arc:** shared-coding-tasks
+- **priority:** next
+- **blocked on:** `008-coding-task-with-an-answer-key`
+- **refs:**
+  - `experiments/001-switchboard-coordination/README.md`
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `games/switchboard-what-an-entrant-already-holds.md`
+
+<details><summary>evidence</summary>
+
+> A group of identical agents on a shared codebase has little to coordinate
+> about: everyone can do everything and everyone knows the same things, so a
+> convention has nothing to carry. What makes coordination necessary is
+> asymmetry, and three kinds are separable and were never separated on the
+> island, where every trader held the same tools and differed only in private
+> numbers:
+>
+> - **permissions** — who may write which paths, who may merge, who may only
+>   read. Switchboard already makes this expressible without a permission model
+>   inside the game: a room key belongs to whoever holds it, sealed messages
+>   reach one peer, and interference is made visible rather than prevented
+>   (CLAUDE.md, "The weaker thing is allowed").
+> - **knowledge** — who was told what about the task, the interfaces, or the
+>   other agents. This is the island's private-α analogue and the one the lab
+>   has most experience measuring.
+> - **context** — what an agent carries from earlier work. A round's memory is
+>   already the island's learning channel; here it becomes a manipulated
+>   difference between agents in the same round, not a constant across them.
+>
+> Vary one at a time. 007's ladder is the model: rungs are only worth running
+> when the rung above them worked, and a design that moves three things at once
+> cannot say which one the convention was compensating for. The prediction
+> worth pre-registering is that a convention's value **rises with the
+> asymmetry it addresses** and is near zero without it — which, if true, also
+> explains the island's nulls, since a symmetric island gives a coordination
+> convention nothing to do.
+>
+> Done when each asymmetry is an explicit cell with a stated mechanism (what
+> differs, how it is enforced, how the record shows it), a symmetric cell is
+> kept as the reference, and the manipulation check for each is a count of an
+> event that either happened or did not — the kind of endpoint the ledger says
+> survives this lab's noise.
+
+</details>
+
+### `008-carry-forward-what-survives`
+
+- **title:** Write down which coordination lessons survive the island, as the design input to 008
+- **status:** ready
+- **arc:** lab-practice
+- **priority:** now
+- **blocks:** `008-convention-ladder-start-at-the-end`
+- **refs:**
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `reports/2026-08-24-lessons-for-a-paper.md`
+  - `experiments/001-switchboard-coordination/README.md`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> The lab is about to move from the island to shared coding tasks, and the
+> thing that carries across is not a harness — it is a short list of what has
+> actually been established about instruction and conventions. That list exists
+> today only as two long reports and a 16-row ledger, which is the exact
+> condition CLAUDE.md's first standing decision was written against: a decision
+> that lives in a document nobody reads at design time gets made again from
+> scratch.
+>
+> What the ledger supports, and what 008 must therefore assume rather than
+> re-test:
+>
+> - **Instruction changes behaviour, immediately and exactly** (rows 2–5).
+>   214/214 settled productions matched a handed plan against 0/215 in control;
+>   told *where* and *when* to disclose, 20/20 wrote the key, and two cells
+>   holding the identical tool wrote 0/20. A granted capability nobody mentions
+>   is not used. So a convention's *manipulation* will succeed; that is not a
+>   result and must not be reported as one.
+> - **Telling agents only *what* is worth saying does not work** (row 4): 7 free
+>   messages across 200 trader-episodes. Conventions have to name the slot, not
+>   the topic.
+> - **The loss is in production, not exchange** (row 7): alone, an agent hits
+>   0.972 of its closed-form optimum; in company that falls to 0.49–0.78 and
+>   trade recovers only +0.09 to +0.13. The company is what costs, and a coding
+>   analogue of this — how much worse an agent's own work gets when others are
+>   on the repo — is the effect 008 is looking for.
+> - **The only replicated win was the one that cheated** (row 14). Every
+>   treatment that stayed inside what an agent could legitimately know landed
+>   inside the noise (rows 15, 16).
+> - **Nine "did they do it at all" answers are clean; seven "how much did it
+>   help" are not** (the ledger's own summary). That split is a property of
+>   counts against means-of-heavy-tailed-ratios, and it should decide what 008
+>   measures before its instrument is written.
+>
+> And one from 001, which is the negative result that experiment preserved
+> ahead of its numbers: **a timing predictor became well calibrated without
+> improving completion time at all.** Calibration and performance are separate
+> claims needing separate metrics; reported as one number a working mechanism
+> and a flat outcome are indistinguishable.
+>
+> Done when this list is a document under `experiments/008-*/` (or a report
+> linked from it) that 008's design cites by row, each entry carrying its
+> evidence and its strength grade, and each marked *assumed* or *under test* in
+> 008. Not done by pointing at the ledger: the ledger grades the island's
+> hypotheses, and the carry-forward is the subset that constrains a different
+> task.
+
+</details>
+
+### `008-coding-task-with-an-answer-key`
+
+- **title:** Build a shared coding task whose outcome is read off settled state and has a reference point
+- **status:** ready
+- **arc:** shared-coding-tasks
+- **priority:** now
+- **blocks:** `008-asymmetry-is-the-design-factor`, `008-noise-before-thresholds`, `008-timing-tool-mechanism-and-outcome`
+- **refs:**
+  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/002-barter-conventions/README.md`
+  - `reports/2026-08-24-lessons-for-a-paper.md`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> 002 exists because of a sentence in 001: an economy has an answer key, and
+> "better coordination" on a shared codebase is hard to define independently of
+> the task. Returning to the codebase means paying that bill rather than
+> re-discovering it. The island's reference points — autarky, the exchange
+> ceiling, the Walras frontier — are what let every later result be a fraction
+> of something rather than a raw score, and no coding task has them for free.
+>
+> What the task must supply, all three:
+>
+> 1. **An outcome read from state, never from self-report.** CLAUDE.md's rule
+>    is not negotiable and on a codebase it means the repo: tests that pass,
+>    files that changed, commits that landed. What an agent says it did is not
+>    data.
+> 2. **A solo reference per agent** — the island's autarky. 006 turned on being
+>    able to say an agent alone reaches 0.972 of its own optimum, which is what
+>    made a peopled shortfall attributable to the interaction rather than to
+>    the task being hard. The coding analogue is the same agent, same slice,
+>    working alone under the same clock and budget. Without it, a group score
+>    means nothing.
+> 3. **A group ceiling** — what the task is worth if the work is partitioned
+>    perfectly and nothing is done twice. It need not be closed-form; it needs
+>    to be computable the same way every time and fixed before the run.
+>
+> Two design constraints inherited rather than chosen. **One surface**: the
+> board is where agents talk, and nothing about the task may become a second
+> channel or a tool API. **No scheduler**: each agent is its own long-lived
+> session and the clock closes the episode whether or not anyone acted.
+>
+> One trap the island supplies for free. Cobb-Douglas made a single agent at
+> zero move a whole round by units, and that zero is where the instrument's
+> variance lived. A coding score that is dominated by "did the build break"
+> reproduces that failure exactly. Prefer a bounded, decomposable score —
+> per-slice completion shares, in the spirit of the bounded shares that cut the
+> island's noise threefold — with the all-or-nothing gate reported beside it,
+> not as it.
+>
+> Done when the task, the solo reference and the group ceiling are written
+> down, the scorer computes all three from repo state on a recorded run, and a
+> worked example shows the three numbers for one seed.
+
+</details>
+
+### `008-convention-ladder-start-at-the-end`
+
+- **title:** Run the convention arm as a ladder from a handed-over plan downwards, not from a hint upwards
+- **status:** blocked
+- **arc:** shared-coding-tasks
+- **priority:** next
+- **blocked on:** `008-carry-forward-what-survives`, `008-noise-before-thresholds`
+- **blocks:** `008-helper-tools-after-conventions`
+- **refs:**
+  - `experiments/007-execution-ceiling/README.md`
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `experiments/001-switchboard-coordination/README.md`
+
+<details><summary>evidence</summary>
+
+> The hypothesis is that conventions — strategies and protocols agreed in
+> advance — help coordination. The island tested subtle versions of that first
+> and spent five experiments learning it could not resolve them; 007 then
+> inverted the order and got answers immediately by starting at the most
+> informative instruction possible and dismantling it. That inversion is the
+> method to import, and it is cheap: a rung is only run if the rung above it
+> worked, so a dead arm is discovered on the first rung rather than the fifth.
+>
+> The ladder for a shared coding task, top down, with 001's five stages as the
+> bottom half of it:
+>
+> | rung | what the group is handed |
+> |---|---|
+> | 1 | the full partition — who does which slice, in what order, with what interfaces |
+> | 2 | the partition without assignments — the slices, find your own owner |
+> | 3 | a protocol only — how to claim, how to yield, how to announce done; no slices |
+> | 4 | a disposition — "coordinate before you edit"; no slots named |
+> | 5 | nothing — the control |
+>
+> Rung 1 is the feasibility question and answers something the island cannot:
+> whether a group of asymmetric agents executes a partition at all, and where
+> execution breaks when it does not. 007's answer on the island was that
+> partners and goods were nearly always right and **quantities** were wrong
+> 53% of the time — the failure was in the magnitudes, not the plan. The coding
+> analogue of that question is what rung 1 buys.
+>
+> Rung 4 is where the ledger says to expect nothing: told only what is worth
+> saying, agents said almost nothing (7 messages in 200 trader-episodes). If a
+> convention works at rung 3 and not rung 4, the finding is that conventions
+> must name the slot rather than the topic — which is a publishable statement
+> about what a convention *is*, and is the shape of answer this lab can
+> actually resolve.
+>
+> Done when the rungs are written and frozen by hash before the first run, each
+> carries its own manipulation check, and each is run only on the evidence that
+> the rung above it produced an effect.
+
+</details>
+
+### `008-helper-tools-after-conventions`
+
+- **title:** Open a second treatment family — helper tools that do part of the reasoning
+- **status:** blocked
+- **arc:** shared-coding-tasks
+- **priority:** later
+- **blocked on:** `008-convention-ladder-start-at-the-end`
+- **refs:**
+  - `experiments/001-switchboard-coordination/README.md`
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> A convention is one way to make coordination cheaper; it works by changing
+> what agents say to each other. A helper tool is a different way: a
+> calculator, a partition solver, a consistency checker, anything that does a
+> piece of the reasoning the agents would otherwise do badly. 001's founding
+> question is exactly the comparison between them — does coordination improve
+> because agents reason harder about each other, or because good primitives
+> leave them **less to reason about**? Conventions are the first answer; tools
+> are the second, and running both on one instrument is what makes the question
+> answerable rather than rhetorical.
+>
+> Two constraints from the standing decisions, and they are the reason this is
+> `later` rather than parallel work:
+>
+> - **A tool is not a second surface.** Anything an agent wants to do on the
+>   board, it does by writing a message. A helper an agent consults is fine; a
+>   helper the runner calls on an agent's behalf, or an action schema
+>   dispatched from what an agent wrote, is the thing this repo refuses.
+> - **A granted capability nobody mentions is not used** — ledger row 5,
+>   established twice on different capabilities, 20 against 0 and 68% against
+>   0%. So a tool arm is always at least two cells, granted-and-unmentioned
+>   against granted-and-instructed, or the experiment measures the instruction
+>   and calls it the tool.
+>
+> The comparison worth pre-registering is whether a tool that removes a
+> computation beats a convention that coordinates the same computation, at
+> matched instruction. The island's row 14 hints at the answer — the only
+> treatment that repeatedly won was the one that handed over a computed
+> result — but it won by cheating with private data, and a calculator that
+> computes from what an agent legitimately holds is precisely the honest
+> version of that treatment. That is the sharpest available test of whether the
+> cheat was the *information* or the *computation*.
+>
+> Done when a tool arm is designed against the same task, ceiling and noise
+> estimate the convention ladder used, so the two families are comparable
+> without a new instrument.
+
+</details>
+
+### `008-noise-before-thresholds`
+
+- **title:** Measure the coding instrument's own run-to-run movement before any treatment is compared on it
+- **status:** blocked
+- **arc:** shared-coding-tasks
+- **priority:** now
+- **blocked on:** `008-coding-task-with-an-answer-key`
+- **blocks:** `008-convention-ladder-start-at-the-end`
+- **refs:**
+  - `reports/2026-08-24-hypothesis-ledger.md`
+  - `experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md`
+  - `experiments/006-ratio-disclosure/FINDING-run-level-variance.md`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> This is the single most expensive lesson the lab has bought. 005 and 006 ran
+> four treatments against pre-registered thresholds of 0.10–0.15; 007's run 003
+> then replicated one cell four times with nothing varied and found a between-run
+> sd of **1.03** on captured gain, 0.229 on the ratio, 0.073–0.114 on the
+> bounded shares. Every paired difference the lab had reported was inside its
+> own noise, and rows 10–13, 15 and 16 of the ledger are the wreckage. The
+> measurement that would have prevented all of it cost one afternoon and was
+> run last.
+>
+> So on the coding instrument it is run **first**, before any convention is
+> written and before any threshold is named: the same cell, the same seeds, the
+> same everything, replicated enough times to state a between-run sd per
+> endpoint. That number then sets what 008 is allowed to pre-register — the
+> ledger's own arithmetic is that resolving 0.15 at the island's spread needs
+> roughly 370 paired seeds on captured gain, or n≈25 on the bounded shares, and
+> a threshold chosen without that arithmetic is a threshold chosen to be met.
+>
+> Report the endpoints separately rather than picking one: the island's lesson
+> was that bounded shares moved a third as much as the ratio built on the same
+> runs, so which endpoint is used is itself a resolution decision.
+>
+> Done when the replicated control is recorded, each candidate endpoint carries
+> a stated between-run sd with its denominator, and 008's pre-registration
+> quotes those numbers as the basis for its threshold and its seed count. A
+> treatment run before this exists is a run this lab already knows how to
+> waste.
+
+</details>
+
+### `008-timing-tool-mechanism-and-outcome`
+
+- **title:** Measure Switchboard's timing convergence as a mechanism and as an outcome, separately
+- **status:** blocked
+- **arc:** shared-coding-tasks
+- **priority:** next
+- **blocked on:** `008-coding-task-with-an-answer-key`
+- **refs:**
+  - `experiments/001-switchboard-coordination/README.md`
+  - `games/switchboard-what-an-entrant-already-holds.md`
+  - `CLAUDE.md`
+
+<details><summary>evidence</summary>
+
+> Switchboard grew a timing facility — agents converging on a time to talk —
+> and it is the first lab-built coordination primitive that a coding group
+> would plausibly use. It arrives with a warning already written: 001's
+> preserved negative result is that its timing predictor became **well
+> calibrated without improving completion time at all**. Not a broken
+> predictor — one that solved a problem the task did not have. Reported as a
+> single number, that is indistinguishable from a working mechanism whose
+> outcome got lost in noise, and 001 recorded it first precisely because it is
+> the result most likely to be dropped.
+>
+> So the timing tool is measured on two ledgers that are never added together:
+>
+> - **mechanism** — did the group converge on a time, how fast, how often, and
+>   did anyone act outside it. Counts and rates: the endpoint class the
+>   hypothesis ledger says survives this lab's noise.
+> - **outcome** — did the shared task go better. Read from settled repo state,
+>   against the solo reference and the group ceiling, with the instrument's own
+>   between-run movement stated beside it.
+>
+> The interesting cell is the one where they disagree. A tool that converges
+> perfectly and buys nothing says the task was not timing-bound, which is a
+> finding about the task and a constraint on every later primitive; a tool that
+> converges poorly and still helps says the coordination benefit is in the
+> asking, not the answer.
+>
+> This also pins down where the timing facility sits relative to CLAUDE.md's
+> standing decisions. It is a Switchboard primitive agents hold, like `whisper`
+> or `board_*` — not a scheduler, not a turn, and not a second surface. If
+> measuring it starts to require the runner to drive agents to a rendezvous,
+> that is the forbidden thing arriving in new clothes; the tool may hold a
+> time, and the bell still rings on the clock.
+>
+> Done when both ledgers are pre-registered as separate metrics with separate
+> thresholds, and the run reports them side by side even when they point in
+> opposite directions.
 
 </details>
 

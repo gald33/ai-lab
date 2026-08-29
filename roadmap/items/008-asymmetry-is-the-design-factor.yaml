@@ -1,0 +1,44 @@
+id: 008-asymmetry-is-the-design-factor
+title: Make permissions, knowledge and context the manipulated factor, one at a time
+arc: shared-coding-tasks
+priority: next
+status: ready
+blocked_on:
+  - 008-coding-task-with-an-answer-key
+refs:
+  - experiments/001-switchboard-coordination/README.md
+  - reports/2026-08-24-hypothesis-ledger.md
+  - games/switchboard-what-an-entrant-already-holds.md
+evidence: |
+  A group of identical agents on a shared codebase has little to coordinate
+  about: everyone can do everything and everyone knows the same things, so a
+  convention has nothing to carry. What makes coordination necessary is
+  asymmetry, and three kinds are separable and were never separated on the
+  island, where every trader held the same tools and differed only in private
+  numbers:
+
+  - **permissions** — who may write which paths, who may merge, who may only
+    read. Switchboard already makes this expressible without a permission model
+    inside the game: a room key belongs to whoever holds it, sealed messages
+    reach one peer, and interference is made visible rather than prevented
+    (CLAUDE.md, "The weaker thing is allowed").
+  - **knowledge** — who was told what about the task, the interfaces, or the
+    other agents. This is the island's private-α analogue and the one the lab
+    has most experience measuring.
+  - **context** — what an agent carries from earlier work. A round's memory is
+    already the island's learning channel; here it becomes a manipulated
+    difference between agents in the same round, not a constant across them.
+
+  Vary one at a time. 007's ladder is the model: rungs are only worth running
+  when the rung above them worked, and a design that moves three things at once
+  cannot say which one the convention was compensating for. The prediction
+  worth pre-registering is that a convention's value **rises with the
+  asymmetry it addresses** and is near zero without it — which, if true, also
+  explains the island's nulls, since a symmetric island gives a coordination
+  convention nothing to do.
+
+  Done when each asymmetry is an explicit cell with a stated mechanism (what
+  differs, how it is enforced, how the record shows it), a symmetric cell is
+  kept as the reference, and the manipulation check for each is a count of an
+  event that either happened or did not — the kind of endpoint the ledger says
+  survives this lab's noise.

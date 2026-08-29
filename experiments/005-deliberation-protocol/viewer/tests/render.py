@@ -465,10 +465,31 @@ def production(page, where: str) -> list[str]:
                       labour: { ...t.final.labour, [who]: 0 } };
       scene.draw(after, t);
       scene.play({ kind: 'produced', trader: who, made, unspent: 0 });
-      const t0 = performance.now();
-      //: Wait until a moment on the receipt's own clock, however long that is
-      //: from here.
-      const until = (ms) => nap(Math.max(0, t0 + ms - performance.now()));
+      //: **The wheel is watched, not sampled at an instant.** It fills over
+      //: `madeBy(0) - MAKE.rest` -- about 3.6s -- and this used to read it once,
+      //: 620ms in, on naps that accumulate from *here* rather than from the
+      //: receipt. On a slow machine those naps and the repaint between them
+      //: outran the animation, so the single sample landed after it had
+      //: finished and the check reported a wheel going in one step on a page
+      //: that was animating it correctly. Found on a CI runner, which has no
+      //: GPU and draws every frame of the island on the CPU.
+      //:
+      //: This is the same defect the docstring above describes for the symbols,
+      //: in the one place it had not been fixed: a sample on an absolute clock
+      //: races the animation instead of measuring it. The helper written to
+      //: avoid it -- a `until(ms)` anchored to the receipt -- sat here unused,
+      //: which is worse than absent: it reads as though the hazard was handled.
+      //:
+      //: So it watches every value the wheel takes from the receipt onwards. A
+      //: wheel that animates is seen at some value other than the one it ends
+      //: at; a wheel that jumps is only ever seen at that one. That holds
+      //: however slow the machine is and whenever the animation starts, which
+      //: an instant never can.
+      const wheelSeen = new Set();
+      const watching = (async () => {
+        const stop = performance.now() + madeBy(0) + 1500;
+        while (performance.now() < stop) { wheelSeen.add(wheel()); await nap(40); }
+      })();
 
       await nap(120);
       const early = bar();
@@ -482,11 +503,6 @@ def production(page, where: str) -> list[str]:
       scene.draw(after, t);
       await nap(200);
       const redrawn = bar();
-
-      // Past where the old CSS transition would have finished (0.5s). If the
-      // wheel is already at its final value here, nothing is animating it and
-      // the labour went in one silent step.
-      const wheelLate = wheel();
 
       //: **Waited for, not timed.** The symbol is built at the moment it flies
       //: -- `madeBy(0)` after the receipt -- and a WAAPI animation does not
@@ -514,8 +530,12 @@ def production(page, where: str) -> list[str]:
       await nap(120);
       const settled = bar();
       const wheelDone = wheel();
+      await watching;
+      // Seen at anything other than where it ended: the labour was spent over
+      // time rather than in one step.
+      const wheelMoved = [...wheelSeen].some((v) => v !== wheelDone);
       return { before, early, redrawn, mid, settled, flying, working,
-               airborne, landed, wheelLate, wheelDone };
+               airborne, landed, wheelMoved, wheelDone };
     }""")
     bad = []
     if seen["settled"] is None or seen["settled"] <= (seen["before"] or 0) + 0.05:
@@ -539,10 +559,10 @@ def production(page, where: str) -> list[str]:
         bad.append(f"{where}: nothing was in flight during production ({seen})")
     if not seen["working"]:
         bad.append(f"{where}: the hut did not work before its goods appeared")
-    if seen["wheelLate"] == seen["wheelDone"]:
-        bad.append(f"{where}: the labour went in one step — the wheel had already "
-                   f"finished at {seen['wheelLate']!r} while goods were still "
-                   "in flight")
+    if not seen["wheelMoved"]:
+        bad.append(f"{where}: the labour went in one step — across the whole "
+                   f"receipt the wheel was only ever seen at its final "
+                   f"{seen['wheelDone']!r}, so nothing animated it")
     return bad
 
 

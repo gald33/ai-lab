@@ -1,0 +1,47 @@
+id: 008-helper-tools-after-conventions
+title: Open a second treatment family — helper tools that do part of the reasoning
+arc: shared-coding-tasks
+priority: later
+status: ready
+blocked_on:
+  - 008-convention-ladder-start-at-the-end
+refs:
+  - experiments/001-switchboard-coordination/README.md
+  - reports/2026-08-24-hypothesis-ledger.md
+  - CLAUDE.md
+evidence: |
+  A convention is one way to make coordination cheaper; it works by changing
+  what agents say to each other. A helper tool is a different way: a
+  calculator, a partition solver, a consistency checker, anything that does a
+  piece of the reasoning the agents would otherwise do badly. 001's founding
+  question is exactly the comparison between them — does coordination improve
+  because agents reason harder about each other, or because good primitives
+  leave them **less to reason about**? Conventions are the first answer; tools
+  are the second, and running both on one instrument is what makes the question
+  answerable rather than rhetorical.
+
+  Two constraints from the standing decisions, and they are the reason this is
+  `later` rather than parallel work:
+
+  - **A tool is not a second surface.** Anything an agent wants to do on the
+    board, it does by writing a message. A helper an agent consults is fine; a
+    helper the runner calls on an agent's behalf, or an action schema
+    dispatched from what an agent wrote, is the thing this repo refuses.
+  - **A granted capability nobody mentions is not used** — ledger row 5,
+    established twice on different capabilities, 20 against 0 and 68% against
+    0%. So a tool arm is always at least two cells, granted-and-unmentioned
+    against granted-and-instructed, or the experiment measures the instruction
+    and calls it the tool.
+
+  The comparison worth pre-registering is whether a tool that removes a
+  computation beats a convention that coordinates the same computation, at
+  matched instruction. The island's row 14 hints at the answer — the only
+  treatment that repeatedly won was the one that handed over a computed
+  result — but it won by cheating with private data, and a calculator that
+  computes from what an agent legitimately holds is precisely the honest
+  version of that treatment. That is the sharpest available test of whether the
+  cheat was the *information* or the *computation*.
+
+  Done when a tool arm is designed against the same task, ceiling and noise
+  estimate the convention ladder used, so the two families are comparable
+  without a new instrument.

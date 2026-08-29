@@ -1,0 +1,50 @@
+id: 008-coding-task-with-an-answer-key
+title: Build a shared coding task whose outcome is read off settled state and has a reference point
+arc: shared-coding-tasks
+priority: now
+status: ready
+refs:
+  - experiments/001-switchboard-coordination/README.md
+  - experiments/002-barter-conventions/README.md
+  - reports/2026-08-24-lessons-for-a-paper.md
+  - CLAUDE.md
+evidence: |
+  002 exists because of a sentence in 001: an economy has an answer key, and
+  "better coordination" on a shared codebase is hard to define independently of
+  the task. Returning to the codebase means paying that bill rather than
+  re-discovering it. The island's reference points — autarky, the exchange
+  ceiling, the Walras frontier — are what let every later result be a fraction
+  of something rather than a raw score, and no coding task has them for free.
+
+  What the task must supply, all three:
+
+  1. **An outcome read from state, never from self-report.** CLAUDE.md's rule
+     is not negotiable and on a codebase it means the repo: tests that pass,
+     files that changed, commits that landed. What an agent says it did is not
+     data.
+  2. **A solo reference per agent** — the island's autarky. 006 turned on being
+     able to say an agent alone reaches 0.972 of its own optimum, which is what
+     made a peopled shortfall attributable to the interaction rather than to
+     the task being hard. The coding analogue is the same agent, same slice,
+     working alone under the same clock and budget. Without it, a group score
+     means nothing.
+  3. **A group ceiling** — what the task is worth if the work is partitioned
+     perfectly and nothing is done twice. It need not be closed-form; it needs
+     to be computable the same way every time and fixed before the run.
+
+  Two design constraints inherited rather than chosen. **One surface**: the
+  board is where agents talk, and nothing about the task may become a second
+  channel or a tool API. **No scheduler**: each agent is its own long-lived
+  session and the clock closes the episode whether or not anyone acted.
+
+  One trap the island supplies for free. Cobb-Douglas made a single agent at
+  zero move a whole round by units, and that zero is where the instrument's
+  variance lived. A coding score that is dominated by "did the build break"
+  reproduces that failure exactly. Prefer a bounded, decomposable score —
+  per-slice completion shares, in the spirit of the bounded shares that cut the
+  island's noise threefold — with the all-or-nothing gate reported beside it,
+  not as it.
+
+  Done when the task, the solo reference and the group ceiling are written
+  down, the scorer computes all three from repo state on a recorded run, and a
+  worked example shows the three numbers for one seed.

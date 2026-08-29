@@ -510,6 +510,40 @@ browser renders perfectly happily. It is now `SHUT_SCORE_Y + SCORE_ROW_DEEP +
 CARD_PAD - CARD_TOP`, and `tests/scene.test.mjs` holds the relation from the
 other side.
 
+### Opening and shutting are animated
+
+*Added 2026-08-29, on Gal's ask.* An instant toggle read as two different cards
+swapped over rather than one card changing size — and on an island where a
+settlement can open a card by itself, a jump reads as a glitch instead of as a
+consequence. `CARD_SWING` is 220ms, on the same easing as a parcel's glide, so
+the two motions on the page belong to each other.
+
+Three things move and each is animated on the property that actually changes:
+the card's ground grows or shrinks (`height` on the two rects), the score row
+slides between the two rows it can occupy, and the shelf fades — on its own
+opacity rather than the card's, so the name and the utility stay legible the
+whole way through. The shelf's fade is a little quicker than the box: a shelf
+still fading inside a card that has finished resizing reads as lag.
+
+**WAAPI rather than CSS**, for the same reason `produce()` animates the labour
+dial that way: the node is new on every toggle, so there is no previous
+computed value for a transition to start from and a rule would simply land it
+at the end state. `redrawCard` takes the old card's shape before replacing it
+and hands it to `swingCard`. The shelf hides by `opacity`, not `display`, since
+`display` cannot fade.
+
+**A bug worth keeping, because of its shape.** The score row is *positioned*
+with an SVG `transform` attribute — `translate(0 156)` — and handing that
+string to `Element.animate` gives keyframes the engine drops on the floor: CSS
+wants units. The animation still existed, still reported its 220ms duration,
+and moved nothing. Every visible sign said it worked. It was found by reading
+the keyframes back off the running animation, not by watching the card, and it
+would never have been found by watching in this environment at all — a headless
+page runs the island at under 2.5 frames a second, so a 220ms animation
+completes between two frames and *nothing* appears to move whether it is
+working or not. `scoreAt` now builds the string from the numbers in one place,
+and `tests/scene.test.mjs` asserts its shape.
+
 ### What a click does, and what it must never do
 
 A click on a hut or on the card hanging under it opens that trader's shelf;
@@ -3082,6 +3116,19 @@ so it was reshaped to the property it was guarding — a round's level is a
 function of its own island, so a level added for some other round cannot reach
 in and relabel it. That form does not depend on what the ledger happens to
 hold, which is what made the old one expire.
+
+**The job carries a `timeout-minutes`**, for the same reason it carries
+`--require`. A run that never ends reports nothing, exactly like a run that
+checked nothing, and GitHub's default would let it sit for six hours first.
+
+The number came from measurement. The suite takes about eight minutes on a
+developer machine; the first CI run went past thirty. That is expected rather
+than alarming — a runner has no GPU, so Chromium falls back to SwiftShader and
+every frame of a three.js island is drawn on the CPU. What that first run could
+*not* say is whether it was slow or stuck, because logs only arrive when a job
+ends. The limit is the instrument that separates the two: finish under it and
+the suite is merely slow, trip it and something is hung. Raise it if the honest
+number turns out higher; never raise it to paper over a hang.
 
 **`--require` is why the drawing job is worth having.** `render.py` skips
 cleanly when there is no playwright, no browser or no replay — right locally,

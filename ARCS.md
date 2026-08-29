@@ -114,7 +114,7 @@ control moving under it.
 
 ### 🟠 How the lab itself is run — process, records, and the tools that hold them
 
-`lab-practice` · 3 item(s), 1 startable
+`lab-practice` · 4 item(s), 2 startable
 
 `CLAUDE.md` · `CONTRIBUTING.md` · `reports/README.md`
 
@@ -125,9 +125,46 @@ utility moves in when a second experiment needs it, not in anticipation).
 
 | item | status | priority |
 |---|---|---|
+| `008-carry-forward-what-survives` | ready | now |
 | `lab-roadmap-adoption` | verifying | now |
 | `lab-roadmap-core-0-2-0` | blocked | next |
 | `island-viewer-density-scaled-spacing` | ready | later |
+
+### 🟠 008 — do conventions help agents who share a codebase and do not share permissions, knowledge or context?
+
+`shared-coding-tasks` · 6 item(s), 1 startable
+
+`experiments/001-switchboard-coordination/README.md` · `reports/2026-08-24-hypothesis-ledger.md` · `reports/2026-08-24-lessons-for-a-paper.md`
+
+The lab's question started here and left. 001 asked whether coordination
+improves because agents reason harder about each other or because good
+primitives leave them less to reason about, on agents sharing a codebase; it
+was run, never published, and closed with its numbers uncleaned. The island
+(002–007) was built because "better coordination" on a codebase is hard to
+define independently of the task, and an economy has an answer key.
+
+Five experiments later the island has answered what it can. Nine questions of
+the form "do they do it at all" have clean answers; seven of the form "does
+it help, and by how much" are inside an instrument whose run-to-run sd is
+1.03 on its own outcome measure. The one treatment that repeatedly beat its
+control was the one that handed over numbers computed from every trader's
+private data.
+
+This arc returns to the codebase with what that taught. The design factor is
+the asymmetry the island never had — agents differing in permissions, in
+what they know, and in what context they carry — because that is what makes
+a coding group need a convention at all. Conventions are the first treatment
+family; helper tools that do part of the reasoning are the second, and are
+deliberately not run first.
+
+| item | status | priority |
+|---|---|---|
+| `008-coding-task-with-an-answer-key` | ready | now |
+| `008-noise-before-thresholds` | blocked | now |
+| `008-asymmetry-is-the-design-factor` | blocked | next |
+| `008-convention-ladder-start-at-the-end` | blocked | next |
+| `008-timing-tool-mechanism-and-outcome` | blocked | next |
+| `008-helper-tools-after-conventions` | blocked | later |
 
 ## 🟢 Closed
 

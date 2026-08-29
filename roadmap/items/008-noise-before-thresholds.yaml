@@ -1,0 +1,39 @@
+id: 008-noise-before-thresholds
+title: Measure the coding instrument's own run-to-run movement before any treatment is compared on it
+arc: shared-coding-tasks
+priority: now
+status: ready
+blocked_on:
+  - 008-coding-task-with-an-answer-key
+refs:
+  - reports/2026-08-24-hypothesis-ledger.md
+  - experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md
+  - experiments/006-ratio-disclosure/FINDING-run-level-variance.md
+  - CLAUDE.md
+evidence: |
+  This is the single most expensive lesson the lab has bought. 005 and 006 ran
+  four treatments against pre-registered thresholds of 0.10–0.15; 007's run 003
+  then replicated one cell four times with nothing varied and found a between-run
+  sd of **1.03** on captured gain, 0.229 on the ratio, 0.073–0.114 on the
+  bounded shares. Every paired difference the lab had reported was inside its
+  own noise, and rows 10–13, 15 and 16 of the ledger are the wreckage. The
+  measurement that would have prevented all of it cost one afternoon and was
+  run last.
+
+  So on the coding instrument it is run **first**, before any convention is
+  written and before any threshold is named: the same cell, the same seeds, the
+  same everything, replicated enough times to state a between-run sd per
+  endpoint. That number then sets what 008 is allowed to pre-register — the
+  ledger's own arithmetic is that resolving 0.15 at the island's spread needs
+  roughly 370 paired seeds on captured gain, or n≈25 on the bounded shares, and
+  a threshold chosen without that arithmetic is a threshold chosen to be met.
+
+  Report the endpoints separately rather than picking one: the island's lesson
+  was that bounded shares moved a third as much as the ratio built on the same
+  runs, so which endpoint is used is itself a resolution decision.
+
+  Done when the replicated control is recorded, each candidate endpoint carries
+  a stated between-run sd with its denominator, and 008's pre-registration
+  quotes those numbers as the basis for its threshold and its seed count. A
+  treatment run before this exists is a run this lab already knows how to
+  waste.
