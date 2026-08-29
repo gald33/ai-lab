@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
          CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP,
-         NAME_ROW_DEEP, cardHold, CARD_LINGER,
+         NAME_ROW_DEEP, scoreAt, cardHold, CARD_LINGER,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
 import { stepDelay, paceDelay, quietBefore, PACES, PACE_DEFAULT,
@@ -733,4 +733,27 @@ test("reduced motion still holds the card long enough to read", () => {
   const e = { kind: "settled" };
   assert.equal(dwellFor(e, true), 0);
   assert.equal(cardHold(e, true), CARD_LINGER);
+});
+
+test("the score row's animated position is valid CSS, not an SVG attribute", () => {
+  // The bug this pins, which is the worst shape one can take here: the row is
+  // *positioned* with an SVG transform attribute -- `translate(0 156)` -- and
+  // handing that to `Element.animate` gives keyframes the engine silently
+  // drops, because CSS wants units. The animation still exists and still
+  // reports its duration; it just moves nothing. Every visible sign says it
+  // works. Found by reading the keyframes back off the running animation.
+  for (const open of [true, false]) {
+    const t = scoreAt(open);
+    assert.match(t, /^translate\(0px, \d+px\)$/,
+                 `${t} is not a CSS transform a keyframe will keep`);
+  }
+  // And the two ends are different, or there is nothing to animate.
+  assert.notEqual(scoreAt(true), scoreAt(false));
+  // Open sits below shut: the row scores the shelf, so with a shelf above it
+  // it has to move down, not up.
+  const y = (t) => Number(/(\d+)px\)$/.exec(t)[1]);
+  assert.ok(y(scoreAt(true)) > y(scoreAt(false)),
+            "the open row is not below the shut one");
+  // It lands inside the card it is drawn on, both ways.
+  assert.ok(y(scoreAt(false)) + SCORE_ROW_DEEP <= 22 + CARD_H_SHUT);
 });
