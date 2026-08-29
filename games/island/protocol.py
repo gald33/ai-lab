@@ -22,8 +22,16 @@ OPEN, JOIN, MANAGE = "OPEN", "JOIN", "MANAGE"
 
 #: The island's vocabulary of goods is ordered and a game plays the first N of
 #: it, so a count is all a table needs to name its own. Two is the fewest that
-#: can be traded at all; seven is what the palette has distinct colours for.
-GOODS_MIN, GOODS_MAX, GOODS_DEFAULT = 2, 7, 5
+#: can be traded at all; five is how many goods the island actually has
+#: (`island.dealer.GOODS`), so five is the most a table may open on.
+#:
+#: The ceiling was 7 -- the number of distinct colours in the viewer's palette
+#: -- which let `OPEN ... goods=6` parse and then fail later, at brief-building,
+#: with `the island has 5 goods, not 6`. A count the lobby accepts and the
+#: island cannot deal is a malformed line the protocol failed to refuse, so the
+#: bound is the vocabulary's, not the palette's. Raising it means adding names
+#: to `dealer.GOODS` first. Decided by Gal, 2026-08-29.
+GOODS_MIN, GOODS_MAX, GOODS_DEFAULT = 2, 5, 5
 
 _KV = re.compile(r"^([a-z]+)=(-?[0-9]+)$")
 
