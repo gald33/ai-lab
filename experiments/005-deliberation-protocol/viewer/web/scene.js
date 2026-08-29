@@ -80,6 +80,22 @@ export const CARD_LINGER = 1400;
 const CARD_SWING = 220;
 
 /**
+ * How long the utility waits after a shelf has moved, in ms.
+ *
+ * **The number is a consequence of the goods, and should be read as one.** The
+ * bars and the score used to change on the same tick -- correct, and the pair
+ * still read as one simultaneous jump rather than as the shelf changing and
+ * the value following from it. Gal asked for the second.
+ *
+ * Shorter than the bars' own 0.55s travel on purpose. Their easing is a hard
+ * ease-out, so a bar is within a few percent of its target well before it
+ * stops, and waiting for the full duration puts a visible dead beat between
+ * the two. This starts the number while the bars are settling into place,
+ * which reads as *because* rather than as *and then*.
+ */
+const SCORE_SETTLE = 420;
+
+/**
  * Where the score row sits, as a **CSS** transform.
  *
  * Its own name because of how it went wrong. The row is positioned with an SVG
@@ -2047,9 +2063,14 @@ export class Scene {
    * `shelf` is the fallback for a slot with no drawn state yet -- the first
    * paint, and after the bell, where `draw` passes the closing holdings.
    */
-  score(name, shelf, blameZero = false) {
+  score(name, shelf, blameZero = null) {
     const label = this.labels[name];
     if (!this.reveal || !label?.score) return;
+    //: Remembered rather than passed, because the call that writes this number
+    //: is often not the one that knew: a staged score fires from a timer, long
+    //: after the frame that could see whether labour had been spent.
+    if (blameZero === null) blameZero = (this.blameZero ??= {})[name] ?? false;
+    else (this.blameZero ??= {})[name] = blameZero;
     const shown = {};
     for (const good of this.goods) {
       const b = this.bars[name]?.[good];
@@ -2066,6 +2087,31 @@ export class Scene {
     // The critical colour waits for there to be some.
     label.scoreText.classList.toggle("zero",
       blameZero && u !== null && u <= 1e-12);
+  }
+
+  /**
+   * Move this trader's utility once their shelf has finished moving.
+   *
+   * **Debounced per trader, so a multi-good bundle moves the number once.** An
+   * exchange lands its goods one at a time -- `CARRY.step` apart -- and scoring
+   * on each arrival walks the number up in steps that look like several trades
+   * rather than one. Each landing pushes the settle back, so the value moves
+   * after the last bar does, once.
+   *
+   * Immediate when motion is not wanted: the bars have no travel to follow
+   * there, so a delay is not a beat, it is lag.
+   */
+  scoreSoon(name) {
+    if (still()) return this.score(name, this.state?.stocks?.[name]);
+    //: Already staged and not yet fired: leave the number where it is. The
+    //: point is that it moves *after* the shelf, once.
+    clearTimeout(this.scoring?.get(name));
+    const gen = this.gen;
+    (this.scoring ??= new Map()).set(name, setTimeout(() => {
+      //: The island may have been rebuilt under this timer -- a reframe, a new
+      //: board -- and the labels this would write into are off the page.
+      if (gen === this.gen) this.score(name, this.state?.stocks?.[name]);
+    }, SCORE_SETTLE));
   }
 
   setBar(b, qty, free, top = this.top) {
@@ -2117,6 +2163,7 @@ export class Scene {
       // Cobb-Douglas hazard -- so it waits for the labour to be spent, or for
       // the bell, which is when a zero is final whatever was spent.
       const spentLabour = closed || state.labour[name] !== null;
+      let shelfMoved = false;
       for (const good of this.goods) {
         const qty = shelf?.[good] || 0;
         const b = this.bars[name][good];
@@ -2127,6 +2174,9 @@ export class Scene {
         // by it -- which is why the goods used to arrive at a bar that had
         // finished growing half a second earlier.
         if (advance) b.was = b.now ?? { qty: 0, free: 0 };
+        //: Whether the shelf moved at all this frame, which is what decides
+        //: if the number follows it or simply arrives with it.
+        if (b.now && Math.abs(b.now.qty - qty) > 1e-9) shelfMoved = true;
         b.now = { qty, free };
         if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
@@ -2157,7 +2207,16 @@ export class Scene {
         // After the bell the shelf is empty and a live reading would say zero,
         // which is true and useless: what the episode was worth is what it
         // closed holding. Hold that until the next episode opens.
-        this.score(name, shelf, started && spentLabour);
+        //
+        //: **The number follows the shelf wherever the shelf moves**, not only
+        //: where a symbol lands. A frame that moves the bars on its own -- the
+        //: bell emptying them, an episode opening, a receipt with nothing to
+        //: fly -- used to move both on the same tick, so the pair read as one
+        //: jump. Staged, it reads as the shelf changing and the value
+        //: following from it, which is the direction the causation runs.
+        this.blameZero = { ...(this.blameZero ?? {}), [name]: started && spentLabour };
+        if (shelfMoved) this.scoreSoon(name);
+        else this.score(name, shelf, started && spentLabour);
       }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));
@@ -3020,10 +3079,10 @@ export class Scene {
       mark.remove();
       slot.holding = false;
       this.setBar(slot, slot.now.qty, slot.now.free);
-      //: The utility arrives with the goods, not with the receipt -- the bar
-      //: and the number it is scored into have to move together, and the hold
-      //: is released here rather than on a frame boundary.
-      this.score(name, this.state?.stocks?.[name]);
+      //: The utility arrives with the goods, not with the receipt -- the hold
+      //: is released here rather than on a frame boundary -- and then follows
+      //: them rather than moving with them. See `scoreSoon`.
+      this.scoreSoon(name);
       if (way === "in") {
         slot.cell.classList.add("grew");
         setTimeout(() => slot.cell.classList.remove("grew"), 700);

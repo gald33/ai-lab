@@ -487,6 +487,35 @@ still fails when the animation is disabled, so it can still catch this. It does
 **not** cover the shut-card path, because `ring` builds an unmodelled scene
 where cards never shut. That gap is worth closing.
 
+### And the number follows the shelf, rather than moving with it
+
+*Gal, 2026-08-29, after the fix above: the utility should adjust **after** the
+item bars do.* Making the two arrive together was right and still read as one
+simultaneous jump; the value is a consequence of the goods and should be seen
+as one.
+
+`SCORE_SETTLE` is 420ms — deliberately shorter than the bars' own 0.55s
+travel. Their easing is a hard ease-out, so a bar is within a few percent of
+its target well before it stops, and waiting the full duration puts a dead beat
+between the two. Starting the number while the bars settle reads as *because*
+rather than *and then*.
+
+**Debounced per trader**, because an exchange lands its goods one at a time,
+`CARRY.step` apart. Scoring on each arrival walks the number up in steps that
+look like several trades rather than one; each landing pushes the settle back,
+so the value moves once, after the last bar.
+
+It is staged wherever the shelf *moves* — a symbol landing, and any frame that
+moves the bars on its own, such as the bell emptying them. It stays **immediate**
+where nothing moved: the first paint, and a card being opened, where the number
+should simply be there rather than fading in a beat late. `score()` remembers
+whether a zero is blameable, because the call that writes the number is often a
+timer firing long after the frame that could see whether labour had been spent.
+
+Verified by patching `Scene.prototype.score` in a live page and recording every
+write that changed the number: the settlement writes arrive through the staged
+timer, and the immediate ones are all card-open fills.
+
 ### What a click does, and what it must never do
 
 A click on a hut or on the card hanging under it opens that trader's shelf;
