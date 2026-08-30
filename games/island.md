@@ -329,6 +329,97 @@ was the answer to "do we care that they are on the same runner": we care about
 the two things it hides, and the cheapest way to stop hiding them is one
 process per seat.
 
+## A person may sit in a seat, advised by a model that is not an agent
+
+Decided by Gal, 2026-08-30. A human takes a seat and plays it by hand, taking
+advice from a non-agentic LLM — a chat window with no tools, no board access
+and no memory of the room beyond what the person pastes into it. The person
+reads the board, asks, and writes the line. **"Surrogate" was rejected as the
+name**: it reads as the human standing in for someone, and the arrangement is
+the other way round — the person holds the key, does the typing and takes the
+consequences, and the model advises. The seat is **advised**; the person is
+**the hand**.
+
+Nothing in the door has to change to allow this, and that is the point. The
+lobby hands out an invite and a time and launches nothing; entry is
+agent-agnostic on purpose. A person driving the Switchboard CLI is already a
+legal entrant today. What is being added is a **declaration and a reason not
+to rank**, which is the shape `npc.py` already has.
+
+### Two of them, because a sometimes-advised seat measures nothing
+
+- **`advised`** — every line the seat posts came from the model. The hand is
+  transport: it pastes, it does not compose. This is the one that is worth a
+  result — a non-agentic LLM playing the island through a person's hands is a
+  real ablation of *does the agentic loop matter here*.
+- **`assisted`** — the hand may deviate, improvise, ignore the advice. Worth
+  playing and not worth reading as a measurement of either party.
+
+One reason would have covered both and been useless: a seat that is sometimes
+one and sometimes the other tells you nothing about the model and nothing
+about the person.
+
+### Kept, counted, never ranked — and the reason is its own
+
+`scores.why_not_ranked` gains **`advised`**, separate from `heuristic` and from
+`practice` because it says a third thing. The argument is the NPC's first
+reason: `eff_round` against a table of agents, played by a person taking
+advice, is a **different challenge**, and ranking it beside a game between
+agents is the same defect as ranking a 60s game beside a 150s one.
+
+The declaration is read back off the board by `run_game.record`, exactly as
+`npcs_on_board` reads the NPC's, and for the same reason: the manager does not
+know who launched anybody, and a game replayed from its board a year from now
+has to reach the same answer. Believing it is safe by the NPC's third
+argument — **a confession only ever weakens its own game**, so the worst a
+liar achieves is to unrank a table they were sitting at.
+
+### The clock does not move, and the manager is not told
+
+Decided by Gal in the same sitting, against a proposal to lengthen episodes
+for a table with a hand in it. **The mechanism is offered and the manager
+treats every seat the same.** A hand that did not get a line in before the
+bell is `absent`, and that is a true fact about a person taking advice under a
+clock — not a harness failure to be compensated for. A per-seat grace would be
+the privileged path `npc.py` refused, and it would make the seat's result
+about the grace.
+
+The escape valve is already there and is not a special case: **episode length
+is a property of a table, not of a seat.** A bench table can be opened long
+for everyone.
+
+### Shortcut buttons are allowed, and one thing about them is not negotiable
+
+The first draft of this section refused a human-facing composer outright, on
+the grounds that validating a line before it is posted removes a failure the
+agents still face — a trader that garbles an `OFFER` loses that exchange, and
+that loss is in its score. **That argument is right about a ranked table and
+wrong about every other one.** The standing rule is not "don't build the
+weaker thing", it is that the weaker thing is kept and never allowed to look
+like the stronger one; a bench where a person pushes a strategy through by
+hand with buttons and watches the manager settle it is useful, and the
+declaration is what stops it being ranked. *Corrected in the same
+conversation, 2026-08-30.*
+
+What survives the correction is one mechanical constraint, and it is not about
+ranking:
+
+**A composer emits its lines through `protocol.py`, never through a second
+implementation of the grammar.** A button that builds an `OFFER` string by
+hand is a second parser, and second parsers outlive the reason they were
+written — they drift from the one that reads them, silently, which is exactly
+the failure `CLAUDE.md` records about the rename that landed on one surface
+before the other. A breaking change fails loudly; a composer one commit behind
+the parser writes lines that look right and settle wrong. Emitting through the
+real grammar costs nothing and means the same page could later be pointed at a
+ranked table with only the declaration changing.
+
+The hand can still hand-type anything, buttons or no buttons. There is no
+validation gate to get past, because there is no gate: the manager reads what
+is on the board and settles what it recognises, for a hand exactly as for an
+agent.
+
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —
