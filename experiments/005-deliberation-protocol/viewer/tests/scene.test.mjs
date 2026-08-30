@@ -65,13 +65,22 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
       assert.ok(g.islandBox.w > 0 && g.islandBox.h > 0, "the island has a box");
       for (const [i, seat] of g.cards.entries()) {
         if (g.islandFoot !== undefined) {
-          // Portrait stacks the cards under the island, so what they have to
-          // clear is where it stops *drawing* -- not its box, whose bottom
-          // sixth is empty: the island is a disc under a tilted camera and is
-          // not as tall as it is wide.
-          assert.ok(cardBox(seat).y >= g.islandFoot,
-                    `card ${i} of ${n} starts at ${cardBox(seat).y}, above the `
-                    + `island's foot at ${g.islandFoot}`);
+          //: **Portrait straddles the island**: half its rows stand above and
+          //: half below, so that an opened card covers the island rather than
+          //: another trader's numbers. So a card clears the island by being
+          //: wholly above where it starts *drawing* or wholly below where it
+          //: stops -- not by clearing its box, whose top and bottom sixths are
+          //: empty: the island is a disc under a tilted camera and is not as
+          //: tall as it is wide.
+          //:
+          //: At the height the layout reserved, which is the shut nameplate.
+          //: An opened card covering the island is the whole point of the
+          //: arrangement and is asserted nowhere as a defect.
+          const box = cardBox(seat, CARD_H_SHUT);
+          assert.ok(box.y + box.h <= g.islandTop || box.y >= g.islandFoot,
+                    `card ${i} of ${n} runs from ${box.y} to ${box.y + box.h}, `
+                    + `across an island drawn from ${g.islandTop} to `
+                    + `${g.islandFoot}`);
         } else {
           assert.ok(!overlaps(cardBox(seat), g.islandBox),
                     `card ${i} of ${n} stands on the island `
