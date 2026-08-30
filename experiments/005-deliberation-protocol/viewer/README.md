@@ -4228,7 +4228,10 @@ noise, and measured per check it is a third off the check it touches.
 #### The split, and what it is split on
 
 `render.py` takes `--group`, and `tests.yml` carries one job per group:
-`drawing-quick` and `drawing-slow`. The rule is the one a reader can apply from
+`drawing-quick` and `drawing-slow`. The lobby's own browser check rides in
+`drawing-quick` — it arrived when there was one `drawing` job to put it in, and
+both have a browser now, so either would do and both would be the same check
+paid for twice. It goes in the shorter job, where it reports soonest. The rule is the one a reader can apply from
 the table every run prints: **over a minute on a GPU-less machine goes in
 `slow`, everything else in `quick`.** That puts `palette`, `island`, `replay`
 and `overhead` in one job and the other twenty-three checks in the other. It is

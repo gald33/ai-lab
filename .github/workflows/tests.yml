@@ -122,6 +122,26 @@ jobs:
       - run: >
           python experiments/005-deliberation-protocol/viewer/tests/render.py
           --require --group quick --out "$RUNNER_TEMP/island-shots"
+      # The lobby's own browser check, here because this is a job with a
+      # browser in it. The `island` job collects it and skips it, and a skip
+      # and a pass look identical in a tick -- which is the same reason
+      # `--require` is on the line above. It is the only test that can see the
+      # failure it was written for: the countdown script sat above the tables
+      # it drove, matched no elements, and every clock on the page was frozen
+      # while every markup assertion around it passed.
+      #
+      # `ISLAND_REQUIRE_BROWSER` is this job's `--require`: without it the test
+      # skips where there is no playwright and no browser, which is right on a
+      # laptop and is exactly what must not happen here.
+      #
+      # **In this job and not `drawing-slow`, and in exactly one of them.** It
+      # arrived when there was one `drawing` job to put it in. Both have a
+      # browser now, so either would do and both would be the same check paid
+      # for twice; it goes in the shorter one, where it reports soonest.
+      - run: pip install -r games/island/requirements-dev.txt
+      - run: python -m pytest games/island/tests/test_lobby_page.py -q -k browser
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
       # The pictures the run measured, kept whether it passed or failed: a
       # threshold on a rendered image is not arguable without the image.
       - if: always()

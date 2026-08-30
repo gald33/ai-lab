@@ -6,6 +6,8 @@ import re
 import json
 import time
 
+import pytest
+
 from switchboard.crypto import generate_key
 
 from games.island import lobby_page
@@ -395,6 +397,83 @@ def test_the_lapse_clock_ticks_too_rather_than_freezing_at_write(hub):
 
     assert "lapses in 14m 00s" in page
     assert "data-prefix='lapses'" in page
+
+
+def test_the_ticker_comes_after_the_countdowns_it_drives(hub):
+    """**It did not, and every countdown on the page was frozen.**
+
+    The script runs at parse time and takes its elements once, with one
+    `querySelectorAll('.cd')`. It sat above the table rows, so it matched
+    nothing, and each countdown showed the number the server had written and
+    never moved -- for `PAGE_REFRESH` at a time, on a page whose whole point
+    is that the number is live.
+
+    Every test around this one asserted on markup and passed throughout:
+    `data-key` was there, `sessionStorage` was there, the resync bound was
+    there. All of it was there, in the wrong order, and order is the one thing
+    a fragment assertion cannot see. Hence this test, and the browser one
+    below it.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert page.rindex("class=cd") < page.index("querySelectorAll('.cd')")
+
+
+def test_a_countdown_actually_moves_in_a_browser(hub):
+    """The only assertion that was ever really being made: the number changes.
+
+    Skipped where there is no browser, and run for real in the `drawing` CI
+    job, which has one -- see `.github/workflows/tests.yml`. That job sets
+    `ISLAND_REQUIRE_BROWSER`, which turns each skip below into a failure, for
+    the reason `render.py --require` exists: a skip and a pass are the same
+    tick, and a job that quietly rendered nothing is worse than no job.
+    """
+    import os
+    import pathlib
+
+    def missing(why: str):
+        if os.environ.get("ISLAND_REQUIRE_BROWSER"):
+            pytest.fail(f"{why}, and ISLAND_REQUIRE_BROWSER is set: this run "
+                        f"checked no countdown at all")
+        pytest.skip(why)
+
+    try:
+        from playwright import sync_api as play
+    except ImportError:
+        missing("no playwright to drive a page with")
+    chrome = next((p for p in pathlib.Path("/opt/pw-browsers").glob("chromium*")
+                   if p.is_file()), None)
+
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: 1_000_000.0)
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    page = tmp_page(lobby)
+
+    with play.sync_playwright() as pw:
+        try:
+            browser = pw.chromium.launch(
+                executable_path=str(chrome) if chrome else None)
+        except Exception as exc:                       # noqa: BLE001
+            missing(f"no chromium to drive a page with: {exc!r}")
+        tab = browser.new_page()
+        tab.goto(page.as_uri())
+        first = tab.inner_text(".cd")
+        tab.wait_for_timeout(3000)
+        second = tab.inner_text(".cd")
+        browser.close()
+
+    assert first.startswith("lapses in "), first
+    assert second != first, f"the countdown froze at {first!r}"
+
+
+def tmp_page(lobby, now: float = 1_000_000.0):
+    """The rendered page on disk, for a browser to open."""
+    import tempfile
+    from pathlib import Path
+
+    path = Path(tempfile.mkdtemp()) / "lobby.html"
+    return lobby_page.write(lobby, path, now=now)
 
 
 def test_one_ticker_however_many_countdowns(hub):
