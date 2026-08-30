@@ -819,6 +819,26 @@ test("the widest column leaves a gutter, at every good count", () => {
   }
 });
 
+test("above the floor, a column's width is the taste", () => {
+  //: **Proportional, not merely ordered.** The width was affine -- every
+  //: column started at the floor and only the remainder went on the taste --
+  //: so the floor ate 29% of the axis and a trader wanting bread 7.6x as much
+  //: as iron drew a column 2.6x wider. Measured across both saved reveals:
+  //: 7.6x -> 2.6x, 10.2x -> 2.8x, 4.8x -> 2.3x, 1.8x -> 1.5x. The shelf said
+  //: the width was the taste and the drawing did not keep it.
+  const step = STEP;
+  const pairs = [[0.565, 0.146], [0.32, 0.18], [1.0, 0.5], [0.4, 0.25]];
+  for (const [a, b] of pairs) {
+    const wa = appetiteWidth(a, a, step), wb = appetiteWidth(b, a, step);
+    //: Only where the floor is not clamping the smaller one, which is the
+    //: whole of what the floor costs and is asserted separately below.
+    if (wb <= appetiteWidth(1e-9, a, step) + 1e-9) continue;
+    assert.ok(Math.abs(wa / wb - a / b) < 0.02,
+              `a taste ratio of ${(a / b).toFixed(2)} drew a width ratio of `
+              + `${(wa / wb).toFixed(2)}`);
+  }
+});
+
 test("a taste too small to draw is floored rather than vanishing", () => {
   // A column has to stay visible and stay tappable. Cobb-Douglas puts no floor
   // under an alpha, so the drawing has to.
