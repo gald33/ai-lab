@@ -488,8 +488,16 @@ const FOCUS = {
   //: glance card: whose it is, the coloured bars, and what the shelf came to.
   //: The rules are in the stylesheet, on `.card.mini`.
   island: { card: 0.55, floor: ISLAND_MIN, mini: true },
-  cards: { card: null, floor: ISLAND_TINY },
 };
+
+//: **`cards` is gone, and the reasoning that put it there is kept.** It gave
+//: the cards the screen -- `card: null`, as large as the frame allowed, the
+//: island down to `ISLAND_TINY` -- and it was reached by tapping a card, back
+//: when there was nothing else a tap on a card could mean. There is now: a
+//: tap opens that trader's shelf. So the state was unreachable, and a focus
+//: nobody can ask for is not a focus. Superseded 2026-08-30; the measurements
+//: that justified it are in `viewer/README.md` under "On a phone", which is
+//: where the reversal is written down too.
 
 /** The focus names, in the order a tap cycles them. */
 export const FOCUSES = Object.keys(FOCUS);
@@ -1542,8 +1550,8 @@ export class Scene {
   }
 
   /**
-   * What a tap at a point in the frame is a tap on: `"cards"`, `"island"`, or
-   * `null` for the sea around them.
+   * Whether a tap at a point in the frame landed on the island: `"island"`,
+   * or `null` for the sea around it.
    *
    * The page asks, because the page owns the gesture; this owns the geometry
    * and is the only thing that knows where either of them ended up. A card is
@@ -1578,13 +1586,11 @@ export class Scene {
   }
 
   tapped(x, y) {
-    const s = this.cardScale();
-    const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
     const inside = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
-    for (const seat of seats ?? []) {
-      if (inside({ x: seat.x - (CARD_W / 2) * s, y: seat.y + CARD_TOP * s,
-                   w: CARD_W * s, h: this.cardH * s })) return "cards";
-    }
+    //: **Only the island, or nothing.** It used to answer `"cards"` as well,
+    //: for the focus that gave them the screen -- see `FOCUS`. A tap on a card
+    //: opens it now and never reaches here, so that answer had no caller and
+    //: no state to name.
     return this.geo.islandBox && inside(this.geo.islandBox) ? "island" : null;
   }
 

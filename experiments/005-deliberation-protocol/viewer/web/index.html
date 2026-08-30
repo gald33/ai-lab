@@ -2028,10 +2028,8 @@ let saying = null;
 function say(what) {
   const note = $("focus-note");
   note.innerHTML = what === "island"
-    ? "<b>the island</b> · tap it again for the cards"
-    : what === "cards"
-      ? "<b>the cards</b> · tap one again for the island"
-      : "<b>even</b> · tap the island or a card to give it the screen";
+    ? "<b>the island</b> · tap it again to share"
+    : "<b>even</b> · tap the island to give it the screen, a card to open it";
   note.classList.add("on");
   clearTimeout(saying);
   saying = setTimeout(() => note.classList.remove("on"), 2600);

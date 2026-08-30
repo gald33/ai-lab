@@ -458,11 +458,33 @@ tomorrow's.
 *Decided 2026-08-29, on Gal's suggestion that the cards could usually be hidden
 and open on a click or on the trader acting.*
 
-**Landscape only.** Portrait already answers this exact question -- an island
-and a card per trader competing for one screen -- with the measured tap-to-focus
-mechanism in "On a phone" below. Two mechanisms for one question on one screen
-is how a tap stops meaning anything, so portrait keeps the one it has and
-nothing here applies there.
+**Both ways up, since 2026-08-30.** This first shipped landscape-only, on the
+reasoning that portrait already answered the question with the measured
+tap-to-focus mechanism in "On a phone", and that two mechanisms for one
+question on one screen is how a tap stops meaning anything. That reasoning is
+kept because it was right about the hazard — and the resolution is the one it
+implies: portrait got shut cards *and* gave up a focus, rather than running
+both.
+
+**What a portrait tap means now:** a tap on a card opens that trader's shelf; a
+tap on the island gives the island the screen, and again shares it. One gesture,
+disambiguated by what it lands on, the same as landscape.
+
+**`FOCUS.cards` is gone.** It gave the cards the screen and was reached by
+tapping a card — which was the only thing a card tap could mean while cards
+were always open. It is not any more, so the state became unreachable, and a
+focus nobody can ask for is not a focus. The measurements that justified it are
+below and are left standing; `render.py:focusing` used to assert that a card
+tap shrank the island and now asserts the pair that replaced it — the shelf
+opens, and the frame does not move.
+
+**Shutting a card gains portrait no island.** Measured: the viewBox stays
+520x1020 and the cards stay at y465, because `cardPlan` reserves its slot from
+the full card height whatever the card then draws. The cards do halve, 142px to
+86px, so the screen is calmer — but the room does not go to the island. Giving
+it to the island means reserving the shut height and letting an opened card
+overlay what is below it, which at two traders fits in the gap above the
+transport and at more does not. Not done here.
 
 A round is mostly silence, and for most of it nobody is reading the shelves.
 So a card is drawn shut: whose it is, the labour dial with its caption, and the

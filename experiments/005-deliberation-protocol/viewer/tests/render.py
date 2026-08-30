@@ -4365,6 +4365,10 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
         lit, pills, win: innerWidth,
         cardW: cards.length ? Math.max(...cards.map((r) => r.width)) : 0,
         mini: !!document.querySelector('.card.mini'),
+        //: Whether the first card is showing its shelf. A shut card keeps its
+        //: cells in the DOM and fades them out, so presence is not the
+        //: question -- `.shut` is.
+        shelfOn: !!card && !card.classList.contains('shut'),
         marks, viewBox: document.getElementById('island').getAttribute('viewBox'),
         note: document.getElementById('focus-note').textContent.trim(),
         said: !!document.querySelector('#focus-note.on'),
@@ -4456,19 +4460,31 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
                    f"{back['viewBox']!r} at {back['cardW']:.0f}px, not to "
                    f"{even['viewBox']!r} at {even['cardW']:.0f}px")
 
-    # The cards' turn.
+    #: **A tap on a card opens that card and re-divides nothing.**
+    #:
+    #: This used to assert the reverse -- that tapping a card gave the cards
+    #: the screen, shrinking the island. That was right while there was nothing
+    #: else a tap on a card could mean. Cards are shut by default now (see
+    #: `CARD_H_SHUT`), so a tap opens one instead, and the `cards` focus it
+    #: reached became a state nobody could ask for. Superseded 2026-08-30; the
+    #: old reasoning is kept in `FOCUS` and in the README, because a reversal
+    #: nobody can see is one this repo makes twice.
+    #:
+    #: What is asserted instead is the pair: the shelf appears, and the frame
+    #: does not move. A card that opened by re-laying the whole scene would
+    #: pass a check that only watched the shelf.
+    before_open = read("before-open")
     tap("card")
-    held = read("cards")
-    if held["cardW"] / even["cardW"] < FOCUS_GAIN:
-        bad.append(f"{stem} @focus: tapping a card took it from "
-                   f"{even['cardW']:.0f}px to {held['cardW']:.0f}px")
-    if held["island"]["w"] >= even["island"]["w"]:
-        bad.append(f"{stem} @focus: tapping a card left the island at "
-                   f"{held['island']['w']:.0f}px (was {even['island']['w']:.0f}); "
-                   f"the room came from nowhere")
-    if held["mini"]:
-        bad.append(f"{stem} @focus: the card the viewer asked for is drawn as a "
-                   f"glance card")
+    opened = read("opened")
+    if not opened["shelfOn"]:
+        bad.append(f"{stem} @focus: tapping a card did not open its shelf")
+    if opened["viewBox"] != before_open["viewBox"]:
+        bad.append(f"{stem} @focus: tapping a card re-divided the frame, "
+                   f"{before_open['viewBox']!r} -> {opened['viewBox']!r}; it "
+                   f"should open the card and move nothing else")
+    tap("card")
+    if read("reshut")["shelfOn"]:
+        bad.append(f"{stem} @focus: tapping the card again did not shut it")
 
     #: Landscape has margins down the sides and the cards stand in them, so
     #: there is nothing there for a tap to re-divide, and the gesture is gated
