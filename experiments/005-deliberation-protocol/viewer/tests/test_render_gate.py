@@ -132,3 +132,81 @@ def test_a_known_key_matches_on_the_stable_half_only():
         code, _ = render.verdict(
             [f"other-board {KEYS[0].split(' ', 1)[1]}: x"] + [f"{k}: x" for k in KEYS])
     assert code == 1
+
+
+#: The suite is enumerated in exactly one place -- `render.checks` -- and split
+#: across CI jobs by group. Both of those are ways for a check to stop running
+#: while the ticks stay green, which is the same failure `--require` exists to
+#: prevent, so both get a test.
+WORKFLOW = HERE.parents[3] / ".github" / "workflows" / "tests.yml"
+
+
+def _plan():
+    """The whole suite, named, without a browser.
+
+    `checks` only *builds* the calls; nothing is driven until one is invoked,
+    so a `None` browser and two made-up boards are enough to ask what the
+    suite contains.
+    """
+    return render.checks(None, "http://127.0.0.1:0",
+                         [Path("board-one.json"), Path("board-two.json")],
+                         Path("/tmp/unused"))
+
+
+def test_every_check_is_in_a_group_and_named_once():
+    plan = _plan()
+    assert plan, "the suite enumerates no check at all"
+    for group, name, _ in plan:
+        assert group in render.GROUPS, f"{name} is in group {group!r}"
+    names = [name for _, name, _ in plan]
+    assert len(names) == len(set(names)), "two checks share a name"
+
+
+def test_the_groups_partition_the_suite():
+    """A check in neither group is a check nobody runs, drawn as a pass."""
+    plan = _plan()
+    covered = {name for group in render.GROUPS
+               for _, name, _ in render.select(plan, group, None)}
+    assert covered == {name for _, name, _ in plan}
+    # And no check is in two groups, which would pay for it twice.
+    assert sum(len(render.select(plan, g, None)) for g in render.GROUPS) == len(plan)
+
+
+def test_the_workflow_runs_every_group():
+    """The split is only safe while CI carries both halves of it.
+
+    Read off `tests.yml` rather than asserted about the code alone, because
+    the way this goes wrong is a group added here and not there -- and that
+    failure is silent in exactly the way a skip is.
+    """
+    text = WORKFLOW.read_text()
+    for group in render.GROUPS:
+        assert f"--group {group}" in text, (
+            f"no CI job runs `--group {group}`, so those checks run nowhere")
+    # And each of those jobs still refuses to pass having checked nothing.
+    assert text.count("--require") >= len(render.GROUPS)
+
+
+def test_a_selection_that_matches_nothing_is_empty_rather_than_everything():
+    """Which is what lets `run` fail it, instead of quietly running the lot."""
+    plan = _plan()
+    assert render.select(plan, None, ["no-such-check"]) == []
+    assert len(render.select(plan, None, None)) == len(plan)
+
+
+def test_a_name_selects_every_board_that_check_runs_on():
+    plan = _plan()
+    picked = [name for _, name, _ in render.select(plan, None, ["replay"])]
+    assert picked == ["replay/one", "replay/two"]
+    assert [n for _, n, _ in render.select(plan, None, ["replay/one"])] == ["replay/one"]
+
+
+def test_the_carriers_mechanics_leans_on_are_in_the_suite():
+    """`mechanics` excuses two events the island's floor because these carry them.
+
+    It says so itself, at the cost of a browser and twenty minutes. Said here
+    too, for nothing, because this is the failure it exists to catch and there
+    is no reason to wait for a rendered island to hear about it.
+    """
+    for carrier in ("turning", "overhead"):
+        assert carrier in render.enumerated()
