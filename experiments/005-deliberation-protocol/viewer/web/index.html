@@ -1436,12 +1436,26 @@ function paint({ state, event, animate, index, until = null, hold = 0, quiet = 0
   // dawn, the wind down with the light, the fire the loudest thing left after
   // the bell. Three suns keeping separate time would be worse than two.
   sound.setDay(closed ? 1 : scene.dayProgress(state), closed);
-  //: A read-only handle on the island, for `render.py` and for a console. It
-  //: is the stage the page is already drawing -- nothing here is built for the
+  //: A handle on the island, for `render.py` and for a console. It is the
+  //: stage the page is already drawing -- nothing here is built for the
   //: harness -- and it is what lets a check ask where the light *is* rather
   //: than how bright the frame came out, which is the only way to catch a day
   //: that has stopped travelling: the disc that would have shown it is hidden
   //: the moment there is a model to light.
+  //:
+  //: **Read-only with one exception: a harness may stop the loop.** The
+  //: checks that isolate the drawn SVG scene take `.has-3d` off to unhide it,
+  //: and hiding the model does not stop it: the WebGL loop keeps redrawing an
+  //: island nobody can see, and on a machine without a GPU that is the entire
+  //: frame budget. Measured on a headless page here: **2 frames a second with
+  //: the loop running, 25 with it paused** -- and the animations those checks
+  //: measure last 220ms. So they call `window.__island.pause()`, which is the
+  //: page's own method doing the page's own thing, rather than this file
+  //: growing a second handle that exists only for a test. It stays stopped
+  //: for as long as those checks need: `build()` and `fire()` are what restart
+  //: the loop, and a check driving `window.__probe` calls neither. Anything
+  //: that does drive the page again -- a scrub, a live poll -- gets its island
+  //: back. See `tests/render.py:production` and the viewer README.
   window.__island = stage ?? null;
   // What everybody is holding, standing on the ground beside their huts.
   //
