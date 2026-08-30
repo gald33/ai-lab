@@ -295,6 +295,34 @@ def test_the_levers_offer_exactly_the_ladder_the_lobby_will_accept():
     assert tuple(seconds) == EPISODE_SECONDS_ALLOWED
 
 
+def test_every_value_any_lever_offers_is_a_line_the_lobby_parses():
+    """**The check the `seconds` assertion above was too narrow to make.**
+
+    `goods` offered 6, 7 and 8 -- the viewer's palette -- long after
+    `GOODS_MAX` came down to the island's five, and `rounds` offered 2, 3 and
+    5, which the host has never played. Both showed a reader a value, rewrote
+    the OPEN line with it, and left their agent's OPEN to come back Malformed.
+    So this walks every rung of every lever rather than one ladder.
+    """
+    from games.island.protocol import parse  # noqa: PLC0415
+
+    for field, _label, values in lobby_page.LEVERS:
+        for v in values:
+            parse(lobby_page.open_line(**{field: v}))  # raises if refused
+
+
+def test_the_page_names_the_harnesses_somebody_has_actually_played_from():
+    """"Anything holding Switchboard's tools" is true and no help to a reader.
+
+    The list is what has been sat from, and the caveat is the one that
+    catches people: cached browsing cannot hold a live board.
+    """
+    out = lobby_page._harnesses()
+    for name in ("Cursor", "Claude Code", "ChatGPT"):
+        assert name in out
+    assert "MCP" in out and "cache" in out
+
+
 def test_the_levers_survive_the_meta_refresh(hub):
     """**The reload was putting every knob back on its default.**
 
@@ -465,6 +493,57 @@ def test_a_countdown_actually_moves_in_a_browser(hub):
 
     assert first.startswith("lapses in "), first
     assert second != first, f"the countdown froze at {first!r}"
+
+
+def test_the_levers_rewrite_the_open_line_into_one_the_lobby_parses(hub):
+    """Driven in a browser, because the levers are behaviour and not markup.
+
+    The ladders are asserted against `parse` above, but that check reads the
+    Python tuples; what a reader copies is whatever the script wrote into the
+    `#ol` span. So this moves every lever to its last rung in a real browser
+    and hands the resulting line back to the lobby's own parser.
+    """
+    import os
+    import pathlib
+
+    def missing(why: str):
+        if os.environ.get("ISLAND_REQUIRE_BROWSER"):
+            pytest.fail(f"{why}, and ISLAND_REQUIRE_BROWSER is set: this run "
+                        f"checked no lever at all")
+        pytest.skip(why)
+
+    try:
+        from playwright import sync_api as play
+    except ImportError:
+        missing("no playwright to drive a page with")
+    from games.island.protocol import parse  # noqa: PLC0415
+
+    chrome = next((p for p in pathlib.Path("/opt/pw-browsers").glob("chromium*")
+                   if p.is_file()), None)
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key), clock=lambda: 1_000_000.0)
+    page = tmp_page(lobby)
+
+    with play.sync_playwright() as pw:
+        try:
+            browser = pw.chromium.launch(
+                executable_path=str(chrome) if chrome else None)
+        except Exception as exc:                       # noqa: BLE001
+            missing(f"no chromium to drive a page with: {exc!r}")
+        tab = browser.new_page()
+        tab.goto(page.as_uri())
+        default = tab.inner_text("#ol")
+        for field, _label, values in lobby_page.LEVERS:
+            tab.select_option(f".levers select[data-f={field}]", str(values[-1]))
+        topped = tab.inner_text("#ol")
+        browser.close()
+
+    # What the page shows before anybody touches it, and after every knob is
+    # turned to its far end: both must be lines the lobby will take.
+    assert parse(default) == parse(lobby_page.open_line())
+    top = parse(topped)
+    assert top.traders == lobby_page.LEVERS[0][2][-1]
+    assert top.rounds == 1
 
 
 def tmp_page(lobby, now: float = 1_000_000.0):

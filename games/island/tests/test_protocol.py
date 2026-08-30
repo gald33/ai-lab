@@ -9,7 +9,7 @@ from games.island.protocol import Join, Malformed, Manage, Open, parse
 
 
 def test_open_parses_traders_episodes_rounds():
-    assert parse("OPEN traders=2 episodes=8 rounds=3") == Open(2, 8, 3)
+    assert parse("OPEN traders=2 episodes=8 rounds=1") == Open(2, 8, 1)
 
 
 def test_open_defaults_rounds_to_one():
@@ -30,7 +30,7 @@ def test_an_unrecognised_line_is_talk():
 
 
 @pytest.mark.parametrize("line,fragment", [
-    ("OPEN traders=1 episodes=8", "at least 2 traders"),
+    ("OPEN traders=1 episodes=8", "traders must be between 2 and 4"),
     ("OPEN traders=2 episodes=0", "at least 1 episode"),
     ("OPEN traders=2 episodes=8 rounds=0", "at least 1 round"),
     ("OPEN traders=2", "missing"),
@@ -100,7 +100,7 @@ def test_an_unknown_field_on_a_join_is_refused():
 
 
 def test_open_takes_a_seconds_from_the_ladder():
-    a = parse("OPEN traders=2 episodes=3 rounds=3 goods=5 seconds=120")
+    a = parse("OPEN traders=2 episodes=3 rounds=1 goods=5 seconds=120")
     assert a.seconds == 120
 
 
@@ -148,3 +148,35 @@ def test_more_goods_than_the_island_has_is_refused_at_the_line():
 
 def test_five_goods_is_still_a_table_that_opens():
     assert parse("OPEN traders=2 episodes=8 goods=5").goods == 5
+
+
+# --- the sizes this host has actually played ----------------------------
+
+
+def test_two_to_four_traders_open_a_table():
+    for n in range(protocol.TRADERS_MIN, protocol.TRADERS_MAX + 1):
+        assert parse(f"OPEN traders={n} episodes=4").traders == n
+
+
+def test_a_fifth_seat_is_refused_at_the_line_and_the_bound_is_named():
+    """Unmeasured, not known-broken -- and refused for being unmeasured.
+
+    The refusal carries the range because the lobby does not repair: an
+    entrant that asked for five has to be able to read what it may ask for.
+    """
+    with pytest.raises(Malformed) as e:
+        parse("OPEN traders=5 episodes=4")
+    assert "traders must be between 2 and 4" in str(e.value)
+
+
+def test_more_than_one_round_is_refused_rather_than_played_as_one():
+    """**The field parsed and the host never played it.**
+
+    `run_game.play` runs a table's episodes once and writes one round
+    (`record["rounds"][0]`), so `rounds=3` was announced to entrants as three
+    and settled as one. Refused loudly instead.
+    """
+    assert protocol.ROUNDS_MAX == 1
+    with pytest.raises(Malformed) as e:
+        parse("OPEN traders=2 episodes=4 rounds=2")
+    assert "1 round" in str(e.value)

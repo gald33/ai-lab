@@ -75,6 +75,8 @@ from .live import forget as forget_live
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
+from .protocol import (GOODS_MAX, GOODS_MIN, ROUNDS_MAX, TRADERS_MAX,
+                       TRADERS_MIN)
 from .npc import npcs_on_board as _npcs_on_board
 
 # The island economy this game runs, from 005's tree. A code dependency is not
@@ -419,6 +421,39 @@ def ack_close(started: float, ack_seconds: float, table: Table) -> float:
     return max(started + ack_seconds, table.opens_at or 0.0)
 
 
+def refuse_out_of_bounds(table: Table) -> None:
+    """Raise unless this table is one the host has actually played.
+
+    **Checked here as well as at the lobby's format, and that is deliberate.**
+    The bounds live in `protocol.py` because that is where a badly-sized OPEN
+    is refused to the entrant's face, in time for it to open a table it can
+    actually sit at. But the manager also plays tables it did not parse: ones
+    restored from a state file written before these bounds existed, and ones a
+    caller built by hand. Dealing an island for a size nothing here has run is
+    the failure that shows up as a game rather than as a message, so the
+    manager checks the table in front of it rather than trusting where it came
+    from.
+
+    A refusal is loud and costs one table. `watch` plays each table in its own
+    thread and prints what the thread raised, so this surfaces as
+    `<id>: game failed` and the lobby keeps reading.
+    """
+    if not TRADERS_MIN <= table.traders <= TRADERS_MAX:
+        raise ValueError(
+            f"{table.id} seats {table.traders} traders; this host plays "
+            f"{TRADERS_MIN}-{TRADERS_MAX}")
+    if not GOODS_MIN <= table.goods <= GOODS_MAX:
+        raise ValueError(
+            f"{table.id} is drawn over {table.goods} goods; the island has "
+            f"{len(GOODS)} ({GOODS_MIN}-{GOODS_MAX} may be played)")
+    if table.rounds != ROUNDS_MAX:
+        raise ValueError(
+            f"{table.id} says {table.rounds} rounds; this host plays a "
+            f"table's episodes once and records exactly one round")
+    if table.episodes < 1:
+        raise ValueError(f"{table.id} has no episodes to play")
+
+
 def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path, tick: Callable[[], None] | None = None,
          ranked_only: bool = False,
@@ -440,6 +475,7 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     settled before `seconds` existed -- those carry the dataclass default,
     which is the 60s every game up to g6 was played at.
     """
+    refuse_out_of_bounds(table)
     episode_seconds = getattr(table, "seconds", None) or episode_seconds
     client = Client.from_invite(invite, agent_id=MANAGER)
     # **The manager registers too, and not only for the roster line.** Sealing

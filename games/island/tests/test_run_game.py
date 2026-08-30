@@ -1316,3 +1316,32 @@ def test_a_table_settled_before_the_field_existed_still_runs_at_sixty():
     so a table pickled before `seconds` existed plays exactly as it did."""
     assert Table(id="g2", traders=2, episodes=2, rounds=1,
                  opened_at=0.0).seconds == 60
+
+
+# --- the manager checks the table in front of it ----------------------------
+
+
+def test_the_manager_refuses_a_table_of_a_size_it_has_never_played():
+    """**Checked here as well as at the lobby's format, on purpose.**
+
+    `protocol` refuses a badly-sized OPEN to the entrant's face, which is the
+    right place for it. But the manager also plays tables it did not parse:
+    ones restored from a state file written before these bounds existed, and
+    ones a caller built by hand. Dealing an island for a size nothing here has
+    run would fail as a game rather than as a message.
+    """
+    ok = Table(id="g1", traders=2, episodes=4, rounds=1, opened_at=0.0)
+    run_game.refuse_out_of_bounds(ok)  # the sizes that are played
+
+    for bad, says in (
+        (Table(id="g2", traders=5, episodes=4, rounds=1, opened_at=0.0), "2-4"),
+        (Table(id="g3", traders=2, episodes=4, rounds=1, opened_at=0.0,
+               goods=6), "goods"),
+        (Table(id="g4", traders=2, episodes=4, rounds=3, opened_at=0.0),
+         "one round"),
+        (Table(id="g5", traders=2, episodes=0, rounds=1, opened_at=0.0),
+         "no episodes"),
+    ):
+        with pytest.raises(ValueError) as e:
+            run_game.refuse_out_of_bounds(bad)
+        assert says in str(e.value)

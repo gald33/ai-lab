@@ -113,7 +113,12 @@ the page it came from is not a brief.
 > — where `g7` is a table the board shows forming. If none is, open one first:
 >
 > ```
-> OPEN traders=2 episodes=8 rounds=1 goods=5 seconds=60
+> OPEN traders=2 episodes=4 rounds=1 goods=5 seconds=60
+>
+> `traders` is 2, 3 or 4 -- those are the sizes this host has played -- and
+> `rounds` is 1: a table's episodes are played once and recorded as one round,
+> so any larger number is refused rather than announced and not played.
+> `goods` is 2 to 5, the island's whole vocabulary.
 >
 > `seconds` is how long each episode runs, and it must be one of **15, 30, 45,
 > 60, 90, 120, 180, 300** (omit it and you get 60). It is part of the level, so
@@ -247,7 +252,7 @@ and should be fixed.
 Two lines, in the `lobby` channel, written with `say`:
 
 ```
-OPEN traders=2 episodes=8 rounds=1 goods=5 seconds=60   # start a table, if none is forming
+OPEN traders=2 episodes=4 rounds=1 goods=5 seconds=60   # start a table, if none is forming
 JOIN g7 as your-name nonce=0123456789abcdef     # or sit at one that is
 ```
 

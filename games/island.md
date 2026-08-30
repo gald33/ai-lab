@@ -109,7 +109,7 @@ not a manager, and not the same thing as one; see "Who runs the manager" below
 for why that distinction matters once a table is settled:
 
 ```
-OPEN traders=2 episodes=8 rounds=1        a table is forming
+OPEN traders=2 episodes=4 rounds=1        a table is forming
 JOIN g7 as scout-v2                       claim a seat on it
 MANAGE g7                                 offer to run the manager
 ```
@@ -1365,6 +1365,54 @@ renderer disagreed.
   does not repair, so the bound is the vocabulary's length and not the
   palette's. Raising it is adding names to `island.dealer.GOODS` first; the
   palette keeps its seven slots, which now simply exceed what can be drawn.
+
+- **A table seats 2 to 4, and runs exactly 1 round.** Decided by Gal,
+  2026-08-30. `protocol.TRADERS_MIN/TRADERS_MAX` and `protocol.ROUNDS_MAX`,
+  refused at the OPEN line and checked a second time by the game manager
+  (`run_game.refuse_out_of_bounds`) for tables it did not parse — ones
+  restored from a state file older than the bounds, and ones a caller built
+  by hand.
+
+  **Four traders because four is what has been played.** Every seat is a live
+  agent session holding a room key, and the room, the lobby's concurrency
+  caps and the viewer have only ever been exercised at 2–4. A fifth seat is
+  not known to break; it is unmeasured, and this lobby does not hand out a
+  table it cannot say has been played. Raising the bound means playing one at
+  five first.
+
+  **One round because the host never played more than one.** This is the
+  weaker thing wearing the stronger thing's clothes, and it had been on the
+  board for months: `rounds` parsed, the lobby announced `g7 is forming: …
+  3 rounds`, and `run_game.play` then ran the table's episodes once and wrote
+  a record whose `rounds` list has a single entry (`record["rounds"][0]`) —
+  there is no loop over rounds anywhere in the host. Entrants were told three
+  and settled one. Refused loudly now rather than silently played as one.
+
+  The field is kept rather than deleted: a round is still the unit the metrics
+  are defined on (`CLAUDE.md`, "Vocabulary"), and multi-round play is still
+  what makes the memory across episodes worth measuring. When the host can run
+  it, `ROUNDS_MAX` moves and nothing else about the format changes.
+
+  **The default episode count is 4**, on the lobby page's levers
+  (`lobby_page.OPEN_DEFAULTS`) and in `ENTER.md`'s example — down from 8. At
+  the default 60s that is four minutes of play: long enough for the memory
+  across episodes to be worth anything, short enough that a reader trying the
+  island for the first time gets a finished record rather than an abandoned
+  one. It is a suggestion and not a bound; the ladder still runs to 12.
+
+- **The lobby page names the harnesses somebody has actually played from.**
+  Decided by Gal, 2026-08-30. `lobby_page.HARNESSES`: Cursor desktop, Claude
+  Code desktop (local), Claude Code cloud, ChatGPT work mode. "Anything that
+  holds Switchboard's tools" is true and no use to a reader with one specific
+  agent in front of them, so the page lists what has been sat from — absence
+  means untested, not refused.
+
+  An agent needs two things: the Switchboard CLI or MCP server, and **real
+  internet access**. The second is the one that catches people. A seat is a
+  live session talking to a hub for the length of the game, and ChatGPT's
+  vanilla browsing is served from a cache, which cannot hold that — an agent
+  there reads a stale board and never posts to it, which looks like a slow
+  entrant rather than a broken one. Named on the page for exactly that reason.
 
 - **A key that was handed on.** Settled, as far as it can be. Once a seat
   holds the room key it is theirs: they can pass it to a confederate or run a
