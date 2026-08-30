@@ -83,7 +83,16 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
 
     test(`no two cards overlap in the margins with ${n} trader(s), `
          + `${portrait ? "portrait" : "landscape"}`, () => {
-      const boxes = layout(n, portrait).cards.map((s) => cardBox(s));
+      //: **At the height the layout reserved**, which portrait and landscape
+      //: no longer answer the same way. Landscape stands its cards in margins
+      //: nothing else wants and reserves the open card. Portrait pitches its
+      //: rows at the *shut* nameplate, because every unit it does not reserve
+      //: is island -- so a card somebody opens is drawn over whatever is under
+      //: it, and at three traders or more that is another card's nameplate.
+      //: Measuring the open box here would be asserting the opposite of the
+      //: thing the layout was changed to do.
+      const boxes = layout(n, portrait).cards
+        .map((s) => cardBox(s, portrait ? CARD_H_SHUT : undefined));
       for (let i = 0; i < boxes.length; i++) {
         for (let j = i + 1; j < boxes.length; j++) {
           assert.ok(!overlaps(boxes[i], boxes[j]),
@@ -108,7 +117,7 @@ for (const n of [1, 2, 3, 4, 5, 6, 8]) {
 //: come to. Fractions of the window's height, which is the form `layout` takes
 //: them in -- see `chromeBands()` in `index.html`.
 const PHONE = { w: 390, h: 844 };
-const BANDS = { top: 162 / PHONE.h, foot: 146 / PHONE.h };
+const BANDS = { top: 98 / PHONE.h, foot: 146 / PHONE.h };
 const shape = ({ w, h }) => Math.floor((w / h) * 100) / 100;
 
 for (const n of [1, 2, 4]) {
@@ -120,11 +129,20 @@ for (const n of [1, 2, 4]) {
     assert.ok(g.islandTop >= above,
               `the island starts at ${g.islandTop}, inside the chrome's band `
               + `which runs to ${above}`);
-    const last = Math.max(...g.cards.map((c) => cardBox(c).y + cardBox(c).h));
+    //: The nameplate, which is what the band was divided around. An opened
+    //: card is drawn over whatever is under it -- including the transport --
+    //: and that is the bargain that gave the island the room: see `cardPlan`.
+    const bottom = (c, h) => cardBox(c, h).y + cardBox(c, h).h;
+    const last = Math.max(...g.cards.map((c) => bottom(c, CARD_H_SHUT)));
     const foot = g.h - Math.round(g.h * BANDS.foot);
     assert.ok(last <= foot,
-              `the last card ends at ${last}, inside the transport's band `
+              `the last shut card ends at ${last}, inside the transport's band `
               + `which starts at ${foot}`);
+    //: What an opened card may *not* do is leave the canvas, because past the
+    //: viewBox nothing is drawn at all -- there is nothing there to draw over.
+    const opened = Math.max(...g.cards.map((c) => bottom(c)));
+    assert.ok(opened <= g.h,
+              `an opened card ends at ${opened}, off a ${g.h}-unit canvas`);
   });
 }
 

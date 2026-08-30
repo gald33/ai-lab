@@ -486,6 +486,11 @@ it to the island means reserving the shut height and letting an opened card
 overlay what is below it, which at two traders fits in the gap above the
 transport and at more does not. Not done here.
 
+*Done on 2026-08-30, overlay and all — see "The split screen goes, and the
+island keeps the frame". What changed is not the arithmetic above but what is
+acceptable: an opened card covering another card's nameplate for a few seconds
+is a smaller cost than the island being drawn small for the whole round.*
+
 A round is mostly silence, and for most of it nobody is reading the shelves.
 So a card is drawn shut: whose it is, the labour dial with its caption, and the
 utility against the ALONE mark. What goes is the shelf -- the bars, the glyphs
@@ -800,6 +805,10 @@ left is the island's, and **the island is the term that gives**: the cards carry
 every number on the page and shrinking them is how this view was unreadable to
 begin with.
 
+*`--chrome-top` is 98px now, and the pills are two rows rather than four — see
+"Four rows of chrome became two". The mechanism below is unchanged; only what
+it is given to reserve has moved.*
+
 That reservation rests on the portrait frame being **the window's own shape**.
 A viewBox of any other shape is fitted inside the window with `meet` and
 *centred* in whichever direction is slack, so a band at the top of the viewBox
@@ -880,10 +889,96 @@ synthetic boards built with `render.synthetic`).
 that nothing scrolls sideways, that **no two pieces of chrome overlap**, that
 the island fills the band between the chrome and the cards, that every control
 is a fingertip tall, that rotating actually turns the island, and — in
-`focusing` — that a tap re-divides the frame and a second tap puts it back. The overlap check exists
+`focusing` — that a tap on a card opens that trader's shelf and leaves the frame
+where it is. The overlap check exists
 because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
+
+### The split screen goes, and the island keeps the frame
+
+*Decided 2026-08-30, by Gal: "we don't need to stay with the split screen …
+scratch all the different views, just decide on what views we need and have
+them."*
+
+**Everything in the two sections below is superseded, and they are left
+standing** because the measurements in them are what made the case for
+deleting the thing they describe. The mechanism they document — a tap that
+re-divides the frame between the island and the cards — is gone from
+`scene.js`, `index.html` and `render.py`.
+
+What was wrong with it is not that it did not work. It worked, and 98% of the
+window is a real number. It is that **it asked the viewer a question the page
+should have answered.** A spectator who opens a link to an island wants to see
+the island; nobody arrives wanting to negotiate how the frame is divided. And
+the question had grown a third answer nobody could reach — `FOCUS.cards` was
+reached by tapping a card, and a card tap had already come to mean *open this
+trader's shelf* once cards were shut by default. Three states, two gestures,
+and one of the states unreachable.
+
+So there is **one view**, both ways up:
+
+- The island gets the frame. It is what is being watched.
+- The cards are nameplates. One opens when its trader acts, or when it is
+  tapped, and it is **drawn over the frame** rather than the frame
+  re-dividing around it.
+- The chrome floats, and stands in bands the island stays out of.
+
+`FOCUS`, `FOCUSES`, `cardMini`, `CARD_H_GLANCE` and `tapped()` are deleted, as
+are `refocus()`, the `#focus-note` caption and the `.focus-island` and
+`.card.mini` rules. `cardPlan` no longer takes a focus and `cardScale` is
+always `1` — the only thing that ever scaled a card was the focus.
+
+**The island keeps the room the focus used to buy it**, because the row now
+reserves the *shut* nameplate rather than the open card: `layout` takes a
+`shutH` and `cardPlan` divides the band around that. `CARD_H_SHUT` is 88 units
+against 186 open (42 live, where there is no utility row), so the reservation
+more than halves and every unit of it goes to the island by construction. That
+is the paragraph in "A card is shut until it is asked for" that ended *"Not
+done here"* — it is done here.
+
+**What it costs, stated plainly.** An opened card is drawn over what is under
+it: at three traders or more that is another card's nameplate, and at any count
+it can be the transport. That is the trade, and it is the right way round — a
+card is open for a few seconds because somebody asked for it or because a trade
+just landed in it, and the thing it covers is on screen for the rest of the
+round. The one thing an opened card may **not** do is leave the canvas, where
+nothing is drawn at all, so `cardPlan` sizes the frame to hold the bottom row
+opened. `scene.test.mjs` holds both halves: the shut rows clear the transport's
+band, and an opened card stays on the canvas.
+
+`render.py:focusing` keeps its name and asserts the pair that replaced it: a
+tap on a card opens that trader's shelf, and the frame does not move.
+
+### Four rows of chrome became two
+
+The chrome stood on **162px of a 760px phone** before the island got anything,
+in four stacked rows: the controls, the round's state, the counts, the goods
+key. Two of the four were on screen the whole time saying nothing.
+
+- **A counter at zero has not happened.** A board opens with nothing settled,
+  nothing declined, nothing refused and nothing lapsed, and that is most of
+  what those four pills say for most of a round. On a phone a counter is drawn
+  once it has something to say, and it moves onto the round's state's own row,
+  which has the width for it. Nothing is dropped — a count that reaches one
+  appears — and on a desk all four still stand, because there the row is free.
+  `hud()` writes the number onto the element as well as into it (`data-n`), for
+  the plain reason that a stylesheet cannot ask what an element says.
+- **The goods key is a caption for the shelves**, and the shelves are shut
+  now. So it comes on with a shelf and goes off with it, drawn over the island
+  above the transport rather than in a band of its own — the same bargain the
+  open card takes. `Scene` reports whether any shelf is open and the page puts
+  `.app.shelf-open` on the frame; the scene does not reach into the chrome
+  itself.
+
+`--chrome-top` is **98px**, and that is the whole of the gain: 64px of a phone,
+handed to the island by two rows that were not earning their place.
+
+`uncovered()` in `render.py` had to learn the difference between *laid out* and
+*drawn*: it measured every pill's rectangle against the island's own pixels,
+and a key at zero opacity would have failed the page for hiding something. It
+skips anything at `display: none`, `visibility: hidden` or zero opacity now,
+which is the honest reading — an element nobody can see covers nothing.
 
 ### The viewer says which of the two gets the screen
 
