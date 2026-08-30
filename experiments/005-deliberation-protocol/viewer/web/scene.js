@@ -1522,6 +1522,22 @@ export class Scene {
     const was = {
       h: node.querySelector(".card-bg")?.getAttribute("height"),
       shelf: node.querySelector(".card")?.classList.contains("shut") ? 0 : 1,
+      //: **What the utility bar was showing**, for the same reason the bars'
+      //: own values are carried below: a rebuilt card must come back at the
+      //: value it already had rather than travel to it again. Without this a
+      //: card rebuilt by `flashCard` would start its utility at zero -- the
+      //: width a fresh score bar is built at -- and run up to the number the
+      //: card was already displaying, which is a move nothing on the board
+      //: made.
+      score: node.querySelector(".score-fill")?.getAttribute("width"),
+      //: And the number beside it, for the same reason and one worse: a fresh
+      //: score row is built reading "--", which is what this card says when
+      //: there is **no reveal to know a utility from**. A rebuild flashed that
+      //: over a number the page knew perfectly well -- the weaker thing
+      //: wearing the stronger one's clothes, on the one row the round is
+      //: scored on.
+      scoreText: node.querySelector(".score-value")?.textContent,
+      scoreZero: node.querySelector(".score-value")?.classList.contains("zero"),
     };
     //: Where the card was standing, so a lift is animated from it rather than
     //: jumped to. **Derived from the shelf the old node was drawn with**, not
@@ -1532,6 +1548,18 @@ export class Scene {
     //: bug the animation exists to prevent, wearing the animation's clothes.
     was.lift = this.cardLift(name, !was.shelf);
     node.replaceWith(this.hut(name, seat));
+    //: Put back before anything can transition off it -- the node is new, so
+    //: this is the value it first renders at and there is nothing to animate
+    //: from. A staged `score()` then eases from here to the new number, which
+    //: is the whole point of the stage.
+    if (was.score !== undefined && was.score !== null) {
+      this.labels[name]?.score?.setAttribute("width", was.score);
+    }
+    if (was.scoreText !== undefined && was.scoreText !== null
+        && this.labels[name]?.scoreText) {
+      this.labels[name].scoreText.textContent = was.scoreText;
+      this.labels[name].scoreText.classList.toggle("zero", !!was.scoreZero);
+    }
     this.swingCard(name, was);
     for (const [good, kept] of Object.entries(carry)) {
       const b = this.bars[name]?.[good];
@@ -2127,7 +2155,20 @@ export class Scene {
                               "text-anchor": "end" }, "—"));
       row.append(el("rect", { class: "score-track", x: -w / 2, y: 6, width: w,
                               height: 7, rx: 3.5 }));
-      row.append(el("rect", { class: "score-fill", x: -w / 2, y: 6, width: w,
+      //: **Empty, not full.** This was `width: w` -- the track's width, one
+      //: line up, which is what it was copied from -- so every card was built
+      //: with its utility bar at 100% and only came down once `score()` wrote
+      //: the real number. And `score()` is deliberately late: `scoreSoon`
+      //: holds it until the shelf has finished moving, so the bar sat full for
+      //: as long as the goods took to arrive and then fell. Measured on game
+      //: 001d's first production: 170px of 170 at 14ms, still 170 at 1774ms,
+      //: 0 at 2345ms -- the utility jumping to full and adjusting afterwards,
+      //: which is what Gal reported.
+      //:
+      //: A fill starts empty. The transition on it is what makes the number
+      //: arrive with its goods rather than before them; it cannot do that job
+      //: from the wrong end.
+      row.append(el("rect", { class: "score-fill", x: -w / 2, y: 6, width: 0,
                               height: 7, rx: 3.5 }));
       // Where autarky would have put them: the line worth beating, and the one
       // a round can finish below.

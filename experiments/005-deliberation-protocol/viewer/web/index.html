@@ -828,15 +828,23 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      One line, next to the thing it explains, and the band reserves it. */
   .legend span.sub { display: none; }
   .legend span.sub.appetite { display: inline-flex; }
-  /* **And the chips go, so the caption can stay.** The band reserves whatever
-     the key comes to, so the key's height is island: chips and caption
-     together are 45px of a 660px phone, the caption alone 17. Of the two the
-     chips are what a phone can most afford to lose -- a good's glyph rides on
-     its own colour on every shelf and on every parcel in flight, so the chip
-     adds the English word and nothing else, while the caption names an
-     encoding that cannot be deduced from looking. Both stay on a desk, where
-     the row costs nothing. */
-  .legend > span:not(.sub) { display: none; }
+  /* **And the chips go, so the caption can stay -- but only when there is a
+     caption.** The band reserves whatever the key comes to, so the key's
+     height is island: chips and caption together are 45px of a 660px phone,
+     the caption alone 17. Of the two the chips are what a phone can most
+     afford to lose, since a good's glyph rides on its own colour on every
+     shelf and on every parcel, while the caption names an encoding that
+     cannot be deduced from looking.
+
+     `keyed` is what says there is one. **A live board has no reveal**, so no
+     tastes, so no column widths and no caption for them -- and dropping the
+     chips there took the key away and put nothing in its place: measured on a
+     live phone, a legend with four goods in it and a height of zero. That is
+     a phone with no way to learn what a parcel in flight is carrying, which
+     is the one thing the key is for. So a phone shows one line either way:
+     the caption where there is one, the chips where there is not. Both stay
+     on a desk, where the row costs nothing. */
+  .legend.keyed > span:not(.sub) { display: none; }
 
   /* --- what the chrome costs the island ----------------------------------
      The island cannot be screen-wide while the chrome holds 47% of the height.
@@ -1203,6 +1211,10 @@ let official = null;
 // --- chrome ----------------------------------------------------------------
 
 function legend(goods, scored) {
+  //: **Whether this board has a caption to show instead of the chips.** A
+  //: phone has room for one line of key, and which line it should be depends
+  //: on whether there is a reveal: see the portrait `.legend.keyed` rule.
+  $("legend").classList.toggle("keyed", !!scored);
   // The glyph goes *inside* the colour. Side by side they are two marks for
   // one good and the reader has to learn that they pair up; one on the other
   // is the chip that appears on the shelf and in flight.
