@@ -938,6 +938,7 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
             problems += appetite(browser, base, boards[0], out)
             problems += straddle(browser, base, out)
             problems += mobile(browser, base, boards[0], out)
+            problems += crowding(browser, base, boards[0], out)
             problems += focusing(browser, base, boards[0], out)
             problems += fallback(browser, base, boards[0], out)
             problems += living(browser, base, boards[0], out)
@@ -4384,6 +4385,93 @@ def fallback(browser, base: str, board: Path, out: Path) -> list[str]:
     if not seen["huts"] or not seen["cells"]:
         bad.append(f"{where}: {seen['huts']} huts and {seen['cells']} shelf cells "
                    f"-- the replay itself stopped drawing")
+    return bad
+
+
+def crowding(browser, base: str, board: Path, out: Path) -> list[str]:
+    """The two halves of the top row never stand on each other, on any frame.
+
+    `mobile` already asserts that no two pieces of floating chrome overlap, and
+    it went on passing while `settled 2` sat on top of `bell in 60s` on a live
+    phone. It compares the chrome's *containers*, and the containers did not
+    overlap: `.counts` was capped at 44vw with `flex-wrap: nowrap`, so when
+    three counters were running its pills overflowed its box to the left and
+    crossed into the other half of the row while the box itself stayed put. An
+    assertion about a parent cannot see a child that has left it.
+
+    So this compares the pills themselves, and adds the failure that was
+    hiding the first one: `overflow: hidden` clipped what overflowed, and the
+    leading counter rendered as a pill reading `1` with the word `settled` cut
+    off. That is the worse of the two, because a mutilated pill still looks
+    like a pill -- so a clipped pill is a problem here even when nothing
+    overlaps.
+
+    Every frame, because the split changes with the board: on frame 0 the
+    state pills need the whole row and no counter has happened yet, and at the
+    last bell it is the other way round.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    measure = """() => {
+      //: **What clips a pill is its container, not the pill.** The first
+      //: draft of this asked each pill whether its own `scrollWidth` had
+      //: outgrown its `clientWidth`, which is a question about text inside a
+      //: box -- and the pill that rendered as `1` was a whole box that had
+      //: left its parent, with its own text intact. So it never fired, on any
+      //: frame, including the nine this now catches. Asked properly: walk up
+      //: to whatever ancestor clips, and ask whether the pill is still inside
+      //: it.
+      const clipped = (el, box) => {
+        for (let n = el.parentElement; n; n = n.parentElement) {
+          const o = getComputedStyle(n);
+          if (o.overflowX === 'visible' && o.overflowY === 'visible') continue;
+          const r = n.getBoundingClientRect();
+          if (box.left < r.left - 1 || box.right > r.right + 1) return true;
+        }
+        return false;
+      };
+      const pills = [...document.querySelectorAll('.at-top-left .pill, .counts .pill')]
+        .filter((e) => getComputedStyle(e).display !== 'none')
+        .map((e) => { const b = e.getBoundingClientRect();
+          return { txt: e.textContent.trim().slice(0, 24), l: b.left, r: b.right,
+                   t: Math.round(b.top), counts: !!e.closest('.counts'),
+                   cut: clipped(e, b) }; });
+      let worst = -1e9, pair = null;
+      for (const a of pills) for (const b of pills) {
+        if (a === b || a.counts === b.counts || a.t !== b.t) continue;
+        const ov = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+        if (ov > worst) { worst = ov; pair = [a.txt, b.txt]; }
+      }
+      return { overlap: worst, pair, n: pills.length,
+               cut: pills.filter((e) => e.cut).map((e) => e.txt) };
+    }"""
+    for tag, w, h in [p for p in PHONES if p[2] > p[1]]:
+        page = browser.new_page(viewport={"width": w, "height": h}, is_mobile=True,
+                                has_touch=True, reduced_motion="reduce")
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
+        page.wait_for_timeout(1200)
+        total = int(page.eval_on_selector("#scrub", "e => Number(e.max)"))
+        seen = 0
+        for i in range(total + 1):
+            page.evaluate(
+                "i => { const s = document.getElementById('scrub');"
+                " s.value = String(i); s.dispatchEvent(new Event('input')); }", i)
+            m = page.evaluate(measure)
+            seen = max(seen, m["n"])
+            if m["cut"]:
+                bad.append(f"{stem} @{tag}: frame {i} clips {m['cut']} -- a pill "
+                           f"that has lost its word still looks like a pill")
+            if m["overlap"] > 0:
+                bad.append(f"{stem} @{tag}: frame {i} stands {m['overlap']:.0f}px of "
+                           f"{m['pair'][0]!r} and {m['pair'][1]!r} on each other")
+        #: Both halves have to have been drawn at some point, or the loops above
+        #: only ever compared a pill with itself and found nothing, every frame.
+        if seen < 3:
+            bad.append(f"{stem} @{tag}: only {seen} pill(s) ever on the top row; "
+                       f"this checked a row that was never crowded")
+        page.screenshot(path=str(out / f"{stem}-crowding-{tag}.png"))
+        page.close()
     return bad
 
 

@@ -895,6 +895,58 @@ because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
 
+#### The overlap check compared the boxes, and the pills escaped them
+
+*Found 2026-08-30, by Gal, on a live phone: "some overlapping buttons".* The
+screenshot showed `settled 2` sitting on top of `bell in 60s`, and `mobile`'s
+"no two pieces of chrome overlap" had been green the whole time.
+
+Both halves of that row are absolutely positioned against opposite edges, so
+nothing in CSS makes them negotiate — their widths were simply chosen to add
+up, and they did not: `.at-top-left` was capped at **62vw** and `.counts` at
+**44vw**, which is 106vw. On a 393pt phone that is 44px belonging to both.
+
+`mobile` missed it because it compares the two **containers**, and the
+containers never overlapped. `.counts` was `flex-wrap: nowrap` with
+`overflow: hidden`, so with three counters running its pills overflowed its box
+to the left — its own rectangle stayed exactly where the stylesheet put it
+while its children stood in the other half of the row. **An assertion about a
+parent cannot see a child that has left it.**
+
+The clipping was the worse half of it, and the half nobody reported: `settled
+1` rendered as a pill reading **`1`**. A wrapped row says it did not fit; a
+clipped one says nothing at all, and a pill that has lost its noun still looks
+like a pill.
+
+What replaced it:
+
+- The stylesheet's two caps now sum to exactly the row — `calc(60vw - 20px)`
+  and `40vw`, with 10px of margin each side — so the overlap is impossible by
+  arithmetic even before any script runs.
+- `shareTopRow()` then re-divides the row **by measuring it**, because the
+  split is uneven and changes with the board: on frame 0 the state pills need
+  the whole row and no counter has happened yet; at the last bell it is the
+  other way round. The counters are asked what they come to and given it, up
+  to three fifths of the row; the state pills take the rest and wrap when that
+  is not enough.
+- `.counts` **wraps and no longer clips.** It was kept to one line on the
+  reasoning that "a row that grew a second line would grow the band under it,
+  and the band is a fixed number of pixels the island has already been given".
+  That premise died when `chromeBands()` began measuring the band; the clipping
+  outlived it. A second line is now absorbed — at 360pt the top band goes from
+  144px to 216px on the frames that need it, and the island is given the rest.
+- `crowding()` in `render.py` asserts it on the pills themselves, every frame,
+  at all three portrait viewports: no pill from one half may stand on a pill
+  from the other, and no pill may be clipped by an ancestor.
+
+Both halves of that check were run against the old stylesheet before being
+trusted: **9 overlaps** (up to 58px, at 360pt) and **6 clipped pills**. The
+first draft of the clipping half asked each pill whether its own `scrollWidth`
+had outgrown its `clientWidth` — a question about text inside a box, when the
+pill that rendered as `1` was a whole box that had left its parent with its
+text intact. It found nothing, on any frame, including the nine the other half
+was catching beside it. It walks up to the clipping ancestor now.
+
 ### The split screen goes, and the island keeps the frame
 
 *Decided 2026-08-30, by Gal: "we don't need to stay with the split screen …

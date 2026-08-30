@@ -764,7 +764,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      named in the browser tab, and the board in the picker. What is left of the
      top-left column is the round's state, which drops below the control row
      rather than sharing 44 vertical pixels with it. */
-  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px; max-width: 62vw; }
+  /* **60vw less the two margins, so the halves of this row cannot claim the
+     same pixels.** They are positioned against opposite edges, so nothing in
+     CSS makes them negotiate: this was 62vw beside the counts' 44, which is
+     106vw, and on a 393pt phone that is 44px of overlap. It reached a live
+     phone as `settled 2` sitting on top of `bell in 60s`. These two numbers
+     now sum to exactly the row (60vw - 20px, 40vw, and 10px of margin each
+     side), and `shareTopRow()` re-divides them by measurement once the pills
+     have their text -- this is the frame before it, not the answer. */
+  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px;
+    max-width: calc(60vw - 20px); }
   /* The same size the counts are cut to on the row they share, for the plain
      reason that they share it. Measured, because 52vw was guessed and the
      guess was wrong: "before the first day" and "acknowledging" were 147 and
@@ -778,12 +787,19 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .at-top-left .titles { display: none; }
   .at-top-left .hud { flex-wrap: wrap; }
   /* The other end of the round's state, on its row rather than under it. A
-     counter at zero has not happened yet and is not drawn; the ones that have
-     are few enough to sit on one line, and are kept to one line on purpose --
-     a row that grew a second line would grow the band under it, and the band
-     is a fixed number of pixels the island has already been given. */
-  .counts { top: 58px; left: auto; right: 10px; max-width: 44vw;
-    flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
+     counter at zero has not happened yet and is not drawn.
+
+     **It wraps now, and it does not clip.** It used to do the opposite, on
+     the reasoning that "a row that grew a second line would grow the band
+     under it, and the band is a fixed number of pixels the island has already
+     been given". The band stopped being a fixed number when `chromeBands()`
+     began measuring it, so the premise is gone -- but the clipping outlived
+     it, and clipping is the worse of the two failures by a distance: with
+     three counters running, `settled 1` rendered as a pill reading `1`. A
+     pill that has lost its noun still looks like a pill. A second line looks
+     like a second line, and the island is given one less. */
+  .counts { top: 58px; left: auto; right: 10px; max-width: 40vw;
+    flex-wrap: wrap; justify-content: flex-end; overflow: visible; }
   .counts .pill[data-n="0"] { display: none; }
   .counts .pill { white-space: nowrap; font-size: 12px; padding: 5px 8px; }
   .at-top-right { top: 10px; right: 10px; left: auto; gap: 6px; }
@@ -1115,7 +1131,54 @@ const frameAspect = () => {
  * The declared numbers stay as the fallback for a chrome that has not been
  * laid out yet, and as the thing a person reads when changing the rules.
  */
+//: **Divide the top row between its two halves by measuring them.**
+//:
+//: The round's state sits against the left edge and the counters against the
+//: right, both absolutely positioned, so the only thing keeping them apart is
+//: that their two widths were chosen to add up. They did not: 62vw and 44vw
+//: is 106vw, and the 6 that do not exist came out of the middle of the row.
+//: On a live phone that put `settled 2` on top of `bell in 60s`; in a replay
+//: with three counters running it put `settled 1` half under `market open`,
+//: where `overflow: hidden` cut it down to a pill reading `1`.
+//:
+//: A guess that adds up would have been enough to stop them touching, and the
+//: stylesheet now holds one for the frame before this runs. But the row is
+//: shared unevenly and the split changes with the board: `before day 1` needs
+//: most of the row and no counter has happened yet, while at the last bell the
+//: counters need most of it. So the counters are asked what they come to and
+//: given it, up to three fifths of the row; the state pills take the rest and
+//: wrap into a second line when that is not enough, which the measured band
+//: absorbs. Nothing is cut off: a wrapped row says it did not fit, and a
+//: clipped one says nothing at all.
+const shareTopRow = () => {
+  const left = document.querySelector(".at-top-left");
+  const counts = document.querySelector(".counts");
+  if (!left || !counts) return;
+  //: The same predicate the stylesheet uses, not `isPortrait()`: the widths
+  //: being divided here are set in `@media (max-width: 700px)`, and a check
+  //: that disagreed with the rule it is correcting would take the caps off in
+  //: exactly the frames that still have them.
+  if (!matchMedia("(max-width: 700px)").matches) {
+    left.style.maxWidth = counts.style.maxWidth = "";
+    return;
+  }
+  //: Measured from where the halves actually sit rather than from a margin
+  //: this function would have to know: `left` is as far from its edge as the
+  //: stylesheet put it, and so is `counts`.
+  counts.style.maxWidth = "none";
+  const want = counts.scrollWidth;
+  const edge = Math.round(left.getBoundingClientRect().left);
+  const room = innerWidth - 2 * edge - 8;
+  const take = want ? Math.min(want, Math.round(room * 0.6)) : 0;
+  counts.style.maxWidth = `${take}px`;
+  left.style.maxWidth = `${Math.max(0, room - take)}px`;
+};
 const chromeBands = () => {
+  //: **First, because this measures the row it divides.** Called from here
+  //: rather than from each caller: `raise()` and `refit()` both measure the
+  //: bands, and a version of this that lived beside one of them left the other
+  //: reading a row whose halves had not been given their widths yet.
+  shareTopRow();
   const css = getComputedStyle(document.documentElement);
   const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
   //: Against the box the island is drawn into, not the window: a band is a
@@ -1332,6 +1395,11 @@ function hud(state) {
     pill.innerHTML = `${k} <b>${n}</b>`;
     pill.dataset.n = String(n);
   }
+
+  //: After the pills have their text and before anything measures the band:
+  //: what the counters come to is what they say, and they say something new
+  //: on most frames.
+  shareTopRow();
 
   // How long the board has been quiet is not said in a pill any more. It was a
   // number about the replay rather than about the island, and the island has a
