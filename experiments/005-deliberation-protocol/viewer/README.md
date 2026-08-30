@@ -3106,9 +3106,31 @@ asked is *"what does this trader care about most"*, which lives inside one
 card; across cards the same drawing would answer "who has the peakier tastes",
 which is a real quantity and not the one a shelf is for.
 
-**Width is affine in the taste, not proportional to it.** There is a floor
-under a column so that it stays legible as one — and with a floor, a column
-twice as wide is not a taste twice as large.
+**Width is the taste**, and above the floor it is proportional to it: a column
+twice as wide is a taste twice as large.
+
+*It was affine until 2026-08-30 — every column started at the floor and only
+the remainder was spent on the taste — and Gal held it to what it claimed. The
+floor ate **29% of the axis**, so the drawing did not keep the claim:*
+
+| board | trader | taste range | drawn, affine | drawn, now |
+|---|---|---|---|---|
+| 001d | T1 | 7.6× | 2.6× | 5.4× |
+| 001d | T2 | 4.8× | 2.3× | **4.8×** |
+| 002b | T1 | 10.2× | 2.8× | 5.4× |
+| 002b | T2 | 1.8× | 1.5× | **1.8×** |
+
+*That is the same compression the rooted share was rejected for, arriving by a
+different route. The floor is a clamp now rather than a base, and `BAR_MIN`
+drops 11 → 7 (5.3px on a 393pt phone, 9.8 on a desk).*
+
+**What the floor still costs, said out loud.** It binds below `BAR_MIN / wide`
+— about a fifth of the trader's largest taste — and below that two columns are
+equally wide whatever their tastes. On 001d's T1 that is cloth, iron and salt
+together at 7 units against bread's 37.5, which is why the two rows above still
+read 5.4× rather than 7.6× and 10.2×. `scene.test.mjs` asserts the
+proportionality above the floor and the clamping below it separately, so
+neither can quietly become the other.
 
 *The floor was justified as a touch target until 2026-08-30, and that was
 wrong: a click resolves through `closest("[data-trader]")` to the whole

@@ -840,7 +840,7 @@ const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 //: at all -- it is a rule, and the goods' glyph sitting under it (14px on that
 //: phone) is wider than the mark it belongs to. Corrected 2026-08-30 on a
 //: parity check; the number is unchanged, only what it is justified by.
-const BAR_MIN = 11, BAR_GUTTER = 5;
+const BAR_MIN = 7, BAR_GUTTER = 5;
 
 /**
  * How wide to draw a trader's column for one good: how much they want it.
@@ -893,7 +893,21 @@ export function appetiteWidth(alpha, top, step) {
   const wide = Math.max(BAR_MIN + 1, step - BAR_GUTTER);
   if (!(alpha > 0) || !(top > 0)) return null;
   const share = Math.min(1, alpha / top);
-  return BAR_MIN + (wide - BAR_MIN) * share;
+  //: **Proportional, with the floor as a clamp rather than a base.** This was
+  //: `BAR_MIN + (wide - BAR_MIN) * share`, which starts every column at the
+  //: floor and spends only what is left on the taste -- so the floor ate 29%
+  //: of the axis and a trader wanting bread 7.6x as much as iron drew a column
+  //: 2.6x wider. Measured across both replays: 7.6x -> 2.6x, 10.2x -> 2.8x,
+  //: 4.8x -> 2.3x, 1.8x -> 1.5x. That is the same compression the rooted share
+  //: was rejected for, arriving by a different route, and it made "the width
+  //: is the taste" a claim the drawing did not keep.
+  //:
+  //: Now the width *is* the share, and the floor only stops a column
+  //: disappearing. It binds below `BAR_MIN / wide` -- about a fifth of the
+  //: trader's largest taste -- and below that two columns are equally wide
+  //: whatever their tastes, which is the one thing this cannot show and is
+  //: said out loud rather than left to be discovered.
+  return Math.max(BAR_MIN, wide * share);
 }
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
