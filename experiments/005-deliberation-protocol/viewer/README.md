@@ -950,6 +950,105 @@ band, and an opened card stays on the canvas.
 `render.py:focusing` keeps its name and asserts the pair that replaced it: a
 tap on a card opens that trader's shelf, and the frame does not move.
 
+### Four traders, shut
+
+*Decided 2026-08-30. `render.py:shutters` is the browser check on the shut
+card at the trader count where the row wraps; before it, nothing in a browser
+had ever drawn one.*
+
+**The gap.** `render.py:ring` is the only check that draws more than two
+traders, and it built its probe as
+
+```js
+window.__probe = new Scene(document.getElementById('island'), t, null);
+```
+
+Three positional arguments. The third is `reveal`; the fourth and fifth are
+`portrait` and `placed`, and `placed` **defaults to `null`** — so
+`this.modelled = placed !== null` came out false, `shutCards()` returned false
+with it, and `cardOpen()` answered true for every seat on the board. **Every
+card on that scene was open for its whole life.** So `shutCards`, `cardOpen`,
+`shutH`, `cardBoxHFor`, `toggleCard`, `flashCard`, `redrawCard`, `swingCard`,
+`sayCards` and both of `CARD_H_SHUT` (88) and `CARD_H_SHUT_BARE` (42) had been
+exercised in a browser **only** by `focusing()` and `uncovered()`, on the two
+saved replays — two traders each, one row of cards between them.
+
+Two is the count where none of the interesting geometry exists. Four is where
+a portrait row wraps into a second one, which is where an opened card overlays
+the nameplate below it and where the bottom row is the thing the frame has to
+be tall enough for.
+
+**What was done, and why it is a second probe rather than a model under
+`ring`'s.** `ring` hands its scene to `check()`, `palms()` and `motion()`, and
+each of those three is about the **drawn** island — the fallback a browser
+with no WebGL gets — which is exactly what a model turns off: `check()` starts
+failing the page for two islands on one page, and `palms()` has nothing left
+to measure. Giving `ring` a model would have cost three checks to buy one. So
+`shutters()` is its own probe, built the way `raise()` in `index.html` builds
+the real thing: `layout(n, portrait, aspect, chrome, shutH)`, then
+`stage.build({traders, goods})` on the page's own canvas, then the resulting
+`anchors` handed to `Scene` as `placed`. The aspect and the chrome's bands are
+read off the page the way `frameAspect()` and `chromeBands()` read them, so a
+stylesheet change cannot leave the check drawing a frame the page never
+builds.
+
+It asserts four things at four traders over five goods, in the frame's own
+units rather than in pixels — the viewBox is fitted into the window with
+`meet`, so pixels measure the letterboxing as much as the drawing:
+
+- every card comes up shut, at the height that board shuts to — `CARD_H_SHUT`
+  with a reveal, `CARD_H_SHUT_BARE` live. Both are drawn, one scene each,
+  because the row is pitched at whichever the board has;
+- opening one grows its box to `CARD_H_SCORED` and leaves the viewBox string
+  untouched;
+- the opened card in the upper row reaches **past** the top of the nameplate
+  below it, and that nameplate has not moved by so much as half a unit;
+- and the bottom row, opened, is still on the canvas.
+
+**Two frames, because the last claim is only checkable in one of them.**
+`cardPlan` sizes the portrait frame at the largest of three terms, and the one
+that reserves room for the opened bottom row is the smallest of the three
+wherever the stylesheet has declared a transport band. On a 390×844 phone at
+four traders the frame is 1130 units and the opened bottom card reaches 978 —
+152 units of slack. Measured by deleting the term: `render.py` stayed green.
+The band is declared under `@media (max-width: 700px)` and is `0px` above it,
+so a window taller than it is wide and wider than 700px is a portrait frame
+with **no** chrome band, and there the opened bottom row is exactly what the
+frame is sized to with nothing spare. Hence `SHUT_FRAMES`: the phone, and
+760×900.
+
+Re-check the slack with:
+
+```
+node --input-type=module -e "
+import { layout } from './experiments/005-deliberation-protocol/viewer/web/scene.js';
+for (const [w, h] of [[390, 844], [760, 900]]) {
+  const a = Math.floor(w / h * 100) / 100;
+  const band = w <= 700 ? { top: 98 / h, foot: 146 / h } : { top: 0, foot: 0 };
+  const g = layout(4, true, a, band, 88);
+  const foot = Math.min(...g.cards.map((c) => c.y));
+  console.log(w + 'x' + h, 'frame', g.h, 'slack', g.h - (foot + 124 + 22 + 186));
+}"
+```
+
+`390x844 frame 1130 slack 152` and `760x900 frame 804 slack 0`.
+
+**How the new assertions were shown to be able to fail.** Each defect was put
+back, `render.py`'s `shutters` run watched go red, and the defect restored:
+
+| defect put back | what went red |
+|---|---|
+| `new Scene(island, t, reveal, true)` — `placed` dropped, which is `ring`'s own shape | *the probe has no island under it, so every card is open for its whole life* |
+| `cardPlan`'s portrait pitch taken back to `CARD_TOP + CARD_H_SCORED + gap` | *T1's opened card reaches 698 and T3's nameplate starts at 735; nothing is being overlaid* |
+| `cardPlan`'s `h` with the last-row term deleted | *T3's opened card reaches 803 on a 720-unit canvas* — on the wide frame only, which is why there are two |
+| `shutCards()` back to `this.modelled && !this.portrait`, the landscape-only rule it had before the split screen went | 56 problems: cards up open, `toggleCard` refusing, the flashed card never given back |
+
+The first of those four is the defect this check exists for; the third is the
+one that says why one frame was not enough.
+
+`ring`'s docstring now says out loud that its probe has no island under it on
+purpose, and points here.
+
 ### Four rows of chrome became two
 
 The chrome stood on **162px of a 760px phone** before the island got anything,

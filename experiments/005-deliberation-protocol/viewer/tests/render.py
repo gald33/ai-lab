@@ -16,7 +16,10 @@ what is asserted is structural and would survive any amount of restyling:
 * the scenery lands nowhere near the cards (the bug this exists to hold shut);
 * it survives a board with more than two traders, which no saved replay has,
   so the ring layout would otherwise be drawn for the first time in front of
-  whoever first plays a four-hander.
+  whoever first plays a four-hander;
+* and at four traders the cards are shut, opened one at a time, and measured
+  against the frame -- the row that wraps, which is the whole of what a
+  two-trader replay cannot draw. See `shutters`.
 
 Skips rather than fails when Playwright or Chromium is absent: this must not
 become something a checkout has to install before the free suites run.
@@ -958,6 +961,7 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
                 problems += daylight(browser, base, board, out)
             problems += vocabulary(browser, base, boards[0])
             problems += ring(browser, base, out)
+            problems += shutters(browser, base, out)
             browser.close()
     finally:
         server.shutdown()
@@ -5162,6 +5166,13 @@ def ring(browser, base: str, out: Path) -> list[str]:
 
     Doubles as the motion check: a scene here is reachable from the page, so
     `motion()` can play a receipt at it and watch what appears.
+
+    **This probe has no island under it, on purpose.** `placed` is left off, so
+    `modelled` is false, `shutCards()` returns false and every card here is
+    open for its whole life -- which is what `check`, `palms` and `motion` all
+    need, since each of the three is about the *drawn* island a browser with no
+    WebGL gets, and a model is exactly what turns that off. The shut card at
+    four traders is `shutters()` below, on a probe that does have one.
     """
     # Five, because the island has five now and no saved replay does. The
     # fifth slot is also where the palette used to draw a good in exactly the
@@ -5190,6 +5201,392 @@ def ring(browser, base: str, out: Path) -> list[str]:
     bad += motion(page, "ring/4")
     bad += [f"ring/4: {e}" for e in errs]
     page.close()
+    return bad
+
+
+SHUTTERS = """async ({rows, goods, n, scored}) => {
+  const { reduce } = await import('./reducer.js');
+  const { Scene, layout, CARD_H_SHUT, CARD_H_SHUT_BARE } = await import('./scene.js');
+  const { Stage } = await import('./stage.js');
+  const t = reduce(rows, { manager: 'manager' });
+  const traders = t.traders;
+  //: A reveal, or none, because `shutH()` asks which: with a sidecar a shut
+  //: card keeps the utility row and stands at `CARD_H_SHUT`; live -- where
+  //: tastes never reach the board -- it is a name and a labour dial at
+  //: `CARD_H_SHUT_BARE`. Both are numbers the portrait row is pitched at, so
+  //: both are drawn, one scene each.
+  const reveal = scored ? {
+    goods, agents: n,
+    traders: Object.fromEntries(traders.map((name) => [name, {
+      taste: Object.fromEntries(goods.map((g) => [g, 1 / goods.length])),
+      capacity: Object.fromEntries(goods.map((g) => [g, 1])),
+    }])),
+    autarky_utility: Object.fromEntries(traders.map((name) => [name, 0.5])),
+    autarky_floor: 0.5,
+    round: { trajectory: [] },
+  } : null;
+
+  //: The window's shape and the chrome's bands, read the way the page reads
+  //: them -- `frameAspect()` and `chromeBands()` in `index.html`, which are
+  //: page-scoped rather than module exports, so this is the same arithmetic
+  //: rather than the same call. Reading them instead of writing the numbers
+  //: down is what stops this check being drawn in a frame the page never
+  //: builds: `--chrome-top` is 0 until the stylesheet's 700px media query
+  //: bites, and that difference is the whole reason for the second frame
+  //: below.
+  const box = document.getElementById('island').getBoundingClientRect();
+  const frame = { w: Math.max(1, Math.round(box.width) || innerWidth),
+                  h: Math.max(1, Math.round(box.height) || innerHeight) };
+  const a = frame.w / frame.h;
+  const aspect = a < 1 ? Math.floor(a * 100) / 100 : Math.round(a * 20) / 20;
+  const css = getComputedStyle(document.documentElement);
+  const band = (name) =>
+    Math.min(0.35, (parseFloat(css.getPropertyValue(name)) || 0) / frame.h);
+  const chrome = { top: band('--chrome-top'), foot: band('--chrome-foot') };
+
+  //: **The page's own two steps, in the page's own order** -- `raise()` in
+  //: `index.html`: lay the frame out at the shut card's height, build the
+  //: island on that frame, and hand the settlements the island chose to the
+  //: scene as `placed`. That last argument is the one `ring`'s probe leaves
+  //: off, which is why its cards are never shut; passing anything else here
+  //: would be this check inventing a scene the page never builds.
+  const geo = layout(n, true, aspect, chrome,
+                     scored ? CARD_H_SHUT : CARD_H_SHUT_BARE);
+  //: The page's own canvas, in the page's own place, so what a person opening
+  //: the PNG sees is this island under these cards rather than whatever the
+  //: picker happened to boot. A fresh node because the canvas the page booted
+  //: on already has a WebGL context and a canvas only ever hands out the one
+  //: it has; `cloneNode(false)` keeps the id and the class the stylesheet
+  //: places it by and brings none of that with it.
+  const was = document.getElementById('stage');
+  const cv = was.cloneNode(false);
+  //: Whatever the picker opened is still behind this page, and its stage
+  //: repaints the very cards this is about to read. Stopped, not hidden --
+  //: hiding a WebGL loop does not stop it, which is the note beside
+  //: `window.__island` in `index.html`.
+  window.__island?.pause();
+  window.__probeStage?.pause?.();
+  was.replaceWith(cv);
+  //: Stopped before it has drawn a second frame, for the same reason: a loop
+  //: running behind a check that measures a 220ms swing *is* the frame budget
+  //: on a machine with no GPU.
+  const st = new Stage(cv, geo);
+  st.pause();
+  const { anchors } = st.build({ traders, goods });
+  st.pause();
+  window.__probeStage = st;
+  cv.hidden = false;
+
+  const scene = new Scene(document.getElementById('island'), t, reveal, true,
+                          traders.map((name) => st.toViewBox(anchors[name])),
+                          aspect, chrome);
+  window.__probe = scene;
+  window.__timeline = t;
+  scene.draw(t.final, t);
+  //: What the page sets when it has a model, so the stylesheet takes the drawn
+  //: island off and what is left on screen is the frame these cards stand in.
+  document.querySelector('.app').classList.add('has-3d');
+  return { shutH: scene.shutH(), openH: scene.cardBoxH(),
+           modelled: scene.modelled, traders: scene.traders,
+           aspect, chrome, frame };
+}"""
+
+
+#: Every card on the probe, in the frame's own units.
+#:
+#: **In units and not in pixels**, because two of the claims below are about
+#: where a card is against the *viewBox* -- an opened bottom card that stays on
+#: the canvas, and a frame that did not move -- and the viewBox is fitted into
+#: the window with `meet`, so a measurement in pixels is a measurement of the
+#: letterboxing as much as of the drawing.
+SHUT_READ = """() => {
+  const svg = document.getElementById('island');
+  const ctm = svg.getScreenCTM()?.inverse();
+  const inUnits = (node) => {
+    const r = node.getBoundingClientRect();
+    const a = new DOMPoint(r.x, r.y).matrixTransform(ctm);
+    const b = new DOMPoint(r.x + r.width, r.y + r.height).matrixTransform(ctm);
+    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+  };
+  const vb = (svg.getAttribute('viewBox') || '').trim().split(/\\s+/).map(Number);
+  return {
+    viewBox: svg.getAttribute('viewBox'),
+    frameH: vb[3],
+    cards: [...svg.querySelectorAll('.hut')].map((hut) => {
+      const card = hut.querySelector('.card');
+      const bg = hut.querySelector('.card-bg');
+      return {
+        trader: hut.getAttribute('data-trader'),
+        shut: card.classList.contains('shut'),
+        //: The attribute rather than the rectangle, so this is the height the
+        //: card was *built* at and not the one a swing is passing through.
+        height: Number(bg.getAttribute('height')),
+        //: Drawn, not merely present: a shut card keeps its shelf in the DOM
+        //: and the stylesheet takes it to nothing. Presence is not the
+        //: question anywhere else in this file and is not the question here.
+        shelf: [...hut.querySelectorAll('.cell')]
+          .filter((c) => Number(getComputedStyle(c).opacity) > 0.5).length,
+        box: inUnits(bg),
+      };
+    }),
+  };
+}"""
+
+
+#: How long a card's swing is given to arrive before the read goes ahead
+#: anyway. A deadline rather than a check: nothing is asserted by it, and a
+#: swing that never lands is reported by the assertions below saying what the
+#: card is instead of by a timeout nobody can read.
+CARD_SETTLE_MS = 5000
+
+#: Whether every card is drawn at the height it was built at, with its shelf at
+#: the opacity its state calls for. True once the swing has landed, and the
+#: only thing `read()` waits on.
+SETTLED = """() => [...document.querySelectorAll('.hut')].every((hut) => {
+  const bg = hut.querySelector('.card-bg');
+  const ctm = bg.getScreenCTM();
+  if (!ctm) return false;
+  if (Math.abs(bg.getBoundingClientRect().height
+               - Number(bg.getAttribute('height')) * ctm.d) > 1) return false;
+  const want = hut.querySelector('.card').classList.contains('shut') ? 0 : 1;
+  return [...hut.querySelectorAll('.cell')]
+    .every((c) => Math.abs(Number(getComputedStyle(c).opacity) - want) < 0.05);
+})"""
+
+
+#: The two portrait frames the cards are drawn in, and what each is for.
+#:
+#: **Both, because the last of the four claims below is only checkable in one
+#: of them.** `cardPlan` sizes the frame at the larger of three terms, and the
+#: one that reserves room for the *opened bottom row* is the smallest of the
+#: three wherever the stylesheet has declared a transport band: on a 390x844
+#: phone at four traders the frame is 1130 units and the opened bottom card
+#: reaches 978, so 152 units of slack absorb the mistake and deleting that term
+#: outright changes nothing anybody can see. Measured by deleting it -- see
+#: `viewer/README.md`, "Four traders, shut".
+#:
+#: The band is declared under `@media (max-width: 700px)` and is 0 above it, so
+#: a window taller than it is wide and wider than 700px is a portrait frame
+#: with no chrome band at all -- and there the opened bottom row is exactly
+#: what the frame is sized to, with nothing spare. That is the second frame.
+SHUT_FRAMES = (
+    ("phone", 390, 844),
+    ("wide", 760, 900),
+)
+
+
+def shutters(browser, base: str, out: Path) -> list[str]:
+    """Four traders on a portrait frame: the shut row, and what one open card does.
+
+    **The gap this fills.** `ring` builds its probe as
+    `new Scene(island, t, null)` -- three positional arguments, so `placed`
+    takes its default of `null`, `modelled` comes out false and `shutCards()`
+    goes with it. Every card there is open for its whole life, and `ring` is the
+    only check drawing more than two traders. So the shut-card machinery --
+    `shutCards`, `cardOpen`, `shutH`, `cardBoxHFor`, `toggleCard`, `flashCard`,
+    `redrawCard`, `swingCard`, `sayCards`, and both heights a card shuts to --
+    ran in a browser only on the two saved replays, which have two traders each
+    and one row of cards between them. Four is where the row wraps, and the row
+    that wraps is where the geometry is.
+
+    A second probe scene rather than a model under `ring`'s: `ring` hands its
+    scene to `check`, `palms` and `motion`, and all three are about the *drawn*
+    island -- the fallback a browser with no WebGL gets -- which is exactly
+    what a model turns off. Giving `ring` one would have cost three checks to
+    buy this one.
+
+    Four claims, in the frame's own units:
+
+    * **every card comes up shut**, at the height this board's cards shut to:
+      `CARD_H_SHUT` with a reveal to keep a utility row for, `CARD_H_SHUT_BARE`
+      live, where there is none. Both are drawn, because the portrait row is
+      pitched at whichever one the board has.
+    * **opening one grows its box and moves the frame nowhere.** The viewBox is
+      read either side and has to be the same string -- the question `focusing`
+      asks of a tap, asked where the answer could differ, since a four-trader
+      frame has a row below the one being opened for a re-layout to shove
+      around.
+    * **an opened card in a non-final row is drawn over the nameplate below
+      it**, rather than pushing it down. Deliberate, and the bargain that gave
+      the island its band: the row reserves the *shut* card and an opened one
+      overlays whatever is under it. See "The split screen goes, and the island
+      keeps the frame" in `viewer/README.md`, and `cardPlan` in `scene.js`.
+    * **and the bottom row, opened, stays on the canvas** -- the one place that
+      bargain still costs the frame height, since past the viewBox nothing is
+      drawn at all and there is nothing there to be drawn over. `cardPlan`
+      sizes the frame for exactly this and `scene.test.mjs` asserts the
+      arithmetic; this is the check that a browser agrees. Only the second of
+      `SHUT_FRAMES` can catch it -- see the note there.
+
+    A click is `toggleCard`, which is what `index.html`'s handler calls once it
+    has worked out which trader was pointed at. Turning a point into a trader
+    is that handler's job and `focusing` covers it on the real page; a second
+    copy of it here would be a second implementation of the one thing this repo
+    keeps saying it will not have two of.
+    """
+    goods = ["bread", "cloth", "iron", "salt", "fish"]
+    n = 4
+    rows = synthetic(n, goods)
+    bad: list[str] = []
+
+    for frame, w, h in SHUT_FRAMES:
+        #: A page per frame rather than a resize: a resize is what the page
+        #: reflows on, and the page's own scene would rebuild `#island`
+        #: underneath this one while it was being read.
+        page = browser.new_page(viewport={"width": w, "height": h})
+        errs: list[str] = []
+        page.on("console", lambda m, e=errs: e.append(f"console {m.type}: {m.text}")
+                if m.type == "error" else None)
+        page.on("pageerror", lambda exc, e=errs: e.append(f"pageerror: {exc}"))
+        page.goto(f"{base}/")
+        page.wait_for_timeout(600)
+        for scored in (True, False):
+            bad += shut_row(page, out, goods, n, rows, frame, scored)
+        bad += [f"shutters/{frame}: {e}" for e in errs]
+        page.close()
+    return bad
+
+
+def shut_row(page, out: Path, goods: list[str], n: int, rows: list[dict],
+             frame: str, scored: bool) -> list[str]:
+    """One probe scene, mounted and then opened a card at a time.
+
+    Split out of `shutters` so that the four frame-and-board combinations read
+    as four runs of one thing rather than as a loop body nobody can find the
+    end of.
+    """
+    where = f"shutters/{frame}/{n}{'' if scored else ' bare'}"
+    tag = f"shutters-{frame}-{n}-{'scored' if scored else 'bare'}"
+    bad: list[str] = []
+    made = page.evaluate(SHUTTERS, {"rows": rows, "goods": goods, "n": n,
+                                    "scored": scored})
+
+    def read():
+        #: **Watched until it stops moving, not napped past.** A card's
+        #: rectangle is animated between the two heights (`swingCard`) and its
+        #: shelf fades on its own opacity, so a sample taken during the swing
+        #: is a number about how loaded the machine is -- and it measured
+        #: exactly that here while this was a nap: a headless page with nothing
+        #: to draw stops servicing its animations, and a 450ms wait read a card
+        #: still at the height it started from. So this waits for what is drawn
+        #: to agree with what was built, which is the pattern `motion()` uses
+        #: for everything transient and for the same reason.
+        with contextlib.suppress(Exception):
+            page.wait_for_function(SETTLED, timeout=CARD_SETTLE_MS)
+        return page.evaluate(SHUT_READ)
+
+    def toggle(name: str) -> None:
+        if not page.evaluate("(t) => window.__probe.toggleCard(t)", name):
+            bad.append(f"{where}: toggleCard({name!r}) refused; the scene does "
+                       f"not think its cards shut at all")
+
+    #: The defect this check is named for, asked directly. Everything below
+    #: measures a shut card, and on a scene with no model there are none -- so
+    #: without this the whole thing would pass by drawing the wrong island
+    #: consistently.
+    if not made["modelled"]:
+        return [f"{where}: the probe has no island under it, so every card is "
+                f"open for its whole life and nothing below this is measured"]
+
+    shut = read()
+    page.screenshot(path=str(out / f"{tag}-shut.png"))
+    for c in shut["cards"]:
+        if not c["shut"] or c["shelf"]:
+            bad.append(f"{where}: {c['trader']}'s card came up open "
+                       f"({c['shelf']} shelf cells drawn)")
+        if abs(c["height"] - made["shutH"]) > 0.5:
+            bad.append(f"{where}: {c['trader']}'s shut card is "
+                       f"{c['height']:.0f} units tall, not the "
+                       f"{made['shutH']:.0f} this board shuts to")
+
+    #: Which card is under which, taken from what was drawn rather than from
+    #: the layout's own arithmetic: a column is the cards sharing an x, and the
+    #: pair is the first two down it. Four traders is two rows of two, and if
+    #: it ever stops being that this says so rather than quietly measuring one
+    #: row against itself.
+    cols: dict[int, list] = {}
+    for c in shut["cards"]:
+        cols.setdefault(round(c["box"]["x"]), []).append(c)
+    pair = next((sorted(v, key=lambda c: c["box"]["y"])[:2]
+                 for v in cols.values() if len(v) > 1), None)
+    if pair is None:
+        return bad + [f"{where}: {n} traders drew in one row; this check is "
+                      f"about the row that wraps and there is not one"]
+    upper, lower = pair
+
+    #: **Opened, and the frame stays where it is.**
+    toggle(upper["trader"])
+    opened = read()
+    page.screenshot(path=str(out / f"{tag}-open.png"))
+    by = {c["trader"]: c for c in opened["cards"]}
+    up, low = by[upper["trader"]], by[lower["trader"]]
+    if opened["viewBox"] != shut["viewBox"]:
+        bad.append(f"{where}: opening a card re-divided the frame, "
+                   f"{shut['viewBox']!r} -> {opened['viewBox']!r}")
+    if up["shut"] or up["shelf"] != len(goods):
+        bad.append(f"{where}: {upper['trader']}'s card opened in name only "
+                   f"({up['shelf']} of {len(goods)} shelf cells drawn)")
+    if up["height"] <= upper["height"]:
+        bad.append(f"{where}: {upper['trader']}'s card is {up['height']:.0f} "
+                   f"units open against {upper['height']:.0f} shut; opening it "
+                   f"grew nothing")
+    if abs(up["height"] - made["openH"]) > 0.5:
+        bad.append(f"{where}: {upper['trader']}'s card opened to "
+                   f"{up['height']:.0f} units, not the {made['openH']:.0f} an "
+                   f"open card on this board is")
+
+    #: **Over the nameplate below it, and not pushing it.** Both halves are
+    #: asserted, because either alone is satisfied by the wrong drawing: a row
+    #: that moved down would not overlap, and a card that never grew would not
+    #: move anything either.
+    for k in ("x", "y", "w", "h"):
+        if abs(low["box"][k] - lower["box"][k]) > 0.5:
+            bad.append(f"{where}: opening {upper['trader']}'s card moved "
+                       f"{lower['trader']}'s nameplate ({k} "
+                       f"{lower['box'][k]:.1f} -> {low['box'][k]:.1f}); the row "
+                       f"reserves the shut card and an opened one is drawn over "
+                       f"what is under it")
+    reach = up["box"]["y"] + up["box"]["h"]
+    if reach <= low["box"]["y"] + 1:
+        bad.append(f"{where}: {upper['trader']}'s opened card reaches "
+                   f"{reach:.0f} and {lower['trader']}'s nameplate starts at "
+                   f"{low['box']['y']:.0f}; nothing is being overlaid, so this "
+                   f"frame is not the one the island's band was bought from")
+
+    #: **And the bottom row, opened, is still on the canvas.**
+    toggle(upper["trader"])
+    toggle(lower["trader"])
+    last = read()
+    page.screenshot(path=str(out / f"{tag}-foot.png"))
+    bottom = next(c for c in last["cards"] if c["trader"] == lower["trader"])
+    foot = bottom["box"]["y"] + bottom["box"]["h"]
+    if foot > last["frameH"] + 0.5:
+        bad.append(f"{where}: {lower['trader']}'s opened card reaches "
+                   f"{foot:.0f} on a {last['frameH']:.0f}-unit canvas; the "
+                   f"bottom of it is off the frame, where nothing is drawn at "
+                   f"all")
+    if last["viewBox"] != shut["viewBox"]:
+        bad.append(f"{where}: opening the bottom row re-divided the frame, "
+                   f"{shut['viewBox']!r} -> {last['viewBox']!r}")
+    toggle(lower["trader"])
+
+    #: **A card an event opens gives itself back.** `flashCard` is the other
+    #: way a shelf opens -- a settlement landing in it -- and it reverts to
+    #: what the viewer chose rather than to shut, which on this scene is shut.
+    #: Driven directly for the same reason the click is.
+    flash = made["traders"][-1]
+    held = 2500
+    page.evaluate("([t, ms]) => window.__probe.flashCard(t, ms)", [flash, held])
+    during = {c["trader"]: c for c in read()["cards"]}[flash]
+    if during["shut"] or not during["shelf"]:
+        bad.append(f"{where}: an event flashed {flash}'s card open and it "
+                   f"stayed shut")
+    page.wait_for_timeout(held)
+    after = {c["trader"]: c for c in read()["cards"]}[flash]
+    if not after["shut"]:
+        bad.append(f"{where}: {flash}'s card was flashed open by an event and "
+                   f"never given back; a card an event opened closes again to "
+                   f"whatever the viewer chose, which here is shut")
     return bad
 
 
