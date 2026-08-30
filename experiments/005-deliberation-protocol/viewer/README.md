@@ -939,8 +939,35 @@ What replaced it:
   at all three portrait viewports: no pill from one half may stand on a pill
   from the other, and no pill may be clipped by an ancestor.
 
-Both halves of that check were run against the old stylesheet before being
-trusted: **9 overlaps** (up to 58px, at 360pt) and **6 clipped pills**. The
+##### What letting it wrap cost, before `data-n` was put in the markup
+
+Allowing `.counts` to wrap broke `focusing`: the island came out at **267px in
+a 393px window, 68%**, against the 72% that check requires. The band had grown
+from 108px to 144px — exactly one pill row plus its gap.
+
+Nothing on any frame was two rows. The two rows were on **no frame at all**:
+the markup ships four counter pills, and the rule that hides a counter at zero
+asks `data-n`, which only `hud()` wrote. So between the page loading and the
+first frame being read, all four stood there saying zero. Clipping had been
+hiding that for as long as it existed; the moment the row could wrap, four
+pills became two lines, and `chromeBands()` — which runs once at mount and
+then only on reflow — measured that transient and baked it into the band the
+island is given for the rest of the session.
+
+`data-n="0"` is on the markup now. A counter at zero has not happened yet
+before the board is read either, so the first frame and every frame after it
+say the same thing.
+
+*The check that caught this was one I had not run.* `focusing` measures right
+after mount, which is the only moment the transient existed; I ran `crowding`,
+`mobile`, `uncovered`, `island`, `shutters` and `straddle` and pushed. For a
+change to the chrome's geometry the suite is the unit, not a subset of it —
+which is the second argument this week for splitting the fast structural
+checks out of the 32-minute drawing job, so that running all of them locally
+is cheap enough to be habitual.
+
+Both halves of the crowding check were run against the old stylesheet before
+being trusted: **9 overlaps** (up to 58px, at 360pt) and **6 clipped pills**. The
 first draft of the clipping half asked each pill whether its own `scrollWidth`
 had outgrown its `clientWidth` — a question about text inside a box, when the
 pill that rendered as `1` was a whole box that had left its parent with its

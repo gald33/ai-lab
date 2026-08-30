@@ -927,15 +927,25 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     </div>
   </div>
 
+  <!-- **`data-n` is on the markup, not only on what `hud()` writes.** The
+       portrait rule below hides a counter at zero, and it asks `data-n` --
+       so between the page loading and the first frame being read, all four
+       stood there saying zero. That used to cost nothing, because `.counts`
+       clipped whatever did not fit on its one line; once it was allowed to
+       wrap, four pills became two rows, and `chromeBands()` measured that
+       transient and gave the island a band 36px taller than the row it ever
+       actually draws. The island came out at 68% of a 393px window against
+       the 72% `focusing` requires. A counter at zero has not happened yet
+       before the board is read either. -->
   <div class="counts">
-    <div class="pill" id="c-settled">settled <b>0</b></div>
+    <div class="pill" id="c-settled" data-n="0">settled <b>0</b></div>
     <!-- An offer turned down by the trader it was addressed to. Its own count,
          not folded into `refused`: a decline is a trader's decision and closes
          the offer, a refusal is the manager rejecting one line and closes
          nothing. -->
-    <div class="pill" id="c-declined">declined <b>0</b></div>
-    <div class="pill" id="c-refused">refused <b>0</b></div>
-    <div class="pill" id="c-lapsed">lapsed <b>0</b></div>
+    <div class="pill" id="c-declined" data-n="0">declined <b>0</b></div>
+    <div class="pill" id="c-refused" data-n="0">refused <b>0</b></div>
+    <div class="pill" id="c-lapsed" data-n="0">lapsed <b>0</b></div>
   </div>
 
   <div class="chrome at-top-right">
