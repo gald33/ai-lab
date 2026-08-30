@@ -4887,14 +4887,20 @@ def straddle(browser, base: str, out: Path) -> list[str]:
     centre of an opened card is a place a finger can reach.
     """
     bad: list[str] = []
-    #: Two phones. The tall one is where four traders fit comfortably; the
-    #: short one -- what a shared link opens into with the browser's own bars
-    #: showing -- is where the bottom block is closest to the transport and
-    #: where a card growing the wrong way goes behind it. The defect was
-    #: measured at 660 and would not have shown at 852.
-    for WIN_H in (852, 660):
-        bad += _straddle_at(browser, base, out, WIN_H)
-    return bad
+    #: **One phone, and it is the short one.** Both were driven at first -- 852
+    #: and 660 -- and the second bought nothing: the card-over-card property is
+    #: the layout's and comes out the same at either height, while the
+    #: card-behind-the-chrome one *only* bites at 660, where the bottom block
+    #: is closest to the transport. Neutered both ways, 660 alone reports every
+    #: failure 852 did.
+    #:
+    #: The cost is the reason to care. This check drives eight card taps with a
+    #: settle after each, on a runner drawing two frames a second, and the run
+    #: it was added to is the one where `emerging` -- the only check that mounts
+    #: through the picker -- crossed its sixty-second deadline. A check should
+    #: be the cheapest thing that catches the defect, and the second viewport
+    #: was not catching anything.
+    return _straddle_at(browser, base, out, 660)
 
 
 def _straddle_at(browser, base: str, out: Path, WIN_H: int) -> list[str]:
@@ -4925,6 +4931,25 @@ def _straddle_at(browser, base: str, out: Path, WIN_H: int) -> list[str]:
         "traders": {t: {"taste": a, "capacity": {g: 1.0 for g in goods}}
                     for t, a in taste.items()}}))
     was_root = viewer_serve.ROOTS["replays"]
+
+    #: **The swap is undone whatever happens.** It was undone on each of the
+    #: two ways out of this function instead, which covers the two the author
+    #: thought of and none of the others: a timeout here, a click that misses,
+    #: an assertion that throws. Any of those left every *later* check in the
+    #: file pointed at a directory holding one synthetic board -- so they 404'd
+    #: their own board and hung sixty seconds each waiting for a `.hut` that was
+    #: never going to arrive. A global mutated without a `finally` is a bug
+    #: whatever else is true.
+    try:
+        return _straddle_page(browser, base, out, WIN_H, room, viewer_serve)
+    finally:
+        viewer_serve.ROOTS["replays"] = was_root
+        viewer_serve._listing = (0.0, [])  # noqa: SLF001 - the module's own cache
+
+
+def _straddle_page(browser, base: str, out: Path, WIN_H: int, room: Path,
+                   viewer_serve) -> list[str]:
+    bad: list[str] = []
     viewer_serve.ROOTS["replays"] = room
     viewer_serve._listing = (0.0, [])  # noqa: SLF001 - the module's own cache
 
@@ -4981,8 +5006,7 @@ def _straddle_at(browser, base: str, out: Path, WIN_H: int) -> list[str]:
     seen = page.evaluate(look)
     if len(seen["cards"]) != 4:
         page.close()
-        viewer_serve.ROOTS["replays"] = was_root
-        return [f"straddle: {len(seen['cards'])} cards drawn, not four"]
+        return [f"straddle @{WIN_H}: {len(seen['cards'])} cards drawn, not four"]
     #: The arrangement itself: two rows, one on each side of the island.
     rows = sorted({round(c["top"]) for c in seen["cards"]})
     if len(rows) != 2:
@@ -5031,10 +5055,8 @@ def _straddle_at(browser, base: str, out: Path, WIN_H: int) -> list[str]:
         page.mouse.click(box[0], box[1])
         page.wait_for_timeout(500)
 
-    bad += [f"straddle: {e}" for e in errs]
+    bad += [f"straddle @{WIN_H}: {e}" for e in errs]
     page.close()
-    viewer_serve.ROOTS["replays"] = was_root
-    viewer_serve._listing = (0.0, [])  # noqa: SLF001 - the module's own cache
     return bad
 
 
