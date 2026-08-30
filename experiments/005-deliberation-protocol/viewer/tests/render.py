@@ -1546,6 +1546,23 @@ LAND_JS = """
 #: thing this file otherwise avoids -- but a mask built from the model is a
 #: better statement of "this pixel is land" than a threshold on how blue it is,
 #: and the pixels it selects are still the pixels a viewer sees.
+#: Whether a node is actually on screen, as against merely laid out. A phone
+#: raises the goods key only while a shelf is open to read it against
+#: (`.app.shelf-open`), and an element at zero opacity covers nothing -- so
+#: measuring its rectangle against the island would fail the page for hiding
+#: something.
+DRAWN_JS = """
+  const drawn = (n) => {
+    for (let e = n; e && e.nodeType === 1; e = e.parentElement) {
+      const st = getComputedStyle(e);
+      if (st.display === 'none' || st.visibility === 'hidden'
+          || Number(st.opacity) === 0) return false;
+    }
+    return true;
+  };
+"""
+
+
 MASK_JS = """
   const WATER_RE = /^(sea|shallows|surf_ring|swell|dolphin_)/;
   const landMask = (st) => {
@@ -2229,7 +2246,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             return { name, over: on / (bw * bh), off: false };
           });
         }""")
-        pills = page.evaluate("""(chrome) => {""" + MASK_JS + """
+        pills = page.evaluate("""(chrome) => {""" + MASK_JS + DRAWN_JS + """
           const cv = document.getElementById('stage');
           const cr = cv.getBoundingClientRect();
           const mask = landMask(window.__island);
@@ -2255,9 +2272,9 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
             return { sel, on };
           }).filter(Boolean) };
         }""", CHROME)
-        over = page.evaluate("""(chrome) => {
+        over = page.evaluate("""(chrome) => {""" + DRAWN_JS + """
           const boxes = chrome.map(s => document.querySelector(s))
-            .filter(n => n && !n.hidden)
+            .filter(n => n && !n.hidden && drawn(n))
             .map(n => ({ s: n.id ? '#' + n.id : n.className, r: n.getBoundingClientRect() }))
             .filter(b => b.r.width && b.r.height)
             // Grown by a margin, so "the card's last pixel row is not quite
@@ -4403,6 +4420,15 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             land: lb ? { w: lb.width, h: lb.height } : null, drawn, span,
             box: drawnBox, islandFoot, unit,
             chromeTop, cardTop,
+            //: How far down the window the chrome anchored at the *top*
+            //: actually reaches. `--chrome-top` is what the stylesheet
+            //: promises; this is what the rows come to once they have been
+            //: laid out, which is a different number the moment a row wraps.
+            chromeEnd: Math.max(0, ...['.at-top-left', '.at-top-right', '.counts']
+              .map(sel => document.querySelector(sel))
+              .filter(n => n && n.offsetParent !== null)
+              .map(n => { const r = n.getBoundingClientRect();
+                          return r.height ? r.y + r.height : 0; })),
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
               .map(n => { const r = n.getBoundingClientRect();
@@ -4438,6 +4464,26 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
         # is the thing that can actually go wrong: the defect this was written
         # for is dead sky above the island and dead sea below it inside its own
         # band, and that is exactly what fails here.
+        #: **The band the chrome declares is the band the chrome fits in.**
+        #: `--chrome-top` is a number in the stylesheet and the rows above it
+        #: are text, so the two part company the moment a string grows enough
+        #: to wrap: the layout hands the island everything below the declared
+        #: band, and a row that wrapped is standing in it.
+        #:
+        #: Written because that happened and nothing caught it. "before the
+        #: first day" and "acknowledging" came to 247px on a row 242px wide,
+        #: so the phase wrapped and the two-row band was three rows deep -- on
+        #: frame 0, the frame a shared link opens on. `uncovered` missed it
+        #: because the extra row landed over *sky*: it counts island pixels
+        #: behind a pill, and there is no island that high up. Which makes it
+        #: the right check for "a pill is on the island" and the wrong one for
+        #: "the chrome outgrew its own reservation", so this asks that
+        #: directly, of the laid-out rows rather than of the declared number.
+        if seen["chromeTop"] and seen["chromeEnd"] > seen["chromeTop"] + 2:
+            bad.append(f"{where}: the chrome reaches {seen['chromeEnd']:.0f}px "
+                       f"down a band it declares as {seen['chromeTop']:.0f}px; "
+                       f"a row has outgrown the strip the island was told to "
+                       f"stay out of")
         if seen["drawn"] is not None and not seen["drawn"]:
             bad.append(f"{where}: the model drew nothing at all")
         elif seen["box"]:
@@ -4512,72 +4558,62 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
     return bad
 
 
-#: What a tap moves the layout by, at the least. Not the measured numbers --
-#: those are 39% for the island and 19% for the cards on a 393x660 frame, and a
-#: threshold set at a measurement is a threshold that fails on a font change.
-#: This is "a viewer can see that something happened", which is the claim.
-FOCUS_GAIN = 1.12
-
-#: How much of its full-size self a mark on the glance card has to keep.
+#: How much of the window's width the island must draw across on a phone.
 #:
-#: **A ratio and not a floor.** This was an absolute 7 device pixels, and a
-#: neuter that deleted the rule holding the trader's name up could not be made
-#: to fail: 15 units at 0.58 on a 390pt window still paints a 7.5px box, so a
-#: name shrunk with the card cleared the floor by half a pixel. The claim the
-#: stylesheet actually makes is that what survives is drawn *at the size it
-#: always was* -- declared `1/0.58` larger inside a group about to be scaled by
-#: 0.58 -- so that is what is measured, against the same mark on the same card
-#: at even focus. It also cannot go stale: change a font size and this follows.
-FOCUS_KEPT = 0.85
-
-#: The marks a glance card must not print at all, because at its scale they are
-#: numbers nobody can read: 4.6 device pixels for a shelf's quantities at 0.55.
-FOCUS_DROPPED = (".qty", ".wheel-text", ".score-value")
-
-#: How much of the window's width the island must draw across once a viewer has
-#: asked for it. **The claim is "screen wide"** and it is met to 98% on all
-#: three portrait phones -- not 100%, because the frame is `520` units and the
-#: island's box lands a few short of it after the band is divided. Set below the
-#: measurement with room, and far enough above the 50% it draws at `even` that
-#: it is a different claim and not a restatement.
-FOCUS_WIDE = 0.90
+#: **The claim is "screen wide"**, and it is met without the viewer being asked
+#: for anything: the card row reserves the *shut* nameplate and the island is
+#: the residual, so it is 98% of all three portrait phones. Set below the
+#: measurement with room, and far enough above the 50% the old even split drew
+#: at that it is a different claim and not a restatement.
+#:
+#: It used to be reached only after a tap -- `FOCUS_WIDE`, at a focus the
+#: viewer had to ask for. The number is the same and what it costs is not, and
+#: that is the whole of why the focus went: see the README, "The split screen
+#: goes, and the island keeps the frame".
+ISLAND_WIDE = 0.90
 
 
 def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
-    """A phone gives the screen to whichever of the two the viewer tapped.
+    """A phone gives the island the frame, and a tap opens one trader's shelf.
 
-    The island and a card per trader do not both fit on a phone held upright.
-    At `even` on a 393x660 frame -- a shared link opened with the browser's own
-    bars showing -- the island draws 198px wide in a 393px window and a card
-    147px, and neither is comfortable. There is no arrangement that fixes it:
-    the room is not there. So the viewer says which one they are looking at.
+    **This check is named for a mechanism that no longer exists**, and keeps
+    the name because it is the same question asked of the answer that replaced
+    it. The island and a card per trader do not both fit on a phone held
+    upright: at an even split on a 393x660 frame -- a shared link opened with
+    the browser's own bars showing -- the island drew 198px wide in a 393px
+    window and a card 147px, and neither was comfortable. So the page used to
+    ask the viewer which of the two they were looking at, and a tap re-divided
+    the frame between them.
+
+    It does not ask any more. The cards are **nameplates** -- 88 units against
+    186 -- and the row reserves that rather than the open card, so the island
+    takes what is left without anybody choosing, and a card somebody opens is
+    drawn *over* the frame instead of inside a reservation for it. Superseded
+    2026-08-30 on Gal's call; the measurements that made the case are kept in
+    the README, because a reversal nobody can see is one this repo makes twice.
 
     Four things, and the last two are the ones that would rot quietly:
 
-    * a tap on the island grows the island and shrinks the cards;
-    * a tap on a card does the reverse;
-    * a second tap on the same thing puts the frame back **exactly** where it
-      was -- a toggle that drifts is a toggle nobody dares press twice;
-    * the small card has stopped printing what it cannot draw. At 0.55 a
-      shelf's quantities are 4.6 device pixels and its captions 4.0, so they go
-      and what stays is declared larger to land at the size it always was. This
-      re-measures every surviving mark in **device pixels**, because the whole
-      claim is about what an eye can resolve and a unit in a viewBox is not
-      that.
+    * **the island reaches the frame** with nothing asked of the viewer. The
+      room could not have come from the cards -- the arithmetic is in the
+      stylesheet beside the rule that spends it -- so it comes off the open
+      card's reservation and off the chrome, which is two rows now rather than
+      four. A check that only watched the cards would have called a 70% island
+      a pass.
+    * **and the chrome is still clear of it.** That is the whole risk of the
+      row above: a band declared shorter than the pills left standing in it
+      puts them back on the island, which is the defect `uncovered` exists for
+      and which was reported by eye twice. Counted the same way it counts --
+      model pixels behind each pill, not boxes.
+    * **a tap on a card opens that trader's shelf**, and a second shuts it.
+    * **and it re-divides nothing.** A card that opened by re-laying the whole
+      scene would pass a check that only watched the shelf, and would throw
+      away every animation in flight to do it. The viewBox is read either side
+      of the tap and has to be the same string.
 
-    And two more that came with "screen wide":
-
-    * **the island actually reaches the frame.** The room for that could not
-      come from the cards -- the arithmetic is in the stylesheet beside the
-      rule that spends it -- so it comes off the chrome, which stands two of
-      its four rows down at this focus. A card small enough to buy the last
-      15% does not exist, so a check that only watched the cards would have
-      called a 70% island a pass.
-    * **and the chrome that stayed is still clear of it.** That is the whole
-      risk of the row above: a band declared shorter than the pills left
-      standing in it puts them back on the island, which is the defect
-      `uncovered` exists for and which was reported by eye twice. Counted the
-      same way it counts -- model pixels behind each pill, not boxes.
+    The landscape half is unchanged in what it asserts and changed in why: a
+    tap there opens a card too, and the frame does not move, because the cards
+    stand in margins nothing else wants.
     """
     stem = board.name[len("board-"):-len(".json")]
     bad: list[str] = []
@@ -4596,7 +4632,7 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     #: sea fills the frame, so anything with alpha is the whole canvas -- and
     #: the mask asks the model which mesh is water rather than guessing from
     #: the colour, so a sea that has gone warm at dusk is still sea here.
-    look = """() => {""" + MASK_JS + """
+    look = """(CHROME) => {""" + MASK_JS + DRAWN_JS + """
       const cv = document.getElementById('stage');
       const cr = cv.getBoundingClientRect();
       const mask = landMask(window.__island);
@@ -4619,7 +4655,7 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
       const sx = s.width / cr.width, sy = s.height / cr.height;
       const pills = CHROME.map((sel) => {
         const n = document.querySelector(sel);
-        if (!n || n.hidden || !n.offsetParent) return null;
+        if (!n || n.hidden || !n.offsetParent || !drawn(n)) return null;
         const r = n.getBoundingClientRect();
         const bx = Math.max(0, Math.round((r.x - cr.x) * sx));
         const by = Math.max(0, Math.round((r.y - cr.y) * sy));
@@ -4633,29 +4669,26 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
       }).filter(Boolean);
       const cards = [...document.querySelectorAll('.card-bg')]
         .map((n) => n.getBoundingClientRect()).filter((r) => r.width);
-      //: Every mark still drawn on the first card, by how tall it actually
-      //: paints. `getBBox` would answer in viewBox units, which is the one
-      //: unit this question is not asked in.
       const card = document.querySelector('.card');
-      const marks = {};
-      for (const sel of ['.card-name', '.qty', '.glyph', '.score-value',
-                         '.score .card-sub', '.wheel-text']) {
-        const n = card && card.querySelector(sel);
-        const r = n && n.getBoundingClientRect();
-        marks[sel] = !n ? null : (r.width && r.height ? r.height : 0);
-      }
       return {
         island: lit ? { w: (x1 - x0 + 1) / s.width * cr.width,
                         h: (y1 - y0 + 1) / s.height * cr.height } : null,
         lit, pills, win: innerWidth,
         cardW: cards.length ? Math.max(...cards.map((r) => r.width)) : 0,
-        mini: !!document.querySelector('.card.mini'),
-        marks, viewBox: document.getElementById('island').getAttribute('viewBox'),
-        note: document.getElementById('focus-note').textContent.trim(),
-        said: !!document.querySelector('#focus-note.on'),
+        //: The tallest card drawn, which is how an opened one is told from a
+        //: row of nameplates without reading a class off it.
+        cardH: cards.length ? Math.max(...cards.map((r) => r.height)) : 0,
+        //: Whether the first card is showing its shelf. A shut card keeps its
+        //: cells in the DOM and fades them out, so presence is not the
+        //: question -- `.shut` is.
+        shelfOn: !!card && !card.classList.contains('shut'),
+        //: The goods key follows the shelves on a phone: it is a caption for
+        //: the bars, and until one is open there is nothing to caption.
+        keyOn: (() => { const n = document.querySelector('.legend');
+                        return !!n && drawn(n); })(),
+        viewBox: document.getElementById('island').getAttribute('viewBox'),
       };
     }"""
-    look = look.replace("() => {", "(CHROME) => {", 1)
     at_card = """() => { const n = document.querySelector('.card-bg');
       const b = n.getBoundingClientRect();
       return [b.x + b.width / 2, b.y + b.height / 2]; }"""
@@ -4664,120 +4697,84 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
         page.screenshot(path=str(out / f"{stem}-focus-{tag}.png"), full_page=False)
         return page.evaluate(look, CHROME)
 
-    def tap(where: str):
-        if where == "island":
-            seen = page.evaluate(look, CHROME)
-            page.mouse.click(393 / 2, seen["island"]["h"] / 2 + 200)
-        else:
-            page.mouse.click(*page.evaluate(at_card))
+    def tap_card():
+        page.mouse.click(*page.evaluate(at_card))
         page.wait_for_timeout(800)
 
-    even = read("even")
-    if not even["island"]:
+    shut = read("shut")
+    if not shut["island"]:
         page.close()
         return [f"{stem} @focus: the model drew nothing at all"]
 
-    # The island's turn.
-    tap("island")
-    isle = read("island")
-    grew = isle["island"]["w"] / even["island"]["w"]
-    shrank = isle["cardW"] / even["cardW"] if even["cardW"] else 1
-    #: The island is capped at the frame's own width -- past that its shore is
-    #: cropped, because the land spans exactly its box -- so on a tall phone it
-    #: is already as large as it goes and only the cards can move. Which of the
-    #: two moved is the frame's business; that *something* did is the claim.
-    if grew < FOCUS_GAIN and shrank > 1 / FOCUS_GAIN:
-        bad.append(f"{stem} @focus: tapping the island left it at "
-                   f"{isle['island']['w']:.0f}px (was {even['island']['w']:.0f}) "
-                   f"and the cards at {isle['cardW']:.0f}px "
-                   f"(was {even['cardW']:.0f}); the tap did not give it the "
-                   f"screen")
-    if isle["cardW"] > even["cardW"]:
-        bad.append(f"{stem} @focus: tapping the island *grew* the cards, "
-                   f"{even['cardW']:.0f}px to {isle['cardW']:.0f}px")
-    if not isle["mini"]:
-        bad.append(f"{stem} @focus: the island's focus drew a full card at "
-                   f"{isle['cardW']:.0f}px rather than a glance card")
-    if not isle["said"] or "island" not in isle["note"]:
-        bad.append(f"{stem} @focus: nothing on the page said what the tap did "
-                   f"(the caption reads {isle['note']!r})")
-    # Screen wide, which the cards alone could never have bought.
-    if isle["island"]["w"] < FOCUS_WIDE * isle["win"]:
-        bad.append(f"{stem} @focus: the island the viewer asked for draws "
-                   f"{isle['island']['w']:.0f}px in a {isle['win']}px window, "
-                   f"{isle['island']['w'] / isle['win']:.0%} of it")
-    # And the chrome left standing is still clear of it. Same rule and same
-    # fraction as `uncovered`: a fortieth of the drawn island, per pill.
-    for r in isle["pills"]:
-        share = r["on"] / max(1, isle["lit"])
+    # Screen wide, with nothing asked of the viewer.
+    if shut["island"]["w"] < ISLAND_WIDE * shut["win"]:
+        bad.append(f"{stem} @focus: the island draws "
+                   f"{shut['island']['w']:.0f}px in a {shut['win']}px window, "
+                   f"{shut['island']['w'] / shut['win']:.0%} of it, with every "
+                   f"card shut")
+    # And the chrome is still clear of it. Same rule and same fraction as
+    # `uncovered`: a fortieth of the drawn island, per pill.
+    for r in shut["pills"]:
+        share = r["on"] / max(1, shut["lit"])
         if share > 0.025:
             bad.append(f"{stem} @focus: {r['sel']} covers {share:.0%} of the "
-                       f"island the viewer just asked for; the band the chrome "
-                       f"declares is shorter than the chrome standing in it")
-    # A number too small to read is worse than no number, so it must be gone --
-    # and what stays has to be the size it was, not a shrunk copy of it.
-    for sel, height in isle["marks"].items():
-        was = even["marks"].get(sel)
-        if height is None or was is None:
-            continue
-        if sel in FOCUS_DROPPED:
-            if height:
-                bad.append(f"{stem} @focus: the glance card still prints {sel} "
-                           f"at {height:.1f}px, which is a number nobody can read")
-            continue
-        if not height:
-            bad.append(f"{stem} @focus: the glance card dropped {sel}, which is "
-                       f"not one of the marks it may drop")
-        elif was and height < FOCUS_KEPT * was:
-            bad.append(f"{stem} @focus: {sel} draws {height:.1f}px tall on the "
-                       f"glance card against {was:.1f}px at even focus; it was "
-                       f"shrunk with the card rather than kept at its own size")
+                       f"island; the band the chrome declares is shorter than "
+                       f"the chrome standing in it")
+    #: The key is a caption for a shelf, so it is not on screen while every
+    #: shelf is shut -- that is one of the two rows the chrome gave back.
+    if shut["keyOn"]:
+        bad.append(f"{stem} @focus: the goods key stands on the frame with no "
+                   f"shelf open to read it against")
+    if shut["shelfOn"]:
+        bad.append(f"{stem} @focus: a card came up open on a phone")
 
-    # And back. A toggle that does not return is a toggle nobody presses twice.
-    tap("island")
-    back = read("back")
-    if back["viewBox"] != even["viewBox"] or abs(back["cardW"] - even["cardW"]) > 1:
-        bad.append(f"{stem} @focus: tapping the island again came back to "
-                   f"{back['viewBox']!r} at {back['cardW']:.0f}px, not to "
-                   f"{even['viewBox']!r} at {even['cardW']:.0f}px")
+    #: **A tap on a card opens that card and re-divides nothing.** The frame is
+    #: divided once, off the shut nameplate, and an opened card is drawn over
+    #: it -- so the viewBox either side of the tap is the same string.
+    tap_card()
+    opened = read("opened")
+    if not opened["shelfOn"]:
+        bad.append(f"{stem} @focus: tapping a card did not open its shelf")
+    if opened["viewBox"] != shut["viewBox"]:
+        bad.append(f"{stem} @focus: tapping a card re-divided the frame, "
+                   f"{shut['viewBox']!r} -> {opened['viewBox']!r}; it should "
+                   f"open the card and move nothing else")
+    if opened["cardH"] <= shut["cardH"]:
+        bad.append(f"{stem} @focus: the tapped card is {opened['cardH']:.0f}px "
+                   f"tall against {shut['cardH']:.0f}px shut; it opened in name "
+                   f"only")
+    if not opened["keyOn"]:
+        bad.append(f"{stem} @focus: a shelf is open and the goods key naming "
+                   f"its bars is not on screen")
 
-    # The cards' turn.
-    tap("card")
-    held = read("cards")
-    if held["cardW"] / even["cardW"] < FOCUS_GAIN:
-        bad.append(f"{stem} @focus: tapping a card took it from "
-                   f"{even['cardW']:.0f}px to {held['cardW']:.0f}px")
-    if held["island"]["w"] >= even["island"]["w"]:
-        bad.append(f"{stem} @focus: tapping a card left the island at "
-                   f"{held['island']['w']:.0f}px (was {even['island']['w']:.0f}); "
-                   f"the room came from nowhere")
-    if held["mini"]:
-        bad.append(f"{stem} @focus: the card the viewer asked for is drawn as a "
-                   f"glance card")
+    tap_card()
+    reshut = read("reshut")
+    if reshut["shelfOn"]:
+        bad.append(f"{stem} @focus: tapping the card again did not shut it")
+    #: A toggle that does not return is a toggle nobody presses twice. The
+    #: frame never moved, so what has to come back is the card itself.
+    if abs(reshut["cardH"] - shut["cardH"]) > 1:
+        bad.append(f"{stem} @focus: the card shut to {reshut['cardH']:.0f}px, "
+                   f"not back to the {shut['cardH']:.0f}px it was")
+    if reshut["keyOn"]:
+        bad.append(f"{stem} @focus: the goods key stayed up after the last "
+                   f"shelf shut")
 
-    #: Landscape has margins down the sides and the cards stand in them, so
-    #: there is nothing there for a tap to re-divide, and the gesture is gated
-    #: off rather than left to rebuild a frame it cannot improve.
-    #:
-    #: **Asked of the caption, not only of the frame.** `layout` ignores the
-    #: focus in landscape, so a tap that got through the gate would rebuild the
-    #: scene -- throwing away every animation in flight -- and arrive at exactly
-    #: the same viewBox. Neutered by deleting the gate, a check that only
-    #: compared frames could not be made to fail; the caption is the one thing
-    #: that says a tap was taken.
+    #: Landscape asks the same of the same gesture -- the cards stand in
+    #: margins there, so there was never anything for a tap to re-divide -- and
+    #: this is the check that says the two ways up have stopped disagreeing.
     page.set_viewport_size({"width": 660, "height": 393})
     page.wait_for_timeout(700)
     wide = page.evaluate(look, CHROME)
     page.mouse.click(*page.evaluate(at_card))
     page.wait_for_timeout(700)
     after = page.evaluate(look, CHROME)
-    if after["viewBox"] != wide["viewBox"] or abs(after["cardW"] - wide["cardW"]) > 1:
+    if after["viewBox"] != wide["viewBox"]:
         bad.append(f"{stem} @focus: a tap on a landscape phone moved the frame "
                    f"from {wide['viewBox']!r} to {after['viewBox']!r}")
-    if after["said"]:
-        bad.append(f"{stem} @focus: a tap on a landscape phone was taken -- the "
-                   f"caption reads {after['note']!r} -- and rebuilt the scene "
-                   f"for a layout that ignores the focus")
+    if not after["shelfOn"]:
+        bad.append(f"{stem} @focus: a tap on a landscape phone opened nothing; "
+                   f"the gesture is meant to mean the same thing both ways up")
 
     bad += [f"{stem} @focus: {e}" for e in errs]
     page.close()

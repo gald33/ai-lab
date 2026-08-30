@@ -458,11 +458,38 @@ tomorrow's.
 *Decided 2026-08-29, on Gal's suggestion that the cards could usually be hidden
 and open on a click or on the trader acting.*
 
-**Landscape only.** Portrait already answers this exact question -- an island
-and a card per trader competing for one screen -- with the measured tap-to-focus
-mechanism in "On a phone" below. Two mechanisms for one question on one screen
-is how a tap stops meaning anything, so portrait keeps the one it has and
-nothing here applies there.
+**Both ways up, since 2026-08-30.** This first shipped landscape-only, on the
+reasoning that portrait already answered the question with the measured
+tap-to-focus mechanism in "On a phone", and that two mechanisms for one
+question on one screen is how a tap stops meaning anything. That reasoning is
+kept because it was right about the hazard — and the resolution is the one it
+implies: portrait got shut cards *and* gave up a focus, rather than running
+both.
+
+**What a portrait tap means now:** a tap on a card opens that trader's shelf; a
+tap on the island gives the island the screen, and again shares it. One gesture,
+disambiguated by what it lands on, the same as landscape.
+
+**`FOCUS.cards` is gone.** It gave the cards the screen and was reached by
+tapping a card — which was the only thing a card tap could mean while cards
+were always open. It is not any more, so the state became unreachable, and a
+focus nobody can ask for is not a focus. The measurements that justified it are
+below and are left standing; `render.py:focusing` used to assert that a card
+tap shrank the island and now asserts the pair that replaced it — the shelf
+opens, and the frame does not move.
+
+**Shutting a card gains portrait no island.** Measured: the viewBox stays
+520x1020 and the cards stay at y465, because `cardPlan` reserves its slot from
+the full card height whatever the card then draws. The cards do halve, 142px to
+86px, so the screen is calmer — but the room does not go to the island. Giving
+it to the island means reserving the shut height and letting an opened card
+overlay what is below it, which at two traders fits in the gap above the
+transport and at more does not. Not done here.
+
+*Done on 2026-08-30, overlay and all — see "The split screen goes, and the
+island keeps the frame". What changed is not the arithmetic above but what is
+acceptable: an opened card covering another card's nameplate for a few seconds
+is a smaller cost than the island being drawn small for the whole round.*
 
 A round is mostly silence, and for most of it nobody is reading the shelves.
 So a card is drawn shut: whose it is, the labour dial with its caption, and the
@@ -585,11 +612,40 @@ item bars do.* Making the two arrive together was right and still read as one
 simultaneous jump; the value is a consequence of the goods and should be seen
 as one.
 
-`SCORE_SETTLE` is 420ms — deliberately shorter than the bars' own 0.55s
-travel. Their easing is a hard ease-out, so a bar is within a few percent of
-its target well before it stops, and waiting the full duration puts a dead beat
-between the two. Starting the number while the bars settle reads as *because*
-rather than *and then*.
+**It took three attempts, and the first two failed because I guessed at the
+cause instead of tracing it.** Worth writing down, because the guesses were
+plausible and the measurement was cheap:
+
+1. *Too short.* 420ms against a 550ms travel — the two still moved together
+   for the last 130ms. Real, and not the whole story.
+2. *Keyed on the wrong thing.* The gate asked whether the board's quantities
+   changed. But `hand()` rewinds a gaining bar to its pre-trade value and
+   holds it, which moves the bar on screen without moving the state at all. It
+   now compares what the shelf is **drawing**, which `score()` already reads.
+3. *A repaint overtook the wait.* This was the one that kept it broken.
+   `flashCard` rebuilds a card and calls `draw` to refill it; that call saw a
+   shelf unchanged *since the previous draw*, so it wrote the new number at
+   once — two milliseconds after the bars moved — throwing away the stage the
+   previous draw had correctly started. A pending wait now suppresses any
+   immediate write for that trader.
+
+Each attempt measured a 1ms gap afterwards and I read it as noise twice. What
+found it was tracing every writer — patching `Scene.prototype.score` and
+`setBar` to record a stack — rather than sampling the DOM and inferring.
+
+**The first attempt was too short and Gal could see it.** It was 420ms against
+a 550ms travel, on the reasoning that a hard ease-out puts a bar within a few
+percent of its target well before it stops. That is true and it is not the
+point: the two were still moving together for the last 130ms, so the pair went
+on reading as one simultaneous jump — the whole thing the wait exists to avoid.
+The arithmetic only explains the report; it did not predict it.
+
+The wait is the bars' own travel plus a 90ms beat. **The travel is read off the
+stylesheet, not copied** — `--bar-travel` is declared beside the transition that
+spends it, the same arrangement as `--chrome-top`, because a copy in the script
+is a second place to change and it had already been wrong once. Measured after
+the fix: the number starts 534ms after the bars stop on the tightest case, and
+never overlaps them.
 
 **Debounced per trader**, because an exchange lands its goods one at a time,
 `CARRY.step` apart. Scoring on each arrival walks the number up in steps that
@@ -606,6 +662,37 @@ timer firing long after the frame that could see whether labour had been spent.
 Verified by patching `Scene.prototype.score` in a live page and recording every
 write that changed the number: the settlement writes arrive through the staged
 timer, and the immediate ones are all card-open fills.
+
+### A side drawer narrows the frame instead of covering it
+
+*Fixed 2026-08-29.* The chrome stepped aside for a drawer from the start; the
+picture underneath it did not. At 1440x900 the reveal rail and the recording
+picker are 340px wide and the right-hand trader's card runs x1126–1413 — so a
+drawer covered **313px of a 287px card**, which is all of it. Measured, not
+noticed by eye.
+
+The frame is narrowed now: `--frame-right` takes the drawer's width off the SVG
+and the canvas together, `frameBox` measures *that* box rather than the window,
+and the layout re-divides what is left. Both cards come back inside it. The
+foot drawer needs none of this — since cards shut to 88 units they end at y499
+and the transcript starts below them, so that collision fixed itself.
+
+**Both axes are sized explicitly, and that is load-bearing.** An `<svg>` with a
+viewBox has an intrinsic ratio, so under `inset: 0` alone it takes its *height*
+from that ratio rather than from its box — while the viewBox is computed from
+the measured height. The two chase each other to a fixed point: the frame
+settled at 1440x720 inside a 1440x900 window and the island was laid out for a
+shape it was not drawn at. A width and a height break the loop.
+
+The box is **not** transitioned. The scene is re-laid out once on the toggle;
+animating the width would make every frame of the slide a different layout to
+solve and rebuild the island sixty times on the way.
+
+**A pre-existing thing this makes visible.** `widen()` only ever widens, so a
+frame *taller* than the viewBox's ratio letterboxes, and the bands read as
+seams above and below the sea. Unmodified `main` at 1100x900 shows exactly the
+same bands — this change did not cause them, it just puts the frame into an
+aspect where they show. Worth its own fix.
 
 ### What a click does, and what it must never do
 
@@ -718,6 +805,10 @@ left is the island's, and **the island is the term that gives**: the cards carry
 every number on the page and shrinking them is how this view was unreadable to
 begin with.
 
+*`--chrome-top` is 98px now, and the pills are two rows rather than four — see
+"Four rows of chrome became two". The mechanism below is unchanged; only what
+it is given to reserve has moved.*
+
 That reservation rests on the portrait frame being **the window's own shape**.
 A viewBox of any other shape is fitted inside the window with `meet` and
 *centred* in whichever direction is slack, so a band at the top of the viewBox
@@ -798,10 +889,139 @@ synthetic boards built with `render.synthetic`).
 that nothing scrolls sideways, that **no two pieces of chrome overlap**, that
 the island fills the band between the chrome and the cards, that every control
 is a fingertip tall, that rotating actually turns the island, and — in
-`focusing` — that a tap re-divides the frame and a second tap puts it back. The overlap check exists
+`focusing` — that a tap on a card opens that trader's shelf and leaves the frame
+where it is. The overlap check exists
 because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
+
+### The split screen goes, and the island keeps the frame
+
+*Decided 2026-08-30, by Gal: "we don't need to stay with the split screen …
+scratch all the different views, just decide on what views we need and have
+them."*
+
+**Everything in the two sections below is superseded, and they are left
+standing** because the measurements in them are what made the case for
+deleting the thing they describe. The mechanism they document — a tap that
+re-divides the frame between the island and the cards — is gone from
+`scene.js`, `index.html` and `render.py`.
+
+What was wrong with it is not that it did not work. It worked, and 98% of the
+window is a real number. It is that **it asked the viewer a question the page
+should have answered.** A spectator who opens a link to an island wants to see
+the island; nobody arrives wanting to negotiate how the frame is divided. And
+the question had grown a third answer nobody could reach — `FOCUS.cards` was
+reached by tapping a card, and a card tap had already come to mean *open this
+trader's shelf* once cards were shut by default. Three states, two gestures,
+and one of the states unreachable.
+
+So there is **one view**, both ways up:
+
+- The island gets the frame. It is what is being watched.
+- The cards are nameplates. One opens when its trader acts, or when it is
+  tapped, and it is **drawn over the frame** rather than the frame
+  re-dividing around it.
+- The chrome floats, and stands in bands the island stays out of.
+
+`FOCUS`, `FOCUSES`, `cardMini`, `CARD_H_GLANCE` and `tapped()` are deleted, as
+are `refocus()`, the `#focus-note` caption and the `.focus-island` and
+`.card.mini` rules. `cardPlan` no longer takes a focus and `cardScale` is
+always `1` — the only thing that ever scaled a card was the focus.
+
+**The island keeps the room the focus used to buy it**, because the row now
+reserves the *shut* nameplate rather than the open card: `layout` takes a
+`shutH` and `cardPlan` divides the band around that. `CARD_H_SHUT` is 88 units
+against 186 open (42 live, where there is no utility row), so the reservation
+more than halves and every unit of it goes to the island by construction. That
+is the paragraph in "A card is shut until it is asked for" that ended *"Not
+done here"* — it is done here.
+
+**What it costs, stated plainly.** An opened card is drawn over what is under
+it: at three traders or more that is another card's nameplate, and at any count
+it can be the transport. That is the trade, and it is the right way round — a
+card is open for a few seconds because somebody asked for it or because a trade
+just landed in it, and the thing it covers is on screen for the rest of the
+round. The one thing an opened card may **not** do is leave the canvas, where
+nothing is drawn at all, so `cardPlan` sizes the frame to hold the bottom row
+opened. `scene.test.mjs` holds both halves: the shut rows clear the transport's
+band, and an opened card stays on the canvas.
+
+`render.py:focusing` keeps its name and asserts the pair that replaced it: a
+tap on a card opens that trader's shelf, and the frame does not move.
+
+### Four rows of chrome became two
+
+The chrome stood on **162px of a 760px phone** before the island got anything,
+in four stacked rows: the controls, the round's state, the counts, the goods
+key. Two of the four were on screen the whole time saying nothing.
+
+- **A counter at zero has not happened.** A board opens with nothing settled,
+  nothing declined, nothing refused and nothing lapsed, and that is most of
+  what those four pills say for most of a round. On a phone a counter is drawn
+  once it has something to say, and it moves onto the round's state's own row,
+  which has the width for it. Nothing is dropped — a count that reaches one
+  appears — and on a desk all four still stand, because there the row is free.
+  `hud()` writes the number onto the element as well as into it (`data-n`), for
+  the plain reason that a stylesheet cannot ask what an element says.
+- **The goods key is a caption for the shelves**, and the shelves are shut
+  now. So it comes on with a shelf and goes off with it, drawn over the island
+  above the transport rather than in a band of its own — the same bargain the
+  open card takes. `Scene` reports whether any shelf is open and the page puts
+  `.app.shelf-open` on the frame; the scene does not reach into the chrome
+  itself.
+
+`--chrome-top` is **98px**, and that is the whole of the gain: 64px of a phone,
+handed to the island by two rows that were not earning their place.
+
+#### The band a stylesheet declares and the band the rows come to
+
+Found by looking at the phone rather than at the tests, which had all passed.
+The two pills that share the second row are **text**, and `--chrome-top` is a
+number, so the two part company the moment a string grows enough to wrap.
+"before the first day" and "acknowledging" came to 147 and 120 pixels, and 273
+does not go into the 203 the row had — so the phase wrapped to a line of its
+own and the two-row band was **three rows deep**, reaching 126px into a band
+declaring 98. On frame 0, which is the frame a shared link opens on.
+
+Two things were wrong and both are fixed:
+
+- **The row was too narrow and its type too large.** 52vw was guessed. The
+  pills are 12px on a phone now — the same size the counts beside them were
+  already cut to, for the plain reason that they share a row — and the row is
+  62vw.
+- **And that still did not fit**, at 133 and 108 against 242. No width setting
+  does: at 360pt the row is 223px and the two strings do not go however it is
+  sized. So the string gives. `hud()` says **"before day 1"**, which loses
+  nothing — the game calls an episode a day, and this is the same sentence with
+  the ordinal spelled as the numeral every other day pill already uses.
+
+Measured after, on all four phone viewports: one row, 30px tall at y=58, ending
+at 88 inside the band. The counts clear the round's state by 20px at the
+narrowest, which was **2px** before this — not a margin, luck.
+
+**`uncovered` could not have caught it, and that is the interesting part.** It
+counts island pixels behind each pill, and the wrapped row landed over *sky* —
+there is no island that high up. Which makes it exactly the right check for "a
+pill is on the island" and the wrong one for "the chrome outgrew its own
+reservation": the island is handed everything below the declared band, so a row
+standing in that band is a defect whether or not any land has been drawn under
+it yet.
+
+So `mobile` asks that directly now, of the laid-out rows rather than of the
+declared number: the bottom of `.at-top-left`, `.at-top-right` and `.counts`
+against `--chrome-top`, with two pixels of slack for a rounded edge. Shown to
+work rather than assumed — putting the long string back fails all three narrow
+phones with `the chrome reaches 126px down a band it declares as 98px`, and
+restoring the short one passes.
+
+To re-check: `python viewer/tests/render.py --require`.
+
+`uncovered()` in `render.py` had to learn the difference between *laid out* and
+*drawn*: it measured every pill's rectangle against the island's own pixels,
+and a key at zero opacity would have failed the page for hiding something. It
+skips anything at `display: none`, `visibility: hidden` or zero opacity now,
+which is the honest reading — an element nobody can see covers nothing.
 
 ### The viewer says which of the two gets the screen
 
@@ -889,6 +1109,14 @@ it puts them back on the island, which is the defect reported by eye twice.
 The block of island-then-cards is now **centred** in the band rather than pinned
 to its top. Slack dumped below the last card is invisible, and on a tall phone —
 where the island cannot grow — that is all a tap would have produced.
+
+*Pinned back to the top on 2026-08-30, with the focus. Centring bought motion
+for a gesture that no longer exists, and it bought it with dead sky: half the
+slack landed **above** the island, inside the band the island is supposed to
+have taken. `mobile` caught it the moment the nameplate reservation freed up
+enough room for the cap to bite — the drawn land filled 84% of a 435px band on
+a 390×844 phone against a floor of 95%. That check is the layout's own claim,
+and centring made the claim false to make a tap feel better.*
 
 #### 0.58 of a card is not a card
 

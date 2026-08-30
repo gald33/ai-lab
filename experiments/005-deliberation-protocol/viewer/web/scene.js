@@ -80,20 +80,35 @@ export const CARD_LINGER = 1400;
 const CARD_SWING = 220;
 
 /**
- * How long the utility waits after a shelf has moved, in ms.
+ * The beat between a shelf arriving and the number that scores it moving.
  *
- * **The number is a consequence of the goods, and should be read as one.** The
- * bars and the score used to change on the same tick -- correct, and the pair
- * still read as one simultaneous jump rather than as the shelf changing and
- * the value following from it. Gal asked for the second.
+ * On top of the bars' own travel, which is read off the stylesheet rather than
+ * copied -- see `--bar-travel`, declared beside the transition that spends it.
  *
- * Shorter than the bars' own 0.55s travel on purpose. Their easing is a hard
- * ease-out, so a bar is within a few percent of its target well before it
- * stops, and waiting for the full duration puts a visible dead beat between
- * the two. This starts the number while the bars are settling into place,
- * which reads as *because* rather than as *and then*.
+ * **It was a copy, and it was too short.** 420ms against a 550ms travel, on the
+ * reasoning that a hard ease-out puts a bar within a few percent of its target
+ * well before it stops. That is true and it is not the point: the two were
+ * still moving together for the last 130ms, so the pair went on reading as one
+ * simultaneous jump -- which is the whole thing the wait exists to avoid.
+ * Reported by Gal, who could see it; the arithmetic only says why.
+ *
+ * So the number now starts when the bars have actually stopped, plus enough of
+ * a beat to read as a consequence rather than a coincidence.
  */
-const SCORE_SETTLE = 420;
+const SCORE_BEAT = 90;
+
+//: How long a bar takes to reach a new quantity, from the stylesheet that
+//: spends it. Falls back to the value declared there, for a page whose CSS has
+//: not loaded when the first receipt lands.
+function barTravel() {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue("--bar-travel").trim();
+  const m = /^([\d.]+)(ms|s)$/.exec(v);
+  return m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : 550;
+}
+
+/** How long the utility waits after a shelf has moved, in ms. */
+export const scoreSettle = () => barTravel() + SCORE_BEAT;
 
 /**
  * Where the score row sits, as a **CSS** transform.
@@ -419,79 +434,43 @@ const ISLAND_TOP = 0.5 - ISLAND_UP / ISLAND_ACROSS;
 //: than a negative one.
 const ISLAND_MIN = 200;
 
-//: And the smallest it goes once somebody has *asked* for the cards. The floor
-//: above is what the layout imposes on a viewer who chose nothing; this is what
-//: a viewer gets who tapped a card, which is a different question and deserves
-//: a different answer. Still an island and not a strip: below about this the
-//: huts stop being distinguishable from the trees.
-const ISLAND_TINY = 116;
-
-//: The widest a card goes with two of them to a row. The columns are centred on
-//: `0.265w` and `0.735w`, so cards of width `W` leave `0.47w - W` between them;
-//: this keeps twelve units of that as a gutter.
+//: **`ISLAND_TINY` and `CARD_WIDEST` are gone with the focus.** They were the
+//: floor the island fell to once somebody asked for the cards, and the cap on
+//: how large the cards could then be drawn -- and both only ever answered a
+//: question a tap asked. Nothing scales a card any more.
 //:
-//: **This, and not the island, is what caps the cards.** Measured: on a 393pt
-//: portrait frame it allows `1.19x`, while the height freed by taking the
-//: island all the way down to `ISLAND_TINY` would allow `1.63x`. So a card
-//: focus that shrank the island further would buy nothing at all -- the frame
-//: is 520 units wide whatever the island does.
-const CARD_WIDEST = (w) => 0.47 * w - 12;
+//: The measurement they were the two ends of is worth keeping, because it is
+//: what says the deleted state was never worth much: on a 393pt portrait frame
+//: the width allowed `1.19x` while the height freed by taking the island all
+//: the way to 116 units allowed `1.63x`, so the cards ran out of *width* long
+//: before the island ran out of *height*. A card focus was buying 19% of a
+//: card for 39% of an island.
 
-/**
- * What one tap is worth, on a phone held upright.
- *
- * The island and the cards are competing for one screen and the viewer is the
- * only one who knows which of them they are looking at. So they get to say, and
- * this is the whole of the mechanism: **a card scale, and a floor under the
- * island.** `cardPlan` already sizes the island as the *residual* of the band
- * the chrome left, so scaling the cards moves the island by construction and
- * there is nothing else to move.
- *
- * `card: null` means "as large as the frame allows", solved below.
- *
- * Measured on a 393x660 portrait frame -- a shared link opened with the
- * browser's own bars showing -- with two traders:
- *
- * | focus | card | island, drawn | of the window |
- * |---|---|---|---|
- * | `even` | 1.00 | 198px | 50% |
- * | `island` | 0.58 | 276px | 70% |
- * | `cards` | 1.19 | 166px | 42% |
- *
- * The asymmetry is real and is the frame's, not a choice: the island gains 39%
- * and the cards 19%, because the cards run out of *width* long before the
- * island runs out of *height*.
- */
-const FOCUS = {
-  even: { card: 1, floor: ISLAND_MIN },
-  //: `mini`, because 0.58 of a card is not a card. Measured on a 390pt window:
-  //: the viewBox is 520 across, so a unit is 0.75 device pixels and 0.58 of one
-  //: is 0.44 -- which puts a shelf's quantities at **4.8 pixels** and its
-  //: `labour` and `utility` captions at 4.2. A number too small to read is
-  //: worse than no number, because it still looks like the page is telling you
-  //: something. So the small card stops being a shrunk card and becomes a
-  //: glance card: whose it is, the coloured bars, and what the shelf came to.
-  //: The rules are in the stylesheet, on `.card.mini`.
-  island: { card: 0.55, floor: ISLAND_MIN, mini: true },
-  cards: { card: null, floor: ISLAND_TINY },
-};
+//: **A phone had three views and now has one.** `FOCUS` scaled the cards and
+//: took the island as the residual: `even`, `island`, and a `cards` state that
+//: gave them the screen. Two of the three were reachable by the end, both were
+//: ways of shrinking one thing to make room for another, and none of them said
+//: what a viewer was actually being offered -- a card at 1.00, 0.55 and "as
+//: large as the frame allows" is three sizes of the same object, not three
+//: views.
+//:
+//: Scrapped 2026-08-30, on Gal's call. The frame is divided once: the island
+//: takes what the shut nameplates leave, and a card somebody opens is drawn
+//: *over* it rather than by re-dividing anything. Reserving the open card was
+//: what made the island small enough to need a focus at all.
+//:
+//: The measurements that justified the old thing are in `viewer/README.md`
+//: under "On a phone", kept rather than deleted: this repo re-derives a
+//: decision it cannot see the reasoning for.
 
-/** The focus names, in the order a tap cycles them. */
-export const FOCUSES = Object.keys(FOCUS);
 
-function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
+function cardPlan(n, w, h, cardH, portrait, frame) {
   const gap = 14;
   const pitch = CARD_TOP + cardH + gap;
   if (portrait) {
     // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
     // fit beside each other with a gutter and three do not.
     const rows = Math.ceil(n / 2);
-    //: **The frame's height is settled before the focus is**, off the card the
-    //: layout would have drawn had nobody chosen. A focus that moved `H` would
-    //: change the frame's *shape*, and the shape is what makes the chrome's
-    //: bands land where the chrome is -- so a tap on a card would have walked
-    //: the pills back over the island. A tap re-divides this band; it never
-    //: resizes it.
     const cardsEven = rows * pitch;
     //: **The frame is the window's own shape**, so the viewBox does not
     //: letterbox and a band measured in units is the same band in pixels.
@@ -535,34 +514,37 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
     //: is the trade, and it is the deliberate side of it: the island was
     //: bigger before because it was drawn *underneath* the chrome.
     //:
-    //: **Which of the two gives is now the viewer's to say.** `FOCUS` scales
-    //: the cards; the island is still the residual and still takes all of it.
+    //: **The band is divided once, and the island takes what the nameplates
+    //: leave.** There is no focus any more: `cardH` here is the *shut* card,
+    //: because that is what a phone draws until somebody asks otherwise, and
+    //: a card somebody opens is drawn over the frame rather than inside this
+    //: reservation. Reserving the open card was what made the island small
+    //: enough to need a focus in the first place.
     const band = H - above - below;
-    const want = FOCUS[focus] ?? FOCUS.even;
-    //: A glance card is a shorter card, not only a smaller one -- see
-    //: `CARD_H_GLANCE`. The height is settled here rather than by the scene so
-    //: that the band this reserves and the box the scene draws are one number.
-    const tall = want.mini ? CARD_H_GLANCE : cardH;
-    const pitchAt = (s) => s * (CARD_TOP + tall) + gap;
-    //: The largest card that still leaves the island the floor this focus put
-    //: under it. Never below 1: a viewer who asked for the cards is not told
-    //: that the answer is smaller cards.
-    const byHeight = ((band - 16 - want.floor * ISLAND_FOOT) / rows - gap)
-                     / (CARD_TOP + tall);
-    const scale = want.card
-      ?? Math.max(1, Math.min(CARD_WIDEST(w) / CARD_W, byHeight));
-    const cardsH = Math.round(rows * pitchAt(scale));
+    const pitchAt = () => CARD_TOP + cardH + gap;
+    const cardsH = Math.round(rows * pitchAt());
     const room = band - cardsH - 16;
-    const D = Math.max(want.floor, Math.min(w, Math.floor(room / ISLAND_FOOT)));
-    //: **The block sits in the middle of the band, not at the top of it.**
-    //: The island is capped at the frame's own width -- past that its shore
+    const D = Math.max(ISLAND_MIN, Math.min(w, Math.floor(room / ISLAND_FOOT)));
+    //: **The block starts at the chrome's foot**, and any slack falls below
+    //: the last card.
+    //:
+    //: It was centred in the band for one round, and the reason was the focus:
+    //: the island is capped at the frame's own width -- past that its shore
     //: would be cropped, since the land spans exactly its box -- so on a tall
-    //: phone it is already as big as it can be and every unit the cards give
-    //: back is slack. Dumped below the last card that slack is invisible, and
-    //: a tap on the island would have looked like a tap that did nothing.
-    //: Shared above and below, it is the island getting the room.
-    const used = Math.round(ISLAND_FOOT * D) + 16 + cardsH;
-    const top = above + Math.max(0, Math.round((band - used) / 2));
+    //: phone it is already as large as it goes, and a tap asking for it could
+    //: only ever hand the cards' units to a gap. Dumped below the last card
+    //: that gap was invisible and the tap looked like a tap that did nothing;
+    //: shared above and below, at least the island moved down the screen.
+    //:
+    //: There is no tap now, and no reason left to buy motion with dead sky.
+    //: Sharing it put half the slack *above* the island, inside the band the
+    //: island is supposed to have taken: `mobile` measures the drawn land
+    //: against `islandFoot - chromeTop` and found it filling 84% of a 435px
+    //: band on a 390x844 phone, against a floor of 95%. That check is the
+    //: layout's own claim -- the island took what was left -- and centring
+    //: made the claim false to make a gesture feel better. The gesture is
+    //: gone; the claim stays.
+    const top = above;
     //: Where the island actually stops, which is above where its box does.
     //: Kept separate from where the cards start, so that a check comparing the
     //: two is asking a question rather than restating one number twice.
@@ -574,21 +556,32 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
         // A row with one card in it sits in the middle rather than off to a side.
         const alone = i === n - 1 && n % 2 === 1;
         return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-                 y: foot + row * pitchAt(scale) };
+                 y: foot + row * pitchAt() };
       }),
       islandBox: { x: Math.round((w - D) / 2), y: top, w: D, h: D },
       //: Where the island starts drawing, a hair below its box's own top.
       islandTop: top + Math.round(ISLAND_TOP * D),
       islandFoot,
-      cardScale: scale,
-      cardMini: !!want.mini,
-      //: Only when this branch has an opinion. A live board draws a shorter
-      //: card than the layout plans for -- `CARD_H` against `CARD_H_SCORED` --
-      //: and overriding that here would grow every live card by 46 units.
-      cardH: want.mini ? CARD_H_GLANCE : null,
+      //: Never scaled any more. The only thing that scaled a card was the
+      //: focus, and a phone reserves the shut nameplate instead.
+      cardScale: 1,
+      //: The scene decides each card's own height -- see `cardBoxHFor` -- and
+      //: this only ever reserved a different one for the glance card, which
+      //: went with the focus that drew it.
+      cardH: null,
       //: The window's height, or more if the cards need it. Any slack falls
       //: past the last card, below the transport's own band, where it is sea.
-      h: Math.max(H, foot + cardsH + below),
+      //:
+      //: **The last row is measured opened**, not shut. The rows are pitched
+      //: at the nameplate because that is what the island had to give up for
+      //: them, and an opened card is drawn over what is under it -- but the
+      //: canvas is not something it can be drawn over. A frame that ended at
+      //: the shut row would put the bottom card's shelf off the bottom of the
+      //: viewBox, where nothing is drawn at all. This is the one place the
+      //: open card still costs the frame anything, and it costs it only where
+      //: the rows reach that far down.
+      h: Math.max(H, foot + cardsH + below,
+                  foot + (rows - 1) * pitchAt() + CARD_TOP + CARD_H_SCORED),
     };
   }
   //: A column's width, from the card's own: the margin is as wide as what
@@ -607,7 +600,7 @@ function cardPlan(n, w, h, cardH, portrait, frame, focus = "even") {
   //: focus to re-divide. `cardScale` is declared anyway rather than left
   //: undefined, so the scene has one number to read either way up.
   return { cards, islandBox: { x: col * 2, y: 0, w: w - col * 4, h }, h,
-           cardScale: 1, cardMini: false, cardH: null };
+           cardScale: 1, cardH: null };
 }
 
 /**
@@ -633,11 +626,12 @@ const widen = (base, h, aspect) =>
  *   stands on, as fractions of the window's height. Read off the stylesheet by
  *   the page; **zero here means the island is drawn under the pills**, which
  *   is what it did before these existed.
- * @param {string} focus  which of the island and the cards the viewer asked
- *   for -- `"even"`, `"island"` or `"cards"`. Portrait only; see `FOCUS`.
+ * @param {number} shutH  how tall a shut card is on this board -- what
+ *   portrait reserves for the row, because a shut card is what a phone draws
+ *   until somebody opens one, and an opened one is drawn over the frame.
  */
 export function layout(n, portrait = false, aspect = null, chrome = null,
-                       focus = "even") {
+                       shutH = CARD_H_SHUT) {
   if (portrait) {
     // One seat above another, far enough apart for a hut above each card. The
     // pitch is the seat's own extent -- hut, card and a gap -- rather than a
@@ -653,11 +647,10 @@ export function layout(n, portrait = false, aspect = null, chrome = null,
     const seats = Array.from({ length: n }, (_, i) => ({ x: w / 2, y: first + i * pitch }));
     const bottom = first + pitch * (n - 1) + CARD_TOP + CARD_H_SCORED + 60;
     const ly = (sky + bottom) / 2;
-    const plan = cardPlan(n, w, bottom + 120, CARD_H_SCORED, true,
+    const plan = cardPlan(n, w, bottom + 120, shutH, true,
                           // A phone held upright, for a caller that did not say.
                           { aspect: aspect ?? 0.46,
-                            top: chrome?.top ?? 0, foot: chrome?.foot ?? 0 },
-                          focus);
+                            top: chrome?.top ?? 0, foot: chrome?.foot ?? 0 });
     return {
       w, h: plan.h, cx: w / 2, ly, ry: (bottom - sky) / 2, rx: w / 2 - 34, seats,
       // Beside the column rather than in it: a fire between two stacked huts
@@ -771,26 +764,20 @@ const BASE = 104;
 //: carry an empty score row: a blank number reads as a number that failed,
 //: rather than as one nobody on this island is allowed to know.
 const CARD_H = 140, CARD_H_SCORED = 186;
-//: And what is left of one when a viewer has given the screen to the island: a
-//: name, a labour dial and the shelf, ending just under the glyphs that name
-//: the goods. **The score row goes with the height.**
-//:
-//: It was kept at first, and the reasoning is left here because it was not
-//: wrong: the utility is the one number the round is scored on, and a shelf
-//: with a bare number under it is worse than one with a named number. What
-//: changed is what the tap is *for*. A viewer who tapped the island asked for
-//: the island, and 186 units of card is 74 more than the shelf needs -- 74
-//: units of band that the island cannot have while a number nobody tapped for
-//: is standing in it. One tap brings the whole card back.
-const CARD_H_GLANCE = 112;
+//: **`CARD_H_GLANCE` is gone with the focus that drew it.** It was the card a
+//: viewer got having asked for the island -- name, labour dial and shelf, no
+//: utility -- and the only thing that ever asked for it was `FOCUS.island`. A
+//: phone shuts its cards now (`CARD_H_SHUT`), which keeps the utility and
+//: drops the shelf instead, on the reasoning above.
 /**
  * A shut card: the name, the labour dial, and what the shelf came to.
  *
  * **Not the glance card above, and the difference is the point.**
- * `CARD_H_GLANCE` keeps the shelf and drops the utility, because a viewer who
- * tapped the island wanted the island and the shelf is the picture. This drops
- * the *shelf* and keeps the utility, because a card that is shut by default has
- * to leave the one number the round is scored on standing: a settlement lands,
+ * **Not the glance card that used to sit here.** That kept the shelf and
+ * dropped the utility, because a viewer who tapped the island wanted the
+ * island and the shelf is the picture. This does the reverse -- drops the
+ * shelf, keeps the utility -- because a card that is shut *by default* has to
+ * leave the one number the round is scored on standing: a settlement lands,
  * and if the only thing on screen is a rope and a pill then nothing says what
  * it did to anybody.
  *
@@ -913,7 +900,7 @@ export function placeScenery(seatList, candidates, cardH = CARD_H_SCORED, pad = 
 
 export class Scene {
   constructor(root, timeline, reveal = null, portrait = false, placed = null,
-              aspect = null, chrome = null, focus = "even") {
+              aspect = null, chrome = null) {
     this.root = root;
     this.timeline = timeline;
     this.traders = timeline.traders;
@@ -936,9 +923,6 @@ export class Scene {
     //: carrying the message, and is the whole indicator now. Held here and
     //: re-applied by `rope()` for as long as the mark is meant to be up.
     this.noUntil = new Map();
-    //: Which of the island and the cards this viewer asked for. Portrait only:
-    //: landscape has margins for the cards and the two are not competing.
-    this.focus = focus;
     //: Which seats the *viewer* has opened, and which an event has opened for
     //: them. Two sets rather than one because they answer to different things:
     //: a card somebody clicked open stays open, and one a settlement opened
@@ -951,7 +935,14 @@ export class Scene {
     //: edge.
     this.opened = new Set();
     this.flashed = new Set();
-    this.geo = layout(this.traders.length, portrait, aspect, chrome, focus);
+    //: Told whenever a shelf opens or shuts anywhere on the island, so the
+    //: page can put the goods key on screen while there is a shelf to read it
+    //: against and take it off again when there is not. The scene owns which
+    //: cards are open; it does not own the chrome, so it reports rather than
+    //: reaches out. See `.app.shelf-open`.
+    this.onCards = null;
+    this.geo = layout(this.traders.length, portrait, aspect, chrome,
+                      this.shutH());
     // Where the settlements actually are, when there is a model underneath.
     // The island decides where its own huts stand; the cards stand in the
     // frame's margins and a line ties each one back, which is why this arrives
@@ -994,17 +985,16 @@ export class Scene {
    * the page can skip a repaint on a resize that did not cross the boundary
    * (every scroll on mobile Safari fires one).
    */
-  reflow(portrait, aspect = this.aspect, chrome = this.chrome,
-         focus = this.focus) {
+  reflow(portrait, aspect = this.aspect, chrome = this.chrome) {
     const same = (a, b) => (a?.top ?? 0) === (b?.top ?? 0)
                         && (a?.foot ?? 0) === (b?.foot ?? 0);
     if (portrait === this.portrait && aspect === this.aspect
-        && focus === this.focus && same(chrome, this.chrome)) return false;
+        && same(chrome, this.chrome)) return false;
     this.portrait = portrait;
     this.aspect = aspect;
     this.chrome = chrome;
-    this.focus = focus;
-    this.geo = layout(this.traders.length, portrait, aspect, chrome, focus);
+    this.geo = layout(this.traders.length, portrait, aspect, chrome,
+                      this.shutH());
     // The layout's own seats, for now. A caller with an island underneath
     // follows this with `replace()`, because the settlements have to be put
     // back on a frame of the new shape before the cards can find them.
@@ -1203,6 +1193,10 @@ export class Scene {
                                     width: 400, height: 46, rx: 23 }));
     this.banner.append(el("text", { x: g.cx, y: 72, class: "banner-text" }, ""));
     svg.append(this.banner);
+    //: A board with no model has no shut cards at all -- every shelf is open
+    //: from the moment it is drawn -- and that is a state nothing later
+    //: reports, because nothing later changes it.
+    this.sayCards();
   }
 
   defs() {
@@ -1275,18 +1269,16 @@ export class Scene {
   /**
    * Whether cards on this island are shut until asked for.
    *
-   * **Landscape only, and only with a model.** Portrait already answers this
-   * exact question -- the island and the cards competing for one screen -- with
-   * `FOCUS`, which is measured, tested, and cycles on the same tap this would
-   * want. Two mechanisms for one question on one screen is how a tap stops
-   * meaning anything, so portrait keeps the one it has.
+   * **Both ways up.** It was landscape-only while portrait had a focus to do
+   * the same job; that focus is gone (see the note above `cardPlan`), so a
+   * phone shuts its cards like anything else.
    *
    * Without a model the cards hang under their own drawn huts rather than
    * standing in the frame's margins, so there is no margin being spent and
    * nothing for shutting one to give back.
    */
   shutCards() {
-    return this.modelled && !this.portrait;
+    return this.modelled;
   }
 
   /** Whether this seat's card is showing its shelf. */
@@ -1433,6 +1425,18 @@ export class Scene {
     //: progress -- advancing it here is what filled a shelf before its goods
     //: landed. See `draw`.
     if (this.state) this.draw(this.state, this.timeline, { advance: false });
+    this.sayCards();
+  }
+
+  /**
+   * Say whether any shelf is open, to whoever asked to be told.
+   *
+   * Every open and every shut goes through `redrawCard` -- a click, a
+   * settlement flashing a card and the timer handing it back -- so this is
+   * called from there and nowhere else.
+   */
+  sayCards() {
+    this.onCards?.(this.traders.some((n) => this.cardOpen(n)));
   }
 
   /**
@@ -1526,52 +1530,6 @@ export class Scene {
     return { x: seat.x + slot.x * s, y: seat.y + (CARD_TOP + BASE - 10) * s };
   }
 
-  /**
-   * What a tap at a point in the frame is a tap on: `"cards"`, `"island"`, or
-   * `null` for the sea around them.
-   *
-   * The page asks, because the page owns the gesture; this owns the geometry
-   * and is the only thing that knows where either of them ended up. A card is
-   * tested first: the two boxes do not overlap by construction, but a tap near
-   * the edge of one should land on the thing that was drawn there.
-   */
-  /**
-   * Whose card is at a point in the frame, or `null` for anywhere else.
-   *
-   * The sibling of `tapped` and deliberately not folded into it: that one
-   * answers portrait's question -- *which of the island and the cards* -- and
-   * this one answers landscape's -- *which trader*. One method returning
-   * either a seat name or one of two magic strings would be a signature that
-   * has to be read twice at every call.
-   *
-   * Measured against the card each seat is actually drawn at, not the tallest
-   * one it could be: a shut card is 88 units where an open one is 186, and
-   * testing the open box would put a click on the sea below a shut card onto
-   * that card.
-   */
-  cardAt(x, y) {
-    const s = this.cardScale();
-    const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
-    const inside = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
-    for (const [i, seat] of (seats ?? []).entries()) {
-      const name = this.traders[i];
-      if (name === undefined) continue;
-      if (inside({ x: seat.x - (CARD_W / 2) * s, y: seat.y + CARD_TOP * s,
-                   w: CARD_W * s, h: this.cardBoxHFor(name) * s })) return name;
-    }
-    return null;
-  }
-
-  tapped(x, y) {
-    const s = this.cardScale();
-    const seats = this.modelled && this.geo.cards ? this.geo.cards : this.geo.seats;
-    const inside = (b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
-    for (const seat of seats ?? []) {
-      if (inside({ x: seat.x - (CARD_W / 2) * s, y: seat.y + CARD_TOP * s,
-                   w: CARD_W * s, h: this.cardH * s })) return "cards";
-    }
-    return this.geo.islandBox && inside(this.geo.islandBox) ? "island" : null;
-  }
 
   /** Where the sun stands, this far through the episode. */
   sunPoint(p) {
@@ -1867,12 +1825,11 @@ export class Scene {
     g.append(el("rect", { class: "door", x: -8, y: -14, width: 20, height: 26, rx: 2 }));
     g.append(el("path", { class: "hut-rim", d: "M -50 -34 L 0 -80 L 50 -34" }));
 
-    //: **The card scales; the hut does not.** In portrait the two are competing
-    //: for one screen and a tap says which of them wins (see `FOCUS`), and the
-    //: card is the term that moves because the island is sized as the residual.
-    //: Applied to the card's own group rather than to the whole settlement, so
-    //: that a drawn hut -- the fallback with no model behind the page -- is
-    //: never scaled by a number chosen for the thing hanging under it.
+    //: **The card scales; the hut does not.** Nothing scales either of them
+    //: any more -- `cardScale` is always 1 since the focus went -- but the
+    //: group is still the card's own rather than the whole settlement's, so
+    //: that a drawn hut, the fallback with no model behind the page, could
+    //: never be scaled by a number chosen for the thing hanging under it.
     //: **Shut is a class as well as a height.** The rects below are built at
     //: the shut height so the card's own ground is the right size, and the
     //: stylesheet takes the shelf, the plank and the labour caption off it --
@@ -1881,8 +1838,7 @@ export class Scene {
     //: is why that is a transform below rather than a rule.
     const shut = !this.cardOpen(name);
     const card = el("g", {
-      class: (this.cardScale() !== 1 && this.geo.cardMini ? "card mini" : "card")
-             + (shut ? " shut" : "") });
+      class: "card" + (shut ? " shut" : "") });
     if (this.cardScale() !== 1) {
       card.setAttribute("transform", `scale(${this.cardScale()})`);
       //: The scale, handed to the stylesheet. A glance card holds its marks at
@@ -1967,7 +1923,7 @@ export class Scene {
     card.append(el("line", { class: "plank", x1: -CARD_W / 2 + 9, y1: BASE + 2,
                              x2: CARD_W / 2 - 9, y2: BASE + 2 }));
 
-    if (this.reveal && !this.geo.cardMini) {
+    if (this.reveal) {
       // What this shelf is worth to the trader who owns it. Computed here from
       // the revealed tastes and the receipts -- the manager's own scored
       // trajectory is in the rail, and `audit()` holds the two together.
@@ -2063,6 +2019,26 @@ export class Scene {
    * `shelf` is the fallback for a slot with no drawn state yet -- the first
    * paint, and after the bell, where `draw` passes the closing holdings.
    */
+  /** Whether this trader's number is already waiting to move. */
+  pendingScore(name) {
+    return !!this.scoring?.has(name);
+  }
+
+  /**
+   * What this trader's shelf is currently *drawing*, as a comparable string.
+   *
+   * A bar that is holding is showing the value it had before the trade, not
+   * the one the board has settled -- so this is the shelf as an eye sees it,
+   * which is the only thing the utility should be a function of.
+   */
+  shownShelf(name) {
+    return this.goods.map((good) => {
+      const b = this.bars[name]?.[good];
+      const held = b && (b.holding ? b.was : b.now);
+      return held ? held.qty.toFixed(6) : "";
+    }).join(",");
+  }
+
   score(name, shelf, blameZero = null) {
     const label = this.labels[name];
     if (!this.reveal || !label?.score) return;
@@ -2108,10 +2084,13 @@ export class Scene {
     clearTimeout(this.scoring?.get(name));
     const gen = this.gen;
     (this.scoring ??= new Map()).set(name, setTimeout(() => {
+      //: Cleared before the write, so the write itself is not suppressed by
+      //: the very stage it is completing -- see `pendingScore`.
+      this.scoring.delete(name);
       //: The island may have been rebuilt under this timer -- a reframe, a new
       //: board -- and the labels this would write into are off the page.
       if (gen === this.gen) this.score(name, this.state?.stocks?.[name]);
-    }, SCORE_SETTLE));
+    }, scoreSettle()));
   }
 
   setBar(b, qty, free, top = this.top) {
@@ -2163,7 +2142,6 @@ export class Scene {
       // Cobb-Douglas hazard -- so it waits for the labour to be spent, or for
       // the bell, which is when a zero is final whatever was spent.
       const spentLabour = closed || state.labour[name] !== null;
-      let shelfMoved = false;
       for (const good of this.goods) {
         const qty = shelf?.[good] || 0;
         const b = this.bars[name][good];
@@ -2174,9 +2152,6 @@ export class Scene {
         // by it -- which is why the goods used to arrive at a bar that had
         // finished growing half a second earlier.
         if (advance) b.was = b.now ?? { qty: 0, free: 0 };
-        //: Whether the shelf moved at all this frame, which is what decides
-        //: if the number follows it or simply arrives with it.
-        if (b.now && Math.abs(b.now.qty - qty) > 1e-9) shelfMoved = true;
         b.now = { qty, free };
         if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
@@ -2215,8 +2190,32 @@ export class Scene {
         //: jump. Staged, it reads as the shelf changing and the value
         //: following from it, which is the direction the causation runs.
         this.blameZero = { ...(this.blameZero ?? {}), [name]: started && spentLabour };
-        if (shelfMoved) this.scoreSoon(name);
-        else this.score(name, shelf, started && spentLabour);
+        //: **Against what the shelf is *drawing*, not what the board says.**
+        //: Keyed on the state's quantities, this missed the case that matters
+        //: most: `hand()` rewinds a gaining bar to its pre-trade value and
+        //: holds it, which moves the bar on screen without moving `now` at
+        //: all. The number then changed in the same tick as that rewind --
+        //: measured at a 1ms gap, which is exactly the simultaneous jump the
+        //: wait exists to avoid, and is what Gal was still seeing.
+        //:
+        //: `score()` already reads the drawn value; this compares the same
+        //: thing, so anything that moves a bar on screen moves the number a
+        //: beat later, whatever moved it.
+        const drawn = this.shownShelf(name);
+        const before = (this.shownAt ??= {})[name];
+        this.shownAt[name] = drawn;
+        if (before !== undefined && before !== drawn) this.scoreSoon(name);
+        //: **A repaint must not overtake a wait that is already running.**
+        //: This is what defeated the first two attempts. `flashCard` rebuilds
+        //: a card and calls `draw` to refill it, and that call saw a shelf
+        //: unchanged *since the previous draw* -- so it took this branch and
+        //: wrote the new number at once, two milliseconds after the bars
+        //: moved, throwing away the stage the previous draw had correctly
+        //: started. Measured at a 1ms gap, twice, from two different guesses
+        //: at the cause; found by tracing every writer instead.
+        else if (!this.pendingScore(name)) {
+          this.score(name, shelf, started && spentLabour);
+        }
       }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));

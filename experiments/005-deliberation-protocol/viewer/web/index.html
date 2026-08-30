@@ -24,14 +24,38 @@
    rather than quietly cropping the island. */
 :root { --chrome-top: 0px; --chrome-foot: 0px; }
 
+/* How long a shelf's bar takes to travel to a new quantity.
+   **Declared here, where the transition that spends it is**, and read by
+   `scene.js` -- the same arrangement as `--chrome-top` above and for the same
+   reason: the utility waits for the bars to arrive before it moves, and a copy
+   of this number in the script is a second place to change it. It was a copy
+   for one commit, at 420ms against a 550ms travel, and the two overlapped for
+   the last 130ms -- which still reads as one simultaneous jump, which is the
+   whole thing the wait exists to avoid. */
+:root { --bar-travel: 550ms; }
+
 /* The island is the page. Nothing sits beside it; everything sits on it. */
 html, body { height: 100%; overflow: hidden; background: var(--sea-far); }
 .app { position: fixed; inset: 0; }
-svg.island { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
+/* How much of the frame's right edge something else is standing on. A side
+   drawer sets it; nothing else does, and it is 0 the rest of the time. */
+.app { --frame-right: 0px; }
+/* **Both axes are sized explicitly, and that is load-bearing.** An `<svg>` with
+   a viewBox has an intrinsic ratio, so left to `inset: 0` alone it takes its
+   *height* from that ratio rather than from the box -- and the viewBox is
+   computed from the measured height (`frameBox`). The two chase each other to
+   a fixed point: the frame settled at 1440x720 inside a 1440x900 window and
+   the island was laid out for a shape it was not being drawn at. Give it a
+   width and a height and there is no loop. */
+svg.island, canvas.stage {
+  position: absolute; top: 0; left: 0; display: block;
+  width: calc(100% - var(--frame-right)); height: 100%;
+}
+svg.island { z-index: 1; }
 /* The model, behind the drawing. The two cover the same box and frame the same
-   rectangle of island, which is what lets a hut stand under its own card. */
-canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
-  display: block; }
+   rectangle of island, which is what lets a hut stand under its own card --
+   so they take the same width, off the same variable. */
+canvas.stage { z-index: 0; }
 /* With a model underneath, the scene stops drawing the world and keeps what it
    is actually for: the cards, the ropes between them, the sun, and what is in
    flight. The hut becomes a building rather than a glyph of one. */
@@ -132,10 +156,25 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   .drawer.side, .drawer.foot { animation: none; }
 }
 /* A drawer must never cover the control that shuts it, and the chrome should
-   not be buried by something it opened. Everything steps aside instead. */
+   not be buried by something it opened. Everything steps aside instead.
+
+   **And so does the island.** The chrome stepped aside from the first; the
+   picture underneath it did not, so a side drawer sat squarely on top of the
+   right-hand trader's card -- 313px of a 287px card at 1440x900, which is all
+   of it. The frame is narrowed instead, and `frameBox` measures *this* box
+   rather than the window, so the layout re-divides what is left and the cards
+   come back inside it.
+
+   The canvas goes with the SVG or the model and the drawing stop framing the
+   same rectangle, and a hut stops standing under its own card. */
 .chrome, .counts { transition: right .22s ease, bottom .22s ease; }
 .app.rail-open .at-top-right,
 .app.rail-open .counts { right: calc(min(340px, 86vw) + 16px); }
+.app.rail-open { --frame-right: min(340px, 86vw); }
+/* Deliberately not transitioned. The scene is re-laid out once, on the toggle;
+   animating the box would make every frame of the slide a different layout to
+   solve, and the island would be rebuilt sixty times on the way. */
+svg.island, canvas.stage { transition: none; }
 .app.log-open .at-bottom { bottom: calc(min(38vh, 360px) + 14px); }
 /* The transcript is a reading mode and the legend explains the picture. Raised
    with the transport it would sit on the shelves, so it stands down instead. */
@@ -267,9 +306,9 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 /* Two bars share a slot: everything held, and the part of it not already
    promised to an open offer. The gap between them is the commitment. */
 .bar { fill: var(--c); opacity: .34; transform-box: fill-box; transform-origin: bottom;
-  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+  transition: transform var(--bar-travel) cubic-bezier(.22,1,.36,1); }
 .bar-held { fill: var(--c); transform-box: fill-box; transform-origin: bottom;
-  transition: transform .55s cubic-bezier(.22,1,.36,1); }
+  transition: transform var(--bar-travel) cubic-bezier(.22,1,.36,1); }
 /* Nothing at all, said out loud. A dark trough reads as "a little"; the
    difference between a little and none is the whole of Cobb-Douglas. */
 .bar-zero { fill: none; stroke: var(--critical); stroke-width: 1.5;
@@ -633,33 +672,12 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
   letter-spacing: .04em; text-transform: uppercase; }
 .score-value { fill: var(--ink); font-size: 12px; font-family: ui-monospace, monospace; }
 
-/* --- the card at a glance -------------------------------------------------
-   What is left of a card once a viewer has given the screen to the island.
-   0.58 of a card puts a shelf's quantities at 4.8 device pixels on a 390pt
-   window and its captions at 4.2, so what goes is everything that was a
-   *number* at that size -- and what stays is drawn at the size it always was,
-   by declaring it 1/0.58 larger in a group that is about to be scaled by 0.58.
-
-   The bars stay because a bar is a shape and a shape survives being small;
-   they are the whole point of a glance card. The name stays because bars
-   nobody can attribute are not worth drawing, and the utility stays because it
-   is the one number the round is scored on. `focus-island` in render.py
-   re-measures every one of these against a real phone. */
-.card.mini .qty, .card.mini .wheel-text, .card.mini > .card-sub,
-.card.mini .score-floor-tag { display: none; }
-/* Divided by the scale the group is about to be multiplied by, so each of
-   these lands at the size it is on a full card whatever the scale is.
-   `--card-scale` is set on the group by `scene.js`; the fallback is the scale
-   the glance card was first drawn at, for a card that somehow has none. */
-.card.mini .card-name { font-size: calc(15px / var(--card-scale, .55)); }
-.card.mini .glyph { font-size: calc(14px / var(--card-scale, .55)); }
-.card.mini .score-value { font-size: calc(12px / var(--card-scale, .55)); }
-.card.mini .score .card-sub { font-size: calc(9.5px / var(--card-scale, .55)); }
 .score-value.zero { fill: var(--critical); }
 
 /* --- a card that is shut --------------------------------------------------
-   Landscape's answer to the question portrait answers with `FOCUS`: the cards
-   are two dark panels carrying four numbers each, and for most of a round
+   The answer to a question a phone once answered with a focus, and now the
+   answer both ways up: the cards are two dark panels carrying four numbers
+   each, and for most of a round
    nobody is reading them -- a round is mostly silence, and the thing worth
    looking at is the island. So a card is shut until it is asked for.
 
@@ -693,8 +711,8 @@ canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; z-index:
 @media (prefers-reduced-motion: no-preference) {
   .card-bg { transition: stroke-opacity .12s ease; }
 }
-/* Nothing here is a touch target on a phone: portrait keeps `FOCUS`, where a
-   tap on a card means something else entirely. */
+/* A hover is all this is -- a phone has none, and needs none: there a tap on a
+   card means the same thing it means here, and the tap itself is the feedback. */
 
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 /* --- a narrow window ------------------------------------------------------
@@ -708,32 +726,63 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
    go is the pair of explanatory notes under the legend, which are a caption for
    a picture there is barely room to draw. */
 @media (max-width: 700px) {
-  /* What the four stacked rows below come to, plus a gap, and what the
-     transport comes to at the other end. **Measured, not guessed** -- the
-     control row runs 10..50, the round's state 62..94, the counts 96..128 and
-     the goods key 132..154, and the transport is 130 tall standing 16 off the
+  /* --- four rows became two ------------------------------------------------
+     The chrome stood on 162px of a 760px phone before the island got anything,
+     in four stacked rows: the controls, the round's state, the counts and the
+     goods key. Two of those four were on screen the whole time saying nothing.
+
+     The **counts** are three zeros and a zero for most of a round -- a board
+     opens with nothing settled, nothing declined, nothing refused and nothing
+     lapsed -- so on a phone a counter is drawn once it has something to say
+     and not before. Nothing is dropped: a count that reaches one appears, and
+     the row it appears on is the round's state, which has room beside it. On a
+     desk all four still stand, because there the row costs nothing.
+
+     The **goods key** is a caption for the shelves, and the shelves are shut
+     now until somebody opens one. So it comes on with a shelf and goes off
+     with it, over the island rather than in a band of its own -- the same
+     bargain the open card itself takes. See `.app.shelf-open`.
+
+     What is left is measured, not guessed: the control row runs 10..50 and the
+     round's state 58..90, and the transport is 130 tall standing 16 off the
      bottom. `uncovered` re-measures both against the chrome every run, so a
      row that grows or moves fails here rather than eating the shore. */
-  :root { --chrome-top: 162px; --chrome-foot: 146px; }
+  :root { --chrome-top: 98px; --chrome-foot: 146px; }
 
   /* A picker, four buttons and a title do not fit across 390px, and of those
      the title is the only thing that is not a control. It goes: the page is
      named in the browser tab, and the board in the picker. What is left of the
      top-left column is the round's state, which drops below the control row
      rather than sharing 44 vertical pixels with it. */
-  .at-top-left { top: 62px; left: 10px; right: auto; gap: 6px; }
+  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px; max-width: 62vw; }
+  /* The same size the counts are cut to on the row they share, for the plain
+     reason that they share it. Measured, because 52vw was guessed and the
+     guess was wrong: "before the first day" and "acknowledging" were 147 and
+     120 pixels at the desk size, and 273 of them do not go into 203 -- so the
+     phase wrapped to a line of its own and the two-row band was three rows
+     deep on the very first frame, which is the frame a shared link opens on.
+     At 12px they are 133 and 108, which still does not go, so `hud()` shortened
+     the longer string as well: "before day 1" and "acknowledging" are 85 and
+     108, and 199 fits the 223 a 360pt phone gives this row. */
+  .at-top-left .pill { font-size: 12px; padding: 5px 8px; }
   .at-top-left .titles { display: none; }
   .at-top-left .hud { flex-wrap: wrap; }
-  /* Under the title rather than beside it, and left-aligned with everything
-     else instead of hanging off a right edge the controls also want. */
-  .counts { top: 96px; left: 10px; right: auto; }
+  /* The other end of the round's state, on its row rather than under it. A
+     counter at zero has not happened yet and is not drawn; the ones that have
+     are few enough to sit on one line, and are kept to one line on purpose --
+     a row that grew a second line would grow the band under it, and the band
+     is a fixed number of pixels the island has already been given. */
+  .counts { top: 58px; left: auto; right: 10px; max-width: 44vw;
+    flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
+  .counts .pill[data-n="0"] { display: none; }
+  .counts .pill { white-space: nowrap; font-size: 12px; padding: 5px 8px; }
   .at-top-right { top: 10px; right: 10px; left: auto; gap: 6px; }
   /* The picker is the widest thing in the row and the only one that can give:
      the buttons are touch targets and must not shrink. */
   .at-top-right select { max-width: 34vw; }
   .app.rail-open .at-top-right, .app.rail-open .counts { right: 10px; }
 
-  #status { top: 168px; left: 10px; right: 10px; max-width: none; }
+  #status { top: 100px; left: 10px; right: 10px; max-width: none; }
 
   /* Full width, and wrapping: the scrub gets a row of its own so it is long
      enough to drag, and the buttons fall underneath rather than off the side. */
@@ -742,41 +791,30 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .at-bottom #scrub { order: -1; flex: 1 0 100%; min-width: 0; }
   .at-bottom select { max-width: 40vw; }
 
-  /* Above the transport, not behind it, and only the goods -- the two notes
-     are the first thing to go when there is no room for both a caption and
-     the thing it captions. */
-  .legend { left: 10px; right: 10px; bottom: auto; top: 132px; max-width: none;
-    min-width: 0; gap: 6px 10px; }
+  /* Only while there is a shelf to read it against, and then over the island
+     just above the transport -- next to the card that raised it rather than in
+     a band at the far end of the screen. Only the goods: the two notes are the
+     first thing to go when there is no room for both a caption and the thing
+     it captions. */
+  .legend { left: 10px; right: 10px; top: auto; bottom: 154px; max-width: none;
+    min-width: 0; gap: 6px 10px; opacity: 0; }
+  /* The transcript still wins: it is a reading mode, and it is raised over
+     the corner the key would stand in. */
+  .app.shelf-open:not(.log-open) .legend { opacity: 1; }
   .legend span.sub { display: none; }
 
-  /* --- what the chrome gives back ----------------------------------------
+  /* --- what the chrome costs the island ----------------------------------
      The island cannot be screen-wide while the chrome holds 47% of the height.
-     Arithmetic, on a 393x660 window: the island needs 452 units of a 881-unit
+     Arithmetic, on a 393x660 window: the island needs 452 units of an 881-unit
      frame to be 520 across, the gap to the cards takes 16, and the two bands
-     leave 469 -- so the cards would have to be **one unit tall**. No card is
-     small enough. The room has to come off the chrome or not at all, which is
-     what the size check has said all along: "the answer then is to take room
-     back off the chrome rather than to move this number."
+     leave 469 -- so with the *open* card reserved the cards would have to be
+     one unit tall. No card is small enough.
 
-     So at the island's focus two of the four rows stand down, and the band
-     they took goes to the island. The two are the ones that are about the
-     round's bookkeeping rather than about the place: the counters, and the
-     goods key. The key is the real cost -- it is what names the colours of the
-     boxes standing in the yards -- and it is paid because the glance card
-     carries the same glyphs on its own shelf, and because one tap brings both
-     rows back.
-
-     What stays is the controls and the round's own state: which day it is and
-     whether the market is open, which is a caption on the island rather than a
-     tally beside it.
-
-     Scoped to portrait as well as to width, so that a phone turned sideways
-     while the island holds the screen gets its counters back -- landscape puts
-     the cards in margins and has no focus to honour. */
-  @media (orientation: portrait) {
-    :root.focus-island { --chrome-top: 96px; }
-    .focus-island .counts, .focus-island .legend { display: none; }
-  }
+     That is why a phone had a focus: something had to shrink, and the viewer
+     was asked which. It is why it no longer needs one -- the row reserves the
+     shut nameplate, which is 88 units against 186, and the island takes what
+     is left without anybody choosing. A card somebody opens is drawn over the
+     frame rather than inside this reservation. */
 
   /* A drawer is the whole screen at this width; half of one is neither. */
   .drawer.side { width: 100%; border-width: 0; }
@@ -785,26 +823,6 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .curtain { padding-bottom: 130px; padding-left: 10px; padding-right: 10px; }
 }
 
-/* --- who gets the screen -------------------------------------------------
-   The island and the cards are competing for one phone, and a tap says which
-   of them the viewer is actually looking at (`FOCUS` in scene.js). Nothing
-   permanent is added to the chrome for it -- the top row is already six
-   controls across 390 points -- so the gesture says what it did and goes.
-
-   Under the chrome's own band at the top, which is the one strip of the frame
-   that is sea in every focus. Above the transport is where it started and is
-   wrong: at island focus that is exactly where the cards went, so the caption
-   covered the utilities it had just spent a stylesheet rule keeping. */
-.focus-note { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%);
-  top: calc(var(--chrome-top) + 8px); pointer-events: none;
-  background: #0b1116d9; border: 1px solid var(--line); border-radius: 999px;
-  padding: 5px 13px; font-size: 12.5px; color: var(--ink-2);
-  backdrop-filter: blur(4px); opacity: 0; transition: opacity .3s ease;
-  white-space: nowrap; max-width: calc(100% - 20px); overflow: hidden;
-  text-overflow: ellipsis; }
-.focus-note.on { opacity: 1; }
-.focus-note b { color: var(--ink); font-weight: 600; }
-@media (prefers-reduced-motion: reduce) { .focus-note { transition: none; } }
 
 /* A fingertip is about 9mm and these are the only controls on the page. Keyed
    to the pointer rather than the width, because a tablet is neither narrow nor
@@ -880,7 +898,6 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   </div>
 
   <div class="note" id="status"></div>
-  <div class="focus-note" id="focus-note" role="status" aria-live="polite"></div>
   <div class="legend" id="legend"></div>
 
   <div class="chrome at-bottom" id="transport">
@@ -968,7 +985,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 
 <script type="module">
 import { reduce } from "./reducer.js";
-import { Scene, GLYPH, bundleText, layout } from "./scene.js";
+import { Scene, GLYPH, bundleText, layout,
+         CARD_H_SHUT, CARD_H_SHUT_BARE } from "./scene.js";
 import { loadBoard, liveFeed, hubFeed, decodeInvite, MANAGED_HUB, replayPlayer,
          rowsFromState, PACES, PACE_DEFAULT } from "./feeds.js";
 import { Stage } from "./stage.js";
@@ -986,7 +1004,24 @@ const $ = (id) => document.getElementById(id);
  * -- at about a third of a readable size. Taller than it is wide means the
  * huts stack instead of standing in a row.
  */
-const isPortrait = () => innerHeight > innerWidth;
+/**
+ * The box the island is actually drawn into, in CSS pixels.
+ *
+ * **Not the window.** A side drawer takes 340px off the right and the island
+ * used to keep its whole width underneath it, so opening the reveal rail put
+ * the drawer squarely on top of the right-hand trader's card -- 313px of a
+ * 287px card, which is all of it. Measured, not guessed: see `.rail-open`
+ * in the stylesheet, which is what narrows this box.
+ *
+ * Falls back to the window before the element has been laid out, which is the
+ * one moment this is asked and there is nothing to measure.
+ */
+const frameBox = () => {
+  const r = $("island")?.getBoundingClientRect();
+  return { w: Math.max(1, Math.round(r?.width) || innerWidth),
+           h: Math.max(1, Math.round(r?.height) || innerHeight) };
+};
+const isPortrait = () => { const f = frameBox(); return f.h > f.w; };
 /**
  * The window's shape, for the layout to fit its viewBox to.
  *
@@ -1003,7 +1038,8 @@ const isPortrait = () => innerHeight > innerWidth;
  * above and below and move every band.
  */
 const frameAspect = () => {
-  const a = innerWidth / innerHeight;
+  const f = frameBox();
+  const a = f.w / f.h;
   return a < 1 ? Math.floor(a * 100) / 100 : Math.round(a * 20) / 20;
 };
 /**
@@ -1018,7 +1054,11 @@ const frameAspect = () => {
 const chromeBands = () => {
   const css = getComputedStyle(document.documentElement);
   const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
-  const h = Math.max(1, innerHeight);
+  //: Against the box the island is drawn into, not the window: the chrome's
+  //: bands are a fixed number of pixels, so the same band is a larger share of
+  //: a frame a drawer has narrowed. The two have to be measured the same way
+  //: or the band lands somewhere other than where the chrome is.
+  const h = frameBox().h;
   //: Never more than half the frame between them. A stylesheet that declared
   //: a band taller than the window would otherwise leave the island a
   //: negative box.
@@ -1046,14 +1086,6 @@ let lastRows = null;
 //: it with the hidden half in it -- by then the board has stopped saying
 //: anything, so there is no later poll to carry them.
 let lastMounted = null;
-//: Which of the island and the cards this viewer asked for. Portrait only --
-//: landscape has margins down the sides and the cards stand in them, so the two
-//: are not competing there and there is nothing for a tap to re-divide. Kept
-//: here rather than on the scene because `raise()` lays the island out too, and
-//: the two have to be planning the same frame.
-let focus = "even";
-//: Shut by hand, and only until the round is left behind: scrubbing back
-//: into play clears it, so the card returns when the ending does.
 let dismissed = false;
 let mode = "replay";
 //: A live game's handover, once its manager has published one: where this
@@ -1147,15 +1179,31 @@ setInterval(paintClock, 1000);
 function hud(state) {
   $("ep").innerHTML = state.episode
     ? `day <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
-    : "before the first day";
+    //: **"before day 1", not "before the first day".** The long form was the
+    //: widest string the page ever put in a pill, and on a phone it and the
+    //: phase beside it came to 247px against the 242 the row has at its
+    //: widest -- so the phase wrapped to a line of its own and the two-row
+    //: band was three rows deep, on frame 0, which is the frame a shared link
+    //: opens on. No width setting fixes that: at 360pt the row is 223px and
+    //: the two strings do not fit however the row is sized. So the string
+    //: gives, and it loses nothing -- the game calls an episode a day, and
+    //: this is the same sentence in the same words with the ordinal spelled
+    //: as the numeral every other day pill already uses.
+    : "before day 1";
   const phase = { before: "waiting", ack: "acknowledging", production: "production",
                   market: "market open", closed: "sundown", over: "round over" }[state.phase];
   $("phase").textContent = phase;
   $("phase").className = `pill phase-${state.phase}`;
-  $("c-settled").innerHTML = `settled <b>${state.counters.settled}</b>`;
-  $("c-declined").innerHTML = `declined <b>${state.counters.declined}</b>`;
-  $("c-refused").innerHTML = `refused <b>${state.counters.refused}</b>`;
-  $("c-lapsed").innerHTML = `lapsed <b>${state.counters.lapsed}</b>`;
+  //: The number goes on the element as well as in it, because a phone shows
+  //: only the counters that have happened -- and "has this happened" is a
+  //: question about content, which a stylesheet cannot ask. See the portrait
+  //: rule for `.counts .pill[data-n="0"]`.
+  for (const [k, n] of Object.entries(state.counters)) {
+    const pill = $(`c-${k}`);
+    if (!pill) continue;
+    pill.innerHTML = `${k} <b>${n}</b>`;
+    pill.dataset.n = String(n);
+  }
 
   // How long the board has been quiet is not said in a pill any more. It was a
   // number about the replay rather than about the island, and the island has a
@@ -1333,11 +1381,19 @@ let stage = null;
  * something behind the page, so the drawn world is hidden exactly when it has
  * been replaced and never merely because the code shipped.
  */
+/**
+ * How tall a shut card is on this board, which is what a portrait frame
+ * reserves for the row. Live has no utility to keep, so its nameplate is
+ * shorter -- the same distinction the open card draws.
+ */
+const shutH = () => (reveal ? CARD_H_SHUT : CARD_H_SHUT_BARE);
+
 function raise(traders, goods, portrait) {
   const canvas = $("stage");
   const app = document.querySelector(".app");
   try {
-    const geo = layout(traders.length, portrait, frameAspect(), chromeBands(), focus);
+    const geo = layout(traders.length, portrait, frameAspect(), chromeBands(),
+                       shutH());
     if (!stage) stage = new Stage(canvas, geo); else stage.reframe(geo);
     // Where the settlements go, chosen on the *screen* and then dropped onto
     // the island's ground. Placing them on a ring in island coordinates put
@@ -1634,7 +1690,14 @@ function mount(rows, { manager } = {}) {
     // scene then puts each trader's card at its own hut.
     scene = new Scene($("island"), timeline, reveal, isPortrait(),
                       raise(timeline.traders, timeline.goods, isPortrait()),
-                      frameAspect(), chromeBands(), focus);
+                      frameAspect(), chromeBands());
+    //: The goods key follows the shelves on a phone -- see `.app.shelf-open`.
+    //: Asked once here after the scene exists, because the scene's own first
+    //: report happens inside its constructor, before there is anything to
+    //: report to.
+    scene.onCards = (any) =>
+      document.querySelector(".app").classList.toggle("shelf-open", any);
+    scene.sayCards();
     legend(timeline.goods, !!reveal);
   }
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
@@ -1858,6 +1921,13 @@ function drawer(button, panel, cls) {
     el.hidden = !want;
     $(button).setAttribute("aria-pressed", String(want));
     document.querySelector(".app").classList.toggle(cls, want);
+    //: **A drawer that narrows the frame is a reshaped frame**, and the island
+    //: has to re-divide what is left or the drawer lands on top of a card.
+    //: `refit` is a no-op when the box did not actually change, so the foot
+    //: drawer -- which takes height the island was not using -- costs nothing
+    //: here. Synchronous on purpose: `frameBox` reads a layout that the class
+    //: above has just invalidated, and asking for it is what flushes it.
+    refit();
   };
   $(button).onclick = () => set(!open());
   return { set, open };
@@ -1911,67 +1981,30 @@ $("closing-replay").addEventListener("click", () => {
 // on every scroll and on every address-bar nudge, and rebuilding the scene on
 // each one would throw away every animation in flight.
 let reflowing = null;
+/**
+ * Re-fit the island to the box it is drawn into, whatever changed the box.
+ *
+ * A rotated phone, a dragged window edge, and a side drawer opening are the
+ * same event to the scene: the frame is a different shape and the layout has
+ * to re-divide it. Written once because it was already written twice -- the
+ * resize handler and the focus tap that used to live beside it.
+ */
+function refit() {
+  // Repainted from the last frame rather than through the player, because live
+  // has no player at all and a rebuilt island would otherwise stay empty until
+  // the next line arrived on the board.
+  if (scene?.reflow(isPortrait(), frameAspect(), chromeBands()) && lastPaint) {
+    // A differently-shaped frame puts the settlements somewhere else; the scene
+    // takes the new places.
+    scene.replace(raise(scene.traders, scene.goods, isPortrait()));
+    paint({ ...lastPaint, animate: false });
+  } else stage?.resize();
+}
+
 addEventListener("resize", () => {
   clearTimeout(reflowing);
-  reflowing = setTimeout(() => {
-    // Repainted from the last frame rather than through the player, because
-    // live has no player at all and a rebuilt island would otherwise stay empty
-    // until the next line arrived on the board.
-    if (scene?.reflow(isPortrait(), frameAspect(), chromeBands()) && lastPaint) {
-      // A rotated phone is a differently-shaped frame, so the island is reframed
-      // and its settlements land somewhere else; the scene takes the new places.
-      scene.replace(raise(scene.traders, scene.goods, isPortrait()));
-      paint({ ...lastPaint, animate: false });
-    } else stage?.resize();
-  }, 180);
+  reflowing = setTimeout(refit, 180);
 });
-
-/**
- * Give the screen to whichever of the two the viewer just tapped.
- *
- * A phone in portrait has to fit an island and a card per trader into one
- * screen, and at the sizes that leaves neither is comfortable: the island draws
- * about half the window wide and a card's numbers are near the floor of legible.
- * There is no arrangement that fixes that -- the room is not there -- so the
- * viewer says which one they are looking at and it gets the room.
- *
- * **A tap on a thing, not a control.** The island and the cards are the two
- * objects on the page and they are their own buttons; the alternative was a
- * seventh control in a top row that is already six wide at 390 points.
- * Tapping the thing that is already focused gives the screen back.
- */
-function refocus(next) {
-  focus = next;
-  //: **Before the bands are read, not after.** `--chrome-top` is declared in
-  //: the stylesheet and this class is what changes it, so a `chromeBands()`
-  //: taken first would hand the layout the old band and put the island back
-  //: under the pills for one paint.
-  document.documentElement.classList.toggle("focus-island", next === "island");
-  if (!scene?.reflow(isPortrait(), frameAspect(), chromeBands(), focus)) return;
-  // The same path a rotated phone takes: the frame is re-divided, so the island
-  // is reframed, its settlements land somewhere else and the scene takes the
-  // new places.
-  scene.replace(raise(scene.traders, scene.goods, isPortrait()));
-  if (lastPaint) paint({ ...lastPaint, animate: false });
-  say(next);
-}
-
-//: What the gesture just did, for as long as it takes to read. It says the
-//: *reversal* as well as the state, because a tap that gives the island the
-//: screen has also taken it from the cards and nothing else on the page says
-//: how to get them back.
-let saying = null;
-function say(what) {
-  const note = $("focus-note");
-  note.innerHTML = what === "island"
-    ? "<b>the island</b> · tap it again for the cards"
-    : what === "cards"
-      ? "<b>the cards</b> · tap one again for the island"
-      : "<b>even</b> · tap the island or a card to give it the screen";
-  note.classList.add("on");
-  clearTimeout(saying);
-  saying = setTimeout(() => note.classList.remove("on"), 2600);
-}
 
 /** Where a click landed, in the island's own coordinates. */
 function pointIn(e) {
@@ -1988,26 +2021,14 @@ $("island").addEventListener("click", (e) => {
   const at = pointIn(e);
   if (!at) return;
 
-  //: **The two ways up ask different questions of the same click.**
-  //:
-  //: Portrait has one screen for an island and a card per trader, and neither
-  //: fits at the size that leaves; the click says *which of the two* the
-  //: viewer is looking at, and the frame is re-divided (`FOCUS`). Landscape
-  //: has margins down the sides where the cards already stand, so nothing is
-  //: competing -- and the click says *which trader* instead, opening one
-  //: card's shelf without moving anything else.
-  //:
-  //: They are not the same gesture wearing two hats. Making portrait's tap
-  //: open a single card would take away the only way to give the island the
-  //: screen, and making landscape's re-divide a frame that has room for
-  //: everything would be motion for nothing.
-  if (scene.portrait) {
-    const hit = scene.tapped(at.x, at.y);
-    // The sea around them is not a third state. A tap there is a tap on nothing.
-    if (hit) refocus(focus === hit ? "even" : hit);
-    return;
-  }
-
+  //: **One click, both ways up.** It used to be two: portrait's re-divided the
+  //: frame between the island and the cards, and landscape's opened one
+  //: trader's shelf. That was defended here as two questions rather than one
+  //: gesture wearing two hats -- and the defence was sound about the hazard
+  //: and wrong about the premise. Once cards are shut by default, portrait's
+  //: cards are nameplates and the frame does not have to be re-divided at all:
+  //: the row reserves the nameplate and the island takes the rest. So the
+  //: click says *which trader* everywhere, and nothing else moves.
   //: A hut and the card hanging under it are one target. The card is the
   //: thing being opened, but the hut is what a viewer looking for a trader
   //: points at -- and on a shut card the hut is the larger half of what is
@@ -2017,13 +2038,20 @@ $("island").addEventListener("click", (e) => {
   const onHut = e.target.closest?.("[data-trader]")?.getAttribute("data-trader");
   const who = onHut && scene.traders.includes(onHut)
     ? onHut : scene.cardAt(at.x, at.y);
-  if (!who || !scene.toggleCard(who)) return;
-  //: Repainted from the last frame rather than through the player: live has no
-  //: player at all, and a card just rebuilt is empty until something fills it
-  //: from state. Never animated -- the settlement that filled this shelf may
-  //: have been twenty frames ago, and replaying its flight because somebody
-  //: opened a card would be the page inventing an event.
-  if (lastPaint) paint({ ...lastPaint, animate: false });
+  if (who && scene.toggleCard(who)) {
+    //: Repainted from the last frame rather than through the player: live has
+    //: no player at all, and a card just rebuilt is empty until something
+    //: fills it from state. Never animated -- the settlement that filled this
+    //: shelf may have been twenty frames ago, and replaying its flight because
+    //: somebody opened a card would be the page inventing an event.
+    if (lastPaint) paint({ ...lastPaint, animate: false });
+    return;
+  }
+
+  //: **A tap on anything else is a tap on nothing**, both ways up. It used to
+  //: re-divide the frame in portrait; the frame is divided once now and the
+  //: island is not something a viewer has to negotiate for. See the note above
+  //: `cardPlan`.
 });
 
 addEventListener("keydown", (e) => {
