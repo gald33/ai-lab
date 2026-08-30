@@ -35,6 +35,7 @@ import math
 import socket
 import sys
 import threading
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -65,6 +66,40 @@ REPLAYS = REPO / "games" / "replays"
 #: One constant rather than nineteen literals, because the next one to be too
 #: short would have been found the same way this one was.
 MOUNT_MS = 60_000
+
+#: How long a whole replay is given to play through before the page is called
+#: stuck. A deadline and not a check, exactly as `MOUNT_MS` is: everything
+#: `palette` asserts is asked after the replay has ended, so waiting longer
+#: cannot weaken any of it.
+#:
+#: Measured on a headless GPU-less machine, playing the 007 board `palette`
+#: reaches for -- 162 frames -- from `#play` to the scrub reaching its end:
+#:
+#: | pace | to the end |
+#: |---|---|
+#: | `step` | 303s |
+#: | `tight` (the page's default) | 331s |
+#:
+#: That is not a slow harness: `paceDelay` floors every frame at what its
+#: animation draws under *every* pace, so a replay costs the sum of its clips
+#: whatever the transport says. `step` only drops the waiting between events,
+#: which on a busy board is the smaller half.
+#:
+#: **The number this replaced was not a deadline at all.** `palette` used to
+#: poll from Python `for _ in range(900)` with a 120ms wait, and an `evaluate`
+#: against a page drawing at 2fps takes 190-240ms -- so the loop ran out after
+#: about 265 seconds of a replay that needs 331, and then read the palette
+#: back and asserted the island had got its own colour *back at the end of the
+#: game*. It was making that claim around frame 150 of 162, and it would have
+#: gone on making it however much earlier the loop had run out, because
+#: nothing checked that the end had been reached. It does now.
+#:
+#: 600s is twice the measured play, on the same reasoning as `MOUNT_MS`:
+#: nothing here is asserted by this timeout -- every claim is made after the
+#: replay has ended -- so waiting longer cannot weaken any of them, while too
+#: short a wait fails a run on a machine that is playing exactly the right
+#: thing.
+PLAY_MS = 600_000
 
 #: Where the replay is stepped to. Chosen for what is on screen, not evenly:
 #: the open shows an empty island, the middle shows production and an open
@@ -103,6 +138,41 @@ def serve(replays: Path) -> tuple[str, http.server.ThreadingHTTPServer]:
     base = f"http://127.0.0.1:{port}"
     _SERVERS[base] = server
     return base, server
+
+
+def settled(page, ms: int) -> None:
+    """Let the page arrive, then stop the stage before measuring it.
+
+    **The pause is the measurement's friend, not just the clock's.** A GPU-less
+    browser draws this page at 2 frames a second with the WebGL loop running
+    and 25 with it stopped, and the checks that read the model's own pixels do
+    the most expensive reading there is -- `getImageData` over a full canvas
+    and a loop across it -- while that loop competes for the same core.
+
+    It is also the *stronger* thing to measure. Every caller here asks where
+    something is: a card against the island behind it, the island against its
+    band, the corners of the frame against the sea. With the loop running the
+    camera is a little further round between one `evaluate` and the next, so
+    two reads of one page are two different frames; stopped, they are the same
+    frame, and a check that compares them is comparing what a person would see
+    at one moment rather than across a slow half second.
+
+    Nothing is given up by it, because **`landMask` renders on demand**: it
+    hides the water meshes, calls `st.render()` itself, reads the canvas back
+    and renders again to restore. That is why the loop is not needed for these
+    and is needed for `alive`, which asks whether the island *moves* -- so
+    `alive` is not called through here, and neither is anything else that
+    measures a change over time.
+
+    Called after the settle rather than before it, because the page is still
+    arriving during that wait -- a stage stopped before the huts have finished
+    coming up freezes them half way, and every rectangle read afterwards is a
+    rectangle of a page mid-flight.
+    """
+    page.wait_for_timeout(ms)
+    #: `?.` because a page with no WebGL never publishes one, and the fallback
+    #: SVG scene is a page these checks still run on.
+    page.evaluate("() => window.__island?.pause()")
 
 
 def board_url(base: str, stem: str) -> str:
@@ -886,7 +956,136 @@ def palms(page, where: str) -> list[str]:
     return bad
 
 
-def run(out: Path, headed: bool = False, require: bool = False) -> int:
+#: Which CI job carries a check, and it is decided by the clock.
+#:
+#: **The split is by measured cost, and is named for it, because that is what
+#: it is.** The obvious story -- structural checks are cheap, the ones that
+#: read the model's pixels through `landMask` are dear -- is not what the
+#: table says. `uncovered`, `mobile`, `focusing` and `afloat` come to 90
+#: seconds between them, under a tenth of the run. What the run is actually
+#: spent on is four checks, and they are dear for four different reasons:
+#:
+#: | check | seconds | why |
+#: |---|---|---|
+#: | `palette` | 318 | it plays a 162-frame game through, and every frame is held for what its animation draws |
+#: | `island` | 102 | it builds the scene at a dozen shapes and counts what it drew |
+#: | `replay` | 86 | five stops on every board on disk |
+#: | `overhead` | 85 | the same, from above |
+#:
+#: 590 seconds against 473 for the other twenty-three put together. So the
+#: rule is the one a reader can apply from the table every run prints:
+#: **over a minute on a GPU-less machine goes in `slow`, the rest in
+#: `quick`.** Nothing is chosen by taste, and nothing needs a story about
+#: what kind of check it is.
+#:
+#: **The two groups are a partition, not a preference.** Every check is in
+#: exactly one, `tests.yml` runs both, and `test_render_gate.py` asserts that
+#: the union of the jobs' groups is the whole suite -- because a check that
+#: falls out of both groups is a check nobody runs, drawn as a green tick,
+#: which is the failure mode `--require` exists to prevent wearing a different
+#: hat.
+GROUPS = ("quick", "slow")
+
+#: What the split is worth, and it is worth what the *longer* job costs: the
+#: two run at once, so the gate is `max`, not the sum. Measured here at 590s
+#: and 473s against 1063s for the suite in one job.
+#:
+#: `palette` alone is 318s of the 590, which is the floor under any split of
+#: this suite short of taking that check apart -- and it is not the harness
+#: waiting, it is the game being played.
+
+
+def checks(browser, base: str, boards: list[Path], out: Path):
+    """Every check in the suite, in the order they run, each with a name.
+
+    Named and listed rather than called in a row, so that a run can time them,
+    a CI job can carry a subset of them, and `--only` can drive one of them
+    from a developer's machine without the other forty.
+
+    The order is the order they were written in and is not significant; what
+    is significant is that this list is the *only* place the suite is
+    enumerated, so a check added here is a check both CI jobs' groups cover.
+    """
+    def stem(board: Path) -> str:
+        return board.name[len("board-"):-len(".json")]
+
+    plan: list[tuple[str, str, object]] = []
+
+    def add(group: str, name: str, fn, *args):
+        assert group in GROUPS, group
+        plan.append((group, name, lambda: fn(browser, base, *args)))
+
+    for board in boards:
+        add("slow", f"replay/{stem(board)}", replay, board, out)
+    for board in boards:
+        add("quick", f"blame/{stem(board)}", blame, board, out)
+    for board in boards:
+        add("slow", f"overhead/{stem(board)}", overhead, board, out)
+    add("quick", "bare", bare, boards[0], out)
+    add("quick", "appetite", appetite, boards[0], out)
+    add("quick", "straddle", straddle, out)
+    add("quick", "mobile", mobile, boards[0], out)
+    add("quick", "focusing", focusing, boards[0], out)
+    add("quick", "fallback", fallback, boards[0], out)
+    add("quick", "living", living, boards[0], out)
+    add("quick", "alive", alive, boards[0], out)
+    add("quick", "turning", turning, boards[0], out)
+    add("quick", "uncovered", uncovered, boards[0], out)
+    add("quick", "afloat", afloat, boards[0], out)
+    add("quick", "nightfall", nightfall, out)
+    add("quick", "twilight", twilight, boards[0], out)
+    add("slow", "palette", palette, boards[0], out)
+    add("quick", "clockwork", clockwork, out)
+    for board in boards:
+        add("quick", f"travelling/{stem(board)}", travelling, board, out)
+    add("quick", "stock", stock, out)
+    add("quick", "carrying", carrying, out)
+    add("quick", "emerging", emerging, out)
+    add("slow", "island", island, out)
+    add("quick", "whose", whose, out)
+    add("quick", "surf", surf, out)
+    add("quick", "mechanics", mechanics, out)
+    for board in boards:
+        add("quick", f"daylight/{stem(board)}", daylight, board, out)
+    add("quick", "vocabulary", vocabulary, boards[0])
+    add("quick", "ring", ring, out)
+    add("quick", "shutters", shutters, out)
+    return plan
+
+
+def enumerated() -> set[str]:
+    """Every check the suite has, by name, without driving one of them.
+
+    `checks` builds calls and invokes nothing, so a `None` browser and a
+    made-up board are enough to ask what is in the suite. Board-per-check
+    names collapse to the check (`replay/island-game-001d-g1` -> `replay`),
+    because "is this check in the suite" is the question.
+    """
+    return {name.split("/")[0] for _, name, _ in
+            checks(None, "", [Path("board-x.json")], Path("."))}
+
+
+def select(plan, group: str | None, only: list[str] | None):
+    """The checks a run is asked for, out of every check there is.
+
+    Pure, and separate from `run`, so the one property that matters can be
+    tested without a browser: **a selection that matches nothing is not a
+    selection**. `run` turns an empty one into the same failure a missing
+    browser is, because a job that ran no check and a job whose checks all
+    passed are the same green tick -- which is the whole reason `--require`
+    exists.
+
+    A name matches either whole (`replay/island-game-001d-g1`) or by the check
+    it belongs to (`replay`), so `--only replay` is every board's.
+    """
+    return [(g, name, fn) for g, name, fn in plan
+            if (group is None or g == group)
+            and (only is None or any(name.split("/")[0] == o or name == o
+                                     for o in only))]
+
+
+def run(out: Path, headed: bool = False, require: bool = False,
+        group: str | None = None, only: list[str] | None = None) -> int:
     """Drive the page in a real browser and report what it drew.
 
     `require` turns every skip below into a failure. **A suite that skips is
@@ -894,6 +1093,12 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
     to skip -- no playwright, no browser, no replays -- each of which would let
     a CI job go green having rendered nothing at all. Locally a skip is the
     right behaviour; in CI it is the failure mode the job exists to prevent.
+
+    `group` and `only` narrow what runs. **A narrowed run under `--require` is
+    still not allowed to check nothing**: a selection that matches no check is
+    a failure, for the same reason a missing browser is one. That is the whole
+    of what selection is allowed to do to the gate -- a job carrying a group
+    still fails on anything unlisted, and `tests.yml` carries both groups.
     """
     def skip(why: str) -> int:
         if require:
@@ -916,6 +1121,7 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
     out.mkdir(parents=True, exist_ok=True)
     base, server = serve(REPLAYS)
     problems: list[str] = []
+    timings: list[tuple[str, float]] = []
     try:
         with sync_playwright() as p:
             try:
@@ -928,41 +1134,37 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
             # published game was never rendered by anything until somebody
             # opened it -- which is exactly how the live board's seat names
             # got past this harness and were found by eye instead.
-            for board in boards:
-                problems += replay(browser, base, board, out)
-            for board in boards:
-                problems += blame(browser, base, board, out)
-            for board in boards:
-                problems += overhead(browser, base, board, out)
-            problems += bare(browser, base, boards[0], out)
-            problems += appetite(browser, base, boards[0], out)
-            problems += straddle(browser, base, out)
-            problems += mobile(browser, base, boards[0], out)
-            problems += focusing(browser, base, boards[0], out)
-            problems += fallback(browser, base, boards[0], out)
-            problems += living(browser, base, boards[0], out)
-            problems += alive(browser, base, boards[0], out)
-            problems += turning(browser, base, boards[0], out)
-            problems += uncovered(browser, base, boards[0], out)
-            problems += afloat(browser, base, boards[0], out)
-            problems += nightfall(browser, base, out)
-            problems += twilight(browser, base, boards[0], out)
-            problems += palette(browser, base, boards[0], out)
-            problems += clockwork(browser, base, out)
-            for board in boards:
-                problems += travelling(browser, base, board, out)
-            problems += stock(browser, base, out)
-            problems += carrying(browser, base, out)
-            problems += emerging(browser, base, out)
-            problems += island(browser, base, out)
-            problems += whose(browser, base, out)
-            problems += surf(browser, base, out)
-            problems += mechanics(browser, base, out)
-            for board in boards:
-                problems += daylight(browser, base, board, out)
-            problems += vocabulary(browser, base, boards[0])
-            problems += ring(browser, base, out)
-            problems += shutters(browser, base, out)
+            plan = select(checks(browser, base, boards, out), group, only)
+            if not plan:
+                browser.close()
+                return skip(f"no check matches "
+                            f"{'--group ' + group if group else ''}"
+                            f"{' --only ' + ','.join(only) if only else ''}")
+            for _, name, fn in plan:
+                started = time.monotonic()
+                #: **A check that raises is a failed check, not a failed run.**
+                #:
+                #: These drive a browser, so any of them can raise -- a mount
+                #: that misses `MOUNT_MS`, a selector that has moved, a page
+                #: that went away. That used to come out of `run` as a
+                #: traceback: the process died where it stood, every check
+                #: after it went unrun, and the log said nothing about any of
+                #: them. One check timing out would hide the state of twenty
+                #: others, which is the opposite of what a gate is for.
+                #:
+                #: Nothing is softened by catching it. The exception becomes a
+                #: problem line like any other, so `verdict` fails the run on
+                #: it unless it is in `KNOWN_FAILURES` -- and it is named for
+                #: the check it came from, which is what a `KNOWN_FAILURES` key
+                #: matches on. `Exception` and not `BaseException`, so a
+                #: keyboard interrupt still stops the run.
+                try:
+                    problems += fn()
+                except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+                    problems.append(
+                        f"{name}: raised {type(exc).__name__}: "
+                        f"{str(exc).splitlines()[0] if str(exc) else ''}")
+                timings.append((name, time.monotonic() - started))
             browser.close()
     finally:
         server.shutdown()
@@ -970,6 +1172,14 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
     code, lines = verdict(problems)
     for line in lines:
         print(line)
+    #: Printed every run, not behind a flag. **The half-hour this job costs is
+    #: only arguable with the breakdown in front of you**, and a number that
+    #: has to be asked for is a number nobody has when the job gets slow again.
+    print("")
+    print(f"{'check':<28} {'seconds':>8}")
+    for name, secs in sorted(timings, key=lambda t: -t[1]):
+        print(f"{name:<28} {secs:>8.1f}")
+    print(f"{'total':<28} {sum(s for _, s in timings):>8.1f}")
     print(f"PNGs in {out}")
     return code
 
@@ -1870,7 +2080,7 @@ def afloat(browser, base: str, board: Path, out: Path) -> list[str]:
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=MOUNT_MS)
-        page.wait_for_timeout(2000)
+        settled(page, 2000)
         if not page.evaluate("() => document.querySelector('.app')"
                              ".classList.contains('has-3d')"):
             page.close()
@@ -2199,43 +2409,121 @@ def palette(browser, base: str, board: Path, out: Path) -> list[str]:
       return { mats: out, i: s ? Number(s.value) : -1, max: s ? Number(s.max) : -1,
                clips: window.__island ? window.__island.clips.length : -1 };
     }"""
-    was = page.evaluate(read)["mats"]
-    #: Sixteen times, because a game is minutes long and this is watching for a
-    #: write that never comes back on its own -- once it has happened, any
-    #: later sample sees it.
-    page.evaluate("""() => { const b = [...document.querySelectorAll('button')]
-      .find((x) => x.textContent.trim() === '16×'); if (b) b.click(); }""")
-    page.click("#play")
     bad: list[str] = []
-    seen = dict(was)
-    frames, done = 0, -1
-    for _ in range(900):
-        now = page.evaluate(read)
-        frames += 1
-        for k, v in now["mats"].items():
-            if v != seen[k]:
-                #: Reported once per entry per change, with where in the game
-                #: it happened: a palette entry that moves and comes back is
-                #: still a clip writing to the island's own material.
-                bad.append(f"palette: M.{k} was {seen[k]} and is {v} at frame "
-                           f"{now['i']}/{now['max']} with {now['clips']} clip(s) in "
-                           f"flight; a clip may only paint the clone it borrowed")
-                seen[k] = v
-        done = now["i"]
-        if now["max"] >= 0 and done >= now["max"]:
-            break
-        page.wait_for_timeout(120)
+    #: **The watching happens in the page, and not over the wire.**
+    #:
+    #: This used to poll from here: `page.evaluate` for the whole palette,
+    #: `wait_for_timeout(120)`, nine hundred times. On a GPU-less browser an
+    #: `evaluate` waits for the page's main thread, which is busy drawing a
+    #: frame -- measured at **190 to 240ms a round trip** -- so each turn of
+    #: that loop cost about a third of a second and the check cost 274s of a
+    #: 1022s suite. Worse, the polling was itself part of what it was waiting
+    #: for: every round trip took main-thread time away from the replay it was
+    #: trying to let finish.
+    #:
+    #: A recorder inside the page costs none of that, and it is the **stronger**
+    #: sampler as well. A material is written by a clip from inside the stage's
+    #: own frame loop, so every value one ever *holds* is a value some frame
+    #: ends on -- and `requestAnimationFrame` sees exactly those, all of them,
+    #: at whatever rate the machine manages. The 120ms poll saw whichever ones
+    #: it happened to land on, which on a page drawing at 2fps was about one
+    #: frame in four.
+    watch = """() => {
+      const M = window.__M;
+      const hex = (k) => '#' + M[k].color.getHexString();
+      const keys = Object.keys(M).filter((k) => !/^sea/.test(k));
+      const seen = {};
+      for (const k of keys) seen[k] = hex(k);
+      const rec = { was: {...seen}, moves: [], frames: 0 };
+      window.__palette = rec;
+      const tick = () => {
+        rec.frames++;
+        const s = document.getElementById('scrub');
+        for (const k of keys) {
+          const v = hex(k);
+          if (v === seen[k]) continue;
+          //: Every move, with where in the game it happened and how many
+          //: clips were in flight -- an entry that moves and comes back is
+          //: still a clip writing to the island's own material.
+          rec.moves.push({ k, from: seen[k], to: v,
+                           i: s ? Number(s.value) : -1, max: s ? Number(s.max) : -1,
+                           clips: window.__island ? window.__island.clips.length : -1 });
+          seen[k] = v;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return keys.length;
+    }"""
+    if not page.evaluate(watch):
+        page.close()
+        return ["palette: the island published no palette to watch"]
+    #: **The fastest pace there is, asked for through the page's own control.**
+    #: A game is minutes long and this watches the whole of it, so what the
+    #: check costs is what the replay costs to play.
+    #:
+    #: `step` and not `live` or `tight`, and no coverage is given up by it: all
+    #: three hold a frame for at least what its animation draws (`paceDelay`'s
+    #: floor is `dwellFor` under every pace), so every clip still runs whole
+    #: and still has every chance to paint `M`. What `step` drops is the
+    #: *waiting between* events, and a silence is the one stretch of a replay
+    #: in which no clip is running to paint anything.
+    #:
+    #: **This used to click a `16×` button, and there has not been one since
+    #: the transport became three rules rather than three numbers.** It was
+    #: written `if (b) b.click()`, so it found nothing and did nothing, and the
+    #: check played at the default pace instead. Nothing failed, which is why
+    #: it survived: a control that is missing and a control already set look
+    #: identical to a conditional click. This one asserts it took, and would
+    #: have gone red the day the button was renamed.
+    paced = page.evaluate("""() => {
+      const sel = document.getElementById('pace');
+      if (!sel || ![...sel.options].some((o) => o.value === 'step')) return null;
+      sel.value = 'step';
+      sel.dispatchEvent(new Event('change'));
+      return sel.value;
+    }""")
+    if paced != "step":
+        bad.append(f"palette: the transport has no `step` pace to play on "
+                   f"({paced!r}); this check paces the replay through the "
+                   f"page's own control, and one it cannot find means it is "
+                   f"silently watching a slower replay")
+    page.click("#play")
+    #: Waited for **in the page**, for the same reason the palette is: one call
+    #: rather than a round trip every tenth of a second. `PLAY_MS` is a hang
+    #: guard and not a check -- nothing below is asserted by it -- so it is set
+    #: at twice the measured play rather than close to it.
+    try:
+        page.wait_for_function(
+            """() => { const s = document.getElementById('scrub');
+                       return s && Number(s.max) > 0 && Number(s.value) >= Number(s.max); }""",
+            timeout=PLAY_MS)
+    except Exception:  # noqa: BLE001 - playwright's TimeoutError, by any name
+        at = page.evaluate("""() => { const s = document.getElementById('scrub');
+                                      return s ? [Number(s.value), Number(s.max)] : [-1, -1]; }""")
+        bad.append(f"palette: the replay stopped at frame {at[0]}/{at[1]} and "
+                   f"never reached its end inside {PLAY_MS // 1000}s; nothing "
+                   f"was actually played through")
+    #: Past the last clip's own dwell, so the palette is read after the game
+    #: has finished putting back what it borrowed rather than during it.
     page.wait_for_timeout(2500)
+    rec = page.evaluate("() => ({ ...window.__palette, "
+                        "at: (() => { const s = document.getElementById('scrub');"
+                        "             return s ? [Number(s.value), Number(s.max)] : [-1, -1]; })() })")
     end = page.evaluate(read)["mats"]
     page.close()
-    bad = list(dict.fromkeys(bad))[:12] + [f"palette: {e}" for e in errs]
+    was = rec["was"]
+    moves = [f"palette: M.{m['k']} was {m['from']} and is {m['to']} at frame "
+             f"{m['i']}/{m['max']} with {m['clips']} clip(s) in flight; a clip "
+             f"may only paint the clone it borrowed" for m in rec["moves"]]
+    bad += list(dict.fromkeys(moves))[:12] + [f"palette: {e}" for e in errs]
     for k, v in end.items():
-        if v != was[k]:
+        if k in was and v != was[k]:
             bad.append(f"palette: the game ended with M.{k} at {v}, not {was[k]}; "
                        f"the island does not get its own colour back")
-    if done < 1:
-        bad.append(f"palette: the replay never advanced ({done} frames in "
-                   f"{frames} samples); nothing was actually played")
+    if rec["at"][0] < 1:
+        bad.append(f"palette: the replay never advanced ({rec['at'][0]} frames in "
+                   f"{rec['frames']} samples); nothing was actually played")
     if not busy.exists():
         print("  note: palette played "
               f"{stem} -- 007's replays are not in this checkout, and the "
@@ -2280,7 +2568,7 @@ def uncovered(browser, base: str, board: Path, out: Path) -> list[str]:
         page = browser.new_page(viewport={"width": w, "height": h})
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=MOUNT_MS)
-        page.wait_for_timeout(1800)
+        settled(page, 1800)
         if not page.evaluate("() => document.querySelector('.app').classList.contains('has-3d')"):
             page.close()
             continue
@@ -3226,7 +3514,37 @@ def emerging(browser, base: str, out: Path) -> list[str]:
     errs: list[str] = []
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
-    page.wait_for_selector(".hut", timeout=MOUNT_MS)
+    #: **The app being up, not an island being drawn.** This page is opened
+    #: with no board named, so it mounts *a round at random* -- and all this
+    #: check wants from it is the board listing, which it goes on to read and
+    #: then navigates away from whatever was picked.
+    #:
+    #: Waiting for `.hut` there made that random pick load-bearing, and **20 of
+    #: the 156 boards this server lists never draw one**: the `bare` arm of
+    #: 004's and 005's ladders is the no-protocol control, and those rounds
+    #: reduce to a timeline of *zero* frames. Nothing is wrong with the page on
+    #: one -- no console error, `has-3d` set, the transport populated, and an
+    #: empty island, which is what a round with nothing in it looks like. But
+    #: `emerging` sat on `.hut` for the whole of `MOUNT_MS` and then took the
+    #: run down with a timeout, about one run in eight.
+    #:
+    #: Found by mounting all 156 in turn rather than by re-running until it
+    #: went red: every other board draws its first hut in 3.3 to 3.8 seconds,
+    #: and those twenty never do at 90. It read as a flake because it is a
+    #: lottery over which board got picked, and the
+    #: fix is not a longer deadline -- no deadline is long enough for a hut
+    #: that is not coming.
+    #:
+    #: So this waits for the thing it actually depends on: the app's own module
+    #: having run, which is what fills the pace select. That is true on a bare
+    #: board too.
+    #: `state="attached"`, because an `<option>` inside a `<select>` is never
+    #: "visible" to playwright and the default state would wait out `MOUNT_MS`
+    #: on every board including the good ones. Caught by the first run after
+    #: this changed, which went from failing one time in eight to failing three
+    #: times out of three -- a deterministic failure being the loud kind, and
+    #: the reason a fix gets run more than once before it is believed.
+    page.wait_for_selector("#pace option", timeout=MOUNT_MS, state="attached")
     at = page.evaluate("""async () => {
       const { reduce } = await import('./reducer.js');
       const list = await (await fetch('api/boards', {cache: 'no-store'})).json();
@@ -4007,11 +4325,22 @@ def mechanics(browser, base: str, out: Path) -> list[str]:
     #: island's own floor because their picture is drawn over the canvas
     #: instead -- so the checks that hold *those* to their job have to still be
     #: in the suite, or the two events go quiet everywhere at once and nothing
-    #: says so. Read out of this file's own source, which is where `run` says
-    #: what it runs.
-    here = Path(__file__).read_text()
+    #: says so.
+    #:
+    #: Asked of `checks()`, which is where the suite is enumerated. This used
+    #: to grep this file for `problems += turning(`, and that broke silently
+    #: the first time `run` stopped being a list of those statements: the
+    #: string went, both carriers were still run, and this reported them gone.
+    #: A guard that fails when the thing it guards is fine is on its way to
+    #: being deleted, so it asks the list rather than the prose around it.
+    #:
+    #: It is a claim about the *suite*, not about this run: `--only mechanics`
+    #: does not run `turning` and is not meant to. What keeps both carriers in
+    #: front of CI is that the groups partition the suite and `tests.yml`
+    #: carries every group, which `test_render_gate.py` holds shut.
+    carried = enumerated()
     for kind, carrier in (("an offer", "turning"), ("a refusal", "overhead")):
-        if f"problems += {carrier}(" not in here:
+        if carrier not in carried:
             bad.append(f"mechanics: {kind} is excused the island's floor "
                        f"because `{carrier}` carries it, and `{carrier}` is no "
                        f"longer run")
@@ -4410,7 +4739,7 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
         page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=MOUNT_MS)
-        page.wait_for_timeout(1400)
+        settled(page, 1400)
         seen = page.evaluate("""(chrome) => {""" + LAND_JS + MASK_JS + """
           const box = (s) => { const n = document.querySelector(s);
             if (!n || n.hidden) return null;
@@ -4714,7 +5043,7 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(board_url(base, stem))
     page.wait_for_selector(".hut", timeout=MOUNT_MS)
-    page.wait_for_timeout(1400)
+    settled(page, 1400)
 
     #: The island's own pixels and the cards' boxes, in one read. The island is
     #: measured off the canvas with `landMask` for the reason `mobile` is: the
@@ -6282,9 +6611,17 @@ def main(argv: list[str] | None = None) -> int:
                     help="fail rather than skip when there is no browser, no "
                          "playwright or no replay to render; for CI, where a "
                          "silent skip is a green tick over nothing")
+    ap.add_argument("--group", choices=GROUPS,
+                    help="run only the checks in this group; `tests.yml` "
+                         "carries one CI job per group and between them they "
+                         "run every check")
+    ap.add_argument("--only", help="run only these checks, by comma-separated "
+                                   "name -- for a developer's machine, not for CI")
     args = ap.parse_args(argv)
+    only = [n.strip() for n in args.only.split(",")] if args.only else None
     with contextlib.suppress(KeyboardInterrupt):
-        return run(args.out.resolve(), args.headed, args.require)
+        return run(args.out.resolve(), args.headed, args.require,
+                   args.group, only)
     return 0
 
 

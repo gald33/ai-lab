@@ -54,13 +54,30 @@ jobs:
   # What the island *draws*, in a real browser. `render.py` is the only check
   # on card and hut placement, on scenery not landing on a shelf, on the chrome
   # not covering the cards and on the light being on the day's clock -- and
-  # until now nothing ran it, so none of that was covered by a green tick.
+  # until it was put in CI nothing ran it, so none of that was covered by a
+  # green tick.
   #
-  # **`--require` is the whole point of the invocation.** `render.py` skips
-  # cleanly when there is no playwright, no browser or no replay, which is
-  # right locally and is exactly the failure mode a CI job must not have: a
-  # skip and a pass look identical in a tick. With the flag each of those is a
-  # failure instead, so this job cannot go green having rendered nothing.
+  # **`--require` is the whole point of the invocation, and `--group` does not
+  # weaken it.** `render.py` skips cleanly when there is no playwright, no
+  # browser or no replay, which is right locally and is exactly the failure
+  # mode a CI job must not have: a skip and a pass look identical in a tick.
+  # With the flag each of those is a failure instead -- and so is a `--group`
+  # that matches no check, which is the one new way a run could have gone green
+  # having rendered nothing. Both jobs below carry the flag, and between them
+  # they carry every group there is: `test_render_gate.py` reads this file and
+  # fails if a group is added to `render.py` and not to it.
+  #
+  # **Two jobs, and the split is by measured cost.** In one job the suite took
+  # 32m04s on a runner; these two take 16m55s and 17m16s, and run at once, so
+  # the gate is 17m16s. The obvious division -- structure is cheap, the checks
+  # that read the model's pixels are dear -- is not what the clock says: those
+  # four pixel checks are 90 seconds of a 1063-second run, and four checks
+  # nobody would have picked out (`palette`, `island`, `replay`, `overhead`)
+  # are 590 of it. So `slow` is those four and `quick` is the other
+  # twenty-three, which is 590s against 473s on a GPU-less developer machine.
+  # The two run at once, so the gate is the longer of them rather than the sum.
+  # `render.py` prints the table that settles this every run; `viewer/README.md`
+  # carries it, and the rule for moving a check between groups.
   #
   # **Held back once, and back because the reason it was held is fixed.** #187
   # removed this job after it failed twice on one commit with a different
@@ -73,41 +90,36 @@ jobs:
   # saturated. `viewer/README.md` carries the measurements and the reproduction.
   #
   # `KNOWN_FAILURES` is empty as of #186 and #188, which fixed both entries, so
-  # this job is green on nothing but a clean run: anything failing fails it, and
-  # so would a listed failure that stopped reproducing.
-  drawing:
+  # these jobs are green on nothing but a clean run: anything failing fails
+  # them, and so would a listed failure that stopped reproducing.
+  drawing-quick:
     runs-on: ubuntu-latest
     # **A job that cannot skip silently must not be able to hang silently
     # either.** That is the same failure mode wearing a different hat: a run
     # that never ends reports nothing, exactly like a run that checked nothing,
     # and GitHub's own default would let it sit for six hours first.
     #
-    # The number is set from measurement, not taste. The suite takes about
-    # eight minutes on a developer machine and the first CI run went well past
-    # thirty, which is expected rather than alarming -- a runner has no GPU, so
-    # Chromium falls back to SwiftShader and every frame of a three.js island
-    # is drawn on the CPU. What that first run could not tell anyone is whether
-    # it was slow or stuck, because logs only arrive when a job ends.
+    # The number is set from measurement, not taste. A run that finishes under
+    # the limit was slow, and one that trips it was stuck -- which is the only
+    # thing that can be known about a job whose logs arrive when it ends.
     #
-    # So this is the instrument that answers it: a run that finishes under the
-    # limit was slow, and one that trips it was stuck. Raise it if the honest
-    # number turns out to be higher; do not raise it to paper over a hang.
+    # **22 against a measured 16m55s**, which is this job's own green run on a
+    # runner rather than a number carried over from the suite it was split out
+    # of. It stood at 40 for one push -- inherited from the whole suite's
+    # 32m04s, because the rule above is an honest measured number or nothing
+    # and this job had never run -- and it is measured now, so it is set:
+    # 16m55s for the job, 16m10s of that in `render.py` itself.
     #
-    # Re-measured 2026-08-29, after the flake fix, and **on the runner rather
-    # than by proxy**. This job's own green run took 32m04s. A headless GPU-less
-    # developer machine takes about 25 minutes for the same three consecutive
-    # runs (1509s, 1515s, 1508s, agreeing to within seven seconds), so that
-    # machine was under-reporting the runner by about a quarter -- which is
-    # exactly the kind of gap that put the old 15s mount deadline over the edge
-    # on a runner while passing everywhere else. The runner's number is the one
-    # this limit is set from.
+    # A quarter in hand, the same margin 40 was to 32m04s. Four green runs land
+    # between 14m24s and 17m39s, worst case 80% of this limit.
     #
-    # 40 against a measured 32 is a quarter again in hand, which is enough for a
-    # busy runner and still nowhere near the six hours GitHub would allow. Not
-    # raised: 32 is under 40, and the rule above says to raise this only for an
-    # honest number, never to paper over a hang. The flake write-up, and the
-    # reproduction for every measurement here, is in `viewer/README.md`.
-    timeout-minutes: 40
+    # A range, and not a spread figure, because this comment has carried three
+    # of those and every one was moved by the next run. What the limit is set
+    # against is the worst seen. Raise it if a green run ever comes in near it
+    # -- past 19 minutes, not merely past the last number written here -- and
+    # never to get past a hang. `viewer/README.md` has the four runs, and what
+    # believing three of them cost.
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,8 +129,8 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - run: >
           python experiments/005-deliberation-protocol/viewer/tests/render.py
-          --require --out "$RUNNER_TEMP/island-shots"
-      # The lobby's own browser check, here because this is the job with a
+          --require --group quick --out "$RUNNER_TEMP/island-shots"
+      # The lobby's own browser check, here because this is a job with a
       # browser in it. The `island` job collects it and skips it, and a skip
       # and a pass look identical in a tick -- which is the same reason
       # `--require` is on the line above. It is the only test that can see the
@@ -129,6 +141,11 @@ jobs:
       # `ISLAND_REQUIRE_BROWSER` is this job's `--require`: without it the test
       # skips where there is no playwright and no browser, which is right on a
       # laptop and is exactly what must not happen here.
+      #
+      # **In this job and not `drawing-slow`, and in exactly one of them.** It
+      # arrived when there was one `drawing` job to put it in. Both have a
+      # browser now, so either would do and both would be the same check paid
+      # for twice; it goes in the shorter one, where it reports soonest.
       - run: pip install -r games/island/requirements-dev.txt
       - run: python -m pytest games/island/tests/test_lobby_page.py -q -k browser
         env:
@@ -138,6 +155,46 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: island-shots
+          name: island-shots-quick
+          path: ${{ runner.temp }}/island-shots
+          if-no-files-found: warn
+
+  # The four checks the clock singles out. `palette` is 318s of it on its own:
+  # it plays a 162-frame game through and every frame is held for as long as
+  # its animation draws, so that is the game being played rather than the
+  # harness waiting, and it is the floor under any split of this suite.
+  drawing-slow:
+    runs-on: ubuntu-latest
+    # 22 for the reasoning spelled out on `drawing-quick` above. Four green
+    # runs land between 14m49s and 17m24s, worst case 79% of this limit -- so
+    # on a runner this job and `quick` cover much the same range, and which of
+    # the two is the gate varies from run to run.
+    #
+    # **This comment used to claim the two scale differently, and that claim is
+    # retracted.** `palette` is bound by wall-clock animation dwells rather
+    # than by the CPU, so a job that is mostly `palette` should vary less --
+    # and after three runs this one had moved 2.1% against `quick`'s 17.5%,
+    # which read as the mechanism proving itself. The fourth run came in at
+    # 14m49s and the eight-fold difference was gone.
+    #
+    # The arithmetic that should have stopped the claim was there all along:
+    # `palette` is 318s of this job's 589s, so **46% of it is CPU-bound like
+    # everything in `quick`**. The honest prediction was "somewhat less
+    # variable", never "barely varies". See `viewer/README.md`.
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: >
+          python experiments/005-deliberation-protocol/viewer/tests/render.py
+          --require --group slow --out "$RUNNER_TEMP/island-shots"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: island-shots-slow
           path: ${{ runner.temp }}/island-shots
           if-no-files-found: warn
