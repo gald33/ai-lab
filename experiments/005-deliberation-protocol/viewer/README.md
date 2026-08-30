@@ -3386,7 +3386,14 @@ node --test "viewer/tests/*.test.mjs"            # the page: 180
 python -m pytest viewer/tests/ -q                # the ledger and the roots: 200
 python viewer/tests/render.py                    # the drawing, in a real browser
 python viewer/tests/render.py --require          # ... and as CI runs it
+python viewer/tests/render.py --group quick      # ... and as one of the two jobs does
+python viewer/tests/render.py --only palette     # one check, for working on it
 ```
+
+Every run of `render.py` prints what each check cost, longest first. That table
+is the instrument the section "Half an hour, and where it actually went" below
+is argued from, and it is what to re-read before believing anything here about
+which check is dear.
 
 ### All three run in CI now, and the third took two goes
 
@@ -3441,6 +3448,9 @@ converting the remaining absolute-time samples to watchers.
 **Both are done, and the job is back.** What that took is the section below;
 what it cost is about 25 minutes of runner time, and what it buys is the only
 check on what the island actually draws being behind a green tick.
+
+*That one job is two jobs now, and the half hour was measured rather than
+guessed at: see "Half an hour, and where it actually went" below.*
 
 ### How the flake was fixed
 
@@ -3642,6 +3652,283 @@ wheel takes and asserts it was seen at something other than its final one, which
 holds however slow the machine is. **This did not fix the CI flakiness** — the
 second run failed elsewhere — and it is kept because the old form was wrong on
 its own terms, not because it was the cause.
+
+### Half an hour, and where it actually went
+
+*Decided 2026-08-30.*
+
+The `drawing` job took **32m04s on a runner** and about 25 minutes on a
+GPU-less developer machine. It is one job running every check in `render.py`,
+so nothing lands on a pull request until all of it has finished, and the cost
+is not the checking: a runner has no GPU, so Chromium falls back to SwiftShader
+and every frame of a three.js island is drawn on the CPU at 2 frames a second.
+
+Three remedies were proposed for it — split the job, reuse pages across checks,
+pause the stage more aggressively — with the reasoning that the expensive
+checks must be the ones reading the model's own pixels through `landMask`
+(`uncovered`, `mobile`, `focusing`), since those are the ones that cannot be
+answered with the render loop stopped.
+
+**That reasoning does not survive its own measurement, and the first thing
+built was the instrument that says so.** `run` used to be a column of
+`problems += check(...)` statements and is now a named list, `checks()`, timed
+per entry, printed longest-first at the end of every run. On this machine, in a
+run that came to 1021s against 1022s for the untouched suite — so this is what
+the half hour was already made of, not what it became:
+
+| check | seconds | | check | seconds |
+|---|---:|---|---|---:|
+| `palette` | 274.3 | | `travelling` | 30.6 |
+| `island` | 101.9 | | `turning` | 28.1 |
+| `replay` | 85.6 | | `afloat` | 28.0 |
+| `overhead` | 84.9 | | `blame` | 16.4 |
+| `alive` | 53.8 | | `mobile` | 14.1 |
+| `daylight` | 53.4 | | `whose` | 11.8 |
+| `mechanics` | 52.3 | | `twilight` | 11.7 |
+| `uncovered` | 40.0 | | `clockwork` | 10.1 |
+| `ring` | 38.8 | | `stock` | 8.8 |
+| `emerging` | 32.1 | | `focusing` | 8.1 |
+| | | | *and seven more under 8s* | 35.2 |
+
+**The four pixel checks are 90 seconds of a 1021-second run** — 112 before the
+pause two sections down, which is where `uncovered`'s 40.0 above would read
+59.1. Either way it is under a ninth of the job. Splitting the suite along that
+line would have moved a ninth of the cost and been reported as a fix. What the run is actually spent on is four
+checks nobody would have picked out, and they are dear for four unrelated
+reasons — which is exactly why the guess was wrong and why guessing was the
+wrong method.
+
+Reproduce the whole of the above with:
+
+```bash
+python viewer/tests/render.py --require          # the table is printed at the end
+python viewer/tests/render.py --only uncovered,afloat,mobile,focusing
+```
+
+#### `palette` was a quarter of the job, and was not finishing the game
+
+`palette` plays a whole 162-frame game through and watches the island's shared
+palette for a clip painting a material it does not own. Three things were wrong
+with how it did that, and the clock found all three.
+
+**It was clicking a button that has not existed for two transports.** The check
+opened with
+
+```js
+const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === '16×');
+if (b) b.click();
+```
+
+and `1x / 4x / 16x` were replaced by the `PACES` select — three rules, not three
+numbers — in "A card is shut until it is asked for" above. The `if (b)` found
+nothing and did nothing, so the check had been playing every board at the
+default pace, silently. Nothing failed, which is why it survived for as long as
+it did: **a control that is missing and a control that is already set look
+identical to a conditional click.** It asks for the `step` pace through the
+page's own select now, and *asserts it took*.
+
+No coverage is given up by the faster pace. `paceDelay` floors every frame at
+what its animation draws under all three paces, so every clip still runs whole
+and still has every chance to paint `M`; `step` drops only the waiting between
+events, and a silence is the one stretch of a replay in which no clip is
+running to paint anything. Measured, from `#play` to the scrub reaching its end:
+
+| pace | to the end |
+|---|---:|
+| `step` | 303s |
+| `tight` (the page's default) | 331s |
+
+**Which is the second thing.** The check polled from Python — `page.evaluate`
+for the whole palette, `wait_for_timeout(120)`, `for _ in range(900)` — and an
+`evaluate` against a page drawing at 2fps waits on its main thread for **190 to
+240ms**. So each turn cost about a third of a second, the loop ran out after
+roughly 265 seconds, and the replay needs 331. It then read the palette back
+and asserted *the island gets its own colour back at the end of the game* — a
+claim it was making around frame 150 of 162, with the game still going. It had
+never checked that the end was reached, so it would have gone on making that
+claim however much earlier the loop ran out. It waits for the end now, and
+fails saying where it stopped if the end does not come inside `PLAY_MS`.
+
+**And the polling was part of what it was waiting for**: every round trip took
+main-thread time away from the replay it was trying to let finish. The watching
+is a `requestAnimationFrame` recorder inside the page now, which costs none of
+that and is the **stronger** sampler as well — a material is written by a clip
+from inside the stage's frame loop, so every value one ever holds is a value
+some frame ends on, and rAF sees all of them. The 120ms poll saw whichever it
+landed on, which on a page drawing at 2fps is about one frame in four.
+
+So `palette` got **more honest and slower**: 274s to 314s, because it now plays
+the game it says it plays. That is the right direction and it is the floor
+under any split of this suite — 314 of those seconds are the island's own
+animations being drawn, not the harness waiting.
+
+#### Pausing the stage is worth a third of `uncovered`, and nothing elsewhere
+
+`settled(page, ms)` waits out the page's arrival and then calls
+`window.__island.pause()`. Nothing is given up by it for these callers, because
+**`landMask` renders on demand** — it hides the water meshes, calls
+`st.render()` itself, reads the canvas back and renders again to restore. The
+loop is needed by `alive`, which asks whether the island *moves*, and by
+nothing else that reads pixels. It is also the stronger measurement: two reads
+of a paused page are two reads of one frame rather than of a camera that has
+turned between them.
+
+| | 2 runs, seconds |
+|---|---:|
+| `uncovered` + `afloat` + `mobile` + `focusing`, stage running | 113.0, 112.0 |
+| the same, stage paused after the settle | 90.5, 90.2 |
+
+Twenty-two seconds, nearly all of it off `uncovered` (59 → 40), and none at all
+off `mobile` or `focusing`, which read a 200-wide downsample rather than a full
+canvas. **This is why the per-check table had to exist first**: 22 seconds is
+inside the run-to-run spread of the whole suite — two runs of the unchanged
+code came back 1039s and 1022s — so measured end-to-end this change looks like
+noise, and measured per check it is a third off the check it touches.
+
+#### The split, and what it is split on
+
+`render.py` takes `--group`, and `tests.yml` carries one job per group:
+`drawing-quick` and `drawing-slow`. The rule is the one a reader can apply from
+the table every run prints: **over a minute on a GPU-less machine goes in
+`slow`, everything else in `quick`.** That puts `palette`, `island`, `replay`
+and `overhead` in one job and the other twenty-three checks in the other. It is
+a cost split and it is named for one; there is no truer story about what kind of
+check these are, and inventing one would only rot.
+
+Measured on this machine, each group run as its own job, both clean:
+
+| | wall clock | verdict |
+|---|---:|---|
+| the suite in one job, before any of this | 1039s, **1022s** | 0 unexpected, 0 known, 0 stale |
+| the suite in one job, after | 1070s | 0 unexpected, 0 known, 0 stale |
+| `--group quick` | 497, 476, 494, 477, **476s** | 0 unexpected, 0 known, 0 stale |
+| `--group slow` | 579, 561, **574s** | 0 unexpected, 0 known, 0 stale |
+
+Repeated rather than run once, because a single green run is not evidence about
+a suite that has been flaky before. **One `quick` run is missing from that row,
+because it went red**, and it is not dropped from the count: what it was is two
+sections down, and it was a real defect rather than weather.
+
+**The gate is the longer of the two, not the sum**, because they run at once:
+1022s becomes 574s, a little over half, and a pull request gets its first
+verdict at about 480s instead of at the end of everything. The one-job number went
+*up* — 1022 to 1070 — and that is `palette` finishing the game it had been
+stopping short of. The saving is the split and the pause; the extra 48 seconds
+is a check that was not doing its job.
+
+If a runner scales the way it did last time — 32m04s there against 1509s here
+for the same work — this projects to something like 18 minutes for `slow`. That
+is a projection and is written down as one: **nobody has run these two jobs on
+a runner yet**, and the section above this one is about what happens when a
+number gathered on one machine is treated as evidence about another.
+
+So **`timeout-minutes` stays at 40 on both**, inherited rather than measured.
+Each job runs a strict subset of the suite that measured 32m04s under that
+limit, so 40 cannot be papering over a hang here any more than it was there. It
+is deliberately *not* tightened to a predicted number: the rule on that limit is
+an honest measured number or nothing, and arithmetic about a runner nobody has
+run on is not one. Tighten each to its own measured runner time once these jobs
+have posted one.
+
+#### What the split is not allowed to do to the gate
+
+`--require` exists because a skip and a pass are the same tick. `--group` adds
+exactly one new way for a run to check nothing, and it is closed the same way:
+**a selection that matches no check is a failure under `--require`**, like a
+missing browser. `select()` is pure and separate from `run` so that property can
+be tested without driving a browser.
+
+Two more, in `tests/test_render_gate.py`, because a check can now fall out of CI
+without failing anything:
+
+* **the groups partition the suite** — every check is in exactly one, and no
+  check is in two;
+* **`tests.yml` runs every group** — read off the workflow file itself, because
+  the way this goes wrong is a group added to `render.py` and not to it, and
+  that failure is silent in exactly the way a skip is.
+
+`KNOWN_FAILURES` is untouched and still empty. Both rules it enforces still
+hold, in both jobs: anything unlisted fails the run, and anything listed that
+stops failing fails it too.
+
+#### A flake with a cause: twenty boards that never draw a hut
+
+The split's first verification run went red, in `emerging`, on
+`Page.wait_for_selector: Timeout 60000ms exceeded, waiting for locator(".hut")`
+— and took the job's whole log with it, since a raised exception used to end
+`run` where it stood.
+
+**It was a lottery, not a slow machine.** `emerging` opens the landing page
+with no board named, which mounts *a round at random*; all it wants from that
+page is the board listing, which it reads and then navigates away from
+whatever was picked. Waiting for `.hut` there made the random pick
+load-bearing.
+
+Rather than re-run until it went red again — which is not a root cause, and
+would have taken eight tries at ten minutes each — every board the server lists
+was mounted in turn and timed:
+
+| | boards | first `.hut` |
+|---|---:|---|
+| everything else | 136 | 3.3s to 3.8s |
+| `004-ladder-a` and `005-ladder-b`, `bare` arm | **20** | never, at 90s |
+
+The `bare` arm is those ladders' no-protocol control, and such a round reduces
+to a timeline of **zero frames**. Nothing is wrong with the page on one: no
+console error, `has-3d` set, the transport populated, and an empty island,
+which is what a round with nothing in it looks like. Twenty of 156 is one run
+in eight, which is exactly the rate this was showing.
+
+**No deadline is long enough for a hut that is not coming**, so `MOUNT_MS` is
+untouched at 60s. `emerging` waits for the app's own module to have run —
+`#pace` being populated, which is true on a bare board too — and is
+deterministic at 26.0s, 26.0s, 26.1s across three runs, five seconds quicker
+than it was.
+
+*And the fix needed a second go, which is the part worth keeping.* The first
+version waited on `#pace option` with playwright's default state, and an
+`<option>` inside a `<select>` is never *visible*, so it waited out `MOUNT_MS`
+on every board — going from one failure in eight to three out of three. A
+deterministic failure is the loud kind and it was found immediately; it is
+recorded here because the reason it was caught is that the fix was run more
+than once before it was believed, and a one-in-eight fix verified by one green
+run is not verified at all.
+
+#### A check that raises is now a failed check, not a failed run
+
+That failure exposed a second thing, and it is the reason the check list was
+worth having. `run` had no guard around a check, so a raised exception ended
+the process: every check after it went unrun, and the log said nothing about
+any of them — **one timeout hid the state of twenty-five others**, which is the
+opposite of what a gate is for. There was no timing table either, since it is
+printed at the end.
+
+An exception is a problem line now, named for the check it came from, so
+`verdict` fails the run on it exactly as it fails on any unlisted problem, and
+`KNOWN_FAILURES` matches it on the same key shape as everything else. Nothing
+is softened: it fails, and the other checks report too. `Exception` and not
+`BaseException`, so a keyboard interrupt still stops the run.
+
+
+#### Two things the table showed on its way past
+
+**`mechanics` was reading this file's source, and that broke the moment `run`
+stopped being a column of statements.** It excuses an offer and a refusal the
+island's own drawn-floor rule because `turning` and `overhead` carry those, so
+it checks those two are still in the suite — by grepping `render.py` for
+`problems += turning(`. The string went when `run` became a list; both carriers
+were still being run; the check reported them gone. **A guard that fails when
+the thing it guards is fine is a guard on its way to being deleted.** It asks
+`enumerated()` now, which is the list itself, and `test_render_gate.py` asks the
+same question for nothing rather than twenty minutes into a browser run.
+
+**`blame` costs 0.0s on one of the two boards**, which the table now says out
+loud. That is not a fault: `BLAME` holds the two real refusals from game 002's
+board and game 001's has none, so there is nothing to drive. It is worth having
+visible all the same — a check contributing nothing on a board is the shape a
+silent skip has, and the difference between this and one is that this is
+written down.
+
 
 ## Files
 
