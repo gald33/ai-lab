@@ -974,6 +974,49 @@ key. Two of the four were on screen the whole time saying nothing.
 `--chrome-top` is **98px**, and that is the whole of the gain: 64px of a phone,
 handed to the island by two rows that were not earning their place.
 
+#### The band a stylesheet declares and the band the rows come to
+
+Found by looking at the phone rather than at the tests, which had all passed.
+The two pills that share the second row are **text**, and `--chrome-top` is a
+number, so the two part company the moment a string grows enough to wrap.
+"before the first day" and "acknowledging" came to 147 and 120 pixels, and 273
+does not go into the 203 the row had — so the phase wrapped to a line of its
+own and the two-row band was **three rows deep**, reaching 126px into a band
+declaring 98. On frame 0, which is the frame a shared link opens on.
+
+Two things were wrong and both are fixed:
+
+- **The row was too narrow and its type too large.** 52vw was guessed. The
+  pills are 12px on a phone now — the same size the counts beside them were
+  already cut to, for the plain reason that they share a row — and the row is
+  62vw.
+- **And that still did not fit**, at 133 and 108 against 242. No width setting
+  does: at 360pt the row is 223px and the two strings do not go however it is
+  sized. So the string gives. `hud()` says **"before day 1"**, which loses
+  nothing — the game calls an episode a day, and this is the same sentence with
+  the ordinal spelled as the numeral every other day pill already uses.
+
+Measured after, on all four phone viewports: one row, 30px tall at y=58, ending
+at 88 inside the band. The counts clear the round's state by 20px at the
+narrowest, which was **2px** before this — not a margin, luck.
+
+**`uncovered` could not have caught it, and that is the interesting part.** It
+counts island pixels behind each pill, and the wrapped row landed over *sky* —
+there is no island that high up. Which makes it exactly the right check for "a
+pill is on the island" and the wrong one for "the chrome outgrew its own
+reservation": the island is handed everything below the declared band, so a row
+standing in that band is a defect whether or not any land has been drawn under
+it yet.
+
+So `mobile` asks that directly now, of the laid-out rows rather than of the
+declared number: the bottom of `.at-top-left`, `.at-top-right` and `.counts`
+against `--chrome-top`, with two pixels of slack for a rounded edge. Shown to
+work rather than assumed — putting the long string back fails all three narrow
+phones with `the chrome reaches 126px down a band it declares as 98px`, and
+restoring the short one passes.
+
+To re-check: `python viewer/tests/render.py --require`.
+
 `uncovered()` in `render.py` had to learn the difference between *laid out* and
 *drawn*: it measured every pill's rectangle against the island's own pixels,
 and a key at zero opacity would have failed the page for hiding something. It

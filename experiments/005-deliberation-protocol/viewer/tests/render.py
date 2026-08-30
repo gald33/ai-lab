@@ -4420,6 +4420,15 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
             land: lb ? { w: lb.width, h: lb.height } : null, drawn, span,
             box: drawnBox, islandFoot, unit,
             chromeTop, cardTop,
+            //: How far down the window the chrome anchored at the *top*
+            //: actually reaches. `--chrome-top` is what the stylesheet
+            //: promises; this is what the rows come to once they have been
+            //: laid out, which is a different number the moment a row wraps.
+            chromeEnd: Math.max(0, ...['.at-top-left', '.at-top-right', '.counts']
+              .map(sel => document.querySelector(sel))
+              .filter(n => n && n.offsetParent !== null)
+              .map(n => { const r = n.getBoundingClientRect();
+                          return r.height ? r.y + r.height : 0; })),
             taps: [...document.querySelectorAll('button, select, .tab')]
               .filter(n => n.offsetParent !== null)
               .map(n => { const r = n.getBoundingClientRect();
@@ -4455,6 +4464,26 @@ def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
         # is the thing that can actually go wrong: the defect this was written
         # for is dead sky above the island and dead sea below it inside its own
         # band, and that is exactly what fails here.
+        #: **The band the chrome declares is the band the chrome fits in.**
+        #: `--chrome-top` is a number in the stylesheet and the rows above it
+        #: are text, so the two part company the moment a string grows enough
+        #: to wrap: the layout hands the island everything below the declared
+        #: band, and a row that wrapped is standing in it.
+        #:
+        #: Written because that happened and nothing caught it. "before the
+        #: first day" and "acknowledging" came to 247px on a row 242px wide,
+        #: so the phase wrapped and the two-row band was three rows deep -- on
+        #: frame 0, the frame a shared link opens on. `uncovered` missed it
+        #: because the extra row landed over *sky*: it counts island pixels
+        #: behind a pill, and there is no island that high up. Which makes it
+        #: the right check for "a pill is on the island" and the wrong one for
+        #: "the chrome outgrew its own reservation", so this asks that
+        #: directly, of the laid-out rows rather than of the declared number.
+        if seen["chromeTop"] and seen["chromeEnd"] > seen["chromeTop"] + 2:
+            bad.append(f"{where}: the chrome reaches {seen['chromeEnd']:.0f}px "
+                       f"down a band it declares as {seen['chromeTop']:.0f}px; "
+                       f"a row has outgrown the strip the island was told to "
+                       f"stay out of")
         if seen["drawn"] is not None and not seen["drawn"]:
             bad.append(f"{where}: the model drew nothing at all")
         elif seen["box"]:

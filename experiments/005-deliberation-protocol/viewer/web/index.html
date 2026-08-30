@@ -754,7 +754,17 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      named in the browser tab, and the board in the picker. What is left of the
      top-left column is the round's state, which drops below the control row
      rather than sharing 44 vertical pixels with it. */
-  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px; max-width: 52vw; }
+  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px; max-width: 62vw; }
+  /* The same size the counts are cut to on the row they share, for the plain
+     reason that they share it. Measured, because 52vw was guessed and the
+     guess was wrong: "before the first day" and "acknowledging" were 147 and
+     120 pixels at the desk size, and 273 of them do not go into 203 -- so the
+     phase wrapped to a line of its own and the two-row band was three rows
+     deep on the very first frame, which is the frame a shared link opens on.
+     At 12px they are 133 and 108, which still does not go, so `hud()` shortened
+     the longer string as well: "before day 1" and "acknowledging" are 85 and
+     108, and 199 fits the 223 a 360pt phone gives this row. */
+  .at-top-left .pill { font-size: 12px; padding: 5px 8px; }
   .at-top-left .titles { display: none; }
   .at-top-left .hud { flex-wrap: wrap; }
   /* The other end of the round's state, on its row rather than under it. A
@@ -1169,7 +1179,17 @@ setInterval(paintClock, 1000);
 function hud(state) {
   $("ep").innerHTML = state.episode
     ? `day <b>${state.episode}</b>${state.episodes ? ` / ${state.episodes}` : ""}`
-    : "before the first day";
+    //: **"before day 1", not "before the first day".** The long form was the
+    //: widest string the page ever put in a pill, and on a phone it and the
+    //: phase beside it came to 247px against the 242 the row has at its
+    //: widest -- so the phase wrapped to a line of its own and the two-row
+    //: band was three rows deep, on frame 0, which is the frame a shared link
+    //: opens on. No width setting fixes that: at 360pt the row is 223px and
+    //: the two strings do not fit however the row is sized. So the string
+    //: gives, and it loses nothing -- the game calls an episode a day, and
+    //: this is the same sentence in the same words with the ordinal spelled
+    //: as the numeral every other day pill already uses.
+    : "before day 1";
   const phase = { before: "waiting", ack: "acknowledging", production: "production",
                   market: "market open", closed: "sundown", over: "round over" }[state.phase];
   $("phase").textContent = phase;
