@@ -17,7 +17,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { layout, cardBox, fits, placeScenery, coast, closedPath, PALM_BOX,
-         CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP,
+         CARD_H_SHUT, CARD_H_SHUT_BARE, SHUT_SCORE_Y, SCORE_ROW_DEEP, appetiteWidth,
          NAME_ROW_DEEP, scoreAt, cardHold, CARD_LINGER,
          DWELL, dwellFor, CARRY, carriedBy,
          shortName, NAME_MAX, SHORT, NOT_YOURS, culprits, refused, stacking, glideTo, sunAt, SET } from "../web/scene.js";
@@ -774,4 +774,56 @@ test("the score row's animated position is valid CSS, not an SVG attribute", () 
             "the open row is not below the shut one");
   // It lands inside the card it is drawn on, both ways.
   assert.ok(y(scoreAt(false)) + SCORE_ROW_DEEP <= 22 + CARD_H_SHUT);
+});
+
+
+// --- what a trader wants, as the width of its column ------------------------
+//
+// `appetiteWidth` is the whole of the taste drawing, and it is arithmetic, so
+// it is checked here rather than in a browser. What `render.py` checks is that
+// the shelf actually uses it, and that a board with no reveal has no widths at
+// all.
+
+const STEP = 34;                    // five goods on a 170-unit shelf
+const TASTE = { bread: 0.6979, cloth: 0.1184, iron: 0.0913, salt: 0.0924 };
+const TOP = Math.max(...Object.values(TASTE));
+
+test("the good a trader wants most gets the widest column", () => {
+  const w = Object.fromEntries(Object.entries(TASTE)
+    .map(([g, a]) => [g, appetiteWidth(a, TOP, STEP)]));
+  const order = Object.keys(w).sort((a, b) => w[b] - w[a]);
+  assert.equal(order[0], "bread", "bread is 0.70 of this trader's taste");
+  //: The order is the claim -- see `appetiteWidth`. A column twice as wide is
+  //: not a taste twice as large, because there is a floor under the width, so
+  //: what is asserted is the ranking and not a ratio.
+  for (const [a, b] of [["bread", "cloth"], ["cloth", "salt"], ["salt", "iron"]]) {
+    assert.ok(w[a] >= w[b], `${a} (${TASTE[a]}) is at least as wide as ${b}`);
+  }
+});
+
+test("the widest column leaves a gutter, at every good count", () => {
+  // The shelf is 170 units wide inside its card, whatever is standing on it.
+  for (const n of [1, 2, 3, 4, 5, 6, 7]) {
+    const step = (196 - 26) / n;
+    const w = appetiteWidth(1, 1, step);
+    assert.ok(w <= step, `the widest of ${n} columns is ${w} in a ${step} slot`);
+  }
+});
+
+test("a taste too small to draw is floored rather than vanishing", () => {
+  // A column has to stay visible and stay tappable. Cobb-Douglas puts no floor
+  // under an alpha, so the drawing has to.
+  const tiny = appetiteWidth(1e-6, 1, STEP);
+  assert.ok(tiny > 6, `a near-zero taste still draws ${tiny} units wide`);
+  assert.ok(tiny < appetiteWidth(1, 1, STEP), "and is still the narrowest");
+});
+
+test("no taste is no width, which is not the same as an even one", () => {
+  // The distinction the whole thing rests on: live has no reveal, so nobody
+  // outside a trader's head knows what they want. That is drawn as *no*
+  // appetite, and `hut()` falls back to the fixed bar -- never as an even
+  // appetite, which would be a claim.
+  assert.equal(appetiteWidth(undefined, TOP, STEP), null);
+  assert.equal(appetiteWidth(0, TOP, STEP), null);
+  assert.equal(appetiteWidth(0.3, 0, STEP), null);
 });

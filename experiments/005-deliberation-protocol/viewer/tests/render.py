@@ -932,6 +932,7 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
             for board in boards:
                 problems += overhead(browser, base, board, out)
             problems += bare(browser, base, boards[0], out)
+            problems += appetite(browser, base, boards[0], out)
             problems += mobile(browser, base, boards[0], out)
             problems += focusing(browser, base, boards[0], out)
             problems += fallback(browser, base, boards[0], out)
@@ -4778,6 +4779,104 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
 
     bad += [f"{stem} @focus: {e}" for e in errs]
     page.close()
+    return bad
+
+
+def appetite(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A shelf says what its owner wants, and says nothing when nobody knows.
+
+    Tastes are the reason a trade is worth making, and the shelf did not carry
+    them: it drew what everybody held and what it came to, so a settlement was
+    a rope, a pill and a number that moved, with nothing on screen saying why
+    the number moved that way. On game 001d, T1's taste for bread is 0.70
+    against 0.09 for iron -- bread-for-salt is good for both traders, and the
+    card could not say so.
+
+    Quantity is a height, so appetite is a width: the column a good stands in
+    is as wide as its owner wants it. The arithmetic is `appetiteWidth` and is
+    checked in `scene.test.mjs`; what is checked here is that the drawing
+    actually uses it, in a browser, on a real board.
+
+    **And that a board with no reveal draws no appetite at all.** Not an even
+    one -- absent. Live has no sidecar, tastes never reach the board, and an
+    even row of columns would say "this trader wants everything equally",
+    which is a claim, when the true statement is that nobody outside that
+    trader's head knows. That half is the one worth having: it is the rule
+    this repo keeps breaking in the other direction, where the weaker thing is
+    allowed but must never look like the stronger one.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    look = """() => [...document.querySelectorAll('.hut')].map(h => ({
+      who: h.getAttribute('data-trader'),
+      cells: [...h.querySelectorAll('.cell')].map(c => ({
+        good: c.getAttribute('data-good'),
+        says: c.getAttribute('data-appetite'),
+        w: +c.querySelector('.bar-track').getBoundingClientRect().width.toFixed(2),
+        //: Every mark in the column, so a width applied to the trough and not
+        //: to the bar standing in it -- which would read as a bar overflowing
+        //: its slot -- fails here rather than in front of a viewer.
+        marks: ['.bar', '.bar-held', '.bar-zero'].map(sel => {
+          const n = c.querySelector(sel);
+          return n ? +n.getBoundingClientRect().width.toFixed(2) : null;
+        }),
+      })),
+    }))"""
+
+    for tag, query, want in (
+            ("scored", f"?board=replays/board-{stem}.json"
+                       f"&reveal=replays/reveal-{stem}.json", True),
+            ("bare", f"?board=replays/board-{stem}.json", False)):
+        page = browser.new_page(viewport={"width": 1400, "height": 880},
+                                reduced_motion="reduce")
+        errs: list[str] = []
+        page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+                if m.type == "error" else None)
+        page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+        page.goto(f"{base}/{query}")
+        page.wait_for_selector(".hut", timeout=15_000)
+        page.wait_for_timeout(1200)
+        seen = page.evaluate(look)
+        page.screenshot(path=str(out / f"{stem}-appetite-{tag}.png"), full_page=False)
+        page.close()
+        bad += [f"{stem} @appetite/{tag}: {e}" for e in errs]
+        if not seen:
+            bad.append(f"{stem} @appetite/{tag}: no card was drawn at all")
+            continue
+
+        for card in seen:
+            who, cells = card["who"], card["cells"]
+            says = {c["says"] for c in cells}
+            if says != {"yes" if want else "no"}:
+                bad.append(f"{stem} @appetite/{tag}: {who}'s shelf reports "
+                           f"{sorted(says)} for whether it knows a taste, on a "
+                           f"board that {'has' if want else 'has no'} reveal")
+            widths = [c["w"] for c in cells]
+            #: Every mark in a column is cut to the column, or a bar stands
+            #: proud of the trough it is in.
+            for c in cells:
+                for got in c["marks"]:
+                    if got is None or abs(got - c["w"]) > 2.5:
+                        bad.append(f"{stem} @appetite/{tag}: {who}'s {c['good']} "
+                                   f"column is {c['w']:.1f}px and a mark in it "
+                                   f"is {got}; the column and what stands in it "
+                                   f"have come apart")
+                        break
+            if want:
+                #: The claim is that the shelf *distinguishes* -- not any
+                #: particular ratio, which the floor under a column rules out
+                #: anyway. A trader whose tastes are 0.70 and 0.09 must not
+                #: draw two columns a viewer would call the same width.
+                spread = max(widths) / max(1e-9, min(widths))
+                if spread < 1.5:
+                    bad.append(f"{stem} @appetite/{tag}: {who}'s widest column "
+                               f"is {spread:.2f}x its narrowest; the shelf is "
+                               f"drawing tastes that differ several-fold as "
+                               f"columns nobody can tell apart")
+            elif len(set(round(x, 1) for x in widths)) != 1:
+                bad.append(f"{stem} @appetite/{tag}: {who}'s columns are "
+                           f"{widths} on a board with no reveal; with no taste "
+                           f"to know, an uneven shelf is claiming one")
     return bad
 
 
