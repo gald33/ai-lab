@@ -2025,12 +2025,21 @@ export class Scene {
     wheel.append(el("circle", { r: 12, class: "wheel-track" }));
     wheel.append(el("circle", { r: 12, class: "wheel-fill",
                                 "stroke-dasharray": "0 76", transform: "rotate(-90)" }));
-    wheel.append(el("text", { y: 3.5, class: "wheel-text" }, "—"));
+    //: **No number in the ring.** It read the labour left as a percentage, and
+    //: a percentage is what a ring already is: the arc is the share of full,
+    //: which is the whole of what there is to say. Decided by Gal, 2026-08-30
+    //: -- "having it visually is enough".
+    //:
+    //: The number was carrying one thing the arc was not, and that is what
+    //: `unknown` is for below: an em dash said *nobody has reported any labour
+    //: yet*, which is not the same as none left and drew the same empty ring.
     card.append(wheel);
     card.append(el("text", { x: CARD_W / 2 - 43, y: CARD_TOP + 23, class: "card-sub",
                              "text-anchor": "end" }, "labour"));
     this.labels[name] = { wheel: wheel.querySelector(".wheel-fill"),
-                          wheelText: wheel.querySelector(".wheel-text"),
+                          //: The group, so `draw` can say on it whether this
+                          //: trader's labour has been reported at all.
+                          wheelGroup: wheel,
                           card: card.querySelector(".card-bg") };
 
     // The shelf: goods in the manager's own order, always, so the position is
@@ -2351,7 +2360,14 @@ export class Scene {
       const arc = 2 * Math.PI * 12;
       const used = spent === null ? 0 : Math.max(0, Math.min(1, 1 - spent));
       label.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
-      label.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
+      //: **Nothing reported is not the same as nothing left**, and without the
+      //: number in the ring the arc cannot tell them apart: `used` is 0 for
+      //: both, so both draw an empty ring. The em dash was doing that work.
+      //: So the *track* says it instead -- dashed until a receipt has said what
+      //: this trader spent, solid once one has. A trader who has not produced
+      //: yet and a trader who has spent everything are the two most different
+      //: states on the card and they must not look alike.
+      label.wheelGroup?.classList.toggle("unknown", spent === null);
       // `label.score` and not `this.reveal`: a glance card has no score row to
       // write into, and the card is what decides that, not the board.
       if (this.reveal && label.score) {

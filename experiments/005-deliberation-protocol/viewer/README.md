@@ -2732,6 +2732,57 @@ Its fixture had to change to say anything. It held 0.8 of everything and moved
 single box is the one case where `spread` does nothing at all, so the rule it
 exists for could not be made to fail. Six boxes each now, five of them moving.
 
+## The ring is the percentage, so the percentage comes out of the ring
+
+*Decided by Gal, 2026-08-30: "we can lose the percentage inside the available
+labour. Having it visually is enough."*
+
+The labour dial drew an arc **and** printed the number the arc was drawn from.
+A ring is already a share of full, so the number restated it: two marks for one
+fact, in the smallest type on the card, inside a 24-unit circle.
+
+### The em dash was doing a second job, and the arc cannot
+
+Which is the whole of the care needed here. `used` is `1 - spent`, and a trader
+nobody has reported is `spent === null`, which is also `used = 0` — so **an
+unreported labour and a fully-spent one draw the same empty arc.** The number
+was the only thing telling them apart: `—` against `0`.
+
+Those are the two most different states on the card. A trader who has not
+produced yet has said nothing; a trader who has spent everything has made their
+whole decision for the day. Drawing them alike is the failure this repo keeps
+having to catch — the weaker thing is allowed, and never allowed to look like
+the stronger one.
+
+So the **track** carries it: broken (`3 4`) while nothing is known, whole once a
+receipt has landed. A state, not a value, on the one part of the dial that was
+not already saying something.
+
+### What checks it
+
+`render.py:labour`, called from `replay` at every stop it already visits, so it
+costs no page load. It asserts the invariant everywhere — a ring marked unknown
+draws a broken track, one that is not draws a whole one — plus the one frame
+whose answer is known in advance, the open, where nobody has produced.
+
+Both sides are exercised on the real replays rather than in principle: on game
+001d the two traders read `unknown=[True, True]` at the open, `[True, False]` at
+the middle, `[False, True]` late, `[False, False]` at dusk, and `[True, True]`
+at the end.
+
+**That last one is a fact the check got wrong first.** It asserted every ring
+was *known* at the closing frame, on the reasoning that by then everybody has
+produced — and failed. Labour is an **episode** quantity and resets at the
+bell, so a ring at the closing frame is correctly unknown, and the assertion
+was a misreading of the game rather than a defect in the page. The check found
+it on its first run, which is the right way round.
+
+Shown to fail: pinning the class off gives *"T1's ring claims to know a labour
+at the opening frame, before anybody has produced"* on both traders and both
+motion settings.
+
+To re-check: `python viewer/tests/render.py --require`.
+
 ## The rows straddle the island
 
 *Reported by Gal, 2026-08-30, with a screenshot: opening T1 on a four-hander

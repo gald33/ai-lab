@@ -299,8 +299,14 @@ svg.island, canvas.stage { transition: none; }
 .wheel-track { fill: none; stroke: #212a30; stroke-width: 4.5; }
 .wheel-fill { fill: none; stroke: var(--fire); stroke-width: 4.5; stroke-linecap: round;
   transition: stroke-dasharray .5s ease; }
-.wheel-text { fill: var(--ink-2); font-size: 9.5px; text-anchor: middle;
-  font-family: ui-monospace, monospace; }
+/* **Dashed until somebody has said what this trader spent.** The ring used to
+   carry the number as well as the arc, and the number was the only thing
+   saying "nothing reported yet" -- an em dash, against a percentage. Take the
+   number away and an unreported labour draws the same empty ring as one that
+   has all been spent, which are the two most different states on the card.
+   So the track says it: broken while nothing is known, whole once a receipt
+   has landed. See `draw()` in `scene.js`. */
+.wheel.unknown .wheel-track { stroke-dasharray: 3 4; opacity: .8; }
 
 .bar-track { fill: #ffffff; opacity: .05; }
 /* Two bars share a slot: everything held, and the part of it not already

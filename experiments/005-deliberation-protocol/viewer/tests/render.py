@@ -974,6 +974,58 @@ def run(out: Path, headed: bool = False, require: bool = False) -> int:
     return code
 
 
+def labour(page, before: bool, where: str) -> list[str]:
+    """The labour ring says how much was spent, and says when it does not know.
+
+    **The number inside the ring is gone.** It read the labour left as a
+    percentage, and a percentage is what a ring already is: the arc is the share
+    of full, which is the whole of what there is to say. Decided by Gal --
+    "having it visually is enough".
+
+    What the number was also doing, and the arc was not, is the reason this
+    check exists. An em dash said *nobody has reported any labour yet*, which is
+    a different fact from *none left* -- and both draw an arc of zero. Take the
+    number away and the two most different states on the card become the same
+    picture. So the **track** carries it instead: broken while nothing is
+    known, whole once a receipt has landed.
+
+    Asked at every frame `replay` already visits, so it costs no page load.
+    The **invariant** is asked everywhere -- a ring marked unknown draws a
+    broken track and a ring that is not draws a whole one -- and the one frame
+    whose answer is known in advance is the open, where nobody has produced yet.
+
+    *Not* the end, which is what this check said first and got wrong: **labour
+    is an episode quantity and resets at the bell**, so a ring at the closing
+    frame is correctly unknown and asserting otherwise was asserting a
+    misreading of the game. The check found that on its first run, which is the
+    right way round.
+    """
+    seen = page.evaluate("""() => [...document.querySelectorAll('.hut')].map(h => ({
+      who: h.getAttribute('data-trader'),
+      unknown: h.querySelector('.wheel').classList.contains('unknown'),
+      //: The computed value, because the dash is a stylesheet's business and
+      //: the class is only how it is asked for.
+      track: getComputedStyle(h.querySelector('.wheel-track')).strokeDasharray,
+      printed: (h.querySelector('.wheel-text') || {}).textContent ?? null,
+    }))""")
+    bad: list[str] = []
+    for w in seen:
+        if w["printed"] is not None:
+            bad.append(f"{where}: {w['who']}'s ring still prints "
+                       f"{w['printed']!r}; the arc is the percentage")
+        if before and not w["unknown"]:
+            bad.append(f"{where}: {w['who']}'s ring claims to know a labour at "
+                       f"the opening frame, before anybody has produced")
+        dashed = w["track"] not in ("none", "", None)
+        if dashed != w["unknown"]:
+            bad.append(f"{where}: {w['who']}'s ring is marked "
+                       f"{'unknown' if w['unknown'] else 'known'} and its track "
+                       f"draws {w['track']!r}; with no number in the ring the "
+                       f"track is the only thing telling nothing-reported from "
+                       f"nothing-left")
+    return bad
+
+
 def replay(browser, base: str, board: Path, out: Path) -> list[str]:
     stem = board.name[len("board-"):-len(".json")]
     reveal = json.loads((REPLAYS / f"reveal-{stem}.json").read_text())
@@ -998,6 +1050,8 @@ def replay(browser, base: str, board: Path, out: Path) -> list[str]:
                 round(total * at))
             page.wait_for_timeout(900)
             bad += check(page, traders, goods, f"{stem} @{name}{' still' if motion else ''}")
+            bad += labour(page, name == "open",
+                          f"{stem} @{name}{' still' if motion else ''}")
             if name == "end":
                 bad += ending(page, reveal, f"{stem}{' still' if motion else ''}")
 
