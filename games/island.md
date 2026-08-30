@@ -419,6 +419,92 @@ validation gate to get past, because there is no gate: the manager reads what
 is on the board and settles what it recognises, for a hand exactly as for an
 agent.
 
+*And that constraint binds this repo's composer and nothing else.* Switchboard
+is open, so somebody else's UI will re-implement the grammar and drift from
+it, and that is theirs to hit — which is why the manager already names the
+cause on the board when a line does not bind, the entrant reading that line
+being the only party who can fix it. Read as a rule about other people's
+interfaces, this paragraph claims an authority the repo does not have.
+
+
+### What the declaration does not prove, and why it is still the design
+
+Switchboard is open. Anyone can build another client, join the room with any
+key and play a seat by hand without saying so, and no design available here
+detects it — the record only ever sees signed lines from a key, never what was
+driving the client that sent them. **So the declaration is not enforcement,
+and treating it as enforcement would be the mistake.** It is the only model an
+open door permits, and the way to get declarations is to make declaring the
+easy path: **the human UI declares as a side effect of being used.**
+Convenience is the mechanism; there is no other one.
+
+**This corrects the NPC's reasoning as well, not just the hand's.** `heuristic`
+was justified as "a confession only ever weakens its own game", as though it
+were testimony we were forced to accept. It is not: the filler is *ours*, and
+we could route it through the lobby and know for certain. The real limit is
+the other way round — **an entrant's own heuristic bot is just an agent, and
+ranks.** Same fixed policy, same undeliberating trader, undetected. So
+`heuristic` does not mean "a cheap policy played here"; it means "*our* cheap
+policy played here", and both of its stated reasons are equally true of a
+stranger's bot that nothing catches. That limit belongs in
+`scores.why_not_ranked`'s docstring, which currently reads as though its five
+reasons were one kind of fact. They are two: **`practice`, `company`,
+`unfinished` and `not_scored` are observations of the board; `heuristic` and
+`advised` are testimony.** Only the first kind is a property.
+
+### The hand's client is a browser, phone included
+
+Decided by Gal, 2026-08-30, against a local process holding the signing
+identity. The local process was the cheaper build — `switchboard/signing.py`
+already ships `RemoteSigningIdentity`, a signer on a Unix socket answering
+`sign` and `exchange`, so the page would have held no key and re-implemented
+no cryptography. It was refused because it requires an install, and a hand
+who can only reach the island from a phone is exactly the hand this is for.
+
+So **the browser holds the identity and owns a JS half of three things**, and
+what that costs is written here rather than discovered later:
+
+- **Message signing** — Ed25519 over `signing.message_payload`, which is
+  `{"by","ch","n","b"}` serialised with sorted keys and no whitespace. The
+  hazard is canonicalisation: two languages must produce identical bytes.
+  Island bodies are **strings**, which removes nested key ordering and float
+  formatting, the two places this normally breaks — so the hand's client
+  signs string bodies only, and that is a rule and not an accident.
+- **The workspace cipher** — HKDF-SHA256 subkeys and AES-GCM, needed merely
+  to register, since the public key is sealed like any other content.
+- **The whisper** — X25519, HKDF with both exchange keys sorted into `info`,
+  AES-256-GCM under AAD `switchboard/v1/ask\0<context>`. **A mistake here is
+  silent**: a wrong ordering or one wrong AAD byte yields an envelope that
+  does not open, and under a clock that does not stop that is a lost episode
+  with no error to read.
+
+Every primitive is in WebCrypto today, on desktop and mobile. The build risk
+is not the primitives; it is agreement with the Python.
+
+**So the JS half is tested against the Python half, never against itself.** A
+fixture of Python-produced signatures and sealed whispers that the browser
+must verify and open, run in the `drawing` job — the same rule this repo
+already keeps for pages, applied to cryptography. A JS implementation checked
+only by JS agrees with itself perfectly while disagreeing with everyone.
+
+**The first thing to check is not cryptography at all — it is CORS.** The
+client is `httpx` against a plain HTTP hub, and if the managed hub sends no
+`Access-Control-Allow-Origin` then no browser reaches it and the design needs
+a relay. Such a relay would hold **no key and could forge nothing**, since
+signing and sealing happen in the browser, so it is transport rather than a
+privileged path — but it is a service to keep alive, which is precisely what
+the static lobby page was designed to avoid. Check it before building
+anything else; the answer changes the shape.
+
+**Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
+stable https origin serving both the lobby and the game — the page must be
+*served*, not opened, because a `file://` page has an opaque origin and no
+dependable storage. Non-extractable is the point: the page can sign, and
+nothing — a bug, a pasted script — can lift the private half out. The cost
+accepted with it is that clearing site data mid-round loses the seat with no
+recovery, and a phone may evict storage from a site it has not seen lately.
+For a round measured in minutes that is tolerable, and **the page says so at
+the moment it creates the key** rather than at the moment it is lost.
 
 ## Seats, and who is in one
 
