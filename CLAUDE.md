@@ -190,6 +190,31 @@ example. What it unblocks — ranked games, deleting `island/sealed.py`, droppin
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.
 
+## A page's behaviour is checked in a browser, or it is not checked
+
+**A test that reads rendered markup cannot see a script that never ran.**
+Decided 2026-08-30, after the lobby's countdowns were found frozen: the ticker
+was emitted above the table rows, so its one `querySelectorAll('.cd')` matched
+nothing and every clock on the page showed the number the server wrote and
+never moved. Every test around it passed the whole time — `data-key` present,
+`sessionStorage` present, the resync bound present. All of it was present, in
+the wrong order, and **order is invisible to a fragment assertion**.
+
+So anything a page *does* — a countdown that ticks, a control that keeps its
+value, a button that copies — is asserted by loading the page in a real
+browser and watching it happen. Assert on markup only for what the page
+*says*.
+
+The viewer already worked this way (`viewer/tests/render.py`, the `drawing`
+CI job); the lobby page did not. Both now run in that job, and both take a
+`--require`-shaped flag — `render.py --require`, and
+`ISLAND_REQUIRE_BROWSER=1` for the lobby's test — because **a skip and a pass
+are the same green tick**, and a job that quietly checked nothing is worse
+than no job.
+
+Reproduce the class of failure in one command:
+`python -m pytest games/island/tests/test_lobby_page.py -q -k browser`.
+
 ## Metrics
 
 - **`eff_round`** — accumulated utility vector against the frontier of the

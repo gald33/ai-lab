@@ -429,6 +429,22 @@ RESYNC = PAGE_REFRESH * 2
 #: number wins, because that is no longer page staleness -- the schedule moved.
 #: With `sessionStorage` unavailable every branch falls back to the server's
 #: number, which is what the page did before.
+#:
+#: **It goes last in the page, after the tables, and that is load-bearing.**
+#: It ran once at parse time and took its elements with one
+#: `querySelectorAll('.cd')` -- so while it sat above the table rows it
+#: matched nothing, `els` was empty, and every countdown on the page simply
+#: showed the number the server wrote and never moved. Both fixes above were
+#: in it and working; nobody was calling them.
+#:
+#: *The lesson is about the tests, not the script.* Every test here asserted
+#: on the rendered markup -- that the span carried `data-key`, that the script
+#: said `sessionStorage`, that the resync bound was in it -- and all of them
+#: passed against a page whose countdowns were frozen, because each fragment
+#: was present and only their **order** was wrong. A test that reads markup
+#: cannot see a script that runs too early. So the test beneath this one loads
+#: the page in a real browser and watches the number change, which is the only
+#: thing that was ever being claimed.
 _TICKER = f"""<script>(function(){{
 var t0=Date.now(),els=[].slice.call(document.querySelectorAll('.cd'));
 function store(k,v){{try{{sessionStorage.setItem(k,v);}}catch(_){{}}}}
@@ -804,7 +820,6 @@ def render(lobby: Lobby, *, now: float | None = None,
 <p class=sub>Tables on <code>{html.escape(lobby.client.config.workspace)}</code>
 — {html.escape(counts)}.<br>
 {_age(now)}</p>
-{_TICKER}
 <p class=sub><b>You do not play this yourself — your agent does.</b>
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent
@@ -824,6 +839,7 @@ seats.</p>
 {int(TABLE_TTL) // 60} minutes.</p>
 {_heard(lobby)}
 </footer>
+{_TICKER}
 </main>
 """
 
