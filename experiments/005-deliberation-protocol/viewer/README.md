@@ -4265,19 +4265,46 @@ verdict at about 480s instead of at the end of everything. The one-job number we
 stopping short of. The saving is the split and the pause; the extra 48 seconds
 is a check that was not doing its job.
 
-If a runner scales the way it did last time — 32m04s there against 1509s here
-for the same work — this projects to something like 18 minutes for `slow`. That
-is a projection and is written down as one: **nobody has run these two jobs on
-a runner yet**, and the section above this one is about what happens when a
-number gathered on one machine is treated as evidence about another.
+#### And then the runner, which is what sets the limit
 
-So **`timeout-minutes` stays at 40 on both**, inherited rather than measured.
-Each job runs a strict subset of the suite that measured 32m04s under that
-limit, so 40 cannot be papering over a hang here any more than it was there. It
-is deliberately *not* tightened to a predicted number: the rule on that limit is
-an honest measured number or nothing, and arithmetic about a runner nobody has
-run on is not one. Tighten each to its own measured runner time once these jobs
-have posted one.
+The two jobs have now had a green run each, and this is what they cost where it
+matters:
+
+| | this machine | a runner | scaled by |
+|---|---:|---:|---:|
+| the suite in one job | 1022s | **32m04s** | 1.88× |
+| `--group quick` | 531s | **16m55s** (1015s) | 1.91× |
+| `--group slow` | 598s | **17m16s** (1036s) | 1.73× |
+
+**The gate is 32m04s → 17m16s**, a little over half, measured rather than
+projected. `render.py` itself is 16m10s and 16m43s of those; the rest is
+checkout, pip and the browser install, which each job now pays separately —
+that is what a second job costs, and it is about 40 seconds.
+
+**Half the projection above was wrong, and the half that was wrong is the
+interesting one.** `slow` came in at 17m16s against "something like 18
+minutes", which is the scaling holding. `quick` did not: scaled the same way it
+should have been about 15 minutes, and it took 16m55s. The two groups do not
+scale alike — 1.73× against 1.91× — because **`palette` is most of `slow` and
+`palette` is bound by wall-clock animation dwells rather than by the CPU.** A
+frame is held for as long as its clip draws, whatever the machine is doing, so
+that check barely notices a slower box while every check that is drawing as
+fast as it can nearly doubles.
+
+Which is luck rather than design, and worth naming as luck: on this machine the
+two groups are 531s and 598s, an 0.89 ratio, and on a runner they are 1015s and
+1036s, an 0.98 one. A split into two is only as good as its longer half, and
+the longer half is barely longer — *on a runner*. The rule that assigns groups
+is still the local table, so if that ever drifts far apart again, this is the
+paragraph that says to check the runner rather than the laptop.
+
+So **`timeout-minutes` is 22 on each**, set from each job's own measured time
+with a quarter in hand — the same margin 40 was against 32m04s. It stood at 40
+for one push, inherited, because the rule on that limit is an honest measured
+number or nothing and neither job had ever run; it is measured now, so it is
+set. One green run each is the same evidence the 40 had, and what one run
+cannot give is the spread: raise these if a green run ever lands near them, and
+never to get past a hang.
 
 #### What the split is not allowed to do to the gate
 

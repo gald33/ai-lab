@@ -68,7 +68,8 @@ jobs:
   # fails if a group is added to `render.py` and not to it.
   #
   # **Two jobs, and the split is by measured cost.** In one job the suite took
-  # 32m04s on a runner. The obvious division -- structure is cheap, the checks
+  # 32m04s on a runner; these two take 16m55s and 17m16s, and run at once, so
+  # the gate is 17m16s. The obvious division -- structure is cheap, the checks
   # that read the model's pixels are dear -- is not what the clock says: those
   # four pixel checks are 90 seconds of a 1063-second run, and four checks
   # nobody would have picked out (`palette`, `island`, `replay`, `overhead`)
@@ -102,16 +103,18 @@ jobs:
     # the limit was slow, and one that trips it was stuck -- which is the only
     # thing that can be known about a job whose logs arrive when it ends.
     #
-    # **40 is inherited, not measured, and that is deliberate.** The whole
-    # suite in one job measured 32m04s on a runner and was given 40. Each of
-    # these jobs runs a strict subset of that suite, so 40 cannot be papering
-    # over a hang here any more than it was there -- it is the same limit
-    # around less work. It is not tightened to a *predicted* number: this
-    # machine's 473s for `quick` scaled by some ratio is arithmetic about a
-    # runner nobody has run on, and the rule above says an honest measured
-    # number or nothing. Tighten each of these to its own measured runner time
-    # once these jobs have posted one.
-    timeout-minutes: 40
+    # **22 against a measured 16m55s**, which is this job's own green run on a
+    # runner rather than a number carried over from the suite it was split out
+    # of. It stood at 40 for one push -- inherited from the whole suite's
+    # 32m04s, because the rule above is an honest measured number or nothing
+    # and this job had never run -- and it is measured now, so it is set:
+    # 16m55s for the job, 16m10s of that in `render.py` itself.
+    #
+    # A quarter in hand, the same margin 40 was to 32m04s. One green run each,
+    # which is the same evidence the 40 had; what a single run cannot tell you
+    # is the spread, so raise this if a green run ever comes in near it, and
+    # never to get past a hang.
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -157,9 +160,19 @@ jobs:
   # harness waiting, and it is the floor under any split of this suite.
   drawing-slow:
     runs-on: ubuntu-latest
-    # Inherited from the whole suite's measured 32m04s, for the reason spelled
-    # out on `drawing-quick` above.
-    timeout-minutes: 40
+    # 22 against a measured **17m16s** on a runner (16m43s of it in `render.py`),
+    # for the reasoning spelled out on `drawing-quick` above.
+    #
+    # Almost exactly level with `quick`'s 16m55s, which the developer machine
+    # did not predict: there the two are 531s and 598s, an 0.89 ratio, and on
+    # the runner they are 1015s and 1036s, an 0.98 one. The two groups scale
+    # differently because `palette` is most of this job and `palette` is bound
+    # by **wall-clock animation dwells** rather than by the CPU -- a frame is
+    # held for as long as its clip draws whatever the machine is doing -- so
+    # this job grows by 1.73x on a slower box where `quick` grows by 1.91x.
+    # Which is a happy accident for a split into two: the gate is the longer
+    # job, and the longer job is barely longer.
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
