@@ -1067,6 +1067,14 @@ The block of island-then-cards is now **centred** in the band rather than pinned
 to its top. Slack dumped below the last card is invisible, and on a tall phone —
 where the island cannot grow — that is all a tap would have produced.
 
+*Pinned back to the top on 2026-08-30, with the focus. Centring bought motion
+for a gesture that no longer exists, and it bought it with dead sky: half the
+slack landed **above** the island, inside the band the island is supposed to
+have taken. `mobile` caught it the moment the nameplate reservation freed up
+enough room for the cap to bite — the drawn land filled 84% of a 435px band on
+a 390×844 phone against a floor of 95%. That check is the layout's own claim,
+and centring made the claim false to make a tap feel better.*
+
 #### 0.58 of a card is not a card
 
 The viewBox is 520 across, so on a 390pt window a unit is 0.75 device pixels and

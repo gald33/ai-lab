@@ -525,15 +525,26 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     const cardsH = Math.round(rows * pitchAt());
     const room = band - cardsH - 16;
     const D = Math.max(ISLAND_MIN, Math.min(w, Math.floor(room / ISLAND_FOOT)));
-    //: **The block sits in the middle of the band, not at the top of it.**
-    //: The island is capped at the frame's own width -- past that its shore
+    //: **The block starts at the chrome's foot**, and any slack falls below
+    //: the last card.
+    //:
+    //: It was centred in the band for one round, and the reason was the focus:
+    //: the island is capped at the frame's own width -- past that its shore
     //: would be cropped, since the land spans exactly its box -- so on a tall
-    //: phone it is already as big as it can be and every unit the cards give
-    //: back is slack. Dumped below the last card that slack is invisible, and
-    //: a tap on the island would have looked like a tap that did nothing.
-    //: Shared above and below, it is the island getting the room.
-    const used = Math.round(ISLAND_FOOT * D) + 16 + cardsH;
-    const top = above + Math.max(0, Math.round((band - used) / 2));
+    //: phone it is already as large as it goes, and a tap asking for it could
+    //: only ever hand the cards' units to a gap. Dumped below the last card
+    //: that gap was invisible and the tap looked like a tap that did nothing;
+    //: shared above and below, at least the island moved down the screen.
+    //:
+    //: There is no tap now, and no reason left to buy motion with dead sky.
+    //: Sharing it put half the slack *above* the island, inside the band the
+    //: island is supposed to have taken: `mobile` measures the drawn land
+    //: against `islandFoot - chromeTop` and found it filling 84% of a 435px
+    //: band on a 390x844 phone, against a floor of 95%. That check is the
+    //: layout's own claim -- the island took what was left -- and centring
+    //: made the claim false to make a gesture feel better. The gesture is
+    //: gone; the claim stays.
+    const top = above;
     //: Where the island actually stops, which is above where its box does.
     //: Kept separate from where the cards start, so that a check comparing the
     //: two is asking a question rather than restating one number twice.
