@@ -471,7 +471,35 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     // Two to a row: a card is 196 of the 520 a portrait frame is wide, so two
     // fit beside each other with a gutter and three do not.
     const rows = Math.ceil(n / 2);
-    const cardsEven = rows * pitch;
+    //: **The rows straddle the island rather than stacking under it.**
+    //:
+    //: An opened card is drawn over what is under it -- that is the bargain
+    //: that gave the island the frame -- but *what* it covers was never
+    //: chosen. Under one column of rows the thing under a card is another
+    //: card, so opening T1 on a four-hander hid T3 completely: reported by
+    //: Gal with a screenshot of exactly that. Covering the island is fine;
+    //: the island is still there behind it and the card is what the viewer
+    //: just asked for. Covering another trader's numbers is not.
+    //:
+    //: So half the rows go above the island and half below, and the property
+    //: that buys is simple: **a block one row deep has nothing of its own to
+    //: cover.** At four traders or fewer that is both blocks, so no card can
+    //: ever cover a card -- which is the case Gal asked for and the case
+    //: every board on disk is. Above five it degrades honestly: the block
+    //: with two rows in it can still overlap inside itself, and there is no
+    //: arrangement of a phone's width that avoids it.
+    const rowsAbove = Math.floor(rows / 2);
+    const rowsBelow = rows - rowsAbove;
+    //: Between the island and the nearest card, on whichever side has one.
+    const CLEAR = 16;
+    //: What each block costs the band, measured from the chrome's foot down
+    //: to the island's box and from the island's foot down to the last card.
+    //: `pitch - gap` is a row's own drawn extent; the gap is the space to the
+    //: *next* row and the last row of a block does not have one.
+    const blockH = (r) => (r ? r * pitch - gap + CLEAR : 0);
+    const aboveH = blockH(rowsAbove);
+    const belowH = blockH(rowsBelow);
+    const cardsEven = aboveH + belowH;
     //: **The frame is the window's own shape**, so the viewBox does not
     //: letterbox and a band measured in units is the same band in pixels.
     //:
@@ -493,7 +521,11 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     //: its minimum once the chrome and the cards have theirs. The frame is
     //: then taller than the window and the slack falls across the *width*,
     //: which is the direction this has been spending slack in all along.
-    const floorH = Math.ceil((ISLAND_MIN * ISLAND_FOOT + 16 + cardsEven)
+    //: `cardsEven` already carries each block's clearance to the island, so
+    //: there is no separate 16 to add here -- there was, while every card was
+    //: in one block under the island and the clearance was a single number
+    //: this had to know about.
+    const floorH = Math.ceil((ISLAND_MIN * ISLAND_FOOT + cardsEven)
                              / Math.max(0.2, 1 - frame.top - frame.foot));
     const H = Math.max(720, Math.round(w / frame.aspect), floorH);
     //: The chrome's two bands, in units. Declared in the stylesheet next to
@@ -521,9 +553,7 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     //: reservation. Reserving the open card was what made the island small
     //: enough to need a focus in the first place.
     const band = H - above - below;
-    const pitchAt = () => CARD_TOP + cardH + gap;
-    const cardsH = Math.round(rows * pitchAt());
-    const room = band - cardsH - 16;
+    const room = band - aboveH - belowH;
     const D = Math.max(ISLAND_MIN, Math.min(w, Math.floor(room / ISLAND_FOOT)));
     //: **The block starts at the chrome's foot**, and any slack falls below
     //: the last card.
@@ -544,19 +574,45 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
     //: layout's own claim -- the island took what was left -- and centring
     //: made the claim false to make a gesture feel better. The gesture is
     //: gone; the claim stays.
-    const top = above;
+    //: The island's box starts under whatever the top block came to, which is
+    //: the chrome's own foot when there is no top block.
+    const top = above + aboveH;
     //: Where the island actually stops, which is above where its box does.
     //: Kept separate from where the cards start, so that a check comparing the
     //: two is asking a question rather than restating one number twice.
     const islandFoot = top + Math.round(ISLAND_FOOT * D);
-    const foot = islandFoot + 16;
+    const foot = islandFoot + CLEAR;
+    //: Which seat line a row stands on. Above the island the block hangs from
+    //: the chrome's foot; below it, from the island's.
+    const rowY = (row) => (row < rowsAbove
+      ? above + row * pitch
+      : foot + (row - rowsAbove) * pitch);
+    const lastBelow = rowY(rows - 1);
     return {
       cards: Array.from({ length: n }, (_, i) => {
         const row = Math.floor(i / 2);
         // A row with one card in it sits in the middle rather than off to a side.
         const alone = i === n - 1 && n % 2 === 1;
         return { x: alone ? w / 2 : (i % 2 ? w * 0.735 : w * 0.265),
-                 y: foot + row * pitchAt() };
+                 y: rowY(row),
+                 //: **An opened card always grows toward the island.** Down
+                 //: from the top block, and *up* from the bottom one, which is
+                 //: what `lift` says.
+                 //:
+                 //: The bottom block has the transport under it, and the
+                 //: transport is HTML over the whole drawing -- so a card
+                 //: growing down there does not overlay it, it goes behind it.
+                 //: Measured on a 393x660 phone: the shut card ended at 513
+                 //: and the transport began at 514, so an opened one put 73
+                 //: pixels of itself -- its utility row, the number the round
+                 //: is scored on -- behind a solid panel, and `elementFromPoint`
+                 //: at the card's own centre returned the transport. It could
+                 //: not be read and it could not be tapped shut.
+                 //:
+                 //: Growing upward costs nothing. Reserving the open height
+                 //: down there would cost the island 98 units, which is the
+                 //: reservation this layout exists to have got rid of.
+                 lift: row >= rowsAbove };
       }),
       islandBox: { x: Math.round((w - D) / 2), y: top, w: D, h: D },
       //: Where the island starts drawing, a hair below its box's own top.
@@ -580,8 +636,17 @@ function cardPlan(n, w, h, cardH, portrait, frame) {
       //: viewBox, where nothing is drawn at all. This is the one place the
       //: open card still costs the frame anything, and it costs it only where
       //: the rows reach that far down.
-      h: Math.max(H, foot + cardsH + below,
-                  foot + (rows - 1) * pitchAt() + CARD_TOP + CARD_H_SCORED),
+      //: **Measured off the last row, which is the bottom of the below block.**
+      //: An opened card in the *top* block grows over the island and costs the
+      //: frame nothing; only the bottom one can run out of canvas.
+      //: `CARD_TOP + cardH` and not `pitch`: a pitch carries the gap to the
+      //: *next* row, and the last row does not have one. Adding it here made
+      //: the frame 14 units taller than the window on every phone -- and a
+      //: frame taller than the window is the one thing this branch must not
+      //: do, because the chrome's bands are fractions of it and would stop
+      //: landing where the chrome is.
+      h: Math.max(H, lastBelow + CARD_TOP + cardH + below,
+                  lastBelow + CARD_TOP + CARD_H_SCORED),
     };
   }
   //: A column's width, from the card's own: the margin is as wide as what
@@ -758,6 +823,65 @@ export function burnAt(p) {
 }
 
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
+
+//: The narrowest a column goes, and the gutter kept between two of them. A
+//: column is a touch target on a phone as well as a drawing, and one much
+//: under this stops being either.
+const BAR_MIN = 11, BAR_GUTTER = 5;
+
+/**
+ * How wide to draw a trader's column for one good: how much they want it.
+ *
+ * **Quantity is a height; appetite is a width.** That is the whole reason this
+ * is a width and not a second bar: the shelf already spends its vertical axis
+ * on how much a trader is holding, and a second length on the same axis is a
+ * second quantity however it is styled. Nothing here can be misread as a
+ * quantity, because it is not on the quantity's axis.
+ *
+ * **The whole column scales, not a backdrop behind a fixed bar.** The first
+ * version drew the appetite as a ground the bar stood in and kept `BAR_W` as
+ * its floor, which left 26 to 34 units to say everything: on game 001d, T1
+ * wants bread 7.6x as much as iron and the shelf drew that as a column 25%
+ * wider. A difference that large reading that small is worse than not drawing
+ * it, because the shelf then looks like it has answered the question.
+ *
+ * Normalised against the trader's **own** largest taste, not against 1 and not
+ * across traders. Two reasons, and the second is the load-bearing one:
+ *
+ * - Sigma-alpha is 1, so on a five-good island an even taste is 0.2 and the
+ *   whole range ever drawn would be a fifth of the axis. Against the trader's
+ *   own maximum the shelf uses its full width whatever the good count.
+ * - And the question a viewer is asking is *"what does this trader care about
+ *   most"*, which is a question inside one card. Across cards it would answer
+ *   "who has the peakier tastes", which is a real quantity and not the one a
+ *   shelf is for -- see `viewer/README.md`.
+ *
+ * `step` is the column's share of the shelf, so the widest never touches its
+ * neighbour whatever the island's good count.
+ *
+ * **Width is affine in the taste, not proportional to it**, and that is a real
+ * limit rather than an oversight. A column is a touch target as well as a
+ * drawing, so there is a floor under it; with a floor, a column twice as wide
+ * is not a taste twice as large. What the shelf claims is the **order and the
+ * spread** -- which good this trader wants most, and whether the others are
+ * close behind or nowhere near -- and that is what a viewer is asking. The
+ * numbers themselves are in the rail, under "Tastes", and are not repeated
+ * here: this is meant to be read at a glance while a parcel is landing, and a
+ * glance does not read four decimals.
+ *
+ * A rooted share was tried first and is wrong here. It was justified as
+ * putting the drawn *area* on the taste -- but the column's height is the
+ * quantity held, so its area is a taste times a stock, which is not a quantity
+ * anything wants to show. It also compressed the very differences this exists
+ * to draw: T1 wanting bread 7.6x as much as iron came out as a column 1.4x
+ * wider.
+ */
+export function appetiteWidth(alpha, top, step) {
+  const wide = Math.max(BAR_MIN + 1, step - BAR_GUTTER);
+  if (!(alpha > 0) || !(top > 0)) return null;
+  const share = Math.min(1, alpha / top);
+  return BAR_MIN + (wide - BAR_MIN) * share;
+}
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
 //: Taller only where there is a utility to put in it. A live card must not
@@ -935,12 +1059,6 @@ export class Scene {
     //: edge.
     this.opened = new Set();
     this.flashed = new Set();
-    //: Told whenever a shelf opens or shuts anywhere on the island, so the
-    //: page can put the goods key on screen while there is a shelf to read it
-    //: against and take it off again when there is not. The scene owns which
-    //: cards are open; it does not own the chrome, so it reports rather than
-    //: reaches out. See `.app.shelf-open`.
-    this.onCards = null;
     this.geo = layout(this.traders.length, portrait, aspect, chrome,
                       this.shutH());
     // Where the settlements actually are, when there is a model underneath.
@@ -1193,10 +1311,6 @@ export class Scene {
                                     width: 400, height: 46, rx: 23 }));
     this.banner.append(el("text", { x: g.cx, y: 72, class: "banner-text" }, ""));
     svg.append(this.banner);
-    //: A board with no model has no shut cards at all -- every shelf is open
-    //: from the moment it is drawn -- and that is a state nothing later
-    //: reports, because nothing later changes it.
-    this.sayCards();
   }
 
   defs() {
@@ -1302,6 +1416,24 @@ export class Scene {
   }
 
   /**
+   * How far a card stands off its own seat, which is only ever upward.
+   *
+   * **An opened card grows toward the island**: down out of the top block,
+   * which is what a card does anyway, and up out of the bottom one, which is
+   * what this is for. Below the bottom block is the transport -- HTML, drawn
+   * over the whole scene -- so a card growing down there goes *behind* a solid
+   * panel rather than over anything. See `lift` in `cardPlan` for the
+   * measurement that found it.
+   *
+   * Zero for a shut card, whatever block it is in: the seat is where the
+   * nameplate lives, and the lift is only the room a shelf needs.
+   */
+  cardLift(name, shut = !this.cardOpen(name)) {
+    if (shut || !this.seats[name]?.lift) return 0;
+    return this.cardBoxH() - this.shutH();
+  }
+
+  /**
    * Open or shut one seat's card, and say whether anything changed.
    *
    * The caller repaints -- this owns which cards are open and how one is
@@ -1391,6 +1523,14 @@ export class Scene {
       h: node.querySelector(".card-bg")?.getAttribute("height"),
       shelf: node.querySelector(".card")?.classList.contains("shut") ? 0 : 1,
     };
+    //: Where the card was standing, so a lift is animated from it rather than
+    //: jumped to. **Derived from the shelf the old node was drawn with**, not
+    //: from `cardLift(name)`: by the time this runs, `toggleCard` has already
+    //: flipped the state, so asking the scene would answer with the *new*
+    //: lift and the two ends of the animation would be the same number. The
+    //: card would then jump the 98 units in one frame -- which is exactly the
+    //: bug the animation exists to prevent, wearing the animation's clothes.
+    was.lift = this.cardLift(name, !was.shelf);
     node.replaceWith(this.hut(name, seat));
     this.swingCard(name, was);
     for (const [good, kept] of Object.entries(carry)) {
@@ -1425,18 +1565,6 @@ export class Scene {
     //: progress -- advancing it here is what filled a shelf before its goods
     //: landed. See `draw`.
     if (this.state) this.draw(this.state, this.timeline, { advance: false });
-    this.sayCards();
-  }
-
-  /**
-   * Say whether any shelf is open, to whoever asked to be told.
-   *
-   * Every open and every shut goes through `redrawCard` -- a click, a
-   * settlement flashing a card and the timer handing it back -- so this is
-   * called from there and nowhere else.
-   */
-  sayCards() {
-    this.onCards?.(this.traders.some((n) => this.cardOpen(n)));
   }
 
   /**
@@ -1483,6 +1611,20 @@ export class Scene {
     //: animation then exists, reports the right duration, and moves nothing,
     //: which is the failure that is hardest to see: caught by reading the
     //: keyframes back off the running animation rather than by watching it.
+    //: The lift, on the card's own group. A bottom-block card grows upward, so
+    //: opening it moves the whole card as well as resizing it -- and a move
+    //: that is not animated is a card that jumps out from under the finger
+    //: that opened it.
+    //:
+    //: Units, for the reason the score row's transform needs them: an SVG
+    //: transform attribute is unitless and a CSS one is not, so `translate(0
+    //: -98)` as a keyframe is dropped in silence.
+    const nowLift = this.cardLift(name);
+    if (was.lift !== nowLift) {
+      card.animate([{ transform: `translate(0px, ${-was.lift}px)` },
+                    { transform: `translate(0px, ${-nowLift}px)` }], ease);
+    }
+
     const row = card.querySelector(".score");
     if (row) {
       const from = scoreAt(!!was.shelf);
@@ -1839,6 +1981,13 @@ export class Scene {
     const shut = !this.cardOpen(name);
     const card = el("g", {
       class: "card" + (shut ? " shut" : "") });
+    //: How far this card is standing off its seat, which is only ever the
+    //: bottom block growing upward -- see `lift` in `cardPlan`. A shut card
+    //: never lifts: the seat *is* where the nameplate lives, and the lift is
+    //: the extra a shelf needs, taken out of the island above rather than out
+    //: of the transport below.
+    const lift = this.cardLift(name, shut);
+    if (lift) card.setAttribute("transform", `translate(0 ${-lift})`);
     if (this.cardScale() !== 1) {
       card.setAttribute("transform", `scale(${this.cardScale()})`);
       //: The scale, handed to the stylesheet. A glance card holds its marks at
@@ -1876,12 +2025,21 @@ export class Scene {
     wheel.append(el("circle", { r: 12, class: "wheel-track" }));
     wheel.append(el("circle", { r: 12, class: "wheel-fill",
                                 "stroke-dasharray": "0 76", transform: "rotate(-90)" }));
-    wheel.append(el("text", { y: 3.5, class: "wheel-text" }, "—"));
+    //: **No number in the ring.** It read the labour left as a percentage, and
+    //: a percentage is what a ring already is: the arc is the share of full,
+    //: which is the whole of what there is to say. Decided by Gal, 2026-08-30
+    //: -- "having it visually is enough".
+    //:
+    //: The number was carrying one thing the arc was not, and that is what
+    //: `unknown` is for below: an em dash said *nobody has reported any labour
+    //: yet*, which is not the same as none left and drew the same empty ring.
     card.append(wheel);
     card.append(el("text", { x: CARD_W / 2 - 43, y: CARD_TOP + 23, class: "card-sub",
                              "text-anchor": "end" }, "labour"));
     this.labels[name] = { wheel: wheel.querySelector(".wheel-fill"),
-                          wheelText: wheel.querySelector(".wheel-text"),
+                          //: The group, so `draw` can say on it whether this
+                          //: trader's labour has been reported at all.
+                          wheelGroup: wheel,
                           card: card.querySelector(".card-bg") };
 
     // The shelf: goods in the manager's own order, always, so the position is
@@ -1889,20 +2047,47 @@ export class Scene {
     this.bars[name] = {};
     const inner = CARD_W - 26;
     const step = inner / this.goods.length;
+    //: What this trader wants, if anybody is allowed to know. A live board has
+    //: no reveal and therefore no tastes, and that is a fact about the game
+    //: rather than a gap in the drawing -- see the appetite ground below.
+    const taste = this.reveal?.traders?.[name]?.taste ?? null;
+    const topTaste = taste ? Math.max(...this.goods.map((g) => taste[g] || 0)) : 0;
     this.goods.forEach((good, i) => {
       const cx = -CARD_W / 2 + 13 + i * step + step / 2;
-      const x = cx - BAR_W / 2;
+      //: **The column is as wide as this trader wants the good**, and every
+      //: mark in it is cut to that width. Without a reveal there is no taste
+      //: to be had and the shelf is the even row of columns it always was --
+      //: which is the honest drawing of "nobody outside that trader's head
+      //: knows", and is why a live card is *visibly* a different card rather
+      //: than one quietly claiming even tastes.
+      const w = (taste && appetiteWidth(taste[good], topTaste, step)) || BAR_W;
+      const x = cx - w / 2;
       const cell = el("g", { class: "cell", "data-good": good,
+                             "data-appetite": taste ? "yes" : "no",
                              style: `--c: var(${SLOT[i % SLOT.length]})` });
+      //: **The ground each good stands on, as wide as this trader wants it.**
+      //: The shelf said what everybody was holding and never what any of it
+      //: was worth to the one holding it -- so a settlement was a rope, a pill
+      //: and a number that moved, with nothing on screen saying why the number
+      //: moved that way. On game 001d, T1's taste for bread is 0.70 against
+      //: 0.09 for iron: bread-for-salt is good for both traders and the card
+      //: could not say so.
+      //:
+      //: **Drawn only when there is a reveal, and absent otherwise.** Not
+      //: drawn flat, or drawn even -- absent. An even ground on a live card
+      //: would say "this trader wants everything equally", which is a claim,
+      //: and the true statement is that nobody outside that trader's head
+      //: knows. A thing that is not known is not drawn as a thing that is
+      //: known and happens to be uniform.
       cell.append(el("rect", { class: "bar-track", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 4 }));
+                               width: w, height: BAR_MAX, rx: 4 }));
       const bar = el("rect", { class: "bar", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 4 });
+                               width: w, height: BAR_MAX, rx: 4 });
       // Promised, not gone: the manager will not settle a second offer over the
       // same goods, so a shelf that hides commitment shows stock that cannot
       // actually be offered.
       const held = el("rect", { class: "bar-held", x, y: BASE - BAR_MAX,
-                                width: BAR_W, height: BAR_MAX, rx: 4 });
+                                width: w, height: BAR_MAX, rx: 4 });
       cell.append(bar, held);
       // An empty slot has to say empty. A dark trough reads as "small", and the
       // difference between small and none is the whole of Cobb-Douglas.
@@ -1914,7 +2099,7 @@ export class Scene {
       // and nothing on the card said why. An outline around the whole empty
       // trough cannot be mistaken for a quantity.
       cell.append(el("rect", { class: "bar-zero", x: x + 0.75, y: BASE - BAR_MAX + 0.75,
-                               width: BAR_W - 1.5, height: BAR_MAX - 1.5, rx: 4 }));
+                               width: w - 1.5, height: BAR_MAX - 1.5, rx: 4 }));
       cell.append(el("text", { x: cx, y: BASE + 17, class: "glyph" }, GLYPH[good] || "▪"));
       cell.append(el("text", { x: cx, y: BASE + 31, class: "qty" }, ""));
       card.append(cell);
@@ -2175,7 +2360,14 @@ export class Scene {
       const arc = 2 * Math.PI * 12;
       const used = spent === null ? 0 : Math.max(0, Math.min(1, 1 - spent));
       label.wheel.setAttribute("stroke-dasharray", `${(used * arc).toFixed(2)} ${arc}`);
-      label.wheelText.textContent = spent === null ? "—" : `${Math.round(used * 100)}`;
+      //: **Nothing reported is not the same as nothing left**, and without the
+      //: number in the ring the arc cannot tell them apart: `used` is 0 for
+      //: both, so both draw an empty ring. The em dash was doing that work.
+      //: So the *track* says it instead -- dashed until a receipt has said what
+      //: this trader spent, solid once one has. A trader who has not produced
+      //: yet and a trader who has spent everything are the two most different
+      //: states on the card and they must not look alike.
+      label.wheelGroup?.classList.toggle("unknown", spent === null);
       // `label.score` and not `this.reveal`: a glance card has no score row to
       // write into, and the card is what decides that, not the board.
       if (this.reveal && label.score) {

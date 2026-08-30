@@ -950,6 +950,105 @@ band, and an opened card stays on the canvas.
 `render.py:focusing` keeps its name and asserts the pair that replaced it: a
 tap on a card opens that trader's shelf, and the frame does not move.
 
+### Four traders, shut
+
+*Decided 2026-08-30. `render.py:shutters` is the browser check on the shut
+card at the trader count where the row wraps; before it, nothing in a browser
+had ever drawn one.*
+
+**The gap.** `render.py:ring` is the only check that draws more than two
+traders, and it built its probe as
+
+```js
+window.__probe = new Scene(document.getElementById('island'), t, null);
+```
+
+Three positional arguments. The third is `reveal`; the fourth and fifth are
+`portrait` and `placed`, and `placed` **defaults to `null`** — so
+`this.modelled = placed !== null` came out false, `shutCards()` returned false
+with it, and `cardOpen()` answered true for every seat on the board. **Every
+card on that scene was open for its whole life.** So `shutCards`, `cardOpen`,
+`shutH`, `cardBoxHFor`, `toggleCard`, `flashCard`, `redrawCard`, `swingCard`,
+`sayCards` and both of `CARD_H_SHUT` (88) and `CARD_H_SHUT_BARE` (42) had been
+exercised in a browser **only** by `focusing()` and `uncovered()`, on the two
+saved replays — two traders each, one row of cards between them.
+
+Two is the count where none of the interesting geometry exists. Four is where
+a portrait row wraps into a second one, which is where an opened card overlays
+the nameplate below it and where the bottom row is the thing the frame has to
+be tall enough for.
+
+**What was done, and why it is a second probe rather than a model under
+`ring`'s.** `ring` hands its scene to `check()`, `palms()` and `motion()`, and
+each of those three is about the **drawn** island — the fallback a browser
+with no WebGL gets — which is exactly what a model turns off: `check()` starts
+failing the page for two islands on one page, and `palms()` has nothing left
+to measure. Giving `ring` a model would have cost three checks to buy one. So
+`shutters()` is its own probe, built the way `raise()` in `index.html` builds
+the real thing: `layout(n, portrait, aspect, chrome, shutH)`, then
+`stage.build({traders, goods})` on the page's own canvas, then the resulting
+`anchors` handed to `Scene` as `placed`. The aspect and the chrome's bands are
+read off the page the way `frameAspect()` and `chromeBands()` read them, so a
+stylesheet change cannot leave the check drawing a frame the page never
+builds.
+
+It asserts four things at four traders over five goods, in the frame's own
+units rather than in pixels — the viewBox is fitted into the window with
+`meet`, so pixels measure the letterboxing as much as the drawing:
+
+- every card comes up shut, at the height that board shuts to — `CARD_H_SHUT`
+  with a reveal, `CARD_H_SHUT_BARE` live. Both are drawn, one scene each,
+  because the row is pitched at whichever the board has;
+- opening one grows its box to `CARD_H_SCORED` and leaves the viewBox string
+  untouched;
+- the opened card in the upper row reaches **past** the top of the nameplate
+  below it, and that nameplate has not moved by so much as half a unit;
+- and the bottom row, opened, is still on the canvas.
+
+**Two frames, because the last claim is only checkable in one of them.**
+`cardPlan` sizes the portrait frame at the largest of three terms, and the one
+that reserves room for the opened bottom row is the smallest of the three
+wherever the stylesheet has declared a transport band. On a 390×844 phone at
+four traders the frame is 1130 units and the opened bottom card reaches 978 —
+152 units of slack. Measured by deleting the term: `render.py` stayed green.
+The band is declared under `@media (max-width: 700px)` and is `0px` above it,
+so a window taller than it is wide and wider than 700px is a portrait frame
+with **no** chrome band, and there the opened bottom row is exactly what the
+frame is sized to with nothing spare. Hence `SHUT_FRAMES`: the phone, and
+760×900.
+
+Re-check the slack with:
+
+```
+node --input-type=module -e "
+import { layout } from './experiments/005-deliberation-protocol/viewer/web/scene.js';
+for (const [w, h] of [[390, 844], [760, 900]]) {
+  const a = Math.floor(w / h * 100) / 100;
+  const band = w <= 700 ? { top: 98 / h, foot: 146 / h } : { top: 0, foot: 0 };
+  const g = layout(4, true, a, band, 88);
+  const foot = Math.min(...g.cards.map((c) => c.y));
+  console.log(w + 'x' + h, 'frame', g.h, 'slack', g.h - (foot + 124 + 22 + 186));
+}"
+```
+
+`390x844 frame 1130 slack 152` and `760x900 frame 804 slack 0`.
+
+**How the new assertions were shown to be able to fail.** Each defect was put
+back, `render.py`'s `shutters` run watched go red, and the defect restored:
+
+| defect put back | what went red |
+|---|---|
+| `new Scene(island, t, reveal, true)` — `placed` dropped, which is `ring`'s own shape | *the probe has no island under it, so every card is open for its whole life* |
+| `cardPlan`'s portrait pitch taken back to `CARD_TOP + CARD_H_SCORED + gap` | *T1's opened card reaches 698 and T3's nameplate starts at 735; nothing is being overlaid* |
+| `cardPlan`'s `h` with the last-row term deleted | *T3's opened card reaches 803 on a 720-unit canvas* — on the wide frame only, which is why there are two |
+| `shutCards()` back to `this.modelled && !this.portrait`, the landscape-only rule it had before the split screen went | 56 problems: cards up open, `toggleCard` refusing, the flashed card never given back |
+
+The first of those four is the defect this check exists for; the third is the
+one that says why one frame was not enough.
+
+`ring`'s docstring now says out loud that its probe has no island under it on
+purpose, and points here.
+
 ### Four rows of chrome became two
 
 The chrome stood on **162px of a 760px phone** before the island got anything,
@@ -973,6 +1072,15 @@ key. Two of the four were on screen the whole time saying nothing.
 
 `--chrome-top` is **98px**, and that is the whole of the gain: 64px of a phone,
 handed to the island by two rows that were not earning their place.
+
+*Half-reversed on 2026-08-30. The counts row was not earning its place and is
+still gone. The goods key **was**, and the gain from dropping it was real only
+while no card was open — the moment one was, the key stood across the bottom
+row of cards, because it had been given no room of its own. It is back, in the
+foot band, reserved. See "The goods key is reserved, and says what a column's
+width means". The lesson is not that the row was needed; it is that hiding a
+thing is not the same as making room for it, and this counted the second as
+though it were the first.*
 
 #### The band a stylesheet declares and the band the rows come to
 
@@ -2624,6 +2732,338 @@ Its fixture had to change to say anything. It held 0.8 of everything and moved
 single box is the one case where `spread` does nothing at all, so the rule it
 exists for could not be made to fail. Six boxes each now, five of them moving.
 
+## The ring is the percentage, so the percentage comes out of the ring
+
+*Decided by Gal, 2026-08-30: "we can lose the percentage inside the available
+labour. Having it visually is enough."*
+
+The labour dial drew an arc **and** printed the number the arc was drawn from.
+A ring is already a share of full, so the number restated it: two marks for one
+fact, in the smallest type on the card, inside a 24-unit circle.
+
+### The em dash was doing a second job, and the arc cannot
+
+Which is the whole of the care needed here. `used` is `1 - spent`, and a trader
+nobody has reported is `spent === null`, which is also `used = 0` — so **an
+unreported labour and a fully-spent one draw the same empty arc.** The number
+was the only thing telling them apart: `—` against `0`.
+
+Those are the two most different states on the card. A trader who has not
+produced yet has said nothing; a trader who has spent everything has made their
+whole decision for the day. Drawing them alike is the failure this repo keeps
+having to catch — the weaker thing is allowed, and never allowed to look like
+the stronger one.
+
+So the **track** carries it: broken (`3 4`) while nothing is known, whole once a
+receipt has landed. A state, not a value, on the one part of the dial that was
+not already saying something.
+
+### What checks it
+
+`render.py:labour`, called from `replay` at every stop it already visits, so it
+costs no page load. It asserts the invariant everywhere — a ring marked unknown
+draws a broken track, one that is not draws a whole one — plus the one frame
+whose answer is known in advance, the open, where nobody has produced.
+
+Both sides are exercised on the real replays rather than in principle: on game
+001d the two traders read `unknown=[True, True]` at the open, `[True, False]` at
+the middle, `[False, True]` late, `[False, False]` at dusk, and `[True, True]`
+at the end.
+
+**That last one is a fact the check got wrong first.** It asserted every ring
+was *known* at the closing frame, on the reasoning that by then everybody has
+produced — and failed. Labour is an **episode** quantity and resets at the
+bell, so a ring at the closing frame is correctly unknown, and the assertion
+was a misreading of the game rather than a defect in the page. The check found
+it on its first run, which is the right way round.
+
+Shown to fail: pinning the class off gives *"T1's ring claims to know a labour
+at the opening frame, before anybody has produced"* on both traders and both
+motion settings.
+
+To re-check: `python viewer/tests/render.py --require`.
+
+## The rows straddle the island
+
+*Reported by Gal, 2026-08-30, with a screenshot: opening T1 on a four-hander
+covered T3 completely. "It's better even if it covers the island and not other
+cards… maybe two above the island and two below."*
+
+An opened card is drawn over what is under it — that is the bargain that gave
+the island the frame — but **what** it covers was never chosen. Under one
+column of rows the thing under a card is another card, so the card a viewer
+just asked for hid a card they did not ask to lose.
+
+Covering the island is fine: it is still there behind, and the card is what was
+asked for. Covering another trader's numbers is not.
+
+So half the rows go above the island and half below — `rowsAbove =
+floor(rows/2)` — and the property that buys is simple: **a block one row deep
+has nothing of its own to cover.** At four traders or fewer that is both
+blocks, so no card can ever cover a card, which is the case asked for and the
+case every board on disk is. Above five it degrades honestly: the block with
+two rows in it can still overlap inside itself, and no arrangement of a phone's
+width avoids that.
+
+Measured, 393×852, four traders: two seats at y=130 above the island, two at
+771 below, the island drawn from 261 to 755.
+
+### An opened card grows toward the island
+
+Found while checking the above, and it is the older half of the same bug.
+
+The bottom block has the **transport** under it, and the transport is HTML
+drawn over the whole scene — so a card growing down there does not overlay it,
+it goes *behind* it. Measured on a 393×660 phone, before the fix:
+
+| | card | transport |
+|---|---|---|
+| shut | 447 → **513** | 514 → 644 |
+| open | 447 → **587** | 514 → 644 |
+
+73 pixels of the card — including the utility, the number the round is scored
+on — behind a solid panel, and `elementFromPoint` at the card's own centre
+returned the transport, so it could be neither read nor tapped shut. This
+shipped in #190 and the check only caught it now, because the shut card cleared
+the transport by a single pixel and it took a 14-unit shift to move the centre
+across the line.
+
+So a card in the bottom block **grows upward**: `cardLift` in `scene.js`, and
+`lift` on the seat. An opened card always grows toward the island, down out of
+the top block and up out of the bottom one. It costs nothing — reserving the
+open height down there would cost the island 98 units, which is the reservation
+this layout exists to have got rid of.
+
+The lift is animated with the swing, and `was.lift` is derived from the shelf
+the old node was drawn with rather than from `cardLift(name)`: by then
+`toggleCard` has already flipped the state, so asking the scene answers with
+the *new* lift and both ends of the animation are the same number — the card
+would jump 98 units in one frame, which is the bug the animation exists to
+prevent wearing the animation's clothes.
+
+### What checks it
+
+**Two existing checks asserted the arrangement this replaces, and the full
+suite is what found them.** Neither showed up while driving the checks the
+change obviously touched; both came out of `render.py --require` end to end:
+
+- **`shutters`** asserted that an opened card **is** drawn over the nameplate
+  below it — *"nothing is being overlaid, so this frame is not the one the
+  island's band was bought from"* — because that overlay was the bargain that
+  bought the island its band. The bargain survives; what an opened card covers
+  was never *chosen*, only whatever the single column happened to put beneath
+  it. Its claim is now the reverse: an opened card moves no other nameplate and
+  covers none of them. The move half is unchanged and still load-bearing — a
+  row that shoved down would not overlap either, and clearing a neighbour by
+  pushing it is not the same as clearing it by construction.
+- **`island`** measured the gap between the island's drawn foot and
+  `geo.cards[0]`, which is now the card *above* it: it read **-626** on a
+  four-trader phone. That is the check measuring a gap that is not there, not a
+  layout that had gone wrong. It reads the first card whose seat is at or below
+  `islandFoot` now.
+
+Both reversals are marked at the assertions themselves rather than edited to
+look as though they always said this.
+
+`render.py:straddle` drives a four-trader board — built in the check, served
+from a directory of its own, because no saved replay has four traders and
+dropping one into `games/replays` would change what every other check iterates
+over. It opens each card in turn, on a tall phone and a short one, and asserts
+the opened card overlaps **no other card** and **no chrome**.
+
+Shown to fail: pinning `rowsAbove = 0` gives *"T3 opened over T1's card"* and
+*"T4 opened over T2's card"*; returning 0 from `cardLift` gives *"T3 opened
+with 28px of itself behind #transport"* and 17px behind the key, on both
+phones. The centre-of-the-card test alone was **not** enough — it only fires
+once most of the card is behind the transport, and a third of a shelf hidden is
+already a shelf nobody can read.
+
+## The bands are measured, not declared
+
+`--chrome-top` and `--chrome-foot` were a number beside the rules that place
+the chrome, on the reasoning that this is the one place that knows how tall the
+rows come to. It is not, and twice in two days the chrome grew past them in
+silence:
+
+- "before the first day" beside "acknowledging" came to 247px on a row 242px
+  wide, so the phase wrapped and a two-row band was three rows deep;
+- and the goods key, once it earned a caption, came to 45px in a foot band that
+  had reserved it none, and sat across the bottom row of cards.
+
+Both were declared correctly and drawn differently. **A number beside a rule
+cannot know what the rule renders to**, so `chromeBands()` measures the chrome
+the page actually laid out — the bottom of `.at-top-left`, `.at-top-right` and
+`.counts`, the top of `.at-bottom` and `.legend` — and publishes what it found
+as `--band-top` and `--band-foot` so a check or a person can read it back.
+
+There is no loop: the chrome is positioned against the frame and its geometry
+does not depend on the island's, so the island is sized *from* this and never
+feeds back into it. The declared numbers stay as the fallback for a chrome that
+has not been laid out, and as what a person reads when changing the rules.
+
+Two things had to move with it. `legend()` is now called **before** the scene is
+built, because the frame is divided around what the chrome measures and an
+empty key measures nothing. And `mobile` reads `--band-top` rather than
+`--chrome-top`: reading the fallback counted the air between the chrome and the
+island as dead sky and failed a correct layout at 95% of a floor of 95%.
+
+The air is **20px**, which is wider than it looks like it needs to be:
+`uncovered` grows every piece of chrome by ten pixels before asking whether a
+card is behind it, and it is right to — nine pixels between a card and a
+caption is a collision that happened to miss.
+
+## The goods key is reserved, and says what a column's width means
+
+*Reported by Gal in the same screenshot: "the item bars on the agent card are
+not identical in width."*
+
+**That is the taste feature working, and reading as a defect** — which is a
+fair reading of what was on screen, because the one line explaining it was
+suppressed on exactly that surface. `.legend span.sub { display: none }` in
+portrait dropped the notes as "a caption for a picture there is barely room to
+draw", and the appetite's caption went with them. Of the three notes it is the
+only one naming an encoding a viewer cannot otherwise deduce: `pale` and the
+utility bar are marks you can find, a *width* is a claim about what it means.
+
+Three things changed, and the second one is a partial reversal of "Four rows of
+chrome became two":
+
+- The caption shows on a phone.
+- **The key is reserved and always on.** It was raised only while a shelf was
+  open, to save the row — and that saving is precisely why it had no room of
+  its own, so the moment a card opened it stood across the bottom row of cards.
+  Reserved *and* hidden is the worst of both: the island does not get the strip
+  either way and the viewer loses the key.
+- **The chips go on a phone**, so the caption can stay. The band reserves
+  whatever the key comes to, so the key's height is island: chips and caption
+  together are 45px of a 660px phone, the caption alone 17. A good's glyph
+  rides on its own colour on every shelf and every parcel, so the chip adds the
+  English word and nothing else. Both stay on a desk, where the row is free.
+
+### `ISLAND_WIDE` moved from 0.90 to 0.72, deliberately
+
+The old number came from a phone whose key floated. Measured on 393×660 with
+the caption reserved the island draws **78%** of the window, against 86%
+without it — and on a tall phone (390×844) it is capped at the frame's own
+width and the key costs it nothing at all.
+
+The claim is weaker than it was and is still worth making: the island is the
+picture and gets most of the frame, against the 50% an even split gave it and
+the 42% the old card focus did. The floor sits under the measurement with room
+and above the arrangement it rules out. **This is a threshold moved with a
+stated design change and a recorded measurement, not a check quietly weakened
+to go green** — the old number and the new one are both here for that reason.
+
+To re-check any of the above: `python viewer/tests/render.py --require`.
+
+## A shelf says what its owner wants
+
+*Reported by Gal, 2026-08-30: the viewer could not see the utility factors, and
+the relative preference between goods is information the page was throwing
+away.*
+
+The shelf drew what each trader **held** and the score row drew what it **came
+to**, and nothing on the island said why those two were related. So a
+settlement was a rope, a pill and a number that moved — with the reason the
+trade was worth making nowhere on screen.
+
+The numbers were not missing from the page, only from the picture: the rail's
+"Tastes (α)" panel has had them all along. But that is a reference table you
+open, and the moment the information matters is the moment a parcel is landing
+on a shelf, which is exactly when nobody is reading a drawer.
+
+Game 001d, which is the replay this was found on:
+
+| | bread | cloth | iron | salt |
+|---|---|---|---|---|
+| **T1** | **0.698** | 0.118 | 0.091 | 0.092 |
+| **T2** | 0.146 | 0.117 | 0.173 | **0.565** |
+
+Bread-for-salt is good for both of them, obviously and at a glance — and the
+two cards could not say so.
+
+### Quantity is a height, so appetite is a width
+
+That is the whole design, and it is the reason it is safe. The shelf already
+spends its **vertical** axis on how much a trader is holding; a second length
+on that axis would be a second quantity however it was styled. The horizontal
+axis was carrying nothing at all — every column was `BAR_W` wide — so it was
+free, and nothing drawn on it can be misread as a stock.
+
+So **the column a good stands in is as wide as its owner wants it**, and every
+mark in that column is cut to the same width: the trough, the bar, the pale
+held portion, and the outline that says empty. `render.py:appetite` measures
+all four, because a width applied to the trough alone would draw a bar standing
+proud of its own slot.
+
+Measured on 001d at 1400×880, in device pixels:
+
+| trader | bread | cloth | iron | salt |
+|---|---|---|---|---|
+| T1 | **52.5** | 21.7 | 20.3 | 20.3 |
+| T2 | 25.0 | 23.1 | 26.7 | **52.5** |
+
+### Two things it deliberately does not claim
+
+**It is normalised against the trader's own largest taste**, not against 1 and
+not across cards. Σα = 1, so on a five-good island an even taste is 0.2 and the
+whole range ever drawn would be a fifth of the axis. And the question being
+asked is *"what does this trader care about most"*, which lives inside one
+card; across cards the same drawing would answer "who has the peakier tastes",
+which is a real quantity and not the one a shelf is for.
+
+**Width is affine in the taste, not proportional to it.** A column is a touch
+target as well as a drawing, so there is a floor under it — and with a floor, a
+column twice as wide is not a taste twice as large. What the shelf claims is
+the **order and the spread**: which good this trader wants most, and whether
+the others are close behind or nowhere near. The numbers stay in the rail. This
+is meant to be read while a parcel is landing, and a glance does not read four
+decimals.
+
+**A rooted share was tried first and was wrong**, and is written down because
+the reasoning was plausible: it was justified as putting the drawn *area* on
+the taste. But the column's height is the quantity held, so its area is a taste
+times a stock, which is not a quantity anything wants to show — and it
+compressed the very differences the drawing exists for. T1 wanting bread 7.6×
+as much as iron came out as a column **1.4× wider**, which is worse than not
+drawing it at all, because the shelf then looks like it has answered the
+question. Linear: 2.6×.
+
+### No taste is drawn as no taste, never as an even one
+
+The half that matters most, and the one this repo keeps having to re-learn in
+the other direction. **Live has no reveal.** Tastes are private, they never
+reach the board, and `utility.js` already refuses to invent them — a live card
+has no score row at all for exactly this reason.
+
+So on a board with no reveal there is **no appetite drawn**: not flat, not
+even — absent, and the shelf is the fixed-width row of columns it always was.
+An even row would say *"this trader wants everything equally"*, which is a
+claim about a trader. The true statement is that nobody outside that trader's
+head knows, and a thing that is not known must not be drawn as a thing that is
+known and happens to be uniform. The cell carries `data-appetite="yes"/"no"` so
+a check can ask which of the two it is, and the caption naming the width is
+raised only with a reveal — a caption for a thing that is not drawn is how a
+live page ends up claiming to show tastes it does not have.
+
+### What checks it
+
+- `scene.test.mjs` — `appetiteWidth` is arithmetic and is checked as such: the
+  most-wanted good gets the widest column, the widest column still leaves a
+  gutter at every good count from one to seven, a near-zero taste is floored
+  rather than vanishing, and **no taste returns `null`** rather than a width.
+- `render.py:appetite` — that the drawing uses it, in a browser, on a real
+  board: every mark in a column matches the column, a trader whose tastes
+  differ several-fold does not draw columns within 1.5× of each other, and a
+  board opened with no reveal draws every column identical.
+
+Shown to fail, not assumed. Drawing an even appetite when there is no reveal
+fails the `bare` half on both traders (`reports ['yes'] … on a board that has
+no reveal`); ignoring the taste and drawing every column `BAR_W` fails the
+`scored` half on both (`1.00x its narrowest`).
+
+To re-check: `python viewer/tests/render.py --require`.
+
 ## Utilities and efficiency
 
 Both need tastes, so both are replay-only, and the live page says so rather than
@@ -3794,6 +4234,12 @@ the table every run prints: **over a minute on a GPU-less machine goes in
 and `overhead` in one job and the other twenty-three checks in the other. It is
 a cost split and it is named for one; there is no truer story about what kind of
 check these are, and inventing one would only rot.
+
+*`appetite`, `straddle` and `shutters` arrived on `main` while this was being
+measured, and were timed rather than assumed before being placed: 7.0s, 8.0s
+and 24.0s, so `quick` by the same rule. That is what adding a check costs now —
+one run of `--only` and a line in `checks()`, with `test_render_gate.py`
+refusing a check that lands in neither group.*
 
 Measured on this machine, each group run as its own job, both clean:
 

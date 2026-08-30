@@ -579,6 +579,23 @@ LEVERS = (
     ("seconds", "seconds per episode", EPISODE_SECONDS_ALLOWED),
 )
 
+#: Where a reader's lever choices wait out the reload.
+#:
+#: **The page reloads every `PAGE_REFRESH`, and a reload puts every `<select>`
+#: back on its `selected` default.** So a reader who set traders=4 watched the
+#: knobs snap back to 2 a few seconds later, and the OPEN line above them with
+#: it -- and the worse half is silent: the reader has already read the line
+#: they wanted, so what they copy afterwards is the default one, and the table
+#: their agent opens is not the table they asked for.
+#:
+#: Same fix and same store as the countdowns, which had the same problem in a
+#: different shape: carry it in `sessionStorage`, per tab. A restored value is
+#: checked against the options actually on the page before it is applied,
+#: because the ladders here move (`EPISODE_SECONDS_ALLOWED` has) and a
+#: yesterday's value the lobby now refuses is exactly the trap the levers exist
+#: to avoid -- a page that shows a value and a lobby that will not take it.
+LEVERS_KEY = "island:levers"
+
 
 def open_line(**over) -> str:
     """The OPEN an entrant should send, as one string in one place."""
@@ -654,7 +671,24 @@ will appear below within a few seconds.</p>
     ol.textContent='OPEN '+sel.map(function(s){{
       return s.getAttribute('data-f')+'='+s.value; }}).join(' ');
   }}
-  sel.forEach(function(s){{ s.addEventListener('change', redraw); }});
+  function save(){{
+    try{{ var o={{}};
+      sel.forEach(function(s){{ o[s.getAttribute('data-f')]=s.value; }});
+      sessionStorage.setItem({LEVERS_KEY!r}, JSON.stringify(o));
+    }}catch(e){{}}
+  }}
+  function restore(){{
+    try{{ var o=JSON.parse(sessionStorage.getItem({LEVERS_KEY!r})||'{{}}');
+      sel.forEach(function(s){{
+        var v=o[s.getAttribute('data-f')];
+        var ok=[].some.call(s.options,function(c){{ return c.value===v; }});
+        if(ok) s.value=v;
+      }});
+    }}catch(e){{}}
+  }}
+  sel.forEach(function(s){{
+    s.addEventListener('change', function(){{ save(); redraw(); }}); }});
+  restore();
   redraw();
   function pick(){{
     var r=document.createRange(); r.selectNodeContents(p);
