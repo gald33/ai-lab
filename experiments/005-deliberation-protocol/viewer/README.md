@@ -585,6 +585,27 @@ item bars do.* Making the two arrive together was right and still read as one
 simultaneous jump; the value is a consequence of the goods and should be seen
 as one.
 
+**It took three attempts, and the first two failed because I guessed at the
+cause instead of tracing it.** Worth writing down, because the guesses were
+plausible and the measurement was cheap:
+
+1. *Too short.* 420ms against a 550ms travel — the two still moved together
+   for the last 130ms. Real, and not the whole story.
+2. *Keyed on the wrong thing.* The gate asked whether the board's quantities
+   changed. But `hand()` rewinds a gaining bar to its pre-trade value and
+   holds it, which moves the bar on screen without moving the state at all. It
+   now compares what the shelf is **drawing**, which `score()` already reads.
+3. *A repaint overtook the wait.* This was the one that kept it broken.
+   `flashCard` rebuilds a card and calls `draw` to refill it; that call saw a
+   shelf unchanged *since the previous draw*, so it wrote the new number at
+   once — two milliseconds after the bars moved — throwing away the stage the
+   previous draw had correctly started. A pending wait now suppresses any
+   immediate write for that trader.
+
+Each attempt measured a 1ms gap afterwards and I read it as noise twice. What
+found it was tracing every writer — patching `Scene.prototype.score` and
+`setBar` to record a stack — rather than sampling the DOM and inferring.
+
 **The first attempt was too short and Gal could see it.** It was 420ms against
 a 550ms travel, on the reasoning that a hard ease-out puts a bar within a few
 percent of its target well before it stops. That is true and it is not the

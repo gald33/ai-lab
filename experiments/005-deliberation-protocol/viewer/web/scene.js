@@ -1301,7 +1301,7 @@ export class Scene {
    * nothing for shutting one to give back.
    */
   shutCards() {
-    return this.modelled && !this.portrait;
+    return this.modelled;
   }
 
   /** Whether this seat's card is showing its shelf. */
@@ -2078,6 +2078,26 @@ export class Scene {
    * `shelf` is the fallback for a slot with no drawn state yet -- the first
    * paint, and after the bell, where `draw` passes the closing holdings.
    */
+  /** Whether this trader's number is already waiting to move. */
+  pendingScore(name) {
+    return !!this.scoring?.has(name);
+  }
+
+  /**
+   * What this trader's shelf is currently *drawing*, as a comparable string.
+   *
+   * A bar that is holding is showing the value it had before the trade, not
+   * the one the board has settled -- so this is the shelf as an eye sees it,
+   * which is the only thing the utility should be a function of.
+   */
+  shownShelf(name) {
+    return this.goods.map((good) => {
+      const b = this.bars[name]?.[good];
+      const held = b && (b.holding ? b.was : b.now);
+      return held ? held.qty.toFixed(6) : "";
+    }).join(",");
+  }
+
   score(name, shelf, blameZero = null) {
     const label = this.labels[name];
     if (!this.reveal || !label?.score) return;
@@ -2123,6 +2143,9 @@ export class Scene {
     clearTimeout(this.scoring?.get(name));
     const gen = this.gen;
     (this.scoring ??= new Map()).set(name, setTimeout(() => {
+      //: Cleared before the write, so the write itself is not suppressed by
+      //: the very stage it is completing -- see `pendingScore`.
+      this.scoring.delete(name);
       //: The island may have been rebuilt under this timer -- a reframe, a new
       //: board -- and the labels this would write into are off the page.
       if (gen === this.gen) this.score(name, this.state?.stocks?.[name]);
@@ -2178,7 +2201,6 @@ export class Scene {
       // Cobb-Douglas hazard -- so it waits for the labour to be spent, or for
       // the bell, which is when a zero is final whatever was spent.
       const spentLabour = closed || state.labour[name] !== null;
-      let shelfMoved = false;
       for (const good of this.goods) {
         const qty = shelf?.[good] || 0;
         const b = this.bars[name][good];
@@ -2189,9 +2211,6 @@ export class Scene {
         // by it -- which is why the goods used to arrive at a bar that had
         // finished growing half a second earlier.
         if (advance) b.was = b.now ?? { qty: 0, free: 0 };
-        //: Whether the shelf moved at all this frame, which is what decides
-        //: if the number follows it or simply arrives with it.
-        if (b.now && Math.abs(b.now.qty - qty) > 1e-9) shelfMoved = true;
         b.now = { qty, free };
         if (!b.holding) this.setBar(b, qty, free, top);
         // Two decimals is what a reader can hold. The receipts carry four and
@@ -2230,8 +2249,32 @@ export class Scene {
         //: jump. Staged, it reads as the shelf changing and the value
         //: following from it, which is the direction the causation runs.
         this.blameZero = { ...(this.blameZero ?? {}), [name]: started && spentLabour };
-        if (shelfMoved) this.scoreSoon(name);
-        else this.score(name, shelf, started && spentLabour);
+        //: **Against what the shelf is *drawing*, not what the board says.**
+        //: Keyed on the state's quantities, this missed the case that matters
+        //: most: `hand()` rewinds a gaining bar to its pre-trade value and
+        //: holds it, which moves the bar on screen without moving `now` at
+        //: all. The number then changed in the same tick as that rewind --
+        //: measured at a 1ms gap, which is exactly the simultaneous jump the
+        //: wait exists to avoid, and is what Gal was still seeing.
+        //:
+        //: `score()` already reads the drawn value; this compares the same
+        //: thing, so anything that moves a bar on screen moves the number a
+        //: beat later, whatever moved it.
+        const drawn = this.shownShelf(name);
+        const before = (this.shownAt ??= {})[name];
+        this.shownAt[name] = drawn;
+        if (before !== undefined && before !== drawn) this.scoreSoon(name);
+        //: **A repaint must not overtake a wait that is already running.**
+        //: This is what defeated the first two attempts. `flashCard` rebuilds
+        //: a card and calls `draw` to refill it, and that call saw a shelf
+        //: unchanged *since the previous draw* -- so it took this branch and
+        //: wrote the new number at once, two milliseconds after the bars
+        //: moved, throwing away the stage the previous draw had correctly
+        //: started. Measured at a 1ms gap, twice, from two different guesses
+        //: at the cause; found by tracing every writer instead.
+        else if (!this.pendingScore(name)) {
+          this.score(name, shelf, started && spentLabour);
+        }
       }
       const hut = this.root.querySelector(`.hut[data-trader="${name}"]`);
       hut.classList.toggle("quiet", !state.spoke.includes(name));

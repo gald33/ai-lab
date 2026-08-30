@@ -2065,13 +2065,6 @@ $("island").addEventListener("click", (e) => {
   //: open a single card would take away the only way to give the island the
   //: screen, and making landscape's re-divide a frame that has room for
   //: everything would be motion for nothing.
-  if (scene.portrait) {
-    const hit = scene.tapped(at.x, at.y);
-    // The sea around them is not a third state. A tap there is a tap on nothing.
-    if (hit) refocus(focus === hit ? "even" : hit);
-    return;
-  }
-
   //: A hut and the card hanging under it are one target. The card is the
   //: thing being opened, but the hut is what a viewer looking for a trader
   //: points at -- and on a shut card the hut is the larger half of what is
@@ -2081,13 +2074,30 @@ $("island").addEventListener("click", (e) => {
   const onHut = e.target.closest?.("[data-trader]")?.getAttribute("data-trader");
   const who = onHut && scene.traders.includes(onHut)
     ? onHut : scene.cardAt(at.x, at.y);
-  if (!who || !scene.toggleCard(who)) return;
-  //: Repainted from the last frame rather than through the player: live has no
-  //: player at all, and a card just rebuilt is empty until something fills it
-  //: from state. Never animated -- the settlement that filled this shelf may
-  //: have been twenty frames ago, and replaying its flight because somebody
-  //: opened a card would be the page inventing an event.
-  if (lastPaint) paint({ ...lastPaint, animate: false });
+  if (who && scene.toggleCard(who)) {
+    //: Repainted from the last frame rather than through the player: live has
+    //: no player at all, and a card just rebuilt is empty until something
+    //: fills it from state. Never animated -- the settlement that filled this
+    //: shelf may have been twenty frames ago, and replaying its flight because
+    //: somebody opened a card would be the page inventing an event.
+    if (lastPaint) paint({ ...lastPaint, animate: false });
+    return;
+  }
+
+  //: **A trader was not what was tapped, so it was the island.**
+  //:
+  //: Portrait keeps `FOCUS` for that: one screen has to hold an island and a
+  //: card per trader, and a tap on the island says which of the two the viewer
+  //: is looking at. Landscape has margins the cards already stand in, so
+  //: nothing there is competing and a tap on the sea is a tap on nothing.
+  //:
+  //: The order matters and is the whole of the change: a card is tested first,
+  //: so tapping one opens it rather than re-dividing the frame. Before shut
+  //: cards existed there was nothing else a tap on a card could mean.
+  if (!scene.portrait) return;
+  const hit = scene.tapped(at.x, at.y);
+  // The sea around them is not a third state. A tap there is a tap on nothing.
+  if (hit) refocus(focus === hit ? "even" : hit);
 });
 
 addEventListener("keydown", (e) => {
