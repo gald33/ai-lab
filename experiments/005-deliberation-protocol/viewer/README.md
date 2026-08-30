@@ -2843,6 +2843,28 @@ prevent wearing the animation's clothes.
 
 ### What checks it
 
+**Two existing checks asserted the arrangement this replaces, and the full
+suite is what found them.** Neither showed up while driving the checks the
+change obviously touched; both came out of `render.py --require` end to end:
+
+- **`shutters`** asserted that an opened card **is** drawn over the nameplate
+  below it — *"nothing is being overlaid, so this frame is not the one the
+  island's band was bought from"* — because that overlay was the bargain that
+  bought the island its band. The bargain survives; what an opened card covers
+  was never *chosen*, only whatever the single column happened to put beneath
+  it. Its claim is now the reverse: an opened card moves no other nameplate and
+  covers none of them. The move half is unchanged and still load-bearing — a
+  row that shoved down would not overlap either, and clearing a neighbour by
+  pushing it is not the same as clearing it by construction.
+- **`island`** measured the gap between the island's drawn foot and
+  `geo.cards[0]`, which is now the card *above* it: it read **-626** on a
+  four-trader phone. That is the check measuring a gap that is not there, not a
+  layout that had gone wrong. It reads the first card whose seat is at or below
+  `islandFoot` now.
+
+Both reversals are marked at the assertions themselves rather than edited to
+look as though they always said this.
+
 `render.py:straddle` drives a four-trader board — built in the check, served
 from a directory of its own, because no saved replay has four traders and
 dropping one into `games/replays` would change what every other check iterates

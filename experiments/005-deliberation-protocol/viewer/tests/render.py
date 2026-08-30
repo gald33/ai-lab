@@ -2950,7 +2950,15 @@ STAGE = """async ({w, h, n, portrait, goods}) => {
                                 -shadowBox.left, -shadowBox.bottom),
           seats: traders.map(t => [made.anchors[t].x, made.anchors[t].z]),
           geo: {w: geo.w, h: geo.h}, portrait,
-          card0: geo.cards.length ? geo.cards[0].y : null,
+          //: The first card **below the island**, which is no longer
+          //: `cards[0]`: portrait straddles its rows now, so the first card in
+          //: the list is the one above. Read against the layout's own
+          //: `islandFoot`, which is where it put the island's foot; what the
+          //: check then asks is whether the *model* agrees.
+          card0: (() => {
+            const under = geo.cards.filter(c => c.y >= geo.islandFoot);
+            return under.length ? Math.min(...under.map(c => c.y)) : null;
+          })(),
           // The band the *stylesheet* declares, in this frame's units -- not
           // where the layout put the island's box. Read off `islandBox.y` it
           // would be the layout agreeing with itself, and a layout that
@@ -3602,6 +3610,11 @@ def island(browser, base: str, out: Path) -> list[str]:
         # from two numbers that were measured off the model. This is what keeps
         # them honest: change the tilt or the sea and the band opens back up
         # here, on a phone, where every unit of it is island the reader lost.
+        #: **The first card under the island**, not the first card. Portrait
+        #: straddles its rows -- half above the island, half below -- so
+        #: `cards[0]` is above it and this read -626 on a four-trader phone,
+        #: which is the check measuring a gap that is not there rather than a
+        #: layout that had gone wrong.
         if portrait and built["card0"] is not None:
             gap = built["card0"] - built["shoreBottom"]
             if not 0 <= gap <= 48:
@@ -5680,11 +5693,11 @@ def shutters(browser, base: str, out: Path) -> list[str]:
       asks of a tap, asked where the answer could differ, since a four-trader
       frame has a row below the one being opened for a re-layout to shove
       around.
-    * **an opened card in a non-final row is drawn over the nameplate below
-      it**, rather than pushing it down. Deliberate, and the bargain that gave
-      the island its band: the row reserves the *shut* card and an opened one
-      overlays whatever is under it. See "The split screen goes, and the island
-      keeps the frame" in `viewer/README.md`, and `cardPlan` in `scene.js`.
+    * **an opened card moves no other nameplate and covers none of them.** The
+      row still reserves the *shut* card and an opened one still overlays what
+      is under it -- that is the bargain that gave the island its band -- but
+      what it overlays is the island, because the rows straddle it. This claim
+      was the exact reverse until 2026-08-30; see the note at the assertion.
     * **and the bottom row, opened, stays on the canvas** -- the one place that
       bargain still costs the frame height, since past the viewBox nothing is
       drawn at all and there is nothing there to be drawn over. `cardPlan`
@@ -5809,23 +5822,39 @@ def shut_row(page, out: Path, goods: list[str], n: int, rows: list[dict],
                    f"{up['height']:.0f} units, not the {made['openH']:.0f} an "
                    f"open card on this board is")
 
-    #: **Over the nameplate below it, and not pushing it.** Both halves are
-    #: asserted, because either alone is satisfied by the wrong drawing: a row
-    #: that moved down would not overlap, and a card that never grew would not
-    #: move anything either.
+    #: **It moves no other nameplate, and it covers none of them either.**
+    #:
+    #: *This asserted the opposite until 2026-08-30, and the reversal is the
+    #: point of the section it belongs to.* An opened card overlaying the
+    #: nameplate below it was the bargain that gave the island its band, and
+    #: this check was written to hold that bargain in place. Then Gal opened a
+    #: card on a four-hander and it covered another trader's card completely:
+    #: "it's better even if it covers the island and not other cards". Which is
+    #: right, and the bargain survives it -- what an opened card covers was
+    #: never *chosen*, only whatever the single column happened to put beneath
+    #: it. The rows straddle the island now, so the thing under a card is the
+    #: island. See "The rows straddle the island" in `viewer/README.md`.
+    #:
+    #: The move half is unchanged and is still load-bearing: a row that shoved
+    #: down would not overlap either, and clearing the neighbour by pushing it
+    #: is not the same as clearing it by construction.
     for k in ("x", "y", "w", "h"):
         if abs(low["box"][k] - lower["box"][k]) > 0.5:
             bad.append(f"{where}: opening {upper['trader']}'s card moved "
                        f"{lower['trader']}'s nameplate ({k} "
                        f"{lower['box'][k]:.1f} -> {low['box'][k]:.1f}); the row "
                        f"reserves the shut card and an opened one is drawn over "
-                       f"what is under it")
-    reach = up["box"]["y"] + up["box"]["h"]
-    if reach <= low["box"]["y"] + 1:
-        bad.append(f"{where}: {upper['trader']}'s opened card reaches "
-                   f"{reach:.0f} and {lower['trader']}'s nameplate starts at "
-                   f"{low['box']['y']:.0f}; nothing is being overlaid, so this "
-                   f"frame is not the one the island's band was bought from")
+                       f"the island, not by shoving its neighbour")
+    for other in opened["cards"]:
+        if other["trader"] == upper["trader"]:
+            continue
+        a, b = up["box"], other["box"]
+        dx = min(a["x"] + a["w"], b["x"] + b["w"]) - max(a["x"], b["x"])
+        dy = min(a["y"] + a["h"], b["y"] + b["h"]) - max(a["y"], b["y"])
+        if dx > 1 and dy > 1:
+            bad.append(f"{where}: {upper['trader']}'s opened card covers "
+                       f"{other['trader']}'s by {dy:.0f} units; an opened card "
+                       f"covers the island, never another trader's numbers")
 
     #: **And the bottom row, opened, is still on the canvas.**
     toggle(upper["trader"])
