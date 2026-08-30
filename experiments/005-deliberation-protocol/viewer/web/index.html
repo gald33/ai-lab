@@ -738,16 +738,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      the row it appears on is the round's state, which has room beside it. On a
      desk all four still stand, because there the row costs nothing.
 
-     The **goods key** is a caption for the shelves, and the shelves are shut
-     now until somebody opens one. So it comes on with a shelf and goes off
-     with it, over the island rather than in a band of its own -- the same
-     bargain the open card itself takes. See `.app.shelf-open`.
+     The **goods key** left the top rows and, after a round of getting this
+     wrong, lives in the foot band -- always on, and reserved there. It was
+     raised only while a shelf was open, which is what left it no room of its
+     own, so the moment a card opened it stood across the bottom row of cards.
+     See the portrait `.legend` rule.
 
-     What is left is measured, not guessed: the control row runs 10..50 and the
-     round's state 58..90, and the transport is 130 tall standing 16 off the
-     bottom. `uncovered` re-measures both against the chrome every run, so a
-     row that grows or moves fails here rather than eating the shore. */
-  :root { --chrome-top: 98px; --chrome-foot: 146px; }
+     **These two numbers are the fallback, not the answer.** `chromeBands()`
+     measures the chrome the page actually laid out; these are what it uses
+     before there is a chrome to measure, and what a person reads when changing
+     the rules above. They were the answer once, and twice in two days the
+     chrome grew past them in silence -- a wrapped pill row, then a key that
+     earned a caption. A number beside a rule cannot know what the rule renders
+     to. */
+  :root { --chrome-top: 98px; --chrome-foot: 199px; }
 
   /* A picker, four buttons and a title do not fit across 390px, and of those
      the title is the only thing that is not a control. It goes: the page is
@@ -796,12 +800,37 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      a band at the far end of the screen. Only the goods: the two notes are the
      first thing to go when there is no room for both a caption and the thing
      it captions. */
+  /* **Always on, because the band now reserves it.** It was raised only while
+     a shelf was open, to save the row -- and that saving was the reason it had
+     no room of its own, so the moment a card opened it stood across the bottom
+     row of cards. Reserved and hidden is the worst of both: the island does
+     not get the strip either way, and the viewer loses the key. Reserved and
+     shown costs the same and keeps the glyph-to-name mapping on screen, which
+     is the one place a phone can learn what a parcel in flight is carrying. */
   .legend { left: 10px; right: 10px; top: auto; bottom: 154px; max-width: none;
-    min-width: 0; gap: 6px 10px; opacity: 0; }
-  /* The transcript still wins: it is a reading mode, and it is raised over
-     the corner the key would stand in. */
-  .app.shelf-open:not(.log-open) .legend { opacity: 1; }
+    min-width: 0; gap: 6px 10px; }
+  /* --- the one caption a phone keeps ---------------------------------------
+     The notes under the key are a caption for a picture there is barely room
+     to draw, so they went. **The appetite's caption should not have gone with
+     them**, and that was found the way these things are: Gal looked at a phone
+     and reported the shelf's columns as "not identical in width", which is the
+     feature working and reading as a defect. Of the three notes it is the only
+     one naming an encoding a viewer cannot otherwise deduce -- `pale` and the
+     utility bar are marks you can find, a *width* is a claim about what it
+     means -- and it is the only one that arrived without one.
+
+     One line, next to the thing it explains, and the band reserves it. */
   .legend span.sub { display: none; }
+  .legend span.sub.appetite { display: inline-flex; }
+  /* **And the chips go, so the caption can stay.** The band reserves whatever
+     the key comes to, so the key's height is island: chips and caption
+     together are 45px of a 660px phone, the caption alone 17. Of the two the
+     chips are what a phone can most afford to lose -- a good's glyph rides on
+     its own colour on every shelf and on every parcel in flight, so the chip
+     adds the English word and nothing else, while the caption names an
+     encoding that cannot be deduced from looking. Both stay on a desk, where
+     the row costs nothing. */
+  .legend > span:not(.sub) { display: none; }
 
   /* --- what the chrome costs the island ----------------------------------
      The island cannot be screen-wide while the chrome holds 47% of the height.
@@ -1019,7 +1048,11 @@ const $ = (id) => document.getElementById(id);
 const frameBox = () => {
   const r = $("island")?.getBoundingClientRect();
   return { w: Math.max(1, Math.round(r?.width) || innerWidth),
-           h: Math.max(1, Math.round(r?.height) || innerHeight) };
+           h: Math.max(1, Math.round(r?.height) || innerHeight),
+           //: Where the box starts, which `chromeBands` needs to measure a
+           //: pill against the frame rather than against the window: with a
+           //: drawer open the two have different origins.
+           x: Math.round(r?.x) || 0, y: Math.round(r?.y) || 0 };
 };
 const isPortrait = () => { const f = frameBox(); return f.h > f.w; };
 /**
@@ -1043,27 +1076,92 @@ const frameAspect = () => {
   return a < 1 ? Math.floor(a * 100) / 100 : Math.round(a * 20) / 20;
 };
 /**
- * The bands the floating chrome stands on, as fractions of the window's
- * height.
+ * The bands the floating chrome stands on, as fractions of the frame's height.
  *
- * The stylesheet declares them in pixels beside the rules that put the chrome
- * there -- see `--chrome-top` -- because that is the one place that knows how
- * tall four stacked rows of pills come to. This turns them into something the
- * layout can use without knowing the window's size.
+ * **Measured off the laid-out chrome, not read off the stylesheet.** The
+ * stylesheet still declares `--chrome-top` and `--chrome-foot`, and they are
+ * still the right thing to reason about when writing the rules that put the
+ * chrome where it is -- but they are a *number* and the chrome is *text*, and
+ * the two part company the moment a string wraps or a row is added.
+ *
+ * That has now happened twice in two days, which is what makes it a class of
+ * bug rather than a mistake:
+ *
+ * - "before the first day" beside "acknowledging" came to 247px on a row 242px
+ *   wide, so the phase wrapped and a two-row band was three rows deep;
+ * - and the goods key, once it earned a caption, grew to 45px in a foot band
+ *   that had reserved it none, and sat across the bottom row of cards.
+ *
+ * Both were declared correctly and drawn differently. Asking the page where
+ * its chrome actually is cannot go stale, and it is not a harder question: the
+ * chrome is positioned against the frame and its geometry does not depend on
+ * the island's, so there is no loop here -- the island is sized *from* this and
+ * never feeds back into it.
+ *
+ * The declared numbers stay as the fallback for a chrome that has not been
+ * laid out yet, and as the thing a person reads when changing the rules.
  */
 const chromeBands = () => {
   const css = getComputedStyle(document.documentElement);
   const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
-  //: Against the box the island is drawn into, not the window: the chrome's
-  //: bands are a fixed number of pixels, so the same band is a larger share of
-  //: a frame a drawer has narrowed. The two have to be measured the same way
-  //: or the band lands somewhere other than where the chrome is.
-  const h = frameBox().h;
-  //: Never more than half the frame between them. A stylesheet that declared
-  //: a band taller than the window would otherwise leave the island a
-  //: negative box.
-  const top = Math.min(0.35, px("--chrome-top") / h);
-  const foot = Math.min(0.35, px("--chrome-foot") / h);
+  //: Against the box the island is drawn into, not the window: a band is a
+  //: number of pixels, so the same band is a larger share of a frame a drawer
+  //: has narrowed. The two have to be measured the same way or the band lands
+  //: somewhere other than where the chrome is.
+  const box = frameBox();
+  const h = box.h;
+  if (!h) return { top: 0, foot: 0 };
+
+  //: Drawn, not merely laid out -- an element at zero opacity reserves
+  //: nothing, and neither does one the stylesheet has taken out.
+  const shown = (n) => {
+    if (!n || n.hidden) return false;
+    for (let e = n; e && e.nodeType === 1; e = e.parentElement) {
+      const st = getComputedStyle(e);
+      if (st.display === "none" || st.visibility === "hidden"
+          || Number(st.opacity) === 0) return false;
+    }
+    return true;
+  };
+  const boxes = (sels) => sels.map((s) => document.querySelector(s))
+    .filter(shown).map((n) => n.getBoundingClientRect())
+    .filter((r) => r.width && r.height);
+
+  //: Air between the chrome and the island. **Wider than it looks like it
+  //: needs to be**, because `uncovered` grows every piece of chrome by ten
+  //: pixels before asking whether a card is behind it -- on the reasoning that
+  //: "the card's last pixel row is not quite under the transport" is not
+  //: clear of it. A band that left nine pixels satisfied the arithmetic and
+  //: failed the check, and the check is right: nine pixels between a card and
+  //: a caption reads as a collision that happens to have missed.
+  const AIR = 20;
+  //: `#status` is not in either list on purpose: it is a transient message
+  //: about a page that is failing, and a band that grew when an error appeared
+  //: would move the island under the reader at the worst moment.
+  const heads = boxes([".at-top-left", ".at-top-right", ".counts"]);
+  const feet = boxes([".at-bottom", ".legend"]);
+
+  const declaredTop = px("--chrome-top");
+  const declaredFoot = px("--chrome-foot");
+  const measuredTop = heads.length
+    ? Math.max(...heads.map((r) => r.bottom)) - box.y + AIR : declaredTop;
+  const measuredFoot = feet.length
+    ? box.y + h - Math.min(...feet.map((r) => r.top)) + AIR : declaredFoot;
+
+  //: Never more than a third of the frame each. A chrome that grew past that
+  //: would otherwise leave the island a negative box, and a page with no
+  //: island on it is a worse failure than a pill standing on a shore.
+  const top = Math.min(0.35, Math.max(0, measuredTop) / h);
+  const foot = Math.min(0.35, Math.max(0, measuredFoot) / h);
+  //: **Published, so that what was measured can be read back.** The declared
+  //: numbers are a fallback now and no longer describe the frame, so anything
+  //: asking "where does the chrome's band end" -- a check, or a person in
+  //: devtools -- must be able to ask the page rather than the stylesheet. That
+  //: was the whole defect: a reader with the wrong number counted the air
+  //: between the chrome and the island as dead sky.
+  const root = document.documentElement.style;
+  root.setProperty("--band-top", `${Math.round(top * h)}px`);
+  root.setProperty("--band-foot", `${Math.round(foot * h)}px`);
   return { top, foot };
 };
 const params = new URLSearchParams(location.search);
@@ -1119,7 +1217,14 @@ function legend(goods, scored) {
     //: Only with a reveal, because without one the columns are even and there
     //: is no width to explain. A caption for a thing that is not drawn is how
     //: a live page ends up claiming to show tastes it does not have.
-    className: "sub", textContent: "a wider column is a good its owner wants more",
+    //:
+    //: **`appetite`, because a phone keeps this one and drops the others.** A
+    //: width is an encoding rather than a mark: `pale` and the utility bar can
+    //: be found by looking, and a column being wider than its neighbour cannot
+    //: be read as anything at all without being told. See the portrait rule
+    //: for `.legend span.sub`.
+    className: "sub appetite",
+    textContent: "a wider column is a good its owner wants more",
   })] : []));
 }
 
@@ -1693,17 +1798,15 @@ function mount(rows, { manager } = {}) {
     // with a score row is a different card, not the same one with a blank in it.
     // The island is built first: it decides where the settlements stand, and the
     // scene then puts each trader's card at its own hut.
+    //: **The key is filled before the frame is divided**, because the frame is
+    //: divided around what the chrome measures and an empty key measures
+    //: nothing. Built the other way round, the island took the key's strip as
+    //: its own and the bottom row of cards stood in it -- which is the ordering
+    //: bug `mobile` now watches for. See `chromeBands`.
+    legend(timeline.goods, !!reveal);
     scene = new Scene($("island"), timeline, reveal, isPortrait(),
                       raise(timeline.traders, timeline.goods, isPortrait()),
                       frameAspect(), chromeBands());
-    //: The goods key follows the shelves on a phone -- see `.app.shelf-open`.
-    //: Asked once here after the scene exists, because the scene's own first
-    //: report happens inside its constructor, before there is anything to
-    //: report to.
-    scene.onCards = (any) =>
-      document.querySelector(".app").classList.toggle("shelf-open", any);
-    scene.sayCards();
-    legend(timeline.goods, !!reveal);
   }
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
 }
