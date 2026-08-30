@@ -1115,6 +1115,11 @@ function legend(goods, scored) {
     // Named by what it is, not by its colour, so the legend cannot go stale the
     // next time the palette moves -- which it just did.
     className: "sub", textContent: "the bar under a shelf is what it is worth to its owner",
+  }), Object.assign(document.createElement("span"), {
+    //: Only with a reveal, because without one the columns are even and there
+    //: is no width to explain. A caption for a thing that is not drawn is how
+    //: a live page ends up claiming to show tastes it does not have.
+    className: "sub", textContent: "a wider column is a good its owner wants more",
   })] : []));
 }
 

@@ -758,6 +758,65 @@ export function burnAt(p) {
 }
 
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
+
+//: The narrowest a column goes, and the gutter kept between two of them. A
+//: column is a touch target on a phone as well as a drawing, and one much
+//: under this stops being either.
+const BAR_MIN = 11, BAR_GUTTER = 5;
+
+/**
+ * How wide to draw a trader's column for one good: how much they want it.
+ *
+ * **Quantity is a height; appetite is a width.** That is the whole reason this
+ * is a width and not a second bar: the shelf already spends its vertical axis
+ * on how much a trader is holding, and a second length on the same axis is a
+ * second quantity however it is styled. Nothing here can be misread as a
+ * quantity, because it is not on the quantity's axis.
+ *
+ * **The whole column scales, not a backdrop behind a fixed bar.** The first
+ * version drew the appetite as a ground the bar stood in and kept `BAR_W` as
+ * its floor, which left 26 to 34 units to say everything: on game 001d, T1
+ * wants bread 7.6x as much as iron and the shelf drew that as a column 25%
+ * wider. A difference that large reading that small is worse than not drawing
+ * it, because the shelf then looks like it has answered the question.
+ *
+ * Normalised against the trader's **own** largest taste, not against 1 and not
+ * across traders. Two reasons, and the second is the load-bearing one:
+ *
+ * - Sigma-alpha is 1, so on a five-good island an even taste is 0.2 and the
+ *   whole range ever drawn would be a fifth of the axis. Against the trader's
+ *   own maximum the shelf uses its full width whatever the good count.
+ * - And the question a viewer is asking is *"what does this trader care about
+ *   most"*, which is a question inside one card. Across cards it would answer
+ *   "who has the peakier tastes", which is a real quantity and not the one a
+ *   shelf is for -- see `viewer/README.md`.
+ *
+ * `step` is the column's share of the shelf, so the widest never touches its
+ * neighbour whatever the island's good count.
+ *
+ * **Width is affine in the taste, not proportional to it**, and that is a real
+ * limit rather than an oversight. A column is a touch target as well as a
+ * drawing, so there is a floor under it; with a floor, a column twice as wide
+ * is not a taste twice as large. What the shelf claims is the **order and the
+ * spread** -- which good this trader wants most, and whether the others are
+ * close behind or nowhere near -- and that is what a viewer is asking. The
+ * numbers themselves are in the rail, under "Tastes", and are not repeated
+ * here: this is meant to be read at a glance while a parcel is landing, and a
+ * glance does not read four decimals.
+ *
+ * A rooted share was tried first and is wrong here. It was justified as
+ * putting the drawn *area* on the taste -- but the column's height is the
+ * quantity held, so its area is a taste times a stock, which is not a quantity
+ * anything wants to show. It also compressed the very differences this exists
+ * to draw: T1 wanting bread 7.6x as much as iron came out as a column 1.4x
+ * wider.
+ */
+export function appetiteWidth(alpha, top, step) {
+  const wide = Math.max(BAR_MIN + 1, step - BAR_GUTTER);
+  if (!(alpha > 0) || !(top > 0)) return null;
+  const share = Math.min(1, alpha / top);
+  return BAR_MIN + (wide - BAR_MIN) * share;
+}
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
 //: Taller only where there is a utility to put in it. A live card must not
@@ -1889,20 +1948,47 @@ export class Scene {
     this.bars[name] = {};
     const inner = CARD_W - 26;
     const step = inner / this.goods.length;
+    //: What this trader wants, if anybody is allowed to know. A live board has
+    //: no reveal and therefore no tastes, and that is a fact about the game
+    //: rather than a gap in the drawing -- see the appetite ground below.
+    const taste = this.reveal?.traders?.[name]?.taste ?? null;
+    const topTaste = taste ? Math.max(...this.goods.map((g) => taste[g] || 0)) : 0;
     this.goods.forEach((good, i) => {
       const cx = -CARD_W / 2 + 13 + i * step + step / 2;
-      const x = cx - BAR_W / 2;
+      //: **The column is as wide as this trader wants the good**, and every
+      //: mark in it is cut to that width. Without a reveal there is no taste
+      //: to be had and the shelf is the even row of columns it always was --
+      //: which is the honest drawing of "nobody outside that trader's head
+      //: knows", and is why a live card is *visibly* a different card rather
+      //: than one quietly claiming even tastes.
+      const w = (taste && appetiteWidth(taste[good], topTaste, step)) || BAR_W;
+      const x = cx - w / 2;
       const cell = el("g", { class: "cell", "data-good": good,
+                             "data-appetite": taste ? "yes" : "no",
                              style: `--c: var(${SLOT[i % SLOT.length]})` });
+      //: **The ground each good stands on, as wide as this trader wants it.**
+      //: The shelf said what everybody was holding and never what any of it
+      //: was worth to the one holding it -- so a settlement was a rope, a pill
+      //: and a number that moved, with nothing on screen saying why the number
+      //: moved that way. On game 001d, T1's taste for bread is 0.70 against
+      //: 0.09 for iron: bread-for-salt is good for both traders and the card
+      //: could not say so.
+      //:
+      //: **Drawn only when there is a reveal, and absent otherwise.** Not
+      //: drawn flat, or drawn even -- absent. An even ground on a live card
+      //: would say "this trader wants everything equally", which is a claim,
+      //: and the true statement is that nobody outside that trader's head
+      //: knows. A thing that is not known is not drawn as a thing that is
+      //: known and happens to be uniform.
       cell.append(el("rect", { class: "bar-track", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 4 }));
+                               width: w, height: BAR_MAX, rx: 4 }));
       const bar = el("rect", { class: "bar", x, y: BASE - BAR_MAX,
-                               width: BAR_W, height: BAR_MAX, rx: 4 });
+                               width: w, height: BAR_MAX, rx: 4 });
       // Promised, not gone: the manager will not settle a second offer over the
       // same goods, so a shelf that hides commitment shows stock that cannot
       // actually be offered.
       const held = el("rect", { class: "bar-held", x, y: BASE - BAR_MAX,
-                                width: BAR_W, height: BAR_MAX, rx: 4 });
+                                width: w, height: BAR_MAX, rx: 4 });
       cell.append(bar, held);
       // An empty slot has to say empty. A dark trough reads as "small", and the
       // difference between small and none is the whole of Cobb-Douglas.
@@ -1914,7 +2000,7 @@ export class Scene {
       // and nothing on the card said why. An outline around the whole empty
       // trough cannot be mistaken for a quantity.
       cell.append(el("rect", { class: "bar-zero", x: x + 0.75, y: BASE - BAR_MAX + 0.75,
-                               width: BAR_W - 1.5, height: BAR_MAX - 1.5, rx: 4 }));
+                               width: w - 1.5, height: BAR_MAX - 1.5, rx: 4 }));
       cell.append(el("text", { x: cx, y: BASE + 17, class: "glyph" }, GLYPH[good] || "▪"));
       cell.append(el("text", { x: cx, y: BASE + 31, class: "qty" }, ""));
       card.append(cell);

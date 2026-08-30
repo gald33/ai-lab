@@ -2624,6 +2624,114 @@ Its fixture had to change to say anything. It held 0.8 of everything and moved
 single box is the one case where `spread` does nothing at all, so the rule it
 exists for could not be made to fail. Six boxes each now, five of them moving.
 
+## A shelf says what its owner wants
+
+*Reported by Gal, 2026-08-30: the viewer could not see the utility factors, and
+the relative preference between goods is information the page was throwing
+away.*
+
+The shelf drew what each trader **held** and the score row drew what it **came
+to**, and nothing on the island said why those two were related. So a
+settlement was a rope, a pill and a number that moved — with the reason the
+trade was worth making nowhere on screen.
+
+The numbers were not missing from the page, only from the picture: the rail's
+"Tastes (α)" panel has had them all along. But that is a reference table you
+open, and the moment the information matters is the moment a parcel is landing
+on a shelf, which is exactly when nobody is reading a drawer.
+
+Game 001d, which is the replay this was found on:
+
+| | bread | cloth | iron | salt |
+|---|---|---|---|---|
+| **T1** | **0.698** | 0.118 | 0.091 | 0.092 |
+| **T2** | 0.146 | 0.117 | 0.173 | **0.565** |
+
+Bread-for-salt is good for both of them, obviously and at a glance — and the
+two cards could not say so.
+
+### Quantity is a height, so appetite is a width
+
+That is the whole design, and it is the reason it is safe. The shelf already
+spends its **vertical** axis on how much a trader is holding; a second length
+on that axis would be a second quantity however it was styled. The horizontal
+axis was carrying nothing at all — every column was `BAR_W` wide — so it was
+free, and nothing drawn on it can be misread as a stock.
+
+So **the column a good stands in is as wide as its owner wants it**, and every
+mark in that column is cut to the same width: the trough, the bar, the pale
+held portion, and the outline that says empty. `render.py:appetite` measures
+all four, because a width applied to the trough alone would draw a bar standing
+proud of its own slot.
+
+Measured on 001d at 1400×880, in device pixels:
+
+| trader | bread | cloth | iron | salt |
+|---|---|---|---|---|
+| T1 | **52.5** | 21.7 | 20.3 | 20.3 |
+| T2 | 25.0 | 23.1 | 26.7 | **52.5** |
+
+### Two things it deliberately does not claim
+
+**It is normalised against the trader's own largest taste**, not against 1 and
+not across cards. Σα = 1, so on a five-good island an even taste is 0.2 and the
+whole range ever drawn would be a fifth of the axis. And the question being
+asked is *"what does this trader care about most"*, which lives inside one
+card; across cards the same drawing would answer "who has the peakier tastes",
+which is a real quantity and not the one a shelf is for.
+
+**Width is affine in the taste, not proportional to it.** A column is a touch
+target as well as a drawing, so there is a floor under it — and with a floor, a
+column twice as wide is not a taste twice as large. What the shelf claims is
+the **order and the spread**: which good this trader wants most, and whether
+the others are close behind or nowhere near. The numbers stay in the rail. This
+is meant to be read while a parcel is landing, and a glance does not read four
+decimals.
+
+**A rooted share was tried first and was wrong**, and is written down because
+the reasoning was plausible: it was justified as putting the drawn *area* on
+the taste. But the column's height is the quantity held, so its area is a taste
+times a stock, which is not a quantity anything wants to show — and it
+compressed the very differences the drawing exists for. T1 wanting bread 7.6×
+as much as iron came out as a column **1.4× wider**, which is worse than not
+drawing it at all, because the shelf then looks like it has answered the
+question. Linear: 2.6×.
+
+### No taste is drawn as no taste, never as an even one
+
+The half that matters most, and the one this repo keeps having to re-learn in
+the other direction. **Live has no reveal.** Tastes are private, they never
+reach the board, and `utility.js` already refuses to invent them — a live card
+has no score row at all for exactly this reason.
+
+So on a board with no reveal there is **no appetite drawn**: not flat, not
+even — absent, and the shelf is the fixed-width row of columns it always was.
+An even row would say *"this trader wants everything equally"*, which is a
+claim about a trader. The true statement is that nobody outside that trader's
+head knows, and a thing that is not known must not be drawn as a thing that is
+known and happens to be uniform. The cell carries `data-appetite="yes"/"no"` so
+a check can ask which of the two it is, and the caption naming the width is
+raised only with a reveal — a caption for a thing that is not drawn is how a
+live page ends up claiming to show tastes it does not have.
+
+### What checks it
+
+- `scene.test.mjs` — `appetiteWidth` is arithmetic and is checked as such: the
+  most-wanted good gets the widest column, the widest column still leaves a
+  gutter at every good count from one to seven, a near-zero taste is floored
+  rather than vanishing, and **no taste returns `null`** rather than a width.
+- `render.py:appetite` — that the drawing uses it, in a browser, on a real
+  board: every mark in a column matches the column, a trader whose tastes
+  differ several-fold does not draw columns within 1.5× of each other, and a
+  board opened with no reveal draws every column identical.
+
+Shown to fail, not assumed. Drawing an even appetite when there is no reveal
+fails the `bare` half on both traders (`reports ['yes'] … on a board that has
+no reveal`); ignoring the taste and drawing every column `BAR_W` fails the
+`scored` half on both (`1.00x its narrowest`).
+
+To re-check: `python viewer/tests/render.py --require`.
+
 ## Utilities and efficiency
 
 Both need tastes, so both are replay-only, and the live page says so rather than
