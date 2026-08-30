@@ -1155,15 +1155,31 @@ def test_an_offer_names_the_command_that_accepts_it(settled, hub, tmp_path):
     dealer = Dealer.draw(table.seed, table.traders, GOODS)
     mgr = Manager(capacity=dealer.capacity, client=client, channel="island",
                   goods=dealer.goods)
+    # Bound before every drain, which is what `run_game.until` does and what
+    # `bind_seats` asks for in its own docstring: a seat binds only once its
+    # holder's registration has been *read*, so a single bind before a single
+    # drain is one roster read away from a trader the manager never recognises.
+    # An unbound holder of a witnessed key is dropped in silence by design
+    # (`Manager._intrusion`: "it binds on a later drain"), so that race shows up
+    # here as a board with no offer line on it at all -- which is how it showed
+    # up, once, in CI on 2026-08-30 -- and never here, in 15 runs of this test
+    # alone and 2 of the whole directory, on agent-switchboard 1.2.3, the
+    # version CI installs. The bind is the fix; the count is why it is not a
+    # reproduction.
+    def turn(line: str) -> None:
+        room["scout-v2"].post("island", line)
+        for _ in range(5):
+            run_game.bind_seats(mgr, table)
+            mgr.drain()
+
     run_game.bind_seats(mgr, table)
     mgr.open_episode()
-    room["scout-v2"].post("island", "PRODUCE bread=1.0")
-    mgr.drain()
-    room["scout-v2"].post("island", "PROPOSE to=T2 give=bread:0.1 want=cloth:0.2")
-    mgr.drain()
+    turn("PRODUCE bread=1.0")
+    turn("PROPOSE to=T2 give=bread:0.1 want=cloth:0.2")
 
-    offer = next(str(m.get("body", "")) for m in mgr.client.history("island", limit=60)
-                 if str(m.get("body", "")).startswith("p1: "))
+    board = [str(m.get("body", "")) for m in mgr.client.history("island", limit=60)]
+    offer = next((b for b in board if b.startswith("p1: ")), "")
+    assert offer, "the proposal was settled and the offer posted:\n" + "\n".join(board)
 
     assert "APPROVE p1" in offer, "the line says what to write next"
     assert verify.OFFER.match(offer), "and stays parseable for saved boards"

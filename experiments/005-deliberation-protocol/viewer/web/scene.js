@@ -824,10 +824,23 @@ export function burnAt(p) {
 
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 
-//: The narrowest a column goes, and the gutter kept between two of them. A
-//: column is a touch target on a phone as well as a drawing, and one much
-//: under this stops being either.
-const BAR_MIN = 11, BAR_GUTTER = 5;
+//: The narrowest a column goes, and the gutter kept between two of them.
+//:
+//: **It is a floor on being legible, not on being tappable.** This said "a
+//: column is a touch target on a phone as well as a drawing", and that is
+//: simply not true: a click resolves through `closest("[data-trader]")` to the
+//: whole settlement, nothing binds a handler to a `.cell`, and the stylesheet
+//: takes pointer events *off* the cells of a shut card. The number gives it
+//: away too -- 11 units renders 8.3px on a 393pt phone, against the 40px this
+//: repo requires under `pointer: coarse` of everything it actually expects a
+//: finger on. A reason that would have made this number wrong by a factor of
+//: five is not the reason for it.
+//:
+//: What it is really for: below about this a column stops reading as a column
+//: at all -- it is a rule, and the goods' glyph sitting under it (14px on that
+//: phone) is wider than the mark it belongs to. Corrected 2026-08-30 on a
+//: parity check; the number is unchanged, only what it is justified by.
+const BAR_MIN = 7, BAR_GUTTER = 5;
 
 /**
  * How wide to draw a trader's column for one good: how much they want it.
@@ -860,9 +873,9 @@ const BAR_MIN = 11, BAR_GUTTER = 5;
  * neighbour whatever the island's good count.
  *
  * **Width is affine in the taste, not proportional to it**, and that is a real
- * limit rather than an oversight. A column is a touch target as well as a
- * drawing, so there is a floor under it; with a floor, a column twice as wide
- * is not a taste twice as large. What the shelf claims is the **order and the
+ * limit rather than an oversight. There is a floor under a column so that it
+ * stays legible as one (see `BAR_MIN`), and with a floor, a column twice as
+ * wide is not a taste twice as large. What the shelf claims is the **order and the
  * spread** -- which good this trader wants most, and whether the others are
  * close behind or nowhere near -- and that is what a viewer is asking. The
  * numbers themselves are in the rail, under "Tastes", and are not repeated
@@ -880,7 +893,21 @@ export function appetiteWidth(alpha, top, step) {
   const wide = Math.max(BAR_MIN + 1, step - BAR_GUTTER);
   if (!(alpha > 0) || !(top > 0)) return null;
   const share = Math.min(1, alpha / top);
-  return BAR_MIN + (wide - BAR_MIN) * share;
+  //: **Proportional, with the floor as a clamp rather than a base.** This was
+  //: `BAR_MIN + (wide - BAR_MIN) * share`, which starts every column at the
+  //: floor and spends only what is left on the taste -- so the floor ate 29%
+  //: of the axis and a trader wanting bread 7.6x as much as iron drew a column
+  //: 2.6x wider. Measured across both replays: 7.6x -> 2.6x, 10.2x -> 2.8x,
+  //: 4.8x -> 2.3x, 1.8x -> 1.5x. That is the same compression the rooted share
+  //: was rejected for, arriving by a different route, and it made "the width
+  //: is the taste" a claim the drawing did not keep.
+  //:
+  //: Now the width *is* the share, and the floor only stops a column
+  //: disappearing. It binds below `BAR_MIN / wide` -- about a fifth of the
+  //: trader's largest taste -- and below that two columns are equally wide
+  //: whatever their tastes, which is the one thing this cannot show and is
+  //: said out loud rather than left to be discovered.
+  return Math.max(BAR_MIN, wide * share);
 }
 //: The shelf's floor, in card coordinates. Bars stand on it, labels hang below.
 const BASE = 104;
