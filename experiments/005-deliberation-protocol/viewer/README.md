@@ -3160,7 +3160,7 @@ python viewer/tests/render.py                    # the drawing, in a real browse
 python viewer/tests/render.py --require          # ... and as CI runs it
 ```
 
-### `viewer/tests` runs in CI now. `render.py` does not, yet.
+### All three run in CI now, and the third took two goes
 
 *Decided 2026-08-29.*
 
@@ -3182,8 +3182,8 @@ its own island, so a level added for some other round cannot reach in and
 relabel it. That form does not expire as the ledger grows, which is what the old
 one did.
 
-**The second half is not, and the reason is measured.** `render.py` was put in a
-CI job and run twice on the same commit. It failed both times, with a
+**The second half was held back once, and the reason was measured.**
+`render.py` was put in a CI job and run twice on the same commit. It failed both times, with a
 *different* failure each time:
 
 | run | unexpected failure |
@@ -3203,16 +3203,187 @@ fallback a browser with no WebGL gets" — but the stage's own render loop keeps
 running behind it, eating the frame budget the check needs. `Stage.pause()`
 exists and nothing calls it from a test.
 
-So the job is **not added**. A check that goes red at random teaches everyone to
-ignore CI, and `continue-on-error` is worse: GitHub draws that as a green tick,
-which is the weaker thing wearing the stronger one's face — the one move this
-lab does not make. It goes in when the races are fixed, which means stopping the
-stage for the isolated-SVG checks and converting the remaining absolute-time
-samples to watchers.
+So the job was **removed rather than landed flaky**. A check that goes red at
+random teaches everyone to ignore CI, and `continue-on-error` is worse: GitHub
+draws that as a green tick, which is the weaker thing wearing the stronger one's
+face — the one move this lab does not make. It would go back in when the races
+were fixed, which meant stopping the stage for the isolated-SVG checks and
+converting the remaining absolute-time samples to watchers.
 
-### What `render.py` gained anyway
+**Both are done, and the job is back.** What that took is the section below;
+what it cost is about 25 minutes of runner time, and what it buys is the only
+check on what the island actually draws being behind a green tick.
 
-The three pieces that job will need are in, and are useful locally now.
+### How the flake was fixed
+
+*Decided 2026-08-29.* Two runs of one commit disagreeing is the tell, and the
+cause named above is measurable in one paste. On a headless page with the
+three.js stage running:
+
+```js
+// on http://127.0.0.1:8790/ after the island has mounted
+let n = 0; const t0 = performance.now();
+const tick = () => { n++; performance.now() - t0 < 2000 ? requestAnimationFrame(tick)
+                     : console.log(n / 2, 'fps'); };
+requestAnimationFrame(tick);
+```
+
+**2 frames a second**, measured on a headless GPU-less machine -- which is the
+same SwiftShader path a GitHub runner takes, and the reason it reproduces there
+at all. Every
+animation assertion in `ring` was sampling a scene whose frames are about
+400ms apart, and the motions it measures last from 220ms (a card swing) to
+3.6s (the labour wheel). Some samples landed inside their animation and some
+did not, and which was which changed between runs.
+
+Nothing was weakened to get green. Two things were fixed.
+
+**1. The stage is stopped, not just hidden.** `ring`'s isolated checks --
+`production` and `motion` -- take `.has-3d` off the app to unhide the drawn SVG
+scene, which is "the fallback a browser with no WebGL gets". Hiding the model
+does not stop it: the WebGL loop went on drawing an island nobody could see,
+and on a machine with no GPU that loop *is* the frame budget. `Stage.pause()`
+already existed and nothing had ever called it from a test.
+
+The hook is `window.__island`, which `index.html:paint` already publishes and
+which `clockwork` and `travelling` already read. It is the stage the page is
+drawing and `pause()` is the page's own method, so no second handle was added
+for the harness; the comment beside it in `index.html` now says that a harness
+may stop the loop, and why. Measured on the same page, same command:
+
+| | frames per second |
+|---|---|
+| stage running | 2 |
+| `.has-3d` removed, stage still running | 2 |
+| `window.__island.pause()` | **25** |
+
+The middle row is the point: taking the class off is not what was costing the
+frames, so hiding the model without stopping it fixed nothing.
+
+**2. The remaining fixed-offset samples became watchers, and the transient
+ones became observers.** Twelve times the frame rate is still not sixty, so the
+pause alone is a machine getting luckier rather than a check getting honest.
+`production`'s docstring already named this defect and `wheelSeen`/`wheelMoved`
+already fixed it for the labour wheel; `motion` was where it was left. Every
+`nap(150)`, `nap(400)`, `nap(2900)` in it is gone, and each claim is now asked
+in the form that survives any frame rate.
+
+The sharpest version of the problem is not that a nap lands in the wrong place.
+It is that **almost everything these checks count exists only while its
+animation runs** — a symbol for `IN_LEG`, a bubble for `DWELL.said`, a rope
+wearing `refused` for `DWELL.refused`, a parcel for one leg of an exchange. A
+poll can only catch those if it comes round faster than they last, and on a
+starved page a `nap(50)` comes round in about a second. So polling was replaced
+outright:
+
+- **a `MutationObserver` on the island counts what was drawn**, not what was on
+  screen when a nap happened to end. It is delivered at a microtask checkpoint
+  whether or not a frame is painted, so it cannot miss a node however slow the
+  page is — and "was a bubble ever drawn" is the better question anyway, since
+  it is the one that cannot come out two ways on two runs of one commit;
+- **a positive claim then waits for that count to move** (`till`), with a cap
+  that turns "never" into a failure rather than a hang;
+- **a negative claim waits out the whole dwell** of the thing that would have
+  been drawn. A nap under load runs *long*, never short, so for a negative a
+  wider window is only ever stronger;
+- **a value a CSS transition carries somewhere is watched until it stops
+  moving** (`landed`), because the destination is the claim.
+
+Two things that went wrong while doing this are worth keeping, because both
+were silent.
+
+**`landed` counts samples, not milliseconds.** The first attempt stopped
+watching once a second had passed with no change — a rule about the clock the
+naps run on, and at two frames a second two reads can straddle it with the
+transition still going. Three consecutive reads that *agree* cannot fall inside
+a transition however far apart they are, because `getComputedStyle` forces the
+style recalculation that starts one.
+
+**The observer must count the whole inserted subtree.** A `MutationObserver`
+reports the top of an added subtree and nothing under it, and this page appends
+wrappers: a bubble is a `.pop` inside an anchor, a cross is a `.chip-cross`
+inside a pill. Matching only the added node found neither — which broke the
+positives loudly and the negatives *silently*. A negative assertion that cannot
+fail is worse than no assertion, and it passed a full run before the probe that
+printed the raw counts caught it.
+
+**And the night's failure was hiding a second one.** Fixing `nightOpacity`
+under load surfaced `a new day started with the sun already at 1.00 opacity`,
+which had never been seen. `.sun` carries `transition: opacity 1.2s`, so
+`placeSun` writing an inline opacity is the *start* of a journey and the
+`nap(300)` after it was reading a value in transit — and the value it was in
+transit *from* was the previous night, which the earlier bug had given up on
+early. One timing defect was masking another; both are `landed` now.
+
+**Speeding the page up broke a third check, which is the useful part.** With
+the stage paused, `palms` began failing: `the crown does not stir (0.50px)`
+against a 0.6px floor. It samples twelve times 90ms apart — about 1.1 seconds —
+against `.palm .crown`'s `animation: sway 7s ease-in-out infinite`. A sixth of
+an eased cycle, and which sixth was luck: land on the slow part at either
+extreme and a crown swaying perfectly well reports half a pixel. The *starved*
+page had been accidentally covering more of the cycle, so the flake was there
+the whole time and slowness was hiding it. The window is now the animation's
+own duration, read off `getAnimations()` rather than copied out of the
+stylesheet where it would go stale the first time somebody changes the wind —
+and a full period is the stronger question for both halves, the crown's true
+peak-to-peak and every chance to catch a trunk that moves.
+
+**And one more of the same shape, found by the restored job itself.** The first
+CI run of the job after all of the above died 22 minutes in, with every check
+before it passed, on `Page.wait_for_selector: Timeout 15000ms exceeded, waiting
+for locator(".hut")` inside `emerging`. Not a flake in the drawing: a
+**deadline nobody had measured**. `emerging` opens the one page in this suite
+with animation fully on -- `reduced_motion="no-preference"`, no board named, so
+it mounts a random round with the whole stage running -- and a GPU-less runner
+took longer than 15s to draw its first hut.
+
+A timeout like that is a hang guard, not a check: nothing is asserted by it,
+every claim is made after the page is up, so waiting longer cannot weaken any
+of them while too short a wait fails a run on a machine that is drawing exactly
+the right thing. Measured here under load, `.hut` appears **7 to 10 seconds**
+after `goto` on that page — against 15s, a margin of 1.5×, which is not a
+margin. It is one named `MOUNT_MS = 60_000` now rather than nineteen literals
+of 10s and 15s, because the next one to be too short would have been found the
+same way this one was: by a red tick after twenty-two minutes.
+
+Reproduced before it was fixed, by squeezing the same constant to 5s on this
+machine — same call, same exception — and `emerging` then passes at the
+measured value with nothing else changed.
+
+**Proven by repetition, not by one green run.** `--require` was run three times
+on the same commit, on a headless GPU-less machine -- the same SwiftShader path
+a runner takes -- and gave the same result each time:
+
+```
+0 unexpected, 0 known, 0 stale entries     1509s
+0 unexpected, 0 known, 0 stale entries     1515s
+0 unexpected, 0 known, 0 stale entries     1508s
+```
+
+Nothing unexpected, nothing known -- `KNOWN_FAILURES` is empty, and the run says
+so rather than being trusted to. About 25 minutes, agreeing to within seven
+seconds across the three.
+
+`ring` alone was then run five more times with every core saturated -- roughly
+half the frame rate again -- and came back clean five times out of five. That
+is the run that mattered: three runs of the *old* code under that same load
+failed every one of the three, with a different failure each time, and it was
+the loaded runs that turned up the sun and the palms. A single green run is not
+evidence about a flake; a loaded run that repeats is.
+
+**And then the runner, which is the only measurement that settles the
+`timeout-minutes`.** The restored job's green run took **32m04s** -- a quarter
+longer than this machine's 25 minutes for the same work. That gap is not an
+aside: it is the same quarter that put the old 15s mount deadline over the edge
+on a runner while it passed on every local run, and it is the reason a proof
+gathered on one machine is evidence about that machine before it is evidence
+about the check. Repetition here answers "is this check deterministic"; only the
+runner answers "is it fast enough". The limit stays at 40 against a measured 32,
+which is a quarter in hand and not a number raised to cover a hang.
+
+### What `render.py` gained on the way
+
+Three pieces landed with the job the first time and are kept.
 
 **`--require`** turns render.py's three silent skips — no playwright, no
 browser, no replays — into failures. A skip and a pass are the same tick, and
@@ -3227,8 +3398,9 @@ carries its reason.
 written — a portrait framing check missing its floor by a fraction of a percent,
 and a lighting check whose sign was inverted — and both have since been paid
 rather than aged: see "And it lands where the disc lands" and "The band the
-island was given" above. Neither was what holds the job back; that is the `ring`
-flakiness measured in the section before this one. `verdict` enforces two rules: anything **not** listed fails the run, and
+island was given" above. Neither was ever what held the job back — that was the
+`ring` flakiness measured above, and it is fixed now. `verdict` enforces two
+rules: anything **not** listed fails the run, and
 anything listed that **stops failing** also fails it, saying to delete the
 entry. The second is what keeps the list honest — entries that outlive their
 bugs make a list nobody trusts, and by then it will swallow a real regression.
