@@ -2783,6 +2783,100 @@ motion settings.
 
 To re-check: `python viewer/tests/render.py --require`.
 
+## The utility jumped to full before it settled
+
+*Reported by Gal, 2026-08-30: "the utility when producing jumps to full and
+only then adjusts. It should only move after the item bars settled."*
+
+The staging was already there and already working — `scoreSoon` holds the
+write until the shelf has stopped moving, and that is the fix from
+["The utility follows the shelf"](#the-utility-follows-the-shelf-rather-than-moving-with-it).
+What was wrong is where the bar started.
+
+`hut()` built `.score-fill` with `width: w` — **the track's width, one line
+above it, which is what it was copied from.** So every card came up with its
+utility at 100%, and it only came down when the staged `score()` fired. The
+stage made it worse, not better: the later the honest write, the longer the
+bar sat full.
+
+Measured on game 001d's first production, stepping the transport onto the
+frame and sampling every animation frame from inside the page:
+
+| | before | after |
+|---|---|---|
+| at 14ms | **170px of 170**, empty shelf | 0px |
+| at 1774ms | still 170px | 0px |
+| at 2345ms | 0px | 0px |
+| shelf fills | — | 7652ms |
+| number moves | — | 8806ms |
+| bar completes | — | 9386ms |
+
+A fill starts empty. The transition on it is what makes the number arrive with
+its goods; it cannot do that job from the wrong end.
+
+**And a rebuilt card comes back at what it was showing.** `redrawCard` already
+carries each bar's value across a rebuild for exactly this reason; the score
+bar and the number beside it now go with them. The number matters more than it
+looks: a fresh score row reads `—`, which is what this card says when there is
+**no reveal to know a utility from**, and a rebuild flashed that over a number
+the page knew perfectly well.
+
+### The two fixes are alternatives, and the check says so
+
+Either one alone prevents the flash, which the neuters show: authoring the fill
+empty with the carry removed passes, and restoring the full width with the
+carry in place also passes. Only the original code — both — fails. Both are
+kept because both are right for their own reason, not because a check demands
+them.
+
+`shutters` asks it in the seam between building a scene and drawing into it,
+which is the only place the authored width is on screen by itself. **Two other
+ways were tried and neither could fail**, which is worth recording because both
+looked reasonable:
+
+- driving a real production and watching the order of events needs a
+  nine-second animation to finish on a page drawing two frames a second. It
+  went red at random on a loaded machine — rebuilding by hand the exact flake
+  #189 took out of this suite — and was deleted rather than kept;
+- comparing the bar's width either side of a `flashCard` rebuild reads 170
+  both ways on that probe, because the check's own synthetic reveal saturates
+  `utilityTop` and the bar is legitimately full there.
+
+To re-measure: `python viewer/tests/render.py --require`.
+
+## What a live board shows, and what it had stopped showing
+
+*Reported by Gal: "not everything we decided on has carried to the live game."*
+
+Checked rather than assumed, by driving the live path against a fake upstream
+the way `living` does and reading every decision off the page. Most of it had
+carried, and the ones that are absent live are absent **by design**, because
+live has no reveal: no score row, no appetite widths (`data-appetite="no"`,
+every column the same 26 units), no caption naming those widths. Cards come up
+shut, the labour ring carries no number, the rows straddle the island, and the
+bands are measured.
+
+**One had not carried, and it was mine.** A phone shows one line of goods key,
+and the line it was given is the caption naming the column widths — which only
+exists when there is a reveal to name them from. Live has none. So a live
+phone drew a key of four goods with a **height of zero**: measured. The chips
+were dropped so the caption could have the row, and on live there is no
+caption, so the trade took the key away and put nothing in its place — leaving
+a viewer no way to learn what a parcel in flight is carrying, which is the one
+thing the key is for.
+
+So the rule is now conditional on there being a caption at all (`.legend.keyed`,
+set by `legend()`): the caption where there is one, the chips where there is
+not. Measured after — replay phone 17px showing the caption, live phone 22px
+showing the chips, desk 98px showing everything.
+
+`render.py:appetite` runs its **bare** leg on a phone now, which costs nothing:
+that leg's own claim — a board with no reveal draws every column the same
+width — does not depend on the viewport, and the phone is where the key was
+lost. It asserts the key is never empty. Shown to fail: restoring the
+unconditional rule gives *"the goods key draws 0 of its parts and comes to
+0px"*.
+
 ## The rows straddle the island
 
 *Reported by Gal, 2026-08-30, with a screenshot: opening T1 on a four-hander
@@ -4273,8 +4367,8 @@ matters:
 | | this machine | a runner | scaled by |
 |---|---:|---:|---:|
 | the suite in one job | 1022s | **32m04s** | 1.88× |
-| `--group quick` | 531s | **16m55s** (1015s) | 1.91× |
-| `--group slow` | 598s | **17m16s** (1036s) | 1.73× |
+| `--group quick` | 531s | **16m55s**, 15m42s | 1.91× |
+| `--group slow` | 598s | **17m16s**, 17m03s | 1.73× |
 
 **The gate is 32m04s → 17m16s**, a little over half, measured rather than
 projected. `render.py` itself is 16m10s and 16m43s of those; the rest is
@@ -4302,9 +4396,27 @@ So **`timeout-minutes` is 22 on each**, set from each job's own measured time
 with a quarter in hand — the same margin 40 was against 32m04s. It stood at 40
 for one push, inherited, because the rule on that limit is an honest measured
 number or nothing and neither job had ever run; it is measured now, so it is
-set. One green run each is the same evidence the 40 had, and what one run
-cannot give is the spread: raise these if a green run ever lands near them, and
-never to get past a hang.
+set.
+
+**And then a second run, because one run cannot give a spread.** That was
+written here as the open question against these limits, so it is answered
+rather than left standing: the worst of the two runs is 17m16s, which is 78% of
+the limit, and neither job has come near it.
+
+| | two runs | spread |
+|---|---:|---:|
+| `drawing-quick` | 1015s, 942s | 73s, **7%** |
+| `drawing-slow` | 1036s, 1023s | 13s, **1.3%** |
+
+Those two spreads are the paragraph above this one confirming itself. `slow` is
+mostly `palette`, and `palette` is bound by wall-clock animation dwells rather
+than by the CPU, so it should barely notice which runner it drew — and it
+varies by a percent. `quick` is checks drawing as fast as the machine allows,
+so it should track how busy the runner is — and it varies by seven. The
+explanation was written from one run of each and predicted this before it was
+looked at.
+
+Raise these if a green run ever lands near them, and never to get past a hang.
 
 #### What the split is not allowed to do to the gate
 

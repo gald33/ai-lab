@@ -5441,13 +5441,32 @@ def appetite(browser, base: str, board: Path, out: Path) -> list[str]:
           return n ? +n.getBoundingClientRect().width.toFixed(2) : null;
         }),
       })),
+      //: What the key is actually showing. A phone drops all but one line of
+      //: it, and which line depends on whether there is a reveal -- so the
+      //: thing to assert is that *something* is left, not which.
+      key: (() => {
+        const leg = document.querySelector('.legend');
+        if (!leg) return null;
+        const shown = [...leg.children]
+          .filter((n) => getComputedStyle(n).display !== 'none').length;
+        return { shown, h: Math.round(leg.getBoundingClientRect().height) };
+      })(),
     }))"""
 
-    for tag, query, want in (
+    #: **The bare leg runs on a phone**, and that is not incidental. Its own
+    #: claim -- that a board with no reveal draws every column the same width
+    #: -- does not depend on the viewport, so nothing is lost by moving it; and
+    #: the phone is where a board with no reveal lost its goods key entirely.
+    #: A phone shows one line of key, and the line it was given is the caption
+    #: naming the column widths, which only exists when there is a reveal to
+    #: name them from. Live has none, so a live phone drew a key of four goods
+    #: with a height of zero: measured. See `.legend.keyed`.
+    for tag, query, want, w, h in (
             ("scored", f"?board=replays/board-{stem}.json"
-                       f"&reveal=replays/reveal-{stem}.json", True),
-            ("bare", f"?board=replays/board-{stem}.json", False)):
-        page = browser.new_page(viewport={"width": 1400, "height": 880},
+                       f"&reveal=replays/reveal-{stem}.json", True, 1400, 880),
+            ("bare", f"?board=replays/board-{stem}.json", False, 393, 852)):
+        page = browser.new_page(viewport={"width": w, "height": h},
+                                is_mobile=w < 500, has_touch=w < 500,
                                 reduced_motion="reduce")
         errs: list[str] = []
         page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
@@ -5463,6 +5482,15 @@ def appetite(browser, base: str, board: Path, out: Path) -> list[str]:
         if not seen:
             bad.append(f"{stem} @appetite/{tag}: no card was drawn at all")
             continue
+
+        #: **A key with nothing in it is not a key.** Whichever line a frame
+        #: keeps, it keeps one.
+        key = seen[0].get("key") if seen else None
+        if key is not None and (not key["shown"] or key["h"] < 1):
+            bad.append(f"{stem} @appetite/{tag}: the goods key draws "
+                       f"{key['shown']} of its parts and comes to {key['h']}px; "
+                       f"a viewer here has no way to learn what a parcel in "
+                       f"flight is carrying")
 
         for card in seen:
             who, cells = card["who"], card["cells"]
@@ -5898,12 +5926,17 @@ SHUTTERS = """async ({rows, goods, n, scored}) => {
                           aspect, chrome);
   window.__probe = scene;
   window.__timeline = t;
+  //: **What a score bar is built at, before anything writes one.** Read in
+  //: the seam between construction and the first draw, which is the only
+  //: place the authored value is on screen on its own.
+  const born = [...document.querySelectorAll('.score-fill')]
+    .map((n) => +n.getAttribute('width'));
   scene.draw(t.final, t);
   //: What the page sets when it has a model, so the stylesheet takes the drawn
   //: island off and what is left on screen is the frame these cards stand in.
   document.querySelector('.app').classList.add('has-3d');
   return { shutH: scene.shutH(), openH: scene.cardBoxH(),
-           modelled: scene.modelled, traders: scene.traders,
+           modelled: scene.modelled, traders: scene.traders, born,
            aspect, chrome, frame };
 }"""
 
@@ -6201,6 +6234,32 @@ def shut_row(page, out: Path, goods: list[str], n: int, rows: list[dict],
         bad.append(f"{where}: opening the bottom row re-divided the frame, "
                    f"{shut['viewBox']!r} -> {last['viewBox']!r}")
     toggle(lower["trader"])
+
+    #: **A score bar is built empty.**
+    #:
+    #: The regression, reported by Gal: `hut()` built `.score-fill` with the
+    #: *track's* width -- the line above it, which is what it was copied from
+    #: -- so a card came up with its utility at 100% and only came down when
+    #: `score()` wrote the real number. And `score()` is deliberately late:
+    #: `scoreSoon` holds it until the shelf has stopped moving, so on a
+    #: production the bar sat full for as long as the goods took to arrive and
+    #: then fell. Measured on game 001d: 170px of 170 at 14ms, still 170 at
+    #: 1774ms, 0 at 2345ms.
+    #:
+    #: Asked of the seam between building the scene and drawing into it, which
+    #: is the only place the authored width is on screen by itself. Two other
+    #: ways were tried and neither could fail: driving a real production and
+    #: watching needs a nine-second animation to finish on a page drawing two
+    #: frames a second, and went red at random on a loaded machine -- the exact
+    #: flake #189 took out of this suite; and comparing the width across a
+    #: `flashCard` rebuild reads 170 either way here, because this check's own
+    #: reveal saturates `utilityTop` and the bar is legitimately full.
+    for i, at in enumerate(made.get("born") or []):
+        if at > 0.5:
+            bad.append(f"{where}: card {i}'s utility bar is built {at:.0f} "
+                       f"units wide before anything has written a score; a "
+                       f"fill starts empty, and one that starts full flashes "
+                       f"the whole time the number is waiting for the shelf")
 
     #: **A card an event opens gives itself back.** `flashCard` is the other
     #: way a shelf opens -- a settlement landing in it -- and it reverts to
