@@ -3106,9 +3106,18 @@ asked is *"what does this trader care about most"*, which lives inside one
 card; across cards the same drawing would answer "who has the peakier tastes",
 which is a real quantity and not the one a shelf is for.
 
-**Width is affine in the taste, not proportional to it.** A column is a touch
-target as well as a drawing, so there is a floor under it — and with a floor, a
-column twice as wide is not a taste twice as large. What the shelf claims is
+**Width is affine in the taste, not proportional to it.** There is a floor
+under a column so that it stays legible as one — and with a floor, a column
+twice as wide is not a taste twice as large.
+
+*The floor was justified as a touch target until 2026-08-30, and that was
+wrong: a click resolves through `closest("[data-trader]")` to the whole
+settlement, nothing binds a handler to a column, and the stylesheet takes
+pointer events off a shut card's cells. The number said so too — `BAR_MIN` is
+11 units, which renders **8.3px** on a 393pt phone, against the 40px this page
+requires under `pointer: coarse` of anything it actually expects a finger on.
+The floor is unchanged; only the reason for it is. Found on a parity check,
+which is the sort of thing a wrong reason survives until somebody measures it.* What the shelf claims is
 the **order and the spread**: which good this trader wants most, and whether
 the others are close behind or nowhere near. The numbers stay in the rail. This
 is meant to be read while a parcel is landing, and a glance does not read four

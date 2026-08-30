@@ -824,9 +824,22 @@ export function burnAt(p) {
 
 const CARD_W = 196, BAR_W = 26, BAR_MAX = 52;
 
-//: The narrowest a column goes, and the gutter kept between two of them. A
-//: column is a touch target on a phone as well as a drawing, and one much
-//: under this stops being either.
+//: The narrowest a column goes, and the gutter kept between two of them.
+//:
+//: **It is a floor on being legible, not on being tappable.** This said "a
+//: column is a touch target on a phone as well as a drawing", and that is
+//: simply not true: a click resolves through `closest("[data-trader]")` to the
+//: whole settlement, nothing binds a handler to a `.cell`, and the stylesheet
+//: takes pointer events *off* the cells of a shut card. The number gives it
+//: away too -- 11 units renders 8.3px on a 393pt phone, against the 40px this
+//: repo requires under `pointer: coarse` of everything it actually expects a
+//: finger on. A reason that would have made this number wrong by a factor of
+//: five is not the reason for it.
+//:
+//: What it is really for: below about this a column stops reading as a column
+//: at all -- it is a rule, and the goods' glyph sitting under it (14px on that
+//: phone) is wider than the mark it belongs to. Corrected 2026-08-30 on a
+//: parity check; the number is unchanged, only what it is justified by.
 const BAR_MIN = 11, BAR_GUTTER = 5;
 
 /**
@@ -860,9 +873,9 @@ const BAR_MIN = 11, BAR_GUTTER = 5;
  * neighbour whatever the island's good count.
  *
  * **Width is affine in the taste, not proportional to it**, and that is a real
- * limit rather than an oversight. A column is a touch target as well as a
- * drawing, so there is a floor under it; with a floor, a column twice as wide
- * is not a taste twice as large. What the shelf claims is the **order and the
+ * limit rather than an oversight. There is a floor under a column so that it
+ * stays legible as one (see `BAR_MIN`), and with a floor, a column twice as
+ * wide is not a taste twice as large. What the shelf claims is the **order and the
  * spread** -- which good this trader wants most, and whether the others are
  * close behind or nowhere near -- and that is what a viewer is asking. The
  * numbers themselves are in the rail, under "Tastes", and are not repeated
