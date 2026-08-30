@@ -293,6 +293,28 @@ def test_the_levers_offer_exactly_the_ladder_the_lobby_will_accept():
     assert tuple(seconds) == EPISODE_SECONDS_ALLOWED
 
 
+def test_the_levers_survive_the_meta_refresh(hub):
+    """**The reload was putting every knob back on its default.**
+
+    The page reloads every `PAGE_REFRESH` and a `<select>` comes back on its
+    `selected` option, so a reader who set traders=4 watched it snap to 2 --
+    and then copied a prompt whose OPEN line was not the one they had read.
+    Carried across the reload in `sessionStorage`, like the countdowns.
+
+    A restored value is applied only if it is still one of the options: the
+    ladders move, and a stored value the lobby now refuses is the trap the
+    fixed lists exist to avoid.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert f"sessionStorage.setItem('{lobby_page.LEVERS_KEY}'" in page
+    assert f"sessionStorage.getItem('{lobby_page.LEVERS_KEY}')" in page
+    assert "s.options" in page and "if(ok) s.value=v;" in page
+    # Saved on the way out and re-read on the way in, or a reload loses the
+    # choice it was meant to carry.
+    assert "restore();" in page and "save(); redraw();" in page
+
+
 def test_the_prompt_carries_the_open_line_the_levers_rewrite(hub):
     """The copy button reads the whole block, so the span must be in it.
 
