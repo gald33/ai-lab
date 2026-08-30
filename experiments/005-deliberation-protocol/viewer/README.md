@@ -4367,8 +4367,8 @@ matters:
 | | this machine | a runner | scaled by |
 |---|---:|---:|---:|
 | the suite in one job | 1022s | **32m04s** | 1.88× |
-| `--group quick` | 531s | **16m55s**, 15m42s | 1.91× |
-| `--group slow` | 598s | **17m16s**, 17m03s | 1.73× |
+| `--group quick` | 531s | **16m55s**, 15m42s, 14m24s | 1.91× |
+| `--group slow` | 598s | **17m16s**, 17m03s, 17m24s | 1.73× |
 
 **The gate is 32m04s → 17m16s**, a little over half, measured rather than
 projected. `render.py` itself is 16m10s and 16m43s of those; the rest is
@@ -4398,25 +4398,29 @@ for one push, inherited, because the rule on that limit is an honest measured
 number or nothing and neither job had ever run; it is measured now, so it is
 set.
 
-**And then a second run, because one run cannot give a spread.** That was
-written here as the open question against these limits, so it is answered
-rather than left standing: the worst of the two runs is 17m16s, which is 78% of
-the limit, and neither job has come near it.
+**And then more runs, because one run cannot give a spread.** That was written
+here as the open question against these limits, so it is answered rather than
+left standing:
 
-| | two runs | spread |
-|---|---:|---:|
-| `drawing-quick` | 1015s, 942s | 73s, **7%** |
-| `drawing-slow` | 1036s, 1023s | 13s, **1.3%** |
+| | three runs | range | worst, against the 22m limit |
+|---|---:|---:|---:|
+| `drawing-quick` | 1015s, 942s, 864s | **17.5%** | 16m55s, 77% |
+| `drawing-slow` | 1036s, 1023s, 1044s | **2.1%** | 17m24s, 79% |
 
-Those two spreads are the paragraph above this one confirming itself. `slow` is
+Those two ranges are the paragraph above this one confirming itself. `slow` is
 mostly `palette`, and `palette` is bound by wall-clock animation dwells rather
-than by the CPU, so it should barely notice which runner it drew — and it
-varies by a percent. `quick` is checks drawing as fast as the machine allows,
-so it should track how busy the runner is — and it varies by seven. The
-explanation was written from one run of each and predicted this before it was
-looked at.
+than by the CPU, so it should barely notice which runner it drew — and it holds
+to two percent across three runs. `quick` is checks drawing as fast as the
+machine allows, so it should track how busy the runner is — and it swings by
+seventeen. That prediction was written from one run of each, before there was
+anything to check it against.
 
-Raise these if a green run ever lands near them, and never to get past a hang.
+**The `quick` figure here said 7% until the third run landed**, which is the
+same lesson as the one above it arriving a second time: two samples are not a
+spread either. It is left as a range rather than restated after every run —
+what matters for the limit is the worst seen, and 22 minutes has stood at
+77–79% across three. Raise these if a green run ever lands near them, and never
+to get past a hang.
 
 #### What the split is not allowed to do to the gate
 

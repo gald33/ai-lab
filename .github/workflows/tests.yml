@@ -110,9 +110,12 @@ jobs:
     # and this job had never run -- and it is measured now, so it is set:
     # 16m55s for the job, 16m10s of that in `render.py` itself.
     #
-    # A quarter in hand, the same margin 40 was to 32m04s. Two green runs now:
-    # 16m55s and 15m42s, a 7% spread, worst case 77% of this limit. Raise it if
-    # a green run ever comes in near it, and never to get past a hang.
+    # A quarter in hand, the same margin 40 was to 32m04s. Three green runs:
+    # 16m55s, 15m42s, 14m24s -- a 17.5% range, worst case 77% of this limit.
+    # That range read 7% after two runs, which is the "one sample is not a
+    # spread" lesson arriving twice; what the limit is set against is the worst
+    # seen. Raise it if a green run ever comes in near it, never to get past a
+    # hang.
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
@@ -172,10 +175,11 @@ jobs:
     # Which is a happy accident for a split into two: the gate is the longer
     # job, and the longer job is barely longer.
     #
-    # Two green runs: 17m16s and 17m03s, a **1.3%** spread against `quick`'s
-    # 7%, which is that same explanation confirming itself -- a job whose cost
-    # is animation dwells barely notices which runner it drew. Worst case is
-    # 78% of this limit.
+    # Three green runs: 17m16s, 17m03s, 17m24s -- a **2.1%** range against
+    # `quick`'s 17.5%, which is that same explanation confirming itself: a job
+    # whose cost is animation dwells barely notices which runner it drew, and
+    # holds to two percent while the CPU-bound half swings by seventeen. Worst
+    # case is 79% of this limit.
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
