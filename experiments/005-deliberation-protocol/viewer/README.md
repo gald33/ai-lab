@@ -4398,30 +4398,26 @@ matters:
 | | this machine | a runner | scaled by |
 |---|---:|---:|---:|
 | the suite in one job | 1022s | **32m04s** | 1.88× |
-| `--group quick` | 531s | **16m55s**, 15m42s, 14m24s | 1.91× |
-| `--group slow` | 598s | **17m16s**, 17m03s, 17m24s | 1.73× |
+| `--group quick` | 531s | 14m24s – **17m39s** | ~1.9× |
+| `--group slow` | 598s | 14m49s – **17m24s** | ~1.8× |
 
 **The gate is 32m04s → 17m16s**, a little over half, measured rather than
 projected. `render.py` itself is 16m10s and 16m43s of those; the rest is
 checkout, pip and the browser install, which each job now pays separately —
 that is what a second job costs, and it is about 40 seconds.
 
-**Half the projection above was wrong, and the half that was wrong is the
-interesting one.** `slow` came in at 17m16s against "something like 18
-minutes", which is the scaling holding. `quick` did not: scaled the same way it
-should have been about 15 minutes, and it took 16m55s. The two groups do not
-scale alike — 1.73× against 1.91× — because **`palette` is most of `slow` and
-`palette` is bound by wall-clock animation dwells rather than by the CPU.** A
-frame is held for as long as its clip draws, whatever the machine is doing, so
-that check barely notices a slower box while every check that is drawing as
-fast as it can nearly doubles.
+`slow` came in at 17m16s against a projection of "something like 18 minutes",
+which is the scaling holding. `quick` did not: scaled the same way it should
+have been about 15 minutes, and its first run took 16m55s.
 
-Which is luck rather than design, and worth naming as luck: on this machine the
-two groups are 531s and 598s, an 0.89 ratio, and on a runner they are 1015s and
-1036s, an 0.98 one. A split into two is only as good as its longer half, and
-the longer half is barely longer — *on a runner*. The rule that assigns groups
-is still the local table, so if that ever drifts far apart again, this is the
-paragraph that says to check the runner rather than the laptop.
+*That gap was first written up here as the two groups scaling differently, on
+the strength of one run each. It does not survive four — see the retraction
+below. Both jobs land between about 14½ and 17½ minutes, and the difference
+between their first runs was the spread, not a property of the groups.*
+
+A split into two is only as good as its longer half, and on a runner neither
+half is reliably the longer one. The rule that assigns groups is still the
+local table, where `slow` is the bigger by 531s to 598s.
 
 So **`timeout-minutes` is 22 on each**, set from each job's own measured time
 with a quarter in hand — the same margin 40 was against 32m04s. It stood at 40
@@ -4429,29 +4425,40 @@ for one push, inherited, because the rule on that limit is an honest measured
 number or nothing and neither job had ever run; it is measured now, so it is
 set.
 
-**And then more runs, because one run cannot give a spread.** That was written
-here as the open question against these limits, so it is answered rather than
-left standing:
+**And then more runs, because one run cannot give a spread — and it turned out
+neither can three.** That was left here as the open question against these
+limits, so here is what four runs say:
 
-| | three runs | range | worst, against the 22m limit |
+| | four runs | range | worst, against the 22m limit |
 |---|---:|---:|---:|
-| `drawing-quick` | 1015s, 942s, 864s | **17.5%** | 16m55s, 77% |
-| `drawing-slow` | 1036s, 1023s, 1044s | **2.1%** | 17m24s, 79% |
+| `drawing-quick` | 1015s, 942s, 864s, 1059s | 22.6% | 17m39s, **80%** |
+| `drawing-slow` | 1036s, 1023s, 1044s, 889s | 17.4% | 17m24s, **79%** |
 
-Those two ranges are the paragraph above this one confirming itself. `slow` is
-mostly `palette`, and `palette` is bound by wall-clock animation dwells rather
-than by the CPU, so it should barely notice which runner it drew — and it holds
-to two percent across three runs. `quick` is checks drawing as fast as the
-machine allows, so it should track how busy the runner is — and it swings by
-seventeen. That prediction was written from one run of each, before there was
-anything to check it against.
+**The prediction these numbers were first offered as proof of is wrong, and the
+retraction is the point of this paragraph.** After two runs `slow` had moved
+1.3% and `quick` 7%, and that was written up here as the mechanism confirming
+itself: `palette` is bound by wall-clock animation dwells rather than by the
+CPU, so a job that is mostly `palette` should barely notice which runner it
+drew. After three it read 2.1% against 17.5%, an eight-fold difference, and was
+written up again. The fourth run put `slow` at 889s — a sixth faster than its
+own three previous — and the eight-fold difference is gone. Both jobs vary by
+about a fifth.
 
-**The `quick` figure here said 7% until the third run landed**, which is the
-same lesson as the one above it arriving a second time: two samples are not a
-spread either. It is left as a range rather than restated after every run —
-what matters for the limit is the worst seen, and 22 minutes has stood at
-77–79% across three. Raise these if a green run ever lands near them, and never
-to get past a hang.
+The mechanism is real; the inference drawn from it was too strong, and the
+arithmetic that shows it was available the whole time. **`palette` is 318s of
+`slow`'s 589s — 54%.** The other 46% is `island`, `replay` and `overhead`,
+which are drawing as fast as the machine allows like everything in `quick`. So
+the honest prediction was never "`slow` barely varies": it was "`slow` varies
+somewhat less than `quick`, because about half of it is on a clock rather than
+on the CPU". Four runs are consistent with that and three were not evidence for
+anything stronger. What produced the eight-fold claim was three samples of a
+quantity whose spread is a fifth, landing close together.
+
+*Three times now this write-up has published a spread and had the next run move
+it.* So it stops publishing one. **What the limit is set against is the worst
+seen**, and that has sat between 77% and 80% of 22 minutes across four runs of
+each job. Raise these if a green run ever lands near them — near meaning past
+19 minutes, not past the last number in a table — and never to get past a hang.
 
 #### What the split is not allowed to do to the gate
 
