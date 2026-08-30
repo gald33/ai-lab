@@ -43,7 +43,9 @@ from pathlib import Path
 
 from .lobby import (Lobby, MAX_FORMING_PER_PEER, MAX_JOINABLE,
                     MAX_TABLES, TABLE_TTL)
-from .protocol import EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT
+from .protocol import (EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT,
+                        GOODS_MAX, GOODS_MIN, ROUNDS_MAX, TRADERS_MAX,
+                        TRADERS_MIN)
 
 #: Where a finished game can be watched. **A second site, on purpose.**
 #:
@@ -269,6 +271,12 @@ button[disabled]{opacity:.6;cursor:default}
        border-radius:.3rem;border:1px solid var(--line);
        background:var(--panel);color:var(--ink)}
 .levers select:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
+.harness{margin:.8rem 0;padding:.75rem .85rem;background:var(--sea-far);
+       border:1px solid var(--line);border-radius:.35rem}
+.harness .lh{margin:0;font-size:.82rem;color:var(--ink-2)}
+.harness ul{margin:.35rem 0 .5rem;padding-left:1.1rem;font-size:.82rem;
+       color:var(--ink)}
+.harness li{margin:.1rem 0}
 #ol{color:var(--sand-lit);font-weight:700}
 """
 
@@ -580,18 +588,31 @@ Tell me the table id and the name you took, so I can watch it."""
 #: them. `seconds` is spelled out rather than left to the default so that the
 #: knob is discoverable: an entrant that reads the line learns the field exists,
 #: which is how `kelp` came to try `seconds=120` before it was a field at all.
-OPEN_DEFAULTS = {"traders": 2, "episodes": 8, "rounds": 1, "goods": 5,
+#: `episodes` starts at 4 rather than 8: a 4-episode table at the default 60s
+#: is four minutes of play, which is long enough for the memory across episodes
+#: to be worth anything and short enough that a reader trying the island for the
+#: first time gets a finished record rather than an abandoned one. Decided by
+#: Gal, 2026-08-30.
+OPEN_DEFAULTS = {"traders": 2, "episodes": 4, "rounds": 1, "goods": 5,
                  "seconds": EPISODE_SECONDS_DEFAULT}
 
 #: The knobs, in the order they read on the page. Each is (field, label, values)
 #: -- every one a fixed list, because every distinct value is another level for
 #: the scoreboard to fill, and a free-form box would produce a hundred formats
 #: played once each.
+#: Every ladder here is bounded by what the lobby will actually take, and two
+#: of them were not. `goods` offered 6, 7 and 8 -- the viewer's palette size --
+#: which `protocol.GOODS_MAX` has refused since 2026-08-29, and `rounds`
+#: offered 2, 3 and 5, which the host has never played. Both are the page
+#: showing a value the lobby rejects, which is the exact trap the levers exist
+#: to avoid: the reader picks it, copies the line, and their agent's OPEN comes
+#: back Malformed. Built from the protocol's own bounds now, so the ladders
+#: cannot drift from them again.
 LEVERS = (
-    ("traders", "traders", (2, 3, 4)),
+    ("traders", "traders", tuple(range(TRADERS_MIN, TRADERS_MAX + 1))),
     ("episodes", "episodes per round", (1, 2, 3, 4, 5, 6, 8, 10, 12)),
-    ("rounds", "rounds", (1, 2, 3, 5)),
-    ("goods", "goods", (2, 3, 4, 5, 6, 7, 8)),
+    ("rounds", "rounds", tuple(range(1, ROUNDS_MAX + 1))),
+    ("goods", "goods", tuple(range(GOODS_MIN, GOODS_MAX + 1))),
     ("seconds", "seconds per episode", EPISODE_SECONDS_ALLOWED),
 )
 
@@ -646,6 +667,41 @@ def _levers() -> str:
             "still sends it.</p>" + "".join(rows) + "</div>")
 
 
+#: Harnesses somebody has actually sat a seat from, and what it takes.
+#:
+#: **Listed because "anything that holds Switchboard's tools" is true and not
+#: useful.** A reader with an agent in front of them wants to know whether
+#: *theirs* works, and the honest answer is the list of ones that have been
+#: tried -- so this is what has been played from, not what ought to work.
+#: Anything absent is untested rather than refused.
+#:
+#: The two requirements are the whole of it, and the second is the one that
+#: catches people: a seat is held by a live session talking to a hub over the
+#: network for the length of the game. ChatGPT's vanilla browsing serves pages
+#: from a cache, which cannot hold a Switchboard connection, so an agent there
+#: reads a stale board and never posts to it -- it looks like a slow entrant
+#: rather than a broken one, which is why it is named here.
+HARNESSES = (
+    "Cursor desktop",
+    "Claude Code desktop (local)",
+    "Claude Code cloud",
+    "ChatGPT work mode",
+)
+
+
+def _harnesses() -> str:
+    """What has been sat from, and what an agent needs to sit."""
+    items = "".join(f"<li>{html.escape(h)}</li>" for h in HARNESSES)
+    return ("<div class=harness><p class=lh><b>Tested harnesses</b> "
+            "&mdash; these have taken a seat out of the box:</p>"
+            f"<ul>{items}</ul>"
+            "<p class=lh>All an agent needs is the Switchboard CLI or MCP "
+            "server and real internet access. Cached browsing is not enough: "
+            "ChatGPT&rsquo;s vanilla web access is served from a cache, so an "
+            "agent there reads a stale board and never joins the game.</p>"
+            "</div>")
+
+
 def _start(lobby: Lobby) -> str:
     """The two-click start: copy a prompt, paste it into an agent.
 
@@ -674,6 +730,7 @@ def _start(lobby: Lobby) -> str:
 &mdash; a Claude Code session, or anything that holds Switchboard&rsquo;s
 tools. It will take a seat, or open a table if none is forming, and the table
 will appear below within a few seconds.</p>
+{_harnesses()}
 <button id=cp>Copy the prompt</button>
 <pre id=pr>{text}</pre>
 {_levers()}

@@ -33,6 +33,32 @@ OPEN, JOIN, MANAGE = "OPEN", "JOIN", "MANAGE"
 #: to `dealer.GOODS` first. Decided by Gal, 2026-08-29.
 GOODS_MIN, GOODS_MAX, GOODS_DEFAULT = 2, 5, 5
 
+#: How many traders a table may seat. Two is the fewest that can trade at all.
+#: Four is the ceiling because that is what has actually been played and shown
+#: to work end to end: every seat is a live agent session holding a room key,
+#: and the room, the viewer's palette and the lobby's own concurrency caps have
+#: only ever been exercised at 2-4. A fifth seat is not refused because it is
+#: known to break -- it is refused because it is unmeasured, and the lobby does
+#: not hand out a table it cannot say has been played. Raising it means playing
+#: one at five first. Decided by Gal, 2026-08-30.
+TRADERS_MIN, TRADERS_MAX = 2, 4
+
+#: How many rounds a table may run: one, and only one.
+#:
+#: **The field parsed, was announced on the board, and was never played.**
+#: `run_game.play` runs a table's episodes once and writes a record whose
+#: `rounds` list has exactly one entry (`record["rounds"][0]`) -- there is no
+#: loop over rounds anywhere in the host. So `OPEN ... rounds=3` opened a
+#: table the lobby told entrants was three rounds and the manager then played
+#: as one, which is the weaker thing wearing the stronger thing's clothes.
+#: Refused at the format, loudly, rather than silently played as one.
+#:
+#: The field is kept rather than dropped because a round is still the unit the
+#: metrics are defined on (`CLAUDE.md`, "Vocabulary") and multi-round play is
+#: still wanted; when the host can run it, this bound moves and nothing else
+#: about the format changes. Decided by Gal, 2026-08-30.
+ROUNDS_MAX = 1
+
 _KV = re.compile(r"^([a-z]+)=(-?[0-9]+)$")
 
 #: What a trader may call itself. Letters, digits, dash, underscore, dot, up
@@ -133,8 +159,10 @@ def parse(text: str):
                                "seconds"}
         if extra:
             raise Malformed(f"OPEN does not understand {', '.join(sorted(extra))}")
-        if fields["traders"] < 2:
-            raise Malformed("a table needs at least 2 traders")
+        if not TRADERS_MIN <= fields["traders"] <= TRADERS_MAX:
+            raise Malformed(
+                f"traders must be between {TRADERS_MIN} and {TRADERS_MAX}, "
+                f"got {fields['traders']}")
         if fields["episodes"] < 1:
             raise Malformed("a table needs at least 1 episode")
         goods = fields.get("goods", GOODS_DEFAULT)
@@ -144,6 +172,11 @@ def parse(text: str):
         rounds = fields.get("rounds", 1)
         if rounds < 1:
             raise Malformed("a table needs at least 1 round")
+        if rounds > ROUNDS_MAX:
+            raise Malformed(
+                f"a table runs {ROUNDS_MAX} round, not {rounds} -- the host "
+                f"plays a table's episodes once and records one round, so a "
+                f"larger number would be announced and not played")
         seconds = fields.get("seconds", EPISODE_SECONDS_DEFAULT)
         # Named in the refusal, because a rung that is close to a real one is
         # exactly what an entrant will guess -- and the lobby does not repair.
