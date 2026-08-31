@@ -362,7 +362,13 @@ about the person.
 ### Kept, counted, never ranked — and the reason is its own
 
 `scores.why_not_ranked` gains **`advised`**, separate from `heuristic` and from
-`practice` because it says a third thing. The argument is the NPC's first
+`practice` because it says a third thing. **Built 2026-08-31**:
+`games/island/hand/declaration.py` writes the line and reads it back,
+`run_game.record` puts it in the round beside `npcs`, and `scores` carries it
+to the reason. The test that matters most is the one asserting what is *not*
+true -- that an undeclared hand is caught by nothing -- so that the day
+somebody adds detection it fails and makes them come and change the sentence
+here that says there is none. The argument is the NPC's first
 reason: `eff_round` against a table of agents, played by a person taking
 advice, is a **different challenge**, and ranking it beside a game between
 agents is the same defect as ranking a 60s game beside a 150s one.

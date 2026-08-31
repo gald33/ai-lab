@@ -77,6 +77,7 @@ from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
 from .protocol import (GOODS_MAX, GOODS_MIN, ROUNDS_MAX, TRADERS_MAX,
                        TRADERS_MIN)
+from .hand.declaration import hands_on_board as _hands_on_board
 from .npc import npcs_on_board as _npcs_on_board
 
 # The island economy this game runs, from 005's tree. A code dependency is not
@@ -647,7 +648,12 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
     # wrote rather than told to us by whoever launched anybody. The manager
     # does not know who started which process and must not have to: a game
     # replayed from its board next year reaches the same answer this does.
-    npcs = _npcs_on_board(json.loads(board.read_text()).get("messages", []))
+    messages = json.loads(board.read_text()).get("messages", [])
+    npcs = _npcs_on_board(messages)
+    # And which were played by a person taking advice, read the same way and
+    # for the same reason. Testimony rather than detection: an open room means
+    # nothing here can tell, and a declaration can only unrank its own game.
+    hands = _hands_on_board(messages)
     return {
         "experiment": "005-v3",
         "game": {"id": table.id, "rounds": table.rounds},
@@ -679,6 +685,12 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
             # private half was hidden perfectly well, and one of the players
             # was a hundred lines of arithmetic.
             "npcs": npcs,
+            # Seat name -> `advised` or `assisted`, for a seat a person played
+            # by hand. `scores.why_not_ranked` calls it `advised`, separate
+            # from `heuristic` because it says a third thing: the private half
+            # was sealed, nobody was arithmetic, and one of the traders was a
+            # person taking advice under the same clock as everybody else.
+            "hands": hands,
             "sealed_lines": mgr.sealed_in,
             "game": {"id": table.id, "rounds": table.rounds},
             "trajectory": trajectory_from(dealer.island, mgr.episode_log,
