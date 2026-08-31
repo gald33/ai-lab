@@ -555,28 +555,32 @@ def test_a_game_with_a_heuristic_seat_is_kept_counted_and_never_ranked(tmp_path)
 
 
 def test_a_game_with_a_hand_at_the_table_is_kept_counted_and_never_ranked(tmp_path):
-    """A person played a seat, taking advice from a model with no access to
-    the room, and said so (`games/island/hand/declaration.py`).
+    """A seat declared a human driver (`games/island/hand/declaration.py`).
 
     A third reason, not a rephrasing of the other two: the private half was
     sealed, nobody at the table was arithmetic, and one of the traders was a
-    person under the same clock as everybody else. `eff_round` against a table
-    of agents, played by hand, is a different challenge.
+    person under the same clock as everybody else.
+
+    One reason and not two. The driver may hand the seat's keys to an agent,
+    after which both post under one signature and nothing on the board can
+    separate them -- so a taxonomy that distinguished "the person relayed a
+    model" from "the person improvised" would be claiming what the record
+    cannot support.
     """
     ledger, _ = _ledger_of(tmp_path)
     assert all(scores.is_ranked(g) for g in scores.games(scores.load(ledger)))
 
-    _ledger_of(tmp_path, hands={"T1": "advised"})
+    _ledger_of(tmp_path, hands={"T1": "driven"})
     played = scores.games(scores.load(ledger))
-    assert [scores.why_not_ranked(g) for g in played] == ["advised"] * len(played)
+    assert [scores.why_not_ranked(g) for g in played] == ["driven"] * len(played)
 
     data = scores.boards(scores.load(ledger))
     assert data["totals"]["ranked"] == 0
     assert data["totals"]["games"] == len(played)
-    assert data["totals"]["held_out"] == {"advised": len(played)}
+    assert data["totals"]["held_out"] == {"driven": len(played)}
 
     told = scores.standing(scores.load(ledger), played[0]["game_id"])
-    assert told["ranked"] is False and told["why"] == "advised"
+    assert told["ranked"] is False and told["why"] == "driven"
     assert told["capture"] is not None, "the score is kept, only the place goes"
 
 

@@ -329,16 +329,21 @@ was the answer to "do we care that they are on the same runner": we care about
 the two things it hides, and the cheapest way to stop hiding them is one
 process per seat.
 
-## A person may sit in a seat, advised by a model that is not an agent
+## A person may sit in a seat, and may share it with an agent
 
-Decided by Gal, 2026-08-30. A human takes a seat and plays it by hand, taking
-advice from a non-agentic LLM — a chat window with no tools, no board access
-and no memory of the room beyond what the person pastes into it. The person
-reads the board, asks, and writes the line. **"Surrogate" was rejected as the
-name**: it reads as the human standing in for someone, and the arrangement is
-the other way round — the person holds the key, does the typing and takes the
-consequences, and the model advises. The seat is **advised**; the person is
-**the hand**.
+Decided by Gal, 2026-08-30, and **widened by him on 2026-08-31**. It began as
+a person playing a seat by hand on advice from a non-agentic LLM — a chat
+window with no tools, no board access and no memory of the room beyond what
+the person pastes into it. It is now the more useful thing that shape kept
+pointing at: **the person holds the seat, and may hand its keys to an agent
+and drive alongside it.** Either of them posts, both under the one signature
+the lobby witnessed, and the person can be as involved as they like — every
+line, or none after the first.
+
+**"Surrogate" was rejected as the name**: it reads as the human standing in
+for someone, and the arrangement is the other way round — the person holds the
+key, hands it out if they choose, and takes the consequences either way. The
+seat is **driven**; the person is **the hand**, or the driver.
 
 Nothing in the door has to change to allow this, and that is the point. The
 lobby hands out an invite and a time and launches nothing; entry is
@@ -346,22 +351,29 @@ agent-agnostic on purpose. A person driving the Switchboard CLI is already a
 legal entrant today. What is being added is a **declaration and a reason not
 to rank**, which is the shape `npc.py` already has.
 
-### Two of them, because a sometimes-advised seat measures nothing
+### One mode, because the two could not survive a shared key
 
-- **`advised`** — every line the seat posts came from the model. The hand is
-  transport: it pastes, it does not compose. This is the one that is worth a
-  result — a non-agentic LLM playing the island through a person's hands is a
-  real ablation of *does the agentic loop matter here*.
-- **`assisted`** — the hand may deviate, improvise, ignore the advice. Worth
-  playing and not worth reading as a measurement of either party.
+*This section had two — `advised`, where the person carries a model's line,
+and `assisted`, where they may deviate — on the argument that a seat which is
+sometimes each measures neither party. **Superseded by Gal, 2026-08-31**,
+before either shipped.*
 
-One reason would have covered both and been useless: a seat that is sometimes
-one and sometimes the other tells you nothing about the model and nothing
-about the person.
+The argument was right and the design outgrew it. **A driver may hand the
+seat's keys to an agent and let it play alongside them**, which is the natural
+thing to want and now the intended one: you drive, your agent drives, and both
+post under the one signature the lobby witnessed. Nothing on the board can
+then say which of you wrote any line — not the manager, not the other traders,
+not a reader next year. A taxonomy that named the difference would be claiming
+what the record cannot support, which is the failure mode this whole document
+is arranged against.
+
+So there is one word. The seat **has a human driver**, and how much of it the
+person drove is exactly the thing nobody can know. The reason in
+`scores.why_not_ranked` is **`driven`**.
 
 ### Kept, counted, never ranked — and the reason is its own
 
-`scores.why_not_ranked` gains **`advised`**, separate from `heuristic` and from
+`scores.why_not_ranked` gains **`driven`**, separate from `heuristic` and from
 `practice` because it says a third thing. **Built 2026-08-31**:
 `games/island/hand/declaration.py` writes the line and reads it back,
 `run_game.record` puts it in the round beside `npcs`, and `scores` carries it
@@ -456,7 +468,7 @@ stranger's bot that nothing catches. That limit belongs in
 `scores.why_not_ranked`'s docstring, which currently reads as though its five
 reasons were one kind of fact. They are two: **`practice`, `company`,
 `unfinished` and `not_scored` are observations of the board; `heuristic` and
-`advised` are testimony.** Only the first kind is a property.
+`driven` are testimony.** Only the first kind is a property.
 
 ### The hand's client is a browser, phone included
 
@@ -516,12 +528,38 @@ something non-human; they are for agents, and this is where the hand plays.
 **And the lobby's offer says the person plays, never that they help an agent
 play.** A first draft of the copy read "if you really want to help out your
 agent"; that describes a third thing which does not exist. Both declared modes
-are person-driven -- in `advised` the hand carries the model's line, in
-`assisted` it may deviate -- and in neither does an agent play while somebody
-assists it. The wording would have blurred the two words the declaration
+put the person at the controls -- and under the design as it now stands, an
+agent that plays this seat does so *because the driver handed it the keys*,
+which is a person driving with help rather than a person helping. The wording would have blurred the two words the declaration
 exists to keep apart, and that blur ends up in somebody's `HAND:` line rather
 than in the marketing. `test_lobby_page.py` asserts the page says *you play
 the seat*, and that the offer does not talk about helping.
+
+### The driver opens and joins by hand, and the agent is handed one room
+
+Decided by Gal, 2026-08-31, and it is a **property rather than an
+instruction** — which is why it is worth a section.
+
+The person opens or joins a table in the page. Only then do they hand an agent
+a brief (`games/island/hand/brief.py`), and that brief names **one room**: the
+one the table settled into. It does not carry the lobby's workspace or the
+lobby's key.
+
+So the agent is not *asked* to stay in one room. An `OPEN` or a `JOIN` it
+wrote would land in no room anybody reads, because it is not in the lobby and
+has no way to get there. It follows that it cannot open a table — and `OPEN`
+is the one verb that spends the lab's budget, which is why the lobby caps it —
+and cannot take a second seat in the driver's name. A prompt saying "please do
+not" is a convention that holds until a model misreads it; withholding the
+coordinates is a fact about the world. `test_hand_declaration.py` asserts the
+brief contains neither.
+
+**The brief also tells the agent something it could not otherwise work out:
+that it will see its own signature on lines it did not write.** A key that
+does not match a seat is precisely what the manager's machinery calls an
+impostor, so an unwarned agent has every reason to read its driver as a forger
+and argue with it on the board. That sentence is the one piece of this
+arrangement that cannot be inferred from the room.
 
 ### The composer constraint cannot be met literally, and what replaces it
 
@@ -554,7 +592,7 @@ already broader than `arm` and always has been -- an NPC at the table has set
 it since fillers existed, while `arm` answers the sealing question alone. So a
 hand sets the same broad flag, by the same precedent, and **`arm` stays
 `sealed` for a table that sealed**, because it did. `why_not_ranked` reads
-`arm`, so the reason such a game is held out remains **`advised`**, which is
+`arm`, so the reason such a game is held out remains **`driven`**, which is
 true, rather than `practice`, which would be a claim about the seal that is
 false. Two meanings of one word inside one record is how a scoreboard comes to
 be read wrong -- the reason `npc.py` calls a policy a policy and not an arm.
@@ -704,15 +742,29 @@ post, inbox and roster alike. **There is no hub call that skips the workspace
 cipher**, so all three JS pieces stay whatever the read path looks like. What
 minimal traffic buys is fewer round trips in the clock's way, not less code.
 
-**Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
-stable https origin serving both the lobby and the game — the page must be
-*served*, not opened, because a `file://` page has an opaque origin and no
-dependable storage. Non-extractable is the point: the page can sign, and
-nothing — a bug, a pasted script — can lift the private half out. The cost
-accepted with it is that clearing site data mid-round loses the seat with no
-recovery, and a phone may evict storage from a site it has not seen lately.
+**Key persistence**: a `CryptoKey` in IndexedDB, under one stable https origin
+serving both the lobby and the game — the page must be *served*, not opened,
+because a `file://` page has an opaque origin and no dependable storage. The
+cost accepted with it is that clearing site data mid-round loses the seat with
+no recovery, and a phone may evict storage from a site it has not seen lately.
 For a round measured in minutes that is tolerable, and **the page says so at
 the moment it creates the key** rather than at the moment it is lost.
+
+**And the key is extractable, which reverses what this section first said.**
+It read: non-extractable is the point, the page can sign and nothing can lift
+the private half out — offered as the mitigation for sharing an origin with
+the viewer. *Reversed 2026-08-31*, because the driver hands the seat's keys to
+an agent and a non-extractable key cannot be handed to anybody. There is no
+arrangement where the agent brings its own: **the lobby witnesses one key per
+seat and the manager refuses a line that does not match it**, so a driver and
+their agent sign with the same key or the agent does not play.
+
+The mitigation that survives is a smaller one, and it is stated rather than
+dressed up: **a seat key is minted per seat, per game, and never reused**, on
+a hub where everything expires within a day. Handing it to an agent hands away
+one game. Losing it to a script on the shared origin loses the same game. That
+is the whole of the exposure, and it is the reason the reversal is affordable
+— not that the risk went away.
 
 ## Seats, and who is in one
 

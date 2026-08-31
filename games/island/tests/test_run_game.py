@@ -186,13 +186,13 @@ def test_a_hand_at_the_table_makes_it_practice_without_lying_about_the_seal(
         client.register(name=name, kind="local", branch="main", task="trading")
 
     # The hand declares itself before it plays, exactly as the page will.
-    room["scout-v2"].post("island", declaration("T1", "advised"))
+    room["scout-v2"].post("island", declaration("T1"))
 
     # Sealed, because that is the case worth asserting: a table that sealed
     # perfectly well and had a person at it.
     record, _ = _play_scripted(table, invite, room, tmp_path, sealed=True)
 
-    assert record["rounds"][0]["hands"] == {"T1": "advised"}
+    assert record["rounds"][0]["hands"] == {"T1": "driven"}
     assert record["practice"] is True, "a bench game says so"
     assert record["rounds"][0]["arm"] == "sealed", (
         "the table sealed, and the record must not claim otherwise")
@@ -202,7 +202,7 @@ def test_a_hand_at_the_table_makes_it_practice_without_lying_about_the_seal(
     ledger = tmp_path / "ledger.jsonl"
     scores.ingest(result, ledger=ledger, players=record["players"])
     game = scores.games(scores.load(ledger))[0]
-    assert scores.why_not_ranked(game) == "advised", (
+    assert scores.why_not_ranked(game) == "driven", (
         "held out for the true reason, not for a seal that was never broken")
 
 

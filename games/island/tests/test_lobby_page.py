@@ -184,6 +184,12 @@ def test_the_lobby_links_to_the_door_a_hand_goes_through(hub):
     # one would blur the two words the declaration exists to keep apart, and
     # that blur would end up in somebody's `HAND:` line.
     assert "you play the seat" in page
+    # And the offer is honest about the joint case, which is the intended
+    # one: a driver may hand the seat to an agent, and then nothing on the
+    # board separates them. Naming that here stops the page promising a
+    # distinction the record cannot keep.
+    assert "drive alongside it" in page
+    assert "how much you drove" in page
     assert "help" not in page.lower().split("<footer>")[0]
 
 
