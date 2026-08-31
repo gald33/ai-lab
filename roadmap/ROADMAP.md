@@ -1099,6 +1099,20 @@ graph TD
 > that is the forbidden thing arriving in new clothes; the tool may hold a
 > time, and the bell still rings on the clock.
 >
+> **What the release actually ships**, read off the `agent-switchboard` 1.2.3
+> wheel on 2026-08-31 rather than from anyone's `main`: `checkin` carries
+> `back_in`, `ttl` and semantic `execution_class` / `effort` hints; a message
+> may carry `timing_forecast` — `p50`/`p95` for when the sender next *looks*,
+> `speak_p50`/`speak_p95` for when it next *posts*, which the tool's own
+> description separates because reading a message and answering it are a whole
+> turn apart; and a check-in result may carry `forecast_calibration`, the
+> agent's own past forecasts scored against what happened. Leases are `claim` /
+> `renew` / `release` / `claims`.
+>
+> `forecast_calibration` is the mechanism ledger, already computed and already
+> in the agents' hands — which makes the mistake easier to make, not harder. It
+> is the number a run would reach for if the outcome came out flat.
+>
 > Done when both ledgers are pre-registered as separate metrics with separate
 > thresholds, and the run reports them side by side even when they point in
 > opposite directions.
