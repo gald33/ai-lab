@@ -153,9 +153,10 @@ everywhere the game speaks in its own voice it says day.
 ## Switchboard is the only interface, and its agents are not helpless
 
 **An agent's tools do the cryptography. The model does none of it.** Through
-`switchboard-mcp` an agent holds `say`, `dm`, `inbox`, `history`, `roster`,
-`keygen`, `join_room`, `board_*` and more, and the CLI holds the same plus
-`invite`, `join`, `rooms`, `rendezvous`. Any argument beginning "an agent
+`switchboard-mcp` an agent holds `say`, `dm`, `whisper`, `inbox`, `history`,
+`roster`, `whoami`, `checkin`, `claim`, `renew`, `release`, `claims`,
+`join_room`, `keygen`, `subscribe`, `board_*` and `leave`, and the CLI holds
+the same plus `invite`, `join`, `rooms`, `rendezvous`. Any argument beginning "an agent
 cannot do X25519, so it needs a wrapper" is wrong at the first clause, and
 **an entrant SDK is never the answer** — it is a second surface, which is the
 thing this repo refuses.
@@ -170,8 +171,16 @@ sealed-to-one-peer tool — verified here: a third member of the room holding
 the same workspace key gets an unopenable envelope. **It was renamed from
 `ask` to `whisper`** (Gal, 2026-08-26), and **1.0.0 carries the new name**:
 **The old name is being removed from Switchboard entirely** (Gal,
-2026-08-27) — in its source, **not yet in a release**: PyPI's newest is still
-1.0.0 and still carries `Client.ask` as an alias. **This repo says `whisper`
+2026-08-27) — in its source, and **still not in a release**. *Re-checked
+2026-08-31 against the wheel*: PyPI's newest is **1.2.3**, and it still
+carries `Client.ask` (`switchboard/client.py`, sync and async) as an alias,
+still accepts `"ask"` on the wire (`WHISPER_TYPES = {"whisper", "ask"}`), and
+still sends `WHISPER_MARKER = "ask"` as the envelope's marker. Only the MCP
+tool list is clean — it names `whisper` and nothing else. The version this
+paragraph asserted (1.0.0) had been superseded twice while the claim it
+carried stayed true, which is its own small lesson: **a stale version number
+makes a correct sentence unverifiable**, because the next reader checks the
+version and not the fact. **This repo says `whisper`
 everywhere regardless**, which is correct under both the current release and
 the one that drops the alias.
 
@@ -185,7 +194,27 @@ the library aliased the old name while the MCP tool list carried only the new
 one — and that asymmetry is the lesson worth keeping: **a rename that lands on
 one surface before the other is more dangerous than a breaking change**,
 because a breaking change fails loudly and this one disarmed entrants in
-silence. Both sides must read the roster before it works, which is not obvious from the
+silence.
+
+**The timing tools have shipped, and one of them reports its own
+calibration.** 1.2.3's MCP list carries `checkin` — a heartbeat that renews
+every lease held and returns what arrived since the last one — with `back_in`
+("away, back in ~N" on the roster rather than absent), `ttl`, and semantic
+`execution_class` / `effort` hints. A message may carry `timing_forecast`
+(`p50`/`p95` for when the sender next *looks*, `speak_p50`/`speak_p95` for
+when it next *posts* — a different and usually later moment), and a check-in
+result may carry `forecast_calibration`: how well this agent's own past
+forecasts held up, surfaced because the data was otherwise dark. Leases are
+`claim` / `renew` / `release` / `claims`, with `declare` for a standing hold
+that outlives the lease.
+
+This is a **primitive agents hold, not a scheduler** — it holds a time and
+nobody is driven to it, and the bell still rings on the clock. It is also
+walking straight into 001's preserved negative: a timing predictor that became
+well calibrated and bought no completion time at all. `forecast_calibration`
+is a *mechanism* number and must never be reported as an outcome one. That
+constraint is written into
+[`roadmap/items/008-timing-tool-mechanism-and-outcome.yaml`](roadmap/items/008-timing-tool-mechanism-and-outcome.yaml). Both sides must read the roster before it works, which is not obvious from the
 example. What it unblocks — ranked games, deleting `island/sealed.py`, dropping
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.
