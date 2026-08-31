@@ -1,0 +1,85 @@
+/* Copied verbatim from games/island/lobby_page.py's _CSS.
+   Same page, same look. Change it there and copy it here, or the two
+   renderings of one lobby drift apart. */
+:root{color-scheme:dark;
+  --sea-near:#1d3242;--sea-mid:#132532;--sea-far:#070d12;
+  --panel:#171d21;--panel-2:#1e262b;--line:#2b353b;
+  --ink:#f2f4f4;--ink-2:#b6c0c4;--muted:#8b9599;
+  --fire:#ffb648;--sand:#c9a86a;--sand-lit:#ddbe83;--surf:#cfe6ef;
+  --frond:#55803f;--sky-set:#d9603a}
+*{box-sizing:border-box}
+body{margin:0;padding:2rem 1.25rem 4rem;color:var(--ink);
+     background:var(--sea-far);
+     background-image:linear-gradient(180deg,var(--sea-mid) 0,var(--sea-far) 34rem);
+     background-repeat:no-repeat;
+     font:16px/1.55 ui-serif,Georgia,serif}
+main{max-width:52rem;margin:0 auto}
+h1{font-size:1.6rem;margin:0 0 .2rem;color:var(--sand-lit);
+   letter-spacing:.01em}
+.sub{color:var(--ink-2);margin:0 0 2rem}
+.t{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
+   padding:1rem 1.15rem;margin:0 0 1rem}
+.t h2{font-size:1.05rem;margin:0 0 .1rem;font-family:ui-monospace,monospace;
+      color:var(--surf)}
+.state{display:inline-block;font-size:.72rem;text-transform:uppercase;
+       letter-spacing:.07em;color:var(--muted);border:1px solid var(--line);
+       border-radius:1em;padding:.1rem .6rem;margin:.15rem 0 0}
+.settled .state{color:var(--frond);border-color:var(--frond)}
+.forming .state{color:var(--sand);border-color:var(--sand)}
+.lapsed{opacity:.55}
+.t.live{border-color:var(--fire);box-shadow:0 0 0 1px var(--fire) inset,
+        0 0 1.6rem -.6rem var(--fire)}
+.watch{margin:.8rem 0 .2rem}
+a.watchbtn{display:inline-block;text-decoration:none;font-size:.95rem;
+       font-weight:700;padding:.5rem 1.1rem;border-radius:.35rem;
+       border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+a.watchbtn.live{background:var(--fire);border-color:var(--fire);
+       color:var(--sea-far)}
+a.watchbtn.recording{border-color:var(--surf);color:var(--surf)}
+a.watchbtn:hover{filter:brightness(1.12)}
+.watchnote{color:var(--muted);font-size:.8rem;margin-left:.5rem}
+.age{color:var(--muted);font-size:.85rem}
+.cd{font-variant-numeric:tabular-nums}
+.cd.soon{color:var(--sky-set);font-weight:700}
+.cd.now{color:var(--ink);font-weight:700}
+.age.stale{color:var(--sky-set);font-weight:700}
+table{border-collapse:collapse;width:100%;margin:.7rem 0 0;font-size:.9rem}
+td{padding:.28rem .5rem .28rem 0;vertical-align:top;border-top:1px solid var(--line)}
+td.k{font-family:ui-monospace,monospace;color:var(--muted);word-break:break-all}
+.note{color:var(--ink-2);font-size:.9rem;margin:.6rem 0 0}
+.note b{color:var(--sand-lit)}
+footer{color:var(--muted);font-size:.85rem;margin-top:2.5rem;
+       border-top:1px solid var(--line);padding-top:1rem}
+code{font-family:ui-monospace,monospace;background:var(--sea-far);
+     color:var(--sand-lit);padding:.1em .3em;border-radius:.2em}
+a{color:var(--surf)}
+.start{background:var(--panel);border:1px solid var(--line);border-radius:.5rem;
+       padding:1rem 1.15rem;margin:0 0 1.5rem}
+.start h2{font-size:1.05rem;margin:0 0 .35rem;color:var(--sand-lit)}
+.start p{margin:.35rem 0 .7rem;color:var(--ink-2);font-size:.9rem}
+.start pre{background:var(--sea-far);border:1px solid var(--line);
+       border-radius:.35rem;color:var(--ink-2);
+       padding:.7rem .8rem;margin:.7rem 0 0;max-height:11rem;overflow:auto;
+       white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}
+button{font:inherit;font-size:.9rem;padding:.45rem .9rem;border-radius:.35rem;
+       border:1px solid var(--sand);background:var(--sand);
+       color:var(--sea-far);cursor:pointer;font-weight:700}
+button:hover{filter:brightness(1.12)}
+button[disabled]{opacity:.6;cursor:default}
+.levers{display:flex;flex-wrap:wrap;gap:.5rem .9rem;align-items:flex-end;
+       margin:.8rem 0 0;padding:.75rem .85rem;background:var(--sea-far);
+       border:1px solid var(--line);border-radius:.35rem}
+.levers .lh{flex:1 0 100%;margin:0 0 .2rem;font-size:.82rem;color:var(--ink-2)}
+.levers label{display:flex;flex-direction:column;gap:.2rem;font-size:.72rem;
+       letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+.levers select{font:inherit;font-size:.85rem;padding:.3rem .4rem;
+       border-radius:.3rem;border:1px solid var(--line);
+       background:var(--panel);color:var(--ink)}
+.levers select:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
+.harness{margin:.8rem 0;padding:.75rem .85rem;background:var(--sea-far);
+       border:1px solid var(--line);border-radius:.35rem}
+.harness .lh{margin:0;font-size:.82rem;color:var(--ink-2)}
+.harness ul{margin:.35rem 0 .5rem;padding-left:1.1rem;font-size:.82rem;
+       color:var(--ink)}
+.harness li{margin:.1rem 0}
+#ol{color:var(--sand-lit);font-weight:700}

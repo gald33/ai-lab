@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>the island — lobby (fixture)</title>
+<link rel=stylesheet href="./style.css">
+<main></main>
+<script type=module>
+// Dev only. Renders the ported page from canned lobby output, so the markup
+// and CSS can be checked without an allowlisted origin — the hub refuses a
+// cross-origin preflight from anywhere but the origins it knows, so the live
+// read cannot be exercised from localhost by design.
+import { reconstruct } from "./lobby.js";
+import { render } from "./render.js";
+import { CONFIG } from "./config.js";
+const at = i => new Date(Date.UTC(2026,7,31,12,0,i)).toISOString();
+let i = 0;
+const lines = [
+  "LOBBY holding this channel: lobby-a",
+  "T1 commits ab12cd34ef5678901234 -- bring nonce=<16-64 hex digits> on your JOIN",
+  "T1 is forming: 2 traders, 5 goods, 4 episodes, 1 round -- JOIN T1 as <name>, or MANAGE T1",
+  "T1 seat T1 = alice, key ed25519:K1AAAAAAAAAAAAAAAAAA, sealed, nonce a1b2c3d4e5f60718 (1/2)",
+  "T1 seat T2 = bob, key ed25519:K2BBBBBBBBBBBBBBBBBB, sealed, nonce 00ff11ee22dd33cc (2/2)",
+  "T1 will be managed by carol, key ed25519:K3CCCCCCCCCCCCCCCCCC",
+  "T1 is full: alice, bob; managed by carol; opens " + at(300) + "",
+  "T1: the island is drawn by commit-reveal",
+  "T1 invite: swb1_THIS_MUST_NEVER_RENDER",
+  "T2 is forming: 3 traders, 5 goods, 2 episodes, 1 round -- JOIN T2 as <name>, or MANAGE T2",
+  "T2 seat T1 = dave, key ed25519:K4DDDDDDDDDDDDDDDDDD, in the clear (1/3)",
+  "@eve not settled: that table is full",
+  "T3 is forming: 2 traders, 5 goods, 1 episodes, 1 round -- JOIN T3 as <name>, or MANAGE T3",
+  "T3 lapsed: not full within 600s (1/2 seated)",
+].map(t => ({ channel: "lobby", from: "x", created_at: at(i++), body: { text: t } }));
+const view = reconstruct({ messages: lines, agents: [] }, "lobby");
+document.querySelector("main").innerHTML =
+  render(view, { ...CONFIG, nowHub: Date.parse(at(i)) / 1000, error: "" });
+// Check what was RENDERED, not the document: this file's own script
+// carries the fixture string, so testing document.body reports a leak
+// that is only the test looking at itself.
+window.__leak = document.querySelector("main").innerHTML.includes("THIS_MUST_NEVER_RENDER");
+console.log("invite leak into rendered page:", window.__leak);
+</script>

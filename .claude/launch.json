@@ -1,0 +1,8 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "lobby-web", "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8077", "--directory", "games/island/lobby-web"],
+      "port": 8077 }
+  ]
+}
