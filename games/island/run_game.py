@@ -670,9 +670,21 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "episode_seconds": table.seconds,
         #: Seat slot -> entrant, for `scores.ingest(..., players=...)`.
         "players": players(table),
-        # A practice game is kept and counted and never ranked: the private
-        # half was public, so what it measures is not what the board ranks.
-        "practice": not sealed or bool(npcs),
+        # A practice game is kept and counted and never ranked. **This flag is
+        # broader than `arm` below and always has been**: `arm` answers the
+        # sealing question alone ("was the private half public?"), while this
+        # says "not a clean ranked game" for any reason at all. An NPC at the
+        # table has set it since fillers existed, and a hand does now for the
+        # same reason -- a seat somebody played through the buttons is a bench
+        # game, and a bench game is the weaker thing that must never look like
+        # the stronger one.
+        #
+        # The two must not be collapsed into one word. `arm` stays `sealed`
+        # for a sealed table whoever sat at it, because a table that sealed
+        # perfectly well did seal, and `why_not_ranked` reads `arm` -- so the
+        # reason such a game is held out stays `advised`, which is the true
+        # one, rather than `practice`, which would be a lie about the seal.
+        "practice": not sealed or bool(npcs) or bool(hands),
         "rounds": [{
             "workspace": mgr.client.config.workspace,
             "seed": table.seed,

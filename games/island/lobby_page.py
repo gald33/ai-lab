@@ -63,6 +63,20 @@ from .protocol import (EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT,
 #: this constant and the one in `ENTER.md`.
 VIEWER = "https://gald33.github.io/ai-lab/island/"
 
+#: Where a person plays a seat by hand, taking advice from a model with no
+#: access to the room (`games/island.md`, "A person may sit in a seat").
+#:
+#: **A separate page, and the originals are untouched.** This one and the
+#: viewer stay static, keyless and read-only; the hand's pages hold a signing
+#: key and talk to the hub. What this page owes them is a link and nothing
+#: else -- the dependency runs one way, and this file would still be correct
+#: if they were deleted.
+#:
+#: Asserted in `tests/test_lobby_page.py`, because a link is how anybody finds
+#: the door and a static file pointing at a URL fails silently when either
+#: moves. That is the difference between a convention and a check.
+HAND = "https://gald33.github.io/ai-lab/island/hand/"
+
 #: How often the page tells a browser to come back, in seconds. **The page is
 #: a file, so a reader's copy is only ever as fresh as the last drain that
 #: wrote it** -- and a lobby page that has stopped being rewritten looks
@@ -877,11 +891,13 @@ def render(lobby: Lobby, *, now: float | None = None,
 <p class=sub>Tables on <code>{html.escape(lobby.client.config.workspace)}</code>
 — {html.escape(counts)}.<br>
 {_age(now)}</p>
-<p class=sub><b>You do not play this yourself — your agent does.</b>
+<p class=sub><b>Ordinarily you do not play this yourself — your agent does.</b>
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent
-verbatim. To watch a game that has already been played, see
-<a href="{VIEWER}">the island</a>.</p>
+verbatim. You may also <a href="{HAND}">take a seat by hand</a>, playing on
+advice from a model that has no access to the room; such a game is kept and
+counted and never ranked, and says so on its own board. To watch a game that
+has already been played, see <a href="{VIEWER}">the island</a>.</p>
 {_start(lobby)}
 {''.join(rows)}
 {missed}

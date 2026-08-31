@@ -493,6 +493,73 @@ must verify and open, run in the `drawing` job — the same rule this repo
 already keeps for pages, applied to cryptography. A JS implementation checked
 only by JS agrees with itself perfectly while disagreeing with everyone.
 
+### Two more pages, and the originals untouched
+
+Decided by Gal, 2026-08-31. The hand plays on **its own lobby and its own
+island**, separate pages from the viewer's. The originals do not change: they
+stay static, keyless, read-only, and ignorant of the hub. What the hand's
+lobby adds is two controls the originals do not have -- **open a room** and
+**join a room** -- and what the original lobby adds is **a link**, which is
+the entire relationship between them.
+
+The dependency runs one way, and that is the point: the viewer's pages would
+still be correct if the hand's were deleted. `test_lobby_page.py` asserts the
+link, because a static file pointing at a URL fails silently when either end
+moves and a hand would simply never find the door -- an assertion is the
+difference between a convention and a check. The sentence beside it changed
+too: the lobby used to say "You do not play this yourself -- your agent does",
+which stopped being true.
+
+**They are `hand/`, not "the human pages".** The originals are not for
+something non-human; they are for agents, and this is where the hand plays.
+
+### The composer constraint cannot be met literally, and what replaces it
+
+*Correcting the section above, which said a composer emits its lines through
+`protocol.py` rather than re-implementing the grammar.* **On a static origin
+that is impossible.** The hand's lobby is JavaScript served from GitHub Pages
+and cannot call Python, so an `OPEN` button and a `JOIN` button are
+unavoidably a second implementation of the lobby grammar. The constraint as
+written was unbuildable from the moment the browser was chosen; it just took
+until the pages were designed to notice.
+
+What replaces it is the answer that already worked for the cryptography: **a
+cross-language test, where the JS composes and `protocol.py` parses.** Every
+line a button can produce is parsed by the real grammar and asserted to mean
+what the button intended -- including the inputs that are awkward rather than
+typical: a name with a space in it, `traders=0`, an episode count the parser
+refuses. Without it a change to `protocol.py` lands and the buttons keep
+producing the old grammar in silence, which is exactly the rename failure
+`CLAUDE.md` records. **That test comes before the buttons**, not after them.
+
+### A seat taken through the buttons is practice
+
+Decided by Gal in the same sitting. A hand that entered through the page has
+had shortcuts, and the standing rule is that the weaker thing is kept and
+never allowed to look like the stronger one, so `run_game.record` sets
+`practice` for it.
+
+**Which flag, and why not the other one.** `record`'s top-level `practice` is
+already broader than `arm` and always has been -- an NPC at the table has set
+it since fillers existed, while `arm` answers the sealing question alone. So a
+hand sets the same broad flag, by the same precedent, and **`arm` stays
+`sealed` for a table that sealed**, because it did. `why_not_ranked` reads
+`arm`, so the reason such a game is held out remains **`advised`**, which is
+true, rather than `practice`, which would be a claim about the seal that is
+false. Two meanings of one word inside one record is how a scoreboard comes to
+be read wrong -- the reason `npc.py` calls a policy a policy and not an arm.
+
+### The second drift surface: two renderings of one lobby
+
+Not duplicates by accident -- different in kind. `lobby_page.py` is rendered by
+the process that holds the state; the hand's lobby reads the board in a
+browser. The same information by two mechanisms, and a rendering defect in one
+of them has happened here already (the frozen countdowns). They are not
+shareable across that boundary, so the discipline is instead to **keep the
+hand's lobby narrow**: what a hand needs to take a seat, and a link to the
+viewer's lobby for everything else. The more of the lobby view it reproduces,
+the more there is to drift.
+
 ### The JS half, and the ten ways it was made to fail
 
 Built 2026-08-31: `games/island/hand/switchboard.js`, `hand/fixtures.py` and

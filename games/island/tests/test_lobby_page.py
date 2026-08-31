@@ -157,6 +157,28 @@ def test_the_start_block_shows_the_prompt_it_copies(hub):
     assert "isSecureContext" in page and "Select-copy" in page
 
 
+def test_the_lobby_links_to_the_door_a_hand_goes_through(hub):
+    """**The link is the whole dependency between the two, so it is checked.**
+
+    The hand's pages are separate, and this one stays static, keyless and
+    read-only because of it -- the originals are untouched, which is the
+    property that separation buys. What survives of the relationship is one
+    link, and a static file pointing at a URL fails silently when either end
+    moves: nothing here would notice, and a hand would simply never find the
+    door. An assertion is the difference between a convention and a check.
+
+    The sentence beside it moved too. It used to read "You do not play this
+    yourself -- your agent does", which stopped being true the moment a person
+    could take a seat.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert lobby_page.HAND in page
+    assert "take a seat by hand" in page
+    assert "never ranked" in page, "and what it costs, beside the offer"
+    assert "Ordinarily you do not play this yourself" in page
+
+
 def _live(tmp_path, table_id="g1", finished=False):
     """A `--live` directory holding one game's board, running or finished."""
     d = tmp_path / "live"
