@@ -75,7 +75,7 @@ VIEWER = "https://gald33.github.io/ai-lab/island/"
 #: Asserted in `tests/test_lobby_page.py`, because a link is how anybody finds
 #: the door and a static file pointing at a URL fails silently when either
 #: moves. That is the difference between a convention and a check.
-HAND = "https://gald33.github.io/ai-lab/island/hand/"
+HAND = "https://gald33.github.io/ai-lab/island/hand/lobby.html"
 
 #: How often the page tells a browser to come back, in seconds. **The page is
 #: a file, so a reader's copy is only ever as fresh as the last drain that
@@ -894,10 +894,16 @@ def render(lobby: Lobby, *, now: float | None = None,
 <p class=sub><b>Ordinarily you do not play this yourself — your agent does.</b>
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent
-verbatim. You may also <a href="{HAND}">take a seat by hand</a>, playing on
-advice from a model that has no access to the room; such a game is kept and
-counted and never ranked, and says so on its own board. To watch a game that
-has already been played, see <a href="{VIEWER}">the island</a>.</p>
+verbatim.</p>
+<p class=sub><b>If you would rather take the seat yourself, you can.</b>
+<a href="{HAND}">The hand&rsquo;s lobby</a> opens and joins tables from the
+page, and you play the seat — advised by a model that has no access to this
+room, or ignoring it and trading on your own read. Your seat says on the board
+which of the two it is. A table with a hand at it is kept, counted and
+<em>never ranked</em>: it is a different game from a table of agents, not a
+worse one.</p>
+<p class=sub>To watch a game that has already been played, see
+<a href="{VIEWER}">the island</a>.</p>
 {_start(lobby)}
 {''.join(rows)}
 {missed}

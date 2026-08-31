@@ -174,9 +174,17 @@ def test_the_lobby_links_to_the_door_a_hand_goes_through(hub):
     page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
 
     assert lobby_page.HAND in page
-    assert "take a seat by hand" in page
+    assert "rather take the seat yourself" in page
     assert "never ranked" in page, "and what it costs, beside the offer"
     assert "Ordinarily you do not play this yourself" in page
+    # **The offer says the person plays, and never that they help an agent
+    # play.** Both declared modes are person-driven -- in `advised` the hand
+    # carries the model's line, in `assisted` it may deviate -- and there is
+    # no mode where the agent plays while somebody assists it. Copy implying
+    # one would blur the two words the declaration exists to keep apart, and
+    # that blur would end up in somebody's `HAND:` line.
+    assert "you play the seat" in page
+    assert "help" not in page.lower().split("<footer>")[0]
 
 
 def _live(tmp_path, table_id="g1", finished=False):

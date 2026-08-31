@@ -513,6 +513,16 @@ which stopped being true.
 **They are `hand/`, not "the human pages".** The originals are not for
 something non-human; they are for agents, and this is where the hand plays.
 
+**And the lobby's offer says the person plays, never that they help an agent
+play.** A first draft of the copy read "if you really want to help out your
+agent"; that describes a third thing which does not exist. Both declared modes
+are person-driven -- in `advised` the hand carries the model's line, in
+`assisted` it may deviate -- and in neither does an agent play while somebody
+assists it. The wording would have blurred the two words the declaration
+exists to keep apart, and that blur ends up in somebody's `HAND:` line rather
+than in the marketing. `test_lobby_page.py` asserts the page says *you play
+the seat*, and that the offer does not talk about helping.
+
 ### The composer constraint cannot be met literally, and what replaces it
 
 *Correcting the section above, which said a composer emits its lines through
