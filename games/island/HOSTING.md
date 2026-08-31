@@ -333,10 +333,30 @@ done
 | `http://localhost:3000` | **400** `Disallowed CORS origin` |
 
 So the browser client works from the Pages origin **today** and from Vercel
-**only once the hub operator adds that origin** — the production domain and
-the preview domains both, or every branch deploy is a lobby that renders an
-empty room. Localhost is refused too, so developing this page locally needs
-the same grant or a dev proxy.
+**only once the hub operator adds that origin**. Localhost is refused too, so
+developing this page locally needs the same grant or a dev proxy — which is
+why `lobby-web/fixture.html` exists, rendering the page from canned lobby
+output so the markup can be checked without any grant at all.
+
+**Correction, 2026-08-31: the preview domains cannot be covered, and an
+earlier version of this section asked for something that cannot be built.**
+The hub matches origins **exactly**: `server.py` passes `allow_origins` to
+Starlette's `CORSMiddleware` and never sets `allow_origin_regex`. Vercel mints
+a new URL per preview deploy, so no fixed allowlist can ever cover them.
+
+The decision is **production origin only**, taken deliberately. The rejected
+alternative was adding regex support to the hub, and it was rejected on a
+security ground rather than an effort one: `*.vercel.app` is a shared public
+suffix, so that grant would let any Vercel user's page call the hub — and
+since `sb_public_lucille` is a published token, the `Authorization` header is
+not a barrier. A broad CORS grant would become the real access control, and a
+bad one.
+
+**So a preview deploy renders an empty lobby and says nothing is wrong.** That
+is the accepted cost, and it is written here because a refused preflight is
+indistinguishable from a quiet room — the same ambiguity `joining-agent-sees-
+empty-inbox` records one layer down. Anyone opening a preview and finding it
+empty is looking at this, not at a broken port.
 
 **This is a dependency on somebody else's service**, and the failure mode is
 the quiet one: a refused preflight is an empty lobby, not an error a reader
@@ -678,6 +698,97 @@ is objective".
 The lobby carries none of this and does not need to. Nothing on it is
 evidence, so nothing is lost by serving it from a host that builds from
 whatever it is given.
+
+### Where each surface lives, settled 2026-08-31
+
+Three decisions, and the reason each host was chosen for the thing its surface
+has to be.
+
+| surface | host | why that host |
+|---|---|---|
+| **the lobby** — the door: tables forming, seats taken, the key each was witnessed under | **Vercel**, at `island.lucille-ai.com` | **branding.** It is the starting page and the address somebody is handed, and the name is part of what the game is. Nothing on it is evidence, so nothing is lost to a host that builds from what it is given |
+| **the record** — board, reveal, index for finished games | **the VM**, moving to `record.lucille-ai.com` | **it is the evidence.** `verify.py` reads it and any stranger checking a game reads it, so it stays on infrastructure whose exposure is controlled and measured rather than behind a private build pipeline |
+| **the viewer, and every other page** — the island, the replays, the scoreboard | **GitHub Pages**, `/island/` | **the rendering is open source, and that is the point.** Pages builds from `main`, so the code drawing a finished game is visibly the committed code |
+
+**The lobby keeps its hostname and changes hosts.** `island.lucille-ai.com`
+points at the VM today and moves to Vercel. Because the hostname does not
+change, the three links that hardcode it — the viewer's 🚪 tab, the scoreboard's
+Lobby link, and `island.md` — need no edit at all.
+
+**The record gets its own hostname because the lobby is taking the old one.**
+`/games/*` is served by the VM's Caddy today under `island.lucille-ai.com`;
+once that name answers from Vercel, the prefix needs a name of its own.
+`record.` rather than `islandserver.` or `games.`: the host should say what the
+thing is for, and what this is for is being *the record* — "server" describes a
+machine and "games" repeats the path.
+
+**What was actually measured before deciding, because the first version of this
+reasoning was wrong.** It was claimed that repointing the domain would break
+the viewer's replays and `verify`. It would not, and the check is worth keeping:
+
+- `verify.py` takes local `Path` arguments — a stranger downloads the record and
+  runs it on disk. No hostname is involved.
+- the Pages viewer bakes its data at publish time (`freeze_static.py` writes
+  `boards` and `scores` to disk during the build). It does not fetch at runtime.
+- `ISLAND_LIVE_BASE` is read only by `lobby_page.py`, for the watch link on a
+  live table — and live spectating is removed anyway.
+
+**Nothing in the committed tree fetches `/games/*` cross-origin.** The Caddy
+block grants it a CORS header for the Pages origin, so *something* was expected
+to, but nothing here does. The split is therefore taken on the ground above —
+keeping evidence on controlled infrastructure — and **not** on a breakage that
+was never demonstrated.
+
+**The record keeps the protection that was just verified.** It stays on `:2096`
+behind the connlimit ceiling and the Cloudflare lock, which were measured firing
+on 2026-08-30 — counter moving under probe, direct-to-origin refused from two
+external vantages. Moving it to a host outside that would give up a control that
+is now known to work rather than assumed to.
+
+#### Doing it, in an order where nothing is dark in between
+
+The record moves first. If the lobby's hostname is repointed while `/games/*`
+still lives on it, the prefix is unreachable for as long as the gap lasts.
+
+1. **`record.lucille-ai.com` → the VM.** Proxied A record to the same origin as
+   `island.lucille-ai.com`, and a Caddy site block for the new name carrying the
+   existing `/games/*` handler unchanged. Same `:2096`, so the connlimit ceiling
+   and the Cloudflare lock cover it without any new work. Confirm before going
+   on: `curl -sI https://record.lucille-ai.com/games/index.json` returns 200 and
+   a `cf-ray`.
+2. **Stop serving `/games/*` on the old name** — not before step 1 answers.
+3. **Vercel project** from `gald33/ai-lab`, Root Directory
+   `games/island/lobby-web`, "Include files outside the root directory" **off**,
+   framework preset `Other`, no build command. Ignored Build Step:
+   `git diff --quiet HEAD^ HEAD -- games/island/lobby-web`, so unrelated commits
+   do not redeploy.
+4. **Repoint `island.lucille-ai.com` at Vercel** and add it as the production
+   domain there.
+5. **Add the origin to the hub**, additively — it is currently exactly one entry
+   and dropping it breaks the viewer:
+
+   ```
+   SWITCHBOARD_CORS_ORIGINS=https://gald33.github.io,https://island.lucille-ai.com
+   ```
+
+   in the hub's compose on the VM, then recreate the container so it is read.
+6. **Verify the grant took**, because a wrong entry looks exactly like no entry
+   from a browser:
+
+   ```
+   curl -s -D - -o /dev/null -X OPTIONS https://switchboard.lucille-ai.com/agents \
+     -H "Origin: https://island.lucille-ai.com" \
+     -H "Access-Control-Request-Method: GET" | grep -i '^HTTP/\|^access-control-allow-origin'
+   ```
+
+   200 echoing the origin means live; 400 means it is not.
+7. **Then, and only then, stop serving `/` and `/index.html` from the VM.** That
+   is the point of the whole move: what remains inbound is one read-only prefix
+   on a hostname of its own.
+
+**Between steps 4 and 6 the lobby renders an empty room**, because the page
+loads from Vercel and the hub refuses it. That is expected and it is the same
+signature as a preview deploy. Do not read it as the port being broken.
 
 **Both custom domains need the hub's CORS grant, and the grant is a property
 of the origin rather than of the host.** Written here because the earlier
