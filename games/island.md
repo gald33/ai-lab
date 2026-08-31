@@ -527,6 +527,54 @@ live hub from a dev server. Add an origin, proxy locally, or run the browser
 test against a stub — decided before somebody hits it and concludes the hub is
 down.
 
+### One origin, two pages, and as little hub traffic as will do
+
+Decided by Gal, 2026-08-31, on the question of whether the viewer becomes a
+participant. **It does not.** The viewer stays exactly what it is — static,
+built from the repository, replays only, no key and no hub connection. The
+hand's page is a **separate page with its own entry point**, sharing the
+`gald33.github.io` origin because the hub's allowlist gives no choice, and
+sharing nothing else.
+
+**The private half is not a reason to worry, and the fear was misplaced.** A
+viewer holding the published lobby key learns nothing about anybody's
+capacities or tastes: those are dealt by `whisper`, sealed pairwise, and
+`crypto.py` says of it *"not even a fellow holder of the workspace key can"*
+open one. A private half is readable in exactly two cases already written
+down — a **practice** game, dealt in the clear on purpose, and **a seat's own
+identity key**, which only that seat holds.
+
+**What co-hosting does cost, stated plainly rather than softened.** One origin
+is one IndexedDB and one script context, so a script on that origin can *use*
+the hand's key to sign. Non-extractable stops the key being **stolen**, not
+being **used**. What makes that acceptable rather than alarming is that the
+viewer carries no third-party JavaScript and is built from this repository:
+the exposure is our own code. It is a coupling that did not exist before, and
+naming it is the price of choosing the cheap option knowingly.
+
+**The alternative was a custom domain for the player**, which would have made
+"the viewer and the player are different things" a property rather than a
+convention — one DNS record and one allowlist entry. It was not taken.
+Recorded because a later reader will ask, and because if the coupling ever
+bites, this is the thing to do about it. *Note that GitHub Pages gives one
+origin per user: `gald33.github.io/anything` is the same origin whatever the
+repository, so a second repo is not a separation and must not be mistaken for
+one.*
+
+**Hub traffic is kept to the minimum that works**: the public board is read
+from the static live file the manager already writes and the viewer already
+reads, and the hub is used for registering, posting the seat's own lines, and
+reading whispers addressed to it. The cost is lag — a polled file trails the
+hub, and under a clock that does not move, lag is lost episodes — so the poll
+interval is measured against the schedule before it is trusted.
+
+*It does not shrink the cryptography, and an earlier draft of this section
+said it did.* Every hub call goes through `Client._seal_request` and
+`_open_response` under the workspace cipher, with agent ids blinded — register,
+post, inbox and roster alike. **There is no hub call that skips the workspace
+cipher**, so all three JS pieces stay whatever the read path looks like. What
+minimal traffic buys is fewer round trips in the clock's way, not less code.
+
 **Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
 stable https origin serving both the lobby and the game — the page must be
 *served*, not opened, because a `file://` page has an opaque origin and no
