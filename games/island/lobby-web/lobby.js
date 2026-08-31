@@ -46,7 +46,10 @@ function table(tables, id) {
 export function reconstruct(snapshot, channel) {
   const tables = new Map();
   const refusals = [];
-  let holder = null, lastLine = 0;
+  // What Lobby.settled counts: every accepted JOIN and MANAGE, incremented in
+  // _join and _manage. Counted here from the lobby's own confirmations rather
+  // than from entrants' lines, for the same reason everything else here is.
+  let holder = null, lastLine = 0, settledLines = 0;
 
   const rows = (snapshot.messages || [])
     .filter(m => !channel || m.channel === channel)
@@ -72,14 +75,18 @@ export function reconstruct(snapshot, channel) {
     }
     if ((m = RE.seat.exec(body))) {
       const t = table(tables, m[1]);
-      if (!t.seats.some(s => s.label === m[2]))
+      if (!t.seats.some(s => s.label === m[2])) {
         t.seats.push({ label: m[2], name: m[3], key: m[4],
                        sealed: m[5] === ", sealed", nonce: m[6] || "" });
+        settledLines++;
+      }
       if (!t.traders) t.traders = +m[8];
       continue;
     }
     if ((m = RE.manager.exec(body))) {
-      const t = table(tables, m[1]); t.manager = m[2]; t.manager_key = m[3]; continue;
+      const t = table(tables, m[1]);
+      if (!t.manager) settledLines++;
+      t.manager = m[2]; t.manager_key = m[3]; continue;
     }
     if ((m = RE.full.exec(body))) {
       const t = table(tables, m[1]);
@@ -106,6 +113,7 @@ export function reconstruct(snapshot, channel) {
   return {
     tables: [...tables.values()].sort((a, b) => b.opened_at - a.opened_at),
     refusals: refusals.slice(-5),
+    settledLines,
     holder,
     lastLine,
     agents: snapshot.agents || [],

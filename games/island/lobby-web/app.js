@@ -2,6 +2,7 @@
 import { snapshot } from "./vendor/switchboard-room.js";
 import { reconstruct } from "./lobby.js";
 import { render } from "./render.js";
+import { wireStart } from "./start.js";
 import { CONFIG } from "./config.js";
 
 const main = document.querySelector("main");
@@ -35,7 +36,7 @@ function tick() {
 }
 
 async function poll() {
-  let view = { tables: [], refusals: [], holder: null, agents: [] }, error = "";
+  let view = { tables: [], refusals: [], settledLines: 0, holder: null, agents: [] }, error = "";
   let nowHub = Date.now() / 1000;
   try {
     const snap = await snapshot(CONFIG, { limit: 200, refresh: 5 });
@@ -48,6 +49,9 @@ async function poll() {
     error = `cannot read the lobby: ${e.message}`;
   }
   main.innerHTML = render(view, { ...CONFIG, nowHub, error });
+  // innerHTML replaced the nodes the copy button and levers were
+  // bound to, so they are re-wired every poll rather than once.
+  wireStart();
   started = performance.now();
 }
 

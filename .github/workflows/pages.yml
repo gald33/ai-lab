@@ -49,6 +49,11 @@ on:
       - experiments/005-deliberation-protocol/viewer/**
       - experiments/007-execution-ceiling/replays/**
       - games/replays/**
+      # The hand's lobby, which the island lobby has linked to since it was
+      # written and which this workflow never published -- so the link 404'd
+      # from the day it shipped. A dead link is silent: it only shows up if
+      # somebody clicks.
+      - games/island/hand/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -91,6 +96,14 @@ jobs:
           # 007's exported rounds, under the prefix serve.py gives them.
           if [ -d ../007-execution-ceiling/replays ]; then
             cp -r ../007-execution-ceiling/replays "$RUNNER_TEMP/site/island/ceiling"
+          fi
+          # The hand's lobby: play a seat yourself, from the page. Only the
+          # web assets -- the .py files beside them are the generators these
+          # were ported from and are referenced nowhere at runtime.
+          if [ -d ../../games/island/hand ]; then
+            mkdir -p "$RUNNER_TEMP/site/island/hand"
+            cp ../../games/island/hand/*.html ../../games/island/hand/*.js \
+               "$RUNNER_TEMP/site/island/hand/"
           fi
           python viewer/freeze_static.py "$RUNNER_TEMP/site/island/api"
 
