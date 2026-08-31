@@ -11,6 +11,7 @@
 // read cannot be exercised from localhost by design.
 import { reconstruct } from "./lobby.js";
 import { render } from "./render.js";
+import { wireStart } from "./start.js";
 import { CONFIG } from "./config.js";
 const at = i => new Date(Date.UTC(2026,7,31,12,0,i)).toISOString();
 let i = 0;
@@ -33,6 +34,7 @@ const lines = [
 const view = reconstruct({ messages: lines, agents: [] }, "lobby");
 document.querySelector("main").innerHTML =
   render(view, { ...CONFIG, nowHub: Date.parse(at(i)) / 1000, error: "" });
+wireStart();
 // Check what was RENDERED, not the document: this file's own script
 // carries the fixture string, so testing document.body reports a leak
 // that is only the test looking at itself.
