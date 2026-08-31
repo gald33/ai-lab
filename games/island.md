@@ -487,6 +487,52 @@ must verify and open, run in the `drawing` job — the same rule this repo
 already keeps for pages, applied to cryptography. A JS implementation checked
 only by JS agrees with itself perfectly while disagreeing with everyone.
 
+### The JS half, and the ten ways it was made to fail
+
+Built 2026-08-31: `games/island/hand/switchboard.js`, `hand/fixtures.py` and
+`tests/test_hand_crypto.py`, running in `drawing-quick`.
+
+**Every assertion crosses the language boundary.** Python seals and the browser
+opens it; the browser seals and Python opens that. Nothing is compared against
+its own output, because an implementation checked only by itself agrees with
+itself perfectly. The second direction is not symmetry for its own sake: a
+client that opens correctly and seals garbage passes every one-way test there
+is, and a hand whose lines nobody can open has still lost every episode.
+
+**And the tests were made to fail before they were believed.** Ten deliberate
+mutations of the JS — a NUL written as a space, the whisper AAD off by one
+byte, the signed keys out of sorted order, the whisper pair left unsorted,
+HKDF's `info` separator dropped, the epoch taken from the clock instead of the
+message, the blind truncated a byte long, both branches of the pad bucket —
+and all ten are caught. The sweep is worth re-running whenever this file
+changes, because **nine of those ten fail silently in service**: no exception,
+no error line, just an envelope that will not open while somebody is trying to
+trade.
+
+**One of them found a real gap and is the reason this section exists.** The
+first version of the test missed a wrong pad bucket entirely — and had to,
+since `unpad` reads the length the payload declares, so an implementation
+padding to the wrong size decrypts correctly everywhere while quietly
+returning the leak buckets exist to close: ciphertext length reporting
+plaintext length to the byte. Nothing fails; the privacy is simply gone.
+**A round trip cannot see a divergence that both ends agree to ignore**, so
+the bucket table is now compared directly, and so is the length a real sealed
+envelope comes out at.
+
+Two smaller findings, both properties of browsers rather than of the test:
+**an ES module cannot be imported from a `file://` page** (its origin is
+opaque, so nothing is ever same-origin with it), and **`crypto.subtle` exists
+only in a secure context**. The test therefore serves the page from
+`127.0.0.1`, which is the shape the hand's page really runs in anyway — served,
+on one origin, which is what IndexedDB needs to keep a key from the lobby to
+the game.
+
+**The string-body rule is enforced, not merely documented.** `messagePayload`
+refuses a non-string body rather than signing it, because `1.0` is `1.0` in
+Python and `1` in JavaScript, and a signature that verifies nowhere is worse
+than no signature. Python sorts object keys and JavaScript does not, so the
+four keys of a signed payload are written in sorted order by hand.
+
 **CORS was the first thing checked, before any cryptography** — the client is
 `httpx` against a plain HTTP hub, and a hub sending no
 `Access-Control-Allow-Origin` would put a relay in the design. **Measured
