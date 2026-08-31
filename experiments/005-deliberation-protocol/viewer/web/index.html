@@ -75,10 +75,32 @@ canvas.stage { z-index: 0; }
 .at-top-left .titles { display: flex; align-items: baseline; gap: 10px; }
 .at-top-left h1, .at-top-left .sub { text-shadow: 0 1px 12px #000c; }
 .at-top-right { top: 58px; right: 16px; }
+/* --- the controls are one piece of glass ---------------------------------
+   Asked for on 2026-08-31: "can we make the menus and the playback buttons
+   more appealing?", with "a little bit transparency".
+
+   **The transparency had to go up and the panelling had to come down, or it
+   reads as fog rather than glass.** This was a `#0b1116cc` slab with
+   `blur(8px)`, and every button standing on it was opaque `--panel-2` -- so
+   the blur was doing its work behind a row of grey rectangles that hid it. A
+   more transparent slab under the same opaque buttons would only have made
+   the frame vaguer while the buttons stayed exactly as heavy. So the panel
+   gets the transparency and the buttons stop being panels: the fill is a
+   wash, the border a hairline, and the blur reads through the whole control
+   as one surface with the island moving behind it.
+
+   The shadow is what keeps it floating rather than lying on the picture, and
+   the inset highlight along the top is the edge of the glass catching the
+   sky. Neither is decoration for its own sake -- without them a translucent
+   panel over a dark sea has no edge at all and the buttons look like they are
+   drawn straight onto the water. */
 .at-bottom { bottom: 16px; left: 50%; transform: translateX(-50%);
   width: min(760px, calc(100% - 32px)); justify-content: center;
-  background: #0b1116cc; border: 1px solid var(--line); border-radius: 14px;
-  padding: 8px 12px; backdrop-filter: blur(8px); pointer-events: auto; }
+  background: linear-gradient(#141c22b0, #0b1116c4);
+  border: 1px solid #ffffff1f; border-radius: 16px;
+  padding: 9px 12px; backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 12px 32px #00000059, inset 0 1px 0 #ffffff1a;
+  pointer-events: auto; }
 .at-bottom #scrub { flex: 1; min-width: 90px; }
 /* What the pace just skipped over. Only ever set under a pace that compressed
    a silence -- see `quietBefore` -- so an empty slot here means the board
@@ -94,7 +116,44 @@ canvas.stage { z-index: 0; }
   color: var(--muted); font-size: 11.5px; white-space: nowrap;
   text-shadow: 0 1px 10px #000c; pointer-events: none; }
 .at-bottom .quiet[hidden] { display: none; }
-.chrome button, .chrome select, .chrome .tab { background: #0e1519cc; backdrop-filter: blur(6px); }
+/* Ghost controls: the glass is the surface, so what stands on it is a
+   hairline and a label rather than a second panel. `--panel-2` is still what
+   a button is made of everywhere else on the site -- in a drawer, on the
+   scoreboard -- where there is no glass under it to show through. */
+.chrome button, .chrome select, .chrome .tab {
+  background: #ffffff0f; border-color: #ffffff24; backdrop-filter: blur(6px);
+  transition: background .15s ease, border-color .15s ease; }
+.chrome button:hover, .chrome select:hover, .chrome .tab:hover {
+  background: #ffffff1c; border-color: #ffffff3d; }
+.chrome button[aria-pressed="true"] {
+  background: #ffffff26; border-color: #ffffff4d; }
+@media (prefers-reduced-motion: reduce) {
+  .chrome button, .chrome select, .chrome .tab { transition: none; }
+}
+
+/* --- the button row is one bar, not seven tiles -------------------------
+   Seven separately bordered squares in a row is seven frames a reader has to
+   look past to reach seven glyphs. Grouped, the frame is drawn once and the
+   buttons are what is inside it -- the same material as the transport, so the
+   two pieces of chrome read as one family rather than two visual systems that
+   happen to share a page. */
+/* **The bar must not be taller than the buttons it groups.** Padding on all
+   four sides took the row from 40px to 50px, and the row is anchored 48px
+   above the round's state -- so it reached 2px into it at every portrait size
+   and 6px into the counts in landscape, which `mobile` reported as chrome
+   standing on chrome. The grouping is horizontal, so the padding is too, and
+   the buttons give back the height the frame around them costs. */
+.at-top-right { gap: 0; background: linear-gradient(#141c22b0, #0b1116c4);
+  border: 1px solid #ffffff1f; border-radius: 13px; padding: 0 3px;
+  backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 10px 26px #00000052, inset 0 1px 0 #ffffff1a; }
+.at-top-right > button, .at-top-right > .tab {
+  background: none; border: 0; border-radius: 10px; padding: 5px 10px; }
+.at-top-right > button:hover, .at-top-right > .tab:hover { background: #ffffff1c; }
+.at-top-right > button[aria-pressed="true"] { background: #ffffff26; }
+/* The find field keeps its own edge: it is a place to type, and a text input
+   with no border is a text input nobody can find. */
+.at-top-right > #find { background: #00000040; border: 1px solid #ffffff24; }
 .at-top-right select { max-width: 230px; }
 /* Narrow by default: the list is the control, and this only earns its width
    when somebody is actually typing in it. */
@@ -102,9 +161,63 @@ canvas.stage { z-index: 0; }
 .at-top-right #find:focus, .at-top-right #find:not(:placeholder-shown) { width: 168px; }
 .at-top-right #find[data-empty="true"] { border-color: var(--warn, #c86a4a); }
 @media (prefers-reduced-motion: reduce) { .at-top-right #find { transition: none; } }
-.at-bottom button, .at-bottom select { background: var(--panel-2); backdrop-filter: none; }
+/* --- what a viewer reaches for first ------------------------------------
+   Play, back and forward were three identical grey rectangles, so nothing on
+   the row said which one anybody wanted. Play is the transport's one primary
+   action and is drawn as one: filled with the island's own fire, dark-labelled
+   so the word reads against it. The two steps become quiet circles beside it,
+   which is what they are -- a glyph each, and nothing to read.
+
+   **Play keeps its word.** It says "play", "pause" and "replay", and a round
+   button with a glyph in it would have been prettier and would have thrown
+   that away: a bare pause glyph on a phone is a shape a viewer has to decode,
+   and `ended()` has a third state that no single glyph says at all.
+
+   `--fire` is the sun, the hearth and every rope on the island. Spending it
+   here is deliberate -- it is the page's one accent, and the control that
+   starts the island moving is the place in the chrome that has earned it. */
+.at-bottom button, .at-bottom select { backdrop-filter: none; }
+.at-bottom #back, .at-bottom #fwd {
+  width: 38px; height: 38px; padding: 0; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1; }
+.at-bottom #play { border-radius: 999px; padding: 8px 16px; font-weight: 600;
+  background: var(--fire); border-color: #ffffff33; color: #16202b;
+  box-shadow: 0 3px 14px #ffb64840, inset 0 1px 0 #ffffff59; }
+.at-bottom #play:hover { background: #ffc466; border-color: #ffffff4d; }
+/* Running, it is no longer the thing to reach for -- the island is moving and
+   the button's job is to stop it -- so it drops back to the row's own
+   register. Set by the player's `state`, because whether it is playing is the
+   player's to say. */
+.at-bottom #play.playing { background: #ffffff1f; color: var(--ink);
+  border-color: #ffffff3d; box-shadow: none; }
+.at-bottom #pos { color: var(--muted); font-size: 12px; min-width: 46px;
+  text-align: center; }
 .chrome .tab { text-decoration: none; border: 1px solid var(--line); border-radius: 8px;
   padding: 6px 11px; color: var(--ink-2); font-size: 14px; line-height: 1.3; }
+/* --- the scrub ----------------------------------------------------------
+   It had no styling at all: a default `input[type=range]`, which on this page
+   meant a bright blue system bar across the bottom of an island at dusk. It
+   was the least considered thing in the chrome and the widest.
+
+   Drawn as what it is -- a line the round is played along, filled in the same
+   fire as the play button, with a thumb big enough to put a thumb on. 16px of
+   travel-facing target on a control a hand drags, which is the one place in
+   this chrome where a fingertip is doing something continuous. */
+#scrub { -webkit-appearance: none; appearance: none; background: none;
+  height: 22px; cursor: pointer; }
+#scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--fire) var(--played, 0%),
+                              #ffffff26 var(--played, 0%)); }
+#scrub::-moz-range-track { height: 4px; border-radius: 999px; background: #ffffff26; }
+#scrub::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--fire); }
+#scrub::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; margin-top: -6px; border-radius: 999px;
+  background: var(--ink); border: 0; box-shadow: 0 1px 6px #0009; }
+#scrub::-moz-range-thumb { width: 16px; height: 16px; border-radius: 999px;
+  background: var(--ink); border: 0; box-shadow: 0 1px 6px #0009; }
+#scrub:focus-visible { outline: 2px solid var(--fire); outline-offset: 3px; }
+
 #status { position: absolute; z-index: 3; top: 84px; left: 16px; margin: 0;
   max-width: 44ch; text-shadow: 0 1px 10px #000a; pointer-events: none; }
 #status:empty { display: none; }
@@ -113,6 +226,15 @@ canvas.stage { z-index: 0; }
 .drawer { position: absolute; z-index: 4; background: #0d1317ee; border: 1px solid var(--line);
   backdrop-filter: blur(10px); overflow-y: auto; }
 .drawer[hidden] { display: none; }
+/* Top-right of the drawer it belongs to, over whatever scrolls under it. The
+   drawers scroll, so it is sticky rather than absolute: a transcript scrolled
+   down is exactly when somebody wants out of it. */
+.drawer-shut { position: sticky; float: right; top: 0; z-index: 1;
+  width: 34px; height: 34px; padding: 0; margin: -4px -4px 0 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1; border-radius: 999px;
+  background: #ffffff14; border: 1px solid #ffffff26; color: var(--ink-2); }
+.drawer-shut:hover { background: #ffffff26; color: var(--ink); }
 .drawer.side { top: 0; right: 0; bottom: 0; width: min(340px, 86vw);
   border-width: 0 0 0 1px; padding: 14px; animation: slide-in .22s ease-out; }
 .drawer.foot { left: 0; right: 0; bottom: 0; height: min(38vh, 360px);
@@ -180,7 +302,10 @@ svg.island, canvas.stage { transition: none; }
    with the transport it would sit on the shelves, so it stands down instead. */
 .app.log-open .legend { opacity: 0; pointer-events: none; }
 .legend { transition: opacity .2s ease; }
-@media (prefers-reduced-motion: reduce) { .chrome, .counts { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .chrome, .counts { transition: none; }
+  #transport, .at-top-right, .legend { transition: none; }
+}
 
 /* --- the scene ---------------------------------------------------------- */
 /* Water: three bands, three speeds. Each path is drawn one wavelength wider
@@ -764,7 +889,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      named in the browser tab, and the board in the picker. What is left of the
      top-left column is the round's state, which drops below the control row
      rather than sharing 44 vertical pixels with it. */
-  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px; max-width: 62vw; }
+  /* **60vw less the two margins, so the halves of this row cannot claim the
+     same pixels.** They are positioned against opposite edges, so nothing in
+     CSS makes them negotiate: this was 62vw beside the counts' 44, which is
+     106vw, and on a 393pt phone that is 44px of overlap. It reached a live
+     phone as `settled 2` sitting on top of `bell in 60s`. These two numbers
+     now sum to exactly the row (60vw - 20px, 40vw, and 10px of margin each
+     side), and `shareTopRow()` re-divides them by measurement once the pills
+     have their text -- this is the frame before it, not the answer. */
+  .at-top-left { top: 58px; left: 10px; right: auto; gap: 6px;
+    max-width: calc(60vw - 20px); }
   /* The same size the counts are cut to on the row they share, for the plain
      reason that they share it. Measured, because 52vw was guessed and the
      guess was wrong: "before the first day" and "acknowledging" were 147 and
@@ -778,12 +912,19 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .at-top-left .titles { display: none; }
   .at-top-left .hud { flex-wrap: wrap; }
   /* The other end of the round's state, on its row rather than under it. A
-     counter at zero has not happened yet and is not drawn; the ones that have
-     are few enough to sit on one line, and are kept to one line on purpose --
-     a row that grew a second line would grow the band under it, and the band
-     is a fixed number of pixels the island has already been given. */
-  .counts { top: 58px; left: auto; right: 10px; max-width: 44vw;
-    flex-wrap: nowrap; justify-content: flex-end; overflow: hidden; }
+     counter at zero has not happened yet and is not drawn.
+
+     **It wraps now, and it does not clip.** It used to do the opposite, on
+     the reasoning that "a row that grew a second line would grow the band
+     under it, and the band is a fixed number of pixels the island has already
+     been given". The band stopped being a fixed number when `chromeBands()`
+     began measuring it, so the premise is gone -- but the clipping outlived
+     it, and clipping is the worse of the two failures by a distance: with
+     three counters running, `settled 1` rendered as a pill reading `1`. A
+     pill that has lost its noun still looks like a pill. A second line looks
+     like a second line, and the island is given one less. */
+  .counts { top: 58px; left: auto; right: 10px; max-width: 40vw;
+    flex-wrap: wrap; justify-content: flex-end; overflow: visible; }
   .counts .pill[data-n="0"] { display: none; }
   .counts .pill { white-space: nowrap; font-size: 12px; padding: 5px 8px; }
   .at-top-right { top: 10px; right: 10px; left: auto; gap: 6px; }
@@ -791,6 +932,68 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
      the buttons are touch targets and must not shrink. */
   .at-top-right select { max-width: 34vw; }
   .app.rail-open .at-top-right, .app.rail-open .counts { right: 10px; }
+
+  /* --- the controls tuck away, and a tap brings them back ------------------
+     Decided 2026-08-30, by Gal: "on mobile you can hide auxiliary UI elements
+     like playback control and menu items and show them when clicking on the
+     page for a while".
+
+     **What tucks is the controls, not the state.** The transport, the button
+     row and the goods key go; the day, the phase, the bell and the counters
+     stay, because they are what the island is doing rather than a way of
+     driving it. A picture with no score is not a tidier picture.
+
+     Hidden by opacity rather than `display`, so the buttons keep their boxes:
+     `mobile` measures every control against a fingertip and a control with no
+     box passes that by not existing. It is `shown()`/`drawn()` -- both read
+     opacity -- that decides what a band and a coverage check count, which is
+     the same question asked in the same way in both places. */
+  /* **The children too, or the tuck hides a control without disarming it.**
+     `.chrome > * { pointer-events: auto }` puts events back on every control
+     inside a floating container, and it went on doing so through this rule:
+     the transport went invisible and stayed clickable, so a tap over where
+     the play button had been played the round instead of bringing the
+     controls back. `straddle` caught it as two of four cards refusing to
+     open -- the bottom row, which is the row the transport lies across. */
+  .app.tucked #transport, .app.tucked #transport *,
+  .app.tucked .at-top-right, .app.tucked .at-top-right *,
+  .app.tucked .legend { opacity: 0; pointer-events: none; }
+  /* **An open shelf brings the key back**, tucked or not, because that is the
+     one moment the columns need naming: a shelf is five coloured bars, and
+     without the key it is five coloured bars.
+
+     This is the arrangement that was tried and reverted -- the key used to be
+     raised only while a shelf was open -- and the reason it was reverted has
+     gone. It was "hidden *and* reserved is the worst of both: the island does
+     not get the strip either way and the viewer loses the key", and it was
+     right while the key held a reserved band. Nothing is reserved for it now
+     (see `chromeBands`), so the island does get the strip: 277px of island
+     across a 393x660 phone became 390px. Hidden *and not* reserved is the
+     case that reasoning did not have. */
+  /* **And it comes back at the top, not the bottom.** The key lives above the
+     transport, and with the foot band spent on the island there is nothing
+     down there but cards: raised at `bottom: 16px` it lay across 17px of the
+     bottom row, which `straddle` reports as a nameplate a viewer cannot read.
+     The top band is already reserved for the round's state and has room under
+     it, so the key is a second line of that band while a shelf is open, and
+     costs the island nothing.
+
+     One line, and clipped if it will not fit: a key that wrapped would reach
+     out of the band it is borrowing and stand on the island, which is the
+     defect `uncovered` exists for. */
+  .app.tucked.shelf-open .legend { opacity: 1; top: 88px; bottom: auto;
+    left: 10px; right: 10px; max-width: none; min-width: 0;
+    flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+  #transport, .at-top-right, .legend { transition: opacity .25s ease; }
+
+  /* A line of its own above the key, rather than across it. The desk has the
+     transport centred and the key off in the left margin, so the two never
+     meet there; a phone gives both the full width and they were drawn through
+     each other -- "a wider column is a good its owner wants mo|after 5.1s
+     quiet". Lifted clear rather than dropped: what the pace skipped over is
+     the one thing on the page that says a silence was compressed, and a
+     viewer who cannot see it reads a busy board. */
+  .at-bottom .quiet { top: -38px; }
 
   #status { top: 100px; left: 10px; right: 10px; max-width: none; }
 
@@ -881,7 +1084,13 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 @media (max-height: 480px) and (orientation: landscape) {
   .at-top-left { top: 8px; }
   .at-top-left .sub { display: none; }
-  .at-top-right { top: 8px; }
+  /* The button row moves up rather than the counts moving down. Grouping the
+     seven buttons into one bar made the row 2px taller than the gap above the
+     counts, and the first fix was to push the counts to 58 -- which bought the
+     clearance from the island: `uncovered` measured `.counts` covering 3% of
+     the drawn land. A landscape phone is 390px tall and every pixel of the
+     band comes off the island, so the row gives the 2px back instead. */
+  .at-top-right { top: 6px; }
   .counts { top: 52px; right: 16px; left: auto; }
   .at-bottom { bottom: 8px; padding: 5px 10px; }
   .legend { display: none; }
@@ -911,15 +1120,25 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
     </div>
   </div>
 
+  <!-- **`data-n` is on the markup, not only on what `hud()` writes.** The
+       portrait rule below hides a counter at zero, and it asks `data-n` --
+       so between the page loading and the first frame being read, all four
+       stood there saying zero. That used to cost nothing, because `.counts`
+       clipped whatever did not fit on its one line; once it was allowed to
+       wrap, four pills became two rows, and `chromeBands()` measured that
+       transient and gave the island a band 36px taller than the row it ever
+       actually draws. The island came out at 68% of a 393px window against
+       the 72% `focusing` requires. A counter at zero has not happened yet
+       before the board is read either. -->
   <div class="counts">
-    <div class="pill" id="c-settled">settled <b>0</b></div>
+    <div class="pill" id="c-settled" data-n="0">settled <b>0</b></div>
     <!-- An offer turned down by the trader it was addressed to. Its own count,
          not folded into `refused`: a decline is a trader's decision and closes
          the offer, a refusal is the manager rejecting one line and closes
          nothing. -->
-    <div class="pill" id="c-declined">declined <b>0</b></div>
-    <div class="pill" id="c-refused">refused <b>0</b></div>
-    <div class="pill" id="c-lapsed">lapsed <b>0</b></div>
+    <div class="pill" id="c-declined" data-n="0">declined <b>0</b></div>
+    <div class="pill" id="c-refused" data-n="0">refused <b>0</b></div>
+    <div class="pill" id="c-lapsed" data-n="0">lapsed <b>0</b></div>
   </div>
 
   <div class="chrome at-top-right">
@@ -1115,7 +1334,54 @@ const frameAspect = () => {
  * The declared numbers stay as the fallback for a chrome that has not been
  * laid out yet, and as the thing a person reads when changing the rules.
  */
+//: **Divide the top row between its two halves by measuring them.**
+//:
+//: The round's state sits against the left edge and the counters against the
+//: right, both absolutely positioned, so the only thing keeping them apart is
+//: that their two widths were chosen to add up. They did not: 62vw and 44vw
+//: is 106vw, and the 6 that do not exist came out of the middle of the row.
+//: On a live phone that put `settled 2` on top of `bell in 60s`; in a replay
+//: with three counters running it put `settled 1` half under `market open`,
+//: where `overflow: hidden` cut it down to a pill reading `1`.
+//:
+//: A guess that adds up would have been enough to stop them touching, and the
+//: stylesheet now holds one for the frame before this runs. But the row is
+//: shared unevenly and the split changes with the board: `before day 1` needs
+//: most of the row and no counter has happened yet, while at the last bell the
+//: counters need most of it. So the counters are asked what they come to and
+//: given it, up to three fifths of the row; the state pills take the rest and
+//: wrap into a second line when that is not enough, which the measured band
+//: absorbs. Nothing is cut off: a wrapped row says it did not fit, and a
+//: clipped one says nothing at all.
+const shareTopRow = () => {
+  const left = document.querySelector(".at-top-left");
+  const counts = document.querySelector(".counts");
+  if (!left || !counts) return;
+  //: The same predicate the stylesheet uses, not `isPortrait()`: the widths
+  //: being divided here are set in `@media (max-width: 700px)`, and a check
+  //: that disagreed with the rule it is correcting would take the caps off in
+  //: exactly the frames that still have them.
+  if (!matchMedia("(max-width: 700px)").matches) {
+    left.style.maxWidth = counts.style.maxWidth = "";
+    return;
+  }
+  //: Measured from where the halves actually sit rather than from a margin
+  //: this function would have to know: `left` is as far from its edge as the
+  //: stylesheet put it, and so is `counts`.
+  counts.style.maxWidth = "none";
+  const want = counts.scrollWidth;
+  const edge = Math.round(left.getBoundingClientRect().left);
+  const room = innerWidth - 2 * edge - 8;
+  const take = want ? Math.min(want, Math.round(room * 0.6)) : 0;
+  counts.style.maxWidth = `${take}px`;
+  left.style.maxWidth = `${Math.max(0, room - take)}px`;
+};
 const chromeBands = () => {
+  //: **First, because this measures the row it divides.** Called from here
+  //: rather than from each caller: `raise()` and `refit()` both measure the
+  //: bands, and a version of this that lived beside one of them left the other
+  //: reading a row whose halves had not been given their widths yet.
+  shareTopRow();
   const css = getComputedStyle(document.documentElement);
   const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
   //: Against the box the island is drawn into, not the window: a band is a
@@ -1152,15 +1418,36 @@ const chromeBands = () => {
   //: `#status` is not in either list on purpose: it is a transient message
   //: about a page that is failing, and a band that grew when an error appeared
   //: would move the island under the reader at the worst moment.
-  const heads = boxes([".at-top-left", ".at-top-right", ".counts"]);
-  const feet = boxes([".at-bottom", ".legend"]);
+  //: **On a phone the tucking chrome is never part of a band, tucked or
+  //: not.** Gal's call was "no reclaim, but the default of the island can be
+  //: larger": the island is drawn once, at the size it would have if the
+  //: controls were not there, and a tap that brings them back floats them
+  //: over that picture rather than re-dividing it. Measuring what is shown
+  //: would have given the same island while tucked and then shrunk it the
+  //: moment somebody asked for the transport -- a resize as the answer to a
+  //: tap, which is the thing the focus mechanism was deleted for.
+  //:
+  //: So the cost is stated rather than hidden: a revealed transport stands on
+  //: the bottom row of cards, and a revealed key on the foot of the frame.
+  //: That is the same trade already made for an opened card, which is drawn
+  //: over the frame instead of inside a reservation for it.
+  const tucking = matchMedia("(max-width: 700px)").matches;
+  const heads = boxes(tucking ? [".at-top-left", ".counts"]
+                              : [".at-top-left", ".at-top-right", ".counts"]);
+  const feet = boxes(tucking ? [] : [".at-bottom", ".legend"]);
 
   const declaredTop = px("--chrome-top");
   const declaredFoot = px("--chrome-foot");
   const measuredTop = heads.length
     ? Math.max(...heads.map((r) => r.bottom)) - box.y + AIR : declaredTop;
+  //: With nothing standing in the foot there is still air at the bottom of
+  //: the frame, and only air: the cards' own block is placed by `cardPlan`
+  //: inside what this leaves, so a foot of nothing is a foot the island and
+  //: its nameplates share. `declaredFoot` stays the fallback for the window
+  //: shapes that do have chrome down there and happen to measure nothing.
   const measuredFoot = feet.length
-    ? box.y + h - Math.min(...feet.map((r) => r.top)) + AIR : declaredFoot;
+    ? box.y + h - Math.min(...feet.map((r) => r.top)) + AIR
+    : (tucking ? AIR : declaredFoot);
 
   //: Never more than a third of the frame each. A chrome that grew past that
   //: would otherwise leave the island a negative box, and a page with no
@@ -1332,6 +1619,11 @@ function hud(state) {
     pill.innerHTML = `${k} <b>${n}</b>`;
     pill.dataset.n = String(n);
   }
+
+  //: After the pills have their text and before anything measures the band:
+  //: what the counters come to is what they say, and they say something new
+  //: on most frames.
+  shareTopRow();
 
   // How long the board has been quiet is not said in a pill any more. It was a
   // number about the replay rather than about the island, and the island has a
@@ -1629,6 +1921,10 @@ function paint({ state, event, animate, index, until = null, hold = 0, quiet = 0
   closing(state);
   ticker(timeline.frames, index);
   $("scrub").value = String(index);
+  //: How much of the round is behind the thumb. WebKit paints a range track
+  //: in one piece -- there is no `::-moz-range-progress` on its side -- so the
+  //: fill is a gradient stop, and the stop is a number only the script knows.
+  scrubbed();
   $("pos").textContent = `${index + 1} / ${timeline.frames.length}`;
 }
 
@@ -1827,6 +2123,7 @@ function mount(rows, { manager } = {}) {
                       frameAspect(), chromeBands());
   }
   $("scrub").max = String(Math.max(0, timeline.frames.length - 1));
+  scrubbed();
 }
 
 //: Whether two timelines are about the same island: the same traders in the
@@ -1867,8 +2164,14 @@ async function startReplay(boardUrl, revealUrl) {
     `replay · ${board.workspace || boardUrl} · ${board.messages.length} messages`;
   player = replayPlayer(timeline, {
     frame: paint,
-    ended: () => { $("play").textContent = "▶ replay"; },
-    state: () => { $("play").textContent = player.playing ? "⏸ pause" : "▶ play"; },
+    ended: () => {
+      $("play").textContent = "▶ replay";
+      $("play").classList.remove("playing");
+    },
+    state: () => {
+      $("play").textContent = player.playing ? "⏸ pause" : "▶ play";
+      $("play").classList.toggle("playing", player.playing);
+    },
   });
   //: The viewer's own pace, not the player's default: a board opened after one
   //: that was being watched in real time is still being watched by the same
@@ -1878,6 +2181,18 @@ async function startReplay(boardUrl, revealUrl) {
     new Option("jump to a day…", "-1"),
     ...player.episodes().map((c) => new Option(`day ${c.episode}`, String(c.index))));
   player.seek(0);
+  //: **And it starts playing.** Gal, 2026-08-31: "let's start with auto play
+  //: rather than paused." A replay opened from a link is somebody being shown
+  //: a round, not somebody being handed a file to operate -- and on a phone
+  //: the play button is tucked away behind a tap, so a board that opened
+  //: paused opened as a still photograph with no visible way to start it.
+  //:
+  //: **Except where motion has been asked not to happen.** `prefers-reduced-
+  //: motion: reduce` is a request not to be moved at without asking, and a
+  //: replay that starts itself is exactly that. The board still opens on frame
+  //: 0 and every control still works; what goes is the page deciding to
+  //: animate on its own.
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) player.play();
 
   $("status").textContent = "";
 }
@@ -2043,6 +2358,25 @@ async function takeHandover(finished) {
 function drawer(button, panel, cls) {
   const el = $(panel);
   const open = () => !el.hidden;
+  //: **A drawer carries its own way out.** It had none: these were shut by the
+  //: button that opened them, up in the top-right row, or by Escape. A phone
+  //: has no Escape, and since the controls tuck themselves away that row is
+  //: gone four seconds after it was used -- so the transcript opened over the
+  //: island and there was nothing on screen that said how to leave. Reported
+  //: 2026-08-31: "you can't back out of it to see the game, so you're kinda
+  //: stuck."
+  //:
+  //: Built here rather than written into the markup three times, because there
+  //: are three drawers and the one that was hardest to leave is the one a
+  //: viewer reaches for most.
+  const shut = document.createElement("button");
+  shut.className = "drawer-shut";
+  shut.type = "button";
+  shut.textContent = "\u2715";
+  shut.title = "Close";
+  shut.setAttribute("aria-label", `Close ${panel}`);
+  shut.onclick = () => set(false);
+  el.prepend(shut);
   const set = (want) => {
     el.hidden = !want;
     $(button).setAttribute("aria-pressed", String(want));
@@ -2079,6 +2413,66 @@ soundButton();
 // behind one is surf coming out of a page they cannot see.
 document.addEventListener("visibilitychange",
                           () => sound.visible(!document.hidden));
+
+//: **The controls tuck themselves away on a phone, and a tap brings them
+//: back for a while.** Gal, 2026-08-30.
+//:
+//: Only on a phone: a desk has room for the transport and the picture at once,
+//: and a control that hides itself on a machine with a pointer is a control
+//: somebody has to discover. The predicate is the stylesheet's own, because
+//: the rules that do the hiding live in that block.
+//:
+//: **A tap on a card is not a tap on the page.** The island's click handler
+//: already answers "which trader", and it runs first; this is bound after it
+//: and asks only about taps that reached nothing. A tap on the chrome itself
+//: is likewise not a request to hide it -- it is somebody using it, so it
+//: restarts the clock instead.
+const tuck = (() => {
+  const app = document.querySelector(".app");
+  //: Long enough to reach for a control after asking for it, short enough
+  //: that a viewer who tapped by accident gets their picture back without
+  //: doing anything. The transport is the reason for the number: a scrub
+  //: somebody is about to drag is the slowest thing here to aim at.
+  const LINGER = 4000;
+  let timer = null;
+  const phone = () => matchMedia("(max-width: 700px)").matches;
+
+  //: A drawer standing open is a viewer part-way through something, and the
+  //: button that shuts it lives in the row this hides. The drawer has a close
+  //: of its own now, so this is no longer the only way out -- but hiding the
+  //: control somebody is using is still the wrong thing to do to them.
+  const busy = () => !!document.querySelector(".drawer:not([hidden])");
+  const set = (open) => {
+    clearTimeout(timer);
+    timer = null;
+    app.classList.toggle("tucked", phone() && !open && !busy());
+    //: No `refit()` here on purpose. The bands do not count this chrome on a
+    //: phone (see `chromeBands`), so there is nothing to re-measure and the
+    //: island does not move under the tap.
+    if (open && phone()) timer = setTimeout(() => set(false), LINGER);
+  };
+
+  //: Somebody using a control wants it to stay: every press and every drag on
+  //: the revealed chrome puts the full linger back.
+  const keep = () => { if (!app.classList.contains("tucked") && phone()) set(true); };
+  for (const sel of ["#transport", ".at-top-right"]) {
+    const n = document.querySelector(sel);
+    n?.addEventListener("pointerdown", keep);
+    n?.addEventListener("input", keep);
+  }
+
+  addEventListener("resize", () => {
+    //: A phone turned on its side has room again, and a window dragged narrow
+    //: has not. Rotating to landscape must not leave the controls hidden with
+    //: no way to ask for them, so the class is dropped outright off a phone.
+    if (!phone()) { clearTimeout(timer); app.classList.remove("tucked"); }
+    else if (!timer) app.classList.add("tucked");
+  });
+
+  set(false);
+  return { toggle: () => set(app.classList.contains("tucked")),
+           shut: () => set(false), phone };
+})();
 
 const picker = drawer("t-filter", "picker", "rail-open");
 const rail = drawer("t-rail", "rail", "rail-open");
@@ -2132,20 +2526,15 @@ addEventListener("resize", () => {
   reflowing = setTimeout(refit, 180);
 });
 
-/** Where a click landed, in the island's own coordinates. */
-function pointIn(e) {
-  const ctm = $("island").getScreenCTM();
-  if (!ctm) return null;
-  return new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-}
+//: `pointIn` went with `cardAt` below: it turned a click into the island's own
+//: coordinates, and the box test it fed was the only thing that wanted them.
+//: The browser's own hit test is what resolves a card now.
 
 $("island").addEventListener("click", (e) => {
   // No model behind the page means the cards hang under their own drawn huts
   // rather than standing in the frame's margins, so there is no margin to
   // re-divide and nothing a click can give back either way up.
   if (!scene?.modelled) return;
-  const at = pointIn(e);
-  if (!at) return;
 
   //: **One click, both ways up.** It used to be two: portrait's re-divided the
   //: frame between the island and the cards, and landscape's opened one
@@ -2161,10 +2550,37 @@ $("island").addEventListener("click", (e) => {
   //: drawn there. `closest` catches both: the model's own settlement is on the
   //: canvas underneath, so this is the drawn hut and the card, which share a
   //: group carrying `data-trader`.
+  //: **`closest` is the whole of it.** There used to be a second half --
+  //: `scene.cardAt(x, y)`, a box test against each seat's card -- and it was
+  //: deleted from `scene.js` in d7d618d while this call was left behind. So
+  //: every tap that missed a card has thrown `scene.cardAt is not a function`
+  //: ever since, which nothing noticed because the handler had nothing left to
+  //: do on that path and no check drove a tap onto open water. The tuck gives
+  //: it something to do, and a handler that throws first would never reach it.
+  //:
+  //: Nothing is lost with it. The box test predates `data-trader` being on the
+  //: group that carries both the hut and its card, and a point-in-box walk over
+  //: the seats is a re-derivation of the hit test the browser has already done.
   const onHut = e.target.closest?.("[data-trader]")?.getAttribute("data-trader");
-  const who = onHut && scene.traders.includes(onHut)
-    ? onHut : scene.cardAt(at.x, at.y);
+  const who = onHut && scene.traders.includes(onHut) ? onHut : null;
   if (who && scene.toggleCard(who)) {
+    //: A shelf that is open wants its key, which on a phone is tucked away
+    //: with the rest of the chrome until something asks for it. Read off the
+    //: scene rather than tracked here: `toggleCard` is not the only thing that
+    //: can shut a card, and a flag kept beside the truth drifts from it.
+    const open = scene.traders.some((t) => scene.cardOpen(t));
+    document.querySelector(".app").classList.toggle("shelf-open", open);
+    //: **And puts the controls away.** Reading a trader and driving the replay
+    //: are two things to be doing, and on a phone they want the same pixels:
+    //: the bottom row of cards is where the transport lies, so a card opened
+    //: while the transport is up is a card behind it -- 85px of one, measured
+    //: by `straddle`, which is most of what a nameplate has to say.
+    //:
+    //: Tucking rather than moving the card is what keeps Gal's "no reclaim":
+    //: the card grows toward the island as it always did, and it is the
+    //: transport that gets out of the way, because the transport is the thing
+    //: nobody asked for at that moment.
+    if (open) tuck.shut();
     //: Repainted from the last frame rather than through the player: live has
     //: no player at all, and a card just rebuilt is empty until something
     //: fills it from state. Never animated -- the settlement that filled this
@@ -2174,10 +2590,27 @@ $("island").addEventListener("click", (e) => {
     return;
   }
 
-  //: **A tap on anything else is a tap on nothing**, both ways up. It used to
-  //: re-divide the frame in portrait; the frame is divided once now and the
-  //: island is not something a viewer has to negotiate for. See the note above
-  //: `cardPlan`.
+  //: **A tap on anything else is a tap on nothing**, here. What a phone does
+  //: with it -- ask for the tucked controls -- is bound on the page rather
+  //: than on the island, because this handler gives up before it gets here on
+  //: a board with no model behind it and on a frame with no CTM yet, and a
+  //: viewer tapping a picture that has not finished arriving still means the
+  //: same thing by it.
+});
+
+//: The other half of `tuck`: what a tap on the picture means on a phone.
+//:
+//: Bound on the page, and it steps aside for two kinds of target. A tap on a
+//: hut or a card is the island's own gesture -- it opens that trader's shelf,
+//: and the handler above has already run by the time this does. A tap on the
+//: chrome is somebody *using* the chrome, which `tuck` answers by holding it
+//: open rather than by hiding what the hand is on.
+addEventListener("click", (e) => {
+  if (!tuck.phone()) return;
+  const t = e.target;
+  if (t?.closest?.("[data-trader]")) return;
+  if (t?.closest?.(".chrome, .counts, .legend, .drawer, #closing, #status")) return;
+  tuck.toggle();
 });
 
 addEventListener("keydown", (e) => {
@@ -2193,7 +2626,24 @@ addEventListener("keydown", (e) => {
 $("play").onclick = () => player?.toggle();
 $("back").onclick = () => player?.step(-1);
 $("fwd").onclick = () => player?.step(1);
-$("scrub").oninput = (e) => player?.seek(+e.target.value);
+//: Painted here as well as in `show`, because a drag is answered by the
+//: player and a player that is paused mid-drag would otherwise leave the fill
+//: behind the thumb the viewer is holding.
+function scrubbed() {
+  const el = $("scrub");
+  const max = Number(el.max) || 0;
+  el.style.setProperty("--played", `${max ? (Number(el.value) / max) * 100 : 0}%`);
+}
+//: **A hand on the scrub takes the round over.** `seek` keeps playing if it
+//: was playing -- which is right for the chapter jump below, where a viewer
+//: asks for a day and then watches it -- but wrong for a drag: the frame the
+//: thumb is being dragged to moves on before the thumb gets there. It did not
+//: matter while every board opened paused. It does now.
+$("scrub").oninput = (e) => {
+  scrubbed();
+  player?.pause();
+  player?.seek(+e.target.value);
+};
 $("chapters").onchange = (e) => {
   const i = +e.target.value;
   if (i >= 0) player?.seek(i);

@@ -895,6 +895,337 @@ because that bug happened twice while these breakpoints were written — once
 because a media block was authored above the rules it meant to override and
 lost on source order, which no amount of reading the CSS made obvious.
 
+#### The overlap check compared the boxes, and the pills escaped them
+
+*Found 2026-08-30, by Gal, on a live phone: "some overlapping buttons".* The
+screenshot showed `settled 2` sitting on top of `bell in 60s`, and `mobile`'s
+"no two pieces of chrome overlap" had been green the whole time.
+
+Both halves of that row are absolutely positioned against opposite edges, so
+nothing in CSS makes them negotiate — their widths were simply chosen to add
+up, and they did not: `.at-top-left` was capped at **62vw** and `.counts` at
+**44vw**, which is 106vw. On a 393pt phone that is 44px belonging to both.
+
+`mobile` missed it because it compares the two **containers**, and the
+containers never overlapped. `.counts` was `flex-wrap: nowrap` with
+`overflow: hidden`, so with three counters running its pills overflowed its box
+to the left — its own rectangle stayed exactly where the stylesheet put it
+while its children stood in the other half of the row. **An assertion about a
+parent cannot see a child that has left it.**
+
+The clipping was the worse half of it, and the half nobody reported: `settled
+1` rendered as a pill reading **`1`**. A wrapped row says it did not fit; a
+clipped one says nothing at all, and a pill that has lost its noun still looks
+like a pill.
+
+What replaced it:
+
+- The stylesheet's two caps now sum to exactly the row — `calc(60vw - 20px)`
+  and `40vw`, with 10px of margin each side — so the overlap is impossible by
+  arithmetic even before any script runs.
+- `shareTopRow()` then re-divides the row **by measuring it**, because the
+  split is uneven and changes with the board: on frame 0 the state pills need
+  the whole row and no counter has happened yet; at the last bell it is the
+  other way round. The counters are asked what they come to and given it, up
+  to three fifths of the row; the state pills take the rest and wrap when that
+  is not enough.
+- `.counts` **wraps and no longer clips.** It was kept to one line on the
+  reasoning that "a row that grew a second line would grow the band under it,
+  and the band is a fixed number of pixels the island has already been given".
+  That premise died when `chromeBands()` began measuring the band; the clipping
+  outlived it. A second line is now absorbed — at 360pt the top band goes from
+  144px to 216px on the frames that need it, and the island is given the rest.
+- `crowding()` in `render.py` asserts it on the pills themselves, every frame,
+  at all three portrait viewports: no pill from one half may stand on a pill
+  from the other, and no pill may be clipped by an ancestor.
+
+##### What letting it wrap cost, before `data-n` was put in the markup
+
+Allowing `.counts` to wrap broke `focusing`: the island came out at **267px in
+a 393px window, 68%**, against the 72% that check requires. The band had grown
+from 108px to 144px — exactly one pill row plus its gap.
+
+Nothing on any frame was two rows. The two rows were on **no frame at all**:
+the markup ships four counter pills, and the rule that hides a counter at zero
+asks `data-n`, which only `hud()` wrote. So between the page loading and the
+first frame being read, all four stood there saying zero. Clipping had been
+hiding that for as long as it existed; the moment the row could wrap, four
+pills became two lines, and `chromeBands()` — which runs once at mount and
+then only on reflow — measured that transient and baked it into the band the
+island is given for the rest of the session.
+
+`data-n="0"` is on the markup now. A counter at zero has not happened yet
+before the board is read either, so the first frame and every frame after it
+say the same thing.
+
+*The check that caught this was one I had not run.* `focusing` measures right
+after mount, which is the only moment the transient existed; I ran `crowding`,
+`mobile`, `uncovered`, `island`, `shutters` and `straddle` and pushed. For a
+change to the chrome's geometry the suite is the unit, not a subset of it —
+which is the second argument this week for splitting the fast structural
+checks out of the 32-minute drawing job, so that running all of them locally
+is cheap enough to be habitual.
+
+Both halves of the crowding check were run against the old stylesheet before
+being trusted: **9 overlaps** (up to 58px, at 360pt) and **6 clipped pills**. The
+first draft of the clipping half asked each pill whether its own `scrollWidth`
+had outgrown its `clientWidth` — a question about text inside a box, when the
+pill that rendered as `1` was a whole box that had left its parent with its
+text intact. It found nothing, on any frame, including the nine the other half
+was catching beside it. It walks up to the clipping ancestor now.
+
+### The controls tuck away, and a tap brings them back
+
+*Decided 2026-08-30, by Gal: "on mobile you can hide auxiliary UI elements like
+playback control and menu items and show them when clicking on the page for a
+while."*
+
+**What tucks is the controls, not the state.** The transport, the button row
+and the goods key go; the day, the phase, the bell and the counters stay. Those
+are what the island is *doing* rather than ways of driving it, and a picture
+with no score is not a tidier picture.
+
+**The island is drawn larger, and never resizes.** Asked which way to take it,
+Gal's answer was "no reclaim, but the default of the island can be larger" — so
+`chromeBands()` stops counting the tucking chrome toward a band **whether it is
+tucked or not**, the island is laid out once at the size it would have if the
+controls were not there, and a tap floats them over that picture. Measuring
+what was *shown* would have passed every other claim here and shrunk the island
+as the answer to a tap, which is the thing the focus mechanism was deleted for.
+
+What that bought, measured on the two saved replays:
+
+| viewport | island before | after | |
+|---|---|---|---|
+| 393×660 — a shared link with the browser's bars showing | 277px | **390px** | +41% |
+| 360×640 | 264px | **358px** | +36% |
+| 390×844 — a tall phone | 388px | 388px | already capped at the frame's width |
+
+The tall phone gains nothing because the island there was already as wide as
+the frame allows. The gain is on the short window, which is the one a shared
+link actually opens into.
+
+Hidden by `opacity`, not `display`, so the controls keep their boxes: `mobile`
+measures every control against a fingertip, and a control with no box passes
+that by not existing. What decides whether a band or a coverage check counts a
+thing is `shown()` in the page and `drawn()` in `render.py` — the same question,
+asked the same way, and both read opacity.
+
+#### Three things it broke, and one it found
+
+**The tuck hid the controls without disarming them.** `.chrome > * {
+pointer-events: auto }` puts events back on every control inside a floating
+container, and went on doing so through the hiding rule: the transport went
+invisible and stayed clickable. A tap over where the play button had been would
+have played the round instead of bringing the controls back. `straddle` caught
+it as two of four cards refusing to open — the bottom row, which is the row the
+transport lies across.
+
+**An opened card ended up behind the revealed transport**, by 85px of itself —
+most of what a nameplate has to say. Reading a trader and driving the replay
+are two things that want the same pixels on a phone. So **an opened shelf tucks
+the controls away and raises the key**, which keeps "no reclaim" intact: the
+card grows toward the island exactly as it did, and it is the transport that
+leaves, because the transport is what nobody asked for at that moment.
+
+That changed the shape of what `straddle` could promise. It asked whether an
+opened card overlapped the transport's **box**, and a tucked transport keeps
+its box on purpose — so it reported a card 85px hidden behind something
+invisible. It asks `drawn()` now, the same question `uncovered` and the page's
+own `shown()` ask, and the guarantee it gave up moved into `tucking` as a
+behavioural one: an open shelf and the controls are never up together.
+
+Writing that assertion turned up the corollary, which is worth knowing rather
+than fixing: **with the controls up, the bottom row of cards is unreachable.**
+A tap there lands on the transport. So "open a shelf while the controls are up"
+is not something a viewer can do — the first tap puts the controls away and the
+second opens the shelf. Two taps, and the controls dismiss themselves anyway.
+
+**The key came back on top of the cards**, once it was coming back at all: at
+`bottom: 16px` it lay across 17px of the bottom row. With the foot band spent
+on the island there is nothing down there but cards, so the key returns as a
+second line of the **top** band — which is already reserved for the round's
+state and has room under it, so it costs the island nothing. Clipped to one
+line: a key that wrapped would reach out of the band it is borrowing and stand
+on the island, which is the defect `uncovered` exists for.
+
+**The goods key reversed, and the superseded reasoning is kept.** `focusing`
+asserted the key must always be on screen, because:
+
+> The key is always on now, and its band is reserved. It was raised only while
+> a shelf was open, to save the row — and that saving was the reason it had no
+> room of its own, so it stood across the cards. Hidden *and* reserved would be
+> the worst of both: the island does not get the strip either way and the
+> viewer loses the key.
+
+That enumerated two arrangements and rejected the second. The phone has a third
+now — hidden and **not** reserved — which is the case that argument did not
+have: the island does get the strip. So the key is tucked with the rest and
+comes back with a shelf, which is the one moment its columns need naming. A
+shelf is five coloured bars, and without the key it is five coloured bars.
+
+**And it found a bug that was already on `main`.** `scene.cardAt` was deleted
+in `d7d618d` and its call site in `index.html` was left behind, so since then
+every tap on the island that missed a card threw `scene.cardAt is not a
+function`. Nothing noticed: the handler had nothing left to do on that path,
+and no check ever drove a tap onto open water. The tuck gives that path
+something to do, and a handler that throws first never reaches it. The dead
+call is gone, and `pointIn` with it — it turned a click into the island's own
+coordinates, and the box test it fed was the only thing that wanted them.
+
+#### What checks it
+
+`tucking()` in `render.py`, at all three portrait viewports plus a landscape
+one, drives the gesture rather than reading the markup: the three controls are
+not drawn on load, a tap brings all three back, **the island does not move when
+they arrive** (viewBox and `islandFoot` compared either side), a tap on a card
+is not a tap on the page, and they tuck themselves again after the linger —
+which is the one part with no visible control to rediscover it if it stops
+working. The landscape leg exists because a phone turned on its side must not
+be left with controls it cannot ask for.
+
+Timed rather than assumed, as this file asks of a new check: **33.8s** in a
+full `--group quick` run, so `quick`.
+
+### A replay starts playing
+
+*Decided 2026-08-31, by Gal: "let's start with auto play rather than paused."*
+
+A replay opened from a link is somebody being **shown** a round, not somebody
+being handed a file to operate. On a phone the case is sharper still, now that
+the controls tuck away: a board that opened paused opened as a still photograph
+with no visible way to start it.
+
+**Except where motion has been asked not to happen.** `prefers-reduced-motion:
+reduce` is a request not to be moved at without asking, and a replay that
+starts itself is exactly that. The board still opens on frame 0 and every
+control still works; what goes is the page deciding to animate on its own.
+
+**A hand on the scrub takes the round over.** `seek` keeps playing if it was
+playing, which is right for the chapter jump — a viewer asks for a day and then
+watches it — and wrong for a drag: the frame the thumb is being dragged to
+moves on before the thumb gets there. That did not matter while every board
+opened paused. It does now, so the scrub's own handler pauses first.
+
+That second half is also what keeps the checks deterministic. `render.py` drives
+frames by setting `#scrub` and dispatching `input`, and a page that went on
+playing underneath would have moved the frame out from under every assertion
+that followed. Most checks ask for `reduced_motion="reduce"` and never autoplay
+at all.
+
+**Five did have to change, and they are all the same shape**: a check that
+borrows the page and takes the frames into its own hands, against a page that
+now moves on its own. `blame`, `ring` and `shutters` build a `Scene` of their
+own into the page's DOM — `shutters` has a note above its setup saying exactly
+why that is delicate, "the page's own scene would rebuild `#island` underneath
+this one while it was being read", which could not happen while a board sat
+where it was put. `alive` and `travelling` read the sun at frames that had
+already gone. The symptoms were as varied as `null.classList`, six frames with
+no sun, a bell that never brought night, and cards coming back open under a
+check about which cards are shut; the cause was one thing.
+
+Each of them now calls `pause()` after mounting, which takes the transport
+through **the page's own surface** — dispatching `input` on the scrub, which is
+what a hand on it does — rather than through a handle put on `window` for the
+harness. Nothing is weakened: every one of them still asserts what it did, at
+the frame it meant to assert it at.
+
+#### What autoplay found: the sun could not be put back
+
+The sun's travel is a WAAPI animation with `fill: "forwards"`, and **a filled
+animation outranks the inline style for the properties it animates**. So
+`placeSun()` — which sets `transform` and `opacity` directly, for the case
+where the sun must not travel — had been writing styles nothing read, for as
+long as the page had ever animated the sun. `placeSun` cancels the travel
+first now.
+
+It was unreachable while nothing played a board on its own: you had to press
+play, let the sun cross, and then scrub backwards. A replay that starts itself
+reaches it on the first drag of the scrub, and the island then stayed dark for
+the rest of the session. `alive` found it as **six frames out of six with no
+sun in the sky** — measured at the same frame 17, opacity 0 after autoplay
+against 1 without it.
+
+That is the second defect this change surfaced that was already on `main`
+(`scene.cardAt` was the first), and both were found the same way: a new gesture
+started driving a path nothing had driven before.
+
+### A drawer carries its own way out
+
+*Reported 2026-08-31, by Gal: "when you open up the panel on mobile so you can
+read the actual transcription, it works great, but you can't back out of it to
+see the game. So you're kinda stuck."*
+
+The drawers — the picker, the hidden half, the transcript — had **no close
+control at all**. They were shut by the button that opened them, up in the
+top-right row, or by Escape. A phone has no Escape, and since the controls tuck
+themselves away that row is gone four seconds after it was used: the transcript
+opened over the island and nothing on screen said how to leave.
+
+Two changes, because either alone leaves a gap:
+
+- **Each drawer builds its own ✕**, in `drawer()` rather than written into the
+  markup three times. `position: sticky`, so it is still there when the
+  transcript has been scrolled — which is exactly when somebody wants out of a
+  long board.
+- **The controls do not tuck while a drawer is open.** The drawer has a way out
+  of its own now, so this is no longer the only one; hiding the control
+  somebody is part-way through using is still the wrong thing to do to them.
+
+### The controls are one piece of glass
+
+*Asked for 2026-08-31, by Gal: "can we make the menus and the playback buttons
+more appealing?", with "a little bit transparency".*
+
+**The transparency had to go up and the panelling had to come down, or it reads
+as fog rather than glass.** The transport was a `#0b1116cc` slab with
+`blur(8px)`, and every button standing on it was opaque `--panel-2` — so the
+blur was already doing its work behind a row of grey rectangles that hid it.
+Making the slab *more* transparent under those same buttons would only have
+made the frame vaguer while the buttons stayed exactly as heavy. So the panel
+takes the transparency and the buttons stop being panels: a wash, a hairline,
+and the blur reading through the whole control as one surface.
+
+- **The scrub had no styling at all** — a default `input[type=range]`, which on
+  this page meant a bright blue system bar across the bottom of an island at
+  dusk. It was the least considered thing in the chrome and the widest. It is
+  drawn as what it is now: a line the round is played along, filled in the same
+  fire as the play button. WebKit paints a range track in one piece — there is
+  no `::-moz-range-progress` on its side — so the fill is a gradient stop, and
+  the stop is a number only the script knows: `scrubbed()`, called on seek, on
+  drag, and when `max` arrives with the timeline.
+- **Play is the primary action and is drawn as one**: fire-filled, dark-labelled,
+  with the two steps as quiet circles beside it. It was one of three identical
+  grey rectangles, so nothing on the row said which one anybody wanted. It
+  **keeps its word** — "play", "pause", "replay" — because a round button with a
+  glyph in it would have been prettier and thrown that away: a bare pause glyph
+  on a phone is a shape a viewer has to decode, and `ended()` has a third state
+  no single glyph says at all. Running, it drops back to the row's own register:
+  the island is moving and the button's job is to stop it.
+- **The button row is one bar, not seven tiles.** Seven separately bordered
+  squares is seven frames to look past to reach seven glyphs. The frame is drawn
+  once now, in the same material as the transport, so the two pieces of chrome
+  read as one family. The grouping is horizontal and so is its padding: padded
+  on all four sides it stood 50px against the buttons' 40, and reached 2px into
+  the round's state at every portrait size and 6px into the counts in landscape.
+  The first fix for the landscape half was to push the counts down, and that
+  bought the clearance from the island — `uncovered` measured `.counts`
+  covering 3% of the drawn land. A landscape phone is 390px tall and every
+  pixel of that band comes off the island, so the row gives the 2px back
+  instead.
+- **`--fire` is spent on the play button and the scrub**, and nowhere else in
+  the chrome. It is the sun, the hearth and every rope on the island — the
+  page's one accent — and the control that starts the island moving is the
+  place in the chrome that has earned it.
+
+One collision came with it, on a phone only: the quiet label was drawn straight
+through the key's caption — "a wider column is a good its owner wants mo|after
+5.1s quiet". The desk keeps the transport centred and the key off in the left
+margin so the two never meet; a phone gives both the full width. The label is
+lifted clear rather than dropped, because what the pace skipped over is the one
+thing on the page that says a silence was compressed, and a viewer who cannot
+see it reads a busy board.
+
 ### The split screen goes, and the island keeps the frame
 
 *Decided 2026-08-30, by Gal: "we don't need to stay with the split screen …
@@ -4368,6 +4699,12 @@ measured, and were timed rather than assumed before being placed: 7.0s, 8.0s
 and 24.0s, so `quick` by the same rule. That is what adding a check costs now —
 one run of `--only` and a line in `checks()`, with `test_render_gate.py`
 refusing a check that lands in neither group.*
+
+*`crowding` arrived the same way and was placed the same way: **32.6s** in a
+full `--group quick` run (632.4s total, 0 unexpected), so `quick`. It had been
+put there on the guess that "three mounts and forty cheap evaluates" was cheap,
+which was right by luck — it walks every frame at three viewports, and the rule
+is a measurement, not an estimate of one.*
 
 Measured on this machine, each group run as its own job, both clean:
 
