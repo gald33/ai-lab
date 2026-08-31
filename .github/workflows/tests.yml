@@ -165,6 +165,27 @@ jobs:
       - run: python -m pytest games/island/tests/test_hand_crypto.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+      # The hand's two pages and the grammar its buttons compose. Both are
+      # here for the reason the lobby's countdown test is: they check what a
+      # page *does*, which no assertion on rendered markup can see.
+      #
+      # `test_hand_lobby_lines.py` pits the JS composer against
+      # `protocol.py` in both directions -- a line it writes that Python
+      # refuses loses a driver their table in silence, and an input it turns
+      # away that Python allows shrinks the game for nothing.
+      #
+      # `test_hand_pages.py` drives the pages against a real hub and reads
+      # what they posted back with a real Python client. That is the only
+      # check on the wire format: sealing contexts, the `{b, ch, s}` wrapper,
+      # and a signature computed over the right channel. It caught the
+      # signature being over the blinded channel instead of the plaintext
+      # one -- a line that posts, arrives, opens, and verifies as `mismatch`,
+      # which is invisible from inside the browser.
+      - run: >
+          python -m pytest games/island/tests/test_hand_lobby_lines.py
+          games/island/tests/test_hand_pages.py -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
       # The pictures the run measured, kept whether it passed or failed: a
       # threshold on a rendered image is not arguable without the image.
       - if: always()

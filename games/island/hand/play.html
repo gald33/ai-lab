@@ -1,0 +1,196 @@
+<!doctype html>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>The island — playing a seat by hand</title>
+<!--
+  The hand's island. Where a driver plays the seat they took in the lobby.
+
+  Three things it does and nothing else: shows the room's board, opens what
+  was whispered to this seat, and posts what the driver types. The shortcut
+  buttons compose the manager's three forms; the input bar posts anything at
+  all, because the manager reads board text and a driver may say whatever they
+  like to the room.
+
+  **There is no validation gate here.** The manager never repairs a malformed
+  line into a plausible one, and a page that refused to post one would be
+  playing a different game from the agents at the table, who can post a
+  malformed line and lose the exchange. What the page does instead is show
+  what it is about to send.
+
+  The declaration is posted once, on arrival, as a side effect of using this
+  page -- which is the whole mechanism by which declarations happen at all.
+-->
+<style>
+  :root { color-scheme: light dark; --edge: #8884; }
+  body { margin: 0 auto; padding: 1rem; max-width: 46rem; font: 15px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 1.3rem; margin: 0 0 .2rem; }
+  h2 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
+  .sub { color: #6b7280; margin: .2rem 0 1rem; }
+  fieldset { border: 1px solid var(--edge); border-radius: 6px; margin: 0 0 1rem; padding: .8rem; }
+  legend { padding: 0 .3rem; font-weight: 600; }
+  label { display: inline-block; margin: .2rem .8rem .2rem 0; }
+  input, button, textarea { font: inherit; padding: .3rem .4rem; }
+  button { cursor: pointer; border-radius: 5px; border: 1px solid var(--edge); }
+  #board div, #whispers div { font-family: ui-monospace, monospace; font-size: 12.5px;
+    padding: .15rem 0; border-bottom: 1px solid var(--edge); }
+  .who { color: #6b7280; }
+  .mine { border-left: 3px solid #2563eb; padding-left: .4rem; }
+  #say { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
+  pre { overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+        border: 1px solid var(--edge); border-radius: 5px; padding: .5rem; font-size: 12.5px; }
+  .warn { border-left: 3px solid #d97706; padding-left: .6rem; }
+</style>
+
+<h1>Playing a seat by hand</h1>
+<p class=sub id=who>Not connected.</p>
+
+<fieldset>
+  <legend>The room</legend>
+  <label>hub <input id=url size=34 value="https://switchboard.lucille-ai.com"></label>
+  <label>token <input id=token size=18 value="sb_public_lucille"></label><br>
+  <label>workspace <input id=workspace size=16 placeholder="island-g7"></label>
+  <label>key <input id=key size=44 placeholder="the invite's key"></label><br>
+  <label>channel <input id=channel size=10 value="island"></label>
+  <label>your name <input id=name size=14 placeholder="scout-v2"></label>
+  <label>seat <input id=seat size=6 placeholder="T1"></label>
+  <button id=enter>Enter the room</button>
+  <p class=sub>The workspace and key come from the invite the lobby posted for
+  your table. This page keeps the seat key you took it under.</p>
+</fieldset>
+
+<h2>What was whispered to you</h2>
+<div id=whispers></div>
+
+<h2>The board</h2>
+<div id=board></div>
+
+<fieldset>
+  <legend>Say something</legend>
+  <input id=say placeholder="PRODUCE bread=0.5 fish=0.5">
+  <p class=sub>
+    <button data-fill="PRODUCE ">PRODUCE</button>
+    <button data-fill="PROPOSE to= give=: want=:">PROPOSE</button>
+    <button data-fill="APPROVE p1">APPROVE</button>
+    <button data-fill="ACK ready">ACK</button>
+  </p>
+  <button id=post>Post it</button>
+  <p class=sub>Anything at all can be posted — the room is talk as well as
+  trade. Only the manager's three forms settle, and a line it does not
+  recognise is a line you did not play; it never repairs one.</p>
+</fieldset>
+
+<p id=says class=warn></p>
+
+<h2>Hand the seat to an agent</h2>
+<p class=sub>This brief names <em>this room only</em> — not the lobby — so an
+agent given it cannot open a table or take another seat in your name. It
+carries your seat's keys, because the lobby witnessed one key for this seat
+and the manager refuses any line that does not match it. Handing it over hands
+away this one game.</p>
+<button id=makeBrief>Show the brief</button>
+<pre id=brief hidden></pre>
+
+<script type=module>
+import { Hub } from "./hub.js";
+import * as identity from "./identity.js";
+import { declaration } from "./declaration.js";
+import { brief } from "./brief.js";
+
+const $ = (id) => document.getElementById(id);
+const say = (text, bad) => {
+  $("says").textContent = text;
+  $("says").style.borderLeftColor = bad ? "#dc2626" : "#16a34a";
+};
+
+let hub = null;
+let seat = null;
+const params = new URLSearchParams(location.search);
+for (const field of ["workspace", "key", "channel", "name", "seat"]) {
+  if (params.get(field)) $(field).value = params.get(field);
+}
+
+for (const button of document.querySelectorAll("[data-fill]")) {
+  button.addEventListener("click", () => {
+    $("say").value = button.dataset.fill;
+    $("say").focus();
+  });
+}
+
+async function refresh() {
+  const rows = await hub.history($("channel").value, { limit: 200 });
+  $("board").replaceChildren(...rows.slice(-60).map((row) => {
+    const line = document.createElement("div");
+    if (row.from === hub.agentId) line.className = "mine";
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = `${String(row.from || "?").slice(0, 6)} `;
+    line.append(who, document.createTextNode(
+      typeof row.body === "string" ? row.body : JSON.stringify(row.body)));
+    return line;
+  }));
+  const whispers = await hub.inbox({ limit: 20 });
+  $("whispers").replaceChildren(...whispers.map((row) => {
+    const line = document.createElement("div");
+    line.textContent = typeof row.body === "string"
+      ? row.body : JSON.stringify(row.body);
+    return line;
+  }));
+  window.HAND_BOARD = rows;
+  window.HAND_WHISPERS = whispers;
+}
+
+$("enter").addEventListener("click", async () => {
+  try {
+    // Keyed by the driver's name, not by the room: the key the lobby
+    // witnessed has to be the key that plays here, and a second identity
+    // would be a seat the manager refuses. See `lobby.html`.
+    seat = (await identity.load($("name").value)) ||
+           (await identity.mint($("name").value));
+    const table = $("workspace").value;
+    hub = await Hub.open({
+      url: $("url").value, token: $("token").value,
+      workspace: table, key: $("key").value,
+      identity: seat, alias: $("name").value,
+    });
+    await hub.register($("name").value);
+    await hub.roster();
+    // Posted once, on arrival: the declaration happens because the page was
+    // used, which is the only mechanism there is for making it happen at all.
+    await hub.say($("channel").value, declaration($("seat").value));
+    $("who").textContent =
+      `${$("name").value} in ${table}, seat ${$("seat").value}, ` +
+      `key ${seat.publicKey.slice(0, 12)}… — declared as driven.`;
+    say("In the room, and the board says a person is driving this seat.");
+    await refresh();
+    window.HAND_READY = true;
+  } catch (err) { say(String(err.message), true); }
+});
+
+$("post").addEventListener("click", async () => {
+  if (!hub) return say("Enter the room first.", true);
+  try {
+    const line = $("say").value;
+    if (!line.trim()) return;
+    await hub.say($("channel").value, line);
+    $("say").value = "";
+    say("Posted.");
+    await refresh();
+  } catch (err) { say(String(err.message), true); }
+});
+
+$("makeBrief").addEventListener("click", () => {
+  if (!seat) return say("Enter the room first.", true);
+  $("brief").hidden = false;
+  $("brief").textContent = brief({
+    seat: $("seat").value,
+    workspace: $("workspace").value,
+    roomKey: $("key").value,
+    channel: $("channel").value,
+    agentId: $("name").value,
+    signingKey: seat.secrets.signingPkcs8,
+    exchangeKey: seat.secrets.exchangePkcs8,
+    episodes: Number(params.get("episodes") || 8),
+    seconds: Number(params.get("seconds") || 60),
+  });
+});
+</script>

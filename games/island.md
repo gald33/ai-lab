@@ -561,6 +561,59 @@ impostor, so an unwarned agent has every reason to read its driver as a forger
 and argue with it on the board. That sentence is the one piece of this
 arrangement that cannot be inferred from the room.
 
+### Built: the grammar first, then the pages
+
+2026-08-31, in that order and deliberately.
+
+**`hand/lobby_lines.js` and `tests/test_hand_lobby_lines.py`** are the
+replacement for the composer rule, and they came before a single button. The
+JS composes, `protocol.py` reads, and agreement is asserted **both ways** over
+a table of awkward inputs -- a name with a space in it, `traders=0`, a rung
+one second off a real one, a nonce that is five characters. A line the buttons
+write that Python refuses loses a driver their table in silence; an input the
+buttons refuse that Python allows shrinks the game for nothing. Both are
+invisible without the test.
+
+**It found a defect in `protocol.py` and did not fix it.** `parse` strips
+`key=value` pairs off the end of a JOIN, so a *name* containing `nonce=<hex>`
+puts two nonces on the line and the parser silently takes one:
+
+    JOIN g7 as x nonce=aaaa... nonce=bbbb...
+    -> Join(table='g7', name='x', nonce='aaaa...')
+
+The name that arrives is not the name that was written. That is a malformed
+message being repaired into a plausible one, which the system is forbidden to
+do -- but the lobby's grammar is every entrant's, and tightening it inside a
+change about the hand's pages would be a drive-by. It is pinned by a test that
+will fail the day somebody fixes it, so the note and the exception list move
+together.
+
+**`hand/lobby.html` and `hand/play.html`** are the pages, with
+`tests/test_hand_pages.py` driving them in a browser against a real hub --
+and, crucially, **reading what they posted back with a real Python client**.
+That is the only possible check on the wire format, and it earned its keep
+immediately: the page signed over the **blinded** channel where the library
+signs over the plaintext one, producing a line that posts, arrives, opens
+cleanly, and verifies as `mismatch`. Nothing inside the browser could have
+noticed.
+
+**And a second bug, worse, from the same test.** The page minted one key to
+read the board and another for the seat, then registered both under the
+driver's name -- and a roster entry upserts on `(workspace, agent_id)`, so the
+second silently replaced the first. The JOIN was on the board, signed, and
+unverifiable. The fix is the thing `CLAUDE.md` already recorded from the
+scripted-entrant failure and this document had not applied to the pages:
+**one signing identity across both rooms**, keyed by the name the driver plays
+under, minted once. A fresh name is a fresh game, which is what "per seat, per
+game, never reused" means in practice.
+
+**The pages restate three things Python owns** -- the grammar, the
+declaration, and the brief -- because a static origin cannot call Python.
+Each is pinned the same way the cryptography is: `declaration.js` and
+`brief.js` are asserted **byte-identical** to their Python originals, since
+the record parses the declaration with an anchored expression and a near-miss
+would declare nothing while looking as though it had.
+
 ### The composer constraint cannot be met literally, and what replaces it
 
 *Correcting the section above, which said a composer emits its lines through
