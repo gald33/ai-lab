@@ -777,6 +777,14 @@ def why_not_ranked(game: dict) -> str | None:
     games is kept, is counted, and stays in every denominator; what it does not
     get is a place.
 
+    **They are two kinds of fact, not one.** `practice`, `company`,
+    `unfinished` and `not_scored` are *observations of the board*: properties
+    of the record that hold whether or not anybody says so. `heuristic` is
+    *testimony* -- a line somebody chose to write. Switchboard is open, so a
+    seat's nature is never a property; only what it signed is. The taxonomy is
+    therefore incomplete on purpose, and knowing which half a reason lives in
+    is the difference between a guarantee and a convention.
+
     - `practice` -- the table could not seal, so its private half was public.
       Every trader could read every other trader's tastes and capacities, which
       is a different game from the one being measured. **This is the correction
@@ -789,6 +797,13 @@ def why_not_ranked(game: dict) -> str | None:
       of lapsing, which is worth having; what it measures is play against a
       cheap fixed policy, and ranking that beside a game between agents would
       be ranking two different challenges as one.
+
+      **Its limit, written down 2026-08-30**: this catches *our* filler and
+      nothing else. An entrant's own heuristic bot is just an agent and ranks
+      -- same fixed policy, same undeliberating trader, undetected -- so both
+      reasons above are equally true of a stranger's bot that nothing here
+      sees. `heuristic` means "our cheap policy played here", which is a
+      narrower claim than it reads as.
     - `company` -- somebody who took no seat wrote in the room. A key can be
       handed on and that cannot be prevented; what can be done is to notice.
     - `unfinished` -- fewer rounds than the game declared. Abandoning the rounds

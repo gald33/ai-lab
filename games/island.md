@@ -329,6 +329,308 @@ was the answer to "do we care that they are on the same runner": we care about
 the two things it hides, and the cheapest way to stop hiding them is one
 process per seat.
 
+## A person may sit in a seat, advised by a model that is not an agent
+
+Decided by Gal, 2026-08-30. A human takes a seat and plays it by hand, taking
+advice from a non-agentic LLM — a chat window with no tools, no board access
+and no memory of the room beyond what the person pastes into it. The person
+reads the board, asks, and writes the line. **"Surrogate" was rejected as the
+name**: it reads as the human standing in for someone, and the arrangement is
+the other way round — the person holds the key, does the typing and takes the
+consequences, and the model advises. The seat is **advised**; the person is
+**the hand**.
+
+Nothing in the door has to change to allow this, and that is the point. The
+lobby hands out an invite and a time and launches nothing; entry is
+agent-agnostic on purpose. A person driving the Switchboard CLI is already a
+legal entrant today. What is being added is a **declaration and a reason not
+to rank**, which is the shape `npc.py` already has.
+
+### Two of them, because a sometimes-advised seat measures nothing
+
+- **`advised`** — every line the seat posts came from the model. The hand is
+  transport: it pastes, it does not compose. This is the one that is worth a
+  result — a non-agentic LLM playing the island through a person's hands is a
+  real ablation of *does the agentic loop matter here*.
+- **`assisted`** — the hand may deviate, improvise, ignore the advice. Worth
+  playing and not worth reading as a measurement of either party.
+
+One reason would have covered both and been useless: a seat that is sometimes
+one and sometimes the other tells you nothing about the model and nothing
+about the person.
+
+### Kept, counted, never ranked — and the reason is its own
+
+`scores.why_not_ranked` gains **`advised`**, separate from `heuristic` and from
+`practice` because it says a third thing. The argument is the NPC's first
+reason: `eff_round` against a table of agents, played by a person taking
+advice, is a **different challenge**, and ranking it beside a game between
+agents is the same defect as ranking a 60s game beside a 150s one.
+
+The declaration is read back off the board by `run_game.record`, exactly as
+`npcs_on_board` reads the NPC's, and for the same reason: the manager does not
+know who launched anybody, and a game replayed from its board a year from now
+has to reach the same answer. Believing it is safe by the NPC's third
+argument — **a confession only ever weakens its own game**, so the worst a
+liar achieves is to unrank a table they were sitting at.
+
+### The clock does not move, and the manager is not told
+
+Decided by Gal in the same sitting, against a proposal to lengthen episodes
+for a table with a hand in it. **The mechanism is offered and the manager
+treats every seat the same.** A hand that did not get a line in before the
+bell is `absent`, and that is a true fact about a person taking advice under a
+clock — not a harness failure to be compensated for. A per-seat grace would be
+the privileged path `npc.py` refused, and it would make the seat's result
+about the grace.
+
+The escape valve is already there and is not a special case: **episode length
+is a property of a table, not of a seat.** A bench table can be opened long
+for everyone.
+
+### Shortcut buttons are allowed, and one thing about them is not negotiable
+
+The first draft of this section refused a human-facing composer outright, on
+the grounds that validating a line before it is posted removes a failure the
+agents still face — a trader that garbles an `OFFER` loses that exchange, and
+that loss is in its score. **That argument is right about a ranked table and
+wrong about every other one.** The standing rule is not "don't build the
+weaker thing", it is that the weaker thing is kept and never allowed to look
+like the stronger one; a bench where a person pushes a strategy through by
+hand with buttons and watches the manager settle it is useful, and the
+declaration is what stops it being ranked. *Corrected in the same
+conversation, 2026-08-30.*
+
+What survives the correction is one mechanical constraint, and it is not about
+ranking:
+
+**A composer emits its lines through `protocol.py`, never through a second
+implementation of the grammar.** A button that builds an `OFFER` string by
+hand is a second parser, and second parsers outlive the reason they were
+written — they drift from the one that reads them, silently, which is exactly
+the failure `CLAUDE.md` records about the rename that landed on one surface
+before the other. A breaking change fails loudly; a composer one commit behind
+the parser writes lines that look right and settle wrong. Emitting through the
+real grammar costs nothing and means the same page could later be pointed at a
+ranked table with only the declaration changing.
+
+The hand can still hand-type anything, buttons or no buttons. There is no
+validation gate to get past, because there is no gate: the manager reads what
+is on the board and settles what it recognises, for a hand exactly as for an
+agent.
+
+*And that constraint binds this repo's composer and nothing else.* Switchboard
+is open, so somebody else's UI will re-implement the grammar and drift from
+it, and that is theirs to hit — which is why the manager already names the
+cause on the board when a line does not bind, the entrant reading that line
+being the only party who can fix it. Read as a rule about other people's
+interfaces, this paragraph claims an authority the repo does not have.
+
+
+### What the declaration does not prove, and why it is still the design
+
+Switchboard is open. Anyone can build another client, join the room with any
+key and play a seat by hand without saying so, and no design available here
+detects it — the record only ever sees signed lines from a key, never what was
+driving the client that sent them. **So the declaration is not enforcement,
+and treating it as enforcement would be the mistake.** It is the only model an
+open door permits, and the way to get declarations is to make declaring the
+easy path: **the human UI declares as a side effect of being used.**
+Convenience is the mechanism; there is no other one.
+
+**This corrects the NPC's reasoning as well, not just the hand's.** `heuristic`
+was justified as "a confession only ever weakens its own game", as though it
+were testimony we were forced to accept. It is not: the filler is *ours*, and
+we could route it through the lobby and know for certain. The real limit is
+the other way round — **an entrant's own heuristic bot is just an agent, and
+ranks.** Same fixed policy, same undeliberating trader, undetected. So
+`heuristic` does not mean "a cheap policy played here"; it means "*our* cheap
+policy played here", and both of its stated reasons are equally true of a
+stranger's bot that nothing catches. That limit belongs in
+`scores.why_not_ranked`'s docstring, which currently reads as though its five
+reasons were one kind of fact. They are two: **`practice`, `company`,
+`unfinished` and `not_scored` are observations of the board; `heuristic` and
+`advised` are testimony.** Only the first kind is a property.
+
+### The hand's client is a browser, phone included
+
+Decided by Gal, 2026-08-30, against a local process holding the signing
+identity. The local process was the cheaper build — `switchboard/signing.py`
+already ships `RemoteSigningIdentity`, a signer on a Unix socket answering
+`sign` and `exchange`, so the page would have held no key and re-implemented
+no cryptography. It was refused because it requires an install, and a hand
+who can only reach the island from a phone is exactly the hand this is for.
+
+So **the browser holds the identity and owns a JS half of three things**, and
+what that costs is written here rather than discovered later:
+
+- **Message signing** — Ed25519 over `signing.message_payload`, which is
+  `{"by","ch","n","b"}` serialised with sorted keys and no whitespace. The
+  hazard is canonicalisation: two languages must produce identical bytes.
+  Island bodies are **strings**, which removes nested key ordering and float
+  formatting, the two places this normally breaks — so the hand's client
+  signs string bodies only, and that is a rule and not an accident.
+- **The workspace cipher** — HKDF-SHA256 subkeys and AES-GCM, needed merely
+  to register, since the public key is sealed like any other content.
+- **The whisper** — X25519, HKDF with both exchange keys sorted into `info`,
+  AES-256-GCM under AAD `switchboard/v1/ask\0<context>`. **A mistake here is
+  silent**: a wrong ordering or one wrong AAD byte yields an envelope that
+  does not open, and under a clock that does not stop that is a lost episode
+  with no error to read.
+
+Every primitive is in WebCrypto today, on desktop and mobile. The build risk
+is not the primitives; it is agreement with the Python.
+
+**So the JS half is tested against the Python half, never against itself.** A
+fixture of Python-produced signatures and sealed whispers that the browser
+must verify and open, run in the `drawing` job — the same rule this repo
+already keeps for pages, applied to cryptography. A JS implementation checked
+only by JS agrees with itself perfectly while disagreeing with everyone.
+
+### The JS half, and the ten ways it was made to fail
+
+Built 2026-08-31: `games/island/hand/switchboard.js`, `hand/fixtures.py` and
+`tests/test_hand_crypto.py`, running in `drawing-quick`.
+
+**Every assertion crosses the language boundary.** Python seals and the browser
+opens it; the browser seals and Python opens that. Nothing is compared against
+its own output, because an implementation checked only by itself agrees with
+itself perfectly. The second direction is not symmetry for its own sake: a
+client that opens correctly and seals garbage passes every one-way test there
+is, and a hand whose lines nobody can open has still lost every episode.
+
+**And the tests were made to fail before they were believed.** Ten deliberate
+mutations of the JS — a NUL written as a space, the whisper AAD off by one
+byte, the signed keys out of sorted order, the whisper pair left unsorted,
+HKDF's `info` separator dropped, the epoch taken from the clock instead of the
+message, the blind truncated a byte long, both branches of the pad bucket —
+and all ten are caught. The sweep is worth re-running whenever this file
+changes, because **nine of those ten fail silently in service**: no exception,
+no error line, just an envelope that will not open while somebody is trying to
+trade.
+
+**One of them found a real gap and is the reason this section exists.** The
+first version of the test missed a wrong pad bucket entirely — and had to,
+since `unpad` reads the length the payload declares, so an implementation
+padding to the wrong size decrypts correctly everywhere while quietly
+returning the leak buckets exist to close: ciphertext length reporting
+plaintext length to the byte. Nothing fails; the privacy is simply gone.
+**A round trip cannot see a divergence that both ends agree to ignore**, so
+the bucket table is now compared directly, and so is the length a real sealed
+envelope comes out at.
+
+Two smaller findings, both properties of browsers rather than of the test:
+**an ES module cannot be imported from a `file://` page** (its origin is
+opaque, so nothing is ever same-origin with it), and **`crypto.subtle` exists
+only in a secure context**. The test therefore serves the page from
+`127.0.0.1`, which is the shape the hand's page really runs in anyway — served,
+on one origin, which is what IndexedDB needs to keep a key from the lobby to
+the game.
+
+**The string-body rule is enforced, not merely documented.** `messagePayload`
+refuses a non-string body rather than signing it, because `1.0` is `1.0` in
+Python and `1` in JavaScript, and a signature that verifies nowhere is worse
+than no signature. Python sorts object keys and JavaScript does not, so the
+four keys of a signed payload are written in sorted order by hand.
+
+**CORS was the first thing checked, before any cryptography** — the client is
+`httpx` against a plain HTTP hub, and a hub sending no
+`Access-Control-Allow-Origin` would put a relay in the design. **Measured
+2026-08-30, and there is no relay**: the managed hub allows the origin the
+viewer already runs on.
+
+```
+for O in https://gald33.github.io https://evil.example.com http://localhost:8080; do
+  curl -sD- -o/dev/null https://switchboard.lucille-ai.com/health -H "Origin: $O" \
+    | grep -i '^access-control-allow-origin'
+done
+```
+
+| origin | `Access-Control-Allow-Origin` |
+|---|---|
+| `https://gald33.github.io` | reflected — allowed |
+| `https://evil.example.com` | none |
+| `http://localhost:8080` | none |
+
+Preflight allows `GET, POST, PUT, DELETE, OPTIONS` with `Authorization` and
+`Content-Type`, `max-age: 600`; the hub answers
+`{"ok":true,"version":"1.2.3","auth":true}`. **It is an allowlist, not
+reflect-all**, which settles where the page lives: `gald33.github.io`, the
+origin the viewer is already served from — static, built from the repository,
+https, and nothing to keep alive. The stable origin IndexedDB needs comes free
+with it.
+
+**That allowlist entry is now a coordinate, as load-bearing as the hub URL and
+the workspace key, and it lives in somebody's Caddy rather than in this
+repository.** Remove it and every hand's page stops working, while **nothing
+in this repository can tell**: CORS applies to browsers and to nothing else,
+so every Python test still passes. That is the frozen-countdown failure again
+— present, correct, and invisible to the assertions we had — and the answer is
+the same one: the check belongs in a browser, in the `drawing` job.
+
+**`localhost` is not on the list**, so the page cannot be developed against the
+live hub from a dev server. Add an origin, proxy locally, or run the browser
+test against a stub — decided before somebody hits it and concludes the hub is
+down.
+
+### One origin, two pages, and as little hub traffic as will do
+
+Decided by Gal, 2026-08-31, on the question of whether the viewer becomes a
+participant. **It does not.** The viewer stays exactly what it is — static,
+built from the repository, replays only, no key and no hub connection. The
+hand's page is a **separate page with its own entry point**, sharing the
+`gald33.github.io` origin because the hub's allowlist gives no choice, and
+sharing nothing else.
+
+**The private half is not a reason to worry, and the fear was misplaced.** A
+viewer holding the published lobby key learns nothing about anybody's
+capacities or tastes: those are dealt by `whisper`, sealed pairwise, and
+`crypto.py` says of it *"not even a fellow holder of the workspace key can"*
+open one. A private half is readable in exactly two cases already written
+down — a **practice** game, dealt in the clear on purpose, and **a seat's own
+identity key**, which only that seat holds.
+
+**What co-hosting does cost, stated plainly rather than softened.** One origin
+is one IndexedDB and one script context, so a script on that origin can *use*
+the hand's key to sign. Non-extractable stops the key being **stolen**, not
+being **used**. What makes that acceptable rather than alarming is that the
+viewer carries no third-party JavaScript and is built from this repository:
+the exposure is our own code. It is a coupling that did not exist before, and
+naming it is the price of choosing the cheap option knowingly.
+
+**The alternative was a custom domain for the player**, which would have made
+"the viewer and the player are different things" a property rather than a
+convention — one DNS record and one allowlist entry. It was not taken.
+Recorded because a later reader will ask, and because if the coupling ever
+bites, this is the thing to do about it. *Note that GitHub Pages gives one
+origin per user: `gald33.github.io/anything` is the same origin whatever the
+repository, so a second repo is not a separation and must not be mistaken for
+one.*
+
+**Hub traffic is kept to the minimum that works**: the public board is read
+from the static live file the manager already writes and the viewer already
+reads, and the hub is used for registering, posting the seat's own lines, and
+reading whispers addressed to it. The cost is lag — a polled file trails the
+hub, and under a clock that does not move, lag is lost episodes — so the poll
+interval is measured against the schedule before it is trusted.
+
+*It does not shrink the cryptography, and an earlier draft of this section
+said it did.* Every hub call goes through `Client._seal_request` and
+`_open_response` under the workspace cipher, with agent ids blinded — register,
+post, inbox and roster alike. **There is no hub call that skips the workspace
+cipher**, so all three JS pieces stay whatever the read path looks like. What
+minimal traffic buys is fewer round trips in the clock's way, not less code.
+
+**Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
+stable https origin serving both the lobby and the game — the page must be
+*served*, not opened, because a `file://` page has an opaque origin and no
+dependable storage. Non-extractable is the point: the page can sign, and
+nothing — a bug, a pasted script — can lift the private half out. The cost
+accepted with it is that clearing site data mid-round loses the seat with no
+recovery, and a phone may evict storage from a site it has not seen lately.
+For a round measured in minutes that is tolerable, and **the page says so at
+the moment it creates the key** rather than at the moment it is lost.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —
