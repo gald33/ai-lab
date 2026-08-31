@@ -745,6 +745,65 @@ on 2026-08-30 — counter moving under probe, direct-to-origin refused from two
 external vantages. Moving it to a host outside that would give up a control that
 is now known to work rather than assumed to.
 
+#### What was actually built, 2026-08-31
+
+The runbook below was written before anyone looked at the box, and two of its
+steps were wrong. Kept, with this note above it, because the corrections are
+the useful part.
+
+**There was no `/games/*` to move.** The prefix in the section above is the
+planned post-#174 state and was never deployed: the live Caddyfile had zero
+mentions of `games`, and `island.lucille-ai.com/games/index.json` answered 404.
+The record — 48 files, 12 games — sat unserved in `~/island/results/`. So step
+1 was not a move but a **first publication**, and step 2 ("stop serving
+`/games/*` on the old name") had nothing to stop.
+
+**What exists now:**
+
+- `record.lucille-ai.com` — proxied A record to the same origin, created
+  2026-08-31.
+- A second site on the island's existing `:2096` Caddy, with a second
+  read-only mount `~/island/results` -> `/srv/record`. It serves `/games/*`
+  via **`handle_path`**, not `handle`: the files sit at the root of the mount
+  (`results/` has no `games/` subdirectory), so plain `handle` would have
+  resolved `/games/x.json` to `/srv/record/games/x.json` and 404'd every file.
+- GET/HEAD only with 405 otherwise, `index off`, payloads `immutable`,
+  `index.json` `no-store`.
+
+Verified from the box: reveal and board 200; `/games/../lobby.json` 404;
+directory listing 404; `/` 404; POST 405; the lobby unbroken at 200.
+
+**Why serving the whole of `results/` is safe, and it is a property of the
+writer rather than of this config.** `run_game.publish` writes the reveal — the
+seed and the room key — only after the last bell: *"revealing the seed's tastes
+mid-round would hand every trader its rivals' preferences, so the sidecar is
+written at the end and not before"*. The run record is written on the adjacent
+line of the same post-game block. So **a seed-bearing file existing there is
+itself evidence that its game is over.** `board-*` and `archive-*` carry no
+seed at all. Checked 2026-08-31: 12 settled tables, 12 reveals, exactly 1:1,
+newest game 18.7h old.
+
+What must never be reachable is `~/island/lobby.json`, which holds the seeds of
+tables that are settled and **still playing**. It sits one level above both
+mounts. Mount `results/`, never its parent.
+
+**Two things caught by checking rather than by reasoning**, worth repeating
+because both would have shipped looking like something else:
+
+- `file_server { index off }` — copied from the block in the section above — is
+  **invalid Caddyfile**; braces do not open and close on one line. `caddy
+  validate` caught it *before* the container was recreated. Validate first: the
+  same step skipped on the hub earlier that day opened its perimeter.
+- The `handle` vs `handle_path` bug above would have 404'd every file, and the
+  first external test returned a TLS error instead, which would have masked it
+  completely.
+
+**Still outstanding:** Cloudflare needs an **origin rule rewriting 443 -> 2096**
+for `record.lucille-ai.com`, the twin of the one `island.lucille-ai.com`
+already has. Until it exists the host answers **525** from outside — Cloudflare
+handshaking with an origin port nothing listens on. The DNS token on the box is
+scoped to DNS only and cannot create rulesets, by design.
+
 #### Doing it, in an order where nothing is dark in between
 
 The record moves first. If the lobby's hostname is repointed while `/games/*`
