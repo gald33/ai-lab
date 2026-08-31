@@ -364,6 +364,12 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         # re-ingested from an old result file has it and one re-read from the
         # board reaches the same answer. Empty for a table of agents.
         "npcs": rnd.get("npcs") or {},
+        # Seat name -> `"driven"`, for a seat that declared a human driver.
+        # Read off the board by `run_game.record`, like `npcs`, so an old
+        # result file and a fresh read of the board agree. Empty for a table
+        # nobody declared a hand at -- which is not the same as a table that
+        # had none, and `why_not_ranked` says so.
+        "hands": rnd.get("hands") or {},
         "island": {"seed": seed, "agents": agents, "goods": goods, "episodes": k,
                    "seconds": record.get("episode_seconds")},
         "players": [{"slot": n,
@@ -761,6 +767,8 @@ def games(rows: list[dict]) -> list[dict]:
             "arm": members[0]["arm"],
             "npcs": sorted({slot for m in members
                             for slot in (m.get("npcs") or {})}),
+            "hands": sorted({slot for m in members
+                             for slot in (m.get("hands") or {})}),
             "played_at": members[-1].get("played_at"),
             "played_from": members[-1].get("played_from"),
             "recorded_at": members[-1]["recorded_at"],
@@ -804,6 +812,22 @@ def why_not_ranked(game: dict) -> str | None:
       reasons above are equally true of a stranger's bot that nothing here
       sees. `heuristic` means "our cheap policy played here", which is a
       narrower claim than it reads as.
+    - `driven` -- a seat declared a human driver
+      (`games/island/hand/declaration.py`). A third thing again: the private
+      half was sealed, nobody at the table was arithmetic, and one of the
+      traders was a person under the same clock as everybody else. `eff_round`
+      against a table of agents, played by a person, is a different challenge
+      -- which is the argument `heuristic` makes, and the only one of its two
+      that survives here.
+      **It says a driver was there and nothing about how much they drove**,
+      because the driver may hand the seat's keys to an agent and the two then
+      post under one signature. Nothing on the board can separate them, so the
+      reason does not pretend to. *An earlier version had two reasons here,
+      `advised` and `assisted`; they claimed a distinction the record cannot
+      support and were collapsed on 2026-08-31.*
+      Testimony, and unverifiable: an open room means a person can drive a
+      seat in silence and nothing notices. Believing it is safe for the reason
+      a confession is always safe, and the silence is not caught by anything.
     - `company` -- somebody who took no seat wrote in the room. A key can be
       handed on and that cannot be prevented; what can be done is to notice.
     - `unfinished` -- fewer rounds than the game declared. Abandoning the rounds
@@ -814,6 +838,8 @@ def why_not_ranked(game: dict) -> str | None:
         return "practice"
     if game.get("npcs"):
         return "heuristic"
+    if game.get("hands"):
+        return "driven"
     if not game["uninterrupted"]:
         return "company"
     if not game["finished"]:

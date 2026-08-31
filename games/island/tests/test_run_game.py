@@ -27,6 +27,7 @@ from switchboard.config import ClientConfig
 from switchboard.crypto import generate_key
 
 from games.island import live, npc, run_game
+from games.island.hand.declaration import declaration
 from games.island.lobby import Lobby, Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
@@ -156,7 +157,56 @@ def test_a_settled_table_plays_through_and_lands_on_the_scoreboard(settled, hub,
     assert row["eff_round"] is not None and row["autarky_floor"] is not None
 
 
-def _play_scripted(table, invite, room, out: Path):
+def test_a_hand_at_the_table_makes_it_practice_without_lying_about_the_seal(
+        settled, hub, tmp_path):
+    """A seat taken through the hand's buttons is a bench game, and says so.
+
+    **The two flags say different things and must keep saying them.** The
+    record's top-level `practice` is the broad one -- "not a clean ranked
+    game" -- and an NPC has set it since fillers existed; a hand sets it now
+    by the same precedent. `arm` answers the sealing question alone, so it
+    stays `sealed` for a table that sealed, whoever was sitting at it.
+
+    That distinction is the whole test. `scores.why_not_ranked` reads `arm`,
+    so collapsing the two would hold this game out under `practice` -- a claim
+    about the private half that is simply false here -- instead of `advised`,
+    which is the true reason. Two meanings of one word inside one record is
+    how a scoreboard comes to be read wrong.
+    """
+    import scores
+
+    lobby, table, seated, key = settled
+    invite = run_game.pending_invite(lobby, table)
+    # The same move the passing test makes: into the table's room with the
+    # invite, keeping the agent id -- and so the signing key -- each seat was
+    # witnessed under.
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="trading")
+
+    # The hand declares itself before it plays, exactly as the page will.
+    room["scout-v2"].post("island", declaration("T1"))
+
+    # Sealed, because that is the case worth asserting: a table that sealed
+    # perfectly well and had a person at it.
+    record, _ = _play_scripted(table, invite, room, tmp_path, sealed=True)
+
+    assert record["rounds"][0]["hands"] == {"T1": "driven"}
+    assert record["practice"] is True, "a bench game says so"
+    assert record["rounds"][0]["arm"] == "sealed", (
+        "the table sealed, and the record must not claim otherwise")
+
+    result = tmp_path / "g-hand.json"
+    result.write_text(json.dumps(record))
+    ledger = tmp_path / "ledger.jsonl"
+    scores.ingest(result, ledger=ledger, players=record["players"])
+    game = scores.games(scores.load(ledger))[0]
+    assert scores.why_not_ranked(game) == "driven", (
+        "held out for the true reason, not for a seal that was never broken")
+
+
+def _play_scripted(table, invite, room, out: Path, *, sealed: bool = False):
     """`run_game.play`, with the traders acting inside each episode.
 
     The runner's own loop waits on a wall clock, which a test must not: this
@@ -193,7 +243,8 @@ def _play_scripted(table, invite, room, out: Path):
         mgr.close_episode()
 
     board = run_game.save_board(mgr, out)
-    record = run_game.record(table, mgr, dealer, out, board=board, seconds=1.0)
+    record = run_game.record(table, mgr, dealer, out, board=board, seconds=1.0,
+                             sealed=sealed)
     return record, board
 
 

@@ -554,12 +554,49 @@ def test_a_game_with_a_heuristic_seat_is_kept_counted_and_never_ranked(tmp_path)
     assert told["capture"] is not None, "the score is kept, only the place goes"
 
 
+def test_a_game_with_a_hand_at_the_table_is_kept_counted_and_never_ranked(tmp_path):
+    """A seat declared a human driver (`games/island/hand/declaration.py`).
+
+    A third reason, not a rephrasing of the other two: the private half was
+    sealed, nobody at the table was arithmetic, and one of the traders was a
+    person under the same clock as everybody else.
+
+    One reason and not two. The driver may hand the seat's keys to an agent,
+    after which both post under one signature and nothing on the board can
+    separate them -- so a taxonomy that distinguished "the person relayed a
+    model" from "the person improvised" would be claiming what the record
+    cannot support.
+    """
+    ledger, _ = _ledger_of(tmp_path)
+    assert all(scores.is_ranked(g) for g in scores.games(scores.load(ledger)))
+
+    _ledger_of(tmp_path, hands={"T1": "driven"})
+    played = scores.games(scores.load(ledger))
+    assert [scores.why_not_ranked(g) for g in played] == ["driven"] * len(played)
+
+    data = scores.boards(scores.load(ledger))
+    assert data["totals"]["ranked"] == 0
+    assert data["totals"]["games"] == len(played)
+    assert data["totals"]["held_out"] == {"driven": len(played)}
+
+    told = scores.standing(scores.load(ledger), played[0]["game_id"])
+    assert told["ranked"] is False and told["why"] == "driven"
+    assert told["capture"] is not None, "the score is kept, only the place goes"
+
+
 def test_a_table_of_agents_says_so_by_saying_nothing(tmp_path):
     """The flag has to default to absent, or every game recorded before NPCs
-    existed would be held out of the ranking retrospectively."""
+    existed would be held out of the ranking retrospectively.
+
+    The same is true of `hands`, and for the same reason -- with the sharper
+    edge that a table of agents and a table somebody played by hand without
+    declaring it are *identical here*. Silence is not evidence of absence;
+    it is only what the record has.
+    """
     ledger, _ = _ledger_of(tmp_path)
     for game in scores.games(scores.load(ledger)):
         assert game["npcs"] == []
+        assert game["hands"] == []
         assert scores.why_not_ranked(game) is None
 
 

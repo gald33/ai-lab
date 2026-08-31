@@ -157,6 +157,42 @@ def test_the_start_block_shows_the_prompt_it_copies(hub):
     assert "isSecureContext" in page and "Select-copy" in page
 
 
+def test_the_lobby_links_to_the_door_a_hand_goes_through(hub):
+    """**The link is the whole dependency between the two, so it is checked.**
+
+    The hand's pages are separate, and this one stays static, keyless and
+    read-only because of it -- the originals are untouched, which is the
+    property that separation buys. What survives of the relationship is one
+    link, and a static file pointing at a URL fails silently when either end
+    moves: nothing here would notice, and a hand would simply never find the
+    door. An assertion is the difference between a convention and a check.
+
+    The sentence beside it moved too. It used to read "You do not play this
+    yourself -- your agent does", which stopped being true the moment a person
+    could take a seat.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert lobby_page.HAND in page
+    assert "rather take the seat yourself" in page
+    assert "never ranked" in page, "and what it costs, beside the offer"
+    assert "Ordinarily you do not play this yourself" in page
+    # **The offer says the person plays, and never that they help an agent
+    # play.** Both declared modes are person-driven -- in `advised` the hand
+    # carries the model's line, in `assisted` it may deviate -- and there is
+    # no mode where the agent plays while somebody assists it. Copy implying
+    # one would blur the two words the declaration exists to keep apart, and
+    # that blur would end up in somebody's `HAND:` line.
+    assert "you play the seat" in page
+    # And the offer is honest about the joint case, which is the intended
+    # one: a driver may hand the seat to an agent, and then nothing on the
+    # board separates them. Naming that here stops the page promising a
+    # distinction the record cannot keep.
+    assert "drive alongside it" in page
+    assert "how much you drove" in page
+    assert "help" not in page.lower().split("<footer>")[0]
+
+
 def _live(tmp_path, table_id="g1", finished=False):
     """A `--live` directory holding one game's board, running or finished."""
     d = tmp_path / "live"

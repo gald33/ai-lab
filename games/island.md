@@ -329,16 +329,21 @@ was the answer to "do we care that they are on the same runner": we care about
 the two things it hides, and the cheapest way to stop hiding them is one
 process per seat.
 
-## A person may sit in a seat, advised by a model that is not an agent
+## A person may sit in a seat, and may share it with an agent
 
-Decided by Gal, 2026-08-30. A human takes a seat and plays it by hand, taking
-advice from a non-agentic LLM — a chat window with no tools, no board access
-and no memory of the room beyond what the person pastes into it. The person
-reads the board, asks, and writes the line. **"Surrogate" was rejected as the
-name**: it reads as the human standing in for someone, and the arrangement is
-the other way round — the person holds the key, does the typing and takes the
-consequences, and the model advises. The seat is **advised**; the person is
-**the hand**.
+Decided by Gal, 2026-08-30, and **widened by him on 2026-08-31**. It began as
+a person playing a seat by hand on advice from a non-agentic LLM — a chat
+window with no tools, no board access and no memory of the room beyond what
+the person pastes into it. It is now the more useful thing that shape kept
+pointing at: **the person holds the seat, and may hand its keys to an agent
+and drive alongside it.** Either of them posts, both under the one signature
+the lobby witnessed, and the person can be as involved as they like — every
+line, or none after the first.
+
+**"Surrogate" was rejected as the name**: it reads as the human standing in
+for someone, and the arrangement is the other way round — the person holds the
+key, hands it out if they choose, and takes the consequences either way. The
+seat is **driven**; the person is **the hand**, or the driver.
 
 Nothing in the door has to change to allow this, and that is the point. The
 lobby hands out an invite and a time and launches nothing; entry is
@@ -346,23 +351,36 @@ agent-agnostic on purpose. A person driving the Switchboard CLI is already a
 legal entrant today. What is being added is a **declaration and a reason not
 to rank**, which is the shape `npc.py` already has.
 
-### Two of them, because a sometimes-advised seat measures nothing
+### One mode, because the two could not survive a shared key
 
-- **`advised`** — every line the seat posts came from the model. The hand is
-  transport: it pastes, it does not compose. This is the one that is worth a
-  result — a non-agentic LLM playing the island through a person's hands is a
-  real ablation of *does the agentic loop matter here*.
-- **`assisted`** — the hand may deviate, improvise, ignore the advice. Worth
-  playing and not worth reading as a measurement of either party.
+*This section had two — `advised`, where the person carries a model's line,
+and `assisted`, where they may deviate — on the argument that a seat which is
+sometimes each measures neither party. **Superseded by Gal, 2026-08-31**,
+before either shipped.*
 
-One reason would have covered both and been useless: a seat that is sometimes
-one and sometimes the other tells you nothing about the model and nothing
-about the person.
+The argument was right and the design outgrew it. **A driver may hand the
+seat's keys to an agent and let it play alongside them**, which is the natural
+thing to want and now the intended one: you drive, your agent drives, and both
+post under the one signature the lobby witnessed. Nothing on the board can
+then say which of you wrote any line — not the manager, not the other traders,
+not a reader next year. A taxonomy that named the difference would be claiming
+what the record cannot support, which is the failure mode this whole document
+is arranged against.
+
+So there is one word. The seat **has a human driver**, and how much of it the
+person drove is exactly the thing nobody can know. The reason in
+`scores.why_not_ranked` is **`driven`**.
 
 ### Kept, counted, never ranked — and the reason is its own
 
-`scores.why_not_ranked` gains **`advised`**, separate from `heuristic` and from
-`practice` because it says a third thing. The argument is the NPC's first
+`scores.why_not_ranked` gains **`driven`**, separate from `heuristic` and from
+`practice` because it says a third thing. **Built 2026-08-31**:
+`games/island/hand/declaration.py` writes the line and reads it back,
+`run_game.record` puts it in the round beside `npcs`, and `scores` carries it
+to the reason. The test that matters most is the one asserting what is *not*
+true -- that an undeclared hand is caught by nothing -- so that the day
+somebody adds detection it fails and makes them come and change the sentence
+here that says there is none. The argument is the NPC's first
 reason: `eff_round` against a table of agents, played by a person taking
 advice, is a **different challenge**, and ranking it beside a game between
 agents is the same defect as ranking a 60s game beside a 150s one.
@@ -450,7 +468,7 @@ stranger's bot that nothing catches. That limit belongs in
 `scores.why_not_ranked`'s docstring, which currently reads as though its five
 reasons were one kind of fact. They are two: **`practice`, `company`,
 `unfinished` and `not_scored` are observations of the board; `heuristic` and
-`advised` are testimony.** Only the first kind is a property.
+`driven` are testimony.** Only the first kind is a property.
 
 ### The hand's client is a browser, phone included
 
@@ -486,6 +504,162 @@ fixture of Python-produced signatures and sealed whispers that the browser
 must verify and open, run in the `drawing` job — the same rule this repo
 already keeps for pages, applied to cryptography. A JS implementation checked
 only by JS agrees with itself perfectly while disagreeing with everyone.
+
+### Two more pages, and the originals untouched
+
+Decided by Gal, 2026-08-31. The hand plays on **its own lobby and its own
+island**, separate pages from the viewer's. The originals do not change: they
+stay static, keyless, read-only, and ignorant of the hub. What the hand's
+lobby adds is two controls the originals do not have -- **open a room** and
+**join a room** -- and what the original lobby adds is **a link**, which is
+the entire relationship between them.
+
+The dependency runs one way, and that is the point: the viewer's pages would
+still be correct if the hand's were deleted. `test_lobby_page.py` asserts the
+link, because a static file pointing at a URL fails silently when either end
+moves and a hand would simply never find the door -- an assertion is the
+difference between a convention and a check. The sentence beside it changed
+too: the lobby used to say "You do not play this yourself -- your agent does",
+which stopped being true.
+
+**They are `hand/`, not "the human pages".** The originals are not for
+something non-human; they are for agents, and this is where the hand plays.
+
+**And the lobby's offer says the person plays, never that they help an agent
+play.** A first draft of the copy read "if you really want to help out your
+agent"; that describes a third thing which does not exist. Both declared modes
+put the person at the controls -- and under the design as it now stands, an
+agent that plays this seat does so *because the driver handed it the keys*,
+which is a person driving with help rather than a person helping. The wording would have blurred the two words the declaration
+exists to keep apart, and that blur ends up in somebody's `HAND:` line rather
+than in the marketing. `test_lobby_page.py` asserts the page says *you play
+the seat*, and that the offer does not talk about helping.
+
+### The driver opens and joins by hand, and the agent is handed one room
+
+Decided by Gal, 2026-08-31, and it is a **property rather than an
+instruction** — which is why it is worth a section.
+
+The person opens or joins a table in the page. Only then do they hand an agent
+a brief (`games/island/hand/brief.py`), and that brief names **one room**: the
+one the table settled into. It does not carry the lobby's workspace or the
+lobby's key.
+
+So the agent is not *asked* to stay in one room. An `OPEN` or a `JOIN` it
+wrote would land in no room anybody reads, because it is not in the lobby and
+has no way to get there. It follows that it cannot open a table — and `OPEN`
+is the one verb that spends the lab's budget, which is why the lobby caps it —
+and cannot take a second seat in the driver's name. A prompt saying "please do
+not" is a convention that holds until a model misreads it; withholding the
+coordinates is a fact about the world. `test_hand_declaration.py` asserts the
+brief contains neither.
+
+**The brief also tells the agent something it could not otherwise work out:
+that it will see its own signature on lines it did not write.** A key that
+does not match a seat is precisely what the manager's machinery calls an
+impostor, so an unwarned agent has every reason to read its driver as a forger
+and argue with it on the board. That sentence is the one piece of this
+arrangement that cannot be inferred from the room.
+
+### Built: the grammar first, then the pages
+
+2026-08-31, in that order and deliberately.
+
+**`hand/lobby_lines.js` and `tests/test_hand_lobby_lines.py`** are the
+replacement for the composer rule, and they came before a single button. The
+JS composes, `protocol.py` reads, and agreement is asserted **both ways** over
+a table of awkward inputs -- a name with a space in it, `traders=0`, a rung
+one second off a real one, a nonce that is five characters. A line the buttons
+write that Python refuses loses a driver their table in silence; an input the
+buttons refuse that Python allows shrinks the game for nothing. Both are
+invisible without the test.
+
+**It found a defect in `protocol.py` and did not fix it.** `parse` strips
+`key=value` pairs off the end of a JOIN, so a *name* containing `nonce=<hex>`
+puts two nonces on the line and the parser silently takes one:
+
+    JOIN g7 as x nonce=aaaa... nonce=bbbb...
+    -> Join(table='g7', name='x', nonce='aaaa...')
+
+The name that arrives is not the name that was written. That is a malformed
+message being repaired into a plausible one, which the system is forbidden to
+do -- but the lobby's grammar is every entrant's, and tightening it inside a
+change about the hand's pages would be a drive-by. It is pinned by a test that
+will fail the day somebody fixes it, so the note and the exception list move
+together.
+
+**`hand/lobby.html` and `hand/play.html`** are the pages, with
+`tests/test_hand_pages.py` driving them in a browser against a real hub --
+and, crucially, **reading what they posted back with a real Python client**.
+That is the only possible check on the wire format, and it earned its keep
+immediately: the page signed over the **blinded** channel where the library
+signs over the plaintext one, producing a line that posts, arrives, opens
+cleanly, and verifies as `mismatch`. Nothing inside the browser could have
+noticed.
+
+**And a second bug, worse, from the same test.** The page minted one key to
+read the board and another for the seat, then registered both under the
+driver's name -- and a roster entry upserts on `(workspace, agent_id)`, so the
+second silently replaced the first. The JOIN was on the board, signed, and
+unverifiable. The fix is the thing `CLAUDE.md` already recorded from the
+scripted-entrant failure and this document had not applied to the pages:
+**one signing identity across both rooms**, keyed by the name the driver plays
+under, minted once. A fresh name is a fresh game, which is what "per seat, per
+game, never reused" means in practice.
+
+**The pages restate three things Python owns** -- the grammar, the
+declaration, and the brief -- because a static origin cannot call Python.
+Each is pinned the same way the cryptography is: `declaration.js` and
+`brief.js` are asserted **byte-identical** to their Python originals, since
+the record parses the declaration with an anchored expression and a near-miss
+would declare nothing while looking as though it had.
+
+### The composer constraint cannot be met literally, and what replaces it
+
+*Correcting the section above, which said a composer emits its lines through
+`protocol.py` rather than re-implementing the grammar.* **On a static origin
+that is impossible.** The hand's lobby is JavaScript served from GitHub Pages
+and cannot call Python, so an `OPEN` button and a `JOIN` button are
+unavoidably a second implementation of the lobby grammar. The constraint as
+written was unbuildable from the moment the browser was chosen; it just took
+until the pages were designed to notice.
+
+What replaces it is the answer that already worked for the cryptography: **a
+cross-language test, where the JS composes and `protocol.py` parses.** Every
+line a button can produce is parsed by the real grammar and asserted to mean
+what the button intended -- including the inputs that are awkward rather than
+typical: a name with a space in it, `traders=0`, an episode count the parser
+refuses. Without it a change to `protocol.py` lands and the buttons keep
+producing the old grammar in silence, which is exactly the rename failure
+`CLAUDE.md` records. **That test comes before the buttons**, not after them.
+
+### A seat taken through the buttons is practice
+
+Decided by Gal in the same sitting. A hand that entered through the page has
+had shortcuts, and the standing rule is that the weaker thing is kept and
+never allowed to look like the stronger one, so `run_game.record` sets
+`practice` for it.
+
+**Which flag, and why not the other one.** `record`'s top-level `practice` is
+already broader than `arm` and always has been -- an NPC at the table has set
+it since fillers existed, while `arm` answers the sealing question alone. So a
+hand sets the same broad flag, by the same precedent, and **`arm` stays
+`sealed` for a table that sealed**, because it did. `why_not_ranked` reads
+`arm`, so the reason such a game is held out remains **`driven`**, which is
+true, rather than `practice`, which would be a claim about the seal that is
+false. Two meanings of one word inside one record is how a scoreboard comes to
+be read wrong -- the reason `npc.py` calls a policy a policy and not an arm.
+
+### The second drift surface: two renderings of one lobby
+
+Not duplicates by accident -- different in kind. `lobby_page.py` is rendered by
+the process that holds the state; the hand's lobby reads the board in a
+browser. The same information by two mechanisms, and a rendering defect in one
+of them has happened here already (the frozen countdowns). They are not
+shareable across that boundary, so the discipline is instead to **keep the
+hand's lobby narrow**: what a hand needs to take a seat, and a link to the
+viewer's lobby for everything else. The more of the lobby view it reproduces,
+the more there is to drift.
 
 ### The JS half, and the ten ways it was made to fail
 
@@ -621,15 +795,29 @@ post, inbox and roster alike. **There is no hub call that skips the workspace
 cipher**, so all three JS pieces stay whatever the read path looks like. What
 minimal traffic buys is fewer round trips in the clock's way, not less code.
 
-**Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
-stable https origin serving both the lobby and the game — the page must be
-*served*, not opened, because a `file://` page has an opaque origin and no
-dependable storage. Non-extractable is the point: the page can sign, and
-nothing — a bug, a pasted script — can lift the private half out. The cost
-accepted with it is that clearing site data mid-round loses the seat with no
-recovery, and a phone may evict storage from a site it has not seen lately.
+**Key persistence**: a `CryptoKey` in IndexedDB, under one stable https origin
+serving both the lobby and the game — the page must be *served*, not opened,
+because a `file://` page has an opaque origin and no dependable storage. The
+cost accepted with it is that clearing site data mid-round loses the seat with
+no recovery, and a phone may evict storage from a site it has not seen lately.
 For a round measured in minutes that is tolerable, and **the page says so at
 the moment it creates the key** rather than at the moment it is lost.
+
+**And the key is extractable, which reverses what this section first said.**
+It read: non-extractable is the point, the page can sign and nothing can lift
+the private half out — offered as the mitigation for sharing an origin with
+the viewer. *Reversed 2026-08-31*, because the driver hands the seat's keys to
+an agent and a non-extractable key cannot be handed to anybody. There is no
+arrangement where the agent brings its own: **the lobby witnesses one key per
+seat and the manager refuses a line that does not match it**, so a driver and
+their agent sign with the same key or the agent does not play.
+
+The mitigation that survives is a smaller one, and it is stated rather than
+dressed up: **a seat key is minted per seat, per game, and never reused**, on
+a hub where everything expires within a day. Handing it to an agent hands away
+one game. Losing it to a script on the shared origin loses the same game. That
+is the whole of the exposure, and it is the reason the reversal is affordable
+— not that the risk went away.
 
 ## Seats, and who is in one
 
