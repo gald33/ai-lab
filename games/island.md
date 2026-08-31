@@ -487,14 +487,45 @@ must verify and open, run in the `drawing` job — the same rule this repo
 already keeps for pages, applied to cryptography. A JS implementation checked
 only by JS agrees with itself perfectly while disagreeing with everyone.
 
-**The first thing to check is not cryptography at all — it is CORS.** The
-client is `httpx` against a plain HTTP hub, and if the managed hub sends no
-`Access-Control-Allow-Origin` then no browser reaches it and the design needs
-a relay. Such a relay would hold **no key and could forge nothing**, since
-signing and sealing happen in the browser, so it is transport rather than a
-privileged path — but it is a service to keep alive, which is precisely what
-the static lobby page was designed to avoid. Check it before building
-anything else; the answer changes the shape.
+**CORS was the first thing checked, before any cryptography** — the client is
+`httpx` against a plain HTTP hub, and a hub sending no
+`Access-Control-Allow-Origin` would put a relay in the design. **Measured
+2026-08-30, and there is no relay**: the managed hub allows the origin the
+viewer already runs on.
+
+```
+for O in https://gald33.github.io https://evil.example.com http://localhost:8080; do
+  curl -sD- -o/dev/null https://switchboard.lucille-ai.com/health -H "Origin: $O" \
+    | grep -i '^access-control-allow-origin'
+done
+```
+
+| origin | `Access-Control-Allow-Origin` |
+|---|---|
+| `https://gald33.github.io` | reflected — allowed |
+| `https://evil.example.com` | none |
+| `http://localhost:8080` | none |
+
+Preflight allows `GET, POST, PUT, DELETE, OPTIONS` with `Authorization` and
+`Content-Type`, `max-age: 600`; the hub answers
+`{"ok":true,"version":"1.2.3","auth":true}`. **It is an allowlist, not
+reflect-all**, which settles where the page lives: `gald33.github.io`, the
+origin the viewer is already served from — static, built from the repository,
+https, and nothing to keep alive. The stable origin IndexedDB needs comes free
+with it.
+
+**That allowlist entry is now a coordinate, as load-bearing as the hub URL and
+the workspace key, and it lives in somebody's Caddy rather than in this
+repository.** Remove it and every hand's page stops working, while **nothing
+in this repository can tell**: CORS applies to browsers and to nothing else,
+so every Python test still passes. That is the frozen-countdown failure again
+— present, correct, and invisible to the assertions we had — and the answer is
+the same one: the check belongs in a browser, in the `drawing` job.
+
+**`localhost` is not on the list**, so the page cannot be developed against the
+live hub from a dev server. Add an origin, proxy locally, or run the browser
+test against a stub — decided before somebody hits it and concludes the hub is
+down.
 
 **Key persistence**: a non-extractable `CryptoKey` in IndexedDB, under one
 stable https origin serving both the lobby and the game — the page must be
