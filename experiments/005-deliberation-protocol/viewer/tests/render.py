@@ -1026,6 +1026,7 @@ def checks(browser, base: str, boards: list[Path], out: Path):
     add("quick", "straddle", straddle, out)
     add("quick", "mobile", mobile, boards[0], out)
     add("quick", "crowding", crowding, boards[0], out)
+    add("quick", "tucking", tucking, boards[0], out)
     add("quick", "focusing", focusing, boards[0], out)
     add("quick", "fallback", fallback, boards[0], out)
     add("quick", "living", living, boards[0], out)
@@ -1524,6 +1525,7 @@ def blame(browser, base: str, board: Path, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
     page.wait_for_timeout(500)
+    pause(page)
     bad: list[str] = []
     for want in cases:
         # The real board, reduced by the real reducer, drawn by the real scene.
@@ -1822,6 +1824,31 @@ LAND_JS = """
 #: (`.app.shelf-open`), and an element at zero opacity covers nothing -- so
 #: measuring its rectangle against the island would fail the page for hiding
 #: something.
+#: **Stop the page's own replay before driving it.**
+#:
+#: A board opened from a link plays itself now (see the README, "A replay
+#: starts playing"), which is right for a viewer and wrong for a check: a
+#: frame set here would move on before the assertion after it read anything.
+#: It bit four checks at once -- `alive` and `travelling` read the sun at
+#: frames that had already gone, `ring` drove to the bell and was carried past
+#: it into the next day, and `blame`, which borrows the page as a canvas for a
+#: Scene of its own, had the running player paint into nodes it had torn out
+#: and threw `null.classList`.
+#:
+#: Paused through the page's own surface rather than through a handle put on
+#: `window` for the harness: dispatching `input` on the scrub is what a hand on
+#: it does, and a hand on the scrub takes the round over. The value is not
+#: changed, so this pauses and stays where it is.
+#:
+#: Most checks never need it -- they ask for `reduced_motion="reduce"`, and a
+#: page that has been asked not to move does not start itself.
+def pause(page) -> None:
+    page.evaluate("""() => {
+      const s = document.getElementById('scrub');
+      if (s) s.dispatchEvent(new Event('input'));
+    }""")
+
+
 DRAWN_JS = """
   const drawn = (n) => {
     for (let e = n; e && e.nodeType === 1; e = e.parentElement) {
@@ -1934,6 +1961,7 @@ def alive(browser, base: str, board: Path, out: Path) -> list[str]:
         page.goto(board_url(base, stem))
         page.wait_for_selector(".hut", timeout=MOUNT_MS)
         page.wait_for_timeout(1800)
+        pause(page)
         at(page, 0.55)
         first = page.evaluate(SAMPLE)
         page.wait_for_timeout(700)
@@ -2489,6 +2517,14 @@ def palette(browser, base: str, board: Path, out: Path) -> list[str]:
                    f"({paced!r}); this check paces the replay through the "
                    f"page's own control, and one it cannot find means it is "
                    f"silently watching a slower replay")
+    #: **Stopped first, so the click starts it.** `#play` is a toggle and the
+    #: board now plays itself, so this click was landing on a replay already
+    #: running and pausing it: the check watched frame 5 of 162 for ten
+    #: minutes and reported that nothing was played through. Paused here
+    #: rather than made conditional -- `if not playing: click` is a click that
+    #: can quietly do nothing, which is the failure the note above this one is
+    #: about.
+    pause(page)
     page.click("#play")
     #: Waited for **in the page**, for the same reason the palette is: one call
     #: rather than a round trip every tenth of a second. `PLAY_MS` is a hang
@@ -4804,6 +4840,157 @@ def crowding(browser, base: str, board: Path, out: Path) -> list[str]:
     return bad
 
 
+def tucking(browser, base: str, board: Path, out: Path) -> list[str]:
+    """On a phone the controls hide themselves, and a tap brings them back.
+
+    Asked for on 2026-08-30: "on mobile you can hide auxiliary UI elements like
+    playback control and menu items and show them when clicking on the page for
+    a while". What tucks is the transport, the button row and the goods key --
+    the ways of driving the page. The day, the phase and the counters stay: they
+    are what the island is doing, and a picture with no score is not tidier.
+
+    Five things, and the last two are the ones a fragment assertion cannot see:
+
+    * **they are not drawn when the page loads** on a phone, asked the way the
+      page's own `shown()` asks it, so an element parked at `opacity: 0` with
+      its box intact counts as hidden here exactly as it does there.
+    * **a tap on the picture brings all three back.**
+    * **and the island does not move when they arrive.** This is the whole of
+      Gal's "no reclaim, but the default of the island can be larger": the
+      bands are measured once, without this chrome, so the island is drawn at
+      the larger size and a tap floats the controls over it. A version that
+      measured what was shown would pass every other claim here and shrink the
+      island as the answer to a tap.
+    * **a tap on a card is not a tap on the page.** That gesture already means
+      "open this trader's shelf", and a card that also summoned the transport
+      would be two answers to one question.
+    * **and they tuck themselves again**, which is the "for a while" -- the one
+      part with no visible control to rediscover it if it stops working.
+
+    Off a phone none of it applies and the controls are drawn from the start;
+    a landscape viewport is checked for that, because a phone turned on its
+    side must not be left with controls it cannot ask for.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    bad: list[str] = []
+    look = """() => {""" + DRAWN_JS + """
+      const svg = document.getElementById('island');
+      const at = (s) => { const n = document.querySelector(s); return n ? drawn(n) : null; };
+      return { transport: at('#transport'), buttons: at('.at-top-right'),
+               key: at('.legend'), state: at('.at-top-left'),
+               viewBox: svg.getAttribute('viewBox'),
+               foot: window.__island ? window.__island.geo.islandFoot : null };
+    }"""
+
+    def tap(page, w, h):
+        #: The middle of the picture: below the state pills, above the cards,
+        #: and on nothing that carries `data-trader`.
+        page.mouse.click(w // 2, int(h * 0.42))
+        page.wait_for_timeout(450)
+
+    for tag, w, h in [p for p in PHONES if p[2] > p[1]]:
+        page = browser.new_page(viewport={"width": w, "height": h}, is_mobile=True,
+                                has_touch=True, reduced_motion="reduce")
+        page.goto(board_url(base, stem))
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
+        page.wait_for_timeout(1400)
+
+        shut = page.evaluate(look)
+        for name in ("transport", "buttons", "key"):
+            if shut[name]:
+                bad.append(f"{stem} @{tag}: {name} is drawn on load; a phone opens tucked")
+        if not shut["state"]:
+            bad.append(f"{stem} @{tag}: the round's state tucked away with the "
+                       f"controls; it is what the island is doing, not a control")
+
+        tap(page, w, h)
+        open_ = page.evaluate(look)
+        for name in ("transport", "buttons", "key"):
+            if not open_[name]:
+                bad.append(f"{stem} @{tag}: {name} did not come back on a tap")
+        if open_["viewBox"] != shut["viewBox"] or open_["foot"] != shut["foot"]:
+            bad.append(f"{stem} @{tag}: the island moved when the controls "
+                       f"appeared ({shut['viewBox']} foot {shut['foot']} -> "
+                       f"{open_['viewBox']} foot {open_['foot']}); the bands are "
+                       f"measured without them so that it cannot")
+        page.screenshot(path=str(out / f"{stem}-tucking-{tag}-open.png"))
+
+        #: Back to tucked, so the card leg starts where the load did.
+        tap(page, w, h)
+        if page.evaluate(look)["transport"]:
+            bad.append(f"{stem} @{tag}: a second tap did not put the controls away")
+
+        #: Clicked at its centre through the mouse rather than through the
+        #: element: Playwright's actionability check refuses a card, because
+        #: the `<svg>` it is drawn in covers it and is reported as
+        #: intercepting the pointer. It is the same event either way -- the
+        #: island's own handler resolves `data-trader` off the target -- and
+        #: it is how `straddle` taps a card, for the same reason.
+        at = page.evaluate("""() => {
+          const n = document.querySelector('[data-trader] .card-bg');
+          if (!n) return null;
+          const r = n.getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2];
+        }""")
+        if at:
+            page.mouse.click(at[0], at[1])
+            page.wait_for_timeout(450)
+            if page.evaluate(look)["transport"]:
+                bad.append(f"{stem} @{tag}: a tap on a card summoned the transport; "
+                           f"that gesture is the trader's shelf")
+            #: **An open shelf and the transport are not up together.** This
+            #: is the guarantee `straddle` used to make geometrically and can
+            #: no longer make: it asked whether an opened card overlapped the
+            #: transport's *box*, and a tucked transport keeps its box on
+            #: purpose. What keeps a card out from behind the transport is that
+            #: opening a shelf puts the controls away -- 85px of a nameplate
+            #: behind a transport is most of what it has to say.
+            #:
+            #: Asserted from the tucked state, which is the only state the
+            #: gesture exists in: with the controls up, the bottom row of cards
+            #: is under the transport and a tap there reaches the transport, so
+            #: "open a shelf while the controls are up" is not a thing a viewer
+            #: can do. The first tap puts the controls away and the second opens
+            #: the shelf, which is the sequence this drives.
+            shelf = page.evaluate(look)
+            if shelf["transport"] or shelf["buttons"]:
+                bad.append(f"{stem} @{tag}: a shelf is open and the controls "
+                           f"are up with it; the card's lower rows are drawn "
+                           f"where the transport lies")
+            #: The other half of the goods key's reversal: it is tucked with
+            #: the controls, and a shelf is what brings it back, because a
+            #: shelf is five coloured bars and the key is what names them.
+            if not shelf["key"]:
+                bad.append(f"{stem} @{tag}: a shelf is open and the goods key "
+                           f"naming its columns is not on screen")
+            page.mouse.click(at[0], at[1])
+            page.wait_for_timeout(450)
+        else:
+            bad.append(f"{stem} @{tag}: no card to tap; the card leg checked nothing")
+
+        #: The linger. Longer than the page's own, so this is not a race with it.
+        tap(page, w, h)
+        page.wait_for_timeout(5200)
+        if page.evaluate(look)["transport"]:
+            bad.append(f"{stem} @{tag}: the controls stayed up past the linger; "
+                       f"nothing on the page says how to put them away")
+        page.close()
+
+    #: A phone on its side has room, and must not keep hiding what it can show.
+    wide = browser.new_page(viewport={"width": 844, "height": 390}, is_mobile=True,
+                            has_touch=True, reduced_motion="reduce")
+    wide.goto(board_url(base, stem))
+    wide.wait_for_selector(".hut", timeout=MOUNT_MS)
+    wide.wait_for_timeout(1400)
+    side = wide.evaluate(look)
+    for name in ("transport", "buttons"):
+        if not side[name]:
+            bad.append(f"{stem} @landscape: {name} is tucked away on a frame "
+                       f"with room for it")
+    wide.close()
+    return bad
+
+
 def mobile(browser, base: str, board: Path, out: Path) -> list[str]:
     """That the page works on a phone, which is where a shared link gets opened.
 
@@ -5226,15 +5413,27 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
             bad.append(f"{stem} @focus: {r['sel']} covers {share:.0%} of the "
                        f"island; the band the chrome declares is shorter than "
                        f"the chrome standing in it")
-    #: **The key is always on now, and its band is reserved.** It was raised
-    #: only while a shelf was open, to save the row -- and that saving was the
-    #: reason it had no room of its own, so it stood across the cards. Hidden
-    #: *and* reserved would be the worst of both: the island does not get the
-    #: strip either way and the viewer loses the key.
-    if not shut["keyOn"]:
-        bad.append(f"{stem} @focus: the goods key is not on screen; a phone "
-                   f"reserves it a band whether it is drawn or not, so hiding "
-                   f"it costs the island the strip and buys nothing")
+    #: **The key is tucked with the rest of the controls now, and comes back
+    #: with a shelf.** Reversed 2026-08-31, and the superseded reasoning is
+    #: kept because it was sound and is what makes the reversal legible:
+    #:
+    #:   "The key is always on now, and its band is reserved. It was raised
+    #:   only while a shelf was open, to save the row -- and that saving was
+    #:   the reason it had no room of its own, so it stood across the cards.
+    #:   Hidden *and* reserved would be the worst of both: the island does not
+    #:   get the strip either way and the viewer loses the key."
+    #:
+    #: That enumerated two arrangements and rejected the second. The phone has
+    #: a third now: hidden and **not** reserved. `chromeBands` stopped counting
+    #: the tucking chrome toward a band, so the island does get the strip --
+    #: 277px across a 393x660 phone became 390px -- and the key is no longer
+    #: paid for whether or not it is drawn. What survives of the old claim is
+    #: the half about the viewer, and it is asserted below where it bites: a
+    #: shelf is five coloured bars, and the key is what names them.
+    if shut["keyOn"]:
+        bad.append(f"{stem} @focus: the goods key is on screen with every "
+                   f"shelf shut; on a phone it tucks away with the controls "
+                   f"and the island is drawn the larger for it")
     if shut["shelfOn"]:
         bad.append(f"{stem} @focus: a card came up open on a phone")
 
@@ -5266,9 +5465,12 @@ def focusing(browser, base: str, board: Path, out: Path) -> list[str]:
     if abs(reshut["cardH"] - shut["cardH"]) > 1:
         bad.append(f"{stem} @focus: the card shut to {reshut['cardH']:.0f}px, "
                    f"not back to the {shut['cardH']:.0f}px it was")
-    if not reshut["keyOn"]:
-        bad.append(f"{stem} @focus: the goods key went away when the last "
-                   f"shelf shut; it is reserved, not conditional")
+    #: And goes away again with it. The other half of the reversal above: the
+    #: key is conditional now, so a key still standing over a picture nobody
+    #: has asked a question of is the tuck failing to close behind itself.
+    if reshut["keyOn"]:
+        bad.append(f"{stem} @focus: the goods key stayed up after the last "
+                   f"shelf shut; it comes back with a shelf and leaves with it")
 
     #: Landscape asks the same of the same gesture -- the cards stand in
     #: margins there, so there was never anything for a tap to re-divide -- and
@@ -5394,7 +5596,7 @@ def _straddle_page(browser, base: str, out: Path, WIN_H: int, room: Path,
     page.wait_for_selector(".hut", timeout=15_000)
     page.wait_for_timeout(1400)
 
-    look = """() => ({
+    look = """() => {""" + DRAWN_JS + """ return ({
       cards: [...document.querySelectorAll('.hut')].map(h => {
         const r = h.querySelector('.card-bg').getBoundingClientRect();
         return { who: h.getAttribute('data-trader'),
@@ -5406,9 +5608,22 @@ def _straddle_page(browser, base: str, out: Path, WIN_H: int, room: Path,
       //: as the one below: the centre of a card only answers to the transport
       //: once *most* of the card is behind it, and a third of a shelf hidden
       //: is already a shelf a viewer cannot read.
+      //:
+      //: **Chrome that is on screen, not chrome that has a box.** On a phone
+      //: the transport and the key are tucked away by default and put back by
+      //: a tap, and a tucked control keeps its box on purpose -- `mobile`
+      //: measures every control against a fingertip, and one with no box
+      //: passes that by not existing. So the question here has to be the one
+      //: `drawn()` asks and the one the page's own `shown()` asks: is it being
+      //: painted. Asked the weaker way, this reported an opened card as 85px
+      //: hidden behind a transport that was invisible at the time.
+      //:
+      //: What stops the card being hidden behind a transport that *is* painted
+      //: is behaviour rather than geometry now, and `tucking` is where that is
+      //: asserted: opening a shelf puts the controls away.
       chrome: ['#transport', '.legend'].map(sel => {
         const n = document.querySelector(sel);
-        if (!n) return null;
+        if (!n || !drawn(n)) return null;
         const r = n.getBoundingClientRect();
         return r.width && r.height
           ? { sel, top: r.top, bottom: r.bottom, left: r.left, right: r.right }
@@ -5426,7 +5641,7 @@ def _straddle_page(browser, base: str, out: Path, WIN_H: int, room: Path,
                    : (n.id || String(n.className.baseVal ?? n.className) || n.tagName))
                    : null };
       }),
-    })"""
+    }); }"""
 
     def overlap(a, b):
         dx = min(a["right"], b["right"]) - max(a["left"], b["left"])
@@ -5881,6 +6096,7 @@ def travelling(browser, base: str, board: Path, out: Path) -> list[str]:
     page = browser.new_page(viewport={"width": 1200, "height": 800})
     page.goto(board_url(base, stem))
     page.wait_for_selector(".hut", timeout=MOUNT_MS)
+    pause(page)
     page.wait_for_timeout(1200)
     seen = page.evaluate(TRAVEL)
     page.close()
@@ -5917,6 +6133,7 @@ def ring(browser, base: str, out: Path) -> list[str]:
     page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     page.goto(f"{base}/")
     page.wait_for_timeout(600)
+    pause(page)
     page.evaluate("""async ({rows}) => {
       const { reduce } = await import('./reducer.js');
       const { Scene } = await import('./scene.js');
@@ -6177,6 +6394,12 @@ def shutters(browser, base: str, out: Path) -> list[str]:
         page.on("pageerror", lambda exc, e=errs: e.append(f"pageerror: {exc}"))
         page.goto(f"{base}/")
         page.wait_for_timeout(600)
+        #: The note above is why: the page's own scene must not be rebuilding
+        #: `#island` under the one this builds. It could not before, because a
+        #: board sat where it was put; a board that plays itself repaints on
+        #: its own clock, and the cards it drew came back open under a check
+        #: about which cards are shut.
+        pause(page)
         for scored in (True, False):
             bad += shut_row(page, out, goods, n, rows, frame, scored)
         bad += [f"shutters/{frame}: {e}" for e in errs]

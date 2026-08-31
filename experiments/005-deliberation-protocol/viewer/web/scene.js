@@ -1774,6 +1774,19 @@ export class Scene {
   /** Put the sun at a point in the day, with no journey. */
   placeSun(p) {
     if (!this.sunNode) return;
+    //: **Cancel the travel first, or this writes a style nothing reads.** The
+    //: sun's journey is a WAAPI animation with `fill: "forwards"`, and a
+    //: filled animation outranks the inline style for the properties it
+    //: animates -- so `transform` and `opacity` set here were being written
+    //: and then ignored for as long as the page had ever animated the sun.
+    //:
+    //: Invisible while nothing played a board on its own: the only way to
+    //: reach this with a filled animation still standing was to press play,
+    //: let the sun travel, and scrub backwards. A replay that starts itself
+    //: reaches it on the first drag of the scrub, and the island stayed in the
+    //: dark for the rest of the session -- `alive` found it as six frames out
+    //: of six with no sun in the sky.
+    for (const a of this.sunNode.getAnimations?.() ?? []) a.cancel();
     const { x, y, dim } = this.sunPoint(p);
     this.sunNode.style.transform = `translate(${x}px, ${y}px) scale(1)`;
     this.sunNode.style.opacity = String(dim);
