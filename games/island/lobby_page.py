@@ -44,8 +44,7 @@ from pathlib import Path
 from .lobby import (Lobby, MAX_FORMING_PER_PEER, MAX_JOINABLE,
                     MAX_TABLES, TABLE_TTL)
 from .protocol import (EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT,
-                        GOODS_MAX, GOODS_MIN, ROUNDS_MAX, TRADERS_MAX,
-                        TRADERS_MIN)
+                        GOODS_MAX, GOODS_MIN, TRADERS_MAX, TRADERS_MIN)
 
 #: Where a finished game can be watched. **A second site, on purpose.**
 #:
@@ -622,10 +621,19 @@ OPEN_DEFAULTS = {"traders": 2, "episodes": 4, "rounds": 1, "goods": 5,
 #: to avoid: the reader picks it, copies the line, and their agent's OPEN comes
 #: back Malformed. Built from the protocol's own bounds now, so the ladders
 #: cannot drift from them again.
+#:
+#: **`rounds` is not a knob.** `ROUNDS_MAX` is 1, so the ladder built from the
+#: protocol's bounds had exactly one rung: a select the reader can only pick
+#: the value it already shows. A one-option knob is not a choice, it is a
+#: suggestion that a choice exists, and the reader who turns it and sees the
+#: OPEN line not move learns the page is lying about something. The field
+#: stays in the line at `rounds=1` (an entrant that reads it still learns the
+#: field exists); only the control is gone. Decided by Gal, 2026-09-01. Bring
+#: the lever back the day `ROUNDS_MAX` rises above 1 --
+#: `tuple(range(1, ROUNDS_MAX + 1))` is the ladder it wants.
 LEVERS = (
     ("traders", "traders", tuple(range(TRADERS_MIN, TRADERS_MAX + 1))),
     ("episodes", "episodes per round", (1, 2, 3, 4, 5, 6, 8, 10, 12)),
-    ("rounds", "rounds", tuple(range(1, ROUNDS_MAX + 1))),
     ("goods", "goods", tuple(range(GOODS_MIN, GOODS_MAX + 1))),
     ("seconds", "seconds per episode", EPISODE_SECONDS_ALLOWED),
 )
