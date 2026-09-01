@@ -7,8 +7,8 @@
 
 export const OPEN = "OPEN", JOIN = "JOIN", MANAGE = "MANAGE";
 
-export const TRADERS_MIN = 2, TRADERS_MAX = 8;
-export const GOODS_MIN = 2, GOODS_MAX = 12, GOODS_DEFAULT = 5;
+export const TRADERS_MIN = 2, TRADERS_MAX = 4;
+export const GOODS_MIN = 2, GOODS_MAX = 5, GOODS_DEFAULT = 5;
 export const ROUNDS_MAX = 1;
 export const EPISODE_SECONDS_ALLOWED = [15, 30, 45, 60, 90, 120, 180, 300];
 export const EPISODE_SECONDS_DEFAULT = 60;
