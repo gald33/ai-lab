@@ -107,50 +107,50 @@ CASES = [
 ]
 
 
-#: Inputs the page refuses that `protocol.parse` would have accepted -- and
-#: where the page is right and the parser is loose.
+#: Inputs the page refuses that `protocol.parse` would have accepted.
 #:
-#: **There is exactly one shape of these, and it is a finding rather than a
-#: convenience.** `parse` strips `key=value` pairs off the end of a JOIN while
-#: more than three words remain, so a *name* containing `nonce=<hex>` puts a
-#: second nonce on the line and the parser silently takes one of the two:
+#: **Empty, and it stays empty.** It held one entry for a few hours: a JOIN
+#: whose *name* contained `nonce=<hex>`, which the parser used to accept by
+#: stripping `key=value` pairs off the end -- taking one of two nonces and a
+#: name nobody wrote. The page refused it, this check reported the page as
+#: over-strict, and the page was right. `protocol.py` was fixed on
+#: 2026-08-31; see `test_a_join_carrying_two_nonces_is_refused` below.
 #:
-#:     JOIN g7 as x nonce=aaaa... nonce=bbbb...
-#:     -> Join(table='g7', name='x', nonce='aaaa...')
-#:
-#: The name that arrives is not the name that was written, and a line carrying
-#: two nonces settles as though it carried one. That is a malformed message
-#: being repaired into a plausible one, which `CLAUDE.md` forbids the system
-#: to do -- so the page refuses the input rather than composing a line whose
-#: meaning it cannot predict.
-#:
-#: Listed here rather than quietly excluded, so that the asymmetry is visible
-#: and so this check still bites for every other case. If `protocol.parse`
-#: ever refuses duplicate fields, this list empties and the entry can go.
-STRICTER_ON_PURPOSE = {
-    ("join", json.dumps({"table": "g7", "name": "x nonce=deadbeefdeadbeef",
-                         "nonce": NONCE}, sort_keys=True)),
-    ("join", json.dumps({"table": "g7", "name": "   ", "nonce": NONCE},
-                        sort_keys=True)),
-}
+#: An entry appearing here again means the two grammars have diverged, and the
+#: question to ask is which of them is wrong -- not which is more convenient.
+STRICTER_ON_PURPOSE: set[tuple[str, str]] = set()
 
 
-def test_the_parser_accepts_a_join_that_smuggles_a_second_nonce(composed):
-    """**A defect in `protocol.py`, pinned here because this test found it.**
+def test_a_join_carrying_two_nonces_is_refused():
+    """**The defect this file found, now fixed, kept as a regression.**
 
-    Not the page's bug and not fixed by this change: the lobby's grammar is
-    used by every entrant, and quietly tightening it in a change about the
-    hand's pages would be exactly the kind of drive-by nobody asked for. What
-    this test does is stop it being rediscovered -- and fail the day it is
-    fixed, so the note above and `STRICTER_ON_PURPOSE` get updated together.
+    `parse` used to strip `key=value` pairs off the end of a JOIN while more
+    than three words remained. A seat calling itself `x nonce=aaaa...` was
+    read as `Join(name='x', nonce='aaaa...')`: a name that was never written,
+    and one of two nonces chosen by position.
 
-    The line below carries two nonces and a name with a space in it. It parses.
+    That is a malformed message repaired into a plausible one, which the
+    system is forbidden to do -- and a line carrying two seeds is not a line
+    carrying one. It was found by comparing this grammar against the hand's
+    JavaScript composer, which had refused the input all along.
     """
-    smuggled = protocol.parse(
-        "JOIN g7 as x nonce=aaaaaaaaaaaaaaaa nonce=bbbbbbbbbbbbbbbb")
+    with pytest.raises(protocol.Malformed, match="twice"):
+        protocol.parse(
+            "JOIN g7 as x nonce=aaaaaaaaaaaaaaaa nonce=bbbbbbbbbbbbbbbb")
 
-    assert smuggled.name == "x", "the name written was 'x nonce=aaaa...'"
-    assert smuggled.nonce == "a" * 16, "and one of the two nonces was chosen"
+    # And a name with a space in it is refused as what it is, rather than
+    # quietly becoming its first word.
+    with pytest.raises(protocol.Malformed, match="a trader name is one word"):
+        protocol.parse("JOIN g7 as scout v2 nonce=0123456789abcdef")
+
+    # A JOIN that was always fine stays fine: the fix tightened the shape, and
+    # a tightening that also refused good lines would be its own defect.
+    good = protocol.parse("JOIN g7 as scout-v2 nonce=0123456789abcdef")
+    assert (good.table, good.name, good.nonce) == (
+        "g7", "scout-v2", "0123456789abcdef")
+    assert protocol.parse("JOIN g7 as scout-v2").nonce == "", (
+        "a nonce is still optional in the grammar, even though the page "
+        "always sends one")
 
 
 def _missing(why: str):
