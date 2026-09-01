@@ -83,3 +83,27 @@ button[disabled]{opacity:.6;cursor:default}
        color:var(--ink)}
 .harness li{margin:.1rem 0}
 #ol{color:var(--sand-lit);font-weight:700}
+.fold{margin:.8rem 0 0;border:1px solid var(--line);border-radius:.35rem;
+       background:var(--sea-far)}
+.fold>summary{cursor:pointer;padding:.5rem .8rem;font-size:.85rem;
+       color:var(--ink-2);list-style:none;display:flex;gap:.5rem;
+       align-items:baseline}
+.fold>summary::-webkit-details-marker{display:none}
+/* Drawn with borders, not a glyph: the first cut used "\25b8" and the page
+   font has no triangle, so every fold wore a tofu box. */
+.fold>summary::before{content:"";width:0;height:0;flex:0 0 auto;
+       margin-top:.35em;border:.34em solid transparent;
+       border-left-color:var(--muted);border-right-width:0;
+       transition:transform .12s ease}
+.fold[open]>summary::before{transform:rotate(90deg)}
+.fold>summary:hover::before{border-left-color:var(--sand)}
+.fold>summary:hover{color:var(--ink)}
+.fold>summary:focus-visible{outline:2px solid var(--sand);outline-offset:-2px}
+.fold>summary b{color:var(--sand-lit);font-weight:700}
+.fold .body{padding:0 .8rem .3rem}
+.fold .body>p{margin:.2rem 0 .7rem}
+.fold .harness,.fold .levers{margin:0 0 .8rem;background:var(--panel)}
+main>.fold{background:transparent;border-color:transparent}
+main>.fold>summary{padding-left:0}
+main>.fold[open]{border-color:var(--line);background:var(--sea-far)}
+main>.fold[open]>summary{padding-left:.8rem}

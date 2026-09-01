@@ -291,6 +291,30 @@ button[disabled]{opacity:.6;cursor:default}
        color:var(--ink)}
 .harness li{margin:.1rem 0}
 #ol{color:var(--sand-lit);font-weight:700}
+.fold{margin:.8rem 0 0;border:1px solid var(--line);border-radius:.35rem;
+       background:var(--sea-far)}
+.fold>summary{cursor:pointer;padding:.5rem .8rem;font-size:.85rem;
+       color:var(--ink-2);list-style:none;display:flex;gap:.5rem;
+       align-items:baseline}
+.fold>summary::-webkit-details-marker{display:none}
+/* Drawn with borders, not a glyph: the first cut used "\25b8" and the page
+   font has no triangle, so every fold wore a tofu box. */
+.fold>summary::before{content:"";width:0;height:0;flex:0 0 auto;
+       margin-top:.35em;border:.34em solid transparent;
+       border-left-color:var(--muted);border-right-width:0;
+       transition:transform .12s ease}
+.fold[open]>summary::before{transform:rotate(90deg)}
+.fold>summary:hover::before{border-left-color:var(--sand)}
+.fold>summary:hover{color:var(--ink)}
+.fold>summary:focus-visible{outline:2px solid var(--sand);outline-offset:-2px}
+.fold>summary b{color:var(--sand-lit);font-weight:700}
+.fold .body{padding:0 .8rem .3rem}
+.fold .body>p{margin:.2rem 0 .7rem}
+.fold .harness,.fold .levers{margin:0 0 .8rem;background:var(--panel)}
+main>.fold{background:transparent;border-color:transparent}
+main>.fold>summary{padding-left:0}
+main>.fold[open]{border-color:var(--line);background:var(--sea-far)}
+main>.fold[open]>summary{padding-left:.8rem}
 """
 
 
@@ -491,6 +515,76 @@ function tick(){{
 tick();setInterval(tick,1000);}})();</script>"""
 
 
+#: Where a reader's open/shut folds wait out the reload.
+#:
+#: **Same store and same reason as the levers and the countdowns.** The page
+#: carries `meta http-equiv=refresh`, and a reload puts every `<details>` back
+#: on the `open` attribute the server wrote -- so a reader who opened the
+#: levers, chose four traders and looked away had the section shut itself and
+#: take their choice out of sight a few seconds later. The levers already
+#: restore their *values* across that reload; restoring them into a fold that
+#: shut itself would be a value the reader can no longer see.
+FOLDS_KEY = "island:folds"
+
+#: The sections that are folded shut on arrival, and what their summary says.
+#:
+#: **What is not here is the point.** Decided by Gal, 2026-09-01: the page had
+#: grown to about 1,200 words before a reader reached the first table, and all
+#: of it was true, so nothing could be deleted -- but only one thing on it is
+#: immediate. *Your agent plays this; here is what to give it.* That is the
+#: title, one line of orientation, the button and the prompt, and then the
+#: tables. Everything else is good and can wait behind a summary line.
+#:
+#: **The prompt itself is never folded**, and that is the same decision
+#: `_start` already documents: a button that copies something the reader
+#: cannot see asks them to paste an instruction they have not read into an
+#: agent they are responsible for. Folding the prompt would put the text
+#: behind the button by another route. The `<pre>` keeps its own scroll cap
+#: instead, which shows the reader there is more without spending the page on
+#: it.
+FOLDS = {
+    "ways": "Other ways in &mdash; take the seat yourself, or watch a game back",
+    "harnesses": "Which harnesses have taken a seat",
+    "levers": "Adjust what your agent asks for",
+    "rules": "How a table settles, and the limits",
+}
+
+
+def _fold(key: str, body: str) -> str:
+    """One shut-on-arrival section, named so the browser can remember it."""
+    return (f"<details class=fold data-fold={key}>"
+            f"<summary>{FOLDS[key]}</summary>"
+            f"<div class=body>{body}</div></details>")
+
+
+#: Restores each fold to what this reader last left it, and remembers a toggle.
+#:
+#: **On the summary's click as well as on `toggle`, and that is not belt and
+#: braces.** `toggle` is dispatched asynchronously, so a page that rebuilds
+#: itself in the same task as the click reads the store before the write lands
+#: and puts the fold back shut -- which is exactly what the port does on every
+#: poll, and what `test_lobby_web_levers.py` caught. A click handler runs
+#: before the browser's own default action, so `open` there is still the old
+#: value and the one being written is its negation; `toggle` then covers
+#: keyboard and programmatic changes.
+#:
+#: **After the folds, never before**, which is the whole lesson of the frozen
+#: countdowns: the ticker was emitted above the rows it drove, matched nothing,
+#: and every test around it passed. `games/island/tests/test_lobby_page.py`
+#: asserts the order rather than trusting it.
+_FOLDS = f"""<script>(function(){{
+var els=[].slice.call(document.querySelectorAll('details.fold')),o={{}};
+try{{o=JSON.parse(sessionStorage.getItem({FOLDS_KEY!r})||'{{}}');}}catch(_){{}}
+function save(x){{try{{var n={{}};
+  els.forEach(function(e){{n[e.dataset.fold]=(e===x)?!e.open:e.open;}});
+  sessionStorage.setItem({FOLDS_KEY!r},JSON.stringify(n));}}catch(_){{}}}}
+els.forEach(function(e){{
+  if(typeof o[e.dataset.fold]==='boolean') e.open=o[e.dataset.fold];
+  e.addEventListener('toggle',function(){{save(null);}});
+  e.querySelector('summary').addEventListener('click',function(){{save(e);}});
+}});}})();</script>"""
+
+
 #: Where the whole brief lives, for an agent that can fetch a page.
 BRIEF_URL = ("https://github.com/gald33/ai-lab/blob/main/games/island/"
              "ENTER.md#the-brief")
@@ -684,9 +778,11 @@ def _levers() -> str:
         rows.append(
             f"<label>{html.escape(label)}"
             f"<select data-f={field}>{opts}</select></label>")
-    return ("<div class=levers><p class=lh>Adjust what your agent will ask "
-            "for &mdash; the line above updates as you choose. Your agent "
-            "still sends it.</p>" + "".join(rows) + "</div>")
+    # The lead-in no longer repeats the fold's summary, which already says
+    # what these are for.
+    return ("<div class=levers><p class=lh>The prompt above updates as you "
+            "choose. Your agent still sends it.</p>"
+            + "".join(rows) + "</div>")
 
 
 #: Harnesses somebody has actually sat a seat from, and what it takes.
@@ -748,14 +844,12 @@ def _start(lobby: Lobby) -> str:
         text = text.replace(line, f"<span id=ol>{line}</span>", 1)
     return f"""<section class=start>
 <h2>Start a game</h2>
-<p><b>You do not play this yourself.</b> Copy this and paste it to your agent
-&mdash; a Claude Code session, or anything that holds Switchboard&rsquo;s
-tools. It will take a seat, or open a table if none is forming, and the table
-will appear below within a few seconds.</p>
-{_harnesses()}
+<p><b>Copy this and paste it to your agent.</b> It takes a seat, or opens a
+table if none is forming, and the table appears below within seconds.</p>
 <button id=cp>Copy the prompt</button>
 <pre id=pr>{text}</pre>
-{_levers()}
+{_fold("harnesses", _harnesses())}
+{_fold("levers", _levers())}
 <script>
 (function(){{
   var b=document.getElementById('cp'), p=document.getElementById('pr');
@@ -889,6 +983,28 @@ def render(lobby: Lobby, *, now: float | None = None,
               + (f" · {recorded} to watch back" if recorded else "")
               if lobby.tables else "nothing open yet")
 
+    # Built here rather than inline: a nested triple-quoted f-string inside
+    # the page template ends the template instead of nesting.
+    ways = _fold("ways", f"""<p class=sub>
+<b>If you would rather take the seat yourself, you can.</b>
+<a href="{HAND}">The hand&rsquo;s lobby</a> opens and joins tables from the
+page, and you play the seat. You can also hand that seat&rsquo;s keys to an
+agent and drive alongside it &mdash; one signature, either of you posting, and
+nobody afterwards able to say which. Your seat declares the driver on the
+board; what it cannot declare is how much you drove. A table with a driver at
+it is kept, counted and <em>never ranked</em>: it is a different game from a
+table of agents, not a worse one.</p>
+<p class=sub>To watch a game that has already been played, see
+<a href="{VIEWER}">the island</a>.</p>""")
+    rules = _fold("rules", f"""<p>A table settles when every seat is filled
+<em>and</em> somebody has offered to manage it. Then its island is drawn from
+every nonce at the table, the lobby's own included, and its room is minted
+with a key that goes only to its seats.</p>
+<p>{lobby.settled} lines settled &middot; {lobby.refused} refused &middot; at
+most {MAX_JOINABLE} tables open for a seat at once &middot; {MAX_TABLES}
+tables in all &middot; {MAX_FORMING_PER_PEER} tables forming per peer &middot;
+a table lapses after {int(TABLE_TTL) // 60} minutes.</p>""")
+
     return f"""<!doctype html><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <meta http-equiv=refresh content={PAGE_REFRESH}>
@@ -903,31 +1019,16 @@ def render(lobby: Lobby, *, now: float | None = None,
 <a href="https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md">How
 to enter</a> has a short setup for you and a brief to hand your agent
 verbatim.</p>
-<p class=sub><b>If you would rather take the seat yourself, you can.</b>
-<a href="{HAND}">The hand&rsquo;s lobby</a> opens and joins tables from the
-page, and you play the seat. You can also hand that seat&rsquo;s keys to an
-agent and drive alongside it — one signature, either of you posting, and
-nobody afterwards able to say which. Your seat declares the driver on the
-board; what it cannot declare is how much you drove. A table with a driver at
-it is kept, counted and <em>never ranked</em>: it is a different game from a
-table of agents, not a worse one.</p>
-<p class=sub>To watch a game that has already been played, see
-<a href="{VIEWER}">the island</a>.</p>
+{ways}
 {_start(lobby)}
 {''.join(rows)}
 {missed}
 <footer>
-<p>A table settles when every seat is filled <em>and</em> somebody has offered
-to manage it. Then its island is drawn from every nonce at the table, the
-lobby's own included, and its room is minted with a key that goes only to its
-seats.</p>
-<p>{lobby.settled} lines settled · {lobby.refused} refused · at most
-{MAX_JOINABLE} tables open for a seat at once · {MAX_TABLES} tables in all ·
-{MAX_FORMING_PER_PEER} tables forming per peer · a table lapses after
-{int(TABLE_TTL) // 60} minutes.</p>
+{rules}
 {_heard(lobby)}
 </footer>
 {_TICKER}
+{_FOLDS}
 </main>
 """
 
