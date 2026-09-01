@@ -15,6 +15,8 @@
 // the key for exactly that reason — compare it against ENTER.md.
 
 import { CONFIG } from "./config.js";
+import { EPISODE_SECONDS_ALLOWED, GOODS_MAX, GOODS_MIN,
+         TRADERS_MAX, TRADERS_MIN } from "./protocol.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -26,8 +28,13 @@ export const BRIEF_URL =
 // scoreboard to fill, and a free-form box would produce a hundred formats
 // played once each." Bounds come from protocol.js so the ladders cannot drift
 // from what the lobby will actually accept.
-const TRADERS_MIN = 2, TRADERS_MAX = 8, GOODS_MIN = 2, GOODS_MAX = 12, ROUNDS_MAX = 1;
-const EPISODE_SECONDS_ALLOWED = [15, 30, 45, 60, 90, 120, 180, 300];
+//
+// THEY DRIFTED ANYWAY, because the comment above was aspirational: this file
+// re-declared TRADERS_MAX = 8 and GOODS_MAX = 12 as its own local constants
+// and never imported protocol.js at all. The page went on offering 8 traders
+// and 12 goods for the whole time the lobby refused anything over 4 and 5 --
+// the exact trap the levers exist to avoid, on the one copy of the page a
+// stranger actually loads. Imported now, so the sentence is true.
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
 export const OPEN_DEFAULTS =
@@ -36,7 +43,10 @@ export const OPEN_DEFAULTS =
 export const LEVERS = [
   ["traders", "traders", range(TRADERS_MIN, TRADERS_MAX)],
   ["episodes", "episodes per round", [1, 2, 3, 4, 5, 6, 8, 10, 12]],
-  ["rounds", "rounds", range(1, ROUNDS_MAX)],
+  // No `rounds` knob: ROUNDS_MAX is 1, so its ladder had a single rung and the
+  // select offered a choice the reader does not have. The field stays in the
+  // OPEN line at rounds=1. Bring the lever back -- range(1, ROUNDS_MAX) -- the
+  // day ROUNDS_MAX rises above 1. Decided by Gal, 2026-09-01.
   ["goods", "goods", range(GOODS_MIN, GOODS_MAX)],
   ["seconds", "seconds per episode", EPISODE_SECONDS_ALLOWED],
 ];

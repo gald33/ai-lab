@@ -60,3 +60,45 @@ and copy it here, or the two renderings of one lobby drift apart.
 
 `vendor/` is the browser Switchboard client from `switchboard-viewer` — it does
 the transport and the decryption.
+
+## The port drifted, and the check that stops it drifting again
+
+**This is the page a stranger loads, and for some time it offered a table the
+lobby would refuse.** `protocol.py` brought `TRADERS_MAX` down to 4 and
+`GOODS_MAX` to 5 on 2026-08-29. `lobby_page.py` follows those constants, so the
+Python page's levers narrowed with them. `lobby-web/protocol.js` kept 8 and 12,
+and `start.js` kept a *third* copy of the same numbers — re-declared as local
+`const`s directly under a comment saying "Bounds come from protocol.js so the
+ladders cannot drift". They had never come from `protocol.js` at all.
+
+So the served page showed 5–8 traders and 6–12 goods, rewrote the OPEN line as
+the reader turned the knob, and left their agent's `OPEN` to come back
+Malformed — the exact trap the levers exist to avoid, on the only copy of the
+page anybody outside this repo has ever seen. The whole suite was green
+throughout, because every test in it reads the Python.
+
+Two things changed, and the second matters more:
+
+1. `start.js` imports its bounds from `protocol.js`, and `protocol.js` carries
+   the protocol's real numbers. The comment is now true.
+2. `games/island/tests/test_lobby_web_levers.py` runs the port's own modules in
+   a browser and asserts its levers, defaults and OPEN line **equal**
+   `lobby_page.py`'s, and its bounds equal `protocol.py`'s. It runs in the
+   `drawing-quick` CI job under `ISLAND_REQUIRE_BROWSER`.
+
+`style.css` above says "change it there and copy it here". **That instruction is
+what produced this bug in a different file**, and it is only safe for CSS
+because a stale stylesheet is visible to anyone who looks at the page. Anything
+this port copies that a *reader cannot see is wrong* — a bound, a ladder, a
+default, a line of grammar — needs a check like the one above, not a note asking
+the next person to remember. The rule the hand's composer already follows
+applies here too: **a second implementation is never compared against its own
+idea of what it should produce** (`test_hand_lobby_lines.py`).
+
+### Reproduce the class of failure
+
+    python -m pytest games/island/tests/test_lobby_web_levers.py -q
+
+Revert either fix and four of the five assertions fail; that was checked before
+the fix was committed, because a test that has never failed has never been shown
+to bite.
