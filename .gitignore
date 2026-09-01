@@ -55,3 +55,9 @@ games/entrants/
 # which are committed.
 experiments/007-execution-ceiling/recordings/all.json
 experiments/007-execution-ceiling/recordings/island-replay.html
+
+# repoctx: local index + feedback state, per-machine. The project-level config
+# (.claude/settings.json, .mcp.json) IS committed so the hooks travel with the
+# repo; only the generated state is ignored.
+.repoctx/
+.claude/*.local.json
