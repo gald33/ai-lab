@@ -574,19 +574,34 @@ write that Python refuses loses a driver their table in silence; an input the
 buttons refuse that Python allows shrinks the game for nothing. Both are
 invisible without the test.
 
-**It found a defect in `protocol.py` and did not fix it.** `parse` strips
-`key=value` pairs off the end of a JOIN, so a *name* containing `nonce=<hex>`
-puts two nonces on the line and the parser silently takes one:
+**It found a defect in `protocol.py`, and that defect is now fixed.** `parse`
+stripped `key=value` pairs off the *end* of a JOIN while more than three words
+remained, so a seat calling itself `x nonce=aaaa...` was read as a seat called
+`x` with one of two nonces:
 
     JOIN g7 as x nonce=aaaa... nonce=bbbb...
     -> Join(table='g7', name='x', nonce='aaaa...')
 
-The name that arrives is not the name that was written. That is a malformed
-message being repaired into a plausible one, which the system is forbidden to
-do -- but the lobby's grammar is every entrant's, and tightening it inside a
-change about the hand's pages would be a drive-by. It is pinned by a test that
-will fail the day somebody fixes it, so the note and the exception list move
-together.
+The name that arrived was never written, and a line carrying two seeds settled
+as though it carried one -- a malformed message repaired into a plausible one,
+which the system is forbidden to do anywhere.
+
+**It was left unfixed for one day on purpose, and then fixed on the word of
+whoever owns the grammar.** The lobby's grammar is every entrant's, so
+tightening it inside a change about the hand's pages would have been a
+drive-by; it was pinned instead by a test asserting the defect, which would
+fail the moment anybody repaired it. That is what happened. `parse` now reads
+a JOIN left to right -- table, `as`, one-word name, then `key=value` fields
+with no key twice -- and the pinning test became a regression test
+(`test_a_join_carrying_two_nonces_is_refused`).
+
+**The lesson is about where the report came from.** Nobody read this code
+looking for a bug. The hand's JavaScript composer refused an input the parser
+accepted, a check written to catch *the page* being over-strict fired, and the
+page turned out to be right. A second implementation is a cost this repository
+keeps paying reluctantly -- and this is the one thing it buys back: two
+grammars disagreeing is a question somebody has to answer, and the answer is
+not always that the newer one is wrong.
 
 **`hand/lobby.html` and `hand/play.html`** are the pages, with
 `tests/test_hand_pages.py` driving them in a browser against a real hub --

@@ -189,11 +189,44 @@ def parse(text: str):
                     rounds=rounds, goods=goods, seconds=seconds)
 
     if head == JOIN:
+        # **Left to right, and the shape first.** This used to strip
+        # `key=value` pairs off the *end* while more than three words
+        # remained, which had two silent failures rather than one refusal.
+        #
+        # A name with a space in it made both. `JOIN g7 as x nonce=A nonce=B`
+        # -- a seat calling itself `x nonce=A` -- consumed `nonce=B`, then
+        # consumed `nonce=A` over the top of it, and settled as
+        # `Join(name='x', nonce='A')`: a name that was never written and one
+        # of two nonces chosen by position. A line carrying two seeds is not a
+        # line with one, and a parser that picks is repairing a malformed
+        # message into a plausible one -- the thing `CLAUDE.md` forbids the
+        # system to do anywhere.
+        #
+        # Found 2026-08-31 by `tests/test_hand_lobby_lines.py`, which pits the
+        # hand's JavaScript composer against this parser and reported the page
+        # as *stricter*. Fixed here rather than accommodated there: the page
+        # was right.
         parts = rest.split()
+        if len(parts) < 3 or parts[1].lower() != "as":
+            raise Malformed("JOIN wants '<table> as <name>', optionally "
+                            "followed by nonce=<hex>")
+        table, _, name = parts[0], parts[1], parts[2]
         nonce = ""
-        while len(parts) > 3 and "=" in parts[-1]:
-            field, _, value = parts[-1].partition("=")
+        seen: set[str] = set()
+        for part in parts[3:]:
+            if "=" not in part:
+                # Almost always a name with a space in it, so say that rather
+                # than something about fields the writer never mentioned.
+                raise Malformed(
+                    f"JOIN does not understand {part!r} -- a trader name is "
+                    f"one word, and anything after it must be key=value")
+            field, _, value = part.partition("=")
             field = field.lower()
+            if field in seen:
+                raise Malformed(
+                    f"JOIN carries {field}= twice, and this does not choose "
+                    f"between them -- send one")
+            seen.add(field)
             if field == "box":
                 # Removed 2026-08-26, when the sealing tool (now `whisper`)
                 # reached a release. A seat used
@@ -215,11 +248,6 @@ def parse(text: str):
                 nonce = value
             else:
                 raise Malformed(f"JOIN does not understand {field!r}")
-            parts = parts[:-1]
-        if len(parts) != 3 or parts[1].lower() != "as":
-            raise Malformed("JOIN wants '<table> as <name>', optionally "
-                            "followed by nonce=<hex>")
-        table, _, name = parts
         if not _NAME.match(name):
             raise Malformed(
                 "a trader name is 1-32 characters of letters, digits, dash, "
