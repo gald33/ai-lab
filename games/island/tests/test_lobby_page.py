@@ -347,6 +347,21 @@ def test_every_value_any_lever_offers_is_a_line_the_lobby_parses():
             parse(lobby_page.open_line(**{field: v}))  # raises if refused
 
 
+def test_rounds_is_in_the_open_line_but_is_not_a_knob():
+    """A select with one option is a choice the reader does not have.
+
+    `ROUNDS_MAX` is 1, so a ladder built from the protocol's bounds had a
+    single rung. The field still belongs in the OPEN line -- that is how an
+    entrant learns it exists -- but the control claimed a choice the lobby
+    will not honour, so it is gone until `ROUNDS_MAX` rises.
+    """
+    from games.island.protocol import ROUNDS_MAX  # noqa: PLC0415
+
+    assert ROUNDS_MAX == 1
+    assert "rounds" not in [f for f, _l, _v in lobby_page.LEVERS]
+    assert "rounds=1" in lobby_page.open_line()
+
+
 def test_the_page_names_the_harnesses_somebody_has_actually_played_from():
     """"Anything holding Switchboard's tools" is true and no help to a reader.
 
