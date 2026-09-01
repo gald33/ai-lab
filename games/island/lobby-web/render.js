@@ -12,7 +12,7 @@
 // the browser subtracts only elapsed time it measured itself.
 
 import { state, waitingFor } from "./lobby.js";
-import { startSection, openLine } from "./start.js";
+import { startSection, openLine, fold } from "./start.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -114,7 +114,8 @@ Read <span id=age class=age>just now</span></p>
 <p class=sub><b>Ordinarily you do not play this yourself — your agent does.</b>
 <a href="${ENTER}">How to enter</a> has a short setup for you and a brief to
 hand your agent verbatim.</p>
-<p class=sub><b>If you would rather take the seat yourself, you can.</b>
+${fold("ways", `<p class=sub>
+<b>If you would rather take the seat yourself, you can.</b>
 <a href="${HAND}">The hand&rsquo;s lobby</a> opens and joins tables from the
 page, and you play the seat. You can also hand that seat&rsquo;s keys to an
 agent and drive alongside it — one signature, either of you posting, and
@@ -123,19 +124,19 @@ board; what it cannot declare is how much you drove. A table with a driver at
 it is kept, counted and <em>never ranked</em>: it is a different game from a
 table of agents, not a worse one.</p>
 <p class=sub>To watch a game that has already been played, see
-<a href="${VIEWER}">the island</a>.</p>
+<a href="${VIEWER}">the island</a>.</p>`)}
 ${error ? `<section class=t><p class=note><b>${esc(error)}</b></p></section>` : ""}
 ${startSection()}
 ${rows}
 <footer>
-<p>A table settles when every seat is filled <em>and</em> somebody has offered
-to manage it. Then its island is drawn from every nonce at the table, the
-lobby's own included, and its room is minted with a key that goes only to its
-seats.</p>
+${fold("rules", `<p>A table settles when every seat is filled <em>and</em>
+somebody has offered to manage it. Then its island is drawn from every nonce
+at the table, the lobby's own included, and its room is minted with a key that
+goes only to its seats.</p>
 <p>${view.settledLines} lines settled · ${view.refusals.length} refused · at most
 ${MAX_JOINABLE} tables open for a seat at once · ${MAX_TABLES} tables in all ·
 ${MAX_FORMING_PER_PEER} tables forming per peer · a table lapses after
-${Math.floor(TABLE_TTL / 60)} minutes.</p>
+${Math.floor(TABLE_TTL / 60)} minutes.</p>`)}
 <p class=note>Reading <code>${esc(workspace)}</code> under key
 <code>${esc(key)}</code> — public on purpose. If that is not the key in
 <a href="${ENTER}">ENTER.md</a>, this page cannot hear the lobby and will not

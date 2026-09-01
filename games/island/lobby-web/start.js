@@ -53,6 +53,59 @@ export const LEVERS = [
 
 export const LEVERS_KEY = "island:levers";
 
+// Where a reader's open/shut folds wait out the re-render.
+//
+// Worse here than in the Python page, and the same fix. There the meta refresh
+// reloads the document every 15s; here `app.js` replaces `main.innerHTML` on
+// every poll, so an open `<details>` is destroyed and rebuilt from the
+// server's default several times a minute — a reader could not keep the levers
+// open long enough to use them. `wireFolds` runs from `wireStart`, which
+// `app.js` already calls after each render for exactly this reason.
+export const FOLDS_KEY = "island:folds";
+
+// The sections folded shut on arrival, and what their summary says. What is
+// not here is the point: the page had grown to ~1,200 words before a reader
+// reached the first table, and only one thing on it is immediate — your agent
+// plays this, here is what to give it. The prompt is never folded, for the
+// reason startSection() gives: that would put the text behind the button
+// again by another route. Decided by Gal, 2026-09-01.
+export const FOLDS = {
+  ways: "Other ways in &mdash; take the seat yourself, or watch a game back",
+  harnesses: "Which harnesses have taken a seat",
+  levers: "Adjust what your agent asks for",
+  rules: "How a table settles, and the limits",
+};
+
+/** One shut-on-arrival section, named so the browser can remember it. */
+export function fold(key, body) {
+  return `<details class=fold data-fold=${key}><summary>${FOLDS[key]}</summary>`
+       + `<div class=body>${body}</div></details>`;
+}
+
+/** Restore each fold to what this reader last left it, and remember a toggle. */
+export function wireFolds() {
+  const els = [...document.querySelectorAll("details.fold")];
+  let o = {};
+  try { o = JSON.parse(sessionStorage.getItem(FOLDS_KEY) || "{}"); } catch (e) {}
+  // On the summary's click as well as on `toggle`, and that is not belt and
+  // braces: `toggle` is dispatched asynchronously, so the very next poll can
+  // replace main.innerHTML before the write lands and rebuild the fold shut.
+  // A click handler runs before the browser's default action, so `open` is
+  // still the old value there and the one to store is its negation.
+  const save = (x) => {
+    try {
+      const n = {};
+      els.forEach(e => { n[e.dataset.fold] = (e === x) ? !e.open : e.open; });
+      sessionStorage.setItem(FOLDS_KEY, JSON.stringify(n));
+    } catch (e) {}
+  };
+  els.forEach(e => {
+    if (typeof o[e.dataset.fold] === "boolean") e.open = o[e.dataset.fold];
+    e.addEventListener("toggle", () => save(null));
+    e.querySelector("summary").addEventListener("click", () => save(e));
+  });
+}
+
 export const HARNESSES = [
   "Cursor desktop",
   "Claude Code desktop (local)",
@@ -167,9 +220,10 @@ function levers() {
       `<option value=${v}${v === OPEN_DEFAULTS[field] ? " selected" : ""}>${v}</option>`).join("");
     return `<label>${esc(label)}<select data-f=${field}>${opts}</select></label>`;
   }).join("");
-  return `<div class=levers><p class=lh>Adjust what your agent will ask for
-    &mdash; the line above updates as you choose. Your agent still sends
-    it.</p>${rows}</div>`;
+  // The lead-in no longer repeats the fold's summary, which already says
+  // what these are for.
+  return `<div class=levers><p class=lh>The prompt above updates as you
+    choose. Your agent still sends it.</p>${rows}</div>`;
 }
 
 /** The two-click start: copy a prompt, paste it into an agent.
@@ -182,20 +236,22 @@ export function startSection() {
   if (text.includes(line)) text = text.replace(line, `<span id=ol>${line}</span>`);
   return `<section class=start>
 <h2>Start a game</h2>
-<p><b>You do not play this yourself.</b> Copy this and paste it to your agent
-&mdash; a Claude Code session, or anything that holds Switchboard&rsquo;s
-tools. It will take a seat, or open a table if none is forming, and the table
-will appear below within a few seconds.</p>
-${harnesses()}
+<p><b>Copy this and paste it to your agent.</b> It takes a seat, or opens a
+table if none is forming, and the table appears below within seconds.</p>
 <button id=cp>Copy the prompt</button>
 <pre id=pr>${text}</pre>
-${levers()}
+${fold("harnesses", harnesses())}
+${fold("levers", levers())}
 </section>`;
 }
 
 /** Wire the levers and the copy button. Called after each render, because
  *  innerHTML replaces the nodes these listeners were attached to. */
 export function wireStart() {
+  // Before the guard below: the `ways` and `rules` folds are outside the start
+  // section and are on the page even when it is not (the error state renders
+  // no prompt), so an early return here would leave them dead.
+  wireFolds();
   const b = document.getElementById("cp"), p = document.getElementById("pr");
   const ol = document.getElementById("ol");
   if (!b || !p) return;

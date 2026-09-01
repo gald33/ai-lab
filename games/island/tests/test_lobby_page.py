@@ -362,6 +362,69 @@ def test_rounds_is_in_the_open_line_but_is_not_a_knob():
     assert "rounds=1" in lobby_page.open_line()
 
 
+def test_only_the_start_is_unfolded_and_the_prompt_is_never_folded(hub):
+    """**What a reader meets before they have scrolled.**
+
+    The page had grown to ~1,200 words before the first table, all of it true,
+    which is why none of it could simply be deleted. Only one thing on it is
+    immediate: your agent plays this, here is what to give it. So the title,
+    the one line of orientation, the button and the prompt stay; the rest waits
+    behind a summary.
+
+    The prompt is deliberately not among the folds, for the reason `_start`
+    already gives: a button that copies something the reader cannot see asks
+    them to paste an instruction they have not read into an agent they are
+    responsible for. Folding it would put the text behind the button again by
+    another route.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    folded = set(re.findall(r"<details class=fold data-fold=(\w+)>", page))
+    assert folded == set(lobby_page.FOLDS)
+    # None of them is open on arrival: `<details>` without `open` is shut.
+    assert "<details class=fold data-fold" in page
+    assert "<details open" not in page and "open class=fold" not in page
+
+    # The prompt and its button are in no fold at all.
+    before_first_fold = page[:page.index("<details class=fold")]
+    assert "<pre id=pr>" in page
+    body = page[page.index("<button id=cp>"):]
+    assert body.index("</pre>") < body.index("<details class=fold"), \
+        "the prompt must come before -- and outside -- any fold"
+    assert "The island — lobby" in before_first_fold
+
+
+def test_a_fold_a_reader_opened_survives_the_meta_refresh(hub):
+    """**A page that reloads every 15s and forgets is worse than no fold.**
+
+    Same trap the levers hit and the countdowns before them: the reload puts
+    every `<details>` back on what the server wrote. A reader who opened the
+    levers and chose four traders would watch the section shut a few seconds
+    later -- and the levers restore their *value*, so the choice would still be
+    live and no longer visible, which is worse than losing it.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert f"sessionStorage.getItem('{lobby_page.FOLDS_KEY}'" in page
+    assert f"sessionStorage.setItem('{lobby_page.FOLDS_KEY}'" in page
+    assert "'toggle'" in page, "a fold is remembered when the reader moves it"
+
+
+def test_the_fold_script_comes_after_the_folds_it_restores(hub):
+    """The frozen-countdown failure, in a second shape.
+
+    `querySelectorAll('details.fold')` running above the folds matches nothing,
+    every fold stays on the server's default, and no markup assertion can see
+    it -- `data-fold` present, `sessionStorage` present, the listener present,
+    all of it in the wrong order. Asserted rather than trusted, because that is
+    exactly how the ticker shipped broken.
+    """
+    page = lobby_page.render(_settled(hub, generate_key()), now=1_000_000.0)
+
+    assert page.index("details.fold") > page.rindex("<details class=fold"), \
+        "the restoring script must come after every fold it looks for"
+
+
 def test_the_page_names_the_harnesses_somebody_has_actually_played_from():
     """"Anything holding Switchboard's tools" is true and no help to a reader.
 
@@ -584,6 +647,10 @@ def test_the_levers_rewrite_the_open_line_into_one_the_lobby_parses(hub):
         tab = browser.new_page()
         tab.goto(page.as_uri())
         default = tab.inner_text("#ol")
+        # The levers are folded shut on arrival, so a reader opens them
+        # before touching one -- and a select inside a shut `<details>` is
+        # not reachable, which is why this line is here rather than assumed.
+        tab.click("details.fold[data-fold=levers] > summary")
         for field, _label, values in lobby_page.LEVERS:
             tab.select_option(f".levers select[data-f={field}]", str(values[-1]))
         topped = tab.inner_text("#ol")
@@ -660,6 +727,65 @@ def test_a_countdown_carries_across_the_meta_refresh(hub):
     # both readings in the comparison come from this browser's own `Date.now`.
     assert "saw.left-(t0-saw.t)/1000" in page
     assert f"<={lobby_page.RESYNC}" in page
+
+
+def test_a_fold_stays_open_across_a_reload_in_a_real_browser(hub):
+    """**The assertion the markup one above cannot make.**
+
+    Everything the fold needs can be present and still not work: the store, the
+    key, the listener, the `data-fold` names. What decides it is whether the
+    script runs after the elements exist and whether the browser really puts
+    the section back. That is behaviour, so it is watched happening -- see
+    `CLAUDE.md`, "A page's behaviour is checked in a browser".
+
+    Opens the levers, reloads the page the way the meta refresh does, and
+    requires the levers still open and the other folds still shut. A fold that
+    reopened *every* section would pass a weaker check and be its own bug.
+    """
+    import os
+    import pathlib
+
+    def missing(why: str):
+        if os.environ.get("ISLAND_REQUIRE_BROWSER"):
+            pytest.fail(f"{why}, and ISLAND_REQUIRE_BROWSER is set: this run "
+                        f"checked no fold at all")
+        pytest.skip(why)
+
+    try:
+        from playwright import sync_api as play  # noqa: PLC0415
+    except ImportError:
+        missing("no playwright to drive a page with")
+
+    chrome = next((p for p in pathlib.Path("/opt/pw-browsers").glob("chromium*")
+                   if p.is_file()), None)
+    page = tmp_page(_settled(hub, generate_key()))
+
+    with play.sync_playwright() as pw:
+        try:
+            browser = pw.chromium.launch(
+                executable_path=str(chrome) if chrome else None)
+        except Exception as exc:                       # noqa: BLE001
+            missing(f"no chromium to drive a page with: {exc!r}")
+        tab = browser.new_page()
+        tab.goto(page.as_uri())
+
+        shut = tab.eval_on_selector_all(
+            "details.fold", "els => els.map(e => e.open)")
+        tab.click("details.fold[data-fold=levers] > summary")
+        opened = tab.is_visible(".levers select")
+
+        tab.reload()
+        after = tab.eval_on_selector_all(
+            "details.fold", "els => els.map(e => [e.dataset.fold, e.open])")
+        browser.close()
+
+    assert shut and not any(shut), "every fold is shut on arrival"
+    assert opened, "opening a fold reveals what is inside it"
+    state = dict(after)
+    assert state["levers"] is True, \
+        "the fold the reader opened shut itself on the refresh"
+    assert [f for f, o in after if o] == ["levers"], \
+        "only the fold the reader opened comes back open"
 
 
 def test_every_countdown_on_the_page_is_named_apart(hub):

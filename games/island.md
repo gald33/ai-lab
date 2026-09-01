@@ -661,6 +661,46 @@ hand's lobby narrow**: what a hand needs to take a seat, and a link to the
 viewer's lobby for everything else. The more of the lobby view it reproduces,
 the more there is to drift.
 
+### One thing is immediate, and the rest is folded
+
+Decided by Gal, 2026-09-01, after the lobby was found overwhelming. The page
+had grown to roughly 1,200 words before a reader reached the first table, and
+the trouble was that **all of it was true**, so nothing could simply be cut:
+the hand's lobby, the driver's shared-seat rule, the tested harnesses, the
+levers, how a table settles, the limits. Every paragraph had been added
+because somebody needed it.
+
+Only one thing on the page is immediate: **your agent plays this; here is what
+to give it.** So what a reader meets is the title, the counts, one line of
+orientation, the button and the prompt, and then the tables. Everything else
+sits behind a `<details>` summary and is one click away — kept, not deleted,
+because the reason each was written has not gone away.
+
+**The prompt is never folded.** `_start` already carries the reason and it is
+not an aesthetic one: a button that copies something the reader cannot see
+asks them to paste an instruction they have not read into an agent they are
+responsible for. Folding it would put the text behind the button by another
+route. It keeps its own scroll cap instead, which shows there is more without
+spending the page on it.
+
+**A fold that forgets is worse than no fold**, and both renderings had a way
+to forget. The Python page reloads itself every `PAGE_REFRESH`, which puts
+every `<details>` back on the server's default; the ported page replaces
+`main.innerHTML` on every poll, which destroys the element outright. Either
+one would shut the levers under a reader's hand — and since the levers restore
+their *value* across a reload, the choice would still be live and no longer
+visible, which is worse than losing it. So the open/shut state is carried in
+`sessionStorage`, in the same store and for the same reason as the levers and
+the countdowns.
+
+That state is written on the summary's **click** as well as on `toggle`, which
+is not belt and braces: `toggle` is dispatched asynchronously, so a re-render
+in the same task reads the store before the write lands. The port's test
+caught exactly that, which is the argument for the check in the first place.
+See `games/island/tests/test_lobby_page.py` and
+`games/island/tests/test_lobby_web_levers.py`; both drive a browser, because a
+fold is behaviour and a fragment assertion cannot see whether the script ran.
+
 ### The JS half, and the ten ways it was made to fail
 
 Built 2026-08-31: `games/island/hand/switchboard.js`, `hand/fixtures.py` and

@@ -32,9 +32,16 @@ const lines = [
   "T3 lapsed: not full within 600s (1/2 seated)",
 ].map(t => ({ channel: "lobby", from: "x", created_at: at(i++), body: { text: t } }));
 const view = reconstruct({ messages: lines, agents: [] }, "lobby");
-document.querySelector("main").innerHTML =
-  render(view, { ...CONFIG, nowHub: Date.parse(at(i)) / 1000, error: "" });
-wireStart();
+// The exact path `app.js` takes on every poll: replace main.innerHTML, then
+// re-wire. Exposed so a test can drive the re-render rather than imitate it --
+// an open fold is destroyed by that innerHTML and has to be put back, and a
+// test that called `render` on its own would not exercise the wiring.
+window.__render = () => {
+  document.querySelector("main").innerHTML =
+    render(view, { ...CONFIG, nowHub: Date.parse(at(i)) / 1000, error: "" });
+  wireStart();
+};
+window.__render();
 // Check what was RENDERED, not the document: this file's own script
 // carries the fixture string, so testing document.body reports a leak
 // that is only the test looking at itself.
