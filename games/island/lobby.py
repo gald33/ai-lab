@@ -222,6 +222,14 @@ class Table:
     #: specific seat over the board is the sealed channel, build-order item
     #: 2c, and is not done here.
     seed: int | None = None
+    #: The table's room, encoded, as handed to its seats. **Sealed to each
+    #: seat, never posted** since 2026-09-02 (Gal): the room key is what makes
+    #: a seat a seat, and a lobby that posted the invite on its public board
+    #: handed the room to everybody who could read the lobby -- which
+    #: `island.md` ("A room the strangers can talk in") had named as the one
+    #: leak left. Kept here, in the private state file beside the seed, so a
+    #: restarted runner can play the table it settled.
+    invite: str = ""
 
     def verifiable(self) -> bool:
         """Whether this table's island can be shown to have been drawn rather
@@ -327,8 +335,25 @@ class Lobby:
         which is invisible until a game plays to nobody. See `HOLD`.
         """
         self.holder = secrets.token_hex(4)
+        self.present()
         self.say(f"{HOLD}{self.holder}")
         return self.holder
+
+    def present(self) -> None:
+        """Put this lobby on the roster, with the exchange key a seat needs to
+        open what it is whispered.
+
+        A whisper is sealed pairwise, and the recipient opens it with the
+        *sender's* published exchange key -- read off the roster, so a sender
+        that never registered is a sender whose envelopes nobody can open. A
+        long TTL, renewed by the runner's heartbeat, so the row does not lapse
+        two minutes after a lobby that will settle tables for days."""
+        try:
+            self.client.register(name="lobby", kind="local", branch="main",
+                                 task=f"reading {self.channel}",
+                                 ttl=3600.0, back_in=300.0)
+        except Exception as exc:      # noqa: BLE001 -- a roster row is not a game
+            print(f"lobby not on the roster: {exc!r}", flush=True)
 
     def _stand_down(self, rows: list[dict]) -> bool:
         """Whether a newer lobby now holds this channel. Said once, out loud:
@@ -575,7 +600,8 @@ class Lobby:
                 f"island is drawn from all of them together")
         self.say(f"{table.id} is forming: {table.traders} traders, "
                 f"{table.goods} goods, "
-                f"{table.episodes} episodes, {table.rounds} round"
+                f"{table.episodes} episodes of {table.seconds}s, "
+                f"{table.rounds} round"
                 f"{'s' if table.rounds != 1 else ''} -- JOIN {table.id} as "
                 f"<name>, or MANAGE {table.id}")
 
@@ -711,7 +737,43 @@ class Lobby:
         self.say(f"{table.id} is full: {roster}; managed by "
                 f"{table.manager}; opens {_stamp(table.opens_at)}{note}")
         self.say(f"{table.id}: the island is {drawn}")
-        self.say(f"{table.id} invite: {invite.encode()}")
+        self._hand_out(table, invite)
+
+    def _hand_out(self, table: Table, invite: Invite) -> None:
+        """The room, to its seats and its manager, and to nobody else.
+
+        **Whispered, not posted.** Decided by Gal, 2026-09-02. The invite is
+        a read-write credential for the table's room, and until now it went on
+        this public board in the clear, one line after the settlement -- so
+        the room "held only its seats" in name, and anybody reading the lobby
+        held its key. `whisper` seals to one peer's published exchange key,
+        which is what a sealed seat is (`Table.boxes`), so every table that
+        can be sealed at all can be handed its room the same way.
+
+        A table that cannot -- a seat with no exchange key -- gets the
+        invite in the clear, as before, and the settlement line has already
+        said it plays as practice. The weaker thing is kept and says so; it
+        is not dressed as the stronger one.
+
+        One public line either way, naming who was given the room: the
+        runner counts those lines to refuse a table two lobbies settled
+        (`run_game.pending_invite`), and a reader of the board can see the
+        room was handed out without being handed it.
+        """
+        table.invite = invite.encode()
+        peers = list(table.seats)
+        if table.manager_peer and table.manager_peer not in peers:
+            peers.append(table.manager_peer)
+        if not all(p in self._exchange for p in peers):
+            self.say(f"{table.id} invite: {table.invite}")
+            return
+        self.present()
+        body = f"{table.id} invite: {table.invite}"
+        for peer in peers:
+            self.client.whisper(peer, body)
+        who = ", ".join(table.label(p) for p in table.seats)
+        self.say(f"{table.id} invite: sealed to {who} and the manager -- "
+                 f"read your inbox (roster first); it is not on this board")
 
     @staticmethod
     def _commit_reveal(table: Table) -> int:

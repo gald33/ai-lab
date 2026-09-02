@@ -860,8 +860,13 @@ does, in the clear, and sealing that line per seat is the open fix in
 which is in the room, re-posts each settled line into a channel of the
 lobby workspace named for the table, which anybody holding the published key
 can read and the viewer can already follow over the hub. One extra post per
-line, the board still the only surface. Not built in this change; written
-here so it is not designed a fourth time.
+line, the board still the only surface. **Built the same day**:
+`run_game._broadcast`, the button in `lobby-web/render.js:watchLink`, and
+the viewer reading broadcast rows in `viewer/web/feeds.js`. Nothing on this
+host changes for it: no directory, no Caddy line, no port. And the invite
+itself left the board in the same change -- the lobby whispers it to each
+seat (`Lobby._hand_out`), so a table's room now really does hold only its
+seats and its manager.
 
 #### Doing it, in an order where nothing is dark in between
 

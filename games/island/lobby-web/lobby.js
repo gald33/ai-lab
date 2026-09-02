@@ -38,7 +38,7 @@ const rx = (src) => new RegExp(src.replaceAll("{T}", TABLE));
 
 const RE = {
   commits: rx(String.raw`^({T}) commits ([0-9a-f]+)`),
-  forming: rx(String.raw`^({T}) is forming: (\d+) traders, (\d+) goods, (\d+) episodes, (\d+) round`),
+  forming: rx(String.raw`^({T}) is forming: (\d+) traders, (\d+) goods, (\d+) episodes(?: of (\d+)s)?, (\d+) round`),
   seat:    rx(String.raw`^({T}) seat (T\d+) = (\S+?), key (\S+?)(, sealed|, in the clear)?(?:, nonce ([0-9a-f]+))? \((\d+)\/(\d+)\)$`),
   manager: rx(String.raw`^({T}) will be managed by (\S+?), key (\S+)$`),
   full:    rx(String.raw`^({T}) is full: (.*?); managed by (.*?); opens (\S+?)(;.*)?$`),
@@ -77,7 +77,7 @@ function table(tables, id) {
       id, traders: 0, goods: 0, episodes: 0, rounds: 1,
       opened_at: 0, seats: [], commit: "", manager: null, manager_key: null,
       settled: false, lapsed: false, opens_at: null, draw: "",
-      practice: false, lapse_reason: "", roster: "",
+      practice: false, lapse_reason: "", roster: "", seconds: 60,
     });
   }
   return tables.get(id);
@@ -106,13 +106,19 @@ export function reconstruct(snapshot, channel) {
     let m;
 
     if (body.startsWith(HOLD)) { holder = body.slice(HOLD.length).trim(); continue; }
-    if (RE.invite.test(body)) continue;   // a room credential; never rendered
+    // Since 2026-09-02 the lobby whispers the room to its seats and this
+    // line only says so; an older lobby put the credential itself here. Either
+    // way it is not the page's to show.
+    if (RE.invite.test(body)) continue;
 
     if ((m = RE.commits.exec(body)))  { table(tables, m[1]).commit = m[2]; continue; }
     if ((m = RE.forming.exec(body)))  {
       const t = table(tables, m[1]);
+      // `seconds` joined the line on 2026-09-02; a lobby that predates it
+      // announced the default, which is what the schedule ran on.
       Object.assign(t, { traders: +m[2], goods: +m[3], episodes: +m[4],
-                         rounds: +m[5], opened_at: t.opened_at || at });
+                         seconds: m[5] ? +m[5] : 60,
+                         rounds: +m[6], opened_at: t.opened_at || at });
       continue;
     }
     if ((m = RE.seat.exec(body))) {

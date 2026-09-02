@@ -21,7 +21,10 @@ does *not* re-derive them: a browser that re-decided would be a second lobby
 that can disagree with the first, and this page is what a person reads before
 sitting down. An entrant's own `OPEN`/`JOIN`/`MANAGE` is read as intent only.
 
-A table's room invite is filtered out in `lobby.js` and never reaches the view.
+A table's room invite never reaches the view. Since 2026-09-02 it is not on the
+board either: the lobby whispers it to each seat and posts only that it did.
+The page's watch button points the viewer at the manager's *broadcast* of the
+room (a channel of this workspace named for the table), never at the room.
 
 ## Clocks
 

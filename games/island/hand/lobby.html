@@ -66,6 +66,7 @@ never ranked.</p>
 </fieldset>
 
 <h2>The board</h2>
+<div id=invite></div>
 <div id=board></div>
 
 <fieldset>
@@ -201,9 +202,41 @@ async function readBoard(existing) {
 }
 
 $("refresh").addEventListener("click", async () => {
-  try { await readBoard(); say(`Read ${window.HAND_BOARD.length} lines.`); }
-  catch (err) { say(String(err.message), true); }
+  try {
+    const hub = window.HAND_SEAT?.hub;
+    await readBoard(hub);
+    if (hub) await readInvite(hub);
+    say(`Read ${window.HAND_BOARD.length} lines.`);
+  } catch (err) { say(String(err.message), true); }
 });
+
+/** The invite the lobby whispered to this seat, if it has: decoded and turned
+ *  into the link to the island page. Since 2026-09-02 the room is never on
+ *  the board -- it is sealed to each seat -- so this reads the inbox with the
+ *  same connection that registered, which is the identity it was sealed to.
+ *  `Invite.encode` is `swb1_` + base64url of `{v,u,w,t,k,...}`. */
+async function readInvite(hub) {
+  const seat = window.HAND_SEAT;
+  if (!seat) return;
+  for (const row of await hub.inbox({ limit: 50 })) {
+    const body = typeof row.body === "string" ? row.body : "";
+    const m = /^(\S+) invite: (swb1_[A-Za-z0-9_-]+)$/.exec(body);
+    if (!m || m[1] !== seat.table) continue;
+    const raw = m[2].slice(5).replace(/-/g, "+").replace(/_/g, "/");
+    const inv = JSON.parse(atob(raw + "=".repeat((4 - raw.length % 4) % 4)));
+    const q = new URLSearchParams({ workspace: inv.w, key: inv.k,
+                                    name: $("name").value || "hand" });
+    window.HAND_INVITE = inv;
+    const a = document.createElement("a");
+    a.href = `./play.html?${q}`;
+    a.textContent = `Enter ${seat.table}'s room as ${$("name").value || "hand"}`;
+    const p = document.createElement("p");
+    p.className = "sub";
+    p.append(`The lobby whispered you ${seat.table}'s room (workspace ${inv.w}). `, a);
+    $("invite").replaceChildren(p);
+    return;
+  }
+}
 
 $("open").addEventListener("click", async () => {
   try {
@@ -228,13 +261,15 @@ $("join").addEventListener("click", async () => {
     });
     await hub.register($("name").value);
     await hub.say("lobby", line);
-    window.HAND_SEAT = { table, publicKey: seat.publicKey };
-    say(`Posted. Watch the board for the invite to ${table}, then open the ` +
-        `island page for it — under this same name, so the key the lobby ` +
-        `witnessed is the key that plays.`);
+    window.HAND_SEAT = { table, publicKey: seat.publicKey, hub };
+    say(`Posted. When the table settles the lobby whispers you its room — ` +
+        `press Refresh until the invite shows below, then open the island ` +
+        `page for it under this same name, so the key the lobby witnessed ` +
+        `is the key that plays.`);
     // Reusing the connection rather than making a second one: another
     // `register` under this name would publish another key over this one.
     await readBoard(hub);
+    await readInvite(hub);
   } catch (err) { say(String(err.message), true); }
 });
 </script>

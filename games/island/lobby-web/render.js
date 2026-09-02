@@ -18,6 +18,10 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export const VIEWER = "https://gald33.github.io/ai-lab/island/";
+// Where a finished game's board and reveal are served from: the record host,
+// the VM's one read-only prefix (HOSTING.md, "Where each surface lives").
+// Written in rather than fetched, by the same rule as VIEWER.
+export const RECORD = "https://record.lucille-ai.com/games";
 export const HAND = "https://gald33.github.io/ai-lab/island/hand/lobby.html";
 export const ENTER = "https://github.com/gald33/ai-lab/blob/main/games/island/ENTER.md";
 export const SOON = 120, PLAY_SLACK = 180;
@@ -67,7 +71,38 @@ export function house(agents) {
     + ` than a minute the lobby's runner is down.</p>`;
 }
 
-function tableCard(t, nowHub) {
+/** The viewer, pointed at this table: at the broadcast while the round runs,
+ *  at the record afterwards.
+ *
+ *  **Live is read off the hub, and the page holds no game's key.** Decided
+ *  by Gal, 2026-09-02. The manager re-posts every line the room settles into
+ *  this workspace on a channel named for the table (`run_game._broadcast`),
+ *  so the viewer follows it with the same published key this page reads the
+ *  lobby under -- nothing inbound to the VM, and the room's own key stays with
+ *  its seats. "Live" is claimed only until the announced last bell, on the
+ *  schedule the table itself announced: the page cannot see the room, and
+ *  calling a finished game live is the lie `lobby_page.live_state` was built
+ *  to avoid. After the bell the button points at the record host, where the
+ *  manager publishes the board and reveal within seconds of the last line. */
+export function watchLink(t, nowHub, cfg) {
+  if (!t.settled || t.lapsed) return "";
+  const lastBell = t.opens_at ? t.opens_at + t.episodes * (t.seconds || 60) : null;
+  if (lastBell === null || nowHub < lastBell) {
+    const q = new URLSearchParams({ hub: cfg.hub, workspace: cfg.workspace,
+                                    token: cfg.token, key: cfg.key, channel: t.id });
+    return `<p class=watch><a class="watchbtn live" href="${VIEWER}?${q}">`
+      + `&#9654;&nbsp; Watch this game live</a> <span class=watchnote>the manager`
+      + ` broadcasts the table's room here as it is written</span></p>`;
+  }
+  const room = `${cfg.workspace}-${t.id}`;
+  const q = new URLSearchParams({ board: `${RECORD}/board-${room}.json`,
+                                  reveal: `${RECORD}/reveal-${room}.json` });
+  return `<p class=watch><a class="watchbtn recording" href="${VIEWER}?${q}">`
+    + `&#9654;&nbsp; Watch the recording</a> <span class=watchnote>this game has`
+    + ` finished &mdash; its scores and replay are on the page</span></p>`;
+}
+
+function tableCard(t, nowHub, cfg) {
   const seats = t.seats.map(s =>
     `<tr><td>${esc(s.label)}</td><td>${esc(s.name)}</td>`
     + `<td class=k>${esc(s.key || "—")}</td>`
@@ -105,12 +140,14 @@ function tableCard(t, nowHub) {
   return `<section class="${cls}">
   <h2>${esc(t.id)}</h2>
   <div class=state>${esc(state(t))}</div>
+  ${watchLink(t, nowHub, cfg)}
   <table><tbody>${seats}${openSeats}</tbody></table>
   ${notes.map(n => `<p class=note>${n}</p>`).join("\n  ")}
 </section>`;
 }
 
-export function render(view, { nowHub, key, workspace, error }) {
+export function render(view, cfg) {
+  const { nowHub, key, workspace, error } = cfg;
   const tables = view.tables;
   const live = tables.filter(t => playing(t, nowHub)).length;
   const forming = tables.filter(t => !t.settled && !t.lapsed).length;
@@ -119,7 +156,7 @@ export function render(view, { nowHub, key, workspace, error }) {
     : "nothing open yet";
 
   const rows = tables.length
-    ? tables.map(t => tableCard(t, nowHub)).join("\n")
+    ? tables.map(t => tableCard(t, nowHub, cfg)).join("\n")
     : `<section class=t><div class=state>no tables</div>
        <p class=note><b>Nobody has opened one.</b> The prompt above opens one
        for you &mdash; or, by hand, post <code>${esc(openLine())}</code> in the

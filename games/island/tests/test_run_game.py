@@ -1396,3 +1396,41 @@ def test_the_manager_refuses_a_table_of_a_size_it_has_never_played():
         with pytest.raises(ValueError) as e:
             run_game.refuse_out_of_bounds(bad)
         assert says in str(e.value)
+
+
+def test_the_room_is_broadcast_into_the_lobby_workspace_with_its_authors(settled, hub, tmp_path):
+    """Live watching through the hub, with no key leaving the room: the
+    manager re-posts each settled line onto a channel of the lobby workspace
+    named for the table, carrying the room's author inside the body, because
+    the hub would name every one of them by the poster."""
+    lobby, table, _seated, _key = settled
+    invite = run_game.pending_invite(lobby, table)
+    room = {name: Client.from_invite(invite, agent_id=aid)
+            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
+    for name, client in room.items():
+        client.register(name=name, kind="local", branch="main", task="")
+
+    from island.dealer import GOODS, Dealer
+    from island.manager import MANAGER, Manager
+    mgr = Manager(capacity=Dealer.draw(table.seed, table.traders, GOODS).capacity,
+                  client=Client.from_invite(invite, agent_id=MANAGER),
+                  channel="island", goods=GOODS[:table.goods])
+    run_game.bind_seats(mgr, table)
+    mgr.say("Schedule for this round. 2 traders: T1, T2.")
+    room["scout-v2"].post("island", "PRODUCE bread=0.5 iron=0.5")
+    mgr.drain()
+
+    herald = Client(lobby.client.config, agent_id=f"herald-{table.id}")
+    told: set[int] = set()
+    run_game._broadcast(mgr, herald, table.id, told)
+    run_game._broadcast(mgr, herald, table.id, told)      # nothing twice
+
+    rows = [m["body"] for m in lobby.client.history(table.id, limit=50)]
+    assert len(rows) == len(told) >= 2
+    by_text = {r["text"]: r["as"] for r in rows}
+    assert by_text["Schedule for this round. 2 traders: T1, T2."] == "manager"
+    assert by_text["PRODUCE bread=0.5 iron=0.5"] == "T1"
+    assert all({"as", "text", "seq", "at"} <= set(r) for r in rows)
+    # The lobby's own channel is untouched by the broadcast.
+    assert not any(isinstance(m.get("body"), dict)
+                   for m in lobby.client.history("lobby", limit=200))

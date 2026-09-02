@@ -63,3 +63,21 @@ test("what a real manager posted still reduces to a receipt", () => {
   assert.equal(produced?.event.trader, "T1");
   assert.equal(produced?.event.made.iron, 0.44);
 });
+
+test("a broadcast row is named by the author inside it, not by the poster", () => {
+  // `run_game._broadcast` re-posts a room line into the lobby workspace; the
+  // hub names it by the manager that posted it, so a room where the manager
+  // said everything would be drawn silent. The body carries the room's own
+  // author and seq, and those are what the row takes.
+  const { rows } = rowsFromState({ messages: [
+    { seq: 900, created_at: "2026-09-02T21:00:10Z", channel: "g20",
+      from: { id: "herald-g20", name: "herald-g20" },
+      body: { as: "T1", text: "PRODUCE fish=1.0", seq: 7, at: "2026-09-02T21:00:09Z" } },
+    { seq: 901, created_at: "2026-09-02T21:00:11Z", channel: "g20",
+      from: { id: "herald-g20" }, body: "a plain line" },
+  ] });
+  assert.deepEqual(rows.map((r) => [r.seq, r.author, r.body, r.at]), [
+    [7, "T1", "PRODUCE fish=1.0", "2026-09-02T21:00:09Z"],
+    [901, "herald-g20", "a plain line", "2026-09-02T21:00:11Z"],
+  ]);
+});
