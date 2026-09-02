@@ -203,6 +203,7 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
     sealed = any(str(m.get("body", "")).startswith("SEALED round")
                  for m in board["messages"] if m.get("author") == "manager")
     pending: dict[str, dict[str, float]] = {}
+    whispered: set[str] = set()
     for msg in board["messages"]:
         body, author = msg.get("body", ""), msg.get("author", "")
         plan = PRODUCE.match(body)
@@ -222,8 +223,19 @@ def check_production(board: dict, reveal: dict, report: Report) -> None:
         if shares is None:
             if sealed:
                 continue
-            report.bad("production", f"a receipt for {seat} with no PRODUCE "
-                                     f"before it (seq {msg.get('seq')})")
+            # A receipt with no plan on the board before it. In a sealed round
+            # that is every receipt; in a round dealt in the clear it is a
+            # trader that whispered its plan anyway -- which the brief tells
+            # every entrant to do, and which the manager settles in any game.
+            # This used to be a failure, and it failed g18 (2026-09-02), a
+            # practice game whose entrant had followed ENTER.md to the letter.
+            # It is the sealed case for one seat: the arithmetic cannot be
+            # redone, and that is said rather than counted against the board.
+            if seat not in whispered:
+                whispered.add(seat)
+                report.skip(f"production: {seat} whispered its plan, so its "
+                            f"receipts cannot be checked against a share -- "
+                            f"the same thing sealing does for a whole round")
             continue
         capacity = traders[seat]["capacity"]
         for good, quantity in got.items():

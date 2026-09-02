@@ -313,3 +313,20 @@ def test_a_room_with_only_its_seats_in_it_passes(tmp_path):
     report = _run(tmp_path)
 
     assert report.passed and report.checks["company"] == [1, 1]
+
+
+def test_a_plan_whispered_in_a_clear_game_is_not_checkable_and_not_a_fault(tmp_path):
+    """The brief tells every entrant to whisper its PRODUCE, and the manager
+    settles a whispered plan in any game. So a round dealt in the clear can
+    carry a receipt with no plan on the board before it, for one seat, and
+    that is the sealed case for that seat rather than a manager inventing
+    production. This failed g18 on 2026-09-02, a practice game whose entrant
+    had followed ENTER.md exactly."""
+    board = _board()
+    board["messages"] = [m for m in board["messages"] if m["seq"] != 1]
+    report = _run(tmp_path, board=board)
+    assert report.passed, report.failures
+    assert any("T1 whispered its plan" in s for s in report.skipped)
+    # T2's plan was on the board, and is still held to its arithmetic.
+    board["messages"][2]["body"] = "@T2 produced {'bread': 0.25, 'cloth': 3.5}; 0.0 labour unspent"
+    assert not _run(tmp_path, board=board).passed

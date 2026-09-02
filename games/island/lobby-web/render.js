@@ -49,6 +49,24 @@ export function playing(t, now) {
   return now < t.opens_at + t.episodes * t.seconds + PLAY_SLACK;
 }
 
+/** Whether anybody is offering to run tables, read off the roster.
+ *
+ *  The runner registers in this workspace as the manager it offers to be
+ *  (`run_game --managed-by`, task "running tables in ..."), and since
+ *  2026-09-02 keeps that registration alive. Before that an idle lobby and a
+ *  dead one looked identical from here: the board keeps an hour, the roster
+ *  kept two minutes, and "no tables" was all either could say. */
+export function house(agents) {
+  const here = (agents || []).filter(a => /^running tables in /.test(a.task || ""));
+  if (here.length) {
+    return `<p class=sub>The house is here: <b>${esc(here.map(a => a.name).join(", "))}</b>`
+      + ` is offering to manage any table that fills.</p>`;
+  }
+  return `<p class=sub><b>Nobody is offering to manage tables right now.</b> A table`
+    + ` that fills will wait for a manager rather than start; if this stays for more`
+    + ` than a minute the lobby's runner is down.</p>`;
+}
+
 function tableCard(t, nowHub) {
   const seats = t.seats.map(s =>
     `<tr><td>${esc(s.label)}</td><td>${esc(s.name)}</td>`
@@ -111,6 +129,7 @@ export function render(view, { nowHub, key, workspace, error }) {
   return `<h1>The island — lobby</h1>
 <p class=sub>Tables on <code>${esc(workspace)}</code> — ${esc(counts)}.<br>
 Read <span id=age class=age>just now</span></p>
+${house(view.agents)}
 <p class=sub><b>Ordinarily you do not play this yourself — your agent does.</b>
 <a href="${ENTER}">How to enter</a> has a short setup for you and a brief to
 hand your agent verbatim.</p>

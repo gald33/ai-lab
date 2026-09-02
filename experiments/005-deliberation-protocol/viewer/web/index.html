@@ -1466,6 +1466,10 @@ const chromeBands = () => {
   return { top, foot };
 };
 const params = new URLSearchParams(location.search);
+// Where the manager lists the games this host has played (`games/island/live.py`,
+// `list_finished`), served by the record host -- see games/island/HOSTING.md,
+// "Where each surface lives". Change it there and here together.
+const HOST_INDEX = "https://record.lucille-ai.com/games/index.json";
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 //: A share of what was on the table, as a percentage: one decimal at most, and
 //: none when it lands on a whole one. Three decimals of a fraction is a figure
@@ -2716,6 +2720,13 @@ async function archiveIndexes() {
   const urls = new Set();
   const games = params.get("games");
   if (games) urls.add(new URL(games, location.href).href);
+  // The host's own record, always. Decided 2026-08-29 ("The list of games is
+  // fetched, not built") and unwired until 2026-09-02: the viewer cannot know
+  // the name of a game played after it was deployed, so the listing of every
+  // game the host has played is fetched at load from the one place that knows,
+  // and merged with the committed replays rather than replacing them. The
+  // address is written here, not fetched, by the same rule as the lobby's.
+  urls.add(HOST_INDEX);
   const live = params.get("live");
   // `api/state` is a local viewer's proxy, not a directory of files, so it has
   // no archive beside it and asking would 404 on every load.
@@ -2773,7 +2784,7 @@ async function boot() {
   for (const url of await archiveIndexes()) {
     try {
       const answer = await fetch(url, { cache: "no-store" });
-      if (!answer.ok) continue;
+      if (!answer.ok) throw new Error(`${answer.status} ${answer.statusText}`);
       const listing = await answer.json();
       for (const g of listing.games || []) {
         // A game the host no longer keeps stays in the listing, greyed, with
@@ -2800,8 +2811,16 @@ async function boot() {
           value: JSON.stringify({ board: at, reveal: new URL(g.reveal, url).href }),
         });
       }
-    } catch {
+    } catch (err) {
       // An archive that cannot be read is one source of many; the rest list.
+      // But it is *said*, as a greyed row where the games would have been:
+      // an empty list is indistinguishable from a host that has played
+      // nothing, and this repo has met that shape three times already
+      // (HOSTING.md, "A failed fetch is said, never drawn as an empty shelf").
+      const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+      entries.push({ label: `the recordings on ${host} could not be loaded (${err.message})`,
+                     dropped: true, facets: {}, at: 0,
+                     value: JSON.stringify({ unreachable: url }) });
     }
   }
 

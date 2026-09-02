@@ -221,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     def runner(name: str, *extra: str, log: str) -> subprocess.Popen:
         return subprocess.Popen(
             [sys.executable, "-m", f"games.island.{name}", "--hub", hub,
-             "--workspace", workspace, "--key", key, *extra],
+             "--workspace", workspace, f"--key={key}", *extra],
             env=env, cwd=str(root),
             stdout=open(tmp / log, "w"), stderr=subprocess.STDOUT)
 
@@ -247,7 +247,12 @@ def main(argv: list[str] | None = None) -> int:
     opener = client("opener")
     opener.post("lobby", f"OPEN traders=2 episodes={args.episodes} "
                          f"goods={args.goods} seconds={args.seconds}")
-    filler = runner("run_npc", "--fill", "--patience", "5", "--every", "2",
+    # `--min-real 0`: the table this opens has nobody real at it, and the
+    # filler's default (a table nobody turned up to lapses rather than
+    # playing itself) is right for the lobby and wrong for a measurement.
+    # Without it this window waited its whole limit and measured nothing.
+    filler = runner("run_npc", "--fill", "--patience", "5", "--min-real", "0",
+                    "--every", "2",
                     "--workdir", str(tmp / "npcs"), log="fill.log")
     record = tmp / "out" / "g1.json"
     with Window("a full game (run_game + 2 NPC seats)",

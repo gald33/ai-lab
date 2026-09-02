@@ -123,6 +123,26 @@ def _remember(directory: Path, label: str, copies: dict, standing: dict | None,
     tmp.replace(index)
 
 
+def list_finished(directory: Path, label: str, *, board: str, reveal: str,
+                  standing: dict | None = None, facets: dict | None = None) -> Path:
+    """List a finished game in `directory`'s own `index.json`.
+
+    `finish` lists a game beside the live file it was watched on. This lists
+    it beside the record -- `--out`, the directory the record host serves --
+    because that is where a spectator's page actually reads from once the
+    host stopped serving `--live` (HOSTING.md, "There is no store but this
+    disk"). Found 2026-09-02: the host served every board and reveal it had
+    played and answered 404 for the one file that lists them, so the viewer
+    could show a game only to somebody who typed its filename.
+
+    Same rows, same writer, different names: the copies in the live directory
+    are `board-<table>.json`; the record's are `board-<workspace>.json`.
+    """
+    _remember(directory, label, {"board": board, "reveal": reveal}, standing,
+              facets, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    return directory / INDEX
+
+
 def forget(directory: Path, label: str) -> list[Path]:
     """Delete a game's copies, and leave a row saying it was played.
 
