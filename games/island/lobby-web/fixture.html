@@ -14,22 +14,29 @@ import { render } from "./render.js";
 import { wireStart } from "./start.js";
 import { CONFIG } from "./config.js";
 const at = i => new Date(Date.UTC(2026,7,31,12,0,i)).toISOString();
+// What `Lobby._stamp` writes: a bare UTC clock time, not a timestamp.
+const stamp = i => at(i).slice(11, 19) + "Z";
 let i = 0;
+// The table ids are the lobby's own -- `g1`, `g2`, ... as `lobby.py`
+// names them -- and not ids this fixture invented. A fixture that makes
+// up the format it is checking against checks nothing: this one said `T1`
+// while the live lobby said `g18`, and the page went quiet in production
+// with every test green. Seat labels really are `T<n>`.
 const lines = [
   "LOBBY holding this channel: lobby-a",
-  "T1 commits ab12cd34ef5678901234 -- bring nonce=<16-64 hex digits> on your JOIN",
-  "T1 is forming: 2 traders, 5 goods, 4 episodes, 1 round -- JOIN T1 as <name>, or MANAGE T1",
-  "T1 seat T1 = alice, key ed25519:K1AAAAAAAAAAAAAAAAAA, sealed, nonce a1b2c3d4e5f60718 (1/2)",
-  "T1 seat T2 = bob, key ed25519:K2BBBBBBBBBBBBBBBBBB, sealed, nonce 00ff11ee22dd33cc (2/2)",
-  "T1 will be managed by carol, key ed25519:K3CCCCCCCCCCCCCCCCCC",
-  "T1 is full: alice, bob; managed by carol; opens " + at(300) + "",
-  "T1: the island is drawn by commit-reveal",
-  "T1 invite: swb1_THIS_MUST_NEVER_RENDER",
-  "T2 is forming: 3 traders, 5 goods, 2 episodes, 1 round -- JOIN T2 as <name>, or MANAGE T2",
-  "T2 seat T1 = dave, key ed25519:K4DDDDDDDDDDDDDDDDDD, in the clear (1/3)",
+  "g1 commits ab12cd34ef5678901234 -- bring nonce=<16-64 hex digits> on your JOIN",
+  "g1 is forming: 2 traders, 5 goods, 4 episodes, 1 round -- JOIN g1 as <name>, or MANAGE g1",
+  "g1 seat T1 = alice, key ed25519:K1AAAAAAAAAAAAAAAAAA, sealed, nonce a1b2c3d4e5f60718 (1/2)",
+  "g1 seat T2 = bob, key ed25519:K2BBBBBBBBBBBBBBBBBB, sealed, nonce 00ff11ee22dd33cc (2/2)",
+  "g1 will be managed by carol, key ed25519:K3CCCCCCCCCCCCCCCCCC",
+  "g1 is full: alice, bob; managed by carol; opens " + stamp(300) + "",
+  "g1: the island is drawn by commit-reveal",
+  "g1 invite: swb1_THIS_MUST_NEVER_RENDER",
+  "g2 is forming: 3 traders, 5 goods, 2 episodes, 1 round -- JOIN g2 as <name>, or MANAGE g2",
+  "g2 seat T1 = dave, key ed25519:K4DDDDDDDDDDDDDDDDDD, in the clear (1/3)",
   "@eve not settled: that table is full",
-  "T3 is forming: 2 traders, 5 goods, 1 episodes, 1 round -- JOIN T3 as <name>, or MANAGE T3",
-  "T3 lapsed: not full within 600s (1/2 seated)",
+  "g3 is forming: 2 traders, 5 goods, 1 episodes, 1 round -- JOIN g3 as <name>, or MANAGE g3",
+  "g3 lapsed: not full within 600s (1/2 seated)",
 ].map(t => ({ channel: "lobby", from: "x", created_at: at(i++), body: { text: t } }));
 const view = reconstruct({ messages: lines, agents: [] }, "lobby");
 // The exact path `app.js` takes on every poll: replace main.innerHTML, then

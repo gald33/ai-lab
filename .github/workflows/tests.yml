@@ -197,6 +197,16 @@ jobs:
       - run: python -m pytest games/island/tests/test_lobby_web_levers.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+      # The same port, against the lines a real lobby posts. The levers check
+      # above compared what the page OFFERS; nothing compared what it READS --
+      # so `lobby.js` demanded `T<n>` table ids while `lobby.py` has always
+      # named them `g1`, `g2`, ..., and the served page showed no table at all
+      # while the board showed `g18` forming, seating and settling. Green
+      # throughout, because the only lines the port was read against were the
+      # ones `fixture.html` invented.
+      - run: python -m pytest games/island/tests/test_lobby_web_reconstruct.py -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
       # The pictures the run measured, kept whether it passed or failed: a
       # threshold on a rendered image is not arguable without the image.
       - if: always()

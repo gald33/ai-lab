@@ -17,17 +17,59 @@ import { parse, Malformed } from "./protocol.js";
 
 export const HOLD = "LOBBY holding this channel: ";
 
+//: **A table's id is the lobby's to choose, and it is not `T<n>`.**
+//: `lobby.py` names tables `g1`, `g2`, ... (`Table(id=f"g{self._next}")`),
+//: and every pattern here demanded `T\d+` -- so against the live lobby this
+//: file matched nothing: no forming table, no seat, no settlement, on a page
+//: whose whole job is to show them. It went unseen because the fixture the
+//: port was read against invented `T1` itself, which is the trap
+//: `test_lobby_web_levers.py` was written for one file over: **a second
+//: implementation checked against its own idea of what it should produce.**
+//: The id is read as a prefix and a number now, so a lobby that renames its
+//: tables again does not silence this page.
+//:
+//: A *seat's* label is a different thing and really is `T<n>` --
+//: `Lobby._label` builds it from the seat's index -- so `seat` keeps that
+//: literally where the seat goes, and takes `{T}` only for the table.
+const TABLE = String.raw`[A-Za-z]+\d+`;
+
+/** A lobby line's pattern, written with `{T}` where the table's id goes. */
+const rx = (src) => new RegExp(src.replaceAll("{T}", TABLE));
+
 const RE = {
-  commits: /^(T\d+) commits ([0-9a-f]+)/,
-  forming: /^(T\d+) is forming: (\d+) traders, (\d+) goods, (\d+) episodes, (\d+) round/,
-  seat:    /^(T\d+) seat (T\d+) = (\S+?), key (\S+?)(, sealed|, in the clear)?(?:, nonce ([0-9a-f]+))? \((\d+)\/(\d+)\)$/,
-  manager: /^(T\d+) will be managed by (\S+?), key (\S+)$/,
-  full:    /^(T\d+) is full: (.*?); managed by (.*?); opens (\S+?)(;.*)?$/,
-  island:  /^(T\d+): the island is (.+)$/,
-  lapsed:  /^(T\d+) lapsed: (.+?) within \d+s \((\d+)\/(\d+) seated(?:, managed by (.+?))?\)$/,
+  commits: rx(String.raw`^({T}) commits ([0-9a-f]+)`),
+  forming: rx(String.raw`^({T}) is forming: (\d+) traders, (\d+) goods, (\d+) episodes, (\d+) round`),
+  seat:    rx(String.raw`^({T}) seat (T\d+) = (\S+?), key (\S+?)(, sealed|, in the clear)?(?:, nonce ([0-9a-f]+))? \((\d+)\/(\d+)\)$`),
+  manager: rx(String.raw`^({T}) will be managed by (\S+?), key (\S+)$`),
+  full:    rx(String.raw`^({T}) is full: (.*?); managed by (.*?); opens (\S+?)(;.*)?$`),
+  island:  rx(String.raw`^({T}): the island is (.+)$`),
+  lapsed:  rx(String.raw`^({T}) lapsed: (.+?) within \d+s \((\d+)\/(\d+) seated(?:, managed by (.+?))?\)$`),
   refusal: /^@(\S+) not settled: (.+)$/,
-  invite:  /^(T\d+) invite: /,
+  invite:  rx(String.raw`^({T}) invite: `),
 };
+
+//: **`opens` is a time of day, not a timestamp.** `Lobby._stamp` writes
+//: `19:40:00Z` -- "the same convention `run_v3.py` uses for every deadline it
+//: posts" -- and this read it with `Date.parse`, which returns NaN for a bare
+//: clock time. So `opens_at` was null on every settled table the live lobby
+//: ever announced: no countdown to the start, and `playable()` in `render.js`
+//: treating the game as running forever. Unseen for the same reason the id was:
+//: `fixture.html` wrote a full ISO timestamp there, which `Date.parse` does
+//: read, so the port only ever met a format the lobby does not use.
+//:
+//: The day comes from the line's own hub timestamp, since the stamp does not
+//: carry one. A table that opens just after midnight is announced just before
+//: it, so a stamp more than twelve hours behind the line is tomorrow's.
+function opensAt(stamp, at) {
+  const m = /^(\d{2}):(\d{2}):(\d{2})Z$/.exec(stamp);
+  if (!m) return Date.parse(stamp) / 1000 || null;
+  if (!at) return null;                       // no day to hang the time on
+  const day = new Date(at * 1000);
+  let when = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(),
+                      +m[1], +m[2], +m[3]) / 1000;
+  if (when < at - 12 * 3600) when += 24 * 3600;
+  return when;
+}
 
 function table(tables, id) {
   if (!tables.has(id)) {
@@ -91,7 +133,7 @@ export function reconstruct(snapshot, channel) {
     if ((m = RE.full.exec(body))) {
       const t = table(tables, m[1]);
       Object.assign(t, { settled: true, roster: m[2], manager: t.manager || m[3],
-                         opens_at: Date.parse(m[4]) / 1000 || null,
+                         opens_at: opensAt(m[4], at),
                          practice: /PRACTICE/.test(m[5] || "") });
       continue;
     }
