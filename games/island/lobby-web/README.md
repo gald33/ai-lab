@@ -102,3 +102,48 @@ idea of what it should produce** (`test_hand_lobby_lines.py`).
 Revert either fix and four of the five assertions fail; that was checked before
 the fix was committed, because a test that has never failed has never been shown
 to bite.
+
+## It drifted again, on what it *reads* rather than what it offers
+
+**The served page showed no tables at all, while the board showed them.**
+Found 2026-09-02: the live lobby had `g18` forming, seats filling and a
+settlement on the channel, and the page was blank. `lobby.js`'s patterns all
+demanded a table id of `T\d+`; `lobby.py` has never written one. It names
+tables `g1`, `g2`, ... (`Table(id=f"g{self._next}")`), so every line about
+every table fell through to the entrant-intent branch and nothing was built.
+
+A second, quieter one came out of the same fix: `opens` is a **bare clock
+time** — `Lobby._stamp` writes `19:40:00Z`, the convention every deadline on
+this board uses — and the port read it with `Date.parse`, which returns NaN
+for one. So `opens_at` was null on every settled table the lobby ever
+announced: no countdown to the start, and `playable()` treating the game as
+running forever.
+
+Both survived because of the check the section above already names, one file
+over. `test_lobby_web_levers.py` compares what the page **offers** against the
+Python; nothing compared what it **reads**. The only lines `lobby.js` had ever
+been shown were the ones in `fixture.html`, and that fixture wrote `T1` and a
+full ISO timestamp — formats this lobby does not produce. **A second
+implementation is never compared against its own idea of what it should
+produce**, and a fixture written by the porter is exactly that idea.
+
+What changed:
+
+1. The table id is read as a prefix and a number, so a lobby that renames its
+   tables again does not silence the page; a *seat's* label really is `T<n>`
+   and is still matched literally.
+2. `opens` is parsed as a time of day, hung on the day of the line's own hub
+   timestamp.
+3. `fixture.html` now carries the lobby's real ids and real stamp format, so
+   the development view is the production view.
+4. `games/island/tests/test_lobby_web_reconstruct.py` drives `reconstruct` in
+   a browser over the exact bodies a real `Lobby` posted to a real hub, and
+   runs in `drawing-quick` under `ISLAND_REQUIRE_BROWSER`.
+
+### Reproduce the class of failure
+
+    python -m pytest games/island/tests/test_lobby_web_reconstruct.py -q
+
+Revert either fix and it fails — the id fix takes four of the five
+assertions with it, the `opens` fix one; checked before committing, because a test that has never
+failed has never been shown to bite.
