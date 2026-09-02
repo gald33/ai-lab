@@ -1470,6 +1470,8 @@ const params = new URLSearchParams(location.search);
 // `list_finished`), served by the record host -- see games/island/HOSTING.md,
 // "Where each surface lives". Change it there and here together.
 const HOST_INDEX = "https://record.lucille-ai.com/games/index.json";
+// The one origin the record host grants; see `archiveIndexes`.
+const HOST_ORIGIN = "https://gald33.github.io";
 const fmt = (x, n = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(n));
 //: A share of what was on the table, as a percentage: one decimal at most, and
 //: none when it lands on a whole one. Three decimals of a fraction is a figure
@@ -2726,7 +2728,15 @@ async function archiveIndexes() {
   // game the host has played is fetched at load from the one place that knows,
   // and merged with the committed replays rather than replacing them. The
   // address is written here, not fetched, by the same rule as the lobby's.
-  urls.add(HOST_INDEX);
+  //
+  // Only from the origin the record host answers. Its CORS grant is exactly
+  // `https://gald33.github.io` (HOSTING.md, "What was actually built"), so
+  // from anywhere else -- a checkout served on localhost, `render.py`'s
+  // browser, a fork's Pages -- the fetch is refused before it starts, and the
+  // browser logs a console error nothing on the page can catch. That error
+  // failed every check in `drawing-quick` on 2026-09-02. Elsewhere the host's
+  // games are simply not listed, and `?games=` still names any index outright.
+  if (location.origin === HOST_ORIGIN) urls.add(HOST_INDEX);
   const live = params.get("live");
   // `api/state` is a local viewer's proxy, not a directory of files, so it has
   // no archive beside it and asking would 404 on every load.
