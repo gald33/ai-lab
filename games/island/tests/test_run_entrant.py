@@ -198,6 +198,48 @@ def test_the_invite_arrives_once_the_table_settles(running_lobby, hub, signer):
     assert invite.url == hub
 
 
+def test_a_whisper_that_lands_before_the_roster_is_read_still_arrives(running_lobby, hub, signer):
+    """The lobby whispers the invite the moment the table settles; the
+    entrant may not yet hold the lobby's exchange key when that whisper is
+    first read, and a read that takes the message off the inbox loses it.
+    Failed once in CI under load (2026-09-03) before the read became a peek."""
+    lobby, key = running_lobby
+    first = _entrant(hub, key)
+    run_entrant.claim(first, "lobby", name="scout-v2", table=None,
+                      opening=(2, 3, 1), goods=5, every=0.05,
+                      deadline=time.time() + 10)
+    # Forget the lobby's exchange key and refuse to learn it for the first
+    # few polls, so the first inbox reads see a sealed envelope.
+    real_agents = first.agents
+    first._peer_exchange_keys.clear()
+    calls = {"n": 0}
+
+    def late_roster():
+        calls["n"] += 1
+        if calls["n"] <= 3:
+            raise RuntimeError("roster not read yet")
+        return real_agents()
+    first.agents = late_roster
+    second = _client(hub, "trader-b", key)
+    second.register(name="trader-b", kind="local", branch="main", task="")
+    _witnessed(lobby, second)
+    second.post("lobby", "JOIN g1 as trader-b")
+    manager = _client(hub, "m", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+    _witnessed(lobby, manager)
+    manager.post("lobby", "MANAGE g1")
+    deadline = time.time() + 5
+    while time.time() < deadline and not lobby.tables["g1"].invite:
+        time.sleep(0.05)
+    assert lobby.tables["g1"].invite, "the lobby never handed the room out"
+
+    invite = run_entrant.wait_for_invite(first, "lobby", "g1", every=0.05,
+                                         deadline=time.time() + 10)
+
+    assert invite.workspace == lobby.tables["g1"].workspace
+    assert calls["n"] > 3
+
+
 def test_a_refused_seat_is_raised_rather_than_waited_out(running_lobby, hub):
     """A JOIN the lobby refused is not a seat, and the entrant should say so
     now rather than sit out the clock waiting for an invite that is not

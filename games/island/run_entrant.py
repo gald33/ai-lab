@@ -337,7 +337,14 @@ def wait_for_invite(client: Client, channel: str, table: str, *,
             client.agents()
         except Exception:      # noqa: BLE001 -- a poll that failed is a retry
             pass
-        rows = [m.get("body") for m in client.inbox(wait=0.0, limit=50)]
+        # **Peek, never take.** A whisper that lands before this client has
+        # the lobby's exchange key comes back sealed (`unreadable`), and a
+        # plain `inbox` read advances the cursor past it -- the invite is then
+        # gone for good and the entrant waits out the clock. Seen in CI on
+        # 2026-09-03 under load; peeking leaves it there for the next pass,
+        # by which time the roster read above has the key.
+        rows = [m.get("body") for m in
+                client.inbox(wait=0.0, limit=50, peek=True)]
         rows += [m.get("body") for m in
                  sorted(client.history(channel, limit=200),
                         key=lambda r: r.get("seq", 0))]
