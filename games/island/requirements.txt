@@ -57,5 +57,10 @@
 # key did not sign -- which is what makes the lobby's read-only invite for
 # spectators a fact rather than good manners. A lobby on an older release
 # mints rooms the hub treats as open, so anybody handed the watch invite
-# could speak in the game. The managed hub runs 2.0.0 (`/health`).
-agent-switchboard>=2.0.0
+# could speak in the game.
+#
+# **2.0.1** is where a browser can present that write key at all: 2.0.0's
+# CORS layer allowed only `Authorization` and `Content-Type`, so the hand's
+# page signed correctly and was refused at the preflight (gald33/switchboard#208,
+# found and fixed 2026-09-03). The managed hub runs 2.0.1 (`/health`).
+agent-switchboard>=2.0.1

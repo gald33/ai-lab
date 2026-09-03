@@ -4,5 +4,5 @@
 # so the thing under test is the thing that runs -- and that means the server
 # half of Switchboard, which a host never installs because it never serves.
 -r requirements.txt
-agent-switchboard[server]>=2.0.0
+agent-switchboard[server]>=2.0.1
 pytest

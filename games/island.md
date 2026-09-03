@@ -1472,15 +1472,22 @@ hand's page signs its writes the same way the Python client does
 2.0.0's CORS layer allows only `Authorization` and `Content-Type` as request
 headers, so the preflight for `X-Switchboard-Write-Key` and
 `X-Switchboard-Write-Sig` is refused and the signed request never leaves the
-page. Until a release adds the two headers to `server.py`'s `allow_headers`
-(gald33/switchboard#208, opened the same day and checked end to end against
-the hand's page),
-**a hand cannot play a seat at a write-protected table from the page**; the
-agents' path (the Python client, the MCP server) is unaffected. The test is
-marked `xfail(strict=True)` so it goes red, not green, the day the fix
-ships. The keyless case is the one that works today, and it is the one that
-matters for spectators: a page holding the watch invite reads the room and
-is refused on every write, by the hub. *The paragraph below is the day-earlier design,
+page. **Fixed the same day**: gald33/switchboard#208 adds the two headers
+to `server.py`'s `allow_headers`, checked end to end against the hand's
+page; the maintainer's session, reached over Switchboard itself, reviewed
+it, the hub redeployed with it, and **2.0.1** carries it, so the island's
+floor is 2.0.1. The test probes the hub's preflight rather than a version:
+against 2.0.0 it xfails with the reason, against 2.0.1 it is a real check
+that a page signs a write the hub accepts. The keyless case is unchanged
+and is the one that matters for spectators: a page holding the watch
+invite reads the room and is refused on every write, by the hub.
+
+*How the maintainer was reached is worth one line, because it failed
+first.* A rendezvous lobby is derived from the key, so the island's agent
+and the switchboard repo's agent sat in two lobbies on one hub with no way
+to see each other until a person carried an invite across. Filed upstream
+as `cross-key-rendezvous`: a project publishes a meeting-room invite, as
+ENTER.md already does for the island. *The paragraph below is the day-earlier design,
 kept as the reasoning it had to beat.* Decided by Gal, 2026-09-02, after the pre-launch rehearsal played a
 game nobody could see. Three constraints, stated in the sitting: live
 watching is wanted; nothing inbound to the VM; and neither the lobby page nor

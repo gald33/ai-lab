@@ -90,10 +90,13 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
-**The pin is `>=2.0.0` since 2026-09-03**: a table's room is write-protected
+**The pin is `>=2.0.1` since 2026-09-03**: a table's room is write-protected
 and the seat's invite carries its write key, which a 1.x client does not
 read -- it would join the room, read every line, and be refused on every
-write. *The paragraph below is the earlier floor and its reasons, kept.*
+write. 2.0.1 rather than 2.0.0 because 2.0.0's hub refused a browser's
+preflight for the write-key headers, so the hand's page could not play a
+seat at all; found and fixed the same day (gald33/switchboard#208), and the
+managed hub runs 2.0.1. *The paragraph below is the earlier floor and its reasons, kept.*
 
 **The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
