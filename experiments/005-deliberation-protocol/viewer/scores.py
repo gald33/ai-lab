@@ -359,6 +359,10 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
         "recorded_at": recorded,
         "workspace": rnd["workspace"],
         "arm": rnd.get("arm"),
+        # "commit-reveal" or "unverified": whether every seat helped draw the
+        # island. Absent from records before 2026-09-03, which is why a
+        # missing value is not read as either.
+        "draw": rnd.get("draw"),
         # Seat -> the policy mix it declared, for every heuristic player at
         # this table. Read off the board by `run_game.record`, so a round
         # re-ingested from an old result file has it and one re-read from the
@@ -765,6 +769,10 @@ def games(rows: list[dict]) -> list[dict]:
             "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
             "workspace": members[0]["workspace"],
             "arm": members[0]["arm"],
+            # One unverified round is enough: the rounds are one attempt.
+            "draw": ("unverified" if any(m.get("draw") == "unverified"
+                                         for m in members)
+                     else members[0].get("draw")),
             "npcs": sorted({slot for m in members
                             for slot in (m.get("npcs") or {})}),
             "hands": sorted({slot for m in members
@@ -828,6 +836,15 @@ def why_not_ranked(game: dict) -> str | None:
       Testimony, and unverifiable: an open room means a person can drive a
       seat in silence and nothing notices. Believing it is safe for the reason
       a confession is always safe, and the silence is not caught by anything.
+    - `unverified` -- the island was drawn by the lobby alone, because a seat
+      brought no nonce on its `JOIN`. The draw is then a number nobody but the
+      lobby can vouch for, and a ranking whose islands cannot be checked is
+      one a manager could tilt by re-rolling. Decided by Gal, 2026-09-03,
+      after the first paid game (g23) ranked on exactly such a draw: the
+      lobby's board said the draw was not checkable and the standing said
+      nothing, so the weaker game looked like the stronger one on the surface
+      a spectator reads. An observation of the board, like `practice`.
+      Records before that date carry no `draw` and are not reclassified.
     - `company` -- somebody who took no seat wrote in the room. A key can be
       handed on and that cannot be prevented; what can be done is to notice.
     - `unfinished` -- fewer rounds than the game declared. Abandoning the rounds
@@ -840,6 +857,11 @@ def why_not_ranked(game: dict) -> str | None:
         return "heuristic"
     if game.get("hands"):
         return "driven"
+    # After the seat reasons: a table an NPC or a person sat at is held out
+    # for who played, and that is the reason to report even when the draw
+    # was unverified too (a filler brings a nonce; a hand may not).
+    if game.get("draw") == "unverified":
+        return "unverified"
     if not game["uninterrupted"]:
         return "company"
     if not game["finished"]:

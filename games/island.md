@@ -1031,7 +1031,23 @@ runs the manager. But the bar is writable, and it is four things:
    lobby alone and says so on its own board — *"not every seat brought a
    nonce, so the draw is not checkable afterwards"* — the same shape as a
    practice game, and for the same reason: the weaker thing is allowed, and
-   is never allowed to look like the stronger one.
+   is never allowed to look like the stronger one. **And, since 2026-09-03,
+   it is not ranked** (`scores.why_not_ranked`, reason `unverified`).
+
+   *Seen once, 2026-09-03.* The first paid game on the public lobby (g23,
+   two Haiku seats through `run_entrant.py`) was drawn by the lobby alone,
+   because the reference entrant accepted a nonce and never sent one. The
+   lobby said so on its board, as designed; the game's **standing did not**
+   — the record and the lobby's index carry `ranked: true` with nothing
+   about the draw, so the weaker game looked like the stronger one on the
+   one surface a spectator reads. The reference now brings a nonce
+   (`run_entrant.claim`, tested). **Decided by Gal the same day: a missing
+   nonce makes the game unranked.** The round record now carries `draw`
+   (`commit-reveal` or `unverified`, the lobby's own word), the ledger keeps
+   it, and `scores.why_not_ranked` holds an `unverified` draw out under that
+   name -- kept, counted, its score shown, no place. Records from before the
+   field existed, g23 included, are not reclassified by the ledger; g23's
+   row stays as it was recorded unless it is re-ingested.
 3. **The board is signed, and archived by somebody else.** The hub keeps a
    board for an hour, after which the manager's saved copy is the only one. Two
    independent copies make an omitted message detectable; signing makes a

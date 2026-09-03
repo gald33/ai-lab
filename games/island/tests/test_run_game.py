@@ -196,6 +196,10 @@ def test_a_hand_at_the_table_makes_it_practice_without_lying_about_the_seal(
     assert record["practice"] is True, "a bench game says so"
     assert record["rounds"][0]["arm"] == "sealed", (
         "the table sealed, and the record must not claim otherwise")
+    # And the record says how the island was drawn, in the lobby's own word,
+    # so the ledger can hold an unverified draw out of the ranking.
+    assert record["rounds"][0]["draw"] == table.draw
+    assert record["rounds"][0]["draw"] in {"commit-reveal", "unverified"}
 
     result = tmp_path / "g-hand.json"
     result.write_text(json.dumps(record))

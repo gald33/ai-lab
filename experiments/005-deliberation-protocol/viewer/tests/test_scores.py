@@ -502,6 +502,29 @@ def _ledger_of(tmp_path, n=3, **rowfix):
     return ledger, rows
 
 
+def test_an_unverified_draw_keeps_its_numbers_and_never_gets_a_place(tmp_path):
+    """Decided 2026-09-03 after g23: a seat that brought no nonce leaves the
+    island drawn by the lobby alone, and that game is kept, counted and never
+    ranked. Records before the field existed are not reclassified."""
+    ledger, rows = _ledger_of(tmp_path)
+    assert all(scores.is_ranked(g) for g in scores.games(scores.load(ledger))), (
+        "a record with no `draw` field is older than the rule and stays ranked")
+
+    _, rows = _ledger_of(tmp_path, draw="unverified")
+    played = scores.games(scores.load(ledger))
+    assert [scores.why_not_ranked(g) for g in played] == ["unverified"] * len(played)
+    data = scores.boards(scores.load(ledger))
+    assert data["totals"]["ranked"] == 0
+    assert data["totals"]["games"] == len(played)
+    assert data["totals"]["held_out"] == {"unverified": len(played)}
+    told = scores.standing(scores.load(ledger), played[0]["game_id"])
+    assert told["ranked"] is False and told["why"] == "unverified"
+    assert told["capture"] is not None, "the score is kept, only the place goes"
+
+    _, rows = _ledger_of(tmp_path, draw="commit-reveal")
+    assert all(scores.is_ranked(g) for g in scores.games(scores.load(ledger)))
+
+
 def test_a_practice_game_keeps_its_numbers_and_never_gets_a_place(tmp_path):
     """The correction of 2026-08-28. `games/island.md` has said from the start
     that a practice game is never ranked and the run record has said
