@@ -51,6 +51,7 @@ import argparse
 import json
 import os
 import re
+import secrets
 import subprocess
 import threading
 import sys
@@ -308,10 +309,12 @@ def claim(client: Client, channel: str, *, name: str, table: str | None,
 
     # A seat that brings no nonce is a seat the island was not drawn with, and
     # the lobby says so on the settlement line: "not every seat brought a
-    # nonce, so the draw is not checkable afterwards". Optional here only
-    # because it always was.
-    client.post(channel, f"JOIN {table} as {name}"
-                         + (f" nonce={nonce}" if nonce else ""))
+    # nonce, so the draw is not checkable afterwards". The first paid game
+    # (g23, 2026-09-03) was drawn that way because this reference never sent
+    # one, so it now brings a fresh one unless the caller supplies its own --
+    # ENTER.md asks every entrant to, and the reference should do what it asks.
+    nonce = nonce or secrets.token_hex(16)
+    client.post(channel, f"JOIN {table} as {name} nonce={nonce}")
     return table, episodes, goods
 
 

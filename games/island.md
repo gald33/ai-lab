@@ -1032,6 +1032,16 @@ runs the manager. But the bar is writable, and it is four things:
    nonce, so the draw is not checkable afterwards"* — the same shape as a
    practice game, and for the same reason: the weaker thing is allowed, and
    is never allowed to look like the stronger one.
+
+   *Seen once, 2026-09-03.* The first paid game on the public lobby (g23,
+   two Haiku seats through `run_entrant.py`) was drawn by the lobby alone,
+   because the reference entrant accepted a nonce and never sent one. The
+   lobby said so on its board, as designed; the game's **standing did not**
+   — the record and the lobby's index carry `ranked: true` with nothing
+   about the draw, so the weaker game looked like the stronger one on the
+   one surface a spectator reads. The reference now brings a nonce
+   (`run_entrant.claim`, tested); whether an uncheckable draw should rank,
+   and how the standing says it, is open and is Gal's call.
 3. **The board is signed, and archived by somebody else.** The hub keeps a
    board for an hour, after which the manager's saved copy is the only one. Two
    independent copies make an omitted message detectable; signing makes a

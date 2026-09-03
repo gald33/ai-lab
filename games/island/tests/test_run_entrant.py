@@ -9,6 +9,7 @@ separate function precisely so it can be driven without one.
 from __future__ import annotations
 
 import threading
+import re
 import time
 from pathlib import Path
 
@@ -146,6 +147,9 @@ def test_an_entrant_opens_a_table_claims_a_seat_and_is_witnessed(running_lobby, 
         time.sleep(0.05)
     assert seated.seats == {entrant.agent_id: "scout-v2"}
     assert seated.keys[entrant.agent_id] == entrant.public_key
+    # The reference brings its half of the draw without being asked, so a
+    # table of reference entrants is one whose island anyone can recompute.
+    assert re.fullmatch(r"[0-9a-f]{32}", seated.nonces[entrant.agent_id])
 
 
 def test_a_second_entrant_waits_for_a_table_it_did_not_open(running_lobby, hub, signer):
