@@ -71,7 +71,8 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
 
     assert table.settled
     assert table.manager == "lucille"
-    assert table.workspace == f"{lobby.client.config.workspace}-g1"
+    # Named by its write key since 2026-09-03, not by the lobby and table.
+    assert table.workspace.startswith("ws_")
     assert isinstance(table.seed, int)
 
     lines = [m["body"] for m in lobby.client.history("lobby")]
@@ -84,8 +85,10 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     assert any(b.startswith("g1 seat T1 = scout-v2, key ") and t1.public_key in b
               for b in lines)
 
-    invite_line = next(b for b in lines if b.startswith("g1 invite: "))
-    invite = Invite.decode(invite_line.removeprefix("g1 invite: "))
+    # The invite is whispered to the seats since 2026-09-02, and the board
+    # only says so; what the lobby kept is what it sent.
+    assert any(b.startswith("g1 invite: sealed to T1, T2") for b in lines)
+    invite = Invite.decode(table.invite)
     assert invite.workspace == table.workspace
     assert invite.url == hub
 
@@ -811,10 +814,7 @@ def test_a_table_room_is_keyed_whatever_the_lobby_is(hub):
     lobby = Lobby(client=_client(hub, "lobby", generate_key()))
     table = _settle_one(lobby, hub, lobby.client.config.key)
 
-    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
-            if isinstance(m.get("body"), str)]
-    line = next(b for b in said if b.startswith("g1 invite: "))
-    invite = Invite.decode(line[len("g1 invite: "):])
+    invite = Invite.decode(table.invite)
     assert invite.key and invite.workspace == table.workspace
 
 
@@ -840,3 +840,103 @@ def test_a_plaintext_lobby_cannot_seat_anybody_and_says_why(hub):
 
     assert lobby.tables["g1"].seats == {}
     assert lobby.refusals[-1]["reason"].startswith("JOIN must be signed")
+
+
+def test_the_invite_is_whispered_to_each_seat_and_kept_off_the_board(hub):
+    """The room's key is what makes a seat a seat, and until 2026-09-02 the
+    lobby posted it in the clear one line after the settlement. Now every
+    seat that published an exchange key is whispered the invite, the board
+    says only that it was sent, and the lobby keeps it in its own state so
+    the runner can play the table it settled."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    _client(hub, "opener", key).post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    # The seat clients are kept: an exchange key is per *client*, and a
+    # second client under the same id could not open what was sealed to the
+    # first -- the same fact ENTER.md calls the one thing that is not obvious.
+    seats = [_entrant(hub, f"g1-t{i}", key) for i in range(2)]
+    for i, seat in enumerate(seats):
+        seat.post("lobby", f"JOIN g1 as seat-{i}")
+    manager = _entrant(hub, "m", key)
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+    table = lobby.tables["g1"]
+    assert table.settled and table.sealable()
+
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert not any(table.invite in b for b in said), "the credential is off the board"
+    assert any(b.startswith("g1 invite: sealed to T1, T2 and the manager")
+               for b in said)
+    assert table.invite.startswith("swb1_")
+    assert Invite.decode(table.invite).workspace == table.workspace
+
+    for client in seats + [manager]:
+        client.agents()                                 # the lobby's exchange key
+        got = [m.get("body") for m in client.inbox(wait=0.0, limit=20)]
+        assert f"g1 invite: {table.invite}" in got, got
+
+
+def test_a_table_with_a_keyless_seat_gets_its_invite_in_the_clear_and_said_so(hub):
+    """The weaker thing is kept and says so: a seat that published no exchange
+    key cannot be whispered to, the table was already practice, and the invite
+    goes on the board as before rather than to nobody."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    opener = _client(hub, "opener", key)
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    _entrant(hub, "keyed", key).post("lobby", "JOIN g1 as keyed")
+    bare = _client(hub, "bare", key)
+    # A signing key without a registration: witnessable, not sealable.
+    bare.post("lobby", "JOIN g1 as bare")
+    manager = _client(hub, "m", key)
+    manager.register(name="lucille", kind="local", branch="main", task="")
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+    table = lobby.tables["g1"]
+    if not table.settled:
+        pytest.skip("an unregistered JOIN is refused on this hub; the clear "
+                    "path needs a seat that was witnessed without a key")
+    assert not table.sealable()
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert any(b == f"g1 invite: {table.invite}" for b in said)
+
+
+def test_the_room_is_write_protected_and_the_watch_invite_cannot_speak(hub):
+    """Switchboard 2.0.0: a table's room is named by its write key, the seats
+    are whispered an invite that carries it, and the board carries a
+    read-only invite for everybody else -- which the hub, not the page,
+    keeps read-only."""
+    from switchboard import rooms
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    table = _settle_one(lobby, hub, key)
+    assert rooms.is_write_protected(table.workspace)
+
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    line = next(b for b in said if b.startswith("g1 watch: "))
+    room_id, blob = line[len("g1 watch: "):].split()[:2]
+    assert room_id == table.workspace and blob == table.watch
+    watch = Invite.decode(table.watch)
+    assert watch.workspace == table.workspace and watch.key
+    assert watch.write_key is None, "the watch invite carries no write key"
+    full = Invite.decode(table.invite)
+    assert full.write_key and full.workspace == table.workspace
+
+    # A spectator holding the watch invite reads the room ...
+    seat = Client.from_invite(full, agent_id="seat")
+    seat.register(name="seat", kind="local", branch="main", task="")
+    seat.post("island", "ACK ready")
+    watcher = Client.from_invite(watch, agent_id="watcher")
+    assert [m["body"] for m in watcher.history("island")] == ["ACK ready"]
+    # ... and cannot write in it, however it tries: the hub answers 403 and
+    # the client names the reason.
+    from switchboard.client import ReadOnlyRoom
+    with pytest.raises(ReadOnlyRoom) as refused:
+        watcher.post("island", "PRODUCE bread=1.0")
+    assert "write-protected" in str(refused.value)
+    assert [m["body"] for m in seat.history("island")] == ["ACK ready"]

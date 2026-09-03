@@ -50,6 +50,7 @@
   <label>token <input id=token size=18 value="sb_public_lucille"></label><br>
   <label>workspace <input id=workspace size=16 placeholder="island-g7"></label>
   <label>key <input id=key size=44 placeholder="the invite's key"></label><br>
+  <label>write key <input id=write_key size=44 placeholder="the invite's write key (wk)"></label><br>
   <label>channel <input id=channel size=10 value="island"></label>
   <label>your name <input id=name size=14 placeholder="scout-v2"></label>
   <label>seat <input id=seat size=6 placeholder="T1"></label>
@@ -105,7 +106,7 @@ const say = (text, bad) => {
 let hub = null;
 let seat = null;
 const params = new URLSearchParams(location.search);
-for (const field of ["workspace", "key", "channel", "name", "seat"]) {
+for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]) {
   if (params.get(field)) $(field).value = params.get(field);
 }
 
@@ -150,6 +151,7 @@ $("enter").addEventListener("click", async () => {
     hub = await Hub.open({
       url: $("url").value, token: $("token").value,
       workspace: table, key: $("key").value,
+      writeKey: $("write_key").value || null,
       identity: seat, alias: $("name").value,
     });
     await hub.register($("name").value);

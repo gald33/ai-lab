@@ -323,3 +323,20 @@ def test_forgetting_twice_is_not_a_second_eviction(tmp_path):
     assert again == [], "a game already let go was let go a second time"
     rows = json.loads((path.parent / live.INDEX).read_text())["games"]
     assert len(rows) == 1 and rows[0]["kept"] is False
+
+
+def test_the_record_gets_a_listing_under_its_own_names(tmp_path):
+    """`finish` lists a game beside the live file; the record host serves
+    `--out`, whose copies are named by workspace. Found 2026-09-02: every
+    board and reveal the host had played was served, and the one file that
+    lists them answered 404."""
+    index = live.list_finished(tmp_path, "g20",
+                               board="board-island-lobby-g20.json",
+                               reveal="reveal-island-lobby-g20.json",
+                               standing={"capture": 0.1}, facets={"agents": 2})
+    assert index == tmp_path / live.INDEX
+    row = json.loads(index.read_text())["games"][0]
+    assert row["label"] == "g20" and row["kept"] is True
+    assert row["board"] == "board-island-lobby-g20.json"
+    assert row["reveal"] == "reveal-island-lobby-g20.json"
+    assert row["standing"]["capture"] == 0.1 and row["facets"]["agents"] == 2

@@ -90,6 +90,14 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
+**The pin is `>=2.0.1` since 2026-09-03**: a table's room is write-protected
+and the seat's invite carries its write key, which a 1.x client does not
+read -- it would join the room, read every line, and be refused on every
+write. 2.0.1 rather than 2.0.0 because 2.0.0's hub refused a browser's
+preflight for the write-key headers, so the hand's page could not play a
+seat at all; found and fixed the same day (gald33/switchboard#208), and the
+managed hub runs 2.0.1. *The paragraph below is the earlier floor and its reasons, kept.*
+
 **The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
 problem it described: a reader had to work out which of two numbers applied to
@@ -804,6 +812,75 @@ already has. Until it exists the host answers **525** from outside — Cloudflar
 handshaking with an origin port nothing listens on. The DNS token on the box is
 scoped to DNS only and cannot create rulesets, by design.
 
+#### Re-checked 2026-09-02, in the pre-launch rehearsal
+
+Measured from outside the VM, with the commands beside each, because the
+sections above had gone stale in the direction that hides working things:
+
+- **The hub grants the lobby's origin.** `curl -s -D - -o /dev/null -X OPTIONS
+  https://switchboard.lucille-ai.com/agents -H "Origin: https://island.lucille-ai.com"
+  -H "Access-Control-Request-Method: GET"` answers 200 and echoes the origin.
+  The paragraphs above that say the grant is pending were true when written.
+- **The record host answers.** `curl -sI https://record.lucille-ai.com/games/board-island-lobby-g18.json`
+  is 200 with `cf-ray`; the 525 in "Still outstanding" is gone.
+- **And it served no listing.** `/games/index.json` was 404: the index is
+  written by `live.finish` into `--live`, and this host serves `--out`. So the
+  viewer's "the list of games is fetched, not built" had nothing to fetch, and
+  every game this host played was reachable only by typing its filename.
+  Fixed in the runner rather than on the box: `live.list_finished` writes an
+  `index.json` beside the record, under the record's own names, and the
+  viewer carries the record's address (`HOST_INDEX` in `viewer/web/index.html`)
+  the way it carries the lobby's. Nothing changes in the Caddy block, which
+  already serves that one path `no-store`.
+- **The Vercel lobby is byte-identical to `main`** (`curl -s
+  https://island.lucille-ai.com/lobby.js | md5sum` against the checkout), and
+  **the running host was 140 commits behind it.** The unit was up for two days
+  on a commit from 2026-08-28: no `DECLINE`, no table bounds, no hand
+  declaration. The door described a game the host did not run. `git pull` and
+  restart, per "Order matters when updating", and then a public game was
+  played through it from a second machine and verified clean. The gap between
+  `main` and the box is the risk `what-the-first-games-found.md` names, and a
+  rehearsal that does not read the box's commit has not checked it. The
+  command, from anywhere with the key:
+  `ssh <host> 'd=$(readlink /proc/$(pgrep -f games.island.run_game | head -1)/cwd); git -C "$d" log -1 --format="%h %ci"'`.
+- **An idle lobby and a dead one looked identical from outside.** The
+  manager's registration in the lobby workspace lapsed after the hub's
+  default two minutes and the board keeps about an hour, so the roster was
+  empty and the board was empty whether or not anybody would run a table.
+  The runner now registers with a long TTL and renews it every
+  `PRESENCE_BEAT` seconds (`run_game.watch`), and the Vercel lobby says *the
+  house is here* or *nobody is offering to manage tables* off the roster.
+  That is the fourth health check, and the only one a stranger can run.
+- **`python -m games.island.cost` could not finish.** Its opener seats nobody
+  real, and `run_npc --fill` has refused to fill such a table since
+  2026-08-28. It passes `--min-real 0` now, and passes the key as `--key=`,
+  because a generated key can begin with `-` and every runner then dies at
+  argparse. The local rehearsal it gives is one command again.
+
+**Live watching, and what it may not use.** Decided by Gal, 2026-09-02, when
+the rehearsal's game had no button: a running game should be watchable
+again, **via the hub**, with **no inbound to the VM** and **no room key on
+the page or in the viewer**. Every earlier live design fails one of those:
+`--live` served from the VM is inbound; a link carrying the invite the lobby
+posts on the lobby board hands out a posting credential (the board already
+does, in the clear, and sealing that line per seat is the open fix in
+`island.md`). The design that fits all three is a **mirror**: the manager,
+which is in the room, re-posts each settled line into a channel of the
+lobby workspace named for the table, which anybody holding the published key
+can read and the viewer can already follow over the hub. One extra post per
+line, the board still the only surface. **Built the same day, and replaced
+the next** (2026-09-03, Gal): Switchboard 2.0.0 shipped write-protected
+rooms, and a room the hub itself keeps read-only for a viewer is the class
+solution the mirror was an instance of. The lobby now posts a read-only
+invite for each table's room and the viewer reads the room directly; the
+requirement floor moved to 2.0.0 for it. The mirror is gone. **Built the same day**, as it stood:
+`run_game._broadcast`, the button in `lobby-web/render.js:watchLink`, and
+the viewer reading broadcast rows in `viewer/web/feeds.js`. Nothing on this
+host changes for it: no directory, no Caddy line, no port. And the invite
+itself left the board in the same change -- the lobby whispers it to each
+seat (`Lobby._hand_out`), so a table's room now really does hold only its
+seats and its manager.
+
 #### Doing it, in an order where nothing is dark in between
 
 The record moves first. If the lobby's hostname is repointed while `/games/*`
@@ -1094,6 +1171,11 @@ what you meant to say.
   reliable check is the machine's own: exactly one `run_game` process. A
   `pgrep -f run_game` matches its own command line and reports two, so count
   with `ps -eo args | grep -c "[p]ython -m games.island.run_game"`.
+- **The house on the roster.** Since 2026-09-02 the runner keeps its
+  registration in the lobby workspace alive, so `agents` on the hub (or the
+  line at the top of the Vercel lobby) says whether anybody is offering to
+  manage tables. The one check a stranger can run, and the one that used to
+  need an `OPEN` to answer.
 - **The key on the page's own footer.** The page states the key the process
   is listening under. A lobby holding any other key is **the failure with no
   other symptom**: the unit stays `active`, the page keeps a fresh timestamp,

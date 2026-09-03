@@ -139,7 +139,7 @@ def test_the_prompt_works_for_an_agent_without_mcp_tools(hub):
     is a door for people who already have the key."""
     text = lobby_page.prompt(Lobby(client=_client(hub, "lobby", generate_key())))
 
-    assert 'pip install "agent-switchboard>=1.2.3"' in text
+    assert 'pip install "agent-switchboard>=2.0.1"' in text
     assert "switchboard say lobby" in text, "the say-positional trap, warned"
     assert "join_room" in text and "switchboard join" in text
 
@@ -275,11 +275,18 @@ def test_the_live_base_is_read_at_render_time_not_at_import(hub, monkeypatch, tm
     lobby = _settled(hub, generate_key())
     live = _live(tmp_path)
 
-    assert 'class="watchbtn' not in lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
+    # Unset, the button is still there since 2026-09-03 -- pointed at the
+    # room's read-only invite, which needs no live file from this host.
+    page = lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
+    assert 'class="watchbtn' in page and "?invite=" in page
+    assert "host.example" not in page
 
     monkeypatch.setenv("ISLAND_LIVE_BASE", "https://host.example/live")
 
-    assert 'class="watchbtn' in lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
+    # Set at render time, the host's own live file is what the button reads,
+    # because the file knows the ending for sure and the schedule only guesses.
+    page = lobby_page.render(lobby, now=1_000_000.0, live_dir=live)
+    assert 'class="watchbtn' in page and "host.example" in page
 
 
 def test_a_lapsed_table_offers_nothing_to_watch(hub, monkeypatch, tmp_path):

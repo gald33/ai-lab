@@ -52,4 +52,15 @@
 # One line, and no server: the manager is an outbound client of a hub it does
 # not run. What the tests need to stand a hub of their own is in
 # `requirements-dev.txt`, and a host has no use for it.
-agent-switchboard>=1.2.3
+# **2.0.0** is where the write key arrived (2026-09-03): a table's room is
+# write-protected, named by its own key, and the hub refuses every write the
+# key did not sign -- which is what makes the lobby's read-only invite for
+# spectators a fact rather than good manners. A lobby on an older release
+# mints rooms the hub treats as open, so anybody handed the watch invite
+# could speak in the game.
+#
+# **2.0.1** is where a browser can present that write key at all: 2.0.0's
+# CORS layer allowed only `Authorization` and `Content-Type`, so the hand's
+# page signed correctly and was refused at the preflight (gald33/switchboard#208,
+# found and fixed 2026-09-03). The managed hub runs 2.0.1 (`/health`).
+agent-switchboard>=2.0.1

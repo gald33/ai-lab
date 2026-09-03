@@ -21,7 +21,11 @@ does *not* re-derive them: a browser that re-decided would be a second lobby
 that can disagree with the first, and this page is what a person reads before
 sitting down. An entrant's own `OPEN`/`JOIN`/`MANAGE` is read as intent only.
 
-A table's room invite is filtered out in `lobby.js` and never reaches the view.
+A table's room invite never reaches the view. Since 2026-09-02 it is not on the
+board either: the lobby whispers it to each seat and posts only that it did.
+The page's watch button hands the viewer the room's *read-only* invite, which
+the lobby posts on the board (`g7 watch: …`): the room is write-protected, so
+the hub refuses every write from it (Switchboard 2.0.0).
 
 ## Clocks
 

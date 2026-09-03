@@ -27,7 +27,7 @@
 // real Python client, which is the only check that any of the above is right.
 
 import { WorkspaceCipher, messagePayload, sign, isSealed,
-         unsealFromPeer } from "./switchboard.js";
+         unsealFromPeer, writerFromSeed, signRequest } from "./switchboard.js";
 
 export class Hub {
   constructor(url, token, cipher, identity, alias) {
@@ -45,10 +45,25 @@ export class Hub {
     this._peers = new Map();
   }
 
-  static async open({ url, token, workspace, key, identity, alias }) {
+  static async open({ url, token, workspace, key, identity, alias, writeKey }) {
     const cipher = await WorkspaceCipher.fromKey(key, workspace);
     const hub = new Hub(url, token, cipher, identity, alias);
     hub.agentId = await cipher.blind(alias, "agent");
+    // A write-protected room (2.0.0, `ws_…`) takes no line the room's write
+    // key did not sign. The key comes from the invite the lobby whispered to
+    // this seat; a page without it -- a read-only invite -- reads and is
+    // refused on every write, by the hub and not by this page's manners.
+    // A key that names another room is refused here, loudly, the way the
+    // Python client refuses it: every write would otherwise 403 with a
+    // message that cannot say why.
+    hub.writer = null;
+    if (writeKey) {
+      const writer = await writerFromSeed(writeKey);
+      if (writer.workspace !== workspace) {
+        throw new Error(`the write key names room ${writer.workspace}, not ${workspace}`);
+      }
+      hub.writer = writer;
+    }
     return hub;
   }
 
@@ -57,13 +72,22 @@ export class Hub {
   async _call(method, path, { body, params } = {}) {
     const url = new URL(this.url + path);
     for (const [k, v] of Object.entries(params || {})) url.searchParams.set(k, v);
+    const text = body === undefined ? undefined : JSON.stringify(body);
+    // Signed over exactly what goes on the wire -- method, path, query and
+    // the serialised body -- so the hub verifies the same bytes. Every call
+    // is signed, reads included: `/inbox` commits a cursor, and the hub
+    // notes the signature on every guarded route.
+    const signed = this.writer
+      ? await signRequest(this.writer, method, url.pathname, url.search.slice(1), text)
+      : {};
     const response = await fetch(url, {
       method,
       headers: {
         "content-type": "application/json",
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+        ...signed,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: text,
     });
     if (!response.ok) {
       let detail = `${response.status} ${response.statusText}`;

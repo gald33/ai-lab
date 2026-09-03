@@ -276,9 +276,13 @@ def test_the_manager_is_bound_to_the_keys_the_lobby_witnessed(settled, hub, tmp_
     # self-asserted and blinds identically, so `from` cannot tell them apart;
     # only the signature can. Built without the entrant's signer so it mints
     # a key of its own, which is exactly what an impostor has.
+    # The impostor holds the room's write key too -- "a key that was handed
+    # on" -- so the hub lets its line in and the manager is what refuses it.
+    # Without the write key the hub would refuse first (2.0.0), which is a
+    # different guarantee and not the one under test here.
     impostor = Client(ClientConfig(url=invite.url, url_source="explicit",
                                    workspace=invite.workspace, token=invite.token,
-                                   key=invite.key),
+                                   key=invite.key, write_key=invite.write_key),
                       agent_id="t1", key=invite.key)
     object.__setattr__(impostor, "signing", signing.SigningIdentity.generate())
     assert impostor.agent_id == real.agent_id
@@ -1396,3 +1400,4 @@ def test_the_manager_refuses_a_table_of_a_size_it_has_never_played():
         with pytest.raises(ValueError) as e:
             run_game.refuse_out_of_bounds(bad)
         assert says in str(e.value)
+

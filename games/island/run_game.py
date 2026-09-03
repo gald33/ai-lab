@@ -72,6 +72,7 @@ from .archive import INDEPENDENT, SAME_PARTY, Archivist, compare
 from .hub import through_blips
 from .live import finish as finish_live
 from .live import forget as forget_live
+from .live import list_finished
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
@@ -220,6 +221,10 @@ def deal(mgr: Manager, dealer: Dealer, table: Table) -> bool:
 #: Measured 2026-08-28 in the `ttl-test` room against
 #: switchboard.lucille-ai.com, on agent-switchboard 1.0.0.
 PRESENCE_CEILING = 3600.0
+
+#: How often the runner renews its lobby presence, in seconds. Well inside
+#: the TTL `main` registers with, and rare beside the poll it rides on.
+PRESENCE_BEAT = 60.0
 
 
 def presence_ttl(table: Table, *, episode_seconds: int, ack_seconds: int) -> float:
@@ -969,18 +974,31 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         # were given, that the game is over, where its seed and its replay now
         # are, and what it officially scored -- and the official score is the
         # ledger's, read back out of the ledger this just wrote to, never a
-        # second reckoning computed here. `--out` is not served and must not
-        # be (it holds the seeds of games still running), so what a spectator
-        # can reach is a copy beside their own file.
+        # second reckoning computed here.
+        #
+        # *Corrected 2026-09-02.* This said `--out` is not served and must not
+        # be, because it holds the seeds of games still running. It does not:
+        # a seed reaches `--out` only here, in the reveal, after the last bell
+        # (`publish`), and the record host has served `--out` since
+        # 2026-08-31 on exactly that ground (HOSTING.md, "What was actually
+        # built"). What it lacked was a listing, so the viewer could reach a
+        # game only by its filename. `list_finished` writes one beside the
+        # record, under the record's own names.
+        standing = _scores.standing(_scores.load(ledger or _scores.LEDGER),
+                                    (rec.get("game") or {}).get("id") or table.id)
+        facets = _facets(sidecar)
+        try:
+            list_finished(out, table.id,
+                          board=f"board-{table.workspace}.json",
+                          reveal=sidecar.name, standing=standing, facets=facets)
+        except Exception as exc:      # noqa: BLE001 -- a listing is not a game
+            print(f"{table.id}: not listed in {out / 'index.json'}: {exc!r}",
+                  flush=True)
         if live_path is not None:
             try:
                 finish_live(live_path,
                             board=out / f"board-{table.workspace}.json",
-                            reveal=sidecar,
-                            standing=_scores.standing(
-                                _scores.load(ledger or _scores.LEDGER),
-                                rec["game"]["id"]),
-                            facets=_facets(sidecar))
+                            reveal=sidecar, standing=standing, facets=facets)
             except Exception as exc:      # noqa: BLE001 -- watching costs a
                 # game nothing, so a handover that fails is said out loud and
                 # the record stands.
@@ -1019,10 +1037,26 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
     played: set[str] = set()
     claimed: set[str] = set()
     games: list[threading.Thread] = []
+    last_beat = 0.0
     while True:
         # A hub redeploy answers this with a 502, and a runner that died of
         # one would leave every settled table unplayed -- see `hub.py`.
         through_blips(lobby.drain, "lobby drain")
+        # **The manager stays on the lobby's roster, so the page can say the
+        # house is here.** Decided 2026-09-02, after the pre-launch rehearsal
+        # found that an idle lobby and a dead one were indistinguishable from
+        # outside: the registration in `main` lapsed after the hub's default
+        # two minutes, the board keeps about an hour, and the only way to
+        # learn whether anybody would run a table was to open one. Same
+        # heartbeat the table room already gets (`_stay_present`), throttled
+        # to a fraction of the TTL `main` asked for, so the idle host's
+        # request rate stays where `cost.py` measured it.
+        if manager is not None and time.time() - last_beat >= PRESENCE_BEAT:
+            _stay_present(manager)
+            # The lobby too: a seat opens the invite whispered to it with the
+            # lobby's published exchange key, read off the roster.
+            _stay_present(lobby.client)
+            last_beat = time.time()
         if page is not None:
             # This runner embeds the only lobby on its channel, so it is also
             # the only process that can render one -- `run_lobby --page` would
@@ -1126,7 +1160,14 @@ def pending_invite(lobby: Lobby, table: Table) -> Invite | None:
             f"never on the board, so a second lobby draws its own and mints "
             f"its own room. Run `run_game` *or* `run_lobby` against a "
             f"workspace, not both.")
-    return Invite.decode(found[0]) if found else None
+    # Since 2026-09-02 the lobby whispers the invite to the seats and keeps
+    # it in its own state (`Table.invite`); the public line only says that it
+    # did. This runner *is* that lobby, so the state is the first place to
+    # look, and the board line is what an older lobby posted in the clear.
+    if table.invite:
+        return Invite.decode(table.invite)
+    if found and found[0].startswith("swb1_"):
+        return Invite.decode(found[0])
     return None
 
 
@@ -1211,8 +1252,11 @@ def main(argv: list[str] | None = None) -> int:
     # The claimant, separate from the lobby that witnesses it -- see `claim`.
     # Registered so the settlement line names it rather than a blinded id.
     manager = _client(MANAGER)
+    # A TTL the heartbeat in `watch` renews well inside, so the roster row
+    # this creates is a liveness signal rather than a two-minute one.
     manager.register(name=args.managed_by, kind="local", branch="main",
-                     task=f"running tables in {args.workspace}")
+                     task=f"running tables in {args.workspace}",
+                     ttl=PRESENCE_CEILING, back_in=PRESENCE_BEAT * 2)
     print(f"watching {args.hub}/{args.workspace}#{args.channel}, "
           f"offering to manage as {args.managed_by}, "
           f"holding as {lobby.holder}, state in {state}")

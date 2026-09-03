@@ -1429,6 +1429,114 @@ with somebody's choice of weights.
 
 ## Watching
 
+**A running game is watched through the hub with a read-only invite, and
+the hub is what makes it read-only.** Decided by Gal, 2026-09-03, on
+Switchboard 2.0.0, **superseding the broadcast below within a day**: a
+table's room is now write-protected -- its identifier is the hash of an
+Ed25519 key only the seats and the manager hold (`Lobby._settle`,
+`writekey.py`), and the hub refuses any write that key did not sign. So the
+lobby mints two invites for one room: the full one, whispered to each seat;
+and one with the room's read key and no write key, posted on the lobby board
+in public as `g20 watch: <room> swb1_…`. The watch button hands that to the
+viewer (`?invite=`), which reads the room itself. Nothing is copied, nobody
+holds a key that can speak, and "who may write here" is answered at the hub
+for every room rather than by the viewer checking signatures on one game's
+mirror. The broadcast, its author-lifting in `feeds.js` and its signature
+question are gone with it.
+
+**Everyone watches through the viewer, and the viewer only reads.** Asked
+by Gal in the same sitting, and checked surface by surface on 2026-09-03:
+
+| who watches | what they open | what it reads, and how |
+|---|---|---|
+| a running game | the lobby's button, `viewer?invite=<watch>` | the table's room on the hub, with the read-only invite; the hub refuses any write from it |
+| a finished game, within the hour | the same button | the same room, still on the hub |
+| a finished game, afterwards | the lobby's button, `viewer?board=…&reveal=…` | the board and reveal off the record host, which is the durable copy: the hub keeps a room about an hour |
+| the committed replays and the scoreboard | the viewer itself | files built into the Pages site |
+| the lobby | `island.lucille-ai.com` | the lobby workspace on the hub, under the published key, through the same room reader the viewer uses |
+
+The viewer and the lobby page never register, never post, and never
+advance a cursor -- the room reader they share reads through the catch-up
+endpoint (switchboard's own README makes that promise for it, and the
+lobby's README preserves it). That is what makes the viewer the right thing
+to put in front of a crowd: it is a static page that reads, so it can be
+served from anywhere -- Pages today, an edge or a CDN if a game ever draws
+one -- and no copy of it can do anything to a game. The one exception is
+the hand's pages, which are for playing, not watching: they hold a seat's
+keys on purpose and are the only browser surface that writes.
+
+**What the write key costs, found by checking rather than reasoning.** The
+hand's page signs its writes the same way the Python client does
+(`hand/switchboard.js:signRequest`, checked against the real hub in
+`test_hand_pages.py`) -- and **cannot get them to the hub from a browser**:
+2.0.0's CORS layer allows only `Authorization` and `Content-Type` as request
+headers, so the preflight for `X-Switchboard-Write-Key` and
+`X-Switchboard-Write-Sig` is refused and the signed request never leaves the
+page. **Fixed the same day**: gald33/switchboard#208 adds the two headers
+to `server.py`'s `allow_headers`, checked end to end against the hand's
+page; the maintainer's session, reached over Switchboard itself, reviewed
+it, the hub redeployed with it, and **2.0.1** carries it, so the island's
+floor is 2.0.1. The test probes the hub's preflight rather than a version:
+against 2.0.0 it xfails with the reason, against 2.0.1 it is a real check
+that a page signs a write the hub accepts. The keyless case is unchanged
+and is the one that matters for spectators: a page holding the watch
+invite reads the room and is refused on every write, by the hub.
+
+*How the maintainer was reached is worth one line, because it failed
+first.* A rendezvous lobby is derived from the key, so the island's agent
+and the switchboard repo's agent sat in two lobbies on one hub with no way
+to see each other until a person carried an invite across. Filed upstream
+as `cross-key-rendezvous`: a project publishes a meeting-room invite, as
+ENTER.md already does for the island. *The paragraph below is the day-earlier design,
+kept as the reasoning it had to beat.* Decided by Gal, 2026-09-02, after the pre-launch rehearsal played a
+game nobody could see. Three constraints, stated in the sitting: live
+watching is wanted; nothing inbound to the VM; and neither the lobby page nor
+the viewer ever holds a game's key. `--live` served from the VM (the
+2026-08-28 design, below) fails the second; a link carrying the invite fails
+the third, and the invite is no longer on the board at all. What fits all
+three: **the manager broadcasts the room** -- every line it settles is
+re-posted into the lobby workspace on a channel named for the table
+(`run_game._broadcast`), readable under the published lobby key, which the
+viewer already follows over the hub (`?workspace=…&key=…&channel=g20`). The
+lobby's button points there while the round runs and at the record host once
+the announced last bell has passed (`lobby-web/render.js:watchLink`). Each
+broadcast line carries its room author inside the body, because the hub names
+it by the poster and a room where the manager said everything is drawn silent
+(`viewer/web/feeds.js:rowsFromState`). Cost: one extra post per line; the
+lobby's own channel is untouched. The board stays the only surface.
+
+**Where it is written, how the viewer finds it, and who may write it** --
+asked by Gal in the same sitting, and each answer is a fact about the
+board rather than a convention:
+
+- *Where.* The lobby workspace (`island-lobby`), on a channel named for
+  the table (`g20`), never on `lobby`. Readable under the published key,
+  like everything in that workspace.
+- *How the viewer knows.* The lobby's button hands it
+  `?workspace=island-lobby&key=<published>&channel=g20`; the viewer's hub
+  feed already reads a channel of a workspace it holds the key to.
+- *Who may write there.* **Answered by 2.0.0's write key, the next day**
+  (above): the room refuses the reader's writes at the hub, so the
+  question this bullet works through no longer arises. Kept as written.
+  Anybody holding the published key, and that
+  cannot be prevented -- the same fact as "a key that was handed on". So
+  the broadcast is **signed by the key the lobby witnessed for the
+  manager**: `run_game` posts it with the very client that posted
+  `MANAGE`, whose key is on the lobby board in public as `g20 will be
+  managed by lucille, key K`. A line under any other key on that channel
+  is somebody else's, and a peer id is not proof (any client may choose
+  the same agent id; the hub does not authenticate them). **What is not
+  yet built is the viewer checking that signature.** The browser room
+  reader the viewer loads drops the signature block when it opens a line
+  (`item[field] = opened.b`), so today the viewer shows every well-formed
+  broadcast row it is given. Until it verifies against K and says how
+  many lines it dropped, a broadcast is evidence of nothing -- which is
+  fine for a spectacle and is why the record, not the broadcast, is what
+  `verify` reads. Next change: keep `s` in the reader, verify Ed25519
+  over `signing.message_payload` with K read off the lobby channel, and
+  draw only what verifies.
+
+
 The spectator surface is built: an island drawn from the board, replays with
 transport and chapters, and a scoreboard. Three rules it already follows and
 must keep following:
@@ -1842,7 +1950,16 @@ renderer disagreed.
   says and not in what it might have left out, so the lab still runs the
   manager for anything that reaches this board. The bar is now two-thirds
   written rather than one-third.
-- **A room the strangers can talk in.** The way out is that the room key is
+- **A room the strangers can talk in.** **Built, 2026-09-02** (Gal): the
+  lobby whispers each seat its invite (`Lobby._hand_out`) and posts only
+  that it did, so the room contains exactly the seats and the manager. The
+  entrant reads it with `inbox` after a `roster` (`run_entrant.wait_for_invite`,
+  and the hand's lobby page). A table with a seat that published no exchange
+  key still gets the invite in the clear, and was already practice. Two
+  consequences worth keeping in view: the runner reads the invite from its
+  own state rather than the board (`run_game.pending_invite`), and a spectator
+  now needs another way in -- the broadcast, under "Watching". *The paragraph
+  below is how it stood before, kept as the reasoning.* The way out is that the room key is
   never published: an entrant joins the *lobby*, posts `JOIN`, is seated on a
   witnessed signature, and is handed that seat's invite sealed to it alone —
   so the room contains exactly the seats and the manager, and the invite *is*

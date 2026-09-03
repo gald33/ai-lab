@@ -162,11 +162,19 @@ def test_the_port_reads_the_settlement(viewed, board):
     assert "scout-v2" in table["roster"] and "trader-b" in table["roster"]
 
 
-def test_the_port_never_carries_an_invite_into_the_view(viewed):
-    """A room credential is on that channel and must not reach the page.
+def test_the_port_carries_only_the_read_only_invite_into_the_view(viewed, board):
+    """The seat's invite is whispered and never on the board at all; the one
+    invite the page does carry is the room's *read-only* one, which the lobby
+    posts on purpose and the watch button hands the viewer (2026-09-03). It
+    carries no write key, so it is not a credential to speak with.
 
     Asserted over a view that has a table in it: a port that saw no table at
     all would carry no credential either, and pass this for the wrong reason.
     """
+    from switchboard.invite import Invite
     assert viewed["tables"]
-    assert "swb1_" not in json.dumps(viewed)
+    table = next(t for t in viewed["tables"] if t["id"] == board["id"])
+    assert table["watch"] == board["table"].watch
+    assert Invite.decode(table["watch"]).write_key is None
+    assert board["table"].invite not in json.dumps(viewed)
+    assert table["room"] == board["table"].workspace

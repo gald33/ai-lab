@@ -177,6 +177,10 @@ def _mcp_env(invite: Invite, *, agent_id: str, home: Path) -> dict[str, str]:
         env_for_mcp["SWITCHBOARD_TOKEN"] = invite.token
     if invite.key:
         env_for_mcp["SWITCHBOARD_KEY"] = invite.key
+    if invite.write_key:
+        # A table's room is write-protected (2.0.0): without this the agent
+        # reads every line and the hub refuses every one it writes.
+        env_for_mcp["SWITCHBOARD_WRITE_KEY"] = invite.write_key
     return env_for_mcp
 
 
@@ -320,9 +324,21 @@ def wait_for_invite(client: Client, channel: str, table: str, *,
     a refusal addressed here is raised with the lobby's own reason.
     """
     while time.time() < deadline:
-        for msg in sorted(client.history(channel, limit=200),
-                          key=lambda r: r.get("seq", 0)):
-            body = msg.get("body")
+        # **The inbox first, and the roster before it.** Since 2026-09-02 the
+        # lobby whispers the invite to each seat rather than posting it, and
+        # a whisper opens only with the sender's exchange key, which a client
+        # learns from the roster (defect 18, and 22 in our own code). The
+        # board is still read for a refusal, and for an older lobby's invite
+        # in the clear.
+        try:
+            client.agents()
+        except Exception:      # noqa: BLE001 -- a poll that failed is a retry
+            pass
+        rows = [m.get("body") for m in client.inbox(wait=0.0, limit=50)]
+        rows += [m.get("body") for m in
+                 sorted(client.history(channel, limit=200),
+                        key=lambda r: r.get("seq", 0))]
+        for body in rows:
             if not isinstance(body, str):
                 continue
             found = _INVITE.match(body)

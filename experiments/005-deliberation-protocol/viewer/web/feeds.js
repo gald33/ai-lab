@@ -32,6 +32,16 @@ export function rowsFromState(state, { channel = null } = {}) {
   for (const m of state.messages || []) {
     if (channel && m.channel !== channel) continue;
     if (m.sealed_body) { sealed.push(m.seq); continue; }
+    // A broadcast row: the manager re-posting a room line into the lobby
+    // workspace (`run_game._broadcast`). The hub names it by the poster,
+    // which is always the manager, so the author it carries inside is the
+    // one that counts, and the room's own seq keeps the order the room had.
+    if (m.body && typeof m.body === "object" && typeof m.body.text === "string"
+        && typeof m.body.as === "string") {
+      rows.push({ seq: m.body.seq ?? m.seq, at: m.body.at || m.created_at,
+                  author: m.body.as, body: m.body.text });
+      continue;
+    }
     if (typeof m.body !== "string") continue;
     rows.push({
       seq: m.seq,
