@@ -1497,6 +1497,11 @@ let mode = "replay";
 //: page fetched the board from, which reveal it has already taken, and the
 //: replay it can offer of the round it just watched. See `island/live.py:finish`.
 let liveFrom = null, tookReveal = null, replayOf = null;
+//: The room a hub invite is reading, while it is. Such a room has no manager
+//: writing a handover beside it, so once its board says the round is over
+//: the ending is looked for in the record host's index instead -- see
+//: `takeFromRecord`. Cleared by every other way of starting.
+let hubRoom = null;
 //: This game's official score and place, exactly as the ledger reported them
 //: at the last bell. Never computed here -- see `scores.py:standing`.
 let official = null;
@@ -2142,7 +2147,7 @@ function sameCast(a, b) {
 
 async function startReplay(boardUrl, revealUrl) {
   mode = "replay";
-  liveFrom = null; tookReveal = null; replayOf = null; lastMounted = null;
+  liveFrom = null; hubRoom = null; tookReveal = null; replayOf = null; lastMounted = null;
   official = null;
   $("transport").style.display = "";
   live?.stop();
@@ -2205,7 +2210,7 @@ async function startReplay(boardUrl, revealUrl) {
 
 function startLive(url, channel) {
   mode = "live";
-  liveFrom = url; tookReveal = null; replayOf = null; official = null;
+  liveFrom = url; hubRoom = null; tookReveal = null; replayOf = null; official = null;
   lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
@@ -2227,8 +2232,15 @@ function startLive(url, channel) {
 function startHub(config, channel) {
   mode = "live";
   // A room read straight from a hub has no manager writing files beside it,
-  // so there is no handover to wait for: this one ends and stays ended.
-  liveFrom = null; tookReveal = null; replayOf = null; official = null;
+  // so there is no handover on the feed to wait for. What there is, once the
+  // board says the round is over, is the record host: the manager publishes
+  // the game there within seconds of the last bell, and `takeFromRecord`
+  // looks for this room in its index on every poll after that line until it
+  // finds it. Until 2026-09-03 the page said "no sidecar" at the end of a
+  // watched game and left it there, which was false the moment the record
+  // was published -- Gal, watching g24 end through the read-only invite.
+  liveFrom = null; hubRoom = config.workspace; tookReveal = null;
+  replayOf = null; official = null;
   lastRows = null; lastMounted = null;
   player?.stop();
   $("transport").style.display = "none";
@@ -2236,7 +2248,9 @@ function startHub(config, channel) {
   lockReveal(`<b>Live, from ${config.url}.</b> Read the same way the published
     Switchboard viewer reads a room — sealed content opened in this browser,
     never by anything that runs it. Tastes and capacities still never reach
-    the board, so there is still no score here; replay afterwards for both.`);
+    the board, so there is no score here while the round runs; when it ends
+    and the record host publishes the game, the page takes its score and
+    hidden half from there.`);
   live = hubFeed(config, { channel }, liveHandlers(
     () => `reading ${config.url}/${config.workspace} every 3s · read-only`,
     // A room is the commonest thing to fail here and the least obvious: an
@@ -2279,6 +2293,7 @@ function liveHandlers(statusWhenOk, statusOnError) {
       // carries no new row -- and a check below the return would never run on
       // the one board state that has an ending to take.
       if (raw?.finished) takeHandover(raw.finished);
+      else if (hubRoom) takeFromRecord(hubRoom);
       const mark = `${rows.length}:${rows[rows.length - 1]?.seq ?? ""}`;
       if (!first && mark === lastRows) return;
       lastRows = mark;
@@ -2323,6 +2338,56 @@ async function takeHandover(finished) {
   tookReveal = finished.reveal;
   const base = new URL(liveFrom, location.href);
   const revealUrl = new URL(finished.reveal, base).href;
+  await takeEnding({
+    revealUrl,
+    boardUrl: finished.board ? new URL(finished.board, base).href : null,
+    standing: finished.standing,
+  });
+}
+
+//: One lookup at a time, and none once the ending has been taken.
+let seekingRecord = false;
+
+/**
+ * A room read through an invite has ended: find its game in the record.
+ *
+ * The record host's index (`archiveIndexes`) names every game it has by the
+ * files the manager wrote for it, and those are named after the room --
+ * `reveal-<workspace>.json` -- so the room this page is reading is enough to
+ * find its own ending. Nothing is claimed until a row is there: the manager
+ * publishes seconds after the last bell, and every poll until then asks again.
+ */
+async function takeFromRecord(workspace) {
+  if (tookReveal || seekingRecord || timeline?.final?.phase !== "over") return;
+  seekingRecord = true;
+  try {
+    for (const indexUrl of await archiveIndexes()) {
+      let rows;
+      try {
+        const answer = await fetch(indexUrl, { cache: "no-store" });
+        if (!answer.ok) continue;
+        rows = (await answer.json()).games || [];
+      } catch { continue; }
+      const row = rows.find((g) => g.reveal === `reveal-${workspace}.json`);
+      if (!row) continue;
+      tookReveal = row.reveal;
+      await takeEnding({
+        revealUrl: new URL(row.reveal, indexUrl).href,
+        boardUrl: row.board ? new URL(row.board, indexUrl).href : null,
+        standing: row.standing,
+      });
+      return;
+    }
+  } finally {
+    seekingRecord = false;
+  }
+}
+
+/**
+ * The ending, from wherever it came: the reveal read, the replay offered, the
+ * official line printed, and the card rebuilt with the numbers.
+ */
+async function takeEnding({ revealUrl, boardUrl, standing }) {
   try {
     const answer = await fetch(revealUrl, { cache: "no-store" });
     if (!answer.ok) throw new Error(String(answer.status));
@@ -2333,13 +2398,11 @@ async function takeHandover(finished) {
     tookReveal = null;
     return;
   }
-  if (finished.board) {
-    replayOf = { board: new URL(finished.board, base).href, reveal: revealUrl };
-  }
+  if (boardUrl) replayOf = { board: boardUrl, reveal: revealUrl };
   // The record's own reading of this game, printed as it arrived. It is absent
   // on a game the manager could not place -- an older runner, or a ledger it
   // was not writing to -- and the ending then says what it always said.
-  official = finished.standing || null;
+  official = standing || null;
   // Rebuilt here rather than left to the next poll: the board has said its
   // last line, so there is no next poll that changes anything, and a card with
   // a score row is a different card rather than the same one with a blank in
