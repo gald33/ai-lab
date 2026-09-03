@@ -1052,6 +1052,7 @@ def checks(browser, base: str, boards: list[Path], out: Path):
     add("quick", "vocabulary", vocabulary, boards[0])
     add("quick", "ring", ring, out)
     add("quick", "shutters", shutters, out)
+    add("quick", "recorded", recorded, boards[0], out)
     return plan
 
 
@@ -6873,6 +6874,90 @@ def whose(browser, base: str, out: Path) -> list[str]:
 #: because the half after the colon carries measured numbers that move between
 #: runs. Every entry carries the date it was admitted and why.
 KNOWN_FAILURES: dict[str, tuple[str, str]] = {}
+
+
+#: The module the page imports to read a hub room, replaced under test by one
+#: that serves a saved board as a live snapshot. The address is the page's own
+#: (`feeds.js`, `ROOM_READER_URL`); change them together.
+ROOM_READER_URL = "https://gald33.github.io/switchboard/switchboard-room.js"
+
+
+def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
+    """A room watched through an invite takes its ending from the record.
+
+    Reported by Gal, 2026-09-03, watching g24 end through the read-only
+    invite: the page said "no sidecar" and left it there, which was false the
+    moment the manager published the game. A hub room has no handover on its
+    feed, so once the board says the round is over the page looks for the
+    room in the record host's index and takes the reveal and the standing
+    from there.
+
+    The hub reader is replaced with one that serves a saved board as a live
+    snapshot; the record host is a routed origin serving that board's real
+    reveal under the room's name. Nothing here reaches the network.
+    """
+    stem = board.name[len("board-"):-len(".json")]
+    room = f"ws_{stem}"
+    played = json.loads(board.read_text())
+    reveal = (board.parent / f"reveal-{stem}.json").read_text()
+    snapshot = {
+        "hub": {"workspace": room},
+        "agents": [], "notes": [],
+        "messages": [{"seq": m["seq"], "created_at": m["at"], "channel": "island",
+                      "from": {"name": m["author"]}, "body": m["body"]}
+                     for m in played["messages"]],
+    }
+    reader = ("const SNAP = " + json.dumps(snapshot) + ";\n"
+              "export async function snapshot() { return SNAP; }\n"
+              "export async function decodeInvite() { throw new Error('unused'); }\n")
+    record = "https://record.test/games/"
+    index = json.dumps({"games": [{
+        "label": "g-test", "kept": True,
+        "board": f"board-{room}.json", "reveal": f"reveal-{room}.json",
+        "standing": {"game_id": "g-test", "capture": 0.42, "eff_round": 0.61,
+                     "floor": 0.5, "label": "2 traders · test",
+                     "ranked": True, "place": 1, "of": 3, "first": False,
+                     "best": 0.42, "why": None,
+                     "traders": [{"slot": "T1", "place": 1, "of": 2},
+                                 {"slot": "T2", "place": 2, "of": 2}]},
+    }]})
+
+    page = browser.new_page(viewport={"width": 1200, "height": 800})
+    page.route(ROOM_READER_URL, lambda r: r.fulfill(
+        status=200, content_type="application/javascript", body=reader))
+    page.route(record + "index.json", lambda r: r.fulfill(
+        status=200, content_type="application/json", body=index))
+    page.route(record + f"reveal-{room}.json", lambda r: r.fulfill(
+        status=200, content_type="application/json", body=reveal))
+    page.route(record + f"board-{room}.json", lambda r: r.fulfill(
+        status=200, content_type="application/json", body=board.read_text()))
+    page.goto(f"{base}/?workspace={room}&hub=https://hub.test"
+              f"&games={record}index.json")
+    page.wait_for_selector(".hut", timeout=MOUNT_MS)
+    bad: list[str] = []
+    #: The first poll mounts the board; the one after it, three seconds on,
+    #: finds the room over and asks the record. Waited for, not assumed.
+    try:
+        page.wait_for_function(
+            "() => { const b = document.getElementById('closing-official');"
+            " return b && !b.hidden; }", timeout=20_000)
+    except Exception:  # noqa: BLE001 - the failure is reported below
+        bad.append(f"{stem} recorded: the round ended and the record host had "
+                   f"the game, and the page never showed its official line")
+        page.screenshot(path=str(out / "recorded.png"))
+        return bad
+    bad += ending(page, json.loads(reveal), f"{stem} recorded")
+    seen = page.evaluate("""() => ({
+      official: document.getElementById('closing-official').textContent,
+      verdict: document.querySelector('#closing .verdict').textContent,
+    })""")
+    if "1st of 3" not in seen["official"]:
+        bad.append(f"{stem} recorded: the official line does not carry the "
+                   f"record's place: {seen['official'].strip()[:120]!r}")
+    if "no sidecar" in seen["verdict"]:
+        bad.append(f"{stem} recorded: the card still says there is no sidecar")
+    page.screenshot(path=str(out / "recorded.png"))
+    return bad
 
 
 def verdict(problems: list[str]) -> tuple[int, list[str]]:

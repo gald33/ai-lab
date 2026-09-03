@@ -1466,7 +1466,7 @@ by Gal in the same sitting, and checked surface by surface on 2026-09-03:
 | who watches | what they open | what it reads, and how |
 |---|---|---|
 | a running game | the lobby's button, `viewer?invite=<watch>` | the table's room on the hub, with the read-only invite; the hub refuses any write from it |
-| a finished game, within the hour | the same button | the same room, still on the hub |
+| a finished game, within the hour | the same button | the same room, still on the hub -- and, once the board says the round is over, the score and hidden half off the record host: the page looks the room up in the host's index by name (`reveal-<room>.json`) on every poll until the manager has published it. Until 2026-09-03 the page said "no sidecar" at the end of a watched game and left it there, which was false the moment the record was published (seen by Gal at the end of g24). Checked in a browser: `render.py --only recorded`. |
 | a finished game, afterwards | the lobby's button, `viewer?board=…&reveal=…` | the board and reveal off the record host, which is the durable copy: the hub keeps a room about an hour |
 | the committed replays and the scoreboard | the viewer itself | files built into the Pages site |
 | the lobby | `island.lucille-ai.com` | the lobby workspace on the hub, under the published key, through the same room reader the viewer uses |
