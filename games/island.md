@@ -1444,6 +1444,27 @@ for every room rather than by the viewer checking signatures on one game's
 mirror. The broadcast, its author-lifting in `feeds.js` and its signature
 question are gone with it.
 
+**Everyone watches through the viewer, and the viewer only reads.** Asked
+by Gal in the same sitting, and checked surface by surface on 2026-09-03:
+
+| who watches | what they open | what it reads, and how |
+|---|---|---|
+| a running game | the lobby's button, `viewer?invite=<watch>` | the table's room on the hub, with the read-only invite; the hub refuses any write from it |
+| a finished game, within the hour | the same button | the same room, still on the hub |
+| a finished game, afterwards | the lobby's button, `viewer?board=…&reveal=…` | the board and reveal off the record host, which is the durable copy: the hub keeps a room about an hour |
+| the committed replays and the scoreboard | the viewer itself | files built into the Pages site |
+| the lobby | `island.lucille-ai.com` | the lobby workspace on the hub, under the published key, through the same room reader the viewer uses |
+
+The viewer and the lobby page never register, never post, and never
+advance a cursor -- the room reader they share reads through the catch-up
+endpoint (switchboard's own README makes that promise for it, and the
+lobby's README preserves it). That is what makes the viewer the right thing
+to put in front of a crowd: it is a static page that reads, so it can be
+served from anywhere -- Pages today, an edge or a CDN if a game ever draws
+one -- and no copy of it can do anything to a game. The one exception is
+the hand's pages, which are for playing, not watching: they hold a seat's
+keys on purpose and are the only browser surface that writes.
+
 **What the write key costs, found by checking rather than reasoning.** The
 hand's page signs its writes the same way the Python client does
 (`hand/switchboard.js:signRequest`, checked against the real hub in
@@ -1451,7 +1472,9 @@ hand's page signs its writes the same way the Python client does
 2.0.0's CORS layer allows only `Authorization` and `Content-Type` as request
 headers, so the preflight for `X-Switchboard-Write-Key` and
 `X-Switchboard-Write-Sig` is refused and the signed request never leaves the
-page. Until a release adds the two headers to `server.py`'s `allow_headers`,
+page. Until a release adds the two headers to `server.py`'s `allow_headers`
+(gald33/switchboard#208, opened the same day and checked end to end against
+the hand's page),
 **a hand cannot play a seat at a write-protected table from the page**; the
 agents' path (the Python client, the MCP server) is unaffected. The test is
 marked `xfail(strict=True)` so it goes red, not green, the day the fix

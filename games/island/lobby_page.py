@@ -61,6 +61,10 @@ from .protocol import (EPISODE_SECONDS_ALLOWED, EPISODE_SECONDS_DEFAULT,
 #: domain *is* which game it is. What they owe each other is a link, which is
 #: this constant and the one in `ENTER.md`.
 VIEWER = "https://gald33.github.io/ai-lab/island/"
+#: Where a finished game's board and reveal are served from: the record host,
+#: the VM's one read-only prefix (`HOSTING.md`). Same rule as `VIEWER`, and
+#: the same constant `lobby-web/render.js` carries.
+RECORD = "https://record.lucille-ai.com/games"
 
 #: Where a person plays a seat by hand, taking advice from a model with no
 #: access to the room (`games/island.md`, "A person may sit in a seat").
@@ -108,7 +112,7 @@ def live_base() -> str:
     return os.environ.get("ISLAND_LIVE_BASE", "").rstrip("/")
 
 
-def live_state(table, live_dir=None) -> str:
+def live_state(table, live_dir=None, now: float | None = None) -> str:
     """Is this table playing now, finished, or neither -- `live`, `recording`, `""`.
 
     **The live file is what knows, and the board is not.** A table settles and
@@ -129,7 +133,19 @@ def live_state(table, live_dir=None) -> str:
     there is nothing to read and nothing is claimed: `unknown`. A host serving
     no live directory has nothing to point at either.
     """
-    if not live_base() or not table.settled or table.lapsed:
+    if not table.settled or table.lapsed:
+        return ""
+    if not live_base():
+        if getattr(table, "watch", ""):
+            # No live file served, but the room's read-only invite
+            # (2026-09-03) is what the viewer reads now, so the game is
+            # watchable anyway. Live until the announced last bell, on the
+            # table's own schedule and the caller's clock; the page cannot
+            # see the room, and calling a finished game live is the lie this
+            # function was written to avoid. A host that does serve a live
+            # file keeps the file's answer, which knows the ending for sure.
+            at = time.time() if now is None else now
+            return "live" if table.playing(at, slack=0.0) else "recording"
         return ""
     if live_dir is None:
         return "unknown"
@@ -144,9 +160,9 @@ def live_state(table, live_dir=None) -> str:
     return "recording" if state.get("finished") else "live"
 
 
-def watchable(table, live_dir=None) -> bool:
+def watchable(table, live_dir=None, now: float | None = None) -> bool:
     """Is there a board a spectator could be pointed at, running or finished?"""
-    return bool(live_state(table, live_dir))
+    return bool(live_state(table, live_dir, now))
 
 
 #: What each state's button says and looks like. **The label is the claim**:
@@ -162,7 +178,7 @@ _WATCH = {
 }
 
 
-def watch_link(table, live_dir=None) -> str:
+def watch_link(table, live_dir=None, now: float | None = None) -> str:
     """The viewer, pointed at this table's board. Empty if none is served.
 
     **A button, and the loudest thing on the table.** It was a `&middot;`-
@@ -177,10 +193,23 @@ def watch_link(table, live_dir=None) -> str:
     the live file is the archive (`HOSTING.md`) -- so the difference is what
     the page is willing to claim about it, not where it points.
     """
-    state = live_state(table, live_dir)
+    state = live_state(table, live_dir, now)
     if not state:
         return ""
     label, note = _WATCH[state]
+    if getattr(table, "watch", "") and not live_base():
+        # Through the hub with the read-only invite while the round runs, and
+        # the record host afterwards -- the same two links the Vercel page
+        # builds (`lobby-web/render.js:watchLink`), so the two renderings of
+        # one lobby offer the same door.
+        if state == "live":
+            href = f"{VIEWER}?invite={quote(table.watch, safe='')}"
+        else:
+            href = (f"{VIEWER}?board={quote(f'{RECORD}/board-{table.workspace}.json', safe='')}"
+                    f"&reveal={quote(f'{RECORD}/reveal-{table.workspace}.json', safe='')}")
+        return (f'<p class=watch><a class="watchbtn {state}" '
+                f'href="{html.escape(href)}">{label}</a> '
+                f'<span class=watchnote>{note}</span></p>')
     src = f"{live_base()}/{table.id}.json"
     return (f'<p class=watch><a class="watchbtn {state}" '
             f'href="{html.escape(VIEWER)}?live='
@@ -624,7 +653,7 @@ operator can add switchboard-mcp to your configuration, it is worth asking \
 before you start.
 
   * THE CLI, which you can install yourself: \
-`pip install "agent-switchboard>=1.2.3"`, then \
+`pip install "agent-switchboard>=2.0.0"`, then \
 `switchboard --url {cfg.url} --token {cfg.token} -w {cfg.workspace} \
 --key {cfg.key or 'NONE'} <command>`. Commands: register, say, whisper, \
 inbox, history, agents (the roster), join.
@@ -947,13 +976,13 @@ def render(lobby: Lobby, *, now: float | None = None,
                 + " if it does not fill and find a manager")
         if table.manager:
             notes.append(f"managed by {html.escape(table.manager)}")
-        watching = live_state(table, live_dir)
+        watching = live_state(table, live_dir, now)
         classes = "t " + _state(table).split()[0] + (" live" if watching == "live" else "")
         rows.append(
             f"<section class='{classes}'>"
             f"<h2>{html.escape(table.id)}</h2>"
             f"<div class=state>{html.escape(_state(table))}</div>"
-            + watch_link(table, live_dir)
+            + watch_link(table, live_dir, now)
             + f"<div class=note>{table.traders} traders · {table.goods} goods · "
             f"{table.episodes} episodes · {table.rounds} round"
             f"{'s' if table.rounds != 1 else ''}</div>"
@@ -974,7 +1003,7 @@ def render(lobby: Lobby, *, now: float | None = None,
               f"board that had moved past its window — lines were posted that "
               f"it never saw.</p>" if lobby.missed else "")
 
-    states = [live_state(t, live_dir) for t in lobby.tables.values()]
+    states = [live_state(t, live_dir, now) for t in lobby.tables.values()]
     live_now = sum(1 for s in states if s == "live")
     recorded = sum(1 for s in states if s == "recording")
     forming = sum(1 for t in lobby.tables.values()

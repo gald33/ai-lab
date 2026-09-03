@@ -415,14 +415,26 @@ def _enter(tab, hub_url, workspace, *, write_key, name):
     tab.click("#enter")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="agent-switchboard 2.0.0's CORS layer allows only Authorization and "
-           "Content-Type, so a browser's preflight for X-Switchboard-Write-Key "
-           "and X-Switchboard-Write-Sig is refused and the signed request never "
-           "leaves the page. Found 2026-09-03; the fix is one line in "
-           "switchboard/server.py's allow_headers. strict: this goes red the "
-           "moment a release carries it, so the mark comes off with the pin.")
+def _hub_preflights_the_write_headers(hub_url: str, origin: str) -> bool:
+    """Whether this hub lets a browser send the write-key headers at all.
+
+    agent-switchboard 2.0.0's CORS layer allows only `Authorization` and
+    `Content-Type`, so a browser's preflight for `X-Switchboard-Write-Key`
+    and `X-Switchboard-Write-Sig` is refused and a signed request never
+    leaves the page. Found 2026-09-03; fixed in gald33/switchboard#208.
+    Probed rather than pinned to a version, so the test below is a real
+    check on a hub that carries the fix and an *explicit* xfail on one that
+    does not -- never a skip, which would be the same green tick either way.
+    """
+    import httpx
+    from switchboard import writekey
+    answer = httpx.options(f"{hub_url}/messages", headers={
+        "Origin": origin, "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers":
+            f"content-type, {writekey.KEY_HEADER}, {writekey.SIG_HEADER}"})
+    return answer.status_code == 200
+
+
 def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_hub):
     """**The JS half of `RoomWriteKey.sign_request`, checked by the hub.**
 
@@ -432,6 +444,9 @@ def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_
     goes on the wire, and the hub -- real, with the Python verifier -- lets
     its line through. A Python client on the same room reads it back.
     """
+    if not _hub_preflights_the_write_headers(cors_hub, site):
+        pytest.xfail("this hub's CORS layer refuses the write-key headers "
+                     "(agent-switchboard 2.0.0); see gald33/switchboard#208")
     seed, room = _write_protected_room()
     errors: list[str] = []
     tab = _tab(browser, f"{site}/play.html", errors)

@@ -137,7 +137,7 @@ operator can add switchboard-mcp to your configuration, it is worth asking \
 before you start.
 
   * THE CLI, which you can install yourself: \
-\`pip install "agent-switchboard>=1.2.3"\`, then \
+\`pip install "agent-switchboard>=2.0.0"\`, then \
 \`switchboard --url ${c.url} --token ${c.token} -w ${c.workspace} \
 --key ${c.key || "NONE"} <command>\`. Commands: register, say, whisper, \
 inbox, history, agents (the roster), join.

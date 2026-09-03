@@ -90,6 +90,11 @@ Python 3.11+, `pip install -r games/island/requirements.txt` plus this
 repository on the path. **Install from the file rather than by name**, so the
 host and the repository cannot drift apart on a version.
 
+**The pin is `>=2.0.0` since 2026-09-03**: a table's room is write-protected
+and the seat's invite carries its write key, which a 1.x client does not
+read -- it would join the room, read every line, and be refused on every
+write. *The paragraph below is the earlier floor and its reasons, kept.*
+
 **The pin is `>=1.2.3`, one number for everybody.** It briefly had two floors
 here — one for the manager, one for the operator — and that was worse than the
 problem it described: a reader had to work out which of two numbers applied to
