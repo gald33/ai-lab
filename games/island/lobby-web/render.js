@@ -71,32 +71,31 @@ export function house(agents) {
     + ` than a minute the lobby's runner is down.</p>`;
 }
 
-/** The viewer, pointed at this table: at the broadcast while the round runs,
- *  at the record afterwards.
+/** The viewer, pointed at this table: at the room itself while the round
+ *  runs, at the record afterwards.
  *
- *  **Live is read off the hub, and the page holds no game's key.** Decided
- *  by Gal, 2026-09-02. The manager re-posts every line the room settles into
- *  this workspace on a channel named for the table (`run_game._broadcast`),
- *  so the viewer follows it with the same published key this page reads the
- *  lobby under -- nothing inbound to the VM, and the room's own key stays with
- *  its seats. "Live" is claimed only until the announced last bell, on the
- *  schedule the table itself announced: the page cannot see the room, and
- *  calling a finished game live is the lie `lobby_page.live_state` was built
- *  to avoid. After the bell the button points at the record host, where the
- *  manager publishes the board and reveal within seconds of the last line. */
-export function watchLink(t, nowHub, cfg) {
+ *  **Live is the room, read with a read-only invite.** Decided by Gal,
+ *  2026-09-03, on Switchboard 2.0.0, superseding the manager's broadcast of
+ *  the day before: a table's room is write-protected, so the lobby can post
+ *  an invite that carries the room's read key and no write key, and the hub
+ *  itself refuses every write from whoever holds it. Nothing inbound to the
+ *  VM, no key that can speak on this page, and the class of "who may write
+ *  here" answered at the hub rather than by the viewer checking signatures.
+ *  The viewer already takes `?invite=`. "Live" is claimed only until the
+ *  announced last bell, on the schedule the table itself announced; after
+ *  it the button points at the record host, where the manager publishes the
+ *  board and reveal within seconds of the last line, named after the room. */
+export function watchLink(t, nowHub) {
   if (!t.settled || t.lapsed) return "";
   const lastBell = t.opens_at ? t.opens_at + t.episodes * (t.seconds || 60) : null;
-  if (lastBell === null || nowHub < lastBell) {
-    const q = new URLSearchParams({ hub: cfg.hub, workspace: cfg.workspace,
-                                    token: cfg.token, key: cfg.key, channel: t.id });
-    return `<p class=watch><a class="watchbtn live" href="${VIEWER}?${q}">`
-      + `&#9654;&nbsp; Watch this game live</a> <span class=watchnote>the manager`
-      + ` broadcasts the table's room here as it is written</span></p>`;
+  if (t.watch && (lastBell === null || nowHub < lastBell)) {
+    return `<p class=watch><a class="watchbtn live" href="${VIEWER}?invite=${encodeURIComponent(t.watch)}">`
+      + `&#9654;&nbsp; Watch this game live</a> <span class=watchnote>the table's`
+      + ` own room, read-only &mdash; the board updates as it is written</span></p>`;
   }
-  const room = `${cfg.workspace}-${t.id}`;
-  const q = new URLSearchParams({ board: `${RECORD}/board-${room}.json`,
-                                  reveal: `${RECORD}/reveal-${room}.json` });
+  if (!t.room) return "";
+  const q = new URLSearchParams({ board: `${RECORD}/board-${t.room}.json`,
+                                  reveal: `${RECORD}/reveal-${t.room}.json` });
   return `<p class=watch><a class="watchbtn recording" href="${VIEWER}?${q}">`
     + `&#9654;&nbsp; Watch the recording</a> <span class=watchnote>this game has`
     + ` finished &mdash; its scores and replay are on the page</span></p>`;
@@ -140,7 +139,7 @@ function tableCard(t, nowHub, cfg) {
   return `<section class="${cls}">
   <h2>${esc(t.id)}</h2>
   <div class=state>${esc(state(t))}</div>
-  ${watchLink(t, nowHub, cfg)}
+  ${watchLink(t, nowHub)}
   <table><tbody>${seats}${openSeats}</tbody></table>
   ${notes.map(n => `<p class=note>${n}</p>`).join("\n  ")}
 </section>`;

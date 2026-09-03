@@ -860,7 +860,12 @@ does, in the clear, and sealing that line per seat is the open fix in
 which is in the room, re-posts each settled line into a channel of the
 lobby workspace named for the table, which anybody holding the published key
 can read and the viewer can already follow over the hub. One extra post per
-line, the board still the only surface. **Built the same day**:
+line, the board still the only surface. **Built the same day, and replaced
+the next** (2026-09-03, Gal): Switchboard 2.0.0 shipped write-protected
+rooms, and a room the hub itself keeps read-only for a viewer is the class
+solution the mirror was an instance of. The lobby now posts a read-only
+invite for each table's room and the viewer reads the room directly; the
+requirement floor moved to 2.0.0 for it. The mirror is gone. **Built the same day**, as it stood:
 `run_game._broadcast`, the button in `lobby-web/render.js:watchLink`, and
 the viewer reading broadcast rows in `viewer/web/feeds.js`. Nothing on this
 host changes for it: no directory, no Caddy line, no port. And the invite

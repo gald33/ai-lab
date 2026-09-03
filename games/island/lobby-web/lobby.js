@@ -46,6 +46,7 @@ const RE = {
   lapsed:  rx(String.raw`^({T}) lapsed: (.+?) within \d+s \((\d+)\/(\d+) seated(?:, managed by (.+?))?\)$`),
   refusal: /^@(\S+) not settled: (.+)$/,
   invite:  rx(String.raw`^({T}) invite: `),
+  watch:   rx(String.raw`^({T}) watch: (\S+) (swb1_[A-Za-z0-9_-]+)`),
 };
 
 //: **`opens` is a time of day, not a timestamp.** `Lobby._stamp` writes
@@ -78,6 +79,7 @@ function table(tables, id) {
       opened_at: 0, seats: [], commit: "", manager: null, manager_key: null,
       settled: false, lapsed: false, opens_at: null, draw: "",
       practice: false, lapse_reason: "", roster: "", seconds: 60,
+      room: "", watch: "",
     });
   }
   return tables.get(id);
@@ -110,6 +112,14 @@ export function reconstruct(snapshot, channel) {
     // line only says so; an older lobby put the credential itself here. Either
     // way it is not the page's to show.
     if (RE.invite.test(body)) continue;
+    // The room's read-only invite (2026-09-03): the workspace key and no
+    // write key, so the hub refuses every write from it. Published on purpose
+    // -- it is what the watch button hands the viewer -- with the room's id,
+    // which is what the record of this game is named after.
+    if ((m = RE.watch.exec(body))) {
+      Object.assign(table(tables, m[1]), { room: m[2], watch: m[3] });
+      continue;
+    }
 
     if ((m = RE.commits.exec(body)))  { table(tables, m[1]).commit = m[2]; continue; }
     if ((m = RE.forming.exec(body)))  {

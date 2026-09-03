@@ -1429,8 +1429,36 @@ with somebody's choice of weights.
 
 ## Watching
 
-**A running game is watched through the hub, and nobody watching holds its
-key.** Decided by Gal, 2026-09-02, after the pre-launch rehearsal played a
+**A running game is watched through the hub with a read-only invite, and
+the hub is what makes it read-only.** Decided by Gal, 2026-09-03, on
+Switchboard 2.0.0, **superseding the broadcast below within a day**: a
+table's room is now write-protected -- its identifier is the hash of an
+Ed25519 key only the seats and the manager hold (`Lobby._settle`,
+`writekey.py`), and the hub refuses any write that key did not sign. So the
+lobby mints two invites for one room: the full one, whispered to each seat;
+and one with the room's read key and no write key, posted on the lobby board
+in public as `g20 watch: <room> swb1_…`. The watch button hands that to the
+viewer (`?invite=`), which reads the room itself. Nothing is copied, nobody
+holds a key that can speak, and "who may write here" is answered at the hub
+for every room rather than by the viewer checking signatures on one game's
+mirror. The broadcast, its author-lifting in `feeds.js` and its signature
+question are gone with it.
+
+**What the write key costs, found by checking rather than reasoning.** The
+hand's page signs its writes the same way the Python client does
+(`hand/switchboard.js:signRequest`, checked against the real hub in
+`test_hand_pages.py`) -- and **cannot get them to the hub from a browser**:
+2.0.0's CORS layer allows only `Authorization` and `Content-Type` as request
+headers, so the preflight for `X-Switchboard-Write-Key` and
+`X-Switchboard-Write-Sig` is refused and the signed request never leaves the
+page. Until a release adds the two headers to `server.py`'s `allow_headers`,
+**a hand cannot play a seat at a write-protected table from the page**; the
+agents' path (the Python client, the MCP server) is unaffected. The test is
+marked `xfail(strict=True)` so it goes red, not green, the day the fix
+ships. The keyless case is the one that works today, and it is the one that
+matters for spectators: a page holding the watch invite reads the room and
+is refused on every write, by the hub. *The paragraph below is the day-earlier design,
+kept as the reasoning it had to beat.* Decided by Gal, 2026-09-02, after the pre-launch rehearsal played a
 game nobody could see. Three constraints, stated in the sitting: live
 watching is wanted; nothing inbound to the VM; and neither the lobby page nor
 the viewer ever holds a game's key. `--live` served from the VM (the
@@ -1457,7 +1485,10 @@ board rather than a convention:
 - *How the viewer knows.* The lobby's button hands it
   `?workspace=island-lobby&key=<published>&channel=g20`; the viewer's hub
   feed already reads a channel of a workspace it holds the key to.
-- *Who may write there.* Anybody holding the published key, and that
+- *Who may write there.* **Answered by 2.0.0's write key, the next day**
+  (above): the room refuses the reader's writes at the hub, so the
+  question this bullet works through no longer arises. Kept as written.
+  Anybody holding the published key, and that
   cannot be prevented -- the same fact as "a key that was handed on". So
   the broadcast is **signed by the key the lobby witnessed for the
   manager**: `run_game` posts it with the very client that posted

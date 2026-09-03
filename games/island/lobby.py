@@ -61,6 +61,7 @@ from typing import Callable
 from switchboard.client import Client
 from switchboard.crypto import generate_key
 from switchboard.invite import Invite
+from switchboard.writekey import RoomWriteKey, generate_write_key
 from switchboard.timing import unwrap_forecast
 
 from .protocol import (EPISODE_SECONDS_DEFAULT, GOODS_DEFAULT, Join, Malformed,
@@ -230,6 +231,13 @@ class Table:
     #: leak left. Kept here, in the private state file beside the seed, so a
     #: restarted runner can play the table it settled.
     invite: str = ""
+    #: The same room's **read-only** invite: the workspace key and no write
+    #: key, so whoever holds it can read the room and the hub refuses every
+    #: line they try to write (Switchboard 2.0.0, `writekey.py`). Posted on
+    #: the lobby board in public, since 2026-09-03: it is what the lobby's
+    #: watch button hands the viewer, and it is safe to publish precisely
+    #: because it cannot be used to speak.
+    watch: str = ""
 
     def verifiable(self) -> bool:
         """Whether this table's island can be shown to have been drawn rather
@@ -708,7 +716,22 @@ class Lobby:
             table.seed, table.draw = self._commit_reveal(table), "commit-reveal"
         else:
             table.seed, table.draw = self.draw_seed(), "unverified"
-        table.workspace = f"{self.client.config.workspace}-{table.id}"
+        # **A write-protected room, named by its own write key.** Decided by
+        # Gal, 2026-09-03, on Switchboard 2.0.0: the room's identifier is a
+        # hash of an Ed25519 public key whose private half only the seats and
+        # the manager hold, and the hub refuses any write that key did not
+        # sign. That is what makes a *read-only* invite possible -- the same
+        # room, the same workspace key, no write key -- and a read-only invite
+        # is what lets a stranger watch a game without being able to speak in
+        # it. It replaces the manager re-posting the room into the lobby
+        # (built 2026-09-02, gone the next day): a broadcast solved one
+        # game's watching by hand, a write key solves the class at the hub.
+        #
+        # So the room is no longer `<lobby>-<table>`: it is whatever the key
+        # derives, and the record is named after it. The table id stays the
+        # name people use.
+        write_key = generate_write_key()
+        table.workspace = RoomWriteKey.from_seed(write_key).workspace
         # **Always minted, whatever the lobby is.** The lobby is meant to be a
         # public room -- no key to hand out is the simplest answer to "how
         # does a stranger get in" -- but a table is not: its room key is what
@@ -716,10 +739,13 @@ class Lobby:
         # meant a public lobby silently dealt every game in a room anybody
         # holding the hub token could walk into.
         key = generate_key()
+        note = f"{table.id}: {table.traders} traders, {table.episodes} episodes"
         invite = Invite(url=self.client.config.url, workspace=table.workspace,
                         token=self.client.config.token, key=key,
-                        note=f"{table.id}: {table.traders} traders, "
-                             f"{table.episodes} episodes")
+                        write_key=write_key, note=note)
+        table.watch = Invite(url=self.client.config.url, workspace=table.workspace,
+                             token=self.client.config.token, key=key,
+                             note=f"{note} -- read-only").encode()
         table.opens_at = self.clock() + self.open_lead
         roster = ", ".join(f"{label} = {name}"
                            for label, name in zip(
@@ -766,14 +792,20 @@ class Lobby:
             peers.append(table.manager_peer)
         if not all(p in self._exchange for p in peers):
             self.say(f"{table.id} invite: {table.invite}")
-            return
-        self.present()
-        body = f"{table.id} invite: {table.invite}"
-        for peer in peers:
-            self.client.whisper(peer, body)
-        who = ", ".join(table.label(p) for p in table.seats)
-        self.say(f"{table.id} invite: sealed to {who} and the manager -- "
-                 f"read your inbox (roster first); it is not on this board")
+        else:
+            self.present()
+            body = f"{table.id} invite: {table.invite}"
+            for peer in peers:
+                self.client.whisper(peer, body)
+            who = ", ".join(table.label(p) for p in table.seats)
+            self.say(f"{table.id} invite: sealed to {who} and the manager -- "
+                     f"read your inbox (roster first); it is not on this board")
+        # And the room for everybody else: readable, never writable. The
+        # room's id is on the line too, because the record of this game will
+        # be named after it (`board-<room>.json`) and a reader of the board
+        # should be able to find it without decoding anything.
+        self.say(f"{table.id} watch: {table.workspace} {table.watch} -- "
+                 f"read-only; the hub refuses every write from it")
 
     @staticmethod
     def _commit_reveal(table: Table) -> int:

@@ -276,9 +276,13 @@ def test_the_manager_is_bound_to_the_keys_the_lobby_witnessed(settled, hub, tmp_
     # self-asserted and blinds identically, so `from` cannot tell them apart;
     # only the signature can. Built without the entrant's signer so it mints
     # a key of its own, which is exactly what an impostor has.
+    # The impostor holds the room's write key too -- "a key that was handed
+    # on" -- so the hub lets its line in and the manager is what refuses it.
+    # Without the write key the hub would refuse first (2.0.0), which is a
+    # different guarantee and not the one under test here.
     impostor = Client(ClientConfig(url=invite.url, url_source="explicit",
                                    workspace=invite.workspace, token=invite.token,
-                                   key=invite.key),
+                                   key=invite.key, write_key=invite.write_key),
                       agent_id="t1", key=invite.key)
     object.__setattr__(impostor, "signing", signing.SigningIdentity.generate())
     assert impostor.agent_id == real.agent_id
@@ -1397,40 +1401,3 @@ def test_the_manager_refuses_a_table_of_a_size_it_has_never_played():
             run_game.refuse_out_of_bounds(bad)
         assert says in str(e.value)
 
-
-def test_the_room_is_broadcast_into_the_lobby_workspace_with_its_authors(settled, hub, tmp_path):
-    """Live watching through the hub, with no key leaving the room: the
-    manager re-posts each settled line onto a channel of the lobby workspace
-    named for the table, carrying the room's author inside the body, because
-    the hub would name every one of them by the poster."""
-    lobby, table, _seated, _key = settled
-    invite = run_game.pending_invite(lobby, table)
-    room = {name: Client.from_invite(invite, agent_id=aid)
-            for name, aid in (("scout-v2", "t1"), ("trader-b", "t2"))}
-    for name, client in room.items():
-        client.register(name=name, kind="local", branch="main", task="")
-
-    from island.dealer import GOODS, Dealer
-    from island.manager import MANAGER, Manager
-    mgr = Manager(capacity=Dealer.draw(table.seed, table.traders, GOODS).capacity,
-                  client=Client.from_invite(invite, agent_id=MANAGER),
-                  channel="island", goods=GOODS[:table.goods])
-    run_game.bind_seats(mgr, table)
-    mgr.say("Schedule for this round. 2 traders: T1, T2.")
-    room["scout-v2"].post("island", "PRODUCE bread=0.5 iron=0.5")
-    mgr.drain()
-
-    herald = Client(lobby.client.config, agent_id=f"herald-{table.id}")
-    told: set[int] = set()
-    run_game._broadcast(mgr, herald, table.id, told)
-    run_game._broadcast(mgr, herald, table.id, told)      # nothing twice
-
-    rows = [m["body"] for m in lobby.client.history(table.id, limit=50)]
-    assert len(rows) == len(told) >= 2
-    by_text = {r["text"]: r["as"] for r in rows}
-    assert by_text["Schedule for this round. 2 traders: T1, T2."] == "manager"
-    assert by_text["PRODUCE bread=0.5 iron=0.5"] == "T1"
-    assert all({"as", "text", "seq", "at"} <= set(r) for r in rows)
-    # The lobby's own channel is untouched by the broadcast.
-    assert not any(isinstance(m.get("body"), dict)
-                   for m in lobby.client.history("lobby", limit=200))

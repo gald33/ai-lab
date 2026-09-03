@@ -291,6 +291,63 @@ export async function verify(publicKey, message, signature) {
   }
 }
 
+// --- the room's write key ---------------------------------------------------
+//
+// Switchboard 2.0.0: a write-protected room is named by the hash of an
+// Ed25519 public key, and the hub refuses any write the private half did not
+// sign (`writekey.py`). The seed travels in a peer's invite as `wk`; a
+// read-only invite has none, and a page holding one can read and never post.
+// This is the JS half of `RoomWriteKey.sign_request`, and like every other
+// half here it is checked against the Python (`test_hand_pages.py`), never
+// against itself.
+
+const WRITE_DOMAIN = "switchboard/v1/write-request";
+const WRITE_TOKEN_PREFIX = "pk1_";
+const ROOM_ID_INFO = "switchboard/room";
+const ROOM_ID_VERSION = 1;
+//: PKCS#8 wrapping of a raw 32-byte Ed25519 seed, which is the only form
+//: WebCrypto imports a private key in. Constant for the algorithm.
+const PKCS8_ED25519 = new Uint8Array([
+  0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+  0x04, 0x22, 0x04, 0x20,
+]);
+
+/** `RoomWriteKey.from_seed`: the private key, its token and the room it names. */
+export async function writerFromSeed(seed) {
+  const raw = b64d(seed);
+  if (raw.length !== 32) throw new Error("a write key decodes to 32 bytes");
+  const pkcs8 = concat(PKCS8_ED25519, raw);
+  const privateKey = await crypto.subtle.importKey(
+    "pkcs8", pkcs8, "Ed25519", true, ["sign"]);
+  // The public half is not derivable through WebCrypto from a pkcs8 import,
+  // so it is read back out of the JWK form, which carries `x`.
+  const jwk = await crypto.subtle.exportKey("jwk", privateKey);
+  const token = WRITE_TOKEN_PREFIX + jwk.x.replace(/=+$/, "");
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", concat(
+    utf8.encode(ROOM_ID_INFO), new Uint8Array([0, ROOM_ID_VERSION]), b64d(jwk.x))));
+  const workspace = "ws_" + b64e(digest).slice(0, 22);
+  return { privateKey, token, workspace };
+}
+
+/** `writekey.request_digest`, then `sign_request`: the two headers. */
+export async function signRequest(writer, method, path, query, bodyText) {
+  const ts = Math.floor(Date.now() / 1000);
+  const nonce = b64e(crypto.getRandomValues(new Uint8Array(12)));
+  const bodyHash = new Uint8Array(await crypto.subtle.digest(
+    "SHA-256", utf8.encode(bodyText || "")));
+  const zero = new Uint8Array([0]);
+  const parts = [
+    utf8.encode(WRITE_DOMAIN), utf8.encode(method.toUpperCase()), utf8.encode(path),
+    utf8.encode(query), utf8.encode(String(ts)), utf8.encode(nonce), bodyHash,
+  ];
+  const digest = parts.reduce((acc, p, i) => i ? concat(acc, zero, p) : p);
+  const sig = b64e(new Uint8Array(await crypto.subtle.sign("Ed25519", writer.privateKey, digest)));
+  return {
+    "X-Switchboard-Write-Key": writer.token,
+    "X-Switchboard-Write-Sig": `${ts}.${nonce}.${sig}`,
+  };
+}
+
 // --- sealed to one peer ----------------------------------------------------
 
 /** `crypto._derive_whisper_key`: ECDH, then HKDF binding the unordered pair. */

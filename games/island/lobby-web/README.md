@@ -23,8 +23,9 @@ sitting down. An entrant's own `OPEN`/`JOIN`/`MANAGE` is read as intent only.
 
 A table's room invite never reaches the view. Since 2026-09-02 it is not on the
 board either: the lobby whispers it to each seat and posts only that it did.
-The page's watch button points the viewer at the manager's *broadcast* of the
-room (a channel of this workspace named for the table), never at the room.
+The page's watch button hands the viewer the room's *read-only* invite, which
+the lobby posts on the board (`g7 watch: …`): the room is write-protected, so
+the hub refuses every write from it (Switchboard 2.0.0).
 
 ## Clocks
 

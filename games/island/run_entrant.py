@@ -177,6 +177,10 @@ def _mcp_env(invite: Invite, *, agent_id: str, home: Path) -> dict[str, str]:
         env_for_mcp["SWITCHBOARD_TOKEN"] = invite.token
     if invite.key:
         env_for_mcp["SWITCHBOARD_KEY"] = invite.key
+    if invite.write_key:
+        # A table's room is write-protected (2.0.0): without this the agent
+        # reads every line and the hub refuses every one it writes.
+        env_for_mcp["SWITCHBOARD_WRITE_KEY"] = invite.write_key
     return env_for_mcp
 
 

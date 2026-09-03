@@ -387,3 +387,82 @@ def test_a_shortcut_button_fills_the_bar_and_does_not_post(browser, site):
     assert tab.input_value("#say") == "APPROVE p1"
     assert not errors, errors
     tab.close()
+
+
+def _write_protected_room():
+    """A room named by its own write key, as the lobby mints one (2.0.0)."""
+    from switchboard.writekey import RoomWriteKey, generate_write_key
+    seed = generate_write_key()
+    return seed, RoomWriteKey.from_seed(seed).workspace
+
+
+def _room_client(hub_url, agent_id, workspace, *, write_key=None):
+    from switchboard.client import Client
+    from switchboard.config import ClientConfig
+    return Client(ClientConfig(url=hub_url, token="", workspace=workspace,
+                               key=KEY, write_key=write_key), agent_id=agent_id)
+
+
+def _enter(tab, hub_url, workspace, *, write_key, name):
+    tab.fill("#url", hub_url)
+    tab.fill("#token", "")
+    tab.fill("#workspace", workspace)
+    tab.fill("#key", KEY)
+    tab.fill("#write_key", write_key or "")
+    tab.fill("#channel", "island")
+    tab.fill("#name", name)
+    tab.fill("#seat", "T1")
+    tab.click("#enter")
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="agent-switchboard 2.0.0's CORS layer allows only Authorization and "
+           "Content-Type, so a browser's preflight for X-Switchboard-Write-Key "
+           "and X-Switchboard-Write-Sig is refused and the signed request never "
+           "leaves the page. Found 2026-09-03; the fix is one line in "
+           "switchboard/server.py's allow_headers. strict: this goes red the "
+           "moment a release carries it, so the mark comes off with the pin.")
+def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_hub):
+    """**The JS half of `RoomWriteKey.sign_request`, checked by the hub.**
+
+    A table's room is write-protected (2026-09-03): the hub refuses any
+    write the room's key did not sign. The page derives the key, the token
+    and the room from the seed in the invite, signs every request over what
+    goes on the wire, and the hub -- real, with the Python verifier -- lets
+    its line through. A Python client on the same room reads it back.
+    """
+    seed, room = _write_protected_room()
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/play.html", errors)
+    _enter(tab, cors_hub, room, write_key=seed, name="driver-w")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+
+    rows = _room_client(cors_hub, "reader-w", room).history("island", limit=50)
+    assert hands_on_board([{"body": r.get("body")} for r in rows]) == {"T1": "driven"}
+    assert not errors, errors
+    tab.close()
+
+
+def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, site, cors_hub):
+    """The read-only invite, from the page's side: the same room, the same
+    read key, no write key -- and the hub, not the page, says no."""
+    seed, room = _write_protected_room()
+    # Somebody with the write key has spoken, so the room is readable and
+    # provably not empty.
+    writer = _room_client(cors_hub, "writer-r", room, write_key=seed)
+    writer.post("island", "the round is open")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/play.html", errors)
+    _enter(tab, cors_hub, room, write_key=None, name="watcher-r")
+    tab.wait_for_function(
+        "window.HAND_READY === true || document.querySelector('.warn') !== null",
+        timeout=15_000)
+
+    rows = _room_client(cors_hub, "reader-r", room).history("island", limit=50)
+    assert [r.get("body") for r in rows] == ["the round is open"], \
+        "nothing the keyless page tried reached the board"
+    assert "write-protected" in tab.inner_text("body"), \
+        "and the page says the hub refused it rather than going quiet"
+    tab.close()

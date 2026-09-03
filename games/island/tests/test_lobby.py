@@ -71,7 +71,8 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
 
     assert table.settled
     assert table.manager == "lucille"
-    assert table.workspace == f"{lobby.client.config.workspace}-g1"
+    # Named by its write key since 2026-09-03, not by the lobby and table.
+    assert table.workspace.startswith("ws_")
     assert isinstance(table.seed, int)
 
     lines = [m["body"] for m in lobby.client.history("lobby")]
@@ -865,7 +866,7 @@ def test_the_invite_is_whispered_to_each_seat_and_kept_off_the_board(hub):
 
     said = [m["body"] for m in lobby.client.history("lobby", limit=500)
             if isinstance(m.get("body"), str)]
-    assert not any("swb1_" in b for b in said), "the credential is off the board"
+    assert not any(table.invite in b for b in said), "the credential is off the board"
     assert any(b.startswith("g1 invite: sealed to T1, T2 and the manager")
                for b in said)
     assert table.invite.startswith("swb1_")
@@ -902,3 +903,40 @@ def test_a_table_with_a_keyless_seat_gets_its_invite_in_the_clear_and_said_so(hu
     said = [m["body"] for m in lobby.client.history("lobby", limit=500)
             if isinstance(m.get("body"), str)]
     assert any(b == f"g1 invite: {table.invite}" for b in said)
+
+
+def test_the_room_is_write_protected_and_the_watch_invite_cannot_speak(hub):
+    """Switchboard 2.0.0: a table's room is named by its write key, the seats
+    are whispered an invite that carries it, and the board carries a
+    read-only invite for everybody else -- which the hub, not the page,
+    keeps read-only."""
+    from switchboard import rooms
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    table = _settle_one(lobby, hub, key)
+    assert rooms.is_write_protected(table.workspace)
+
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    line = next(b for b in said if b.startswith("g1 watch: "))
+    room_id, blob = line[len("g1 watch: "):].split()[:2]
+    assert room_id == table.workspace and blob == table.watch
+    watch = Invite.decode(table.watch)
+    assert watch.workspace == table.workspace and watch.key
+    assert watch.write_key is None, "the watch invite carries no write key"
+    full = Invite.decode(table.invite)
+    assert full.write_key and full.workspace == table.workspace
+
+    # A spectator holding the watch invite reads the room ...
+    seat = Client.from_invite(full, agent_id="seat")
+    seat.register(name="seat", kind="local", branch="main", task="")
+    seat.post("island", "ACK ready")
+    watcher = Client.from_invite(watch, agent_id="watcher")
+    assert [m["body"] for m in watcher.history("island")] == ["ACK ready"]
+    # ... and cannot write in it, however it tries: the hub answers 403 and
+    # the client names the reason.
+    from switchboard.client import ReadOnlyRoom
+    with pytest.raises(ReadOnlyRoom) as refused:
+        watcher.post("island", "PRODUCE bread=1.0")
+    assert "write-protected" in str(refused.value)
+    assert [m["body"] for m in seat.history("island")] == ["ACK ready"]

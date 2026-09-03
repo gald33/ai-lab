@@ -73,7 +73,6 @@ from .hub import through_blips
 from .live import finish as finish_live
 from .live import forget as forget_live
 from .live import list_finished
-from .live import snapshot as live_snapshot
 from .live import write as write_live
 from .lobby import Held, Lobby, Table
 from .lobby_page import write as write_page
@@ -316,51 +315,6 @@ def _show(mgr: Manager, live: Path | None) -> None:
         print(f"live view not written: {exc!r}", flush=True)
 
 
-def _broadcast(mgr: Manager, herald: Client | None, channel: str,
-               done: set[int]) -> None:
-    """Re-post the room's new lines into the lobby workspace, so a spectator
-    can watch the game through the hub without holding the room's key.
-
-    **Decided by Gal, 2026-09-02, under three constraints:** live watching is
-    wanted back; nothing inbound to the VM; and neither the page nor the
-    viewer ever holds a game's key. `--live` served from the VM fails the
-    second; a link carrying the invite fails the third. What satisfies all
-    three is that the manager, which is in the room anyway, says in public
-    what the room said -- on a channel of the lobby workspace named for the
-    table, readable under the published lobby key, which the viewer already
-    follows over the hub. The board stays the only surface, and the room
-    holds only its seats.
-
-    Each line goes as `{"as": <seat>, "text": <body>, "seq": ..}` rather than
-    as bare text, because the hub names a line by whoever posted it and here
-    that is always this process: the viewer takes its cast from the schedule,
-    and a room where every line was said by "manager" is drawn silent
-    (`live.snapshot` learned this the hard way). `viewer/web/feeds.js`
-    lifts `as` into the author.
-
-    What it cannot carry is the sealed half, for the same reason `live.write`
-    cannot: a whispered plan was never on the board. And it costs one post per
-    line, so a game's broadcast is about the size of the game.
-
-    Never raises: a spectator's view is not a bell.
-    """
-    if herald is None:
-        return
-    try:
-        snap = live_snapshot(mgr.client, mgr.channel,
-                             names={**mgr.alias, str(mgr.client.agent_id): MANAGER})
-        for m in snap["messages"]:
-            seq = m.get("seq")
-            if seq in done:
-                continue
-            author = m["from"].get("name") or m["from"].get("id") or "?"
-            herald.post(channel, {"as": author, "text": m["body"],
-                                  "seq": seq, "at": m.get("created_at")})
-            done.add(seq)
-    except Exception as exc:      # noqa: BLE001 -- see the docstring
-        print(f"broadcast not written: {exc!r}", flush=True)
-
-
 def _witness(archivist: Archivist | None) -> None:
     """Let the second copy read the room, and never let it stop the game.
 
@@ -510,13 +464,8 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
          ack_seconds: int, out: Path, tick: Callable[[], None] | None = None,
          ranked_only: bool = False,
          archivist: Archivist | None = None,
-         live: Path | None = None,
-         herald: Client | None = None) -> dict | None:
+         live: Path | None = None) -> dict | None:
     """One settled table, from its first bell to its record.
-
-    ``herald`` is a client on the *lobby's* workspace; given one, every line
-    the room settles is re-posted there on a channel named for the table, so
-    the game can be watched through the hub without its key (`_broadcast`).
 
     ``tick`` is called on every drain of this room. `watch` no longer needs
     it -- it plays each table in its own thread and keeps draining the lobby
@@ -574,8 +523,6 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     mgr.say(who_is_at_this_table(table))
     mgr.say(house_rules())
 
-    told: set[int] = set()
-
     def until(deadline: float) -> None:
         while time.time() < deadline:
             bind_seats(mgr, table)
@@ -583,7 +530,6 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
             _drain(mgr)
             _witness(archivist)
             _show(mgr, live)
-            _broadcast(mgr, herald, table.id, told)
             _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
@@ -591,7 +537,6 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
         _drain(mgr)
         _witness(archivist)
         _show(mgr, live)
-        _broadcast(mgr, herald, table.id, told)
         _tick(tick)
 
     # **Wait before asking who is here.** Whether a table can seal turns on
@@ -649,7 +594,6 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     # the same room at the same moment rather than a second apart.
     _witness(archivist)
     _show(mgr, live)
-    _broadcast(mgr, herald, table.id, told)
     if archivist is not None:
         archivist.close()
 
@@ -976,8 +920,7 @@ def archivist_for(table: Table, invite: Invite, *, lab_manages: bool
 def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                 ack_seconds: int, out: Path, ledger: Path | None,
                 ranked_only: bool = False, keep: int = 0, keep_best: int = 0,
-                lab_manages: bool = True, live_dir: Path | None = None,
-                herald: Client | None = None) -> None:
+                lab_manages: bool = True, live_dir: Path | None = None) -> None:
     """One table, start to ledger row. Runs in its own thread -- see `watch`.
 
     Nothing it touches is shared except the ledger: the table is its own, the
@@ -998,7 +941,7 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
         live_path = (live_dir / f"{table.id}.json") if live_dir else None
         rec = play(table, invite, episode_seconds=episode_seconds,
                    ack_seconds=ack_seconds, out=out, ranked_only=ranked_only,
-                   archivist=archivist, live=live_path, herald=herald)
+                   archivist=archivist, live=live_path)
         if rec is None:
             print(f"{table.id}: stood down -- opened for a ranked game and "
                   f"cannot seal", flush=True)
@@ -1170,17 +1113,6 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
                         "ledger": ledger, "ranked_only": ranked_only,
                         "keep": keep, "keep_best": keep_best,
                         "live_dir": live_dir,
-                        # The broadcast is posted by the same client that
-                        # posted MANAGE, so every broadcast line is signed by
-                        # the key the lobby witnessed for this table's manager
-                        # (`g7 will be managed by lucille, key ...`). That is
-                        # what lets a reader tell the manager's broadcast from
-                        # anybody else's line on the same public channel: the
-                        # peer id is not proof (any client may choose the same
-                        # agent id), the signature is. Shared across the table
-                        # threads deliberately -- a fresh client would mint a
-                        # fresh, unwitnessed key.
-                        "herald": manager,
                         # Whether this process is also the party that will
                         # write this table's board. `claimed` holds the
                         # tables it offered to run, so a table managed by a

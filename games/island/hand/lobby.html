@@ -226,6 +226,8 @@ async function readInvite(hub) {
     const inv = JSON.parse(atob(raw + "=".repeat((4 - raw.length % 4) % 4)));
     const q = new URLSearchParams({ workspace: inv.w, key: inv.k,
                                     name: $("name").value || "hand" });
+    // The room is write-protected; the seat's invite carries its write key.
+    if (inv.wk) q.set("write_key", inv.wk);
     window.HAND_INVITE = inv;
     const a = document.createElement("a");
     a.href = `./play.html?${q}`;
