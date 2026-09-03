@@ -695,6 +695,14 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
             "seed": table.seed,
             "episodes": table.episodes,
             "arm": "sealed" if sealed else "practice",
+            # How the island was drawn: "commit-reveal" when every seat
+            # brought a nonce and the lobby committed before reading any, or
+            # "unverified" when the lobby drew alone. The lobby said which on
+            # its board at settlement; the record has to say it too, because
+            # `scores.why_not_ranked` holds an unverified draw out of the
+            # ranking (Gal, 2026-09-03) and a rule that lives only on the
+            # lobby's board is one the ledger does not have.
+            "draw": table.draw,
             # Seat name -> the policy mix that seat declared. A table with one
             # is kept, counted and never ranked -- `scores.why_not_ranked`
             # calls it `heuristic`, which is a different reason from
