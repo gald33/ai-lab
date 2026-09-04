@@ -265,11 +265,22 @@ browser and watching it happen. Assert on markup only for what the page
 *says*.
 
 The viewer already worked this way (`viewer/tests/render.py`, the `drawing`
-CI job); the lobby page did not. Both now run in that job, and both take a
+CI job); the lobby page did not. Both run in CI now, and both take a
 `--require`-shaped flag — `render.py --require`, and
-`ISLAND_REQUIRE_BROWSER=1` for the lobby's test — because **a skip and a pass
+`ISLAND_REQUIRE_BROWSER=1` for every page test — because **a skip and a pass
 are the same green tick**, and a job that quietly checked nothing is worse
 than no job.
+
+*They are two jobs since 2026-09-04, and the reason is a third way to check
+nothing.* The page tests used to run after `render.py` inside `drawing-quick`,
+so a red render **skipped** them: on #220 the viewer's `recorded` check timed
+out, and every browser check on the hand's pages reported nothing on a pull
+request whose whole diff was two of those pages. Not a skip drawn as a pass
+this time, but a skip hidden behind somebody else's red — and a gate that says
+nothing about the diff is not a gate whatever colour the tick is. They are the
+`pages` job now: the same commands, the same flags, the same browser, 56 tests
+in about 45s against the render's sixteen minutes. Nothing was turned off to
+get there, and `render.py` still gates what the island draws.
 
 Reproduce the class of failure in one command:
 `python -m pytest games/island/tests/test_lobby_page.py -q -k browser`.
