@@ -84,7 +84,9 @@
   .who { color: var(--mag); }
   .who::before { content: "‹"; } .who::after { content: "›"; }
   .mine { border-left: 3px solid var(--cyan); padding-left: .4rem; background: rgba(0,229,255,.04); }
-  #say { width: 100%; box-sizing: border-box; }
+  .lineRow { display: flex; gap: .5rem; align-items: stretch; }
+  .lineRow input { flex: 1 1 auto; min-width: 0; }
+  #say, #whisperLine { box-sizing: border-box; }
   #says { min-height: 1.4rem; }
   .seat { padding: .25rem 0; border-bottom: 1px dotted var(--edge); font-size: 13px; }
   .seat button { font-size: 11px; padding: .1rem .45rem; }
@@ -168,19 +170,31 @@ never ranked.</p>
   <div id=roomWhispers></div>
   <h2>The room's board</h2>
   <div id=room></div>
-  <h2>Say something</h2>
-  <input id=say placeholder="PRODUCE bread=0.5 fish=0.5">
+  <h2>Say, on the board</h2>
+  <div class=lineRow>
+    <input id=say placeholder="PROPOSE to=T2 give=iron:0.4 want=salt:0.3">
+    <button id=post>Say it</button>
+  </div>
   <p class=sub>
-    <button data-fill="PRODUCE ">PRODUCE</button>
     <button data-fill="PROPOSE to= give=: want=:">PROPOSE</button>
     <button data-fill="APPROVE p1">APPROVE</button>
     <button data-fill="ACK ready">ACK</button>
+    — public. An exchange is agreed in the open, and so is calling one off.
   </p>
-  <button id=post>Say it on the board</button>
-  <button id=whisper>Whisper it to the manager</button>
-  <p class=sub>Anything at all can be posted — the room is talk as well as
-  trade. Only the manager's three forms settle, and a line it does not
-  recognise is a line you did not play; it never repairs one. The board
+  <h2>Whisper, to the manager</h2>
+  <div class=lineRow>
+    <input id=whisperLine placeholder="PRODUCE bread=0.5 fish=0.5">
+    <button id=whisper>Whisper it</button>
+  </div>
+  <p class=sub>
+    <button data-fill="PRODUCE " data-to=whisper>PRODUCE</button>
+    — sealed. It settles the same, and the shares stay off the board, where a
+    public receipt would otherwise give your capacity away. The manager's
+    answer, if any, arrives under "What was whispered to you".
+  </p>
+  <p class=sub>Anything at all can be posted either way — the room is talk as
+  well as trade. Only the manager's three forms settle, and a line it does
+  not recognise is a line you did not play; it never repairs one. The board
   above reads itself every few seconds while the round is on.</p>
 </fieldset>
 
@@ -462,8 +476,8 @@ async function readInvite(hub) {
  */
 const room = new Room({ board: $("room"), whispers: $("roomWhispers"),
                         who: $("roomWho"), say: $("say"), post: $("post"),
-                        whisper: $("whisper") }, say);
-bindShortcuts($("theRoom"), $("say"));
+                        whisperLine: $("whisperLine"), whisper: $("whisper") }, say);
+bindShortcuts($("theRoom"), $("say"), $("whisperLine"));
 
 async function enterRoom(seat, inv) {
   if (window.HAND_ROOM === inv.w) return;
