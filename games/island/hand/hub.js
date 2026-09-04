@@ -253,10 +253,18 @@ export class Hub {
       // "forged" are different things and must stay different.
       return { unreadable: "no exchange key for the sender yet" };
     }
+    // **`ask.body`, not `message.body`.** A whisper is sealed under its own
+    // context -- `Client._seal_whisper_body` binds `"ask.body"` into the AEAD
+    // -- and the outer workspace envelope is the one under `message.body`.
+    // This page opened whispers under the outer context from 2026-08-31 to
+    // 2026-09-04, so every invite the lobby sealed to a seat came back as
+    // "unreadable" and the page showed nothing: a driver who had joined saw
+    // no link to the island, and no error either. `test_hand_pages.py`
+    // now opens a whisper the real Python lobby sealed.
     try {
       return await unsealFromPeer(outer, {
         identity: this.identity, peerExchangeKey: peer,
-        context: "message.body",
+        context: "ask.body",
       });
     } catch (err) {
       return { unreadable: String(err.message) };

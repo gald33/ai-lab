@@ -629,6 +629,41 @@ Each is pinned the same way the cryptography is: `declaration.js` and
 the record parses the declaration with an anchored expression and a near-miss
 would declare nothing while looking as though it had.
 
+### The whisper the page could not open
+
+Found 2026-09-04, from a driver who had joined a table in the hand's lobby and
+asked where the input field was. It is on `play.html`, which the lobby page
+links to only once the table settles and the lobby whispers the seat its room
+-- and that link had never once appeared, for anybody, since the pages were
+built: `hub.js` opened a whisper under `message.body`, the context of the
+outer workspace envelope, where `Client._seal_whisper_body` binds `ask.body`
+into the AEAD. Every invite came back as `unreadable`, `readInvite` skipped
+anything that was not a string, and the page said nothing at all. The same
+fault sat under `play.html`'s "What was whispered to you", so the manager's
+private half would have arrived there as an envelope too.
+
+**Every piece of the path was tested, and the join between the pieces was
+not.** The JOIN was read by the real parser; the lobby was shown to whisper
+its seats; the island page was shown to take an invite; `test_hand_crypto.py`
+opened a whisper the Python side sealed -- under whatever context the fixture
+named, which is the one line the page did not share with it. The test that
+was missing stands a real `Lobby` on the page's hub, seats the page, fills the
+table and claims it from Python, and asserts the link appears where the
+message says it will:
+`test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page`.
+It fails on the old page. A whisper the page cannot open is now said on the
+status line rather than skipped, because four days of silence is what
+skipping bought.
+
+The page's words were wrong in the same sitting: the status after a JOIN said
+to "press Refresh until the invite shows below", and the button is called
+"Read the board" and the invite was rendered above the board rows under a
+different heading. It now says the table has to fill first, names the button,
+puts the link under the message, and says the input field is on the island
+page and not here. And the board is read again a moment after a post, since
+the read straight after it beat the lobby's own reply and a JOIN with nothing
+under it looks exactly like one the lobby refused.
+
 ### The composer constraint cannot be met literally, and what replaces it
 
 *Correcting the section above, which said a composer emits its lines through
