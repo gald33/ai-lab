@@ -67,6 +67,9 @@ jobs:
   # they carry every group there is: `test_render_gate.py` reads this file and
   # fails if a group is added to `render.py` and not to it.
   #
+  # The page checks that used to trail `render.py` here are the `pages` job
+  # above, since 2026-09-04. Both jobs below are `render.py` alone.
+  #
   # **Two jobs, and the split is by measured cost.** In one job the suite took
   # 32m04s on a runner; these two take 16m55s and 17m16s, and run at once, so
   # the gate is 17m16s. The obvious division -- structure is cheap, the checks
@@ -92,34 +95,38 @@ jobs:
   # `KNOWN_FAILURES` is empty as of #186 and #188, which fixed both entries, so
   # these jobs are green on nothing but a clean run: anything failing fails
   # them, and so would a listed failure that stopped reproducing.
-  drawing-quick:
+  # What the island's pages *do*, in a real browser. Split out of
+  # `drawing-quick` on 2026-09-04, and the reason is the failure that prompted
+  # it rather than tidiness.
+  #
+  # **These steps sat after `render.py` in one job, so a red render skipped
+  # every one of them.** That happened on #220: the viewer's `recorded` check
+  # timed out mounting, and the six checks below -- the hand's cryptography,
+  # its two pages, the lobby's countdowns, the served lobby's levers and what
+  # it reads -- reported nothing at all, on a pull request whose whole diff was
+  # two of those pages. The job went red for a reason unconnected to the
+  # change, and the checks that covered the change never ran.
+  #
+  # That is the same defect `--require` and `ISLAND_REQUIRE_BROWSER` exist to
+  # prevent, arriving by another route: not a skip drawn as a pass, but a skip
+  # hidden behind somebody else's red. A gate that reports nothing about the
+  # diff is not a gate, whichever colour the tick is.
+  #
+  # **Nothing is turned off by this and nothing is made cheaper.** The same six
+  # commands run, under the same flags, on the same browser; they run in a job
+  # of their own so that what covers a page reports on a page. They take about
+  # a minute against `render.py`'s sixteen, so they also report first, which is
+  # the smaller half of the point.
+  #
+  # `--require`'s counterpart here is `ISLAND_REQUIRE_BROWSER`: without it each
+  # of these skips where there is no playwright and no browser, which is right
+  # on a laptop and is exactly what must not happen here.
+  pages:
     runs-on: ubuntu-latest
-    # **A job that cannot skip silently must not be able to hang silently
-    # either.** That is the same failure mode wearing a different hat: a run
-    # that never ends reports nothing, exactly like a run that checked nothing,
-    # and GitHub's own default would let it sit for six hours first.
-    #
-    # The number is set from measurement, not taste. A run that finishes under
-    # the limit was slow, and one that trips it was stuck -- which is the only
-    # thing that can be known about a job whose logs arrive when it ends.
-    #
-    # **22 against a measured 16m55s**, which is this job's own green run on a
-    # runner rather than a number carried over from the suite it was split out
-    # of. It stood at 40 for one push -- inherited from the whole suite's
-    # 32m04s, because the rule above is an honest measured number or nothing
-    # and this job had never run -- and it is measured now, so it is set:
-    # 16m55s for the job, 16m10s of that in `render.py` itself.
-    #
-    # A quarter in hand, the same margin 40 was to 32m04s. Four green runs land
-    # between 14m24s and 17m39s, worst case 80% of this limit.
-    #
-    # A range, and not a spread figure, because this comment has carried three
-    # of those and every one was moved by the next run. What the limit is set
-    # against is the worst seen. Raise it if a green run ever comes in near it
-    # -- past 19 minutes, not merely past the last number written here -- and
-    # never to get past a hang. `viewer/README.md` has the four runs, and what
-    # believing three of them cost.
-    timeout-minutes: 22
+    # A minute's work, and the limit is set the way the drawing jobs' are:
+    # against what a green run costs, with room for a slow runner. Raise it
+    # only on a green run that comes in near it, never to get past a hang.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -127,25 +134,11 @@ jobs:
           python-version: "3.11"
       - run: pip install playwright
       - run: python -m playwright install --with-deps chromium
-      - run: >
-          python experiments/005-deliberation-protocol/viewer/tests/render.py
-          --require --group quick --out "$RUNNER_TEMP/island-shots"
-      # The lobby's own browser check, here because this is a job with a
-      # browser in it. The `island` job collects it and skips it, and a skip
-      # and a pass look identical in a tick -- which is the same reason
-      # `--require` is on the line above. It is the only test that can see the
-      # failure it was written for: the countdown script sat above the tables
-      # it drove, matched no elements, and every clock on the page was frozen
-      # while every markup assertion around it passed.
-      #
-      # `ISLAND_REQUIRE_BROWSER` is this job's `--require`: without it the test
-      # skips where there is no playwright and no browser, which is right on a
-      # laptop and is exactly what must not happen here.
-      #
-      # **In this job and not `drawing-slow`, and in exactly one of them.** It
-      # arrived when there was one `drawing` job to put it in. Both have a
-      # browser now, so either would do and both would be the same check paid
-      # for twice; it goes in the shorter one, where it reports soonest.
+      # The lobby's own browser check. The `island` job collects it and skips
+      # it, and a skip and a pass look identical in a tick. It is the only
+      # test that can see the failure it was written for: the countdown script
+      # sat above the tables it drove, matched no elements, and every clock on
+      # the page was frozen while every markup assertion around it passed.
       - run: pip install -r games/island/requirements-dev.txt
       - run: python -m pytest games/island/tests/test_lobby_page.py -q -k browser
         env:
@@ -207,6 +200,51 @@ jobs:
       - run: python -m pytest games/island/tests/test_lobby_web_reconstruct.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+
+  drawing-quick:
+    runs-on: ubuntu-latest
+    # **A job that cannot skip silently must not be able to hang silently
+    # either.** That is the same failure mode wearing a different hat: a run
+    # that never ends reports nothing, exactly like a run that checked nothing,
+    # and GitHub's own default would let it sit for six hours first.
+    #
+    # The number is set from measurement, not taste. A run that finishes under
+    # the limit was slow, and one that trips it was stuck -- which is the only
+    # thing that can be known about a job whose logs arrive when it ends.
+    #
+    # **22 against a measured 16m55s**, which is this job's own green run on a
+    # runner rather than a number carried over from the suite it was split out
+    # of. It stood at 40 for one push -- inherited from the whole suite's
+    # 32m04s, because the rule above is an honest measured number or nothing
+    # and this job had never run -- and it is measured now, so it is set:
+    # 16m55s for the job, 16m10s of that in `render.py` itself.
+    #
+    # **The 45s between those two numbers left with the `pages` job** on
+    # 2026-09-04, so this job is `render.py` and nothing else now. The limit
+    # stays where it is: what it is set against is the render, which has not
+    # changed, and moving a limit down by less than a minute buys nothing and
+    # spends the margin the paragraph above is careful about.
+    #
+    # A quarter in hand, the same margin 40 was to 32m04s. Four green runs land
+    # between 14m24s and 17m39s, worst case 80% of this limit.
+    #
+    # A range, and not a spread figure, because this comment has carried three
+    # of those and every one was moved by the next run. What the limit is set
+    # against is the worst seen. Raise it if a green run ever comes in near it
+    # -- past 19 minutes, not merely past the last number written here -- and
+    # never to get past a hang. `viewer/README.md` has the four runs, and what
+    # believing three of them cost.
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: >
+          python experiments/005-deliberation-protocol/viewer/tests/render.py
+          --require --group quick --out "$RUNNER_TEMP/island-shots"
       # The pictures the run measured, kept whether it passed or failed: a
       # threshold on a rendered image is not arguable without the image.
       - if: always()
