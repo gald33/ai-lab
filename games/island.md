@@ -491,7 +491,9 @@ what that costs is written here rather than discovered later:
 - **The workspace cipher** — HKDF-SHA256 subkeys and AES-GCM, needed merely
   to register, since the public key is sealed like any other content.
 - **The whisper** — X25519, HKDF with both exchange keys sorted into `info`,
-  AES-256-GCM under AAD `switchboard/v1/ask\0<context>`. **A mistake here is
+  AES-256-GCM under AAD `switchboard/v1/whisper\0<context>` (and, opened but
+  never written, the `switchboard/v1/ask` form every release before 2.1.0
+  sealed). **A mistake here is
   silent**: a wrong ordering or one wrong AAD byte yields an envelope that
   does not open, and under a clock that does not stop that is a lost episode
   with no error to read.
@@ -654,6 +656,16 @@ message says it will:
 It fails on the old page. A whisper the page cannot open is now said on the
 status line rather than skipped, because four days of silence is what
 skipping bought.
+
+**And the wire was renamed, the same day** (Gal, 2026-09-04): the reason the
+page had the wrong context is that the tool said `whisper` and the envelope
+said `ask`, and a second implementation written to the name people use is
+the failure that split invites. Switchboard 2.1.0 says `whisper` in all three
+places and still opens the old form; the page does the same
+(`switchboard.js`, `unsealFromPeer`), so it reads a manager on 2.0.1 today
+and on 2.1.0 later, and `test_hand_crypto.py` opens both forms and pins the
+direction that does not hold. `CLAUDE.md` carries the release status, which
+is the part that goes stale.
 
 The page's words were wrong in the same sitting: the status after a JOIN said
 to "press Refresh until the invite shows below", and the button is called

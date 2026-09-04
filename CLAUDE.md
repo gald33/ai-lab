@@ -198,6 +198,22 @@ whispers under the wrong context for four days (`games/island.md`, "The
 whisper the page could not open"). Anything in this repo that seals or opens
 a whisper writes `ask.body`, with a comment pointing here.
 
+*Reversed the same day.* **The wire is renamed too** (Gal, 2026-09-04): in
+Switchboard's source the marker is `whisper`, the label
+`switchboard/v1/whisper`, the context `whisper.body`, and `Client.ask` is
+gone -- as **2.1.0**, on a PR and **not in a release** as this is written,
+which is the exact sentence this section has got wrong twice before, so
+here it is said as what it is. The compatibility is one-way and deliberate:
+a 2.1.0 reader opens what any earlier release sealed, an earlier reader
+cannot open a 2.1.0 whisper, so **readers upgrade before senders**
+(Switchboard's `docs/upgrading.md`). The hand's page reads both forms and
+writes the new one, so it is correct against 2.0.1 today and 2.1.0 when it
+ships; the floor in `games/island/requirements.txt` moves to 2.1.0 the day
+the wheel exists and not before, since a floor nobody can install is a
+broken install rather than a loud one. The check is the one above:
+`pip download agent-switchboard -d /tmp/x --no-deps` and read
+`crypto.WHISPER_MARKER`.
+
 *Corrected 2026-08-27, having written "has been removed" as though it had
 shipped.* That is the second time a prediction about this one tool was
 recorded here as a fact — the first said 0.11.0 would carry the old name and a

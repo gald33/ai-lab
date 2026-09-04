@@ -26,8 +26,9 @@
 // `tests/test_hand_pages.py` posts from this page and reads it back with a
 // real Python client, which is the only check that any of the above is right.
 
-import { WorkspaceCipher, messagePayload, sign, isSealed,
-         unsealFromPeer, writerFromSeed, signRequest } from "./switchboard.js";
+import { WorkspaceCipher, messagePayload, sign, isSealed, unsealFromPeer,
+         writerFromSeed, signRequest, WHISPER_CONTEXT, WHISPER_MARKERS }
+  from "./switchboard.js";
 
 export class Hub {
   constructor(url, token, cipher, identity, alias) {
@@ -245,7 +246,7 @@ export class Hub {
     // A whisper is sealed to this seat *inside* the ordinary workspace
     // envelope, so what comes back from `_open` may itself be sealed.
     if (!isSealed(outer)) return outer;
-    if (outer.m !== "ask") return outer;
+    if (!WHISPER_MARKERS.has(outer.m)) return outer;
     const peer = this._peers.get(row.from);
     if (!peer) {
       // Not a bad key: the roster simply has not been read, or the sender is
@@ -253,18 +254,20 @@ export class Hub {
       // "forged" are different things and must stay different.
       return { unreadable: "no exchange key for the sender yet" };
     }
-    // **`ask.body`, not `message.body`.** A whisper is sealed under its own
-    // context -- `Client._seal_whisper_body` binds `"ask.body"` into the AEAD
-    // -- and the outer workspace envelope is the one under `message.body`.
-    // This page opened whispers under the outer context from 2026-08-31 to
-    // 2026-09-04, so every invite the lobby sealed to a seat came back as
-    // "unreadable" and the page showed nothing: a driver who had joined saw
-    // no link to the island, and no error either. `test_hand_pages.py`
-    // now opens a whisper the real Python lobby sealed.
+    // **The whisper's own context, not `message.body`.** A whisper is sealed
+    // under its own context -- `Client._seal_whisper_body` binds it into the
+    // AEAD -- and the outer workspace envelope is the one under
+    // `message.body`. This page opened whispers under the outer context from
+    // 2026-08-31 to 2026-09-04, so every invite the lobby sealed to a seat
+    // came back as "unreadable" and the page showed nothing: a driver who had
+    // joined saw no link to the island, and no error either.
+    // `test_hand_pages.py` now opens a whisper the real Python lobby sealed.
+    // The context is `whisper.body` since Switchboard 2.1.0 and was
+    // `ask.body` before; `unsealFromPeer` reads the marker and opens either.
     try {
       return await unsealFromPeer(outer, {
         identity: this.identity, peerExchangeKey: peer,
-        context: "ask.body",
+        context: WHISPER_CONTEXT,
       });
     } catch (err) {
       return { unreadable: String(err.message) };

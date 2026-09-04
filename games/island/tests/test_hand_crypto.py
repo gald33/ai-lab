@@ -87,6 +87,10 @@ async function run() {{
     fixtures.whisper.envelope,
     {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
       context: fixtures.whisper.context }});
+  out.openedLegacyWhisper = await sb.unsealFromPeer(
+    fixtures.legacyWhisper.envelope,
+    {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
+      context: fixtures.legacyWhisper.context }});
   out.blindChannel = await cipher.blindChannel(fixtures.blind.channel.in);
   out.blindAgent = await cipher.blindChannel(fixtures.blind.agent.in);
   out.blindHubForm = await cipher.blindChannel(fixtures.blind.hubForm.in);
@@ -242,10 +246,23 @@ def test_the_browser_opens_a_whisper_addressed_to_it(ran):
     """The dealt private half, which is the whole reason a hand needs X25519.
 
     Sealed by the peer to this identity's exchange key: the pairwise key, the
-    sorted pair in HKDF's `info`, and the `switchboard/v1/ask` AAD all have to
-    be right together, and no subset of them fails visibly.
+    sorted pair in HKDF's `info`, and the `switchboard/v1/whisper` AAD all
+    have to be right together, and no subset of them fails visibly.
     """
     assert ran["openedWhisper"] == fixtures.DEALT
+
+
+def test_the_browser_opens_a_whisper_a_sender_before_2_1_0_sealed(ran):
+    """The wire said `ask` from 0.11.0 to 2.0.1 -- marker, HKDF label and
+    context -- and a manager on any of those releases still deals to this
+    page. Readers upgrade before senders, so the page reads both."""
+    assert ran["openedLegacyWhisper"] == fixtures.DEALT
+
+
+def test_the_browser_writes_the_wire_the_library_writes_from_2_1_0(ran):
+    """What is written is checked, not only round-tripped: a round trip
+    passes just as well with both ends still saying `ask`."""
+    assert ran["whisperedHere"]["m"] == "whisper"
 
 
 def test_blinding_agrees_with_python(ran):
@@ -272,7 +289,17 @@ def test_python_opens_what_the_browser_sealed_to_the_workspace(ran):
 
 
 def test_python_opens_what_the_browser_whispered(ran):
-    assert fixtures.open_whisper(ran["whisperedHere"], "messages.body") == fixtures.BODY
+    """On a library from 2.1.0. On one before it, the documented direction
+    that does *not* hold -- an old reader cannot open a new whisper -- is
+    pinned as a fact rather than skipped past: the floor in
+    `requirements.txt` moves to 2.1.0 when that release exists, and this
+    test says what the page's whisper does to a manager left behind."""
+    if fixtures.WIRE == "whisper":
+        assert fixtures.open_whisper(ran["whisperedHere"], "messages.body") == fixtures.BODY
+    else:
+        from switchboard.crypto import DecryptionError
+        with pytest.raises(DecryptionError):
+            fixtures.open_whisper(ran["whisperedHere"], "messages.body")
 
 
 def test_padding_matches_python_bucket_for_bucket(ran):

@@ -17,7 +17,18 @@
 
 const ENVELOPE_KEY = "$swb";       // crypto.ENVELOPE_KEY
 const ENVELOPE_VERSION = 1;        // crypto.ENVELOPE_VERSION
-const WHISPER_MARKER = "ask";      // crypto.WHISPER_MARKER -- the wire value kept
+// crypto.WHISPER_MARKER and friends. **`whisper` on the wire since Switchboard
+// 2.1.0** (Gal, 2026-09-04); what 0.11.0 through 2.0.1 wrote -- `ask` as the
+// marker, the HKDF label and the body's context -- is still opened here and
+// never written, the same one-way compatibility the library keeps. The marker
+// is authenticated by the AEAD, so a forged one only fails the open.
+const WHISPER_MARKER = "whisper";
+const WHISPER_LABEL = "switchboard/v1/whisper";
+export const WHISPER_CONTEXT = "whisper.body";
+const LEGACY_WHISPER_MARKER = "ask";
+const LEGACY_WHISPER_LABEL = "switchboard/v1/ask";
+const LEGACY_WHISPER_CONTEXT = "ask.body";
+export const WHISPER_MARKERS = new Set([WHISPER_MARKER, LEGACY_WHISPER_MARKER]);
                                    // from the release this shipped under, while
                                    // the tool is called `whisper` everywhere else.
 const BLIND_BYTES = 16;            // crypto.BLIND_BYTES
@@ -209,7 +220,7 @@ export class WorkspaceCipher {
     if (!isSealed(envelope)) {
       throw new Error(`expected an encrypted value at ${context} but found plaintext`);
     }
-    if (envelope.m === WHISPER_MARKER) {
+    if (WHISPER_MARKERS.has(envelope.m)) {
       throw new Error(`the value at ${context} is sealed to one peer with ` +
                       "whisper, not to the workspace");
     }
@@ -351,7 +362,7 @@ export async function signRequest(writer, method, path, query, bodyText) {
 // --- sealed to one peer ----------------------------------------------------
 
 /** `crypto._derive_whisper_key`: ECDH, then HKDF binding the unordered pair. */
-async function whisperKey(identity, peerExchangeKey) {
+async function whisperKey(identity, peerExchangeKey, label = WHISPER_LABEL) {
   const peer = await crypto.subtle.importKey("raw", b64d(peerExchangeKey), "X25519", false, []);
   const secret = new Uint8Array(await crypto.subtle.deriveBits(
     { name: "X25519", public: peer }, identity.exchange.privateKey, 256));
@@ -360,14 +371,14 @@ async function whisperKey(identity, peerExchangeKey) {
   const base = await crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
     { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0),
-      info: concat(utf8.encode("switchboard/v1/ask\u0000"), utf8.encode(pair)) },
+      info: concat(utf8.encode(`${label}\u0000`), utf8.encode(pair)) },
     base, 256);
   return new Uint8Array(bits);
 }
 
 /** `crypto._whisper_aad`. No workspace: the pair key already binds two identities. */
-function whisperAad(context) {
-  return utf8.encode(`switchboard/v1/ask\u0000${context}`);
+function whisperAad(context, label = WHISPER_LABEL) {
+  return utf8.encode(`${label}\u0000${context}`);
 }
 
 export async function sealToPeer(value, { identity, peerExchangeKey, context }) {
@@ -377,15 +388,22 @@ export async function sealToPeer(value, { identity, peerExchangeKey, context }) 
   return envelope;
 }
 
-/** `crypto.unseal_from_peer`. `peerExchangeKey` is the *sender's*. */
+/** `crypto.unseal_from_peer`. `peerExchangeKey` is the *sender's*. An envelope
+ *  a release before 2.1.0 sealed opens under the names that sealed it. */
 export async function unsealFromPeer(envelope, { identity, peerExchangeKey, context }) {
   if (!isSealed(envelope)) {
     throw new Error(`expected a value sealed with whisper at ${context}`);
   }
-  if (envelope.m !== WHISPER_MARKER) {
+  if (!WHISPER_MARKERS.has(envelope.m)) {
     throw new Error(`the value at ${context} is sealed to the workspace, not to you`);
   }
+  let label = WHISPER_LABEL;
+  if (envelope.m === LEGACY_WHISPER_MARKER) {
+    label = LEGACY_WHISPER_LABEL;
+    if (context === WHISPER_CONTEXT) context = LEGACY_WHISPER_CONTEXT;
+  }
   const plain = await unsealBytes(
-    await whisperKey(identity, peerExchangeKey), envelope, whisperAad(context), context);
+    await whisperKey(identity, peerExchangeKey, label), envelope,
+    whisperAad(context, label), context);
   return JSON.parse(fromUtf8.decode(unpad(plain)));
 }
