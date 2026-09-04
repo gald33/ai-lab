@@ -92,10 +92,9 @@ away this one game.</p>
 <pre id=brief hidden></pre>
 
 <script type=module>
-import { Hub } from "./hub.js";
 import * as identity from "./identity.js";
-import { declaration } from "./declaration.js";
 import { brief } from "./brief.js";
+import { Room, bindShortcuts } from "./room.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad) => {
@@ -103,42 +102,19 @@ const say = (text, bad) => {
   $("says").style.borderLeftColor = bad ? "#dc2626" : "#16a34a";
 };
 
-let hub = null;
 let seat = null;
 const params = new URLSearchParams(location.search);
 for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]) {
   if (params.get(field)) $(field).value = params.get(field);
 }
 
-for (const button of document.querySelectorAll("[data-fill]")) {
-  button.addEventListener("click", () => {
-    $("say").value = button.dataset.fill;
-    $("say").focus();
-  });
-}
-
-async function refresh() {
-  const rows = await hub.history($("channel").value, { limit: 200 });
-  $("board").replaceChildren(...rows.slice(-60).map((row) => {
-    const line = document.createElement("div");
-    if (row.from === hub.agentId) line.className = "mine";
-    const who = document.createElement("span");
-    who.className = "who";
-    who.textContent = `${String(row.from || "?").slice(0, 6)} `;
-    line.append(who, document.createTextNode(
-      typeof row.body === "string" ? row.body : JSON.stringify(row.body)));
-    return line;
-  }));
-  const whispers = await hub.inbox({ limit: 20 });
-  $("whispers").replaceChildren(...whispers.map((row) => {
-    const line = document.createElement("div");
-    line.textContent = typeof row.body === "string"
-      ? row.body : JSON.stringify(row.body);
-    return line;
-  }));
-  window.HAND_BOARD = rows;
-  window.HAND_WHISPERS = whispers;
-}
+// The room itself lives in `room.js`, shared with the lobby page, which
+// enters the room on its own the moment the lobby hands it out. This page
+// is the same room behind a button, for a driver arriving with an invite in
+// the URL, and it is where the brief is.
+const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
+                        say: $("say"), post: $("post") }, say);
+bindShortcuts(document, $("say"));
 
 $("enter").addEventListener("click", async () => {
   try {
@@ -147,36 +123,14 @@ $("enter").addEventListener("click", async () => {
     // would be a seat the manager refuses. See `lobby.html`.
     seat = (await identity.load($("name").value)) ||
            (await identity.mint($("name").value));
-    const table = $("workspace").value;
-    hub = await Hub.open({
+    await room.enter({
       url: $("url").value, token: $("token").value,
-      workspace: table, key: $("key").value,
+      workspace: $("workspace").value, key: $("key").value,
       writeKey: $("write_key").value || null,
       identity: seat, alias: $("name").value,
+      seat: $("seat").value, channel: $("channel").value,
     });
-    await hub.register($("name").value);
-    await hub.roster();
-    // Posted once, on arrival: the declaration happens because the page was
-    // used, which is the only mechanism there is for making it happen at all.
-    await hub.say($("channel").value, declaration($("seat").value));
-    $("who").textContent =
-      `${$("name").value} in ${table}, seat ${$("seat").value}, ` +
-      `key ${seat.publicKey.slice(0, 12)}… — declared as driven.`;
     say("In the room, and the board says a person is driving this seat.");
-    await refresh();
-    window.HAND_READY = true;
-  } catch (err) { say(String(err.message), true); }
-});
-
-$("post").addEventListener("click", async () => {
-  if (!hub) return say("Enter the room first.", true);
-  try {
-    const line = $("say").value;
-    if (!line.trim()) return;
-    await hub.say($("channel").value, line);
-    $("say").value = "";
-    say("Posted.");
-    await refresh();
   } catch (err) { say(String(err.message), true); }
 });
 

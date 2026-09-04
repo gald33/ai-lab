@@ -34,9 +34,12 @@
         white-space: pre-wrap; word-break: break-word; margin: .4rem 0; }
   .line { font-family: ui-monospace, monospace; font-size: 13px; }
   .warn { border-left: 3px solid #d97706; padding-left: .6rem; }
-  #board div { font-family: ui-monospace, monospace; font-size: 12.5px;
-               padding: .15rem 0; border-bottom: 1px solid var(--edge); }
+  #board div, #room div, #roomWhispers div {
+    font-family: ui-monospace, monospace; font-size: 12.5px;
+    padding: .15rem 0; border-bottom: 1px solid var(--edge); }
   .who { color: #6b7280; }
+  .mine { border-left: 3px solid #2563eb; padding-left: .4rem; }
+  #say { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
   #says { min-height: 1.4rem; }
 </style>
 
@@ -96,6 +99,28 @@ never ranked.</p>
 <p id=says class=warn></p>
 <div id=invite></div>
 
+<fieldset id=theRoom hidden>
+  <legend>The room</legend>
+  <p class=sub id=roomWho>Not in a room.</p>
+  <h2>What was whispered to you</h2>
+  <div id=roomWhispers></div>
+  <h2>The room's board</h2>
+  <div id=room></div>
+  <h2>Say something</h2>
+  <input id=say placeholder="PRODUCE bread=0.5 fish=0.5">
+  <p class=sub>
+    <button data-fill="PRODUCE ">PRODUCE</button>
+    <button data-fill="PROPOSE to= give=: want=:">PROPOSE</button>
+    <button data-fill="APPROVE p1">APPROVE</button>
+    <button data-fill="ACK ready">ACK</button>
+  </p>
+  <button id=post>Post it</button>
+  <p class=sub>Anything at all can be posted — the room is talk as well as
+  trade. Only the manager's three forms settle, and a line it does not
+  recognise is a line you did not play; it never repairs one. The board
+  above reads itself every few seconds while the round is on.</p>
+</fieldset>
+
 <p class=sub>The full lobby, with tables and countdowns, is on
 <a href="https://gald33.github.io/ai-lab/island/">the island's own pages</a>.
 This one stays deliberately small.</p>
@@ -104,6 +129,7 @@ This one stays deliberately small.</p>
 import { openLine, joinLine, nonce, LIMITS, Malformed } from "./lobby_lines.js";
 import { Hub } from "./hub.js";
 import * as identity from "./identity.js";
+import { Room, bindShortcuts } from "./room.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad) => {
@@ -290,13 +316,64 @@ async function readInvite(hub) {
   window.HAND_INVITE = inv;
   const a = document.createElement("a");
   a.href = `./play.html?${q}`;
-  a.textContent = `Enter ${seat.table}'s room as ${$("name").value || "hand"} ` +
-                  `— the island page, where you play`;
+  a.textContent = `open it on its own page instead`;
   const p = document.createElement("p");
   p.className = "sub";
-  p.append(`The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). `, a);
+  p.append(`The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). ` +
+           `You are entering it here, below, under the key the lobby ` +
+           `witnessed — or `, a, ` (that page also carries the brief to hand ` +
+           `an agent).`);
   $("invite").replaceChildren(p);
+  await enterRoom(seat, inv);
   return true;
+}
+
+/**
+ * Enter the room from this page, with the identity that joined.
+ *
+ * Decided by Gal, 2026-09-04: the hand's page fetches and shows the game
+ * controls when the game is active. Until then the lobby page ended at a
+ * link, and g27 was lost in the gap -- the link never came, the driver
+ * never entered, and the other trader read the manager's line for an empty
+ * seat as the driver having come in under a second key. The same `Hub`
+ * identity enters the room here, so there is no handoff to get wrong, and
+ * the controls are on the page the driver is already looking at.
+ */
+const room = new Room({ board: $("room"), whispers: $("roomWhispers"),
+                        who: $("roomWho"), say: $("say"), post: $("post") }, say);
+bindShortcuts($("theRoom"), $("say"));
+
+async function enterRoom(seat, inv) {
+  if (window.HAND_ROOM === inv.w) return;
+  window.HAND_ROOM = inv.w;
+  const alias = $("name").value || "hand";
+  // The seat's label, off the lobby's own line: `g7 seat T1 = name, key …`.
+  const line = new RegExp(`^${seat.table} seat (T\\d+) = ${alias}, key `);
+  let label = null;
+  for (const row of window.HAND_BOARD || []) {
+    const m = typeof row.body === "string" ? line.exec(row.body) : null;
+    if (m) label = m[1];
+  }
+  if (!label) {
+    say(`The board has no seat line for ${alias} at ${seat.table}; ` +
+        `not entering the room.`, true);
+    return;
+  }
+  try {
+    $("theRoom").hidden = false;
+    await room.enter({
+      url: inv.u || $("url").value, token: inv.t || $("token").value,
+      workspace: inv.w, key: inv.k, writeKey: inv.wk || null,
+      identity: await identity.load(alias), alias, seat: label,
+      channel: inv.c || "island",
+    });
+    window.HAND_ROOM_READY = true;
+    say(`In ${seat.table}'s room as ${label}, and the board says a person is ` +
+        `driving this seat. Play below.`);
+  } catch (err) {
+    say(`Could not enter ${seat.table}'s room: ${err.message}`, true);
+    window.HAND_ROOM = null;
+  }
 }
 
 /** After a JOIN, keep looking until the room is handed out -- every few
@@ -315,11 +392,7 @@ function watchForInvite(hub, table) {
     }
     try {
       await readBoard(hub);
-      if (await readInvite(hub)) {
-        clearInterval(watching);
-        say(`${table} has its room — open the island page below, under this ` +
-            `same name, before it opens.`);
-      }
+      if (await readInvite(hub)) clearInterval(watching);
     } catch { /* the next tick reads again */ }
   }, 5000);
 }

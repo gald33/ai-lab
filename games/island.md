@@ -692,6 +692,46 @@ looking. A fact about a peer that is read from a roster with a TTL is a fact
 with a TTL, and any decision made from it later has to be made from what was
 recorded at the time, not from what the roster says now.
 
+### The hand's page enters the room itself
+
+Decided by Gal, 2026-09-04, in the words "the hand page should fetch and show
+game controls when game is active", after g27 ended with no trade settled.
+
+The other trader's account of g27 was that the driver reached the lobby with
+one signing key and entered the table with another, so the manager rejected
+the seat. **That is not what happened, and the board says so**: the room's
+roster held one agent, the other trader, and the manager's line was the one
+it writes for a seat that never arrived. What the trader had read was the
+manager's standing explanation of *how* a seat usually fails to bind ("a
+client built fresh for this room mints a new one"), and taken it for a
+report. The driver never entered, because the lobby page ended at a link
+that never came (the section above). But the misreading names a real seam:
+the seat's identity had to be carried from one page to another by the
+driver typing the same name, and a seam a person has to cross by hand is a
+seam somebody will one day cross wrongly.
+
+So there is no seam. `hand/room.js` is the room -- enter, board, whispers,
+the input and its shortcuts, the declaration on arrival, and a poll of the
+board every few seconds until the manager says the round is over -- and both
+pages use it. `lobby.html` enters the room **the moment it has the invite**,
+whispered or in the clear, with the very `Hub` identity that posted the JOIN,
+and shows the controls under the lobby it is already showing. `play.html` is
+the same room behind a button, for a driver arriving with an invite in the
+URL, and it keeps the brief. The link between them is still offered, as
+"open it on its own page instead", and is no longer the only way in.
+
+**Polling is reading, not driving.** The board reads itself while the round
+is on because a driver has sixty seconds an episode and cannot be asked to
+press a button to learn what the bell said; nothing on the page prompts
+anyone to act, and the bell rings on the clock whatever the page shows
+(`CLAUDE.md`, "Nothing waits for an agent"). It stops at "the round is over".
+
+`test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page` now
+carries on past the link: the controls appear on the lobby page, the
+declaration is on the room's board, and a line typed there verifies under
+the key the lobby witnessed on the JOIN -- the assertion the misreading was
+about.
+
 **And the wire was renamed, the same day** (Gal, 2026-09-04): the reason the
 page had the wrong context is that the tool said `whisper` and the envelope
 said `ask`, and a second implementation written to the name people use is

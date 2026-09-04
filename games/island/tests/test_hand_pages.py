@@ -61,7 +61,8 @@ def site(tmp_path_factory):
     runs is the committed bytes and nothing beside them."""
     root = tmp_path_factory.mktemp("hand-site")
     for name in ("lobby.html", "play.html", "switchboard.js", "hub.js",
-                 "identity.js", "lobby_lines.js", "declaration.js", "brief.js"):
+                 "identity.js", "lobby_lines.js", "declaration.js", "brief.js",
+                 "room.js"):
         shutil.copy(HAND / name, root / name)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler,
                                 directory=str(root))
@@ -341,7 +342,7 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # out, so the link appears on its own within one poll.
     link = tab.locator("#invite a")
     link.wait_for(timeout=15_000)
-    assert "island page" in link.inner_text()
+    assert "own page" in link.inner_text()
     href = link.get_attribute("href")
     assert href.startswith("./play.html?"), href
     query = dict(urllib.parse.parse_qsl(href.split("?", 1)[1]))
@@ -352,6 +353,32 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
         "document.getElementById('says').nextElementSibling.id") == "invite"
+
+    # **And the room is on this page, entered under the key that joined.**
+    # Decided by Gal, 2026-09-04, after g27: the controls appear here when
+    # the game is active, and there is no second page to reach with the
+    # wrong key. The declaration is on the room's board, and a line typed
+    # here verifies under the very key the lobby witnessed on the JOIN.
+    tab.wait_for_function("window.HAND_ROOM_READY === true", timeout=15_000)
+    assert tab.is_visible("#say"), "the input field, on the lobby page"
+    witnessed = tab.evaluate("window.HAND_SEAT.publicKey")
+    tab.fill("#say", "hello from the hand")
+    tab.click("#post")
+    tab.wait_for_function(
+        "document.getElementById('says').textContent === 'Posted.'", timeout=15_000)
+    from switchboard.client import Client as _Client
+    from switchboard.config import ClientConfig as _Config
+    reader = _Client(_Config(url=cors_hub, token="", workspace=query["workspace"],
+                             key=query["key"]), agent_id="reader-room-w")
+    reader.agents()
+    rows = reader.history("island", limit=50)
+    assert hands_on_board([{"body": r.get("body")} for r in rows]) == {"T1": "driven"}
+    mine = [r for r in rows if r.get("body") == "hello from the hand"]
+    assert mine, [r.get("body") for r in rows]
+    assert (mine[0].get("signature") or {}).get("key") == witnessed, \
+        "the key that plays is the key the lobby witnessed"
+    assert "hello from the hand" in tab.inner_text("#room"), \
+        "and the room's board on this page shows it"
 
     # **And again after a reload.** The page's memory of its seat is gone;
     # the key is not (IndexedDB), and the whisper is still in the inbox
