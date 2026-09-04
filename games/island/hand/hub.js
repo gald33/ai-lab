@@ -117,8 +117,15 @@ export class Hub {
     catch { return null; }
   }
 
-  /** Publish this identity, so the lobby and the manager witness its key. */
-  async register(name, { kind = "hand" } = {}) {
+  /** Publish this identity, so the lobby and the manager witness its key.
+   *
+   *  `ttl` is how long the row stays on the roster. **The hub's default is
+   *  two minutes**, and a page has no heartbeat: on g27 (2026-09-04) the
+   *  second seat arrived 126 seconds after the hand's JOIN, the hand's row
+   *  had lapsed, and the lobby could not seal the room to it. The hub clamps
+   *  at 3600 (`run_game.PRESENCE_CEILING`, measured), which covers a table's
+   *  whole 900s wait and a round besides. */
+  async register(name, { kind = "hand", ttl = 3600 } = {}) {
     return this._call("POST", "/agents/register", {
       body: {
         workspace: this.workspace,
@@ -129,6 +136,7 @@ export class Hub {
         task: null,
         channels: [],
         meta: {},
+        ttl,
         pubkey: await this._sealText(this.identity.publicKey, "agent.pubkey"),
         exchange_key: await this._sealText(this.identity.exchangeKey,
                                            "agent.exchange_key"),
@@ -217,10 +225,15 @@ export class Hub {
    * the *sender's* exchange key: a client that has never read a roster sees
    * every whisper as unreadable, which is exactly the CLI bug fixed in 1.2.3.
    */
-  async inbox({ limit = 50 } = {}) {
+  async inbox({ limit = 50, peek = false } = {}) {
     if (!this._peers.size) await this.roster();
+    // `peek` leaves the cursor where it is: a read that does not turn a
+    // whisper into something the driver sees must not be the read that
+    // consumes it. (An unsigned read is a peek whatever it asks for; the
+    // room's reads are signed, so there it matters.)
     const reply = await this._call("GET", "/inbox", {
-      params: { workspace: this.workspace, agent_id: this.agentId, limit },
+      params: { workspace: this.workspace, agent_id: this.agentId, limit,
+                ...(peek ? { peek: "true" } : {}) },
     });
     const out = [];
     for (const row of reply.messages || []) {

@@ -790,13 +790,33 @@ class Lobby:
         peers = list(table.seats)
         if table.manager_peer and table.manager_peer not in peers:
             peers.append(table.manager_peer)
-        if not all(p in self._exchange for p in peers):
-            self.say(f"{table.id} invite: {table.invite}")
-        else:
+        # **The key witnessed at JOIN, not the roster of the moment.** g27,
+        # 2026-09-04: a hand joined, the second seat took 126 seconds to
+        # arrive, and the hand's roster row -- registered from a page with
+        # the hub's default two-minute TTL -- had lapsed by four seconds when
+        # the table settled. The seat line had said "sealed"; this line then
+        # posted the room in the clear, and the page, which reads its inbox
+        # for a whisper, never showed a link. `Table.boxes` holds the key each
+        # seat published when it sat down, read off the roster then, and the
+        # client keeps every exchange key it has ever seen, so a seat sealed
+        # at JOIN is sealed at settlement whatever the roster says now.
+        sealable = all(p in table.boxes or p in self._exchange for p in peers)
+        body = f"{table.id} invite: {table.invite}"
+        if sealable:
             self.present()
-            body = f"{table.id} invite: {table.invite}"
-            for peer in peers:
-                self.client.whisper(peer, body)
+            try:
+                for peer in peers:
+                    self.client.whisper(peer, body)
+            except Exception as exc:      # noqa: BLE001 -- said, not hidden
+                # A lobby restarted since the seat sat down has the key in
+                # its state and not in its client's cache. The weaker thing
+                # is allowed and says so; it is not dressed as the stronger.
+                self.say(f"{table.id} invite could not be sealed to every "
+                         f"seat ({exc}); it goes on this board in the clear")
+                sealable = False
+        if not sealable:
+            self.say(body)
+        else:
             who = ", ".join(table.label(p) for p in table.seats)
             self.say(f"{table.id} invite: sealed to {who} and the manager -- "
                      f"read your inbox (roster first); it is not on this board")

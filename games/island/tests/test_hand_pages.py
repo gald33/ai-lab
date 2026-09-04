@@ -61,7 +61,8 @@ def site(tmp_path_factory):
     runs is the committed bytes and nothing beside them."""
     root = tmp_path_factory.mktemp("hand-site")
     for name in ("lobby.html", "play.html", "switchboard.js", "hub.js",
-                 "identity.js", "lobby_lines.js", "declaration.js", "brief.js"):
+                 "identity.js", "lobby_lines.js", "declaration.js", "brief.js",
+                 "room.js"):
         shutil.copy(HAND / name, root / name)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler,
                                 directory=str(root))
@@ -337,10 +338,11 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     lobby.drain()
     assert table.settled
 
-    tab.click("#refresh")
+    # No button: after a JOIN the page keeps reading until the room is handed
+    # out, so the link appears on its own within one poll.
     link = tab.locator("#invite a")
     link.wait_for(timeout=15_000)
-    assert "island page" in link.inner_text()
+    assert "own page" in link.inner_text()
     href = link.get_attribute("href")
     assert href.startswith("./play.html?"), href
     query = dict(urllib.parse.parse_qsl(href.split("?", 1)[1]))
@@ -351,6 +353,144 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
         "document.getElementById('says').nextElementSibling.id") == "invite"
+
+    # **And the room is on this page, entered under the key that joined.**
+    # Decided by Gal, 2026-09-04, after g27: the controls appear here when
+    # the game is active, and there is no second page to reach with the
+    # wrong key. The declaration is on the room's board, and a line typed
+    # here verifies under the very key the lobby witnessed on the JOIN.
+    tab.wait_for_function("window.HAND_ROOM_READY === true", timeout=15_000)
+    assert tab.is_visible("#say"), "the input field, on the lobby page"
+    witnessed = tab.evaluate("window.HAND_SEAT.publicKey")
+    tab.fill("#say", "hello from the hand")
+    tab.click("#post")
+    tab.wait_for_function(
+        "document.getElementById('says').textContent === 'Posted.'", timeout=15_000)
+    from switchboard.client import Client as _Client
+    from switchboard.config import ClientConfig as _Config
+    reader = _Client(_Config(url=cors_hub, token="", workspace=query["workspace"],
+                             key=query["key"]), agent_id="reader-room-w")
+    reader.agents()
+    rows = reader.history("island", limit=50)
+    assert hands_on_board([{"body": r.get("body")} for r in rows]) == {"T1": "driven"}
+    mine = [r for r in rows if r.get("body") == "hello from the hand"]
+    assert mine, [r.get("body") for r in rows]
+    assert (mine[0].get("signature") or {}).get("key") == witnessed, \
+        "the key that plays is the key the lobby witnessed"
+    assert "hello from the hand" in tab.inner_text("#room"), \
+        "and the room's board on this page shows it"
+
+    # **And again after a reload.** The page's memory of its seat is gone;
+    # the key is not (IndexedDB), and the whisper is still in the inbox
+    # because the read that showed it was a peek. Same name, same table,
+    # "Read the board", same link.
+    tab.reload()
+    _fill_room(tab, cors_hub, name="hand-w")
+    tab.fill("#table", table.id)
+    tab.click("#refresh")
+    again = tab.locator("#invite a")
+    again.wait_for(timeout=15_000)
+    assert again.get_attribute("href") == href
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_seat_stays_on_the_roster_for_as_long_as_a_table_may_form(
+        browser, site, cors_hub):
+    """**g27, 2026-09-04.** A hand joined; the second seat came 126 seconds
+    later; the hand's roster row, registered with the hub's two-minute
+    default, had lapsed by four seconds when the table settled, so the lobby
+    could not seal the room to it and the page never showed a link. The page
+    registers for the hub's ceiling now, which covers the whole of the 900s
+    a table is allowed to form and a round besides. Read off the roster with
+    a real client: the row's `expires_in`, not what the page asked for."""
+    from games.island.lobby import TABLE_TTL
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="patient")
+    tab.fill("#table", "g11")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    rows = [a for a in _client(cors_hub, "reader-ttl").agents()
+            if a.get("name") == "patient"]
+    assert rows, "the page's seat is on the roster"
+    assert rows[0]["expires_in"] > TABLE_TTL, rows[0]
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_page_shows_the_keys_it_holds_and_can_replace_or_forget_one(
+        browser, site, cors_hub):
+    """Asked for by Gal, 2026-09-04: a key the page keeps across reloads is
+    a key its holder should be able to see, replace and throw away. The
+    list shows the name with the very public key the lobby witnessed; "new
+    key" mints a different one under the same name; "forget" removes it."""
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="keyed-1")
+    tab.fill("#table", "g13")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+    witnessed = tab.evaluate("window.HAND_SEAT.publicKey")
+
+    tab.click("#seatsHeld > summary")           # the fold, opened as a driver would
+    row = tab.locator(".seat[data-name='keyed-1']")
+    row.wait_for(timeout=15_000)
+    assert row.locator("code").get_attribute("title") == witnessed, \
+        "the list shows the key the lobby witnessed, in full on hover"
+
+    row.locator("button[data-act=new]").click()
+    tab.wait_for_function(
+        "document.querySelector(\".seat[data-name='keyed-1'] code\")"
+        f".title !== {witnessed!r}", timeout=15_000)
+    replaced = row.locator("code").get_attribute("title")
+    assert replaced != witnessed
+    assert tab.evaluate("window.HAND_SEAT") is None, \
+        "the seat taken under the old key is no longer this page's seat"
+    assert "manager refuses" in tab.inner_text("#says")
+
+    row.locator("button[data-act=forget]").click()
+    tab.wait_for_function(
+        "document.querySelector(\".seat[data-name='keyed-1']\") === null",
+        timeout=15_000)
+    tab.reload()
+    assert tab.locator(".seat[data-name='keyed-1']").count() == 0, \
+        "and it is gone from the browser, not just from the page"
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub):
+    """The lobby's other way of handing a room out: when it cannot seal to
+    every seat, the invite goes on the public board in the clear and the game
+    is practice. Until g27 the page only read its inbox, so a driver whose
+    room was posted in public saw nothing. Now it is the same link, and the
+    page says which way it came."""
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="hand-c")
+    tab.fill("#table", "g12")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+    assert tab.locator("#invite a").count() == 0
+
+    lobby = _client(cors_hub, "lobby-c")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_clear12", token="", key=KEY,
+                  write_key="seed-c", note="g12").encode()
+    lobby.post("lobby", f"g12 invite: {code}")
+
+    tab.click("#refresh")
+    link = tab.locator("#invite a")
+    link.wait_for(timeout=15_000)
+    query = dict(urllib.parse.parse_qsl(link.get_attribute("href").split("?", 1)[1]))
+    assert query["workspace"] == "ws_clear12"
+    assert query["write_key"] == "seed-c"
+    assert "in the clear" in tab.inner_text("#invite")
     assert not errors, errors
     tab.close()
 

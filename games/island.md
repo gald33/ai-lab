@@ -657,6 +657,93 @@ It fails on the old page. A whisper the page cannot open is now said on the
 status line rather than skipped, because four days of silence is what
 skipping bought.
 
+**The seat that lapsed before the table filled** (g27, 2026-09-04, the same
+morning, from the same driver asking the same question after the fix above
+was live). The board told the story: the JOIN's seat line said *sealed*, and
+126 seconds later the settlement handed the room out **in the clear**. The
+hub's default registration TTL is two minutes and a page has no heartbeat, so
+the hand's roster row had lapsed by four seconds when the second seat
+arrived; `_hand_out` read the roster of the moment, found no exchange key for
+T1, and fell back to the public line -- which the page did not read, because
+it only ever looked in its inbox for a whisper. The manager then dealt into a
+room the hand never reached, and the game played as practice with the private
+halves in the clear.
+
+Three fixes, each for a distinct wrong assumption:
+
+- **The lobby seals to the key it witnessed at JOIN**, which is what
+  `Table.boxes` has held since 2026-09-02, and the client keeps every
+  exchange key it has seen -- so the roster of the moment gets no say.
+  `test_a_seat_whose_roster_row_lapsed_is_still_sealed_to` registers a seat
+  for one second and settles after it is gone.
+- **The page registers for the hub's ceiling** (3600s, `run_game.PRESENCE_CEILING`,
+  measured), which covers the 900s a table may form and a round besides;
+  `test_the_seat_stays_on_the_roster_for_as_long_as_a_table_may_form` reads
+  `expires_in` off the roster with a real client.
+- **The page reads the clear-text invite too**, says which way the room came,
+  and keeps reading on its own after a JOIN instead of asking the driver to
+  press a button until it appears -- the room opens two minutes after it
+  settles, and a seat not in it by then is played without. Reads are peeks,
+  so a reload loses nothing: same name, same table, "Read the board".
+
+The lesson beside the fixes: **"sealed" on the seat line was true when it was
+written and not when it mattered**, and nothing between the two moments was
+looking. A fact about a peer that is read from a roster with a TTL is a fact
+with a TTL, and any decision made from it later has to be made from what was
+recorded at the time, not from what the roster says now.
+
+### The hand's page enters the room itself
+
+Decided by Gal, 2026-09-04, in the words "the hand page should fetch and show
+game controls when game is active", after g27 ended with no trade settled.
+
+The other trader's account of g27 was that the driver reached the lobby with
+one signing key and entered the table with another, so the manager rejected
+the seat. **That is not what happened, and the board says so**: the room's
+roster held one agent, the other trader, and the manager's line was the one
+it writes for a seat that never arrived. What the trader had read was the
+manager's standing explanation of *how* a seat usually fails to bind ("a
+client built fresh for this room mints a new one"), and taken it for a
+report. The driver never entered, because the lobby page ended at a link
+that never came (the section above). But the misreading names a real seam:
+the seat's identity had to be carried from one page to another by the
+driver typing the same name, and a seam a person has to cross by hand is a
+seam somebody will one day cross wrongly.
+
+So there is no seam. `hand/room.js` is the room -- enter, board, whispers,
+the input and its shortcuts, the declaration on arrival, and a poll of the
+board every few seconds until the manager says the round is over -- and both
+pages use it. `lobby.html` enters the room **the moment it has the invite**,
+whispered or in the clear, with the very `Hub` identity that posted the JOIN,
+and shows the controls under the lobby it is already showing. `play.html` is
+the same room behind a button, for a driver arriving with an invite in the
+URL, and it keeps the brief. The link between them is still offered, as
+"open it on its own page instead", and is no longer the only way in.
+
+**Polling is reading, not driving.** The board reads itself while the round
+is on because a driver has sixty seconds an episode and cannot be asked to
+press a button to learn what the bell said; nothing on the page prompts
+anyone to act, and the bell rings on the clock whatever the page shows
+(`CLAUDE.md`, "Nothing waits for an agent"). It stops at "the round is over".
+
+`test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page` now
+carries on past the link: the controls appear on the lobby page, the
+declaration is on the room's board, and a line typed there verifies under
+the key the lobby witnessed on the JOIN -- the assertion the misreading was
+about.
+
+**The key is visible and replaceable** (Gal, 2026-09-04: "there should be a
+way to see/handle the current id"). A key the page keeps across reloads is a
+key its holder should be able to see and throw away. The lobby page lists
+every name this browser holds a key for -- public half in full on hover,
+minted when -- with "use this name", "new key" (forget and mint; a seat taken
+under the old key is then one the manager refuses, and the page says so) and
+"forget" (no recovery). The private half stays where it was, in the brief on
+the island page, so nobody copies it without noticing what they are copying.
+`identity.js` keys by the driver's name on both pages, which its comment had
+said was the table; the comment now says what the code does, and why: the
+name is the one thing a driver carries across pages and a reload.
+
 **And the wire was renamed, the same day** (Gal, 2026-09-04): the reason the
 page had the wrong context is that the tool said `whisper` and the envelope
 said `ask`, and a second implementation written to the name people use is
