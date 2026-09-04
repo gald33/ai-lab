@@ -125,10 +125,14 @@
     <button data-fill="APPROVE p1">APPROVE</button>
     <button data-fill="ACK ready">ACK</button>
   </p>
-  <button id=post>Post it</button>
+  <button id=post>Say it on the board</button>
+  <button id=whisper>Whisper it to the manager</button>
   <p class=sub>Anything at all can be posted — the room is talk as well as
   trade. Only the manager's three forms settle, and a line it does not
-  recognise is a line you did not play; it never repairs one.</p>
+  recognise is a line you did not play; it never repairs one. <b>Whisper</b>
+  your PRODUCE: it settles the same, and the shares stay off the board, where
+  a public receipt would otherwise give your capacity away. <b>Say</b> your
+  PROPOSE and APPROVE: an exchange is agreed in the open.</p>
 </fieldset>
 
 <p id=says class=warn></p>
@@ -164,7 +168,7 @@ for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]
 // is the same room behind a button, for a driver arriving with an invite in
 // the URL, and it is where the brief is.
 const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
-                        say: $("say"), post: $("post") }, say);
+                        say: $("say"), post: $("post"), whisper: $("whisper") }, say);
 bindShortcuts(document, $("say"));
 
 $("enter").addEventListener("click", async () => {

@@ -27,8 +27,8 @@
 // real Python client, which is the only check that any of the above is right.
 
 import { WorkspaceCipher, messagePayload, sign, isSealed, unsealFromPeer,
-         writerFromSeed, signRequest, WHISPER_CONTEXT, WHISPER_MARKERS }
-  from "./switchboard.js";
+         sealToPeer, writerFromSeed, signRequest, WHISPER_CONTEXT,
+         WHISPER_MARKERS, LEGACY_WHISPER_MARKER } from "./switchboard.js";
 
 export class Hub {
   constructor(url, token, cipher, identity, alias) {
@@ -44,6 +44,10 @@ export class Hub {
     // thing about `whisper` no example makes obvious -- and the bug that
     // blinded both traders in g5 for eight episodes.
     this._peers = new Map();
+    // Blinded sender -> the wire form its last whisper arrived in (`ask` or
+    // `whisper`). A reply is sealed the way the peer spoke, since that is the
+    // one form it is known to open.
+    this._peerWire = new Map();
   }
 
   static async open({ url, token, workspace, key, identity, alias, writeKey }) {
@@ -206,6 +210,61 @@ export class Hub {
     });
   }
 
+  /**
+   * Whisper one line to one peer: sealed to its published exchange key,
+   * delivered to its `@` channel, signed like everything else.
+   *
+   * Gal, 2026-09-04: a command can go by `say` or by `whisper`, and the page
+   * needs both -- the manager settles a `PRODUCE` whispered to it exactly as
+   * one said on the board, and a plan whispered keeps the labour behind a
+   * public receipt off the board (`ENTER.md`, "Play"). Same shape as the
+   * Python client's `whisper`: `send("@<peer>", envelope, type="whisper")`,
+   * the signature over the plaintext channel and the envelope as an object.
+   *
+   * **Sealed in the form the peer can open.** Switchboard 2.1.0 writes
+   * `whisper` and opens both; every release before it writes and opens `ask`
+   * only. A peer that has whispered this page is answered in the form it
+   * used; one that has not is sealed to under `ask`, the one form every
+   * release on either side of the rename opens, until 2.1.0 is what the
+   * managed hub's manager runs.
+   */
+  async whisper(to, body) {
+    if (!this._peers.size) await this.roster();
+    const exchangeKey = this._peers.get(to);
+    if (!exchangeKey) {
+      throw new Error(`no exchange key for ${to.slice(0, 8)}… on the roster yet`);
+    }
+    const envelope = await sealToPeer(body, {
+      identity: this.identity, peerExchangeKey: exchangeKey,
+      context: WHISPER_CONTEXT,
+      wire: this._peerWire.get(to) || LEGACY_WHISPER_MARKER,
+    });
+    const channel = `@${to}`;
+    this._seq += 1;
+    const wrapped = {
+      b: envelope,
+      ch: channel,
+      s: {
+        by: this.agentId,
+        n: this._seq,
+        sig: await sign(this.identity, messagePayload({
+          sender: this.agentId, channel, seq: this._seq, body: envelope,
+        })),
+      },
+    };
+    return this._call("POST", "/messages", {
+      body: {
+        workspace: this.workspace,
+        channel: await this.cipher.blindChannel(channel),
+        agent_id: this.agentId,
+        body: await this.cipher.seal(wrapped, "message.body"),
+        type: "whisper",
+        thread: null,
+        ttl: null,
+      },
+    });
+  }
+
   /** A channel's lines, oldest first, opened. */
   async history(channel, { limit = 200 } = {}) {
     const blinded = await this.cipher.blindChannel(channel);
@@ -260,6 +319,7 @@ export class Hub {
     // envelope, so what comes back from `_open` may itself be sealed.
     if (!isSealed(outer)) return outer;
     if (!WHISPER_MARKERS.has(outer.m)) return outer;
+    if (row.from) this._peerWire.set(row.from, outer.m);
     const peer = this._peers.get(row.from);
     if (!peer) {
       // Not a bad key: the roster simply has not been read, or the sender is
