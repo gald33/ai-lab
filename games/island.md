@@ -732,6 +732,18 @@ declaration is on the room's board, and a line typed there verifies under
 the key the lobby witnessed on the JOIN -- the assertion the misreading was
 about.
 
+**The key is visible and replaceable** (Gal, 2026-09-04: "there should be a
+way to see/handle the current id"). A key the page keeps across reloads is a
+key its holder should be able to see and throw away. The lobby page lists
+every name this browser holds a key for -- public half in full on hover,
+minted when -- with "use this name", "new key" (forget and mint; a seat taken
+under the old key is then one the manager refuses, and the page says so) and
+"forget" (no recovery). The private half stays where it was, in the brief on
+the island page, so nobody copies it without noticing what they are copying.
+`identity.js` keys by the driver's name on both pages, which its comment had
+said was the table; the comment now says what the code does, and why: the
+name is the one thing a driver carries across pages and a reload.
+
 **And the wire was renamed, the same day** (Gal, 2026-09-04): the reason the
 page had the wrong context is that the tool said `whisper` and the envelope
 said `ask`, and a second implementation written to the name people use is

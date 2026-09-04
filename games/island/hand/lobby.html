@@ -39,6 +39,9 @@
     padding: .15rem 0; border-bottom: 1px solid var(--edge); }
   .who { color: #6b7280; }
   .mine { border-left: 3px solid #2563eb; padding-left: .4rem; }
+  .seat { padding: .2rem 0; border-bottom: 1px solid var(--edge); font-size: 13px; }
+  .seat button { font-size: 12px; padding: .1rem .4rem; }
+  .seat code { font-size: 12px; }
   #say { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
   #says { min-height: 1.4rem; }
 </style>
@@ -66,6 +69,17 @@ never ranked.</p>
   <p class=sub id=identity>No seat key yet. One is minted under this name when
   you open or join, and the same key plays in the table&rsquo;s room — a seat
   binds by the key the lobby witnessed. A fresh name is a fresh game.</p>
+  <details id=seatsHeld>
+    <summary>Seats this browser holds</summary>
+    <p class=sub>Each name below has a signing key stored in this browser
+    (IndexedDB on this origin) and nowhere else. The public half is what the
+    lobby witnesses; the private half is shown only in the brief on the
+    island page. <b>Forget</b> deletes the key with no recovery. <b>New
+    key</b> forgets and mints another — a seat already taken under the old
+    key is then a seat the manager refuses, so do it before you join, not
+    after.</p>
+    <div id=seats></div>
+  </details>
 </fieldset>
 
 <h2>The board</h2>
@@ -203,8 +217,66 @@ async function seatIdentity() {
     `Seat key for ${alias}: ${seat.publicKey.slice(0, 12)}… — kept in this ` +
     `browser only, and used in the table's room too. Clear site data and the ` +
     `seat is gone with no recovery.`;
+  await showSeats();
   return seat;
 }
+
+/**
+ * The keys this browser holds, so a driver can see them, pick one up again,
+ * and throw one away. Asked for by Gal, 2026-09-04: a key that a page keeps
+ * across reloads is a key its holder should be able to see and replace.
+ */
+async function showSeats() {
+  const held = await identity.all();
+  $("seats").replaceChildren(...held.map((record) => {
+    const row = document.createElement("div");
+    row.className = "seat";
+    row.dataset.name = record.id;
+    const key = document.createElement("code");
+    key.title = record.publicKey;
+    key.textContent = `${record.publicKey.slice(0, 12)}…`;
+    const when = new Date(record.createdAt);
+    const use = document.createElement("button");
+    use.textContent = "use this name";
+    use.dataset.act = "use";
+    use.addEventListener("click", () => {
+      $("name").value = record.id;
+      preview();
+      seatIdentity().then(() => say(`Playing as ${record.id}.`));
+    });
+    const fresh = document.createElement("button");
+    fresh.textContent = "new key";
+    fresh.dataset.act = "new";
+    fresh.addEventListener("click", async () => {
+      await identity.forget(record.id);
+      const minted = await identity.mint(record.id);
+      if (window.HAND_SEAT?.hub?.alias === record.id) window.HAND_SEAT = undefined;
+      await showSeats();
+      say(`New key for ${record.id}: ${minted.publicKey.slice(0, 12)}… — any ` +
+          `seat taken under the old one is a seat the manager refuses.`);
+    });
+    const forget = document.createElement("button");
+    forget.textContent = "forget";
+    forget.dataset.act = "forget";
+    forget.addEventListener("click", async () => {
+      await identity.forget(record.id);
+      if (window.HAND_SEAT?.hub?.alias === record.id) window.HAND_SEAT = undefined;
+      await showSeats();
+      say(`Forgot ${record.id}'s key. There is no recovery.`);
+    });
+    row.append(`${record.id} — key `, key,
+               ` — since ${when.toISOString().slice(0, 16).replace("T", " ")}Z `,
+               use, " ", fresh, " ", forget);
+    return row;
+  }));
+  if (!held.length) {
+    const none = document.createElement("p");
+    none.className = "sub";
+    none.textContent = "None yet.";
+    $("seats").replaceChildren(none);
+  }
+}
+showSeats();
 
 async function connect() {
   return Hub.open({

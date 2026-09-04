@@ -49,12 +49,17 @@ async function raw(key) {
 }
 
 /**
- * Mint an identity for one seat at one table.
+ * Mint an identity under `id`.
  *
- * `id` is the table's id, so a second table gets a second identity rather
- * than reusing the first. Nothing here rotates or refreshes a key: a seat
- * that has played is finished, and its key is worth no more than the game it
- * played.
+ * **Both pages key by the driver's name, not the table**, because a seat
+ * binds by the key the lobby witnessed on the JOIN and the same key has to
+ * play in the room -- and the name is the one thing a driver carries from
+ * page to page and across a reload. So the same name at a second table
+ * plays under the same key, which is legal and not what an earlier version
+ * of this comment promised. A driver who wants a fresh key for a fresh game
+ * uses a fresh name, or the "new key" control on the lobby page, which
+ * forgets and mints. Nothing here rotates a key on its own: a seat that has
+ * played is finished, and its key is worth no more than the game it played.
  */
 export async function mint(id) {
   const signing = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);

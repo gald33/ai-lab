@@ -421,6 +421,47 @@ def test_the_seat_stays_on_the_roster_for_as_long_as_a_table_may_form(
     tab.close()
 
 
+def test_the_page_shows_the_keys_it_holds_and_can_replace_or_forget_one(
+        browser, site, cors_hub):
+    """Asked for by Gal, 2026-09-04: a key the page keeps across reloads is
+    a key its holder should be able to see, replace and throw away. The
+    list shows the name with the very public key the lobby witnessed; "new
+    key" mints a different one under the same name; "forget" removes it."""
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="keyed-1")
+    tab.fill("#table", "g13")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+    witnessed = tab.evaluate("window.HAND_SEAT.publicKey")
+
+    tab.click("#seatsHeld > summary")           # the fold, opened as a driver would
+    row = tab.locator(".seat[data-name='keyed-1']")
+    row.wait_for(timeout=15_000)
+    assert row.locator("code").get_attribute("title") == witnessed, \
+        "the list shows the key the lobby witnessed, in full on hover"
+
+    row.locator("button[data-act=new]").click()
+    tab.wait_for_function(
+        "document.querySelector(\".seat[data-name='keyed-1'] code\")"
+        f".title !== {witnessed!r}", timeout=15_000)
+    replaced = row.locator("code").get_attribute("title")
+    assert replaced != witnessed
+    assert tab.evaluate("window.HAND_SEAT") is None, \
+        "the seat taken under the old key is no longer this page's seat"
+    assert "manager refuses" in tab.inner_text("#says")
+
+    row.locator("button[data-act=forget]").click()
+    tab.wait_for_function(
+        "document.querySelector(\".seat[data-name='keyed-1']\") === null",
+        timeout=15_000)
+    tab.reload()
+    assert tab.locator(".seat[data-name='keyed-1']").count() == 0, \
+        "and it is gone from the browser, not just from the page"
+    assert not errors, errors
+    tab.close()
+
+
 def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub):
     """The lobby's other way of handing a room out: when it cannot seal to
     every seat, the invite goes on the public board in the clear and the game
