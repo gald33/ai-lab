@@ -491,6 +491,12 @@ def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub
     assert query["workspace"] == "ws_clear12"
     assert query["write_key"] == "seed-c"
     assert "in the clear" in tab.inner_text("#invite")
+    # The invite line is one 600-character token; the page must break it
+    # rather than grow past the viewport (Gal, 2026-09-04, from a screenshot
+    # of g32's `watch:` line running off the right edge).
+    assert tab.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"), \
+        "the page scrolls sideways"
     assert not errors, errors
     tab.close()
 
@@ -523,6 +529,46 @@ def test_entering_the_room_declares_the_driver_without_being_asked(
     bodies = [{"body": r.get("body")} for r in rows]
 
     assert hands_on_board(bodies) == {"T1": "driven"}
+    assert not errors, errors
+    tab.close()
+
+
+def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_key(
+        browser, site, cors_hub):
+    """Gal, 2026-09-04: a command can go by `say` or by `whisper`, and the
+    page needs both. The manager settles a whispered `PRODUCE` exactly as one
+    said on the board -- same author, same signature check -- so what has to
+    hold is that a real Python client registered as the manager opens what
+    the page sealed, reads the text the driver typed, and verifies it under
+    the very key the page plays with. Sealed in the `ask` form, which every
+    release on either side of the rename opens."""
+    # Its own id: the lobby test above whispers an invite to a "manager-w",
+    # and this inbox must hold exactly the one line the page sends.
+    manager = _client(cors_hub, "manager-room")
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/play.html", errors)
+    _enter(tab, cors_hub, WORKSPACE, write_key=None, name="driver-whisper")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+    seat_key = tab.evaluate("document.getElementById('who').textContent")
+
+    tab.fill("#say", "PRODUCE bread=0.5 fish=0.5")
+    tab.click("#whisper")
+    tab.wait_for_function(
+        "document.getElementById('says').textContent.startsWith('Whispered')",
+        timeout=15_000)
+
+    manager.agents()               # the page's exchange key and signing key
+    [got] = [m for m in manager.inbox() if m.get("type") == "whisper"]
+    assert got["body"] == "PRODUCE bread=0.5 fish=0.5"
+    assert not got.get("unreadable")
+    verdict = got.get("signature") or {}
+    assert verdict.get("status") == "verified", verdict
+    assert verdict["key"][:12] in seat_key, \
+        "verified under the key this page plays with"
+    board = [r.get("body") for r in _client(cors_hub, "reader-wh").history("island", limit=50)]
+    assert "PRODUCE bread=0.5 fish=0.5" not in board, "and it is not on the board"
     assert not errors, errors
     tab.close()
 

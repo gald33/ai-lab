@@ -39,8 +39,12 @@ export class Room {
     this.seat = null;
     this._poll = null;
     this._over = false;
+    this.manager = null;   // the manager's hub id, off the room's roster
     if (els.post) {
       els.post.addEventListener("click", () => this.postTyped());
+    }
+    if (els.whisper) {
+      els.whisper.addEventListener("click", () => this.whisperTyped());
     }
     if (els.say) {
       els.say.addEventListener("keydown", (event) => {
@@ -62,7 +66,7 @@ export class Room {
       url, token, workspace, key, writeKey: writeKey || null, identity, alias,
     });
     await this.hub.register(alias);
-    await this.hub.roster();
+    this._findManager(await this.hub.roster());
     await this.hub.say(this.channel, declaration(seat));
     if (this.els.who) {
       this.els.who.textContent =
@@ -82,8 +86,17 @@ export class Room {
     this._poll = null;
   }
 
+  /** The manager is whoever the roster calls `manager` (`run_game.MANAGER`);
+   *  the page learns its id here and nowhere else. */
+  _findManager(agents) {
+    const row = agents.find((a) => a.name === "manager");
+    this.manager = row ? row.agent_id : null;
+    return this.manager;
+  }
+
   async refresh() {
     if (!this.hub) return;
+    if (!this.manager) this._findManager(await this.hub.roster());
     const rows = await this.hub.history(this.channel, { limit: 200 });
     this.els.board.replaceChildren(...rows.slice(-80).map((row) => {
       const line = document.createElement("div");
@@ -109,6 +122,28 @@ export class Room {
       this.stop();
       this.status("The round is over. Nothing further settles.");
     }
+  }
+
+  /** Whisper exactly what is in the input to the manager, sealed. What the
+   *  room sees is that a whisper happened; the receipt the manager posts is
+   *  public. A `PRODUCE` goes this way; a `PROPOSE` or `APPROVE` whispered
+   *  here is still settled, but an exchange is meant to be agreed in the
+   *  open, and the manager's refusal, if any, comes back by whisper too. */
+  async whisperTyped() {
+    if (!this.hub) return this.status("Enter the room first.", true);
+    if (!this.manager) this._findManager(await this.hub.roster());
+    if (!this.manager) {
+      return this.status("No manager on this room's roster yet.", true);
+    }
+    const line = this.els.say.value;
+    if (!line.trim()) return;
+    try {
+      await this.hub.whisper(this.manager, line);
+      this.els.say.value = "";
+      this.status("Whispered to the manager. Its answer, if any, arrives " +
+                  "under \"What was whispered to you\".");
+      await this.refresh();
+    } catch (err) { this.status(String(err.message), true); }
   }
 
   /** Post exactly what is in the input. No validation gate: the manager

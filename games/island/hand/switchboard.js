@@ -25,7 +25,7 @@ const ENVELOPE_VERSION = 1;        // crypto.ENVELOPE_VERSION
 const WHISPER_MARKER = "whisper";
 const WHISPER_LABEL = "switchboard/v1/whisper";
 export const WHISPER_CONTEXT = "whisper.body";
-const LEGACY_WHISPER_MARKER = "ask";
+export const LEGACY_WHISPER_MARKER = "ask";
 const LEGACY_WHISPER_LABEL = "switchboard/v1/ask";
 const LEGACY_WHISPER_CONTEXT = "ask.body";
 export const WHISPER_MARKERS = new Set([WHISPER_MARKER, LEGACY_WHISPER_MARKER]);
@@ -254,19 +254,35 @@ export class WorkspaceCipher {
 
 // --- signing ---------------------------------------------------------------
 
+/** `json.dumps(sort_keys=True, separators=(",", ":"))`, for the one kind of
+ *  object this client ever signs: a sealed envelope, whose values are strings
+ *  and one small integer. A float would format differently in the two
+ *  languages, so anything else is refused rather than signed wrong. */
+export function canonical(value) {
+  if (typeof value === "string" || typeof value === "boolean" || value === null) {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "number") {
+    if (!Number.isInteger(value)) throw new Error("the hand's client does not sign floats");
+    return String(value);
+  }
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value).sort().map(
+    (k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(",")}}`;
+}
+
 /** `signing.message_payload`: the exact bytes a message signature covers.
  *
- *  Python serialises with sorted keys and no whitespace. `JSON.stringify`
- *  does not sort, so the four keys are written here in sorted order by hand
- *  -- `b`, `by`, `ch`, `n` -- and the body is refused unless it is a string,
- *  because a nested object would need sorting all the way down and a float
- *  formats differently in the two languages.
+ *  Python serialises with sorted keys and no whitespace. A string body is
+ *  the ordinary case -- every line this game says is one. The other body
+ *  this client signs is a whisper's sealed envelope, an object, which
+ *  `canonical` serialises the way Python does; anything else is refused.
  */
 export function messagePayload({ sender, channel, seq, body }) {
-  if (typeof body !== "string") {
-    throw new Error("the hand's client signs string bodies only");
+  if (typeof body !== "string" && !(body && typeof body === "object" && !Array.isArray(body))) {
+    throw new Error("the hand's client signs string bodies and sealed envelopes only");
   }
-  return utf8.encode(JSON.stringify({ b: body, by: sender, ch: channel, n: seq }));
+  return utf8.encode(canonical({ b: body, by: sender, ch: channel, n: seq }));
 }
 
 /** A fresh identity: Ed25519 to sign with, X25519 to seal with.
@@ -381,10 +397,21 @@ function whisperAad(context, label = WHISPER_LABEL) {
   return utf8.encode(`${label}\u0000${context}`);
 }
 
-export async function sealToPeer(value, { identity, peerExchangeKey, context }) {
+/** `crypto.seal_to_peer`. `wire` is which names to seal under: `"whisper"`
+ *  (Switchboard 2.1.0) or `"ask"` (every release before it, which 2.1.0
+ *  also opens). A sender picks the form its reader can open -- see
+ *  `Hub.whisper` for how the page decides. */
+export async function sealToPeer(value, { identity, peerExchangeKey, context,
+                                          wire = WHISPER_MARKER }) {
+  let label = WHISPER_LABEL, marker = WHISPER_MARKER;
+  if (wire === LEGACY_WHISPER_MARKER) {
+    label = LEGACY_WHISPER_LABEL; marker = LEGACY_WHISPER_MARKER;
+    if (context === WHISPER_CONTEXT) context = LEGACY_WHISPER_CONTEXT;
+  }
   const envelope = await sealBytes(
-    await whisperKey(identity, peerExchangeKey), pad(dumps(value)), whisperAad(context));
-  envelope.m = WHISPER_MARKER;
+    await whisperKey(identity, peerExchangeKey, label), pad(dumps(value)),
+    whisperAad(context, label));
+  envelope.m = marker;
   return envelope;
 }
 

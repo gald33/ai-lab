@@ -75,7 +75,12 @@
   .line::before { content: "$ "; color: var(--dim); }
   .warn { border-left: 3px solid var(--amber); padding-left: .6rem; background: rgba(255,176,0,.04); }
   #board div, #room div, #whispers div, #roomWhispers div {
-    font-size: 12.5px; padding: .18rem 0; border-bottom: 1px dotted var(--edge); }
+    font-size: 12.5px; padding: .18rem 0; border-bottom: 1px dotted var(--edge);
+    /* An invite token is 600 characters with no space in it; a line that
+       cannot break overruns the column instead. Break anywhere, and keep
+       the page from scrolling sideways. */
+    overflow-wrap: anywhere; }
+  #invite, .line, .seat { overflow-wrap: anywhere; }
   .who { color: var(--mag); }
   .who::before { content: "‹"; } .who::after { content: "›"; }
   .mine { border-left: 3px solid var(--cyan); padding-left: .4rem; background: rgba(0,229,255,.04); }
@@ -171,7 +176,8 @@ never ranked.</p>
     <button data-fill="APPROVE p1">APPROVE</button>
     <button data-fill="ACK ready">ACK</button>
   </p>
-  <button id=post>Post it</button>
+  <button id=post>Say it on the board</button>
+  <button id=whisper>Whisper it to the manager</button>
   <p class=sub>Anything at all can be posted — the room is talk as well as
   trade. Only the manager's three forms settle, and a line it does not
   recognise is a line you did not play; it never repairs one. The board
@@ -455,7 +461,8 @@ async function readInvite(hub) {
  * the controls are on the page the driver is already looking at.
  */
 const room = new Room({ board: $("room"), whispers: $("roomWhispers"),
-                        who: $("roomWho"), say: $("say"), post: $("post") }, say);
+                        who: $("roomWho"), say: $("say"), post: $("post"),
+                        whisper: $("whisper") }, say);
 bindShortcuts($("theRoom"), $("say"));
 
 async function enterRoom(seat, inv) {

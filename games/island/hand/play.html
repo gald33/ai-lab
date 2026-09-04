@@ -78,7 +78,12 @@
   .line::before { content: "$ "; color: var(--dim); }
   .warn { border-left: 3px solid var(--amber); padding-left: .6rem; background: rgba(255,176,0,.04); }
   #board div, #room div, #whispers div, #roomWhispers div {
-    font-size: 12.5px; padding: .18rem 0; border-bottom: 1px dotted var(--edge); }
+    font-size: 12.5px; padding: .18rem 0; border-bottom: 1px dotted var(--edge);
+    /* An invite token is 600 characters with no space in it; a line that
+       cannot break overruns the column instead. Break anywhere, and keep
+       the page from scrolling sideways. */
+    overflow-wrap: anywhere; }
+  #invite, .line, .seat { overflow-wrap: anywhere; }
   .who { color: var(--mag); }
   .who::before { content: "‹"; } .who::after { content: "›"; }
   .mine { border-left: 3px solid var(--cyan); padding-left: .4rem; background: rgba(0,229,255,.04); }
@@ -125,10 +130,14 @@
     <button data-fill="APPROVE p1">APPROVE</button>
     <button data-fill="ACK ready">ACK</button>
   </p>
-  <button id=post>Post it</button>
+  <button id=post>Say it on the board</button>
+  <button id=whisper>Whisper it to the manager</button>
   <p class=sub>Anything at all can be posted — the room is talk as well as
   trade. Only the manager's three forms settle, and a line it does not
-  recognise is a line you did not play; it never repairs one.</p>
+  recognise is a line you did not play; it never repairs one. <b>Whisper</b>
+  your PRODUCE: it settles the same, and the shares stay off the board, where
+  a public receipt would otherwise give your capacity away. <b>Say</b> your
+  PROPOSE and APPROVE: an exchange is agreed in the open.</p>
 </fieldset>
 
 <p id=says class=warn></p>
@@ -164,7 +173,7 @@ for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]
 // is the same room behind a button, for a driver arriving with an invite in
 // the URL, and it is where the brief is.
 const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
-                        say: $("say"), post: $("post") }, say);
+                        say: $("say"), post: $("post"), whisper: $("whisper") }, say);
 bindShortcuts(document, $("say"));
 
 $("enter").addEventListener("click", async () => {

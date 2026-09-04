@@ -102,6 +102,11 @@ async function run() {{
   out.whisperedHere = await sb.sealToPeer(
     m.body, {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
               context: fixtures.whisper.context }});
+  out.whisperedHereLegacy = await sb.sealToPeer(
+    m.body, {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
+              context: fixtures.whisper.context, wire: "ask" }});
+  out.canonical = sb.canonical({{ b: {{ n: "x", c: "y", "$swb": 1, m: "ask" }},
+                                 by: "S", ch: "@P", n: 3 }});
 
   // --- padding, which no round-trip can see --------------------------------
   // A wrong bucket still decrypts: `unpad` reads the length it was given, so
@@ -302,6 +307,24 @@ def test_python_opens_what_the_browser_whispered(ran):
             fixtures.open_whisper(ran["whisperedHere"], "messages.body")
 
 
+def test_python_opens_what_the_browser_whispered_in_the_old_form(ran):
+    """The `ask` form, which every release opens: the one the page seals in
+    for a peer it has not heard from, so a manager on 2.0.1 reads it."""
+    assert ran["whisperedHereLegacy"]["m"] == "ask"
+    assert fixtures.open_whisper(ran["whisperedHereLegacy"], "messages.body") == fixtures.BODY
+
+
+def test_the_browser_serialises_a_signed_envelope_the_way_python_does(ran):
+    """`signing.message_payload` sorts keys all the way down and puts no
+    whitespace in; a whisper's signature covers its envelope as an object,
+    so the browser has to produce the same bytes."""
+    import json
+    expected = json.dumps({"b": {"n": "x", "c": "y", "$swb": 1, "m": "ask"},
+                           "by": "S", "ch": "@P", "n": 3},
+                          sort_keys=True, separators=(",", ":"))
+    assert ran["canonical"] == expected
+
+
 def test_padding_matches_python_bucket_for_bucket(ran):
     """The one divergence a round-trip cannot see.
 
@@ -331,4 +354,4 @@ def test_a_non_string_body_is_refused_rather_than_signed_wrongly(ran):
     A client that signed it would produce a signature that verifies nowhere,
     which is worse than not signing: the refusal is the feature.
     """
-    assert "string bodies only" in (ran["refusedNonStringBody"] or "")
+    assert "string bodies" in (ran["refusedNonStringBody"] or "")

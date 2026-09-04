@@ -732,6 +732,29 @@ declaration is on the room's board, and a line typed there verifies under
 the key the lobby witnessed on the JOIN -- the assertion the misreading was
 about.
 
+**Say or whisper, both from the page** (Gal, 2026-09-04: "when we message a
+command it says it instead of whispering to the manager; we need both"). The
+manager settles a whispered `PRODUCE` exactly as one said on the board --
+`island/manager.py`, `_drain_sealed` -- and `ENTER.md` tells every entrant to
+whisper the plan and say the exchange, since a public receipt divided by a
+public plan is a capacity. The page had only `say`. It now has both buttons,
+and says which is for what. `Hub.whisper` is the Python client's `whisper`
+shape by hand: the line sealed to the manager's published exchange key,
+delivered to its `@` channel with `type: "whisper"`, the signature over the
+plaintext channel and the envelope *as an object* -- which is why
+`switchboard.js` gained `canonical`, a `sort_keys` serialiser for the one
+kind of object it signs, pinned byte-for-byte against `json.dumps`.
+
+**Sealed in the form the reader can open.** The page is a sender here, and
+the managed hub's manager runs 2.0.1, which opens `ask` only, while 2.1.0
+opens both (`CLAUDE.md`, the wire rename). So the page answers a peer in the
+form that peer last whispered in, and seals to a peer it has not heard from
+under `ask` -- the one form every release on either side of the rename
+opens. `test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_key`
+has a real Python client registered as `manager` open the page's whisper,
+read the text, verify it under the page's key, and confirm the line is not
+on the board.
+
 **The key is visible and replaceable** (Gal, 2026-09-04: "there should be a
 way to see/handle the current id"). A key the page keeps across reloads is a
 key its holder should be able to see and throw away. The lobby page lists
