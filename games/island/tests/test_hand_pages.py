@@ -491,6 +491,12 @@ def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub
     assert query["workspace"] == "ws_clear12"
     assert query["write_key"] == "seed-c"
     assert "in the clear" in tab.inner_text("#invite")
+    # The invite line is one 600-character token; the page must break it
+    # rather than grow past the viewport (Gal, 2026-09-04, from a screenshot
+    # of g32's `watch:` line running off the right edge).
+    assert tab.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"), \
+        "the page scrolls sideways"
     assert not errors, errors
     tab.close()
 
