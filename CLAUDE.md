@@ -184,6 +184,20 @@ version and not the fact. **This repo says `whisper`
 everywhere regardless**, which is correct under both the current release and
 the one that drops the alias.
 
+*Re-checked 2026-09-04 against 2.0.1, and the answer is now "on purpose".*
+The human-facing names are all `whisper`. What is still `ask` is **the wire**:
+the envelope marker `m: "ask"`, the AEAD context `ask.body`, and the HKDF
+label `switchboard/v1/ask` -- and `switchboard/crypto.py` says why next to
+`WHISPER_MARKER`: those strings are bound into the cryptography, so renaming
+them makes every release on one side of the rename refuse every envelope from
+the other, for a name only humans ever read. That is a different thing from
+the alias `Client.ask`, which can go at any time. So "removed entirely" (Gal,
+2026-08-27) was never going to reach the wire without a protocol version, and
+the hand's page had to match the wire and not the tool name -- it was opening
+whispers under the wrong context for four days (`games/island.md`, "The
+whisper the page could not open"). Anything in this repo that seals or opens
+a whisper writes `ask.body`, with a comment pointing here.
+
 *Corrected 2026-08-27, having written "has been removed" as though it had
 shipped.* That is the second time a prediction about this one tool was
 recorded here as a fact — the first said 0.11.0 would carry the old name and a
