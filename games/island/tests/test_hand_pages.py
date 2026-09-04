@@ -553,7 +553,7 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
     tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
     seat_key = tab.evaluate("document.getElementById('who').textContent")
 
-    tab.fill("#say", "PRODUCE bread=0.5 fish=0.5")
+    tab.fill("#whisperLine", "PRODUCE bread=0.5 fish=0.5")
     tab.click("#whisper")
     tab.wait_for_function(
         "document.getElementById('says').textContent.startsWith('Whispered')",
@@ -649,6 +649,9 @@ def test_a_shortcut_button_fills_the_bar_and_does_not_post(browser, site):
     errors: list[str] = []
     tab = _tab(browser, f"{site}/play.html", errors)
     tab.click("[data-fill='APPROVE p1']")
+    tab.click("[data-fill='PRODUCE ']")
+    assert tab.input_value("#whisperLine") == "PRODUCE ", \
+        "a plan is drafted on the manager's line, where it goes sealed"
 
     assert tab.input_value("#say") == "APPROVE p1"
     assert not errors, errors

@@ -87,7 +87,9 @@
   .who { color: var(--mag); }
   .who::before { content: "‹"; } .who::after { content: "›"; }
   .mine { border-left: 3px solid var(--cyan); padding-left: .4rem; background: rgba(0,229,255,.04); }
-  #say { width: 100%; box-sizing: border-box; }
+  .lineRow { display: flex; gap: .5rem; align-items: stretch; }
+  .lineRow input { flex: 1 1 auto; min-width: 0; }
+  #say, #whisperLine { box-sizing: border-box; }
   #says { min-height: 1.4rem; }
   .seat { padding: .25rem 0; border-bottom: 1px dotted var(--edge); font-size: 13px; }
   .seat button { font-size: 11px; padding: .1rem .45rem; }
@@ -122,22 +124,34 @@
 <div id=board></div>
 
 <fieldset>
-  <legend>Say something</legend>
-  <input id=say placeholder="PRODUCE bread=0.5 fish=0.5">
+  <legend>Say, on the board</legend>
+  <div class=lineRow>
+    <input id=say placeholder="PROPOSE to=T2 give=iron:0.4 want=salt:0.3">
+    <button id=post>Say it</button>
+  </div>
   <p class=sub>
-    <button data-fill="PRODUCE ">PRODUCE</button>
     <button data-fill="PROPOSE to= give=: want=:">PROPOSE</button>
     <button data-fill="APPROVE p1">APPROVE</button>
     <button data-fill="ACK ready">ACK</button>
+    — public. An exchange is agreed in the open, and so is calling one off.
   </p>
-  <button id=post>Say it on the board</button>
-  <button id=whisper>Whisper it to the manager</button>
-  <p class=sub>Anything at all can be posted — the room is talk as well as
-  trade. Only the manager's three forms settle, and a line it does not
-  recognise is a line you did not play; it never repairs one. <b>Whisper</b>
-  your PRODUCE: it settles the same, and the shares stay off the board, where
-  a public receipt would otherwise give your capacity away. <b>Say</b> your
-  PROPOSE and APPROVE: an exchange is agreed in the open.</p>
+</fieldset>
+
+<fieldset>
+  <legend>Whisper, to the manager</legend>
+  <div class=lineRow>
+    <input id=whisperLine placeholder="PRODUCE bread=0.5 fish=0.5">
+    <button id=whisper>Whisper it</button>
+  </div>
+  <p class=sub>
+    <button data-fill="PRODUCE " data-to=whisper>PRODUCE</button>
+    — sealed. It settles the same, and the shares stay off the board, where a
+    public receipt would otherwise give your capacity away. The manager's
+    answer, if any, arrives under "What was whispered to you".
+  </p>
+  <p class=sub>Anything at all can be posted either way — the room is talk as
+  well as trade. Only the manager's three forms settle, and a line it does
+  not recognise is a line you did not play; it never repairs one.</p>
 </fieldset>
 
 <p id=says class=warn></p>
@@ -173,8 +187,9 @@ for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]
 // is the same room behind a button, for a driver arriving with an invite in
 // the URL, and it is where the brief is.
 const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
-                        say: $("say"), post: $("post"), whisper: $("whisper") }, say);
-bindShortcuts(document, $("say"));
+                        say: $("say"), post: $("post"),
+                        whisperLine: $("whisperLine"), whisper: $("whisper") }, say);
+bindShortcuts(document, $("say"), $("whisperLine"));
 
 $("enter").addEventListener("click", async () => {
   try {

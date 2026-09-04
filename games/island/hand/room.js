@@ -27,7 +27,11 @@ const POLL_MS = 3000;
 export class Room {
   /**
    * @param {object} els  `board`, `whispers` and `who` elements to render
-   *   into, and `say` (the input) and `post` (the button) to wire.
+   *   into; `say` (the input) and `post` (its button) for the board; and
+   *   `whisperLine` (the input) and `whisper` (its button) for the manager.
+   *   Two lines, not one with two buttons (Gal, 2026-09-04): what goes on
+   *   the board and what goes sealed to the manager are different acts,
+   *   and a driver should not have to remember which button they meant.
    * @param {(text: string, bad?: boolean) => void} status  the page's status line
    */
   constructor(els, status) {
@@ -45,6 +49,11 @@ export class Room {
     }
     if (els.whisper) {
       els.whisper.addEventListener("click", () => this.whisperTyped());
+    }
+    if (els.whisperLine) {
+      els.whisperLine.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") this.whisperTyped();
+      });
     }
     if (els.say) {
       els.say.addEventListener("keydown", (event) => {
@@ -135,11 +144,11 @@ export class Room {
     if (!this.manager) {
       return this.status("No manager on this room's roster yet.", true);
     }
-    const line = this.els.say.value;
+    const line = this.els.whisperLine.value;
     if (!line.trim()) return;
     try {
       await this.hub.whisper(this.manager, line);
-      this.els.say.value = "";
+      this.els.whisperLine.value = "";
       this.status("Whispered to the manager. Its answer, if any, arrives " +
                   "under \"What was whispered to you\".");
       await this.refresh();
@@ -162,12 +171,15 @@ export class Room {
   }
 }
 
-/** The shortcut buttons: fill the bar, never post. */
-export function bindShortcuts(root, say) {
+/** The shortcut buttons: fill a line, never post. A button with
+ *  `data-to="whisper"` fills the manager's line (PRODUCE goes sealed);
+ *  the rest fill the board's. */
+export function bindShortcuts(root, say, whisperLine) {
   for (const button of root.querySelectorAll("[data-fill]")) {
     button.addEventListener("click", () => {
-      say.value = button.dataset.fill;
-      say.focus();
+      const target = button.dataset.to === "whisper" && whisperLine ? whisperLine : say;
+      target.value = button.dataset.fill;
+      target.focus();
     });
   }
 }
