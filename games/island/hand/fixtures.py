@@ -148,7 +148,35 @@ def build() -> dict[str, Any]:
                 DEALT, my_identity=peer, peer_exchange_key=hand.exchange_key,
                 context="messages.body"),
         },
+        # What a sender before Switchboard 2.1.0 put on the wire -- the `ask`
+        # marker, label and context -- which the page must go on opening
+        # after the wire was renamed. On a library before 2.1.0 this *is*
+        # the wire, and the two fixtures are the same bytes.
+        "legacyWhisper": {
+            "context": "messages.body",
+            "value": DEALT,
+            "envelope": _legacy_whisper(DEALT, peer, hand),
+        },
+        # Which wire the installed library speaks, so a test can say what
+        # Python must and must not be able to open.
+        "wire": WIRE,
     }
+
+
+#: `"whisper"` on a library from 2.1.0, `"ask"` before it. Read off the
+#: library rather than its version string: it is the fact, not the number.
+WIRE = getattr(crypto, "WHISPER_MARKER", "ask")
+
+
+def _legacy_whisper(value, sender, recipient) -> dict[str, Any]:
+    if WIRE == "ask":
+        return crypto.seal_to_peer(value, my_identity=sender,
+                                   peer_exchange_key=recipient.exchange_key,
+                                   context="messages.body")
+    return crypto._seal_to_peer(
+        value, my_identity=sender, peer_exchange_key=recipient.exchange_key,
+        context="messages.body", pad=True,
+        marker=crypto.LEGACY_WHISPER_MARKER, label=crypto.LEGACY_WHISPER_LABEL)
 
 
 def open_workspace(envelope: dict[str, Any], context: str) -> Any:

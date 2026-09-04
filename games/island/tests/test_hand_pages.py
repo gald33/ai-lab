@@ -29,6 +29,7 @@ import pathlib
 import shutil
 import socket
 import threading
+import urllib.parse
 
 import pytest
 
@@ -271,6 +272,85 @@ def test_the_lobby_keeps_the_seat_key_across_a_reload(browser, site, cors_hub):
     tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
 
     assert tab.evaluate("window.HAND_SEAT.publicKey") == first
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
+        browser, site, cors_hub):
+    """**The step between the two pages, which nothing else checked.**
+
+    A driver who joined and saw no input field was looking at the right page
+    at the wrong moment (2026-09-04): the input is on `play.html`, which this
+    page links to only once the table settles and the lobby whispers the
+    room. Every piece of that path was tested alone -- the JOIN was read by
+    the real parser, the lobby whispers the seats, the island page takes an
+    invite -- and the join between them, a whisper sealed by the Python
+    lobby and opened by the page's JavaScript, was not. And it was broken:
+    the page opened whispers under `message.body`, the outer envelope's
+    context, where the library seals them under `ask.body`, so every invite
+    came back "unreadable" and every driver was left pressing "Read the
+    board" with nothing on the page to say why. This test fails on that
+    page and passes on the fixed one.
+
+    So: a real lobby on the page's hub, the page in one seat, a Python
+    entrant in the other, a manager's claim, and then the page must show the
+    link -- under the status message, where the message says it is --
+    carrying the room, its key and its write key.
+    """
+    from switchboard.client import Client
+    from switchboard.config import ClientConfig
+
+    from games.island.lobby import Lobby
+
+    def _client_for(agent_id):
+        return Client(ClientConfig(url=cors_hub, url_source="explicit",
+                                   workspace=WORKSPACE, key=KEY),
+                      agent_id=agent_id)
+
+    lobby = Lobby(client=_client_for("lobby-w"))
+    lobby.present()
+    opener = _client_for("opener-w")
+    opener.register(name="opener-w", kind="local", branch="main", task="")
+    opener.post("lobby", "OPEN traders=2 episodes=2 rounds=1 goods=3 seconds=60")
+    lobby.drain()
+    table = next(t for t in lobby.tables.values() if t.opened_by == opener.agent_id)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="hand-w")
+    tab.fill("#table", table.id)
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+    lobby.drain()
+    assert len(table.seats) == 1, "the page's seat was witnessed"
+    assert not table.settled, "and nothing to play yet: one seat is empty"
+    assert tab.locator("#invite a").count() == 0, (
+        "no link before the table settles -- the page must not invent one")
+
+    other = _client_for("other-w")
+    other.register(name="other-w", kind="local", branch="main", task="")
+    other.post("lobby", f"JOIN {table.id} as other-w")
+    manager = _client_for("manager-w")
+    manager.register(name="lucille", kind="local", branch="main", task="")
+    manager.post("lobby", f"MANAGE {table.id}")
+    lobby.drain()
+    assert table.settled
+
+    tab.click("#refresh")
+    link = tab.locator("#invite a")
+    link.wait_for(timeout=15_000)
+    assert "island page" in link.inner_text()
+    href = link.get_attribute("href")
+    assert href.startswith("./play.html?"), href
+    query = dict(urllib.parse.parse_qsl(href.split("?", 1)[1]))
+    assert query["workspace"] == table.workspace
+    assert query["name"] == "hand-w"
+    assert query["write_key"], "the seat's invite carries the room's write key"
+    # Under the status message, not somewhere else on the page: the message
+    # says where to look, and the test holds it to that.
+    assert tab.evaluate(
+        "document.getElementById('says').nextElementSibling.id") == "invite"
     assert not errors, errors
     tab.close()
 
