@@ -99,6 +99,44 @@ def test_a_table_settles_the_moment_it_is_full_and_managed(hub):
     assert not any(str(table.seed) in b for b in lines)
 
 
+def test_a_seat_whose_roster_row_lapsed_is_still_sealed_to(hub):
+    """**g27, 2026-09-04.** The seat line said "sealed" when the hand sat
+    down; 126 seconds later the table filled, the hand's two-minute roster
+    row had lapsed, and the invite went on the board in the clear. The key a
+    seat published when it sat down is what `Table.boxes` is for, and the
+    client keeps every exchange key it has seen, so the roster of the moment
+    does not get a say. Registered for one second here, and settled after
+    it has lapsed."""
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    opener = _client(hub, "opener", key)
+    t1 = _client(hub, "t1", key)
+    t1.register(name="t1", kind="local", branch="main", task="", ttl=1)
+    t2 = _entrant(hub, "t2", key)
+    manager = _entrant(hub, "manager-claim", key)
+
+    opener.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+    t1.post("lobby", "JOIN g1 as early")
+    lobby.drain()
+    assert t1.agent_id in lobby.tables["g1"].boxes, "sealed when it sat down"
+
+    time.sleep(1.5)
+    assert not any(a["agent_id"] == t1.agent_id for a in lobby.client.agents()), \
+        "and gone from the roster by the time the table fills"
+    t2.post("lobby", "JOIN g1 as late")
+    manager.post("lobby", "MANAGE g1")
+    lobby.drain()
+
+    lines = [m["body"] for m in lobby.client.history("lobby")]
+    assert any(b.startswith("g1 invite: sealed to T1, T2") for b in lines), \
+        [b for b in lines if b.startswith("g1 invite")]
+    t1.agents()               # the lobby's exchange key, as any reader must
+    [got] = [m for m in t1.inbox() if isinstance(m.get("body"), str)
+             and m["body"].startswith("g1 invite: swb1_")]
+    assert got and not got.get("unreadable")
+
+
 def test_settling_on_manage_before_the_table_is_full(hub):
     """Order should not matter: MANAGE arriving before the last seat also
     settles the instant the table becomes full."""

@@ -85,9 +85,10 @@ never ranked.</p>
   on the board with your JOIN. A table where every seat brought one is settled
   on an island nobody chose.</p>
   <p class=sub>Nothing is played on this page. A table settles only once every
-  seat is taken and a manager has claimed it; then the lobby whispers you its
+  seat is taken and a manager has claimed it; then the lobby hands you its
   room and a link to the island page appears under the message below. The
-  island page is where the input field is.</p>
+  island page is where the input field is. If you reload, put the same name
+  and table back and press "Read the board".</p>
   <p class=line id=joinPreview></p>
   <button class=go id=join>Post this JOIN</button>
 </fieldset>
@@ -214,24 +215,53 @@ async function readBoardAgain(hub) {
   await readBoard(hub);
 }
 
+/** The seat this page holds, or the one it held before a reload: the name
+ *  has a key in this browser and the table field names a table. Opening a
+ *  connection with that identity registers nothing, so it publishes no key
+ *  over the one the lobby witnessed. */
+async function seatOrRemembered() {
+  if (window.HAND_SEAT) return window.HAND_SEAT;
+  const table = $("table").value, alias = $("name").value;
+  if (!table || !alias) return null;
+  const seat = await identity.load(alias);
+  if (!seat) return null;
+  const hub = await Hub.open({
+    url: $("url").value, token: $("token").value,
+    workspace: $("workspace").value, key: $("key").value,
+    identity: seat, alias,
+  });
+  window.HAND_SEAT = { table, publicKey: seat.publicKey, hub };
+  return window.HAND_SEAT;
+}
+
 $("refresh").addEventListener("click", async () => {
   try {
-    const hub = window.HAND_SEAT?.hub;
-    await readBoard(hub);
-    if (hub) await readInvite(hub);
+    const seat = await seatOrRemembered();
+    await readBoard(seat?.hub);
+    if (seat) await readInvite(seat.hub);
     say(`Read ${window.HAND_BOARD.length} lines.`);
   } catch (err) { say(String(err.message), true); }
 });
 
-/** The invite the lobby whispered to this seat, if it has: decoded and turned
- *  into the link to the island page. Since 2026-09-02 the room is never on
- *  the board -- it is sealed to each seat -- so this reads the inbox with the
- *  same connection that registered, which is the identity it was sealed to.
+/** The invite for this seat's table, if the lobby has handed it out: decoded
+ *  and turned into the link to the island page.
+ *
+ *  Two places to look, because the lobby has two ways of handing a room out.
+ *  Whispered to each seat -- the ordinary way since 2026-09-02, read from the
+ *  inbox with the seat's own identity, and *peeked*, so a read that shows
+ *  nothing consumes nothing and a reload finds it again. Or **on the board in
+ *  the clear**, which is what the lobby does when it cannot seal to every
+ *  seat and the manager; that is a practice game, and until g27 (2026-09-04)
+ *  this page did not look there at all, so a driver whose room was handed
+ *  out in public saw no link and no reason.
  *  `Invite.encode` is `swb1_` + base64url of `{v,u,w,t,k,...}`. */
+const INVITE_LINE = /^(\S+) invite: (swb1_[A-Za-z0-9_-]+)$/;
+
 async function readInvite(hub) {
   const seat = window.HAND_SEAT;
-  if (!seat) return;
-  for (const row of await hub.inbox({ limit: 50 })) {
+  if (!seat) return false;
+  let found = null;
+  for (const row of await hub.inbox({ limit: 50, peek: true })) {
     // A whisper this page could not open is said, not skipped: for four days
     // every invite was unopenable here and the page showed nothing at all.
     if (row.body && typeof row.body === "object" && row.body.unreadable) {
@@ -239,26 +269,59 @@ async function readInvite(hub) {
           `${row.body.unreadable}.`, true);
       continue;
     }
-    const body = typeof row.body === "string" ? row.body : "";
-    const m = /^(\S+) invite: (swb1_[A-Za-z0-9_-]+)$/.exec(body);
-    if (!m || m[1] !== seat.table) continue;
-    const raw = m[2].slice(5).replace(/-/g, "+").replace(/_/g, "/");
-    const inv = JSON.parse(atob(raw + "=".repeat((4 - raw.length % 4) % 4)));
-    const q = new URLSearchParams({ workspace: inv.w, key: inv.k,
-                                    name: $("name").value || "hand" });
-    // The room is write-protected; the seat's invite carries its write key.
-    if (inv.wk) q.set("write_key", inv.wk);
-    window.HAND_INVITE = inv;
-    const a = document.createElement("a");
-    a.href = `./play.html?${q}`;
-    a.textContent = `Enter ${seat.table}'s room as ${$("name").value || "hand"} ` +
-                    `— the island page, where you play`;
-    const p = document.createElement("p");
-    p.className = "sub";
-    p.append(`The lobby whispered you ${seat.table}'s room (workspace ${inv.w}). `, a);
-    $("invite").replaceChildren(p);
-    return;
+    const m = INVITE_LINE.exec(typeof row.body === "string" ? row.body : "");
+    if (m && m[1] === seat.table) { found = { code: m[2], how: "whispered you" }; break; }
   }
+  if (!found) {
+    for (const row of window.HAND_BOARD || []) {
+      const m = INVITE_LINE.exec(typeof row.body === "string" ? row.body : "");
+      if (m && m[1] === seat.table) {
+        found = { code: m[2], how: "posted, in the clear on this public board," };
+      }
+    }
+  }
+  if (!found) return false;
+  const raw = found.code.slice(5).replace(/-/g, "+").replace(/_/g, "/");
+  const inv = JSON.parse(atob(raw + "=".repeat((4 - raw.length % 4) % 4)));
+  const q = new URLSearchParams({ workspace: inv.w, key: inv.k,
+                                  name: $("name").value || "hand" });
+  // The room is write-protected; the seat's invite carries its write key.
+  if (inv.wk) q.set("write_key", inv.wk);
+  window.HAND_INVITE = inv;
+  const a = document.createElement("a");
+  a.href = `./play.html?${q}`;
+  a.textContent = `Enter ${seat.table}'s room as ${$("name").value || "hand"} ` +
+                  `— the island page, where you play`;
+  const p = document.createElement("p");
+  p.className = "sub";
+  p.append(`The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). `, a);
+  $("invite").replaceChildren(p);
+  return true;
+}
+
+/** After a JOIN, keep looking until the room is handed out -- every few
+ *  seconds, for as long as a table is allowed to form -- so the link is on
+ *  the page when the lobby posts it and not when the driver next presses a
+ *  button. The room opens two minutes after it settles, and a seat that is
+ *  not in it by then is played without. Reading is all this does; nothing
+ *  here prompts anyone to act. */
+let watching = null;
+function watchForInvite(hub, table) {
+  clearInterval(watching);
+  const until = Date.now() + 900 * 1000;
+  watching = setInterval(async () => {
+    if (window.HAND_SEAT?.table !== table || Date.now() > until) {
+      clearInterval(watching); return;
+    }
+    try {
+      await readBoard(hub);
+      if (await readInvite(hub)) {
+        clearInterval(watching);
+        say(`${table} has its room — open the island page below, under this ` +
+            `same name, before it opens.`);
+      }
+    } catch { /* the next tick reads again */ }
+  }, 5000);
 }
 
 $("open").addEventListener("click", async () => {
@@ -287,14 +350,14 @@ $("join").addEventListener("click", async () => {
     window.HAND_SEAT = { table, publicKey: seat.publicKey, hub };
     say(`Posted. The table settles once every seat is taken and a manager ` +
         `has claimed it — the board says how many are seated. Then the lobby ` +
-        `whispers you its room: press "Read the board" until a link to the ` +
-        `island page appears under this message, and open it under this same ` +
-        `name, so the key the lobby witnessed is the key that plays. The ` +
+        `hands you its room and a link to the island page appears under this ` +
+        `message — this page keeps reading until it does. Open it under this ` +
+        `same name, so the key the lobby witnessed is the key that plays. The ` +
         `input field is on that page, not here.`);
     // Reusing the connection rather than making a second one: another
     // `register` under this name would publish another key over this one.
     await readBoardAgain(hub);
-    await readInvite(hub);
+    if (!(await readInvite(hub))) watchForInvite(hub, table);
   } catch (err) { say(String(err.message), true); }
 });
 </script>

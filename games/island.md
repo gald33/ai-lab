@@ -657,6 +657,41 @@ It fails on the old page. A whisper the page cannot open is now said on the
 status line rather than skipped, because four days of silence is what
 skipping bought.
 
+**The seat that lapsed before the table filled** (g27, 2026-09-04, the same
+morning, from the same driver asking the same question after the fix above
+was live). The board told the story: the JOIN's seat line said *sealed*, and
+126 seconds later the settlement handed the room out **in the clear**. The
+hub's default registration TTL is two minutes and a page has no heartbeat, so
+the hand's roster row had lapsed by four seconds when the second seat
+arrived; `_hand_out` read the roster of the moment, found no exchange key for
+T1, and fell back to the public line -- which the page did not read, because
+it only ever looked in its inbox for a whisper. The manager then dealt into a
+room the hand never reached, and the game played as practice with the private
+halves in the clear.
+
+Three fixes, each for a distinct wrong assumption:
+
+- **The lobby seals to the key it witnessed at JOIN**, which is what
+  `Table.boxes` has held since 2026-09-02, and the client keeps every
+  exchange key it has seen -- so the roster of the moment gets no say.
+  `test_a_seat_whose_roster_row_lapsed_is_still_sealed_to` registers a seat
+  for one second and settles after it is gone.
+- **The page registers for the hub's ceiling** (3600s, `run_game.PRESENCE_CEILING`,
+  measured), which covers the 900s a table may form and a round besides;
+  `test_the_seat_stays_on_the_roster_for_as_long_as_a_table_may_form` reads
+  `expires_in` off the roster with a real client.
+- **The page reads the clear-text invite too**, says which way the room came,
+  and keeps reading on its own after a JOIN instead of asking the driver to
+  press a button until it appears -- the room opens two minutes after it
+  settles, and a seat not in it by then is played without. Reads are peeks,
+  so a reload loses nothing: same name, same table, "Read the board".
+
+The lesson beside the fixes: **"sealed" on the seat line was true when it was
+written and not when it mattered**, and nothing between the two moments was
+looking. A fact about a peer that is read from a roster with a TTL is a fact
+with a TTL, and any decision made from it later has to be made from what was
+recorded at the time, not from what the roster says now.
+
 **And the wire was renamed, the same day** (Gal, 2026-09-04): the reason the
 page had the wrong context is that the tool said `whisper` and the envelope
 said `ask`, and a second implementation written to the name people use is

@@ -337,7 +337,8 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     lobby.drain()
     assert table.settled
 
-    tab.click("#refresh")
+    # No button: after a JOIN the page keeps reading until the room is handed
+    # out, so the link appears on its own within one poll.
     link = tab.locator("#invite a")
     link.wait_for(timeout=15_000)
     assert "island page" in link.inner_text()
@@ -351,6 +352,77 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
         "document.getElementById('says').nextElementSibling.id") == "invite"
+
+    # **And again after a reload.** The page's memory of its seat is gone;
+    # the key is not (IndexedDB), and the whisper is still in the inbox
+    # because the read that showed it was a peek. Same name, same table,
+    # "Read the board", same link.
+    tab.reload()
+    _fill_room(tab, cors_hub, name="hand-w")
+    tab.fill("#table", table.id)
+    tab.click("#refresh")
+    again = tab.locator("#invite a")
+    again.wait_for(timeout=15_000)
+    assert again.get_attribute("href") == href
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_seat_stays_on_the_roster_for_as_long_as_a_table_may_form(
+        browser, site, cors_hub):
+    """**g27, 2026-09-04.** A hand joined; the second seat came 126 seconds
+    later; the hand's roster row, registered with the hub's two-minute
+    default, had lapsed by four seconds when the table settled, so the lobby
+    could not seal the room to it and the page never showed a link. The page
+    registers for the hub's ceiling now, which covers the whole of the 900s
+    a table is allowed to form and a round besides. Read off the roster with
+    a real client: the row's `expires_in`, not what the page asked for."""
+    from games.island.lobby import TABLE_TTL
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="patient")
+    tab.fill("#table", "g11")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    rows = [a for a in _client(cors_hub, "reader-ttl").agents()
+            if a.get("name") == "patient"]
+    assert rows, "the page's seat is on the roster"
+    assert rows[0]["expires_in"] > TABLE_TTL, rows[0]
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub):
+    """The lobby's other way of handing a room out: when it cannot seal to
+    every seat, the invite goes on the public board in the clear and the game
+    is practice. Until g27 the page only read its inbox, so a driver whose
+    room was posted in public saw nothing. Now it is the same link, and the
+    page says which way it came."""
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="hand-c")
+    tab.fill("#table", "g12")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+    assert tab.locator("#invite a").count() == 0
+
+    lobby = _client(cors_hub, "lobby-c")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_clear12", token="", key=KEY,
+                  write_key="seed-c", note="g12").encode()
+    lobby.post("lobby", f"g12 invite: {code}")
+
+    tab.click("#refresh")
+    link = tab.locator("#invite a")
+    link.wait_for(timeout=15_000)
+    query = dict(urllib.parse.parse_qsl(link.get_attribute("href").split("?", 1)[1]))
+    assert query["workspace"] == "ws_clear12"
+    assert query["write_key"] == "seed-c"
+    assert "in the clear" in tab.inner_text("#invite")
     assert not errors, errors
     tab.close()
 
