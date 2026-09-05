@@ -18,6 +18,7 @@
 
 import { Hub } from "./hub.js";
 import { declaration } from "./declaration.js";
+import { compose, loadMark, saveMark, toClipboard } from "./transcript.js";
 
 //: The manager's closing line. `island/manager.py` writes it; the page reads
 //: it back to know there is nothing more to poll for.
@@ -44,6 +45,13 @@ export class Room {
     this._poll = null;
     this._over = false;
     this.manager = null;   // the manager's hub id, off the room's roster
+    this._names = {};      // blinded id -> roster name, for the transcript
+    if (els.copyAll) {
+      els.copyAll.addEventListener("click", () => this.copy("all"));
+    }
+    if (els.copyNew) {
+      els.copyNew.addEventListener("click", () => this.copy("new"));
+    }
     if (els.post) {
       els.post.addEventListener("click", () => this.postTyped());
     }
@@ -96,11 +104,78 @@ export class Room {
   }
 
   /** The manager is whoever the roster calls `manager` (`run_game.MANAGER`);
-   *  the page learns its id here and nowhere else. */
+   *  the page learns its id here and nowhere else. The rest of the roster is
+   *  kept too, so a copied transcript can say who spoke rather than handing a
+   *  model six characters of a blinded id. */
   _findManager(agents) {
     const row = agents.find((a) => a.name === "manager");
     this.manager = row ? row.agent_id : null;
+    for (const agent of agents) {
+      if (agent.name) this._names[agent.agent_id] = agent.name;
+    }
     return this.manager;
+  }
+
+  /** What a copy would carry, composed against the mark this room has kept.
+   *  `all` ignores the mark; `new` starts from it. */
+  _transcript(kind) {
+    return compose({
+      room: this.hub.workspace, channel: this.channel,
+      seat: this.seat, alias: this.hub.alias,
+      board: window.HAND_BOARD || [], whispers: window.HAND_WHISPERS || [],
+      since: kind === "all" ? { board: 0, whispers: [] }
+                            : loadMark(this.hub.workspace, this.channel),
+      names: this._names, meId: this.hub.agentId,
+    });
+  }
+
+  /**
+   * Copy the room out for a model that cannot see it.
+   *
+   * **The mark advances only after the clipboard has taken the text.** A mark
+   * moved first would, on a refused clipboard, silently drop exactly the lines
+   * it claimed to have sent -- and the driver would find out by the model
+   * answering about a round it had not been told the middle of.
+   */
+  async copy(kind) {
+    if (!this.hub) return this.status("Enter the room first.", true);
+    const made = this._transcript(kind);
+    window.HAND_COPIED = { kind, ...made };
+    if (await toClipboard(made.text)) {
+      saveMark(this.hub.workspace, this.channel, made.mark);
+      this._sayCopied(kind, made);
+    } else if (this.els.copyOut) {
+      // Not a failure to hide: the text is put where it can be copied by
+      // hand, which is the whole job done by another route.
+      this.els.copyOut.hidden = false;
+      this.els.copyOut.value = made.text;
+      this.els.copyOut.select();
+      saveMark(this.hub.workspace, this.channel, made.mark);
+      this.status("This browser would not give the page a clipboard — the " +
+                  "text is below, selected, to copy by hand.", true);
+    } else {
+      this.status("This browser would not give the page a clipboard.", true);
+    }
+    this._countNew();
+  }
+
+  _sayCopied(kind, made) {
+    const what = `${made.board} board line(s) and ${made.whispers} whisper(s)`;
+    this.status(kind === "all"
+      ? `Copied the whole room — ${what}. The next "copy new" starts here.`
+      : (made.board + made.whispers
+          ? `Copied ${what} — only what arrived since the last copy.`
+          : "Nothing new since the last copy."));
+  }
+
+  /** Keep the "copy new" button honest about what it would copy: the count,
+   *  and nothing to press when there is nothing to send. */
+  _countNew() {
+    if (!this.els.copyNew || !this.hub) return;
+    const made = this._transcript("new");
+    const n = made.board + made.whispers;
+    this.els.copyNew.textContent = n ? `Copy new (${n})` : "Copy new";
+    this.els.copyNew.disabled = !n;
   }
 
   async refresh() {
@@ -126,6 +201,7 @@ export class Room {
     }));
     window.HAND_BOARD = rows;
     window.HAND_WHISPERS = whispers;
+    this._countNew();
     if (!this._over && rows.some((r) => typeof r.body === "string" && OVER.test(r.body))) {
       this._over = true;
       this.stop();
