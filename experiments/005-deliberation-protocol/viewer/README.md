@@ -4351,8 +4351,45 @@ module that throws) rather than waited for. It also closes its page now: it is
 the last check in the plan so the leak cost nothing, but a check that only
 works while it is last has a requirement nobody wrote down.
 
-This does not fix the flake. It means the next occurrence arrives with the
-page's own account of it instead of a stopwatch reading, which is the
+**And then it happened again on the very pull request that added this, which
+is how the first real fact about the flake was got.** `drawing-quick` failed on
+#223 with `raised TimeoutError: Page.screenshot: Timeout 30000ms exceeded`, and
+`recorded` took 90.4s. The arithmetic settles what happened without guessing:
+
+    MOUNT_MS            60.0s   the mount timed out, exactly as on #220
+    screenshot default  30.0s   then the shot taken on that path hung
+                        -----
+                        90.0s   against 90.4s measured
+
+Two things follow. The second is the important one.
+
+**The change had a bug, and its own first outing found it.** The failure branch
+reached for the picture *before* appending the message, so on a page too wedged
+to photograph the screenshot hung for its own 30s and raised — throwing away
+the diagnostic the branch existed to produce. The message goes first now, and
+the picture is best-effort with a 10s budget (`_best_effort_shot`), so a
+camera that cannot fire never again costs the sentence that says why.
+
+**A page that cannot be photographed is not a slow page.** A mount that is
+merely slow still screenshots in about a second; this one could not be
+photographed at all in thirty. So the earlier phrasing — "a mount that was
+merely slow" — is too generous to the page, and the check now says which of the
+two it met. That is the first thing anyone has learned about this failure
+beyond how long it waited, and it points at an unresponsive renderer rather
+than a slow one, which is a different thing to go looking for.
+
+Both branches are exercised against a deliberately wedged renderer (a main
+thread blocked after load), not waited for:
+
+```
+… recorded: nothing mounted in 8s; the page said nothing, which rules out a
+    script that threw and leaves a mount that was merely slow
+… recorded: and the page could not be photographed either (TimeoutError), so
+    its renderer was not merely slow but unresponsive
+```
+
+This still does not fix the flake. It means the next occurrence arrives with
+the page's own account of it instead of a stopwatch reading, which is the
 difference between a second investigation and this one.
 
 **The second half was held back once, and the reason was measured.**
