@@ -214,6 +214,30 @@ broken install rather than a loud one. The check is the one above:
 `pip download agent-switchboard -d /tmp/x --no-deps` and read
 `crypto.WHISPER_MARKER`.
 
+*It shipped, and the check was run rather than taken on trust* (2026-09-05).
+PyPI's newest is **2.2.2**, and the wheel carries `WHISPER_MARKER =
+"whisper"`, `WHISPER_LABEL = "switchboard/v1/whisper"`, `WHISPER_CONTEXT =
+"whisper.body"`, the three `LEGACY_WHISPER_*` names it still opens, and no
+`Client.ask`. The managed hub reports `2.2.2` on `/health` too. **The floor
+moved to 2.2.2**, not 2.1.0, because the rule two paragraphs up is that the
+floor sits at the newest release and is meant to be loud — a version that
+merely contains the fix would leave every existing venv where it stands.
+
+Running the command mattered: the prediction under test was "2.1.0", and what
+is actually installable is 2.2.2. Three times now this section has been
+written from somebody's `main` and been wrong about the number; this is the
+first time it was written from the wheel. **The sentence to keep is that a
+release is a fact you download, not a fact you are told** — including when you
+are told by someone who cut it, since what they cut and what the index serves
+are still two different claims.
+
+**The page still seals `ask` to a peer it has not heard from, and that is not
+an oversight.** Every release opens `ask`; only 2.1.0 and later open
+`whisper`. The manager runs on a host with whatever wheel that host installed,
+which the floor obliges but does not retroactively perform, so a host that has
+not reinstalled is still a 2.0.1 reader. The default flips when hosts are
+known upgraded, not when PyPI is.
+
 *Corrected 2026-08-27, having written "has been removed" as though it had
 shipped.* That is the second time a prediction about this one tool was
 recorded here as a fact — the first said 0.11.0 would carry the old name and a
