@@ -6923,6 +6923,17 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
     }]})
 
     page = browser.new_page(viewport={"width": 1200, "height": 800})
+    #: **The only check in this suite that watched for nothing.** Every other
+    #: one listens for a page error and a console error; this one did not, so
+    #: when it failed on #220 all it could say was `Timeout 60000ms exceeded`
+    #: -- and a mount that never happens has a reason the page knows and the
+    #: harness threw away. Reproduction was attempted before this was written
+    #: and came to nothing (`viewer/README.md`), so what this buys is the next
+    #: failure being legible rather than this one being fixed.
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
     page.route(ROOM_READER_URL, lambda r: r.fulfill(
         status=200, content_type="application/javascript", body=reader))
     page.route(record + "index.json", lambda r: r.fulfill(
@@ -6933,8 +6944,20 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
         status=200, content_type="application/json", body=board.read_text()))
     page.goto(f"{base}/?workspace={room}&hub=https://hub.test"
               f"&games={record}index.json")
-    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     bad: list[str] = []
+    #: A mount that misses `MOUNT_MS` says what the page said while it was
+    #: failing to mount, and leaves a picture. It used to raise instead, which
+    #: `run` reports as a bare timeout with no page, no console and no shot.
+    try:
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
+    except Exception:  # noqa: BLE001 - reported, with what the page said
+        page.screenshot(path=str(out / "recorded-nomount.png"))
+        bad.append(f"{stem} recorded: nothing mounted in {MOUNT_MS // 1000}s"
+                   + (f"; the page said {errs[:4]}" if errs
+                      else "; the page said nothing, which rules out a script "
+                           "that threw and leaves a mount that was merely slow"))
+        page.close()
+        return bad
     #: The first poll mounts the board; the one after it, three seconds on,
     #: finds the room over and asks the record. Waited for, not assumed.
     try:
@@ -6956,7 +6979,15 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
                    f"record's place: {seen['official'].strip()[:120]!r}")
     if "no sidecar" in seen["verdict"]:
         bad.append(f"{stem} recorded: the card still says there is no sidecar")
+    #: Anything the page complained about on the way through, whether or not
+    #: an assertion above caught it: a check that saw a script throw and said
+    #: nothing is how a real failure gets spent as a green tick.
+    bad += [f"{stem} recorded: {e}" for e in errs]
     page.screenshot(path=str(out / "recorded.png"))
+    #: **Closed, unlike every earlier version of this check.** It is the last
+    #: check in the plan, so its leak cost nothing measurable -- and a check
+    #: that only works while it is last is a check with a hidden requirement.
+    page.close()
     return bad
 
 
