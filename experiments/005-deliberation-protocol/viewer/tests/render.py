@@ -6882,6 +6882,36 @@ KNOWN_FAILURES: dict[str, tuple[str, str]] = {}
 ROOM_READER_URL = "https://gald33.github.io/switchboard/switchboard-room.js"
 
 
+def _shut(page) -> None:
+    """Close a page without letting the close decide the check's verdict."""
+    try:
+        page.close()
+    except Exception:  # noqa: BLE001 - a page that will not close is not a finding
+        pass
+
+
+def _best_effort_shot(page, path: Path, bad: list[str], label: str) -> None:
+    """A picture if the page can still give one, and a line saying so if not.
+
+    **Screenshots hang.** Measured on gald33/ai-lab#223: `recorded`'s mount
+    missed `MOUNT_MS`, the failure branch reached for a screenshot first, and
+    that screenshot hung for its own 30s and raised -- which threw away the
+    message the branch had been added to produce. The picture is worth having
+    and is never worth the diagnosis, so it is taken last, with a short
+    budget, and its own failure is reported rather than raised.
+
+    That it can hang at all is the most informative thing this check has
+    produced about the flake: a page merely slow to mount still screenshots in
+    about a second. One that cannot is not slow, it is unresponsive.
+    """
+    try:
+        page.screenshot(path=str(path), timeout=10_000)
+    except Exception as exc:  # noqa: BLE001 - reported, never raised
+        bad.append(f"{label}: and the page could not be photographed either "
+                   f"({type(exc).__name__}), so its renderer was not merely "
+                   f"slow but unresponsive")
+
+
 def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
     """A room watched through an invite takes its ending from the record.
 
@@ -6923,6 +6953,17 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
     }]})
 
     page = browser.new_page(viewport={"width": 1200, "height": 800})
+    #: **The only check in this suite that watched for nothing.** Every other
+    #: one listens for a page error and a console error; this one did not, so
+    #: when it failed on #220 all it could say was `Timeout 60000ms exceeded`
+    #: -- and a mount that never happens has a reason the page knows and the
+    #: harness threw away. Reproduction was attempted before this was written
+    #: and came to nothing (`viewer/README.md`), so what this buys is the next
+    #: failure being legible rather than this one being fixed.
+    errs: list[str] = []
+    page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errs.append(f"console {m.type}: {m.text}")
+            if m.type == "error" else None)
     page.route(ROOM_READER_URL, lambda r: r.fulfill(
         status=200, content_type="application/javascript", body=reader))
     page.route(record + "index.json", lambda r: r.fulfill(
@@ -6933,8 +6974,23 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
         status=200, content_type="application/json", body=board.read_text()))
     page.goto(f"{base}/?workspace={room}&hub=https://hub.test"
               f"&games={record}index.json")
-    page.wait_for_selector(".hut", timeout=MOUNT_MS)
     bad: list[str] = []
+    #: A mount that misses `MOUNT_MS` says what the page said while it was
+    #: failing to mount, and leaves a picture. It used to raise instead, which
+    #: `run` reports as a bare timeout with no page, no console and no shot.
+    try:
+        page.wait_for_selector(".hut", timeout=MOUNT_MS)
+    except Exception:  # noqa: BLE001 - reported, with what the page said
+        #: **The message before the picture.** Taking the shot first cost this
+        #: diagnostic once already -- see `_best_effort_shot`.
+        bad.append(f"{stem} recorded: nothing mounted in {MOUNT_MS // 1000}s"
+                   + (f"; the page said {errs[:4]}" if errs
+                      else "; the page said nothing, which rules out a script "
+                           "that threw and leaves a mount that was merely slow"))
+        _best_effort_shot(page, out / "recorded-nomount.png", bad,
+                          f"{stem} recorded")
+        _shut(page)
+        return bad
     #: The first poll mounts the board; the one after it, three seconds on,
     #: finds the room over and asks the record. Waited for, not assumed.
     try:
@@ -6944,7 +7000,8 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
     except Exception:  # noqa: BLE001 - the failure is reported below
         bad.append(f"{stem} recorded: the round ended and the record host had "
                    f"the game, and the page never showed its official line")
-        page.screenshot(path=str(out / "recorded.png"))
+        _best_effort_shot(page, out / "recorded.png", bad, f"{stem} recorded")
+        _shut(page)
         return bad
     bad += ending(page, json.loads(reveal), f"{stem} recorded")
     seen = page.evaluate("""() => ({
@@ -6956,7 +7013,15 @@ def recorded(browser, base: str, board: Path, out: Path) -> list[str]:
                    f"record's place: {seen['official'].strip()[:120]!r}")
     if "no sidecar" in seen["verdict"]:
         bad.append(f"{stem} recorded: the card still says there is no sidecar")
-    page.screenshot(path=str(out / "recorded.png"))
+    #: Anything the page complained about on the way through, whether or not
+    #: an assertion above caught it: a check that saw a script throw and said
+    #: nothing is how a real failure gets spent as a green tick.
+    bad += [f"{stem} recorded: {e}" for e in errs]
+    _best_effort_shot(page, out / "recorded.png", bad, f"{stem} recorded")
+    #: **Closed, unlike every earlier version of this check.** It is the last
+    #: check in the plan, so its leak cost nothing measurable -- and a check
+    #: that only works while it is last is a check with a hidden requirement.
+    _shut(page)
     return bad
 
 

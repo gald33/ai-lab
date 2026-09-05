@@ -4313,6 +4313,85 @@ its own island, so a level added for some other round cannot reach in and
 relabel it. That form does not expire as the ledger grows, which is what the old
 one did.
 
+### `recorded` failed on #220, and what ruling it out cost
+
+2026-09-05. `drawing-quick` went red on `recorded` with a bare
+`Page.wait_for_selector: Timeout 60000ms exceeded` — the `.hut` mount, which
+takes about three and a half seconds. The diff on that pull request was two of
+the hand's pages and no viewer code at all.
+
+**Two hypotheses, both measured, both wrong.**
+
+| what was tested | how | result |
+|---|---|---|
+| a contended runner | the mount, 5×, with 8 spinners on 4 cores | 5.3–6.3s against 3.4–4.7s idle |
+| a browser worn down by ~30 prior checks | 26 island pages, one browser, mount timed on each | flat: 3.4s at page 0, 3.6s at page 25 |
+
+Neither goes anywhere near 60s, and **the failure did not reproduce in ~35
+attempts**. CPU contention costs about two seconds; page count costs nothing
+measurable. So the timeout is not the mount being slow for either of the
+reasons that were easy to guess, and `MOUNT_MS` was **not** raised: there is
+no evidence 60s is too small a budget for a 3.5s mount, and raising a limit to
+quiet a failure nobody understands is how a suite stops meaning anything.
+
+**What was wrong was the reporting, and that is what changed.** `recorded` was
+the only check in the suite with no `pageerror` and no console listener, so the
+one thing that could have explained the CI failure — whether a script threw
+during boot — was thrown away. It now says which, and leaves
+`recorded-nomount.png`:
+
+```
+… recorded: nothing mounted in 60s; the page said ["pageerror: …"]
+… recorded: nothing mounted in 60s; the page said nothing, which rules out a
+    script that threw and leaves a mount that was merely slow
+```
+
+Both branches are exercised deliberately (a tiny `MOUNT_MS`, and a routed
+module that throws) rather than waited for. It also closes its page now: it is
+the last check in the plan so the leak cost nothing, but a check that only
+works while it is last has a requirement nobody wrote down.
+
+**And then it happened again on the very pull request that added this, which
+is how the first real fact about the flake was got.** `drawing-quick` failed on
+#223 with `raised TimeoutError: Page.screenshot: Timeout 30000ms exceeded`, and
+`recorded` took 90.4s. The arithmetic settles what happened without guessing:
+
+    MOUNT_MS            60.0s   the mount timed out, exactly as on #220
+    screenshot default  30.0s   then the shot taken on that path hung
+                        -----
+                        90.0s   against 90.4s measured
+
+Two things follow. The second is the important one.
+
+**The change had a bug, and its own first outing found it.** The failure branch
+reached for the picture *before* appending the message, so on a page too wedged
+to photograph the screenshot hung for its own 30s and raised — throwing away
+the diagnostic the branch existed to produce. The message goes first now, and
+the picture is best-effort with a 10s budget (`_best_effort_shot`), so a
+camera that cannot fire never again costs the sentence that says why.
+
+**A page that cannot be photographed is not a slow page.** A mount that is
+merely slow still screenshots in about a second; this one could not be
+photographed at all in thirty. So the earlier phrasing — "a mount that was
+merely slow" — is too generous to the page, and the check now says which of the
+two it met. That is the first thing anyone has learned about this failure
+beyond how long it waited, and it points at an unresponsive renderer rather
+than a slow one, which is a different thing to go looking for.
+
+Both branches are exercised against a deliberately wedged renderer (a main
+thread blocked after load), not waited for:
+
+```
+… recorded: nothing mounted in 8s; the page said nothing, which rules out a
+    script that threw and leaves a mount that was merely slow
+… recorded: and the page could not be photographed either (TimeoutError), so
+    its renderer was not merely slow but unresponsive
+```
+
+This still does not fix the flake. It means the next occurrence arrives with
+the page's own account of it instead of a stopwatch reading, which is the
+difference between a second investigation and this one.
+
 **The second half was held back once, and the reason was measured.**
 `render.py` was put in a CI job and run twice on the same commit. It failed both times, with a
 *different* failure each time:
