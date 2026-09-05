@@ -70,4 +70,22 @@
 # not the reverse, so entrants upgrade before the manager does. **The floor
 # stays at 2.0.1 until the 2.1.0 wheel exists**: a floor nobody can install
 # is a broken install, not a loud one. Raise it the day it is on PyPI.
-agent-switchboard>=2.0.1
+#
+# **That day is 2026-09-05, and the number is 2.2.2 rather than 2.1.0.** The
+# rename shipped and then some; what is installable is what settles this, so
+# the floor is the newest release, per the rule at the top of this file. Read
+# off the wheel and not off anybody's `main`:
+#
+#   pip download agent-switchboard -d /tmp/x --no-deps
+#   # crypto.py: WHISPER_MARKER = "whisper", WHISPER_LABEL =
+#   #   "switchboard/v1/whisper", WHISPER_CONTEXT = "whisper.body",
+#   #   LEGACY_WHISPER_* kept for opening; client.py: no `Client.ask`
+#
+# The managed hub reports 2.2.2 on `/health` as this is written.
+#
+# **What this floor does not do is upgrade a host that never reinstalls.** A
+# manager still on 2.0.1 opens `ask` and not `whisper`, which is why the
+# hand's page goes on sealing `ask` to a peer it has not heard from
+# (`hand/hub.js`): readers upgrade before senders, and a requirement is not a
+# deployment.
+agent-switchboard>=2.2.2
