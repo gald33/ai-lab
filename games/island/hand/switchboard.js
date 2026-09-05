@@ -25,7 +25,9 @@ const ENVELOPE_VERSION = 1;        // crypto.ENVELOPE_VERSION
 const WHISPER_MARKER = "whisper";
 const WHISPER_LABEL = "switchboard/v1/whisper";
 export const WHISPER_CONTEXT = "whisper.body";
-export const LEGACY_WHISPER_MARKER = "ask";
+// Not exported since 2026-09-05: nothing outside this file needs the old
+// marker's name now that nothing seals under it.
+const LEGACY_WHISPER_MARKER = "ask";
 const LEGACY_WHISPER_LABEL = "switchboard/v1/ask";
 const LEGACY_WHISPER_CONTEXT = "ask.body";
 export const WHISPER_MARKERS = new Set([WHISPER_MARKER, LEGACY_WHISPER_MARKER]);
@@ -397,21 +399,18 @@ function whisperAad(context, label = WHISPER_LABEL) {
   return utf8.encode(`${label}\u0000${context}`);
 }
 
-/** `crypto.seal_to_peer`. `wire` is which names to seal under: `"whisper"`
- *  (Switchboard 2.1.0) or `"ask"` (every release before it, which 2.1.0
- *  also opens). A sender picks the form its reader can open -- see
- *  `Hub.whisper` for how the page decides. */
-export async function sealToPeer(value, { identity, peerExchangeKey, context,
-                                          wire = WHISPER_MARKER }) {
-  let label = WHISPER_LABEL, marker = WHISPER_MARKER;
-  if (wire === LEGACY_WHISPER_MARKER) {
-    label = LEGACY_WHISPER_LABEL; marker = LEGACY_WHISPER_MARKER;
-    if (context === WHISPER_CONTEXT) context = LEGACY_WHISPER_CONTEXT;
-  }
+/** `crypto.seal_to_peer`. **One form, the current one** (Gal, 2026-09-05:
+ *  "don't use the legacy `ask`"). This took a `wire` argument and could seal
+ *  either form; the argument is gone rather than defaulted, because a way to
+ *  seal `ask` that nothing calls is a fallback waiting to be reintroduced by
+ *  the next person who reads a `DecryptionError` and looks for a switch.
+ *  `unsealFromPeer` still opens both -- that direction is the one the
+ *  compatibility runs in. */
+export async function sealToPeer(value, { identity, peerExchangeKey, context }) {
   const envelope = await sealBytes(
-    await whisperKey(identity, peerExchangeKey, label), pad(dumps(value)),
-    whisperAad(context, label));
-  envelope.m = marker;
+    await whisperKey(identity, peerExchangeKey, WHISPER_LABEL), pad(dumps(value)),
+    whisperAad(context, WHISPER_LABEL));
+  envelope.m = WHISPER_MARKER;
   return envelope;
 }
 

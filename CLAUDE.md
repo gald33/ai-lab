@@ -231,12 +231,42 @@ release is a fact you download, not a fact you are told** — including when you
 are told by someone who cut it, since what they cut and what the index serves
 are still two different claims.
 
-**The page still seals `ask` to a peer it has not heard from, and that is not
-an oversight.** Every release opens `ask`; only 2.1.0 and later open
-`whisper`. The manager runs on a host with whatever wheel that host installed,
-which the floor obliges but does not retroactively perform, so a host that has
-not reinstalled is still a 2.0.1 reader. The default flips when hosts are
-known upgraded, not when PyPI is.
+*Superseded the same day, by decision rather than by measurement.* The
+paragraph below said the page still seals `ask` to a peer it has not heard
+from, and that the default would flip "when hosts are known upgraded, not
+when PyPI is":
+
+> **The page still seals `ask` to a peer it has not heard from, and that is
+> not an oversight.** Every release opens `ask`; only 2.1.0 and later open
+> `whisper`. The manager runs on a host with whatever wheel that host
+> installed, which the floor obliges but does not retroactively perform, so a
+> host that has not reinstalled is still a 2.0.1 reader. The default flips
+> when hosts are known upgraded, not when PyPI is.
+
+**Nothing in this repo seals `ask` any more** (Gal, 2026-09-05: "don't use
+the legacy `ask`"). The condition that paragraph set was never going to be
+met by observation — there is no measurement that returns "every host has
+reinstalled", so a default waiting on one waits forever, and the page would
+have gone on writing a form the library it is pinned against no longer
+produces. The flip is a decision, and this is it.
+
+**Reading stays two-formed and that is not a contradiction.** The
+compatibility only ever ran one way: a 2.1.0 reader opens what any earlier
+release sealed, an earlier reader opens nothing new. So *readers upgrade
+before senders* is satisfied by opening both and writing one, which is what
+`hand/switchboard.js` now does — `unsealFromPeer` reads either marker, and
+`sealToPeer` has no `wire` argument left to seal the old one with.
+
+**What it costs is stated rather than hidden**: a peer whose host has not
+reinstalled gets an envelope it cannot open. A floor obliges an install and
+does not perform one, so that host exists until somebody reinstalls it. Two
+tests pin the cost as a fact instead of leaving it to be met under a clock —
+`test_python_opens_what_the_browser_whispered`'s else-branch, which requires
+the `DecryptionError` an old reader gets, and
+`test_the_browser_has_no_way_left_to_seal_the_old_form`, which exists because
+the reintroduction is the easy mistake: the next person to read that
+`DecryptionError` will look for a `wire: "ask"` switch, and passing one now
+gets the current form.
 
 *Corrected 2026-08-27, having written "has been removed" as though it had
 shipped.* That is the second time a prediction about this one tool was

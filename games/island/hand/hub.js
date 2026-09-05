@@ -28,7 +28,7 @@
 
 import { WorkspaceCipher, messagePayload, sign, isSealed, unsealFromPeer,
          sealToPeer, writerFromSeed, signRequest, WHISPER_CONTEXT,
-         WHISPER_MARKERS, LEGACY_WHISPER_MARKER } from "./switchboard.js";
+         WHISPER_MARKERS } from "./switchboard.js";
 
 export class Hub {
   constructor(url, token, cipher, identity, alias) {
@@ -44,10 +44,6 @@ export class Hub {
     // thing about `whisper` no example makes obvious -- and the bug that
     // blinded both traders in g5 for eight episodes.
     this._peers = new Map();
-    // Blinded sender -> the wire form its last whisper arrived in (`ask` or
-    // `whisper`). A reply is sealed the way the peer spoke, since that is the
-    // one form it is known to open.
-    this._peerWire = new Map();
   }
 
   static async open({ url, token, workspace, key, identity, alias, writeKey }) {
@@ -221,12 +217,22 @@ export class Hub {
    * Python client's `whisper`: `send("@<peer>", envelope, type="whisper")`,
    * the signature over the plaintext channel and the envelope as an object.
    *
-   * **Sealed in the form the peer can open.** Switchboard 2.1.0 writes
-   * `whisper` and opens both; every release before it writes and opens `ask`
-   * only. A peer that has whispered this page is answered in the form it
-   * used; one that has not is sealed to under `ask`, the one form every
-   * release on either side of the rename opens, until 2.1.0 is what the
-   * managed hub's manager runs.
+   * **Sealed as `whisper`, always** (Gal, 2026-09-05: "don't use the legacy
+   * `ask`"). This page had answered a peer in whatever form that peer last
+   * whispered in and sealed `ask` to one it had not heard from, on the
+   * reasoning that every release opens `ask` while only 2.1.0 and later open
+   * `whisper`. That reasoning is over: the floor is 2.2.2, which writes
+   * `whisper`, so a page still writing `ask` is the last thing in the room
+   * speaking a form the library it is pinned against no longer produces.
+   *
+   * Reading is unchanged and stays two-formed -- `_openInbox` opens either --
+   * because the compatibility only ever ran one way: a 2.1.0 reader opens
+   * what any earlier release sealed, an earlier reader opens nothing new.
+   * **What this costs is a peer whose host has not reinstalled**, since a
+   * floor obliges an install and does not perform one; such a peer gets an
+   * envelope it cannot open. That is the accepted price of the decision
+   * above, and `test_python_opens_what_the_browser_whispered` pins it as a
+   * fact rather than leaving it to be discovered under a clock.
    */
   async whisper(to, body) {
     if (!this._peers.size) await this.roster();
@@ -237,7 +243,6 @@ export class Hub {
     const envelope = await sealToPeer(body, {
       identity: this.identity, peerExchangeKey: exchangeKey,
       context: WHISPER_CONTEXT,
-      wire: this._peerWire.get(to) || LEGACY_WHISPER_MARKER,
     });
     const channel = `@${to}`;
     this._seq += 1;
@@ -319,7 +324,6 @@ export class Hub {
     // envelope, so what comes back from `_open` may itself be sealed.
     if (!isSealed(outer)) return outer;
     if (!WHISPER_MARKERS.has(outer.m)) return outer;
-    if (row.from) this._peerWire.set(row.from, outer.m);
     const peer = this._peers.get(row.from);
     if (!peer) {
       // Not a bad key: the roster simply has not been read, or the sender is

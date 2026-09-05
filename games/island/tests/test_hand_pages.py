@@ -116,6 +116,31 @@ def _client(hub_url, agent_id):
                                key=KEY), agent_id=agent_id)
 
 
+def _wire_to(hub_url, agent_id):
+    """The envelopes on an agent's `@` channel, opened no further than the
+    workspace.
+
+    A client opens a whisper for you, which is exactly what hides the thing
+    this has to see: **which form the page sealed in**. `Client.inbox` hands
+    back plaintext whether the marker said `whisper` or `ask`, so a test that
+    reads it cannot tell a page that writes the current wire from one that
+    writes the old one -- and that was the whole of the change on 2026-09-05.
+    So this goes to the hub's own `/channels` and stops at the outer
+    workspace envelope, leaving the inner one shut with its marker readable.
+    """
+    import json
+    import urllib.request
+    from switchboard import crypto
+
+    cipher = crypto.WorkspaceCipher.from_key(KEY, WORKSPACE)
+    channel = cipher.blind_channel(f"@{cipher.blind(agent_id, 'agent')}")
+    url = (f"{hub_url}/channels/{urllib.parse.quote(channel, safe='')}"
+           f"?workspace={urllib.parse.quote(WORKSPACE)}")
+    with urllib.request.urlopen(url, timeout=10) as got:
+        rows = json.load(got)["messages"]
+    return [cipher.unseal(r["body"], "message.body") for r in rows]
+
+
 @pytest.fixture(scope="module")
 def browser():
     try:
@@ -540,8 +565,13 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
     said on the board -- same author, same signature check -- so what has to
     hold is that a real Python client registered as the manager opens what
     the page sealed, reads the text the driver typed, and verifies it under
-    the very key the page plays with. Sealed in the `ask` form, which every
-    release on either side of the rename opens."""
+    the very key the page plays with.
+
+    **Sealed as `whisper`** (Gal, 2026-09-05: "don't use the legacy `ask`"),
+    which is asserted off the wire rather than inferred from the open: the
+    client opens either form, so a successful read says nothing at all about
+    which one went out. `_wire_to` stops at the outer envelope to see it.
+    """
     # Its own id: the lobby test above whispers an invite to a "manager-w",
     # and this inbox must hold exactly the one line the page sends.
     manager = _client(cors_hub, "manager-room")
@@ -569,6 +599,10 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
         "verified under the key this page plays with"
     board = [r.get("body") for r in _client(cors_hub, "reader-wh").history("island", limit=50)]
     assert "PRODUCE bread=0.5 fish=0.5" not in board, "and it is not on the board"
+
+    [wrapped] = _wire_to(cors_hub, "manager-room")
+    assert wrapped["b"]["m"] == "whisper", \
+        f"the page sealed the {wrapped['b']['m']!r} form, not the current wire"
     assert not errors, errors
     tab.close()
 

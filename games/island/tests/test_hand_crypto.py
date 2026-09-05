@@ -102,7 +102,10 @@ async function run() {{
   out.whisperedHere = await sb.sealToPeer(
     m.body, {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
               context: fixtures.whisper.context }});
-  out.whisperedHereLegacy = await sb.sealToPeer(
+  // The `wire: "ask"` option is gone (Gal, 2026-09-05). A caller still
+  // passing it gets the current form, which is what the assertion below
+  // pins: the argument is ignored, not honoured.
+  out.whisperedHereAskingForLegacy = await sb.sealToPeer(
     m.body, {{ identity: hand, peerExchangeKey: fixtures.peer.exchangeKey,
               context: fixtures.whisper.context, wire: "ask" }});
   out.canonical = sb.canonical({{ b: {{ n: "x", c: "y", "$swb": 1, m: "ask" }},
@@ -294,11 +297,16 @@ def test_python_opens_what_the_browser_sealed_to_the_workspace(ran):
 
 
 def test_python_opens_what_the_browser_whispered(ran):
-    """On a library from 2.1.0. On one before it, the documented direction
-    that does *not* hold -- an old reader cannot open a new whisper -- is
-    pinned as a fact rather than skipped past: the floor in
-    `requirements.txt` moves to 2.1.0 when that release exists, and this
-    test says what the page's whisper does to a manager left behind."""
+    """On a library from 2.1.0 -- which the floor now guarantees is what a
+    fresh install resolves (`requirements.txt`, 2.2.2).
+
+    The else-branch is **the accepted cost of sealing one form** (Gal,
+    2026-09-05: "don't use the legacy `ask`"), not a gap. A floor obliges an
+    install and does not perform one, so a host that has not reinstalled is
+    still an old reader, and an old reader cannot open a new whisper. That
+    direction is pinned here as a fact rather than skipped past, because the
+    failure it produces in service is a whisper that never arrives under a
+    clock that does not stop."""
     if fixtures.WIRE == "whisper":
         assert fixtures.open_whisper(ran["whisperedHere"], "messages.body") == fixtures.BODY
     else:
@@ -307,11 +315,18 @@ def test_python_opens_what_the_browser_whispered(ran):
             fixtures.open_whisper(ran["whisperedHere"], "messages.body")
 
 
-def test_python_opens_what_the_browser_whispered_in_the_old_form(ran):
-    """The `ask` form, which every release opens: the one the page seals in
-    for a peer it has not heard from, so a manager on 2.0.1 reads it."""
-    assert ran["whisperedHereLegacy"]["m"] == "ask"
-    assert fixtures.open_whisper(ran["whisperedHereLegacy"], "messages.body") == fixtures.BODY
+def test_the_browser_has_no_way_left_to_seal_the_old_form(ran):
+    """**The removal, asserted rather than assumed.** `sealToPeer` took a
+    `wire` argument and could seal `ask`; both are gone, so a caller that
+    still asks for the old form gets the current one.
+
+    This is worth a test of its own because the reintroduction is so easy:
+    the next person to read a `DecryptionError` from an un-upgraded peer will
+    look for exactly this switch, and a silently-honoured `wire: "ask"` would
+    hand it to them. The page reads both forms and writes one."""
+    assert ran["whisperedHereAskingForLegacy"]["m"] == "whisper"
+    assert fixtures.open_whisper(
+        ran["whisperedHereAskingForLegacy"], "messages.body") == fixtures.BODY
 
 
 def test_the_browser_serialises_a_signed_envelope_the_way_python_does(ran):

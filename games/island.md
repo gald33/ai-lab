@@ -778,15 +778,34 @@ plaintext channel and the envelope *as an object* -- which is why
 `switchboard.js` gained `canonical`, a `sort_keys` serialiser for the one
 kind of object it signs, pinned byte-for-byte against `json.dumps`.
 
-**Sealed in the form the reader can open.** The page is a sender here, and
-the managed hub's manager runs 2.0.1, which opens `ask` only, while 2.1.0
-opens both (`CLAUDE.md`, the wire rename). So the page answers a peer in the
-form that peer last whispered in, and seals to a peer it has not heard from
-under `ask` -- the one form every release on either side of the rename
-opens. `test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_key`
+**Sealed as `whisper`, and nothing here seals `ask`** (Gal, 2026-09-05:
+"don't use the legacy `ask`"). This page used to answer a peer in the form
+that peer last whispered in and seal `ask` to one it had not heard from, on
+the reasoning that every release opens `ask` while only 2.1.0 and later open
+`whisper`; it kept a `_peerWire` map for the purpose. Both are gone, and so
+is `sealToPeer`'s `wire` argument -- the removal rather than a changed
+default, because a branch that seals the old form and nothing calls is a
+fallback waiting for the next person who reads a `DecryptionError`. Reading
+still opens both, which is the direction the compatibility runs in.
+
+**The check had to move to the wire to mean anything.**
+`test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_key`
 has a real Python client registered as `manager` open the page's whisper,
-read the text, verify it under the page's key, and confirm the line is not
-on the board.
+read the text, verify it under the page's key, and confirm the line is not on
+the board -- and every one of those passes just as well when the page seals
+the old form, because the client opens either. Measured, by sealing `ask`
+from the page on purpose: the manager read it, the signature verified, the
+board stayed clean, and only the marker told the truth. So the test now goes
+to the hub's own `/channels`, stops at the outer workspace envelope, and
+asserts the inner marker (`_wire_to`). Reproduce the falsification by making
+`sealToPeer` write `LEGACY_WHISPER_LABEL`/`_CONTEXT`/`_MARKER` and running
+`python -m pytest games/island/tests/test_hand_pages.py -q -k whispered`;
+`assert 'ask' == 'whisper'` should be the only failure.
+
+What this costs is a peer whose host has not reinstalled: a floor obliges an
+install and does not perform one, so such a host is still an old reader and
+gets an envelope it cannot open. `CLAUDE.md` carries the decision and the
+superseded reasoning.
 
 **The key is visible and replaceable** (Gal, 2026-09-04: "there should be a
 way to see/handle the current id"). A key the page keeps across reloads is a
