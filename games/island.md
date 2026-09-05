@@ -631,6 +631,39 @@ Each is pinned the same way the cryptography is: `declaration.js` and
 the record parses the declaration with an anchored expression and a near-miss
 would declare nothing while looking as though it had.
 
+### The hand copies the room out, and remembers what it copied
+
+Asked for by Gal, 2026-09-04, and it completes the arrangement this document
+already describes above: a person playing a seat on advice from "a chat window
+with no tools, no board access and no memory of the room beyond what the
+person pastes into it". The hand is the intermediary; until now the pasting
+was the driver's problem, done by selecting text off a page that repaints
+itself every three seconds.
+
+Two buttons, and **the second is the reason to build it at all**. *Copy the
+whole room* is the obvious one. *Copy new* carries only what has arrived since
+the last copy, because a round is four to eight episodes of a manager talking
+and re-pasting all of it at every bell spends the model's context on lines it
+has already read. The mark that separates them is kept per room in
+`localStorage` -- not the `sessionStorage` the page uses for its folds and
+levers, because those are view state and may reset, while a mark is a claim
+about what another process has already been told, and a driver who reloads
+mid-round should not have to re-send the round. `test_hand_pages.py` reloads
+the page and requires the next copy to still be incremental.
+
+**The mark advances only after the clipboard has taken the text**, and a
+refused clipboard falls back to a textarea with the text selected rather than
+a button that did nothing. A mark moved first would, on that refusal, silently
+drop exactly the lines it claimed to have sent -- and the driver would find
+out from the model answering about a round it had not been told the middle of.
+
+**It restates no rule**, which is the same constraint the composer buttons are
+under. The manager posts the schedule and the house rules on the board, so a
+whole-room copy already carries them in the manager's words; the header says
+where they are and nothing about what they say. A page that paraphrased them
+would be a second implementation of the grammar, and `hand/lobby_lines.js`
+already records what that costs when the two drift.
+
 ### The whisper the page could not open
 
 Found 2026-09-04, from a driver who had joined a table in the hand's lobby and

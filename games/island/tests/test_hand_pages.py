@@ -62,7 +62,7 @@ def site(tmp_path_factory):
     root = tmp_path_factory.mktemp("hand-site")
     for name in ("lobby.html", "play.html", "switchboard.js", "hub.js",
                  "identity.js", "lobby_lines.js", "declaration.js", "brief.js",
-                 "room.js"):
+                 "room.js", "transcript.js"):
         shutil.copy(HAND / name, root / name)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler,
                                 directory=str(root))
@@ -569,6 +569,84 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
         "verified under the key this page plays with"
     board = [r.get("body") for r in _client(cors_hub, "reader-wh").history("island", limit=50)]
     assert "PRODUCE bread=0.5 fish=0.5" not in board, "and it is not on the board"
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_room_copies_itself_for_a_model_and_then_only_what_is_new(
+        browser, site, cors_hub):
+    """**The hand as intermediary, and the part that makes it worth having.**
+
+    `games/island.md` ("A person may sit in a seat") describes a driver taking
+    advice from "a chat window with no tools, no board access and no memory of
+    the room beyond what the person pastes into it". These buttons are that
+    paste. Asked for by Gal, 2026-09-04, with the requirement that matters: a
+    copy that remembers, so a round is not re-pasted at every bell.
+
+    So the whole room copies once, and the next copy carries only what arrived
+    after it -- checked by posting a line between the two and requiring the
+    second copy to hold that line and not the first one's.
+    """
+    manager = _client(cors_hub, "manager-copy")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    manager.post("island", "Schedule for this round. 2 traders: T1, T2.")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/play.html", errors)
+    _enter(tab, cors_hub, WORKSPACE, write_key=None, name="driver-copy")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+    tab.wait_for_function(
+        "(window.HAND_BOARD || []).some(r => String(r.body).startsWith('Schedule'))",
+        timeout=15_000)
+
+    tab.click("#copyAll")
+    tab.wait_for_function("window.HAND_COPIED", timeout=15_000)
+    whole = tab.evaluate("window.HAND_COPIED")
+    assert whole["kind"] == "all"
+    assert "You are advising the driver of seat T1" in whole["text"]
+    assert "Schedule for this round" in whole["text"], whole["text"]
+    assert "manager:" in whole["text"], "the roster's name, not a blinded id"
+    assert "nothing here restates them" in whole["text"], (
+        "the header points at the manager's own rules rather than paraphrasing")
+
+    # A line arrives after that copy. Only it belongs in the next one.
+    manager.post("island", "episode 1 of 4 is open")
+    tab.wait_for_function(
+        "(window.HAND_BOARD || []).some(r => String(r.body).startsWith('episode 1'))",
+        timeout=15_000)
+    tab.wait_for_function(
+        "document.getElementById('copyNew').textContent.includes('(')",
+        timeout=15_000)
+    assert not tab.is_disabled("#copyNew"), "there is something new to send"
+
+    tab.click("#copyNew")
+    tab.wait_for_function("window.HAND_COPIED.kind === 'new'", timeout=15_000)
+    update = tab.evaluate("window.HAND_COPIED")
+    assert "episode 1 of 4 is open" in update["text"]
+    assert "Schedule for this round" not in update["text"], (
+        "a line already copied is not sent again")
+    assert "continued" in update["text"] and "not repeated" in update["text"]
+
+    # And with nothing further arriving, there is nothing to press.
+    tab.wait_for_function(
+        "document.getElementById('copyNew').disabled === true", timeout=15_000)
+
+    # **The mark survives a reload**, which is why it is in `localStorage` and
+    # not the `sessionStorage` this page uses for view state: a driver who
+    # reloads mid-round should not have to re-send the round. Asserted rather
+    # than assumed, because the comment in `transcript.js` claims it.
+    manager.post("island", "bell — episode 1 closed")
+    tab.reload()
+    _enter(tab, cors_hub, WORKSPACE, write_key=None, name="driver-copy")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+    tab.wait_for_function(
+        "document.getElementById('copyNew').disabled === false", timeout=15_000)
+    tab.click("#copyNew")
+    tab.wait_for_function("window.HAND_COPIED.kind === 'new'", timeout=15_000)
+    after = tab.evaluate("window.HAND_COPIED")["text"]
+    assert "bell — episode 1 closed" in after
+    assert "Schedule for this round" not in after and "episode 1 of 4" not in after, \
+        "the reload did not forget what had already been sent"
     assert not errors, errors
     tab.close()
 

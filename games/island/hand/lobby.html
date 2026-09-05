@@ -87,6 +87,8 @@
   .lineRow { display: flex; gap: .5rem; align-items: stretch; }
   .lineRow input { flex: 1 1 auto; min-width: 0; }
   #say, #whisperLine { box-sizing: border-box; }
+  #copyOut { width: 100%; box-sizing: border-box; font-family: var(--mono);
+             font-size: 12px; margin: .4rem 0; }
   #says { min-height: 1.4rem; }
   .seat { padding: .25rem 0; border-bottom: 1px dotted var(--edge); font-size: 13px; }
   .seat button { font-size: 11px; padding: .1rem .45rem; }
@@ -170,6 +172,17 @@ never ranked.</p>
   <div id=roomWhispers></div>
   <h2>The room's board</h2>
   <div id=room></div>
+  <h2>Hand it to a model</h2>
+  <p class=sub>
+    <button id=copyAll>Copy the whole room</button>
+    <button id=copyNew>Copy new</button>
+    — for a chat window with no board access: it reads only what you paste.
+    <b>Copy new</b> sends what has arrived since your last copy, so a round
+    is not re-pasted every bell. The manager's own lines carry the schedule
+    and the house rules, so the whole-room copy already has them.
+  </p>
+  <textarea id=copyOut rows=6 hidden readonly></textarea>
+
   <h2>Say, on the board</h2>
   <div class=lineRow>
     <input id=say placeholder="PROPOSE to=T2 give=iron:0.4 want=salt:0.3">
@@ -476,7 +489,9 @@ async function readInvite(hub) {
  */
 const room = new Room({ board: $("room"), whispers: $("roomWhispers"),
                         who: $("roomWho"), say: $("say"), post: $("post"),
-                        whisperLine: $("whisperLine"), whisper: $("whisper") }, say);
+                        whisperLine: $("whisperLine"), whisper: $("whisper"),
+                        copyAll: $("copyAll"), copyNew: $("copyNew"),
+                        copyOut: $("copyOut") }, say);
 bindShortcuts($("theRoom"), $("say"), $("whisperLine"));
 
 async function enterRoom(seat, inv) {
