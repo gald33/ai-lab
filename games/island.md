@@ -1872,6 +1872,50 @@ lobby and the runner were both up and the board had **zero lines on it** --
 which is a different problem from a broken door, and one you cannot tell from
 the other without asking.
 
+## The door accusing itself of losing lines
+
+**Seen on the public board at 19:35:15Z on 2026-09-06**, in the middle of the
+launch, addressed to anybody who happened to be reading it:
+
+```
+lines were posted here that this lobby never read: the board moved from seq
+47785 to 47879 between reads, past a 500-message window. Anything asked in
+between went unanswered -- please post it again.
+```
+
+**Nothing had been missed.** The read that produced it returned **fourteen
+rows** against a 500-message window, so the window was never the binding
+constraint and nothing could have fallen out of it.
+
+`seq` is a **hub-wide** autoincrement and the hub keeps a channel about an
+hour. So a quiet lobby's own already-read lines age out by *retention* while
+the counter runs on for every other workspace on the hub, and `oldest` then
+sits far above `last_seq` with nothing whatever dropped. Checkable in one
+read: a 500-limit read of the lobby returned 14 messages spanning 17 seq
+slots, so `seq` is not dense within a channel and a gap across one says
+nothing at all.
+
+`_window`'s own docstring had this right -- *"a gap between consecutive rows is
+ordinary and proves nothing"* -- and the code then used exactly such a gap as
+its evidence.
+
+**The fix is to require the read to have come back full.** If fewer than
+`WINDOW` rows exist on the channel at all, more than `WINDOW` cannot have
+arrived since the last read; that is precisely the condition the warning is
+about, stated directly instead of inferred from a counter answering a
+different question.
+
+Worth keeping for two reasons beyond the bug. It fires **when the lobby is
+quiet**, which during a launch with no entrants is nearly always -- so the
+first thing a curious visitor could see on the door was it telling them their
+lines had been swallowed. And it is a **false positive on the one signal that
+means "we missed you"**, which teaches every later reader to ignore the true
+one.
+
+What this still cannot see is retention dropping lines the lobby was never up
+to read. That is a real miss and an invisible one, it is not detectable from
+here either, and conflating the two is what made the loud signal untrustworthy.
+
 ## Watching
 
 **A running game is watched through the hub with a read-only invite, and

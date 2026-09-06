@@ -514,12 +514,34 @@ class Lobby:
         now sits above the highest seq already read, everything between the
         two is gone. Said out loud on the board, because a lobby that missed
         somebody should not look like a lobby nobody wrote to.
+
+        **And the window has to have been the thing that ran out.** Seen on
+        the public board, 2026-09-06 at 19:35:15Z: this fired on a read that
+        returned *fourteen* rows, and told anybody watching the door that
+        their lines had gone unanswered and to post them again. Nothing had
+        been missed. The hub keeps a channel about an hour, so a quiet lobby's
+        own already-read lines age out by retention while the hub-wide counter
+        runs on for every other workspace -- and then `oldest` sits far above
+        `last_seq` with nothing whatever having been dropped.
+
+        So the gap is only evidence when the read came back **full**: if fewer
+        than `WINDOW` rows exist on the channel at all, more than `WINDOW`
+        cannot have arrived since the last one. That is exactly the condition
+        this warning is about, stated directly instead of inferred from a
+        counter that answers a different question.
+
+        What this still cannot see is retention dropping lines the lobby was
+        never up to read -- a real miss, and an invisible one. It is not
+        detectable from here either, and conflating it with this one is what
+        made the loud signal untrustworthy. `pulse.py` is where the question
+        "was anybody at the door" is asked from the record instead.
         """
         if not rows:
             return
         seqs = [int(r.get("seq", 0)) for r in rows]
         oldest, newest = seqs[0], seqs[-1]
-        if self.last_seq and oldest > self.last_seq + 1:
+        outran = len(rows) >= WINDOW
+        if outran and self.last_seq and oldest > self.last_seq + 1:
             self.missed += 1
             self.say(f"lines were posted here that this lobby never read: the "
                     f"board moved from seq {self.last_seq} to {oldest} between "
