@@ -1,0 +1,152 @@
+/* The front door.
+ *
+ * Palette comes from `island/tokens.css`, which the viewer and the scoreboard
+ * already share -- a second palette here would drift, and the first thing a
+ * visitor does after this page is open one of those two.
+ *
+ * **Sized for a phone first.** The brief's own reasoning: most people will
+ * arrive from a link on a phone, and the full island does not have to be a
+ * good phone game for the phone visit to be worth having. Understanding the
+ * premise, reading the score, and getting to the lobby all have to work at
+ * 360px, so those are what the breakpoints are set against.
+ */
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 3rem;
+}
+
+/* ---- the hero ---------------------------------------------------------- */
+
+.hero { padding: clamp(1rem, 5vw, 3rem) 0 clamp(1.5rem, 4vw, 2.5rem); }
+
+.eyebrow {
+  margin: 0 0 .75rem;
+  font-size: .8rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.75rem, 12vw, 5.5rem);
+  line-height: .95;
+  letter-spacing: -.03em;
+  font-weight: 700;
+}
+
+.lede {
+  margin: .6rem 0 0;
+  font-size: clamp(1.05rem, 3.5vw, 1.5rem);
+  color: var(--ink-2);
+}
+
+.byo {
+  margin: 1.5rem 0 0;
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  line-height: 1.5;
+}
+.byo strong { display: block; color: var(--ink); }
+/* The list of harnesses is the sentence that answers "can my agent play?", so
+   it is a size a skimming reader still reads rather than a caption. */
+.harnesses { color: var(--eff); }
+
+.actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin: 1.75rem 0 0;
+}
+.actions a {
+  text-decoration: none;
+  font-size: clamp(.95rem, 2.5vw, 1.05rem);
+  font-weight: 600;
+  padding: .85rem 1.5rem;
+  border-radius: .7rem;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  /* A thumb target on a phone, not a link that happens to be tappable. */
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+.actions a.go { background: var(--eff); border-color: var(--eff); color: #10181c; }
+.actions a.alt { background: var(--panel); }
+.actions a:hover { border-color: var(--ink-2); }
+.actions a.go:hover { filter: brightness(1.08); }
+
+/* ---- the score to beat -------------------------------------------------- */
+
+.beat {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin: 2rem 0 0;
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  text-decoration: none;
+  color: inherit;
+}
+.beat:hover { border-color: var(--eff); }
+.beat-label {
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 100%;
+}
+.beat-score {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--above);
+}
+/* Unheld is a state, not a missing value, and is not dressed as a score. */
+.beat-score.unheld { color: var(--muted); font-size: clamp(1.25rem, 5vw, 1.6rem); }
+.beat-score.down { color: var(--below); }
+.beat-note { color: var(--ink-2); font-size: .9rem; flex: 1; min-width: 12rem; }
+
+/* ---- the rest ----------------------------------------------------------- */
+
+section { padding: clamp(1.5rem, 4vw, 2.5rem) 0; border-top: 1px solid var(--line); }
+h2 {
+  margin: 0 0 1.25rem;
+  font-size: clamp(1.15rem, 3vw, 1.4rem);
+  font-weight: 650;
+}
+h3 { margin: 0 0 .35rem; font-size: 1rem; font-weight: 600; }
+p { margin: 0 0 .75rem; line-height: 1.6; color: var(--ink-2); }
+
+.grid {
+  display: grid;
+  gap: 1.5rem 2rem;
+  /* Two by two rather than three and a stray: there are four of these and a
+     3+1 row reads as one of them having been left over. */
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+.grid p { margin: 0; font-size: .95rem; }
+
+ol { margin: 0; padding-left: 1.25rem; color: var(--ink-2); line-height: 1.7; }
+ol strong { color: var(--ink); }
+.foot { margin-top: 1rem; font-size: .9rem; color: var(--muted); }
+
+details { margin-top: 1rem; }
+summary { cursor: pointer; color: var(--ink-2); font-size: .95rem; }
+details p { font-size: .9rem; color: var(--muted); margin-top: .75rem; }
+
+a { color: var(--eff); }
+section a, footer a, .foot a { color: var(--above); }
+
+footer {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 2.2;
+}

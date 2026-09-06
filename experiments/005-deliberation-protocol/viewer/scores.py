@@ -460,6 +460,67 @@ def level_label(key: tuple) -> str:
     return f"{agents} traders · {goods} goods · {episodes} episodes · {clock}"
 
 
+#: **The open table: the one format the front door hands out.**
+#:
+#: `level()` keys a challenge on four fields, correctly -- 002 measured a 60s
+#: and a 150s table scoring differently enough that ranking them together would
+#: hide the effect. What that costs, and what nobody noticed until the door was
+#: public, is that the lobby's levers reach 3 x 4 x 6 x 8 = 576 distinct
+#: levels. A public board over 576 levels is 576 leagues of one game each, and
+#: every entrant is first of one.
+#:
+#: Measured on the day the door opened (2026-09-06): 238 ranked games, all of
+#: them 4 goods with no stated clock, all by one player id, and **not one of
+#: them on a level a stranger could open** -- a public table always carries
+#: `seconds` and defaults to 5 goods. So the headline read "99.5%, by
+#: claude-haiku x4" over a format nobody arriving could enter. Not an empty
+#: board, which is honest, but a full one that cannot be joined, which is not.
+#:
+#: The fix is to **name one level**, not to merge any. This is the level
+#: `lobby_page.OPEN_DEFAULTS` already hands out, so the format a reader is
+#: given and the format the headline is set on are the same by construction --
+#: `games/island/tests/test_open_table.py` fails if the two drift apart. Every
+#: other level still plays, still ranks and still keeps its own board; what
+#: changes is only which one the front door quotes.
+OPEN_TABLE = (2, 5, 4, 60)
+
+
+def open_table(game_board: list[dict], played: list[dict]) -> dict:
+    """The score to beat on the one format a stranger can actually open.
+
+    Separate from `best_ever` on purpose, and the two say different things. The
+    record is the biggest number in the book and is set wherever it was set;
+    this is the number a visitor's own game will be measured against, so it is
+    the only one the front door can honestly call a score to beat.
+
+    **An empty one is a fact, not a missing value.** It reports `held: None`
+    with the denominators still attached, because "nobody has taken this yet"
+    is the true and interesting state on a board that has just opened -- and a
+    page that filled the gap with the nearest other format would be back to
+    quoting an unreachable record.
+    """
+    # `level` is None on a game that could not be scored at all, and such a
+    # game is still in `played` because nothing that went wrong is dropped from
+    # a denominator. It belongs to no level, this one included.
+    def here(game: dict) -> bool:
+        return bool(game.get("level")) and tuple(game["level"]) == OPEN_TABLE
+
+    on_level = [g for g in game_board if here(g)]
+    attempts = [g for g in played if here(g)]
+    return {
+        "level": list(OPEN_TABLE),
+        "label": level_label(OPEN_TABLE),
+        "held": dict(on_level[0]) if on_level else None,
+        "top": on_level[:10],
+        # Both denominators, for the same reason `best_ever` carries two: how
+        # many took this format seriously, and how many of those could be
+        # ranked at all.
+        "ranked": len(on_level),
+        "attempts": len(attempts),
+        "unranked": [why for why in (why_not_ranked(g) for g in attempts) if why],
+    }
+
+
 def captured(eff_round: float | None, floor: float | None) -> float | None:
     """Gains taken as a fraction of gains available: autarky 0, frontier 1.
 
@@ -1282,6 +1343,7 @@ def boards(rows: list[dict]) -> dict:
     week["days"] = RECENT_DAYS
     week["best_ever"] = best_ever(week["games"])
     week["best_player"] = best_player(week["traders"], week["games"])
+    week["open_table"] = open_table(week["games"], recent_played)
 
     levels = {tuple(g["level"]) for g in played
               if g["level"] and is_ranked(g)}
@@ -1302,6 +1364,12 @@ def boards(rows: list[dict]) -> dict:
         # genuinely across every format.
         "best_ever": best_ever(all_time["games"]),
         "best_player": best_player(all_time["traders"], all_time["games"]),
+        # The score to beat on the format the door hands out. It sits beside
+        # the record rather than replacing it: the record is the biggest number
+        # there has ever been, this is the one a visitor can actually go after,
+        # and a board that showed only the first was quoting a game nobody
+        # arriving could play.
+        "open_table": open_table(all_time["games"], played),
         "week": week,
         "recent": sorted(rows, key=lambda r: r.get("played_at") or r["recorded_at"],
                          reverse=True)[:12],

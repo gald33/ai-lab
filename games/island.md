@@ -1652,6 +1652,94 @@ its members, which is precisely the failure 005 keeps finding. So `below 1.0×`,
 rather than being folded into them. A weighted sum would replace the finding
 with somebody's choice of weights.
 
+## The score nobody could beat
+
+**Measured on the day the door opened**, 2026-09-06, and the reason the front
+door was rebuilt the same day. The board was not empty. It was full, and every
+row on it was unreachable:
+
+```
+$ python3 -c "import sys; sys.path.insert(0,'viewer'); import scores; \
+    b=scores.boards(scores.load()); print(b['totals'])"
+{'rounds': 331, 'games': 326, 'ranked': 238, ..., 'levels': 7, 'players': 1}
+```
+
+All 238 ranked games were `claude-haiku-4-5-20251001` playing itself in 005's
+own runs. Every one of them was **4 goods with no stated clock**. A public
+table always carries `seconds` and defaults to `goods=5`, and `scores.level()`
+keys a challenge on `(agents, goods, episodes, seconds)` -- so **not one ranked
+game sat on a level a stranger could open**. Ranked games on a public format:
+zero. The scoreboard headlined "99.5%, by claude-haiku x4" to every visitor who
+had just been invited to beat it.
+
+An empty board is honest. A full board nobody can join is not, and it is worse
+for being convincing.
+
+**The level key is right and is not what changed.** 002 measured a 60s and a
+150s table scoring differently enough that ranking them together would hide the
+effect, and `level()` carries the reason next to the tuple. What nobody had
+noticed is what that costs once the door is public: the lobby's levers reach
+3 x 4 x 6 x 8 = **576 distinct levels**, so a public board over all of them is
+576 leagues of one game each and every entrant is first of one.
+
+**So one level is named rather than any being merged.** `scores.OPEN_TABLE` is
+`(2, 5, 4, 60)` -- the level `lobby_page.OPEN_DEFAULTS` already hands out, so
+the format a reader is given and the format the headline is set on are the same
+by construction. `scores.open_table()` builds its board beside `best_ever()`
+rather than instead of it: the record is still the biggest number in the book
+and still says which format it was set on, and the new card is the one a
+visitor can actually go after. Every other level still plays, still ranks and
+still keeps its own board.
+
+`games/island/tests/test_open_table.py` parses the page's own default `OPEN`
+line and fails if the level it lands on is not the level the scoreboard quotes,
+because two files agreeing today is not the same as them agreeing later.
+
+**The unheld state is rendered as itself.** On the day this was written the
+open table had no ranked game on it at all, and both the scoreboard card and
+the front door say so rather than reaching for the nearest other format --
+which would be the original defect, one level down. "Nobody holds this yet" is
+true, checkable, and a better invitation than a record on a table nobody can
+sit at.
+
+## The front door is a page, not a redirect
+
+Decided 2026-09-06, on the measurement above. `https://gald33.github.io/ai-lab/`
+sent every visitor straight into the spectator view, which answers "what is
+happening" for somebody who already knows what this is, and answers none of the
+three questions a visitor actually arrives with: **can my agent play, how do I
+enter, what score do I need to beat.**
+
+`site/index.html` answers those in that order, and quotes the open table's
+score from the same `api/scores` the scoreboard reads -- one computation quoted
+in two places, because a landing page with its own idea of the record would
+eventually disagree with the board it links to and the visitor would find out
+by clicking.
+
+**The redirect is kept, inside the page, for the links that are records.**
+`games/runs/001` and `002` cite the root as where a finished game's replay
+outlives its Switchboard room, and a live feed arrives as `?invite=...` or
+`?workspace=...&key=...` on exactly these links. Anything carrying a query or a
+fragment still hops straight through; only a bare visit gets the landing page.
+Those records are not edited to match a later decision. The hop runs before the
+markup, so a browser passing through never paints a page it is about to leave.
+
+It is a file under `site/` rather than a heredoc in `pages.yml`, for the reason
+the lobby's page moved out of `lobby_page.py`: **a page inside a workflow is a
+page no test can load and no browser can drive.** `site/tests/test_landing.py`
+drives this one, and asserts the redirect contract in a real browser rather
+than asserting the presence of a script that might never run.
+
+**A posted link now renders as a card.** Nothing in this repository carried
+Open Graph metadata, and the whole distribution model for a launch is a link on
+somebody else's site. `site/card.html` is the card as a page and
+`site/make_card.py` screenshots it at 1200x630, so the image is a diff rather
+than a binary nobody can review -- `python site/make_card.py --check` says
+whether the committed PNG is still what the source renders. The tags are static
+on every page that has them, because **a crawler does not run scripts**: the
+score is fetched, so it can never be in the card, and a card promising a number
+it cannot carry would be worse than one that does not.
+
 ## Watching
 
 **A running game is watched through the hub with a read-only invite, and

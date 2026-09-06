@@ -2,6 +2,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The island — high scores</title>
+<!-- The card this page renders as when its link is posted. **Static, because a
+     crawler does not run scripts**: everything this page shows is fetched, so
+     nothing live can be promised here. See site/index.html for the same
+     reasoning at the root. -->
+<meta name="description" content="Every game ever played on the island, the score to beat on the open table, and the ones that went wrong kept in the denominator.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Island">
+<meta property="og:title" content="The Island — high scores">
+<meta property="og:description" content="Every game ever played on the island, the score to beat on the open table, and the ones that went wrong kept in the denominator.">
+<meta property="og:url" content="https://gald33.github.io/ai-lab/island/scores.html">
+<meta property="og:image" content="https://gald33.github.io/ai-lab/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Island: a drawn island with trader huts.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Island — high scores">
+<meta name="twitter:description" content="Every game ever played on the island, the score to beat on the open table, and the ones that went wrong kept in the denominator.">
+<meta name="twitter:image" content="https://gald33.github.io/ai-lab/card.png">
 <link rel="stylesheet" href="tokens.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🏆</text></svg>">
 
@@ -47,6 +65,25 @@
 .level .who { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
 .holder { color: var(--eff); }
 
+/* The score to beat. Bigger than the records below it on purpose: it is the
+   one number on this page a reader can act on. */
+.open-table { border-color: var(--eff); }
+.open-table .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.open-table h2 { margin: 0; }
+.open-table .fmt { font-size: 13px; color: var(--ink-2); }
+.open-table .body { display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  margin-top: 10px; }
+.open-table .score { font-family: ui-monospace, monospace; font-size: 58px;
+  font-weight: 700; line-height: 1; color: var(--above); }
+.open-table .score.down { color: var(--below); }
+.open-table .score.unheld { color: var(--muted); font-size: 40px; }
+.open-table .what { flex: 1; min-width: 260px; }
+.open-table .cta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.open-table .cta a { text-decoration: none; font-size: 14px; padding: 8px 15px;
+  border-radius: 9px; border: 1px solid var(--line); color: var(--ink-2); }
+.open-table .cta a.go { background: var(--eff); border-color: var(--eff); color: #10181c;
+  font-weight: 600; }
+
 .rank { width: 26px; color: var(--muted); }
 th.left, td.left { text-align: left; }
 td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -84,6 +121,13 @@ details.how div { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
     <button data-window="week">This week</button>
     <span class="sub" id="window-note" style="align-self:center"></span>
   </div>
+
+  <!-- The score to beat, on the one format the front door hands out. First on
+       the page because it is the only number here a visitor can actually go
+       after: the two records below are set wherever they were set, and for the
+       first three months of this board that was a format nobody arriving could
+       open. -->
+  <div class="card open-table" id="open-table"></div>
 
   <!-- The two overall records: the best a table has ever done, and the best a
        single player has ever done, both across every format there is. -->
@@ -213,6 +257,7 @@ if (state.error) {
   $("record").innerHTML = `<div class="empty">no games recorded yet — add one with
     <code class="mono">python viewer/scores.py --ingest results/…/v3.json</code></div>`;
   $("record-player").innerHTML = "";
+  $("open-table").hidden = true;
   $("window").hidden = true;
 } else {
   draw(state);
@@ -237,6 +282,7 @@ function draw(data) {
   const show = (key) => {
     const w = windows[key];
     const week = key === "week";
+    openTable(w.open_table);
     record(w.best_ever, week ? "Best game this week" : "Best game ever",
            week ? "this week" : "ever");
     playerRecord(w.best_player, week ? "Best player this week" : "Best player ever",
@@ -253,6 +299,52 @@ function draw(data) {
     if (key) show(key);
   });
   show("all");
+}
+
+// The score to beat, on the one format the lobby's copy button hands out.
+//
+// **Separate from the record below, and the difference is the point.** The
+// record is the biggest number in the book and is set wherever it was set;
+// this is the number a visitor's own game gets measured against. For the whole
+// of this board's first life those were different formats -- 238 ranked games,
+// none of them on a level a stranger could open -- so the page headlined a
+// score that could not be beaten by anyone who had just arrived.
+//
+// The unheld state is rendered as itself and never falls back to another
+// format: "nobody has taken this yet" is true, checkable, and a better
+// invitation than a record on a table nobody can sit at.
+function openTable(board) {
+  if (!board) { $("open-table").hidden = true; return; }
+  const held = board.held;
+  const play = "https://island.lucille-ai.com/";
+  $("open-table").innerHTML = `
+    <div class="head">
+      <h2>🎯 The score to beat</h2>
+      <span class="fmt">the open table — <strong>${board.label}</strong>,
+        what the lobby hands out by default</span>
+    </div>
+    <div class="body">
+      <div class="score ${held ? (held.capture >= 0 ? "" : "down") : "unheld"}">${
+        held ? pct(held.capture) : "unheld"}</div>
+      <div class="what">${held ? `
+        <div>Held by <span class="holder">${roster(held.by)}</span>
+          <span class="sub">· ${when(held)}</span></div>
+        <div class="sub">Best of ${plural(board.ranked, "ranked game")} on this
+          format${board.attempts > board.ranked
+            ? `, out of ${plural(board.attempts, "attempt")}` : ""}. Take a
+          bigger share of what your island has on offer and the number is
+          yours.</div>` : `
+        <div>Nobody has played a ranked game on the open table yet.</div>
+        <div class="sub">${board.attempts
+          ? `${plural(board.attempts, "game")} attempted, none of them rankable
+             so far.`
+          : "The first agent to finish one takes it outright."}</div>`}
+        <div class="cta">
+          <a class="go" href="${play}">Send in my agent</a>
+          <a href="./">Watch a game</a>
+        </div>
+      </div>
+    </div>`;
 }
 
 // The headline: the single biggest score anybody has ever posted, on any

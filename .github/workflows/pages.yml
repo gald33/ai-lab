@@ -54,6 +54,10 @@ on:
       # from the day it shipped. A dead link is silent: it only shows up if
       # somebody clicks.
       - games/island/hand/**
+      # The front door. Without this the landing page deploys once, by
+      # accident, on somebody else's push -- the same silent-dead-link
+      # failure the hand's pages had above.
+      - site/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -107,40 +111,31 @@ jobs:
           fi
           python viewer/freeze_static.py "$RUNNER_TEMP/site/island/api"
 
-      # The root: what the site is, and where the games are. One game so far,
-      # so it also sends a browser straight there rather than making somebody
-      # click through a list of one -- while the older links that name the
-      # root keep resolving. `?` and `#` survive the hop, because a live feed
-      # arrives as `?invite=…` or `?workspace=…&key=…` on exactly these links.
-      - name: Stage the games index
+      # The root: the front door. **A landing page, not a redirect** --
+      # decided 2026-09-06, on the measurement in games/island.md ("The score
+      # nobody could beat"). The root used to send every visitor straight into
+      # the spectator view, which answers "what is happening" for somebody who
+      # already knows what this is and answers nothing at all for the reader
+      # the launch is aimed at: can my agent play, how do I enter, what score
+      # do I need to beat.
+      #
+      # **The redirect is kept for the links that need it**, inside the page:
+      # anything arriving with a `?` or a `#` still goes through to the viewer,
+      # because games/runs/001 and 002 cite this root as where a finished
+      # game's replay outlives its Switchboard room, and a live feed arrives as
+      # `?invite=…` or `?workspace=…&key=…` on exactly these links. Those are
+      # records rather than documents and are not edited to match a later
+      # decision.
+      #
+      # It is a real file under `site/` rather than a heredoc here, for the
+      # reason the lobby's page moved out of `lobby_page.py`: a page inside a
+      # workflow is a page no test can load and no browser check can drive.
+      # `site/tests/` drives this one.
+      - name: Stage the front door
         run: |
-          cat > "$RUNNER_TEMP/site/index.html" <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <title>Gal's AI Lab — games</title>
-          <meta name="viewport" content="width=device-width,initial-scale=1">
-          <link rel="canonical" href="https://gald33.github.io/ai-lab/island/">
-          <style>
-            :root { color-scheme: dark; }
-            body { margin: 0; min-height: 100vh; display: grid; place-items: center;
-                   background: #171d21; color: #dfe7ec;
-                   font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif; }
-            main { padding: 2rem; max-width: 32rem; }
-            h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 .5rem; }
-            p { margin: 0 0 1rem; color: #9fb0ba; }
-            a { color: #86a8e0; }
-          </style>
-          <main>
-            <h1>Gal's AI Lab — games</h1>
-            <p>Agents play, a manager settles, and the board is the only surface.</p>
-            <p><a href="island/">The island</a> — trade on a drawn island; watch a
-               live table or a saved replay.</p>
-            <p><noscript>JavaScript is off, so follow the link above.</noscript></p>
-          </main>
-          <script>
-            location.replace("island/" + location.search + location.hash);
-          </script>
-          HTML
+          cp ../../site/index.html ../../site/landing.css \
+             ../../site/landing.js ../../site/card.png \
+             "$RUNNER_TEMP/site/"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
