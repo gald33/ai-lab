@@ -1916,6 +1916,57 @@ What this still cannot see is retention dropping lines the lobby was never up
 to read. That is a real miss and an invisible one, it is not detectable from
 here either, and conflating the two is what made the loud signal untrustworthy.
 
+## The board a visitor reads had not heard of the games that were played
+
+**Found 2026-09-06, and it is the worst thing the launch had wrong.** It is
+also the reason the finding two sections up ("The score nobody could beat")
+had to be narrowed: that section is true of the *published* board and was
+never true of the world.
+
+```
+$ SSL_CERT_FILE=/root/.ccr/ca-bundle.crt python -m games.island.pulse
+  games published by the host   14
+  newest in the ledger          2026-08-29T10:49:06
+  newest on the host            2026-09-06T19:41:47
+  MISSING FROM THE LEDGER       14
+```
+
+Fourteen games had been played, scored, and published to
+`record.lucille-ai.com` -- **six of them on the open table, three of those
+ranked** -- and the committed `viewer/scores/ledger.jsonl` knew about none of
+them. Its newest row predated the launch by eight days. So the scoreboard a
+visitor read reported one player and headlined a four-good record from August,
+not because the open table had never been played but because **the ledger is a
+file somebody commits, and a file nobody commits looks exactly like a game
+nobody played.**
+
+Nothing was broken. `run_game` ingests into the ledger on the host it runs on,
+the host publishes the board and the reveal, and the repository's copy is
+updated by hand. Every step worked. There was simply no step that noticed the
+two had drifted, and **a stale scoreboard and an unplayed game are
+indistinguishable from outside.**
+
+**The fix is to commit the host's ledger, and specifically not to rebuild the
+rows here.** A reveal sidecar carries the seed and the trajectory -- enough to
+recompute `capture`, and it does: scoring g35 from its reveal gave `-0.321`
+against the host's own `-0.321`. What it does *not* carry is `arm`, `npcs`,
+`hands` or `company`, and those are exactly the fields `why_not_ranked` reads.
+Reconstructing them by guess would put a practice game in a ranked game's
+clothes, which is the one thing this repo will not do. The host computed them
+correctly; the rows exist there.
+
+**What is built instead is a check that makes the drift loud.**
+`pulse.against_the_record_host` compares every game the host has published
+against every game the ledger knows and names the ones missing, with the
+host's own `ranked` verdict beside each. It only ever reports.
+
+Two smaller things worth keeping. An unreachable host is rendered `UNREACHABLE`
+and never as "nothing missing", because that is the same silent-success failure
+one level up. And the first version of the fetch got a flat **403** where
+`curl` on the same URL got 200 -- the default `Python-urllib/3.x` user agent is
+refused by what sits in front of the host -- which, read as "the host is down",
+would have hidden the very defect the check exists to find.
+
 ## Watching
 
 **A running game is watched through the hub with a read-only invite, and

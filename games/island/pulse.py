@@ -24,7 +24,15 @@ What it reads:
   whether anybody played twice. `viewer/scores.py` owns it;
 - **the live hub** -- whether the lobby is up, and what is on its board right
   now. Read-only, through the same catch-up endpoint the viewer uses, without
-  registering or advancing a cursor. `--offline` skips it.
+  registering or advancing a cursor. `--offline` skips it;
+- **the record host** -- every game it has published, against every game the
+  committed ledger knows. **This is the check that found the launch's worst
+  defect** and the reason it is here: on 2026-09-06 the host had scored games
+  through that day and the committed ledger's newest was 2026-08-29, so the
+  published scoreboard was eight days stale and every game ever played on the
+  open table was missing from it. A visitor saw a board whose newest game
+  predated the launch. Nothing said so, because the ledger is a file somebody
+  commits and a file nobody commits looks exactly like a game nobody played.
 
 What it cannot see, and says so rather than leaving a blank:
 
@@ -58,6 +66,11 @@ TOKEN = "sb_public_lucille"
 WORKSPACE = "island-lobby"
 KEY = "Z822U5v1WFyeOEJUeLchMgLED-VgI_0chD4OjmRxej0"
 CHANNEL = "lobby"
+
+#: Where the host publishes a finished game. `HOSTING.md` names it, and the
+#: viewer already reads `reveal-<room>.json` off it at the end of a watched
+#: game.
+RECORD = "https://record.lucille-ai.com/games"
 
 #: The lab's own entrants, so "did a stranger play" can be asked separately
 #: from "did anybody play". Not a filter -- nothing is dropped -- just a label,
@@ -171,6 +184,85 @@ def from_the_hub() -> dict:
     }
 
 
+def _fetch_index() -> list[dict]:
+    """The host's own list of published games.
+
+    Split out so the comparison above can be tested without reaching the
+    network -- and so the two reasons this call is fussy stay in one place.
+
+    A named agent and, where one is configured, the environment's CA bundle.
+    Bare `urlopen` got a flat 403 here while `curl` on the same URL got 200:
+    the default `Python-urllib/3.x` user agent is refused by what sits in
+    front of the host. Worth the lines, because a 403 read as "the host is
+    down" is the same class of mistake as everything else this file exists to
+    catch -- a silent nothing wearing the clothes of a real answer.
+    """
+    import os
+    import ssl
+    import urllib.request
+
+    bundle = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+    context = ssl.create_default_context(cafile=bundle) if bundle else None
+    request = urllib.request.Request(f"{RECORD}/index.json",
+                                     headers={"User-Agent": "island-pulse"})
+    with urllib.request.urlopen(request, timeout=30, context=context) as fh:
+        index = json.load(fh)
+    return index if isinstance(index, list) else (
+        index.get("games") or index.get("rows") or [])
+
+
+def against_the_record_host(rows: list[dict] | None = None) -> dict:
+    """Games the host has published, against games the ledger has recorded.
+
+    **The ledger is committed by hand**, so it goes stale silently: the host
+    scores a game, publishes its board and reveal, and the board a visitor
+    reads knows nothing about it until somebody runs `git add`. There is no
+    error anywhere in that, which is what makes it worth a check -- a stale
+    scoreboard and an unplayed game look identical from outside.
+
+    This only ever *reports*. It deliberately does not reconstruct the missing
+    rows: a reveal carries the seed and the trajectory but not `arm`, `npcs`,
+    `hands` or `company`, and those are exactly the fields that decide whether
+    a game ranks. Rebuilding them by guess would put a practice game in a
+    ranked game's clothes, which is the one thing this repo will not do. The
+    host already computed them correctly; the fix is to commit its ledger.
+    """
+    rows = rows if rows is not None else scores.load()
+    known = {r.get("workspace") for r in rows}
+    # A named agent and, where one is configured, the environment's CA bundle.
+    # Bare `urlopen` got a flat 403 here while `curl` on the same URL got 200:
+    # the default `Python-urllib/3.x` user agent is refused by what sits in
+    # front of the host. Worth the two lines, because a 403 read as "the host
+    # is down" is the same class of mistake as everything else this file
+    # exists to catch -- a silent nothing that looks like a real answer.
+    try:
+        published = _fetch_index()
+    except Exception as exc:                               # noqa: BLE001
+        return {"reachable": False, "why": f"{type(exc).__name__}: {exc}"}
+    missing = []
+    for item in published:
+        standing = item.get("standing") or {}
+        workspace = standing.get("workspace") or item.get("workspace")
+        if workspace and workspace not in known:
+            missing.append({
+                "label": item.get("label"),
+                "workspace": workspace,
+                "finished_at": item.get("finished_at"),
+                "capture": standing.get("capture"),
+                "level": standing.get("level"),
+                "ranked": standing.get("ranked"),
+            })
+    newest_here = max((r.get("played_at") or "" for r in rows), default="")
+    newest_there = max((i.get("finished_at") or "" for i in published), default="")
+    return {
+        "reachable": True,
+        "published": len(published),
+        "missing_from_the_ledger": missing,
+        "newest_in_the_ledger": newest_here[:19],
+        "newest_on_the_host": newest_there[:19],
+    }
+
+
 #: Said out loud rather than left as an absent key. A blank in a report reads
 #: as a zero, and these are not zeroes -- they are things nothing here measures.
 BLIND = [
@@ -213,6 +305,29 @@ def report(data: dict) -> str:
                    f"  ({hub['opens_on_the_board']} OPEN, "
                    f"{hub['joins_on_the_board']} JOIN)")
     out.append("")
+    out.append("The published board, against what the host has actually scored")
+    rec = data.get("record") or {}
+    if not rec.get("reachable"):
+        out.append(f"  UNREACHABLE: {rec.get('why')}")
+    else:
+        missing = rec["missing_from_the_ledger"]
+        out.append(f"  games published by the host   {rec['published']}")
+        out.append(f"  newest in the ledger          {rec['newest_in_the_ledger']}")
+        out.append(f"  newest on the host            {rec['newest_on_the_host']}")
+        if missing:
+            out.append(f"  MISSING FROM THE LEDGER       {len(missing)}"
+                       f"  -- the published board does not know about these")
+            for m in missing[:10]:
+                cap = ("     -" if m["capture"] is None
+                       else f"{m['capture']:>6.2f}")
+                out.append(f"      {str(m['label']):5} {str(m['finished_at'])[:19]}"
+                           f" {str(m['level']):14} {cap}"
+                           f"  ranked={m['ranked']}")
+            out.append("  The host computed these correctly. Commit its "
+                       "ledger; do not rebuild them from the reveals.")
+        else:
+            out.append("  nothing missing -- the board is current")
+    out.append("")
     out.append("Not measured here, and not zero:")
     out.extend(f"  - {x}" for x in BLIND)
     return "\n".join(out)
@@ -227,7 +342,9 @@ def main(argv: list[str] | None = None) -> int:
 
     data = {"ledger": from_the_ledger(),
             "hub": {"reachable": False, "why": "not asked"} if args.offline
-            else from_the_hub()}
+            else from_the_hub(),
+            "record": {"reachable": False, "why": "not asked"} if args.offline
+            else against_the_record_host()}
     print(json.dumps(data, indent=1) if args.json else report(data))
     return 0
 

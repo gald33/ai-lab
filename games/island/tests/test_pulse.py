@@ -130,3 +130,73 @@ def test_it_runs_offline_without_touching_the_network():
     data = json.loads(done.stdout)
     assert data["hub"]["reachable"] is False
     assert data["ledger"]["ledger_rows"] > 0
+
+
+# ---- the published board against what was actually played -----------------
+
+def test_a_game_the_host_published_and_the_ledger_lacks_is_named(monkeypatch):
+    """The defect this check was written for, on the day it was found.
+
+    The host had scored games through 2026-09-06 and the committed ledger's
+    newest was 2026-08-29, so the public board was eight days stale and every
+    game ever played on the open table was missing from it. Nothing said so:
+    the ledger is a file somebody commits, and a file nobody commits looks
+    exactly like a game nobody played.
+    """
+    published = [
+        {"label": "g35", "finished_at": "2026-09-06T19:41:47",
+         "standing": {"workspace": "ws_new", "capture": -0.32,
+                      "level": [2, 5, 4, 60], "ranked": True}},
+        {"label": "g20", "finished_at": "2026-08-28T10:00:00",
+         "standing": {"workspace": "w-known", "capture": 0.4,
+                      "level": [2, 5, 4, 60], "ranked": True}},
+    ]
+    monkeypatch.setattr(pulse, "_fetch_index", lambda: published, raising=False)
+    rows = [_row("a", "2026-08-28T10:00:00+00:00", workspace="w-known")]
+    out = pulse.against_the_record_host(rows)
+    assert out["reachable"]
+    assert out["published"] == 2
+    missing = out["missing_from_the_ledger"]
+    assert [m["label"] for m in missing] == ["g35"]
+    assert missing[0]["ranked"] is True
+    assert out["newest_on_the_host"] > out["newest_in_the_ledger"]
+
+
+def test_a_current_board_reports_nothing_missing(monkeypatch):
+    published = [{"label": "g20", "finished_at": "2026-08-28T10:00:00",
+                  "standing": {"workspace": "w-known", "capture": 0.4,
+                               "level": [2, 5, 4, 60], "ranked": True}}]
+    monkeypatch.setattr(pulse, "_fetch_index", lambda: published, raising=False)
+    rows = [_row("a", "2026-08-28T10:00:00+00:00", workspace="w-known")]
+    out = pulse.against_the_record_host(rows)
+    assert out["missing_from_the_ledger"] == []
+
+
+def test_a_stale_board_is_loud_in_the_report(monkeypatch):
+    """It must not be a quiet line among the others. A visitor is reading a
+    board that does not know about games that were played."""
+    published = [{"label": "g35", "finished_at": "2026-09-06T19:41:47",
+                  "standing": {"workspace": "ws_new", "capture": -0.32,
+                               "level": [2, 5, 4, 60], "ranked": True}}]
+    monkeypatch.setattr(pulse, "_fetch_index", lambda: published, raising=False)
+    record = pulse.against_the_record_host([])
+    text = pulse.report({"ledger": pulse.from_the_ledger([]),
+                         "hub": {"reachable": False, "why": "not asked"},
+                         "record": record})
+    assert "MISSING FROM THE LEDGER" in text
+    assert "g35" in text
+    assert "do not rebuild them from the reveals" in text
+
+
+def test_an_unreachable_record_host_is_stated_not_silently_current(monkeypatch):
+    """A host that could not be read must never read as "nothing missing"."""
+    def boom():
+        raise OSError("refused")
+    monkeypatch.setattr(pulse, "_fetch_index", boom, raising=False)
+    out = pulse.against_the_record_host([])
+    assert out["reachable"] is False
+    text = pulse.report({"ledger": pulse.from_the_ledger([]),
+                         "hub": {"reachable": False, "why": "x"},
+                         "record": out})
+    assert "UNREACHABLE" in text
+    assert "nothing missing" not in text
