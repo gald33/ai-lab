@@ -1,0 +1,236 @@
+"""Did the launch work? Counted from the record, with no tracker anywhere.
+
+    python -m games.island.pulse
+    python -m games.island.pulse --json
+
+**Nothing here is a page view**, and that is the design rather than a
+limitation. The brief that asked for this wanted landing visitors, brief
+copies, lobby joins, games started, games completed, unique entrants and repeat
+attempts. Six of those seven are already written down somewhere this repo
+controls -- a `JOIN` is a line on a board, a finished game is a ledger row, and
+a repeat attempt is the same entrant appearing twice in that file. Only "how
+many people looked at the page" needs a tracker, and it is the least
+interesting of the seven.
+
+So this counts what is already recorded, and says plainly what it cannot see.
+That is not a privacy compromise dressed up as a feature: a script on the
+landing page would have to be loaded by every reader, and what it would buy is
+one number that does not answer the question the launch is actually asking,
+which is **did anybody's agent play, and did anybody come back**.
+
+What it reads:
+
+- **the ledger** -- games completed, who played, on what, how often, and
+  whether anybody played twice. `viewer/scores.py` owns it;
+- **the live hub** -- whether the lobby is up, and what is on its board right
+  now. Read-only, through the same catch-up endpoint the viewer uses, without
+  registering or advancing a cursor. `--offline` skips it.
+
+What it cannot see, and says so rather than leaving a blank:
+
+- how many people opened a page;
+- how many copied the brief;
+- how many pasted it into an agent and got no further.
+
+The gap between "briefs copied" and "JOINs on the board" is the one number
+that would genuinely help, and it is the one that needs the tracker. It is
+deliberately not here yet.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "005-deliberation-protocol"
+sys.path.insert(0, str(_ISLAND / "viewer"))
+
+import scores  # noqa: E402
+
+#: The published coordinates. Same four as `ENTER.md`, and the key protects
+#: nothing -- see that document. Read-only use only, here.
+HUB = "https://switchboard.lucille-ai.com"
+TOKEN = "sb_public_lucille"
+WORKSPACE = "island-lobby"
+KEY = "Z822U5v1WFyeOEJUeLchMgLED-VgI_0chD4OjmRxej0"
+CHANNEL = "lobby"
+
+#: The lab's own entrants, so "did a stranger play" can be asked separately
+#: from "did anybody play". Not a filter -- nothing is dropped -- just a label,
+#: and it is a prefix list rather than a name list because a baseline is
+#: allowed to be run more than once.
+OURS = ("npc-", "baseline-", "t-one", "t-two", "trader-b", "claude-haiku",
+        "scout-v2")
+
+
+def ours(who: str) -> bool:
+    return any(who.startswith(p) for p in OURS)
+
+
+def from_the_ledger(rows: list[dict] | None = None) -> dict:
+    """Everything the record already knows, which is most of it."""
+    rows = rows if rows is not None else scores.load()
+    played = scores.games(rows)
+    ranked = [g for g in played if scores.is_ranked(g)]
+
+    # A game a stranger could have opened -- the format the door hands out.
+    on_open = [g for g in played
+               if g.get("level") and tuple(g["level"]) == scores.OPEN_TABLE]
+
+    # Who played, and how often. **The interesting product number is the
+    # repeat**: somebody who played, disliked their score, changed something
+    # and came back. It is knowable from names alone and needs no tracker.
+    appearances: Counter[str] = Counter()
+    first_seen: dict[str, str] = {}
+    for game in sorted(played, key=lambda g: g.get("played_at") or ""):
+        for who in set(game["players"].values()):
+            appearances[who] += 1
+            first_seen.setdefault(who, game.get("played_at") or "")
+
+    strangers = {w: n for w, n in appearances.items() if not ours(w)}
+    repeats = {w: n for w, n in strangers.items() if n > 1}
+
+    # What kinds of agent turned up, off the labels a JOIN carried. Absent for
+    # every game played before the labels existed, which is most of them.
+    harnesses: Counter[str] = Counter()
+    owners: Counter[str] = Counter()
+    for game in played:
+        for said in (game.get("told") or {}).values():
+            if said.get("harness"):
+                harnesses[said["harness"]] += 1
+            if said.get("by"):
+                owners[said["by"]] += 1
+
+    week = datetime.now(timezone.utc) - timedelta(days=7)
+    recent = [g for g in played
+              if (g.get("played_at") or "") >= week.isoformat()]
+
+    return {
+        "games_completed": len(played),
+        "games_ranked": len(ranked),
+        "games_on_the_open_table": len(on_open),
+        "open_table_held": bool([g for g in on_open if scores.is_ranked(g)]),
+        "games_last_7_days": len(recent),
+        "entrants_all": len(appearances),
+        "entrants_not_ours": len(strangers),
+        # The one worth watching.
+        "entrants_who_came_back": len(repeats),
+        "repeat_attempts": {w: n for w, n in sorted(
+            repeats.items(), key=lambda kv: -kv[1])},
+        "harnesses_declared": dict(harnesses.most_common()),
+        "owners_declared": dict(owners.most_common()),
+        "ledger_rows": len(rows),
+    }
+
+
+def from_the_hub() -> dict:
+    """Is the door open, and is anything happening at it?
+
+    Read-only and unregistered, the way the viewer and the lobby page read: no
+    presence is announced and no cursor is advanced, so running this cannot
+    look like an entrant and cannot consume anybody's message.
+    """
+    try:
+        from switchboard import Client
+        from switchboard.config import ClientConfig
+    except ImportError:
+        return {"reachable": False, "why": "no switchboard client installed"}
+
+    client = Client(ClientConfig(url=HUB, url_source="explicit", token=TOKEN,
+                                 workspace=WORKSPACE, key=KEY),
+                    agent_id="pulse-readonly")
+    try:
+        agents = client.agents()
+        stats = client.stats()
+        board = client.history(CHANNEL, limit=200)
+    except Exception as exc:                               # noqa: BLE001
+        return {"reachable": False, "why": f"{type(exc).__name__}: {exc}"}
+
+    present = {a.get("name") for a in agents if not a.get("stale")}
+    lines = [str(m.get("text") or m.get("body") or "") for m in board]
+    return {
+        "reachable": True,
+        # The two processes that have to be alive for anybody to get in. The
+        # page being up says nothing about this: the lobby is a separate
+        # process, and a served page with a dead lobby looks exactly like a
+        # quiet one.
+        "lobby_running": "lobby" in present,
+        "runner_running": any(a.get("task", "").startswith("running tables")
+                              for a in agents if not a.get("stale")),
+        "on_the_roster": sorted(n for n in present if n),
+        # The hub keeps a room about an hour, so these are "right now" and not
+        # "ever". A zero here is not a zero since launch.
+        "messages_retained": stats.get("messages"),
+        "opens_on_the_board": sum(1 for x in lines if x.startswith("OPEN")),
+        "joins_on_the_board": sum(1 for x in lines if x.startswith("JOIN")),
+        "board_lines": len(lines),
+    }
+
+
+#: Said out loud rather than left as an absent key. A blank in a report reads
+#: as a zero, and these are not zeroes -- they are things nothing here measures.
+BLIND = [
+    "page views (landing, scoreboard, result pages)",
+    "briefs copied from the lobby",
+    "agents that were handed a brief and never reached the board",
+]
+
+
+def report(data: dict) -> str:
+    led, hub = data["ledger"], data["hub"]
+    out = ["THE ISLAND -- pulse", ""]
+    out.append("Played (from the ledger, which is the record)")
+    out.append(f"  games completed         {led['games_completed']}")
+    out.append(f"  of those, ranked        {led['games_ranked']}")
+    out.append(f"  on the open table       {led['games_on_the_open_table']}"
+               f"  ({'held' if led['open_table_held'] else 'UNHELD'})")
+    out.append(f"  in the last 7 days      {led['games_last_7_days']}")
+    out.append("")
+    out.append("Who")
+    out.append(f"  entrants, all           {led['entrants_all']}")
+    out.append(f"  entrants, not ours      {led['entrants_not_ours']}")
+    out.append(f"  came back for another   {led['entrants_who_came_back']}")
+    for who, n in list(led["repeat_attempts"].items())[:8]:
+        out.append(f"      {who:<24} {n} games")
+    if led["harnesses_declared"]:
+        out.append("  harnesses declared      "
+                   + ", ".join(f"{k} x{v}" for k, v
+                               in led["harnesses_declared"].items()))
+    out.append("")
+    out.append("The door (right now -- the hub keeps a room about an hour)")
+    if not hub.get("reachable"):
+        out.append(f"  UNREACHABLE: {hub.get('why')}")
+    else:
+        out.append(f"  lobby process           "
+                   f"{'up' if hub['lobby_running'] else 'DOWN'}")
+        out.append(f"  table runner            "
+                   f"{'up' if hub['runner_running'] else 'DOWN'}")
+        out.append(f"  lines on the board      {hub['board_lines']}"
+                   f"  ({hub['opens_on_the_board']} OPEN, "
+                   f"{hub['joins_on_the_board']} JOIN)")
+    out.append("")
+    out.append("Not measured here, and not zero:")
+    out.extend(f"  - {x}" for x in BLIND)
+    return "\n".join(out)
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Did the launch work?")
+    ap.add_argument("--json", action="store_true", help="machine-readable")
+    ap.add_argument("--offline", action="store_true",
+                    help="the ledger only; do not reach the hub")
+    args = ap.parse_args(argv)
+
+    data = {"ledger": from_the_ledger(),
+            "hub": {"reachable": False, "why": "not asked"} if args.offline
+            else from_the_hub()}
+    print(json.dumps(data, indent=1) if args.json else report(data))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

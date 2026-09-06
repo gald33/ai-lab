@@ -140,6 +140,9 @@ jobs:
       # sat above the tables it drove, matched no elements, and every clock on
       # the page was frozen while every markup assertion around it passed.
       - run: pip install -r games/island/requirements-dev.txt
+      # The launch counters, offline: no hub, no flake, and still a real
+      # answer off the ledger.
+      - run: python -m pytest games/island/tests/test_pulse.py -q
       - run: python -m pytest games/island/tests/test_lobby_page.py -q -k browser
         env:
           ISLAND_REQUIRE_BROWSER: "1"
@@ -219,6 +222,13 @@ jobs:
           experiments/005-deliberation-protocol/viewer/tests/test_scores_page.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+      # The per-game result pages. No browser needed -- they are static files
+      # and the point is that their Open Graph tags are *in* the file, which is
+      # a text assertion. Here rather than in the `viewer` job because they are
+      # part of the same public surface as everything above.
+      - run: >
+          python -m pytest
+          experiments/005-deliberation-protocol/viewer/tests/test_results.py -q
 
   drawing-quick:
     runs-on: ubuntu-latest

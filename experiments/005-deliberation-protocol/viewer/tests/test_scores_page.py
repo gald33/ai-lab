@@ -58,6 +58,35 @@ def _serve(root: pathlib.Path):
     return httpd, f"http://127.0.0.1:{httpd.server_address[1]}/scores.html"
 
 
+def _text(root: pathlib.Path, selector: str) -> str:
+    """Whatever the page put in `selector`, after its script has run."""
+    try:
+        from playwright import sync_api as play
+    except ImportError:
+        _missing("no playwright to drive a page with")
+    chrome = next((p for p in pathlib.Path("/opt/pw-browsers").glob("chromium*")
+                   if p.is_file()), None)
+    httpd, url = _serve(root)
+    try:
+        with play.sync_playwright() as pw:
+            try:
+                browser = pw.chromium.launch(
+                    executable_path=str(chrome) if chrome else None)
+            except Exception as exc:                       # noqa: BLE001
+                _missing(f"no chromium to drive a page with: {exc!r}")
+            tab = browser.new_page()
+            errors: list[str] = []
+            tab.on("pageerror", lambda e: errors.append(str(e)))
+            tab.goto(url)
+            tab.wait_for_selector(selector, timeout=10_000)
+            out = tab.inner_text(selector)
+            browser.close()
+    finally:
+        httpd.shutdown()
+    assert not errors, f"the page threw: {errors}"
+    return out
+
+
 def _card(root: pathlib.Path) -> str:
     try:
         from playwright import sync_api as play
@@ -151,3 +180,48 @@ def test_the_card_names_the_format_the_door_hands_out(tmp_path):
                     "held": None, "top": [], "ranked": 0, "attempts": 0,
                     "unranked": []})))
     assert "2 traders · 5 goods · 4 episodes · 60s episodes" in text
+
+
+# ---- what a seat said about itself ----------------------------------------
+
+def _game(**over):
+    base = {"game_id": "g", "level": [2, 5, 4, 60],
+            "label": "2 traders · 5 goods · 4 episodes · 60s episodes",
+            "agents": 2, "goods": 5, "episodes": 4, "seconds": 60,
+            "capture": 0.5, "eff_round": 0.8, "floor": 0.6, "place": 1, "of": 1,
+            "by": ["shell-goblin-v3", "scout-v2"], "told": {}, "rounds": 1,
+            "seeds": [1], "workspace": "w", "arm": "sealed",
+            "played_at": "2026-09-06T10:00:00+00:00", "played_from": "board",
+            "recorded_at": "2026-09-06T10:01:00+00:00"}
+    return {**base, **over}
+
+
+def test_the_leaderboard_shows_what_a_seat_said_it_was_running(tmp_path):
+    """A label recorded and never displayed is a label not recorded.
+
+    The whole reason `harness=` exists is so a public board can answer "did
+    fifty lines of Python ever beat a frontier model". That answer has to be
+    visible on the row.
+    """
+    game = _game(told={"T1": {"harness": "bash", "by": "gald33"},
+                       "T2": {"harness": "claude-code"}})
+    text = _text(_site(tmp_path, _board(games=[game])), "#games")
+    assert "bash" in text and "claude-code" in text
+    assert "brought by gald33" in text
+
+
+def test_a_game_that_declared_nothing_shows_nothing(tmp_path):
+    """Absent is not unknown. Most rows in this ledger predate the field."""
+    text = _text(_site(tmp_path, _board(games=[_game()])), "#games")
+    assert "shell-goblin-v3" in text
+    assert "brought by" not in text
+
+
+def test_one_harness_across_both_seats_is_said_once(tmp_path):
+    """The same reason `roster` says a repeated name once with a count.
+
+    Two seats on one harness read as two harnesses until you look.
+    """
+    game = _game(told={"T1": {"harness": "python"}, "T2": {"harness": "python"}})
+    text = _text(_site(tmp_path, _board(games=[game])), "#games")
+    assert text.count("python") == 1

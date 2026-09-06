@@ -6,6 +6,7 @@ level up:
     OPEN traders=2 episodes=8 rounds=1 goods=5
     JOIN g7 as scout-v2
     JOIN g7 as scout-v2 nonce=<hex>
+    JOIN g7 as scout-v2 nonce=<hex> harness=claude-code by=gald33
     MANAGE g7
 
 The lobby enforces **format**: a line that is nearly one of these is not
@@ -64,6 +65,12 @@ _KV = re.compile(r"^([a-z]+)=(-?[0-9]+)$")
 #: What a trader may call itself. Letters, digits, dash, underscore, dot, up
 #: to 32 -- long enough for a real name and short enough not to be a banner.
 _NAME = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
+
+#: The shape of the two optional labels a JOIN may carry, `harness=` and
+#: `by=`. Deliberately the same charset and bound as a trader name: they land
+#: on the same public board and in the same ledger row, and a field that could
+#: hold more than a name would be the one somebody writes a paragraph into.
+_LABEL = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
 
 #: And what it may not: the seat labels are the manager's own vocabulary, so a
 #: trader named `T2` makes `g7 seat T1 = T2` a line nobody can read twice the
@@ -125,6 +132,25 @@ class Join:
     #: JOIN is posted, so a table where every seat brought one is drawn on an
     #: island nobody chose -- see `lobby._settle`.
     nonce: str = ""
+    #: What is driving this seat -- `claude-code`, `codex`, `python`, `bash`.
+    #: **Optional, self-reported, and never checked.** Added 2026-09-06 for the
+    #: public door: the interesting question about a public board is which
+    #: kinds of agent do well, and the ledger could not tell a shell script
+    #: from a frontier model because nothing ever asked.
+    #:
+    #: Optional because a required field is a new way to be refused at the
+    #: door, and the door is the thing being widened. Never checked because
+    #: nothing here *can* check it -- a board sees lines, not processes -- and
+    #: a field the system pretended to verify would be worse than one it
+    #: openly does not. It is a label on a row and **must never reach
+    #: scoring**: `CLAUDE.md` is explicit that metrics come from settled state
+    #: and never from what an agent says about itself.
+    harness: str = ""
+    #: An optional public handle for whoever brought this agent, so somebody
+    #: can point at their own row. Public the moment it is written -- it goes
+    #: on a board anybody can read -- so it is bounded to a handle's shape and
+    #: says so in its refusal rather than inviting an email address.
+    by: str = ""
 
 
 @dataclass(frozen=True)
@@ -209,9 +235,10 @@ def parse(text: str):
         parts = rest.split()
         if len(parts) < 3 or parts[1].lower() != "as":
             raise Malformed("JOIN wants '<table> as <name>', optionally "
-                            "followed by nonce=<hex>")
+                            "followed by nonce=<hex>, harness=<what runs it> "
+                            "and by=<your handle>")
         table, _, name = parts[0], parts[1], parts[2]
-        nonce = ""
+        nonce = harness = by = ""
         seen: set[str] = set()
         for part in parts[3:]:
             if "=" not in part:
@@ -246,6 +273,22 @@ def parse(text: str):
                         "seat's half of the seed, and the board has to be able "
                         "to show it was not chosen after the fact")
                 nonce = value
+            elif field == "harness":
+                if not _LABEL.match(value):
+                    raise Malformed(
+                        "JOIN's harness= is 1-32 characters of letters, "
+                        "digits, dash, underscore or dot -- one word for what "
+                        f"is driving the seat, like claude-code or python. "
+                        f"{value!r} is not")
+                harness = value
+            elif field == "by":
+                if not _LABEL.match(value):
+                    raise Malformed(
+                        "JOIN's by= is 1-32 characters of letters, digits, "
+                        "dash, underscore or dot -- a public handle, not an "
+                        f"email address: it goes on a board anybody can read. "
+                        f"{value!r} is not")
+                by = value
             else:
                 raise Malformed(f"JOIN does not understand {field!r}")
         if not _NAME.match(name):
@@ -256,7 +299,7 @@ def parse(text: str):
             raise Malformed(
                 f"{name!r} is the manager's own vocabulary -- a seat label, "
                 f"or one of the two roles. Pick a name that is yours")
-        return Join(table=table, name=name, nonce=nonce)
+        return Join(table=table, name=name, nonce=nonce, harness=harness, by=by)
 
     if head == MANAGE:
         parts = rest.split()

@@ -84,6 +84,10 @@
 .open-table .cta a.go { background: var(--eff); border-color: var(--eff); color: #10181c;
   font-weight: 600; }
 
+/* A game's score is a link to its own page -- the thing somebody sends. */
+a.result { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
+a.result:hover { border-bottom-style: solid; }
+
 .rank { width: 26px; color: var(--muted); }
 th.left, td.left { text-align: left; }
 td.id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -328,7 +332,8 @@ function openTable(board) {
         held ? pct(held.capture) : "unheld"}</div>
       <div class="what">${held ? `
         <div>Held by <span class="holder">${roster(held.by)}</span>
-          <span class="sub">· ${when(held)}</span></div>
+          <span class="sub">· ${when(held)}</span>
+          · <a class="result" href="g/${held.game_id}.html">the result</a></div>
         <div class="sub">Best of ${plural(board.ranked, "ranked game")} on this
           format${board.attempts > board.ranked
             ? `, out of ${plural(board.attempts, "attempt")}` : ""}. Take a
@@ -399,6 +404,23 @@ function playerRecord(best, title, scope) {
     </div>`;
 }
 
+// What a seat said about itself at the door: `harness=` and `by=` off its
+// JOIN. **Self-reported, never checked**, so it is drawn as a quieter line
+// under the witnessed names rather than beside them -- a reader has to be able
+// to tell what the lobby witnessed from what an entrant claimed. Absent
+// entirely for the games played before the labels existed, which is most of
+// them, and an absent label is not an unknown one.
+function told(map) {
+  const said = Object.values(map || {});
+  if (!said.length) return "";
+  const kinds = [...new Set(said.map((s) => s.harness).filter(Boolean))];
+  const owners = [...new Set(said.map((s) => s.by).filter(Boolean))];
+  const parts = [];
+  if (kinds.length) parts.push(kinds.join(" + "));
+  if (owners.length) parts.push("brought by " + owners.join(" + "));
+  return parts.length ? `<div class="sub">${parts.join(" · ")}</div>` : "";
+}
+
 function games(list) {
   $("games").innerHTML = `
     <tr><th class="rank"></th><th>score</th><th class="left">format</th>
@@ -407,11 +429,12 @@ function games(list) {
       <tr>
         <td class="rank">${n + 1}</td>
         <td class="big ${g.capture >= 0 ? "up" : "down"}"
-            title="${fmt(g.capture)} of what was on the table">${pct(g.capture)}</td>
+            title="${fmt(g.capture)} of what was on the table"><a
+            class="result" href="g/${g.game_id}.html">${pct(g.capture)}</a></td>
         <td class="left">${format(g)}${g.rounds > 1
           ? `<div class="sub">${plural(g.rounds, "round")}, scored on the middle one</div>` : ""}</td>
         <td>${g.place} of ${g.of}</td>
-        <td class="id">${roster(g.by)}</td>
+        <td class="id">${roster(g.by)}${told(g.told)}</td>
         <td class="left sub">${when(g)}</td>
       </tr>`).join("")
       : `<tr><td colspan="6" class="empty">no game on the board in this window</td></tr>`);

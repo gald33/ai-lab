@@ -302,6 +302,7 @@ def digest(path: Path | None) -> str | None:
 
 
 def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
+          entrants: dict[str, dict] | None = None,
           source: Path | None = None) -> dict:
     """One finished round, scored from its own record and its own seed."""
     seed = rnd["seed"]
@@ -343,6 +344,12 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     recorded = datetime.now(timezone.utc).isoformat(timespec="seconds")
     ran, ran_from = played_at(board, rnd, recorded)
     who = players or {}
+    # Seat -> what its JOIN said was driving it and who brought it. **Purely
+    # descriptive**: self-reported at the door, never checked, and read by
+    # nothing that scores. It is here so a public board can say whether a
+    # shell script ever beat a frontier model, which the ledger could not
+    # answer because nothing had ever asked. See `protocol.Join.harness`.
+    told = entrants or {}
     # Which attempt this round belongs to. Declared by whatever ran it; a round
     # nobody grouped is a game of one, which is a real format and not a default
     # standing in for a missing answer.
@@ -378,7 +385,16 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
                    "seconds": record.get("episode_seconds")},
         "players": [{"slot": n,
                      "id": who.get(n, record.get("model", "unknown")),
-                     "model": record.get("model")} for n in names],
+                     "model": record.get("model"),
+                     # Absent rather than empty when nothing was declared: a
+                     # seat that said nothing and a seat that said "" are the
+                     # same fact, and neither is "unknown harness" -- most
+                     # rows in this ledger predate the field entirely.
+                     **({"harness": told[n]["harness"]}
+                        if told.get(n, {}).get("harness") else {}),
+                     **({"by": told[n]["by"]}
+                        if told.get(n, {}).get("by") else {})}
+                    for n in names],
         # The table's score.
         "eff_round": round(fresh.eff_round, 6),
         "eff_round_upper": round(fresh.eff_round_upper, 6),
@@ -617,14 +633,22 @@ def seen(path: Path = LEDGER) -> set[str]:
 
 
 def ingest(result: Path, *, ledger: Path = LEDGER,
-           players: dict[str, str] | None = None) -> tuple[list[dict], list[dict]]:
+           players: dict[str, str] | None = None,
+           entrants: dict[str, dict] | None = None,
+           ) -> tuple[list[dict], list[dict]]:
     """Add every round in a run record that is not in the ledger already."""
     record = json.loads(result.read_text())
+    # The run record carries these when the lobby witnessed them, so a
+    # re-ingest off disk reaches the same row as the original run rather than
+    # quietly dropping the labels.
+    if entrants is None:
+        entrants = record.get("entrants")
     have = seen(ledger)
     added, skipped = [], []
     for rnd in record.get("rounds", []):
         try:
-            row = entry(record, rnd, players=players, source=result)
+            row = entry(record, rnd, players=players, entrants=entrants,
+                        source=result)
         except ValueError as exc:
             # A round that cannot be scored still happened. It goes in the file
             # so it stays in the denominators, and it is never ranked.
@@ -827,7 +851,20 @@ def games(rows: list[dict]) -> list[dict]:
             "floor": (statistics.median([m["autarky_floor"] for m in scored])
                       if scored else None),
             "ratios": ratios,
+            # What actually happened on the board, summed over the game's
+            # rounds. A result page has to be able to say "11 trades" without
+            # re-reading a board file that may since have been pruned.
+            "settled": sum((m.get("traffic") or {}).get("settled") or 0
+                           for m in members),
             "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
+            # Slot -> what that seat said about itself at the door. Kept beside
+            # `players` rather than folded into it: a name is what the lobby
+            # seated and these are what the entrant claimed, and the board has
+            # to be able to show the difference. Empty for every game played
+            # before the labels existed, which is most of them.
+            "told": {p["slot"]: {k: p[k] for k in ("harness", "by") if p.get(k)}
+                     for m in members for p in m["players"]
+                     if p.get("harness") or p.get("by")},
             "workspace": members[0]["workspace"],
             "arm": members[0]["arm"],
             # One unverified round is enough: the rounds are one attempt.
@@ -1067,6 +1104,7 @@ def level_rows(ranked: list[dict], played: list[dict]) -> list[dict]:
             "best_eff_round": best["eff_round"],
             "floor": best["floor"],
             "by": [best["players"][s] for s in sorted(best["players"])],
+            "told": best.get("told") or {},
             "workspace": best["workspace"],
             "arm": best["arm"],
             "game_id": best["game_id"],
@@ -1119,6 +1157,11 @@ def game_rows(ranked: list[dict]) -> list[dict]:
                 "place": ahead + 1,
                 "of": len(entries),
                 "by": [g["players"][s] for s in sorted(g["players"])],
+                # Self-reported, so it travels under its own name rather than
+                # being merged into `by` -- a reader must be able to tell a
+                # witnessed seat from a claimed harness.
+                "told": g.get("told") or {},
+                "settled": g.get("settled") or 0,
                 "rounds": g["rounds"],
                 "seeds": g["seeds"],
                 "workspace": g["workspace"],

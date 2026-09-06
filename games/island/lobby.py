@@ -183,6 +183,14 @@ class Table:
     #: every seat did is drawn by commit-reveal (`Lobby._settle`) and its draw
     #: is checkable afterwards by anybody.
     nonces: dict[str, str] = field(default_factory=dict)
+    #: peer id -> what its JOIN said is driving the seat, and who brought it,
+    #: when it said either. **Self-reported and never checked**, which is why
+    #: they are kept apart from everything else on this table: `keys` is
+    #: witnessed, `nonces` is committed to, and these two are simply what
+    #: somebody wrote. They label a row and never reach a score --
+    #: `CLAUDE.md`, "Self-reports are non-authoritative".
+    harnesses: dict[str, str] = field(default_factory=dict)
+    owners: dict[str, str] = field(default_factory=dict)
     #: This lobby's commitment, posted when the table opens and before any
     #: JOIN can have been read: `sha256(nonce)`.
     commit: str = ""
@@ -646,11 +654,20 @@ class Lobby:
             table.boxes[peer] = exchange
         if action.nonce:
             table.nonces[peer] = action.nonce.lower()
+        if action.harness:
+            table.harnesses[peer] = action.harness
+        if action.by:
+            table.owners[peer] = action.by
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
                 f"key {key}"
                 f"{', sealed' if exchange else ', in the clear'}"
-                f"{', nonce ' + action.nonce.lower() if action.nonce else ''} "
+                f"{', nonce ' + action.nonce.lower() if action.nonce else ''}"
+                # Read back because a label written and never mentioned again
+                # is indistinguishable from one that was silently dropped --
+                # and this lobby answers every line it settles.
+                f"{', harness ' + action.harness if action.harness else ''}"
+                f"{', by ' + action.by if action.by else ''} "
                 f"({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)

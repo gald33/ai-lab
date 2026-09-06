@@ -111,6 +111,18 @@ jobs:
           fi
           python viewer/freeze_static.py "$RUNNER_TEMP/site/island/api"
 
+      # A stable public page per game, so a result is something somebody can
+      # send. **Static, one file each**, because Open Graph is read by crawlers
+      # that do not run scripts: a single page looking up `?game=` in the
+      # browser would render a perfect card for a visitor and an empty one for
+      # every link preview, which is the audience a result URL exists for.
+      #
+      # Built from the ledger and not from the board files, so a game whose
+      # replay has been pruned still has a page -- it says the replay is gone
+      # rather than 404ing, and the row it quotes is intact either way.
+      - name: Stage the result pages
+        run: python viewer/results.py "$RUNNER_TEMP/site/island/g"
+
       # The root: the front door. **A landing page, not a redirect** --
       # decided 2026-09-06, on the measurement in games/island.md ("The score
       # nobody could beat"). The root used to send every visitor straight into
