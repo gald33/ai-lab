@@ -145,6 +145,29 @@ def players(table: Table) -> dict[str, str]:
     return {table.label(peer): name for peer, name in table.seats.items()}
 
 
+def entrants(table: Table) -> dict[str, dict]:
+    """Seat slot -> what its JOIN said about itself, for the ledger.
+
+    **Self-reported and never checked**, which is why it is a separate function
+    from `players` above rather than more fields on it: `players` is who the
+    lobby seated, and this is what they told it. A board sees lines, not
+    processes, so nothing here can be verified and nothing pretends to. It
+    labels a row and reaches no score -- `CLAUDE.md`, "Self-reports are
+    non-authoritative".
+
+    A seat that declared neither is absent rather than present-and-empty: most
+    rows in this ledger predate the field, and "said nothing" must not be
+    readable as "said unknown".
+    """
+    out: dict[str, dict] = {}
+    for peer in table.seats:
+        told = {k: v for k, v in (("harness", table.harnesses.get(peer)),
+                                  ("by", table.owners.get(peer))) if v}
+        if told:
+            out[table.label(peer)] = told
+    return out
+
+
 #: What the manager seals a private half under. Distinct from the context a
 #: trader seals `PRODUCE` under, so neither can be replayed as the other.
 
@@ -675,6 +698,11 @@ def record(table: Table, mgr: Manager, dealer: Dealer, out: Path, *,
         "episode_seconds": table.seconds,
         #: Seat slot -> entrant, for `scores.ingest(..., players=...)`.
         "players": players(table),
+        #: Seat slot -> the labels its JOIN carried, for the same call. Kept in
+        #: the record so a re-ingest off disk reaches the same row: unlike
+        #: `npcs` and `hands` these were said on the *lobby's* board, which the
+        #: game's own board does not carry, so they cannot be re-read later.
+        "entrants": entrants(table),
         # A practice game is kept and counted and never ranked. **This flag is
         # broader than `arm` below and always has been**: `arm` answers the
         # sealing question alone ("was the private half public?"), while this
@@ -974,7 +1002,7 @@ def _play_table(table: Table, invite: Invite, *, episode_seconds: int,
                       f"{arc.name}", flush=True)
         with _LEDGER:
             added, _ = _scores.ingest(
-                path, players=rec["players"],
+                path, players=rec["players"], entrants=rec.get("entrants"),
                 **({"ledger": ledger} if ledger is not None else {}))
         status = added[0]["status"] if added else "already recorded"
         # The spectator's handover, and it goes **after** the ledger row on

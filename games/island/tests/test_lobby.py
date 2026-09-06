@@ -750,6 +750,46 @@ def test_a_board_that_outran_the_window_is_said_out_loud(hub, monkeypatch):
     assert list(lobby.tables) == ["g1"]
 
 
+def test_a_quiet_lobby_does_not_accuse_itself_of_missing_lines(hub):
+    """Seen on the public board at 19:35:15Z on 2026-09-06, and wrong.
+
+    The lobby told anybody watching the door that lines had been posted it
+    never read and to send them again. Nothing had been missed. `seq` is a
+    **hub-wide** autoincrement and the hub keeps a channel about an hour, so a
+    quiet lobby's own already-read lines age out by retention while the counter
+    runs on for every other workspace on the hub -- and `oldest` then sits far
+    above `last_seq` with nothing whatever dropped.
+
+    The read that produced it returned *fourteen* rows against a 500-message
+    window, which is the tell: if fewer than `WINDOW` rows exist on the channel
+    at all, more than `WINDOW` cannot have arrived since the last read. A loud
+    false alarm on the one signal that means "we missed you" is worse than no
+    signal, because it is the door telling a visitor to try again for no
+    reason -- and it teaches everyone to ignore the real one.
+    """
+    key = generate_key()
+    lobby = Lobby(client=_client(hub, "lobby", key))
+    talker = _client(hub, "talker", key)
+    talker.post("lobby", "hello")
+    lobby.drain()
+    assert lobby.missed == 0
+
+    # The hub's counter runs on elsewhere while this channel is quiet, and this
+    # lobby's earlier lines age out of retention. Both are ordinary; neither is
+    # a missed line. Simulated by winding the cursor back far behind whatever
+    # the next read will return as its oldest row.
+    lobby.last_seq = 1
+    talker.post("lobby", "OPEN traders=2 episodes=3 rounds=1")
+    lobby.drain()
+
+    assert lobby.missed == 0, "a quiet lobby accused itself of missing lines"
+    said = [m["body"] for m in lobby.client.history("lobby", limit=500)
+            if isinstance(m.get("body"), str)]
+    assert not any("never read" in b for b in said)
+    # And it still did its job on the line it read.
+    assert list(lobby.tables) == ["g1"]
+
+
 def test_an_ordinary_drain_reports_nothing_missed(hub):
     key = generate_key()
     lobby = Lobby(client=_client(hub, "lobby", key))

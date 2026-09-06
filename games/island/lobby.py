@@ -183,6 +183,14 @@ class Table:
     #: every seat did is drawn by commit-reveal (`Lobby._settle`) and its draw
     #: is checkable afterwards by anybody.
     nonces: dict[str, str] = field(default_factory=dict)
+    #: peer id -> what its JOIN said is driving the seat, and who brought it,
+    #: when it said either. **Self-reported and never checked**, which is why
+    #: they are kept apart from everything else on this table: `keys` is
+    #: witnessed, `nonces` is committed to, and these two are simply what
+    #: somebody wrote. They label a row and never reach a score --
+    #: `CLAUDE.md`, "Self-reports are non-authoritative".
+    harnesses: dict[str, str] = field(default_factory=dict)
+    owners: dict[str, str] = field(default_factory=dict)
     #: This lobby's commitment, posted when the table opens and before any
     #: JOIN can have been read: `sha256(nonce)`.
     commit: str = ""
@@ -506,12 +514,34 @@ class Lobby:
         now sits above the highest seq already read, everything between the
         two is gone. Said out loud on the board, because a lobby that missed
         somebody should not look like a lobby nobody wrote to.
+
+        **And the window has to have been the thing that ran out.** Seen on
+        the public board, 2026-09-06 at 19:35:15Z: this fired on a read that
+        returned *fourteen* rows, and told anybody watching the door that
+        their lines had gone unanswered and to post them again. Nothing had
+        been missed. The hub keeps a channel about an hour, so a quiet lobby's
+        own already-read lines age out by retention while the hub-wide counter
+        runs on for every other workspace -- and then `oldest` sits far above
+        `last_seq` with nothing whatever having been dropped.
+
+        So the gap is only evidence when the read came back **full**: if fewer
+        than `WINDOW` rows exist on the channel at all, more than `WINDOW`
+        cannot have arrived since the last one. That is exactly the condition
+        this warning is about, stated directly instead of inferred from a
+        counter that answers a different question.
+
+        What this still cannot see is retention dropping lines the lobby was
+        never up to read -- a real miss, and an invisible one. It is not
+        detectable from here either, and conflating it with this one is what
+        made the loud signal untrustworthy. `pulse.py` is where the question
+        "was anybody at the door" is asked from the record instead.
         """
         if not rows:
             return
         seqs = [int(r.get("seq", 0)) for r in rows]
         oldest, newest = seqs[0], seqs[-1]
-        if self.last_seq and oldest > self.last_seq + 1:
+        outran = len(rows) >= WINDOW
+        if outran and self.last_seq and oldest > self.last_seq + 1:
             self.missed += 1
             self.say(f"lines were posted here that this lobby never read: the "
                     f"board moved from seq {self.last_seq} to {oldest} between "
@@ -646,11 +676,20 @@ class Lobby:
             table.boxes[peer] = exchange
         if action.nonce:
             table.nonces[peer] = action.nonce.lower()
+        if action.harness:
+            table.harnesses[peer] = action.harness
+        if action.by:
+            table.owners[peer] = action.by
         self.settled += 1
         self.say(f"{action.table} seat {table.label(peer)} = {action.name}, "
                 f"key {key}"
                 f"{', sealed' if exchange else ', in the clear'}"
-                f"{', nonce ' + action.nonce.lower() if action.nonce else ''} "
+                f"{', nonce ' + action.nonce.lower() if action.nonce else ''}"
+                # Read back because a label written and never mentioned again
+                # is indistinguishable from one that was silently dropped --
+                # and this lobby answers every line it settles.
+                f"{', harness ' + action.harness if action.harness else ''}"
+                f"{', by ' + action.by if action.by else ''} "
                 f"({len(table.seats)}/{table.traders})")
         if table.ready():
             self._settle(table)

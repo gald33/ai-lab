@@ -140,6 +140,9 @@ jobs:
       # sat above the tables it drove, matched no elements, and every clock on
       # the page was frozen while every markup assertion around it passed.
       - run: pip install -r games/island/requirements-dev.txt
+      # The launch counters, offline: no hub, no flake, and still a real
+      # answer off the ledger.
+      - run: python -m pytest games/island/tests/test_pulse.py -q
       - run: python -m pytest games/island/tests/test_lobby_page.py -q -k browser
         env:
           ISLAND_REQUIRE_BROWSER: "1"
@@ -200,6 +203,32 @@ jobs:
       - run: python -m pytest games/island/tests/test_lobby_web_reconstruct.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+      # The front door, and the redirect that used to be the whole of it. A
+      # bare visit gets the landing page; anything carrying a `?` or a `#`
+      # still hops into the viewer with it, because games/runs/001 and 002
+      # cite the root as where a finished game's replay lives and a live feed
+      # arrives as `?invite=...` on exactly those links. The hop is a script,
+      # so where a visit ends up is behaviour and not markup -- and the score
+      # the page quotes is fetched, so its unheld and unreadable states are
+      # invisible to any assertion on the file.
+      - run: python -m pytest site/tests -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
+      # The scoreboard's open-table card, for the same reason: it is written
+      # entirely by a script from data it fetched, and its unheld state is the
+      # one the board was actually in the day the door opened.
+      - run: >
+          python -m pytest
+          experiments/005-deliberation-protocol/viewer/tests/test_scores_page.py -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
+      # The per-game result pages. No browser needed -- they are static files
+      # and the point is that their Open Graph tags are *in* the file, which is
+      # a text assertion. Here rather than in the `viewer` job because they are
+      # part of the same public surface as everything above.
+      - run: >
+          python -m pytest
+          experiments/005-deliberation-protocol/viewer/tests/test_results.py -q
 
   drawing-quick:
     runs-on: ubuntu-latest

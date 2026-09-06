@@ -302,6 +302,7 @@ def digest(path: Path | None) -> str | None:
 
 
 def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
+          entrants: dict[str, dict] | None = None,
           source: Path | None = None) -> dict:
     """One finished round, scored from its own record and its own seed."""
     seed = rnd["seed"]
@@ -343,6 +344,12 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
     recorded = datetime.now(timezone.utc).isoformat(timespec="seconds")
     ran, ran_from = played_at(board, rnd, recorded)
     who = players or {}
+    # Seat -> what its JOIN said was driving it and who brought it. **Purely
+    # descriptive**: self-reported at the door, never checked, and read by
+    # nothing that scores. It is here so a public board can say whether a
+    # shell script ever beat a frontier model, which the ledger could not
+    # answer because nothing had ever asked. See `protocol.Join.harness`.
+    told = entrants or {}
     # Which attempt this round belongs to. Declared by whatever ran it; a round
     # nobody grouped is a game of one, which is a real format and not a default
     # standing in for a missing answer.
@@ -378,7 +385,16 @@ def entry(record: dict, rnd: dict, *, players: dict[str, str] | None = None,
                    "seconds": record.get("episode_seconds")},
         "players": [{"slot": n,
                      "id": who.get(n, record.get("model", "unknown")),
-                     "model": record.get("model")} for n in names],
+                     "model": record.get("model"),
+                     # Absent rather than empty when nothing was declared: a
+                     # seat that said nothing and a seat that said "" are the
+                     # same fact, and neither is "unknown harness" -- most
+                     # rows in this ledger predate the field entirely.
+                     **({"harness": told[n]["harness"]}
+                        if told.get(n, {}).get("harness") else {}),
+                     **({"by": told[n]["by"]}
+                        if told.get(n, {}).get("by") else {})}
+                    for n in names],
         # The table's score.
         "eff_round": round(fresh.eff_round, 6),
         "eff_round_upper": round(fresh.eff_round_upper, 6),
@@ -458,6 +474,67 @@ def level_label(key: tuple) -> str:
     seconds = key[3] if len(key) > 3 else None
     clock = f"{seconds}s episodes" if seconds else "episode length unstated"
     return f"{agents} traders · {goods} goods · {episodes} episodes · {clock}"
+
+
+#: **The open table: the one format the front door hands out.**
+#:
+#: `level()` keys a challenge on four fields, correctly -- 002 measured a 60s
+#: and a 150s table scoring differently enough that ranking them together would
+#: hide the effect. What that costs, and what nobody noticed until the door was
+#: public, is that the lobby's levers reach 3 x 4 x 6 x 8 = 576 distinct
+#: levels. A public board over 576 levels is 576 leagues of one game each, and
+#: every entrant is first of one.
+#:
+#: Measured on the day the door opened (2026-09-06): 238 ranked games, all of
+#: them 4 goods with no stated clock, all by one player id, and **not one of
+#: them on a level a stranger could open** -- a public table always carries
+#: `seconds` and defaults to 5 goods. So the headline read "99.5%, by
+#: claude-haiku x4" over a format nobody arriving could enter. Not an empty
+#: board, which is honest, but a full one that cannot be joined, which is not.
+#:
+#: The fix is to **name one level**, not to merge any. This is the level
+#: `lobby_page.OPEN_DEFAULTS` already hands out, so the format a reader is
+#: given and the format the headline is set on are the same by construction --
+#: `games/island/tests/test_open_table.py` fails if the two drift apart. Every
+#: other level still plays, still ranks and still keeps its own board; what
+#: changes is only which one the front door quotes.
+OPEN_TABLE = (2, 5, 4, 60)
+
+
+def open_table(game_board: list[dict], played: list[dict]) -> dict:
+    """The score to beat on the one format a stranger can actually open.
+
+    Separate from `best_ever` on purpose, and the two say different things. The
+    record is the biggest number in the book and is set wherever it was set;
+    this is the number a visitor's own game will be measured against, so it is
+    the only one the front door can honestly call a score to beat.
+
+    **An empty one is a fact, not a missing value.** It reports `held: None`
+    with the denominators still attached, because "nobody has taken this yet"
+    is the true and interesting state on a board that has just opened -- and a
+    page that filled the gap with the nearest other format would be back to
+    quoting an unreachable record.
+    """
+    # `level` is None on a game that could not be scored at all, and such a
+    # game is still in `played` because nothing that went wrong is dropped from
+    # a denominator. It belongs to no level, this one included.
+    def here(game: dict) -> bool:
+        return bool(game.get("level")) and tuple(game["level"]) == OPEN_TABLE
+
+    on_level = [g for g in game_board if here(g)]
+    attempts = [g for g in played if here(g)]
+    return {
+        "level": list(OPEN_TABLE),
+        "label": level_label(OPEN_TABLE),
+        "held": dict(on_level[0]) if on_level else None,
+        "top": on_level[:10],
+        # Both denominators, for the same reason `best_ever` carries two: how
+        # many took this format seriously, and how many of those could be
+        # ranked at all.
+        "ranked": len(on_level),
+        "attempts": len(attempts),
+        "unranked": [why for why in (why_not_ranked(g) for g in attempts) if why],
+    }
 
 
 def captured(eff_round: float | None, floor: float | None) -> float | None:
@@ -556,14 +633,22 @@ def seen(path: Path = LEDGER) -> set[str]:
 
 
 def ingest(result: Path, *, ledger: Path = LEDGER,
-           players: dict[str, str] | None = None) -> tuple[list[dict], list[dict]]:
+           players: dict[str, str] | None = None,
+           entrants: dict[str, dict] | None = None,
+           ) -> tuple[list[dict], list[dict]]:
     """Add every round in a run record that is not in the ledger already."""
     record = json.loads(result.read_text())
+    # The run record carries these when the lobby witnessed them, so a
+    # re-ingest off disk reaches the same row as the original run rather than
+    # quietly dropping the labels.
+    if entrants is None:
+        entrants = record.get("entrants")
     have = seen(ledger)
     added, skipped = [], []
     for rnd in record.get("rounds", []):
         try:
-            row = entry(record, rnd, players=players, source=result)
+            row = entry(record, rnd, players=players, entrants=entrants,
+                        source=result)
         except ValueError as exc:
             # A round that cannot be scored still happened. It goes in the file
             # so it stays in the denominators, and it is never ranked.
@@ -766,7 +851,20 @@ def games(rows: list[dict]) -> list[dict]:
             "floor": (statistics.median([m["autarky_floor"] for m in scored])
                       if scored else None),
             "ratios": ratios,
+            # What actually happened on the board, summed over the game's
+            # rounds. A result page has to be able to say "11 trades" without
+            # re-reading a board file that may since have been pruned.
+            "settled": sum((m.get("traffic") or {}).get("settled") or 0
+                           for m in members),
             "players": {p["slot"]: p["id"] for m in members for p in m["players"]},
+            # Slot -> what that seat said about itself at the door. Kept beside
+            # `players` rather than folded into it: a name is what the lobby
+            # seated and these are what the entrant claimed, and the board has
+            # to be able to show the difference. Empty for every game played
+            # before the labels existed, which is most of them.
+            "told": {p["slot"]: {k: p[k] for k in ("harness", "by") if p.get(k)}
+                     for m in members for p in m["players"]
+                     if p.get("harness") or p.get("by")},
             "workspace": members[0]["workspace"],
             "arm": members[0]["arm"],
             # One unverified round is enough: the rounds are one attempt.
@@ -1006,6 +1104,7 @@ def level_rows(ranked: list[dict], played: list[dict]) -> list[dict]:
             "best_eff_round": best["eff_round"],
             "floor": best["floor"],
             "by": [best["players"][s] for s in sorted(best["players"])],
+            "told": best.get("told") or {},
             "workspace": best["workspace"],
             "arm": best["arm"],
             "game_id": best["game_id"],
@@ -1058,6 +1157,11 @@ def game_rows(ranked: list[dict]) -> list[dict]:
                 "place": ahead + 1,
                 "of": len(entries),
                 "by": [g["players"][s] for s in sorted(g["players"])],
+                # Self-reported, so it travels under its own name rather than
+                # being merged into `by` -- a reader must be able to tell a
+                # witnessed seat from a claimed harness.
+                "told": g.get("told") or {},
+                "settled": g.get("settled") or 0,
                 "rounds": g["rounds"],
                 "seeds": g["seeds"],
                 "workspace": g["workspace"],
@@ -1282,6 +1386,7 @@ def boards(rows: list[dict]) -> dict:
     week["days"] = RECENT_DAYS
     week["best_ever"] = best_ever(week["games"])
     week["best_player"] = best_player(week["traders"], week["games"])
+    week["open_table"] = open_table(week["games"], recent_played)
 
     levels = {tuple(g["level"]) for g in played
               if g["level"] and is_ranked(g)}
@@ -1302,6 +1407,12 @@ def boards(rows: list[dict]) -> dict:
         # genuinely across every format.
         "best_ever": best_ever(all_time["games"]),
         "best_player": best_player(all_time["traders"], all_time["games"]),
+        # The score to beat on the format the door hands out. It sits beside
+        # the record rather than replacing it: the record is the biggest number
+        # there has ever been, this is the one a visitor can actually go after,
+        # and a board that showed only the first was quoting a game nobody
+        # arriving could play.
+        "open_table": open_table(all_time["games"], played),
         "week": week,
         "recent": sorted(rows, key=lambda r: r.get("played_at") or r["recorded_at"],
                          reverse=True)[:12],
