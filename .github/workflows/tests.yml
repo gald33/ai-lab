@@ -179,7 +179,14 @@ jobs:
       # output rather than invented lines.
       #
       # `test_hand_pages.py` drives the pages against a real hub and reads
-      # what they posted back with a real Python client. That is the only
+      # what they posted back with a real Python client. It also serves
+      # `kids-island.html` in the layout the deploy really uses -- the
+      # viewer's modules at the root, the hand's pages one directory down --
+      # because that page imports `../stage.js`, and a flat fixture would
+      # serve a page that could never exist while the deployed one 404ed on
+      # its own island. That page's check reads the **canvas back as pixels**:
+      # a WebGL island that threw leaves a rectangle no markup assertion can
+      # tell from a drawn one. That is the only
       # check on the wire format: sealing contexts, the `{b, ch, s}` wrapper,
       # and a signature computed over the right channel. It caught the
       # signature being over the blinded channel instead of the plaintext
