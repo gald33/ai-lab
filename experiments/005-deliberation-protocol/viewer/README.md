@@ -4392,6 +4392,91 @@ This still does not fix the flake. It means the next occurrence arrives with
 the page's own account of it instead of a stopwatch reading, which is the
 difference between a second investigation and this one.
 
+### It is not `recorded`. It is `shutters`, the check before it
+
+2026-09-07, third occurrence, on #232 — a landing-page pull request whose only
+viewer change was three `href` strings and one Python constant. Both halves of
+the new diagnostic fired together for the first time on a real failure:
+
+```
+FAIL island-game-001d-g1 recorded: nothing mounted in 60s; the page said nothing,
+  which rules out a script that threw and leaves a mount that was merely slow
+FAIL island-game-001d-g1 recorded: and the page could not be photographed either
+  (TimeoutError), so its renderer was not merely slow but unresponsive
+```
+
+**What was new was not in the message. It was in the timing table nobody had
+compared across runs.** `main` had run the same job green forty minutes
+earlier, which makes a control:
+
+| check | green `a212259` | #223 | #232 |
+|---|---|---|---|
+| **`shutters`** | **27.3** | **246.1** | **342.7** |
+| `recorded` | 15.1 | 90.4 | 70.4 |
+| `mechanics` | 95.5 | 85.2 | 104.6 |
+| `alive` | 83.4 | 73.2 | 91.0 |
+| `uncovered` | 51.8 | 47.4 | 57.1 |
+| `ring` | 48.8 | 42.2 | 49.8 |
+| `crowding` | 47.5 | 40.2 | 51.7 |
+| `turning` | 42.1 | 37.0 | 44.6 |
+| total | 864.6 | 1036.6 | 1277.5 |
+
+**In both occurrences where a timing table survives, `shutters` took nine to
+twelve times its normal seconds, and every other check was within about 15% of
+green.** On #223 the rest of the suite was *faster* than the green run. So this
+is not a slow runner, and it is not accumulated browser wear across the plan —
+both were measured against and ruled out on #220, and this table rules them out
+again from the record rather than from a reproduction.
+
+**`shutters` is the check immediately before `recorded`, and `recorded` is the
+last check in the plan:**
+
+```python
+add("quick", "shutters", shutters, out)
+add("quick", "recorded", recorded, boards[0], out)
+```
+
+They share a browser — `run` passes one `browser` down the whole plan. So a
+browser left wedged by `shutters` lands on exactly one check, and it is the one
+that goes red. That fits every fact this investigation has collected and no
+other hypothesis does: the page is unresponsive rather than slow
+(`_best_effort_shot`), no script threw (`the page said nothing`), per-page wear
+is flat, and CPU contention costs about two seconds.
+
+**Nobody saw it for two occurrences because `shutters` passes.** It has no
+deadline of its own; it takes four times as long as anything else in the suite
+and still returns clean, so the only thing it does on a bad run is push a
+number up a table that is printed for humans and read by nobody. The check that
+was going red was the one downstream of the damage.
+
+Three things this does **not** establish, said plainly because the last two
+write-ups here each corrected an over-read of the one before:
+
+- **n is 2.** #220's timing table was not retrieved, so the association rests
+  on the two occurrences whose logs were still readable.
+- **Adjacency is not causation.** `shutters` being slow and `recorded` failing
+  could both be downstream of a third thing the runner did. What makes the
+  browser the better guess is that it is the only state the two checks share
+  which the rest of the suite does not.
+- **What is slow inside `shutters` is unmeasured.** It drives four
+  frame-and-board combinations; which of them eats the 300 seconds is not in
+  any log.
+
+**The next step is to make the next occurrence answer it, not to guess now.**
+`recorded` should report how long the check before it took, and `run` should
+say when any check exceeds some multiple of its usual seconds — a `shutters` at
+342s is a fact the suite already had and threw away in a table. `MOUNT_MS` is
+still not the lever, and giving `recorded` a fresh browser would hide the
+signal rather than fix it: if a wedged browser is the cause, the interesting
+thing is what wedges it.
+
+**And a fourth fact, about who can act.** A Claude session watching #232 could
+not re-run the job — `rerun-failed-jobs` answers `403 Resource not accessible
+by integration` for that token. A flake that does not reproduce, cannot be
+re-run by the agent watching it, and is not safe to paper over leaves the pull
+request sitting on a human. That is a cost of the flake, and it belongs in the
+same paragraph as the flake.
+
 **The second half was held back once, and the reason was measured.**
 `render.py` was put in a CI job and run twice on the same commit. It failed both times, with a
 *different* failure each time:
