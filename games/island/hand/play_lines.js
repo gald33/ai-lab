@@ -330,3 +330,43 @@ export function privateHalf(whispers) {
   }
   return null;
 }
+
+//: `run_game.who_is_at_this_table`: "The seats at this table, witnessed in
+//: public on the lobby board before this room existed: T1 = alice (key abc),
+//: T2 = bob (key def). This room's invite was posted there too, ..."
+//:
+//: Anchored at the head, so a trader quoting the line back at the room is not
+//: read as the manager saying it -- the same guard `openOffers` carries, and
+//: for the same reason.
+const SEATED = /^The seats at this table\b[^:]*: (.+?)\. This room's invite\b/;
+const SEAT_OF = /^(\S+) = (\S+) \(key /;
+
+/**
+ * Alias -> seat label, from the manager's roll-call: `{ alice: "T1" }`.
+ *
+ * **What it is for is the picture, not a move.** The board names an author by
+ * their blinded hub id; the island draws a hut per *seat*. Without this every
+ * hut is labelled with six characters of a hash, which is the island a child
+ * is asked to play on. Nothing composed from it ever reaches the board -- the
+ * partner in a `PROPOSE` comes from the seat label the manager itself
+ * published, which is what this reads.
+ *
+ * `{}` when the manager has not said, or has said differently, and then the
+ * huts keep the ids: a wrong name over somebody's hut is worse than a short
+ * one, because a child would trade against it.
+ */
+export function seatLabels(lines) {
+  for (const row of lines || []) {
+    const body = typeof row === "string" ? row
+               : (row && typeof row.body === "string" ? row.body : "");
+    const found = SEATED.exec(body.trim());
+    if (!found) continue;
+    const out = {};
+    for (const part of found[1].split(",")) {
+      const seat = SEAT_OF.exec(part.trim());
+      if (seat) out[seat[2]] = seat[1];
+    }
+    if (Object.keys(out).length) return out;
+  }
+  return {};
+}

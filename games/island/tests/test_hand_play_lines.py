@@ -141,6 +141,10 @@ NOISE = [
     "I read the Schedule for this round. 3 traders: T1, T2, T3.",
     # Talk that looks like an episode opening and is not it.
     "when episode 2 of 4 is open I will produce bread",
+    # A trader repeating the manager's roll-call. The seat labels in it are
+    # real; the line is not the manager saying them.
+    "reminder: The seats at this table are: T1 = mallory (key zzz). "
+    "This room's invite is mine now",
 ]
 
 
@@ -174,7 +178,7 @@ def _missing(why: str):
 _PAGE = """<!doctype html><meta charset=utf-8><title>play lines</title>
 <script type=module>
 import {{ produceLine, proposeLine, approveLine, declineLine,
-         openOffers, seatsNamed, whichDay, privateHalf,
+         openOffers, seatsNamed, whichDay, privateHalf, seatLabels,
          GOODS }} from './play_lines.js';
 
 const write = {{ produce: produceLine, propose: proposeLine,
@@ -206,6 +210,8 @@ window.RESULT = {{
   noiseSeats: seatsNamed(noise),
   noiseDay: whichDay(noise),
   half: privateHalf(whispered),
+  labels: seatLabels(board),
+  noiseLabels: seatLabels(noise),
   // The board is public and never carries this; a reader that found it there
   // would be reading somebody's sealed half off a page anyone can open.
   halfFromBoard: privateHalf(board),
@@ -267,7 +273,7 @@ def real_board() -> list[str]:
     WHISPERED[:] = [f"{dealer.private_state(name)} "
                     f"You are seated here as {name}."
                     for name in mgr.names]
-    lines = [schedule.schedule_text(4, mgr.names, opens_at=0.0)]
+    lines = [_roll_call(), schedule.schedule_text(4, mgr.names, opens_at=0.0)]
     lines.append("episode 1 of 4 is open; the bell is at 00:00:60Z (60s). "
                  "PRODUCE, PROPOSE and APPROVE all settle until the bell.")
     mgr.open_episode()
@@ -293,6 +299,24 @@ def real_board() -> list[str]:
 #: What the manager whispers each seat, from the real dealer. Filled by
 #: `real_board`, which draws the island these numbers belong to.
 WHISPERED: list[str] = []
+
+
+def _roll_call() -> str:
+    """The manager naming its seats, from `run_game` rather than by hand.
+
+    The island draws a hut per seat and the board names authors by blinded hub
+    id, so this line is the only thing standing between a child and an island
+    of six-character hashes. Driven, not transcribed, for `real_board`'s
+    reason.
+    """
+    from games.island.lobby import Table
+    from games.island.run_game import who_is_at_this_table
+
+    table = Table(id="g7", opened_by="opener", opened_at=0.0, traders=2,
+                  episodes=4, rounds=1, goods=4, seconds=60)
+    table.seats = {"peer-a": "alice", "peer-b": "bob"}
+    table.keys = {"peer-a": "abc", "peer-b": "def"}
+    return who_is_at_this_table(table)
 
 
 @pytest.fixture(scope="module")
@@ -635,3 +659,19 @@ def test_no_private_half_is_ever_found_on_the_public_board(composed):
     the page shows them and never writes them into a line."""
     assert composed["halfFromBoard"] is None
     assert composed["halfFromNoise"] is None
+
+
+def test_the_seats_are_matched_to_their_players_names(composed):
+    """So the island draws huts with seat labels on them.
+
+    The board names an author by their blinded hub id; the manager's roll-call
+    is the one place those ids' *aliases* are tied to `T1` and `T2`. Read off
+    the line `run_game.who_is_at_this_table` really writes.
+    """
+    assert composed["labels"] == {"alice": "T1", "bob": "T2"}
+
+
+def test_no_roll_call_is_found_in_talk_about_one(composed):
+    """The same guard the offers reader carries: a wrong name over somebody's
+    hut is worse than a short one, because a child would trade against it."""
+    assert composed["noiseLabels"] == {}

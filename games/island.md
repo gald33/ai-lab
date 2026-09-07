@@ -1164,6 +1164,86 @@ the public board.
 written. The dependency still runs one way: the viewer's pages would be
 correct if all three were deleted.
 
+### The controls go onto the island, on a page of their own
+
+Decided by Gal, 2026-09-07, on being shown that the section above put a child
+in front of a text board while the drawn island sat on a page they could only
+watch. The answer he chose is neither of the two obvious ones: **the controls
+on the viewer itself, but not in the original page — a variation copy that
+maximises for playable UI and not for replay and message reading, with a
+button through to the real viewer.** Built as
+`games/island/hand/kids-island.html`.
+
+**"The originals untouched" still holds, and that is what the variation is
+for.** The spectator's `viewer/web/index.html` stays static, keyless and
+read-only; nothing about it changes, and it would still be correct if every
+hand page were deleted. What the new page reverses is only the assumption that
+*a page which draws the island cannot be a page you play on* — which was never
+decided, only inherited from there being one such page.
+
+**A variation of the page, not of the drawing.** Everything that draws is
+imported from the viewer's own modules over `../`: `stage.js` for the model,
+`reducer.js` for turning a board into island state. Nothing is copied, because
+a second island would drift from the first exactly as "two renderings of one
+lobby" describes. What is genuinely new is the *shell*: the viewer's 3,122
+lines of orchestration are a spectator's — a game picker, a replay player with
+paces, a reveal rail, a message list — and a player wants none of it. The
+island holds the top of the screen, the controls hold the bottom, and the way
+back to the spectator's page is one button that hands it this room.
+
+**Two things differ underneath, and both are deliberate rather than
+convenient:**
+
+- *Where the rows come from.* `feeds.js` never talks to a hub — the viewer's
+  live feed reads its own server's `api/state`. A child playing is already in
+  the room under the key the lobby witnessed, so the rows here are the ones
+  `room.js` has already read. **No second poll**, which is the constraint "as
+  little hub traffic as will do" already set: one fetch, two renderings.
+- *Where the day comes from.* `Scene.dayProgress` reads the clock off the
+  **newest line on the board**, which is right for a replay and wrong for a
+  live game: a quiet stretch would stop the sun over an island still being
+  played on. This page reads the bell the manager announced against the wall
+  clock instead. Not a copy of that method and not a fix to it — a different
+  question, asked because the page is live.
+
+**The reducer replaced three scrapes rather than adding a fourth.** `kids.html`
+reads open offers, the seats and the day out of the manager's prose. This page
+hands the same rows to `reduce`, which the viewer has always used, and takes
+proposals, traders, stocks and the episode off the result — so there is *one*
+reading of the board here, and it is the reading the spectator's page already
+depends on. The scrapes that remain are the two `reduce` cannot do:
+`privateHalf`, which opens a whisper the reducer never sees, and `seatLabels`,
+which ties the roster's aliases to `T1`/`T2` so the huts carry seat names
+instead of six characters of a blinded id.
+
+**Handing `reduce` its goods is what puts an island on the screen on day one.**
+It infers them from the manager's receipts, which is right for a finished board
+and leaves a live one with none until somebody's first `PRODUCE` settles — so
+a child opening the page at the start of a round would have watched an empty
+sea until another trader moved. The goods come from the whisper instead, with
+`GOODS` as the fallback; being too long is visible rather than silent, since a
+good the island does not deal simply stands there with nothing ever on it.
+`test_the_island_is_there_before_anybody_has_produced` fails if that argument
+is dropped.
+
+**The picture is read back as pixels, because a canvas is the frozen countdown
+all over again.** `Stage` keeps `preserveDrawingBuffer` so a check can say the
+island *drew* rather than that a canvas exists — and a canvas that exists and
+never drew is exactly the failure `CLAUDE.md` records, in a form no markup
+assertion can see at all. WebGL is real in the CI browser (SwiftShader,
+measured), so this is a check and not a skip; removing the `build` call takes
+the readback to one colour and the test fails.
+
+**What it costs, said plainly.** This page holds a seat key and draws with the
+viewer's code, so a fault in that code now sits on a page that can post. The
+exposure is the one already accounted for under "the key is extractable" — a
+seat key is minted per seat, per game, and never reused — and the mitigation
+is that the drawing is imported rather than forked, so it is the same code the
+spectator's page runs and is checked by the same `drawing` jobs. The page also
+catches anything the stage throws and says so in words: the controls below work
+on a page with a blank rectangle at the top, because the game is the controls
+and the island is the reason to look.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —

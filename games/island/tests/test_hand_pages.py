@@ -38,12 +38,21 @@ from games.island.hand.declaration import declaration as py_declaration
 from games.island.hand.declaration import hands_on_board
 
 HAND = pathlib.Path(__file__).resolve().parent.parent / "hand"
+#: The viewer's own web assets, which `kids-island.html` imports over `../`.
+VIEWER = (pathlib.Path(__file__).resolve().parents[3] / "experiments"
+          / "005-deliberation-protocol" / "viewer" / "web")
 WORKSPACE = "island-hand-test"
 #: The kids' page gets a room of its own, because `Room._findManager` takes
 #: the first roster row called `manager` and this file registers several. A
 #: shared roster would make which manager a whisper reached depend on the
 #: order the tests happened to run in.
 KIDS = "island-kids-test"
+#: And the drawn page gets a third, for the same reason KIDS exists: which
+#: manager a whisper reaches must not depend on the order the tests ran in.
+#: **A room per test**, not one shared: `Room._findManager` takes the first
+#: roster row called `manager`, so a shared roster makes which manager a
+#: whisper reaches depend on the order the tests happened to run in.
+KIDS_3D = "island-kids-3d"
 KEY = "Z822U5v1WFyeOEJUeLchMgLED-VgI_0chD4OjmRxej0"
 
 
@@ -79,7 +88,36 @@ def site(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def cors_hub(site, tmp_path_factory):
+def island_site(tmp_path_factory):
+    """The hand's pages served **the way the deploy serves them**: the viewer's
+    modules at the root and the hand's pages one directory down.
+
+    `kids-island.html` imports `../stage.js` and `../reducer.js`, which is a
+    real path rather than a convenience -- `pages.yml` stages `viewer/web/`
+    at `/island/` and `hand/` at `/island/hand/`. A flat fixture would serve a
+    page that could never exist, and would pass while the deployed one 404ed
+    on its own island.
+    """
+    root = tmp_path_factory.mktemp("island-site")
+    shutil.copytree(VIEWER, root, dirs_exist_ok=True)
+    hand = root / "hand"
+    hand.mkdir(exist_ok=True)
+    for name in ("kids-island.html", "kids.html", "play.html", "lobby.html",
+                 "switchboard.js", "hub.js", "identity.js", "lobby_lines.js",
+                 "play_lines.js", "declaration.js", "brief.js", "room.js",
+                 "transcript.js"):
+        shutil.copy(HAND / name, hand / name)
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                directory=str(root))
+    handler.log_message = lambda *a, **k: None
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+
+
+@pytest.fixture(scope="module")
+def cors_hub(site, island_site, tmp_path_factory):
     """A hub that allows the page's origin, and only it.
 
     The managed hub is an allowlist rather than reflect-all -- measured, with
@@ -95,7 +133,8 @@ def cors_hub(site, tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("hand-hub")
     port = _free_port()
     store = Store(str(tmp_path / "hub.db"))
-    app = create_app(ServerConfig(db_path=store.path, cors_origins=(site,)),
+    app = create_app(ServerConfig(db_path=store.path,
+                                  cors_origins=(site, island_site)),
                      store=store)
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port,
                                            log_level="error"))
@@ -383,6 +422,9 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # reach is a page nobody plays, and this link is the only door to it.
     kids = tab.locator("#kidsLink")
     assert kids.get_attribute("href") == f"./kids.html?{href.split('?', 1)[1]}"
+    drawn = tab.locator("#kidsIslandLink")
+    assert drawn.get_attribute("href") == \
+        f"./kids-island.html?{href.split('?', 1)[1]}"
     # Under the status message, not somewhere else on the page: the message
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
@@ -1312,5 +1354,313 @@ def test_a_seat_the_manager_disagrees_with_is_said_out_loud(
     text = warning.inner_text()
     assert "manager says you are T2" in text
     assert "told the board you are T1" in text
+    assert not errors, errors
+    tab.close()
+
+
+# --- the drawn island a child plays on -------------------------------------
+#
+# `kids-island.html` puts the controls under the model the spectator watches.
+# What is checked here is the **join** between the two halves, because each
+# half is already checked elsewhere and the join is what is new: the viewer's
+# `Stage` and `reducer` drawing rows that came from the hand's own room, under
+# controls that compose through `play_lines.js`.
+#
+# **The picture is read back, not assumed.** `Stage` keeps
+# `preserveDrawingBuffer` precisely so a check can say the island drew rather
+# than that a canvas exists -- and a canvas that exists and never drew is the
+# frozen-countdown failure again, in a form no markup assertion can see.
+#
+# **A room per test.** `Room._findManager` takes the first roster row called
+# `manager`, so a shared workspace makes which manager a whisper reaches
+# depend on the order the tests happened to run in.
+
+
+def _island_room(hub_url, agent_id, room):
+    from switchboard.client import Client
+    from switchboard.config import ClientConfig
+    return Client(ClientConfig(url=hub_url, token="", workspace=room,
+                               key=KEY), agent_id=agent_id)
+
+
+def _enter_island(tab, hub_url, room, *, name, seat="T1", channel="island"):
+    tab.fill("#url", hub_url)
+    tab.fill("#token", "")
+    tab.fill("#workspace", room)
+    tab.fill("#key", KEY)
+    tab.fill("#channel", channel)
+    tab.fill("#name", name)
+    tab.fill("#seat", seat)
+    tab.click("#enter")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+
+
+def _played_board(manager, channel, *, seats=("T1", "T2")):
+    """A real round's opening, posted by a real client.
+
+    Driven from `who_is_at_this_table`, `schedule_text` and a receipt in the
+    manager's own words rather than written here: the reducer reads those
+    words, and words nobody checks are words that drift.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import schedule
+
+    from games.island.lobby import Table
+    from games.island.run_game import who_is_at_this_table
+
+    table = Table(id="g7", opened_by="opener", opened_at=0.0, traders=2,
+                  episodes=4, rounds=1, goods=4, seconds=60)
+    table.seats = {"peer-a": "alice", "peer-b": "bob"}
+    table.keys = {"peer-a": "abc", "peer-b": "def"}
+
+    manager.post(channel, who_is_at_this_table(table))
+    manager.post(channel, schedule.schedule_text(4, tuple(seats), opens_at=0.0))
+    manager.post(channel, "episode 1 of 4 is open; the bell is at 23:59:59Z "
+                          "(60s). PRODUCE, PROPOSE and APPROVE all settle "
+                          "until the bell.")
+    # And somebody has made something, so there is stock standing on the sand
+    # as well as huts on it.
+    manager.post(channel, "@T2 produced {'bread': 0.87, 'cloth': 0.5}; "
+                          "0.0 labour unspent")
+
+
+def test_the_island_is_actually_drawn_on_the_playing_page(
+        browser, island_site, cors_hub):
+    """**The join, and the half of it a fragment assertion cannot see.**
+
+    The page hands `reduce` the rows the hand's own room read, and hands
+    `Stage` what came back. Checked two ways, because either alone would pass
+    on a broken page: the world the island was built from is read off the page
+    (who has a hut, in what goods), and the canvas is read back as pixels, so
+    a `Stage` that threw and left a blank rectangle fails here.
+    """
+    room = f"{KIDS_3D}-drawn"
+    manager = _island_room(cors_hub, "manager-drawn", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+    _played_board(manager, "island-drawn")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-drawn", channel="island-drawn")
+
+    tab.wait_for_function("window.KIDS_ISLAND_WORLD?.built === true", timeout=20_000)
+    world = tab.evaluate("window.KIDS_ISLAND_WORLD")
+    assert world["traders"] == ["T1", "T2"], (
+        "the huts carry seat labels, not six characters of a blinded id")
+    assert world["goods"], world
+    assert world["episode"] == 1 and world["phase"] not in ("before", "ack")
+
+    # And the picture. `preserveDrawingBuffer` is what makes this readable;
+    # a uniform canvas is one that never drew.
+    drawn = tab.evaluate("""() => {
+      const c = document.getElementById('island');
+      if (!c.width || !c.height) return { why: 'canvas has no size' };
+      const gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (!gl) return { why: 'no webgl' };
+      const px = new Uint8Array(c.width * c.height * 4);
+      gl.readPixels(0, 0, c.width, c.height, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const seen = new Set();
+      for (let i = 0; i < px.length; i += 4 * 97) {
+        seen.add(`${px[i]},${px[i+1]},${px[i+2]},${px[i+3]}`);
+      }
+      return { colours: seen.size, w: c.width, h: c.height };
+    }""")
+    assert "why" not in drawn, drawn
+    assert drawn["colours"] > 8, (
+        f"the canvas is all one colour -- the island did not draw: {drawn}")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_island_is_there_before_anybody_has_produced(
+        browser, island_site, cors_hub):
+    """**Day one, and the reason `reduce` is handed its goods.**
+
+    The reducer works the goods out from the manager's receipts, which is
+    right for a finished board and leaves a live one with none until somebody
+    trades -- so a child opening this page at the start of the round would
+    watch an empty sea until another trader moved. The page hands in the goods
+    it knows instead, and there is an island to look at from the first line.
+    """
+    room = f"{KIDS_3D}-early"
+    manager = _island_room(cors_hub, "manager-early", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import schedule
+    # The schedule alone: the seats are named, and **nothing has settled**.
+    manager.post("island-early",
+                 schedule.schedule_text(4, ("T1", "T2"), opens_at=0.0))
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-early", channel="island-early")
+
+    tab.wait_for_function("window.KIDS_ISLAND_WORLD?.built === true", timeout=20_000)
+    world = tab.evaluate("window.KIDS_ISLAND_WORLD")
+    assert world["traders"] == ["T1", "T2"]
+    assert world["goods"], "an island with no goods on it is no island"
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_playing_island_declares_the_driver_like_every_other_hand_page(
+        browser, island_site, cors_hub):
+    """Same room, same declaration, same mark. A page that drew a prettier
+    island and declared nothing would be the ranked game this whole design is
+    arranged against."""
+    room = f"{KIDS_3D}-declare"
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-idrv", channel="island-declare")
+
+    rows = _island_room(cors_hub, "reader-idrv", room).history("island-declare",
+                                                               limit=50)
+    assert hands_on_board([{"body": r.get("body")} for r in rows]) == {"T1": "driven"}
+    assert py_declaration("T1") in tab.inner_text("#declared")
+    assert "never ranked" in tab.inner_text("#humanPlay")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_playing_island_will_not_enter_without_a_seat(
+        browser, island_site, cors_hub):
+    """The guard travels with the declaration, not with the page: a blank seat
+    writes a line the record cannot read, whichever page wrote it."""
+    room = f"{KIDS_3D}-noseat"
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    tab.fill("#url", cors_hub)
+    tab.fill("#token", "")
+    tab.fill("#workspace", room)
+    tab.fill("#key", KEY)
+    tab.fill("#channel", "island-noseat")
+    tab.fill("#name", "kid-inoseat")
+    tab.fill("#seat", "")
+    tab.click("#enter")
+
+    tab.wait_for_function(
+        "document.getElementById('says').classList.contains('bad')", timeout=15_000)
+    assert "Which seat did you take" in tab.inner_text("#says")
+    assert tab.evaluate("window.HAND_READY") is not True
+    assert _island_room(cors_hub, "reader-inoseat", room).history(
+        "island-noseat", limit=50) == [], "nothing reached the board"
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_offer_the_manager_opened_becomes_a_button_on_the_island(
+        browser, island_site, cors_hub):
+    """Offers come off `reduce`'s proposals here rather than off a scrape.
+
+    That is the point of drawing this page on the viewer's reducer: the
+    proposals it keeps are the ones the manager's receipts built, read the
+    same way the spectator's page reads them, so there is one reading of the
+    board on this page and not two.
+    """
+    room = f"{KIDS_3D}-offer"
+    manager = _island_room(cors_hub, "manager-ioffer", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+    _played_board(manager, "island-offer")
+    offer = _real_offer_line(to="T1", maker="T2")
+    pid = offer.split(":", 1)[0]
+    manager.post("island-offer", offer)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-ioffer", channel="island-offer")
+
+    card = tab.locator("#offers .offer")
+    card.first.wait_for(timeout=20_000)
+    assert card.first.get_attribute("data-offer") == pid
+    assert card.first.locator(".preview").inner_text() == f"APPROVE {pid}"
+    assert "T2 offers you" in card.first.inner_text(), (
+        "and it says what the swap is, which a proposal id cannot")
+
+    card.first.locator("button[data-act=approve]").click()
+    tab.wait_for_function(
+        f"window.HAND_BOARD.some(r => r.body === 'APPROVE {pid}')", timeout=15_000)
+    rows = _island_room(cors_hub, "reader-ioffer", room).history("island-offer",
+                                                                 limit=50)
+    assert f"APPROVE {pid}" in [r.get("body") for r in rows]
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_button_to_the_real_viewer_carries_this_room(
+        browser, island_site, cors_hub):
+    """The way out, and the reason this page is allowed to be narrow: it does
+    not have to grow a replay player, because the page that has one is one
+    button away and this hands it the room."""
+    room = f"{KIDS_3D}-view"
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    assert tab.locator("#toViewer").is_hidden(), (
+        "no way out of a room this page is not in yet")
+    _enter_island(tab, cors_hub, room, name="kid-iview", channel="island-view")
+
+    tab.wait_for_selector("#toViewer:not([hidden])", timeout=15_000)
+    with tab.context.expect_page() as opened:
+        tab.click("#toViewer")
+    spectator = opened.value
+    query = dict(urllib.parse.parse_qsl(spectator.url.split("?", 1)[1]))
+    assert spectator.url.split("?")[0].endswith("/index.html"), spectator.url
+    assert query["workspace"] == room
+    assert query["key"] == KEY
+    # A new tab on purpose: a child who followed it in this one would have
+    # left the game, and the bell does not wait.
+    assert tab.url.endswith("kids-island.html"), "the game is still open here"
+    spectator.close()
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_sliders_still_seal_a_plan_to_the_manager_from_the_island(
+        browser, island_site, cors_hub):
+    """The controls are the same controls, on a page that draws. Checked here
+    rather than assumed from `kids.html`: they are wired to a different shell,
+    and a shell that failed to bind them would look identical."""
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import protocol as economy
+
+    room = f"{KIDS_3D}-plan"
+    manager = _island_room(cors_hub, "manager-iplan", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-iplan", channel="island-plan")
+
+    tab.locator("#makeGrid input[type=range]").nth(0).fill("0.7")
+    tab.wait_for_function(
+        "document.getElementById('producePreview').textContent.startsWith('PRODUCE')",
+        timeout=15_000)
+    shown = tab.inner_text("#producePreview")
+    tab.click("#produceSend")
+    tab.wait_for_function(
+        "document.getElementById('says').textContent.startsWith('Whispered')",
+        timeout=15_000)
+
+    manager.agents()
+    [got] = [m for m in manager.inbox() if m.get("type") == "whisper"]
+    assert got["body"] == shown
+    assert isinstance(economy.parse(got["body"]), economy.Produce)
+    board = [r.get("body") for r in _island_room(
+        cors_hub, "reader-iplan", room).history("island-plan", limit=50)]
+    assert shown not in board, "the plan stayed off the board"
     assert not errors, errors
     tab.close()

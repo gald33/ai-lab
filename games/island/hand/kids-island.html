@@ -1,0 +1,694 @@
+<!doctype html>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>The island — play it, and watch it</title>
+<!--
+  The island a child plays **on the island**, drawn.
+
+  `kids.html` put the controls on a board page; this puts them under the model
+  the spectator watches. Asked for by Gal, 2026-09-07, in those terms: the
+  controls on the viewer itself, but **not in the original page** -- a
+  variation copy that maximises for playable UI rather than for replay and
+  message reading, with a button through to the real viewer.
+
+  **A variation of the page, not of the drawing.** Everything that draws is
+  imported from the viewer's own modules over `../` -- `stage.js`, and
+  `reducer.js` to turn the board into island state. Nothing here is a copy of
+  them, because a second island would drift from the first exactly the way
+  `games/island.md` records two renderings of one lobby doing. What is new is
+  the *shell*: the viewer's 3,122 lines of orchestration are a spectator's --
+  a game picker, a replay player with paces, a reveal rail, a message list --
+  and a player wants none of it. So the island holds the top of the screen and
+  the controls hold the bottom, and the only way back to the spectator's page
+  is the button that says so.
+
+  **Two things genuinely differ underneath, and both are deliberate:**
+
+  - *Where the rows come from.* `feeds.js` never talks to a hub: the viewer's
+    live feed reads its server's `api/state`. A child playing is already in
+    the room under the key the lobby witnessed, so the rows here are the ones
+    `room.js` already read, and no second poll is added.
+  - *Where the day comes from.* `Scene.dayProgress` reads the clock off the
+    **last line on the board**, which is right for a replay and wrong here: on
+    a live island nobody speaking must not stop the sun. This reads the bell
+    the manager announced against the wall clock instead.
+
+  It is human play and says so, in the declaration `room.js` posts on the way
+  in -- the same line `play.html` and `kids.html` post, unchanged. The seat
+  guard is the same too, and for the same reason: a blank seat writes a
+  declaration the record cannot read, and the game would be ranked.
+-->
+<style>
+  :root {
+    color-scheme: dark;
+    --sea: #0d3b4f; --ink: #eaf4f8; --dim: #9fc0cd; --card: #10222c;
+    --edge: #1f4256; --leaf: #46c46e; --sun: #ffc042; --coral: #ff6b63;
+    --face: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 16px/1.45 var(--face); color: var(--ink);
+         background: var(--sea);
+         display: flex; flex-direction: column; }
+
+  /* The island holds the top and never scrolls away: it is the thing the
+     page is for, and a picture you have to scroll back to is a picture you
+     stop looking at. */
+  #stageWrap { position: relative; flex: 0 0 46vh; min-height: 220px;
+               background: radial-gradient(ellipse at 50% 30%, #14536c, #06202c 70%); }
+  #island { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #overlay { position: absolute; inset: 0; pointer-events: none;
+             display: flex; flex-direction: column; justify-content: space-between;
+             padding: .6rem .8rem; }
+  #dayBanner { font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px #000a;
+               margin: 0; }
+  #stageNote { font-size: .8rem; color: var(--dim); margin: .1rem 0 0;
+               text-shadow: 0 1px 3px #000a; }
+  #toViewer { pointer-events: auto; align-self: flex-end; }
+
+  /* The controls hold the bottom and scroll. */
+  main { flex: 1 1 auto; overflow-y: auto; padding: .8rem .9rem 3rem;
+         background: #08202b; }
+  h2 { font-size: 1rem; margin: 1.1rem 0 .4rem; color: var(--dim);
+       text-transform: uppercase; letter-spacing: .08em; }
+  p { margin: .35rem 0; }
+  .sub { color: var(--dim); font-size: .88rem; }
+  a { color: var(--sun); }
+  section { background: var(--card); border: 1px solid var(--edge);
+            border-radius: 12px; padding: .8rem .9rem; margin: 0 0 .8rem; }
+  #humanPlay { background: #2b2410; border: 1px solid var(--sun);
+               border-radius: 12px; padding: .7rem .9rem; margin: 0 0 .8rem; }
+  #humanPlay b { display: block; color: var(--sun); }
+  #declared { font-size: .8rem; color: var(--dim); margin: .4rem 0 0;
+              overflow-wrap: anywhere; }
+  #seatWarning { margin: .4rem 0 0; padding: .45rem .6rem; border-radius: 8px;
+                 background: #3a1512; border: 1px solid var(--coral);
+                 color: #ffc9c5; font-weight: 600; }
+  label { display: block; margin: .45rem 0 .15rem; font-weight: 600;
+          font-size: .9rem; }
+  input, select, button { font: inherit; }
+  input[type=text], input[type=number], select {
+    padding: .45rem .55rem; border: 1px solid var(--edge); border-radius: 8px;
+    background: #061820; color: var(--ink); min-width: 0; }
+  input[type=range] { width: 100%; accent-color: var(--leaf); height: 1.9rem; }
+  button { cursor: pointer; padding: .55rem 1rem; border-radius: 999px;
+           border: 1px solid var(--leaf); background: var(--leaf); color: #04150a;
+           font-weight: 700; min-height: 2.6rem; }
+  button.quiet { background: transparent; color: var(--leaf); }
+  button.no { border-color: var(--coral); color: var(--coral); background: transparent; }
+  button.link { border-color: var(--sun); color: var(--sun); background: #0009;
+                min-height: 2.1rem; padding: .3rem .8rem; font-size: .85rem; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .row input[type=text] { flex: 1 1 12rem; }
+  .grid { display: grid; grid-template-columns: 6rem 1fr 3rem;
+          gap: .3rem .6rem; align-items: center; }
+  .grid .name { font-weight: 600; text-transform: capitalize; font-size: .9rem; }
+  .grid .val { text-align: right; font-variant-numeric: tabular-nums; }
+  .bars { display: grid; grid-template-columns: 6rem 1fr; gap: .25rem .6rem;
+          align-items: center; font-size: .88rem; }
+  .bar { height: .7rem; border-radius: 999px; background: #0b2c3a; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--leaf); }
+  .bar.taste > i { background: var(--sun); }
+  .preview { font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace;
+             background: #061820; border: 1px dashed var(--edge);
+             border-radius: 8px; padding: .45rem .55rem; margin: .5rem 0;
+             overflow-wrap: anywhere; }
+  .preview.bad { background: #2a100e; border-color: var(--coral); color: #ffb3ae; }
+  #says { margin: .5rem 0; padding: .5rem .6rem; border-radius: 8px;
+          background: #0d2a1a; border: 1px solid var(--leaf); min-height: 1.1rem;
+          font-size: .9rem; }
+  #says.bad { background: #2a100e; border-color: var(--coral); }
+  .offer { border: 1px solid var(--edge); border-radius: 10px;
+           padding: .5rem .6rem; margin: .4rem 0; }
+  .offer .id { font-weight: 700; color: var(--sun); }
+  #whispers div { padding: .3rem 0; border-bottom: 1px dotted var(--edge);
+                  font-size: .85rem; overflow-wrap: anywhere; }
+  #board div { padding: .25rem 0; border-bottom: 1px dotted var(--edge);
+               font-size: .82rem; overflow-wrap: anywhere; color: var(--dim); }
+  #board .mine { border-left: 3px solid var(--leaf); padding-left: .4rem;
+                 color: var(--ink); }
+  details > summary { cursor: pointer; font-weight: 600; color: var(--sun);
+                      padding: .25rem 0; font-size: .9rem; }
+  @media (prefers-reduced-motion: reduce) { #island { opacity: .96; } }
+</style>
+
+<div id=stageWrap>
+  <canvas id=island></canvas>
+  <div id=overlay>
+    <div>
+      <p id=dayBanner>Waiting for the island to open…</p>
+      <p id=stageNote class=sub>Your island. It fills up as everybody makes
+      and swaps things.</p>
+    </div>
+    <button id=toViewer class=link hidden>🔭 Watch it properly</button>
+  </div>
+</div>
+
+<main>
+  <div id=humanPlay>
+    <b>👋 Human play</b>
+    A person is playing this seat. This game is kept and counted, and it is
+    never ranked — the score board is for games between agents, and nothing
+    here can tell who was at the keyboard.
+    <p id=declared hidden></p>
+    <p id=seatWarning hidden></p>
+  </div>
+
+  <details id=setup open>
+    <summary>Grown-ups: getting into the room</summary>
+    <p class=sub>These come from the invite the lobby handed your table. If you
+    arrived by the lobby's link they are filled in already.</p>
+    <label>hub <input type=text id=url value="https://switchboard.lucille-ai.com"></label>
+    <label>token <input type=text id=token value="sb_public_lucille"></label>
+    <label>workspace <input type=text id=workspace placeholder="island-g7"></label>
+    <label>key <input type=text id=key placeholder="the invite's key"></label>
+    <label>write key <input type=text id=write_key placeholder="the invite's write key (wk)"></label>
+    <label>channel <input type=text id=channel value="island"></label>
+    <label>your name <input type=text id=name placeholder="pip"></label>
+    <label>your seat <input type=text id=seat placeholder="T1"></label>
+  </details>
+
+  <p><button id=enter>🚪 Go to the island</button></p>
+  <p id=says>Not on the island yet.</p>
+  <p class=sub id=who></p>
+
+  <h2>Your secret notes</h2>
+  <p class=sub>Only you can read these. Never say these numbers out loud.</p>
+  <div id=myHalf></div>
+  <div id=whispers></div>
+
+  <h2>Make things today</h2>
+  <section>
+    <p class=sub>Slide how much of your day goes on each thing. One whole day
+    is 1.00 altogether.</p>
+    <div class=grid id=makeGrid></div>
+    <p class=sub id=labourLeft></p>
+    <p class=preview id=producePreview></p>
+    <p><button id=produceSend>🤫 Send my plan (secretly)</button></p>
+  </section>
+
+  <h2>Offer a swap</h2>
+  <section>
+    <div class=row>
+      <label style="margin:0">Swap with <select id=swapTo></select></label>
+    </div>
+    <div class=row>
+      <label style="margin:0">I give <select id=giveGood></select>
+        <input type=number id=giveQty min=0 step=0.01 value=0.2></label>
+    </div>
+    <div class=row>
+      <label style="margin:0">I want <select id=wantGood></select>
+        <input type=number id=wantQty min=0 step=0.01 value=0.2></label>
+    </div>
+    <p class=preview id=proposePreview></p>
+    <p><button id=proposeSend>📣 Offer it, out loud</button></p>
+  </section>
+
+  <h2>Offers waiting for you</h2>
+  <div id=offers></div>
+
+  <h2>Type it yourself</h2>
+  <section>
+    <p class=sub>Anything at all can go on the board. Nothing here checks your
+    spelling: a line the manager does not recognise is just talk.</p>
+    <div class=row>
+      <input type=text id=say placeholder="hello! want to swap some bread?">
+      <button id=post class=quiet>Say it</button>
+    </div>
+    <p class=sub>And a note only the manager reads:</p>
+    <div class=row>
+      <input type=text id=whisperLine placeholder="PRODUCE bread=0.5 fish=0.5">
+      <button id=whisper class=quiet>Whisper it</button>
+    </div>
+  </section>
+
+  <details id=boardFold>
+    <summary>Everything written on the board</summary>
+    <p class=sub>Exactly as it is written. The manager says “episode” where
+    this page says “day” — same thing.</p>
+    <div id=board></div>
+  </details>
+
+  <p class=sub>Other ways in:
+    <a href="./kids.html" id=toKids>the same game without the picture</a> ·
+    <a href="./play.html" id=toPlay>the grown-up page</a></p>
+</main>
+
+<script type=module>
+import * as identity from "./identity.js";
+import { Room } from "./room.js";
+import { declaration } from "./declaration.js";
+import { GOODS, Malformed, produceLine, proposeLine, approveLine,
+         declineLine, privateHalf, seatLabels } from "./play_lines.js";
+// The viewer's own drawing, over `../`. In service the hand's pages are
+// served at `/island/hand/` and the viewer's modules at `/island/`, which is
+// what makes this path the real one rather than a convenience -- see
+// `.github/workflows/pages.yml`, which stages both.
+import { Stage } from "../stage.js";
+import { reduce } from "../reducer.js";
+
+const $ = (id) => document.getElementById(id);
+const say = (text, bad) => {
+  $("says").textContent = text;
+  $("says").classList.toggle("bad", Boolean(bad));
+};
+
+const params = new URLSearchParams(location.search);
+for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]) {
+  if (params.get(field)) $(field).value = params.get(field);
+}
+if (params.get("workspace")) $("setup").open = false;
+
+const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
+                        say: $("say"), post: $("post"),
+                        whisperLine: $("whisperLine"), whisper: $("whisper") },
+                      say);
+
+let seat = null;
+
+$("enter").addEventListener("click", async () => {
+  try {
+    // Before anything is posted: entering posts the declaration, and
+    // `declaration.DECLARED` is anchored, so a blank seat writes a line that
+    // looks like a declaration and matches nothing -- human play recorded as
+    // a game between agents, and ranked. Same guard as `kids.html`.
+    if (!$("seat").value.trim() || /\s/.test($("seat").value.trim())) {
+      return say("Which seat did you take? It is a label like T1 — the lobby " +
+                 "posted yours when the table settled.", true);
+    }
+    if (!$("name").value.trim()) {
+      return say("What is your name here? It has to be the same name you " +
+                 "joined the lobby with.", true);
+    }
+    $("enter").disabled = true;
+    seat = (await identity.load($("name").value)) ||
+           (await identity.mint($("name").value));
+    await room.enter({
+      url: $("url").value, token: $("token").value,
+      workspace: $("workspace").value, key: $("key").value,
+      writeKey: $("write_key").value || null,
+      identity: seat, alias: $("name").value,
+      seat: $("seat").value, channel: $("channel").value,
+    });
+    $("declared").hidden = false;
+    $("declared").textContent = `On the board: “${declaration($("seat").value)}”`;
+    say("You are on the island. Wait for the manager to open a day.");
+    $("setup").open = false;
+    showViewerLink();
+  } catch (err) {
+    say(String(err.message), true);
+  } finally {
+    $("enter").disabled = false;
+  }
+});
+
+/** The button through to the spectator's page, on the room this seat is in.
+ *
+ *  The viewer takes a live room as `?workspace=&key=`, which is the pair the
+ *  driver already has. It opens in a new tab on purpose: a child who followed
+ *  it in this one would have left the game, and the bell does not wait. */
+function showViewerLink() {
+  const q = new URLSearchParams({ workspace: $("workspace").value,
+                                  key: $("key").value });
+  $("toViewer").hidden = false;
+  $("toViewer").onclick = () => window.open(`../index.html?${q}`, "_blank",
+                                            "noopener");
+}
+
+async function send(where, line) {
+  const input = where === "board" ? $("say") : $("whisperLine");
+  input.value = line;
+  await (where === "board" ? room.postTyped() : room.whisperTyped());
+  input.value = "";
+}
+
+// --- the island ------------------------------------------------------------
+
+//: The viewBox the stage frames itself against. Arbitrary, and it only has to
+//: be the shape of the canvas: `Stage` maps the ground to these units, and
+//: nothing else on this page draws in them -- the spectator's page has SVG
+//: cards standing in the same space, and this has none.
+const GEO = { w: 1000, h: 620 };
+let stage = null;
+let built = "";                      // the traders+goods the island was built for
+let fired = 0;                       // how many of reduce's events have played
+
+function ensureStage() {
+  const canvas = $("island");
+  const box = canvas.getBoundingClientRect();
+  const geo = { w: GEO.w, h: Math.max(1, Math.round(GEO.w * box.height / (box.width || 1))) };
+  if (!stage) {
+    stage = new Stage(canvas, geo);
+  } else {
+    stage.reframe(geo);
+  }
+  return stage;
+}
+
+/**
+ * Draw what the board says, from the rows `room` already read.
+ *
+ * `reduce` is the viewer's own reducer and does far more than this page could
+ * read for itself: who is playing, in what goods, what everyone holds, which
+ * offers are open, and which day it is. Feeding it rather than scraping is why
+ * there is no second reading of the board here.
+ */
+function drawIsland(rows, labels) {
+  const named = rows.map((r) => ({ ...r, author: labels[r.author] || r.author }));
+  // **The goods are handed in rather than inferred, and that is what puts an
+  // island on the screen on day one.** `reduce` works them out from the
+  // manager's receipts, which is right for a finished board and leaves a
+  // *live* one with nothing at all until somebody's first PRODUCE settles --
+  // so a child opening this page at the start of the round would watch an
+  // empty sea until another trader moved. The page already knows them: the
+  // manager whispered this seat its capacities, one entry per good the island
+  // deals. `GOODS` is the fallback, and being too long is visible rather than
+  // silent -- an extra good stands on the sand with nothing ever on it.
+  const world = reduce(named, { goods });
+  const stage = ensureStage();
+  const mark = `${world.traders.join()}|${world.goods.join()}`;
+  if (mark !== built && world.traders.length && world.goods.length) {
+    built = mark;
+    fired = 0;
+    stage.build({ traders: world.traders, goods: world.goods, seats: null });
+  }
+  if (!built) {
+    window.KIDS_ISLAND_WORLD = { traders: world.traders, goods: world.goods,
+                                 built: false, phase: world.final.phase };
+    return world;
+  }
+
+  stage.showStock(world.final.stocks);
+  // **The sun runs on the wall clock, not on the last line.**
+  // `Scene.dayProgress` reads the clock off the newest event, which is right
+  // for a replay of a finished game and wrong for a live one: a quiet stretch
+  // would stop the sun over an island still being played on.
+  stage.setDay(dayNow(world.final));
+  // Only what has arrived since the last draw, so a reload does not replay
+  // the whole round's animations at once.
+  for (const frame of world.frames.slice(fired)) stage.fire(frame.event);
+  fired = world.frames.length;
+  stage.play();
+  // What the island was drawn from, for the browser checks: who has a hut,
+  // in what goods, and what each of them is holding. Read rather than
+  // inferred from pixels, which cannot say whose hut is whose.
+  window.KIDS_ISLAND_WORLD = {
+    built: true, traders: world.traders, goods: world.goods,
+    stocks: world.final.stocks, phase: world.final.phase,
+    episode: world.final.episode,
+    proposals: world.final.proposals,
+  };
+  return world;
+}
+
+/** How far through the day it is now: 0 at the opening, 1 at the bell. */
+function dayNow(state) {
+  if (!state || state.phase === "before" || state.phase === "ack") return 0;
+  if (state.phase === "closed" || state.phase === "over") return 1;
+  if (!state.bell_at || !state.seconds) return 0;
+  const bell = Date.parse(state.bell_at);
+  const span = state.seconds * 1000;
+  if (!Number.isFinite(bell) || span <= 0) return 0;
+  return Math.max(0, Math.min(1, (Date.now() - (bell - span)) / span));
+}
+
+addEventListener("resize", () => { if (stage) { ensureStage(); stage.resize(); } });
+
+// --- the controls ----------------------------------------------------------
+
+let goods = GOODS.slice();
+let seats = [];
+let drawn = { offers: null, half: null };
+
+/** The rows `room` last read, in the shape `reducer.js` wants. */
+function rows() {
+  return (window.HAND_BOARD || []).map((r, i) => ({
+    seq: r.seq ?? i,
+    at: r.created_at || r.at || null,
+    author: String(r.from ?? "?"),
+    body: typeof r.body === "string" ? r.body : "",
+  }));
+}
+
+function paint() {
+  const board = rows();
+  const whispers = window.HAND_WHISPERS || [];
+
+  const half = privateHalf(whispers);
+  const named = half ? Object.keys(half.capacity) : null;
+  if (named && named.join() !== goods.join()) { goods = named; buildMake(); }
+  const halfMark = JSON.stringify(half);
+  if (halfMark !== drawn.half) { drawn.half = halfMark; paintHalf(half); }
+
+  const wrong = half && half.seat && half.seat !== $("seat").value.trim();
+  $("seatWarning").hidden = !wrong;
+  if (wrong) {
+    $("seatWarning").textContent =
+      `The manager says you are ${half.seat}, but this page told the board ` +
+      `you are ${$("seat").value.trim()}. The mark saying a person is ` +
+      `playing names the wrong seat. Go back, put ${half.seat} in the seat ` +
+      `box, and come in again.`;
+  }
+
+  // Aliases to seat labels, so the huts carry `T1` and not six characters of
+  // a hash. `room` keeps the roster's names; the manager's roll-call ties
+  // those names to seats.
+  const labels = {};
+  const byAlias = seatLabels(board);
+  for (const [id, alias] of Object.entries(room._names || {})) {
+    if (byAlias[alias]) labels[id] = byAlias[alias];
+  }
+
+  let world = null;
+  try {
+    world = drawIsland(board, labels);
+  } catch (err) {
+    // A picture that will not draw must not take the game down with it: the
+    // controls below are the part that plays, and they work on a page with a
+    // blank canvas at the top.
+    $("stageNote").textContent = "The picture is not drawing on this device — " +
+                                 "everything below still works.";
+  }
+
+  const day = world?.final;
+  $("dayBanner").textContent = !day || day.phase === "before" || day.phase === "ack"
+    ? "Waiting for the island to open…"
+    : day.phase === "over" ? "🔔 That is the end of the game."
+    : day.phase === "closed" ? `🌙 Day ${day.episode} is over — wait for the next.`
+    : `☀️ Day ${day.episode}${day.episodes ? ` of ${day.episodes}` : ""}`;
+
+  const found = world ? world.traders : [];
+  if (found.length && found.join() !== seats.join()) { seats = found; fillSeats(); }
+
+  const mine = (world?.final.proposals || []).filter(
+    (p) => p.status === "open" && p.taker === $("seat").value.trim());
+  const offersMark = `${mine.map((p) => p.pid).join(",")}/${
+    (world?.final.proposals || []).filter((p) => p.status === "open").length}`;
+  if (offersMark !== drawn.offers) {
+    drawn.offers = offersMark;
+    paintOffers(mine, (world?.final.proposals || []).filter((p) => p.status === "open").length);
+  }
+  preview();
+}
+
+function paintHalf(half) {
+  if (!half) { $("myHalf").replaceChildren(); return; }
+  const bars = (of, kind) => {
+    const top = Math.max(...Object.values(of), 1e-9);
+    const box = document.createElement("div");
+    box.className = "bars";
+    for (const [good, value] of Object.entries(of)) {
+      const name = document.createElement("div");
+      name.textContent = good;
+      const bar = document.createElement("div");
+      bar.className = `bar ${kind}`;
+      const fill = document.createElement("i");
+      fill.style.width = `${Math.round(100 * value / top)}%`;
+      bar.append(fill);
+      box.append(name, bar);
+    }
+    return box;
+  };
+  const caption = (text) => {
+    const p = document.createElement("p");
+    p.className = "sub";
+    p.textContent = text;
+    return p;
+  };
+  $("myHalf").replaceChildren(
+    caption("What you are good at making:"), bars(half.capacity, "cap"),
+    caption("What you like having:"), bars(half.taste, "taste"));
+}
+
+/** The offers this seat may take, straight off `reduce`'s proposals -- which
+ *  the manager's receipts built, and which the viewer already reads the same
+ *  way. Each carries the exact line its button sends. */
+function paintOffers(mine, total) {
+  if (!mine.length) {
+    const none = document.createElement("p");
+    none.className = "sub";
+    none.textContent = total
+      ? "Nothing waiting for you — the open offers are for somebody else."
+      : "Nothing waiting for you right now.";
+    $("offers").replaceChildren(none);
+    return;
+  }
+  $("offers").replaceChildren(...mine.map((offer) => {
+    const box = document.createElement("div");
+    box.className = "offer";
+    box.dataset.offer = offer.pid;
+    const head = document.createElement("p");
+    const id = document.createElement("span");
+    id.className = "id";
+    id.textContent = offer.pid;
+    head.append(`${offer.maker} offers you `, bundle(offer.give),
+                " for ", bundle(offer.want), " (", id, ")");
+    const line = document.createElement("p");
+    line.className = "preview";
+    line.textContent = approveLine({ proposal: offer.pid });
+    const row = document.createElement("div");
+    row.className = "row";
+    const yes = document.createElement("button");
+    yes.textContent = "👍 Yes please";
+    yes.dataset.act = "approve";
+    yes.addEventListener("click", () => answer(offer.pid, approveLine));
+    const no = document.createElement("button");
+    no.className = "no";
+    no.textContent = "👎 No thanks";
+    no.dataset.act = "decline";
+    no.addEventListener("click", () => answer(offer.pid, declineLine));
+    row.append(yes, no);
+    box.append(head, line, row);
+    return box;
+  }));
+}
+
+const bundle = (of) =>
+  Object.entries(of || {}).map(([g, q]) => `${Number(q)} ${g}`).join(" and ") || "nothing";
+
+async function answer(id, compose) {
+  try { await send("board", compose({ proposal: id })); }
+  catch (err) { say(String(err.message), true); }
+}
+
+function buildMake() {
+  $("makeGrid").replaceChildren(...goods.flatMap((good) => {
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = good;
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "1";
+    slider.step = "0.01";
+    slider.value = "0";
+    slider.dataset.good = good;
+    slider.addEventListener("input", preview);
+    const value = document.createElement("div");
+    value.className = "val";
+    value.dataset.value = good;
+    value.textContent = "0";
+    return [name, slider, value];
+  }));
+  for (const select of [$("giveGood"), $("wantGood")]) {
+    const held = select.value;
+    select.replaceChildren(...goods.map((good) => {
+      const option = document.createElement("option");
+      option.value = good;
+      option.textContent = good;
+      return option;
+    }));
+    if (goods.includes(held)) select.value = held;
+  }
+  if ($("giveGood").value === $("wantGood").value && goods.length > 1) {
+    $("wantGood").selectedIndex = 1;
+  }
+}
+
+function fillSeats() {
+  const held = $("swapTo").value;
+  const others = seats.filter((s) => s !== $("seat").value.trim());
+  $("swapTo").replaceChildren(...others.map((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    return option;
+  }));
+  if (others.includes(held)) $("swapTo").value = held;
+  if (!others.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "— nobody yet —";
+    $("swapTo").replaceChildren(option);
+  }
+}
+
+function preview() {
+  const plan = {};
+  let spent = 0;
+  for (const slider of $("makeGrid").querySelectorAll("input[type=range]")) {
+    const share = Number(slider.value);
+    plan[slider.dataset.good] = share;
+    spent += share;
+    const value = $("makeGrid").querySelector(`[data-value="${slider.dataset.good}"]`);
+    if (value) value.textContent = share.toFixed(2);
+  }
+  const left = Math.round((1 - spent) * 100) / 100;
+  $("labourLeft").textContent = left < 0
+    ? `⚠️ That is ${(-left).toFixed(2)} more than one whole day. The manager ` +
+      `will refuse it and say so — you can still send it.`
+    : `${left.toFixed(2)} of the day still free.`;
+  show("producePreview", "produceSend", () => produceLine({ plan }));
+
+  const to = $("swapTo").value;
+  show("proposePreview", "proposeSend", () => {
+    const line = proposeLine({
+      to,
+      give: { [$("giveGood").value]: $("giveQty").value },
+      want: { [$("wantGood").value]: $("wantQty").value },
+    });
+    if (!to) throw new Malformed("Pick who you want to swap with first.");
+    return line;
+  });
+}
+
+function show(previewId, buttonId, compose) {
+  try {
+    $(previewId).textContent = compose();
+    $(previewId).classList.remove("bad");
+    $(buttonId).disabled = false;
+  } catch (err) {
+    if (!(err instanceof Malformed)) throw err;
+    $(previewId).textContent = err.message;
+    $(previewId).classList.add("bad");
+    $(buttonId).disabled = true;
+  }
+}
+
+$("produceSend").addEventListener("click", async () => {
+  try { await send("manager", $("producePreview").textContent); }
+  catch (err) { say(String(err.message), true); }
+});
+$("proposeSend").addEventListener("click", async () => {
+  try { await send("board", $("proposePreview").textContent); }
+  catch (err) { say(String(err.message), true); }
+});
+for (const id of ["swapTo", "giveGood", "giveQty", "wantGood", "wantQty"]) {
+  $(id).addEventListener("input", preview);
+  $(id).addEventListener("change", preview);
+}
+$("seat").addEventListener("input", () => {
+  drawn = { offers: null, half: null };
+  fillSeats();
+  paint();
+});
+
+buildMake();
+fillSeats();
+preview();
+// One clock and one poll: `room` fetches on its own, this renders what it
+// found. The island's own animation runs on `Stage`'s frame loop.
+setInterval(paint, 1000);
+window.KIDS_ISLAND_READY = true;
+</script>
