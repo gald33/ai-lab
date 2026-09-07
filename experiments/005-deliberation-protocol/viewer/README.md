@@ -4394,9 +4394,11 @@ difference between a second investigation and this one.
 
 ### It is not `recorded`. It is `shutters`, the check before it
 
-2026-09-07, third occurrence, on #232 — a landing-page pull request whose only
-viewer change was three `href` strings and one Python constant. Both halves of
-the new diagnostic fired together for the first time on a real failure:
+2026-09-07, third and fourth occurrences, hours apart: on #232 -- a
+landing-page pull request whose only viewer change was three `href` strings
+and one Python constant -- and then on #233, which is this write-up and
+changes no code at all. Both halves of the new diagnostic fired together on a
+real failure for the first time:
 
 ```
 FAIL island-game-001d-g1 recorded: nothing mounted in 60s; the page said nothing,
@@ -4409,38 +4411,50 @@ FAIL island-game-001d-g1 recorded: and the page could not be photographed either
 compared across runs.** `main` had run the same job green forty minutes
 earlier, which makes a control:
 
-| check | green `a212259` | green #233 | red #223 | red #232 |
-|---|---|---|---|---|
-| **`shutters`** | **27.3** | **28.5** | **246.1** | **342.7** |
-| `recorded` | 15.1 | 18.4 | 90.4 | 70.4 |
-| `mechanics` | 95.5 | 117.2 | 85.2 | 104.6 |
-| `alive` | 83.4 | 95.5 | 73.2 | 91.0 |
-| `uncovered` | 51.8 | 59.4 | 47.4 | 57.1 |
-| `ring` | 48.8 | 43.8 | 42.2 | 49.8 |
-| `crowding` | 47.5 | 56.1 | 40.2 | 51.7 |
-| `turning` | 42.1 | 45.2 | 37.0 | 44.6 |
-| total | 864.6 | 986.2 | 1036.6 | 1277.5 |
+| check | green `a212259` | green `db9e102` | red `f95bb0f` | red #223 | red #232 |
+|---|---|---|---|---|---|
+| **`shutters`** | **27.3** | **28.5** | **164.2** | **246.1** | **342.7** |
+| `recorded` | 15.1 | 18.4 | 70.4 | 90.4 | 70.4 |
+| `mechanics` | 95.5 | 117.2 | 96.7 | 85.2 | 104.6 |
+| `alive` | 83.4 | 95.5 | 84.6 | 73.2 | 91.0 |
+| `uncovered` | 51.8 | 59.4 | 53.9 | 47.4 | 57.1 |
+| `ring` | 48.8 | 43.8 | 45.0 | 42.2 | 49.8 |
+| `crowding` | 47.5 | 56.1 | 47.6 | 40.2 | 51.7 |
+| `turning` | 42.1 | 45.2 | 41.8 | 37.0 | 44.6 |
+| total | 864.6 | 986.2 | 1049.0 | 1036.6 | 1277.5 |
 
-**In both occurrences where a timing table survives, `shutters` took nine to
-twelve times its normal seconds, and every other check was within about 15% of
-green.** On #223 the rest of the suite was *faster* than the green run. So this
-is not a slow runner, and it is not accumulated browser wear across the plan —
-both were measured against and ruled out on #220, and this table rules them out
-again from the record rather than from a reproduction.
+**Three red runs: 164.2, 246.1, 342.7. Two green: 27.3, 28.5. The two
+populations do not overlap and nothing else in the table separates them.**
 
-**The second green column is the control that settles it, and it arrived by
-accident.** #233 is this write-up, and its own `drawing-quick` ran while the
-paragraph above was being written. That run was **slower overall than one of
-the failures** -- 986.2s against #223's 1036.6s, with `mechanics` and `alive`
-higher than in any other run in the table -- and `shutters` still came in at
-28.5s and `recorded` still passed, in 18.4s.
+**Every red run has a pathological `shutters` and no green run does.** Six
+to twelve times its normal seconds on the three whose logs survive, while
+every other check stays within about 15% of green. On #223 the rest of the
+suite was *faster* than the green run. So this is not a slow runner, and it
+is not accumulated browser wear across the plan -- both were measured against
+and ruled out on #220, and this table rules them out again from the record
+rather than from a reproduction.
 
-So **total runtime does not predict the failure and `shutters` does.** A run
-can be a fifth slower than green end to end, with the heaviest checks in the
-suite slower than they have ever been here, and still mount `recorded` in under
-twenty seconds. What the two red runs have that the two green ones do not is
-one check, immediately before the one that fails, taking an order of magnitude
-longer than it takes when the suite is well.
+**The two middle columns are the same code, seventeen minutes apart, and they
+are the whole argument.** #233 is this write-up. Its first commit `db9e102`
+ran `drawing-quick` green; its second `f95bb0f` added the paragraph you are
+reading and ran red. The diff between them is one markdown file:
+
+```
+$ git diff --name-only db9e102 f95bb0f
+experiments/005-deliberation-protocol/viewer/README.md
+```
+
+Not one executable byte differs. Between those two runs `shutters` went from
+28.5s to 164.2s -- **5.8x** -- and `recorded` went from passing in 18.4s to
+timing out. The totals were 986.2s and 1049.0s: **6% apart.**
+
+So **total runtime does not predict the failure and `shutters` does**, and the
+comparison no longer depends on runs of different code. A run can be a fifth
+slower than green end to end, with `mechanics` and `alive` at their highest in
+this table, and still mount `recorded` in under twenty seconds (`db9e102`). A
+run 6% slower than that one can fail to mount it at all (`f95bb0f`). What
+separates them is one check, immediately before the one that fails, taking
+between six and twelve times as long as it takes when the suite is well.
 
 **`shutters` is the check immediately before `recorded`, and `recorded` is the
 last check in the plan:**
@@ -4466,10 +4480,11 @@ was going red was the one downstream of the damage.
 Three things this does **not** establish, said plainly because the last two
 write-ups here each corrected an over-read of the one before:
 
-- **n is 2 red against 2 green.** #220's timing table was not retrieved, so
-  the association rests on the two occurrences whose logs were still readable
-  and the two green runs beside them. Four runs is enough to make `shutters`
-  the thing to look at and nowhere near enough to call it the cause.
+- **n is 3 red against 2 green.** #220's timing table was not retrieved, so
+  the association rests on the three occurrences whose logs were still readable
+  and the two green runs beside them. Five runs with no overlap between the
+  populations is enough to make `shutters` the thing to look at, and still not
+  enough to call it the cause.
 - **Adjacency is not causation.** `shutters` being slow and `recorded` failing
   could both be downstream of a third thing the runner did. What makes the
   browser the better guess is that it is the only state the two checks share
