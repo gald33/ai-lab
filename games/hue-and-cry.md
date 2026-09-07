@@ -80,6 +80,15 @@ its index.
 
 ### Which turns harvesting from a defect into a finding
 
+> **Superseded 2026-09-07, later the same day, by "One seed per game".**
+> This section is wrong and is kept because it is instructive: it
+> contradicts "The map is drawn, not chosen" above, and neither of us
+> noticed for four sections. Harvesting a durable matrix is memorising the
+> map, which the drawn-map decision had already ruled out on the grounds
+> that it stops the instrument measuring search. With one seed per game
+> there is nothing to harvest, and the cohort machinery below is not built.
+
+
 **This inverts something written above.** The "harvesting gap" section
 treats reconstructing the matrix across games as an exploit to be priced out
 by making the map bigger. Under the question as Gal states it, **a group
@@ -459,6 +468,11 @@ is exactly the condition under which it is worth measuring.
 
 ### The harvesting gap, named and priced
 
+> **Superseded 2026-09-07 by "One seed per game"**, which removes the gap
+> rather than pricing it. Kept for the withdrawn permutation argument,
+> which is a mistake worth being able to find.
+
+
 **Gal named this himself and it is the real weakness**: play enough games,
 record which hints appeared at which landmarks, and you reconstruct the
 matrix. Once reconstructed it stays reconstructed, the unknown that carries
@@ -573,127 +587,80 @@ that she never dwells long enough to take anything. **Chase to arrest, or
 spread to deny** — two strategies against two objectives, and no weighted
 sum reconciling them.
 
-### A matrix nobody sees and nobody has to trust
+### One seed per game, which is the matrix and the proof
 
-Gal, 2026-09-07: *"next we need to compile a matrix, but, it should not be
-public, that's a problem"*. It is, and it has two halves that pull against
-each other:
+*Settled by Gal 2026-09-07, superseding two things this document had just
+written — a durable secret matrix, and the Merkle apparatus built to keep it
+partly secret. It also resolves a contradiction, which is the part worth
+reading.*
 
-- **Secrecy.** The access model rests on players being unable to enumerate
-  landmark names. A published matrix hands them the enumeration and the
-  whole of "the room is the hash" collapses.
-- **Honesty.** This repo's manager is one nobody has to trust. A secret
-  table is a manager saying *"the hint was legal, take my word for it"* —
-  exactly what the island's commit–reveal exists to refuse.
-
-**The first half does not need solving, because there is nothing to
-publish.** *This supersedes "the places come from a precompiled matrix",
-which was Gal's own and which this document recorded as settled.* The matrix
-is **derived, not compiled**: one 32-byte seed and a PRF give a landmark's
-row on demand.
+A game draws **one 32-byte seed**, and everything comes from it: the hints
+each landmark may post, the room each landmark lives in this game, and the
+commitment published before play. **Nothing is compiled and nothing is
+stored.** A hundred-thousand-landmark matrix costs 32 bytes at rest and 6
+microseconds a row; materialised it would be 1.2 MB.
 
 ```
-100,000-landmark matrix at rest:  32 bytes      (materialised: 1.2 MB)
-one row:                          12 microseconds
+published before play:  sha256(seed)   32 bytes
+published after play:   seed           32 bytes
 ```
 
-So the secret is a single environment variable, which is the pattern
-`.gitignore` and Switchboard's own `SWITCHBOARD_KEY_<ID>` already set, and
-there is no file to leak, publish or forget to ignore. **It is still not the
-on-the-fly generation Gal ruled out**: no model, no payment, no run-to-run
-variation — a pure function of the seed, so a game replays exactly. It also
-makes "large" free rather than merely linear, which `scale.py` had it as.
+**That is the whole proof.** The seed is secret while the game runs and
+published when it ends, so anybody holding the transcript re-derives every
+hint and every room address and checks them. The island's commit–reveal, at
+the size of a game. Asserted rather than claimed in
+`games/hue-and-cry/secret_matrix.py`: the committed seed replays, a
+different one does not.
 
-**The second half is what a commitment is for.** The manager publishes a
-**Merkle root over the matrix before the game**, and afterwards **opens only
-the rows the game actually used**. Measured, not asserted —
-`python3 games/hue-and-cry/secret_matrix.py`:
+It also means **a game has exactly one secret**, since the same seed mints
+the room addresses (`rooms_from_names.py`) and the matrix.
 
-```
-root published before play:   32 bytes
-one row opened afterwards:    17 steps, 544 bytes   -> verifies
-a 12-tick game publishes:     6.8 KB
-a row the manager invented:   does not verify
-```
+**What this deletes.** The previous design made the matrix durable and built
+machinery to reveal it a little at a time — a Merkle tree over the rows, a
+256-bit nonce per row to stop the leaves being brute-forced (13 seconds at a
+small vocabulary, measured), inclusion proofs to open the twelve rows a game
+used, the arithmetic for how many games a map survives, and per-cohort
+reporting so early players stayed comparable with late ones. **All of it
+existed to protect a durable matrix from partial disclosure, and none of it
+is needed when the reveal is total.**
 
-What was never used stays unknown, which is what the access model needs.
-What was used is proved, which is what the record needs. **The manager keeps
-its secret and still cannot lie**, and that is the bar the island set.
+### The contradiction this resolves, which was mine
 
-**And this is the better answer to harvesting**, not merely a compatible
-one. The reveals are **public and equal**: everyone who reads them
-accumulates the same partial map at the same rate. Building one stops being
-a private edge belonging to whoever played most — the thing that broke
-cohort comparability — and becomes **a technique available to every player**,
-which is precisely what the experiment set out to watch emerge. The
-per-cohort reporting written above is still worth keeping, but it is now
-guarding against a much smaller effect: the difference between a player who
-reads the published reveals and one who does not.
+Worth stating plainly, because it is why the simpler thing is also the more
+correct one.
 
-### The whole tree is published, and the leaves are blinded
+**"The map is drawn, not chosen"**, above, decided the map is drawn per game
+because *a hand-authored map is memorisable* — play three rounds on one
+gazetteer and a searcher is recalling rather than inferring, and **the
+instrument has quietly stopped measuring search.**
 
-Gal, 2026-09-07: *"we can publish the merkle tree. but the game is finite
-and so harvestable"*. Both halves are right, and the first one is only safe
-with a change the section above did not have.
+**"Harvesting is a finding, not a defect"**, five sections later, called
+reconstructing the matrix across games *"arguably the most interesting
+technique available"*, and said defending against it would be suppressing
+the result.
 
-**Publishing the tree is better than publishing the root**, because it makes
-the commitment's *shape* auditable in advance rather than on trust: anyone
-can count the leaves, see there are exactly N of them, and know the manager
-cannot append a row mid-game. Three megabytes for a hundred thousand rows.
+**Those are the same activity, judged opposite ways.** Harvesting a durable
+matrix *is* memorising the map. One had to go, and it is the second: the
+question is *"looking for the right agent within the Switchboard space"*,
+and the techniques that answer it — dividing a name space, coordinating a
+party, deciding when to commit, building tooling to track candidates — all
+happen **inside one game**, against a map nobody has seen. Cross-game recall
+is not navigation; it is the thing that replaces navigation, which is what
+the drawn-map decision said in the first place.
 
-**But a bare leaf is `H(name, hints)` over a finite input, and finite means
-guessable.** Measured at 10^10 hashes a second against a hundred-thousand-name
-list:
+So a fresh seed per game is not a cost paid for simplicity. **It is the
+instrument the stated question already required**, and the durable matrix
+was a four-section detour away from it.
 
-```
-vocabulary    200    36.9 bits    13 seconds
-vocabulary  1,000    43.9 bits    28 minutes
-vocabulary 10,000    53.9 bits    0.1 years
-vocabulary 100,000   63.9 bits    52.8 years
-```
+**What genuinely goes**, stated rather than glossed: there is no cross-game
+accumulation left to observe, so if the emergence of a *meta*-strategy over
+many games ever becomes the question, this design cannot see it and a
+different one would be needed. A real limit, and the right trade here,
+because it is not the question.
 
-Thirteen seconds at a small vocabulary. Publishing the tree unblinded would
-hand the map to anybody who wanted it, and would quietly give `M` a **third
-job** — leaf security — on top of narrowing and harvest cost, to be traded
-against them.
-
-**So each leaf carries a 256-bit nonce**, derived from the same seed and
-therefore free: `leaf = H(name, hints, nonce)`. The leaf becomes a *hiding*
-commitment, the attack costs 2^256 whatever the vocabulary is, `M` goes back
-to having one job, and the nonce is handed over with the row when the row is
-opened. A row opened without its nonce does not verify; a row the manager
-invented does not verify. Both are asserted in
-`games/hue-and-cry/secret_matrix.py` rather than claimed.
-
-### Finite is a season, not a leak
-
-**The second half is not a defect and should not be treated as one.** The
-map is finite, so playing it spends it: twelve rows a game against a hundred
-thousand landmarks is about **8,300 games**. That is a horizon, and it is the
-right shape for this experiment rather than a cost to be minimised.
-
-Call it what it is — **a season**. Within one, the harvest accumulates and
-that is the finding: techniques emerge, a shared map grows, later games are
-cheaper than earlier ones, and every player faces the same table. Cohorts
-are comparable because a season is the population.
-
-**At season end the seed is published.** Then the whole matrix is checkable
-at once, every game that was ever played on it can be re-verified in full by
-anyone, and the accumulated map is a public artifact to analyse rather than
-a leak to regret. The next season starts from a new seed, and everyone is
-level again.
-
-That also retires the last thing this document was carrying as an unanswered
-number. "How big must `N` be" was being asked as *how large to make
-harvesting uneconomic*; under seasons it is the friendlier **how long a
-season should last**, which is a scheduling choice rather than a security
-threshold — and `scale.py` already prints it.
-
-**Recommended, not decided.** The alternative is a fresh seed per game
-revealed whole afterwards: simpler, perfectly verifiable, unharvestable —
-and it **destroys the finding**, because nothing accumulates across games
-and the technique Gal wants to see emerge has nothing to emerge from. That
-is the trade, and it is his to take.
+**Everyone is level at every game**, which retires the cohort problem
+entirely: every game is comparable to every other, because every game starts
+from a map nobody has played.
 
 ## A tick
 
@@ -1072,13 +1039,12 @@ the tool.
   which would make the interesting behaviour disappear into a solved
   opening. If it does, the lever is the number of warrants, not a rule
   against sharing.
-- **~~How big does the map have to be?~~** *Closed 2026-09-07 by seasons.*
-  It was asked as a security threshold — what `N` makes harvesting
-  uneconomic — and under a season it is a scheduling choice: `N/12` is how
-  many games the map lasts, `scale.py` prints it, and the answer is
-  whatever season length is wanted. `N` and `M` were already separated;
-  what closed this was deciding that running out is the intended end of a
-  season rather than a failure.
+- **~~How big does the map have to be?~~** *Closed 2026-09-07, twice, and
+  the second time properly.* It was asked as a security threshold — what
+  `N` makes harvesting uneconomic; then re-answered as a season length.
+  With one seed per game there is nothing to harvest and no season, so `N`
+  is back to being what `scale.py` always said: how much room a searcher
+  has to be wrong in. Pick it for the game, not for an attacker.
 - **The branching factor still wants its own curve**, separately, since it
   sets how fast certainty decays and that is the quantity the timing
   measurement rests on. "Noise before thresholds", as 008 already carries.
