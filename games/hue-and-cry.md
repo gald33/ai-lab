@@ -1,0 +1,495 @@
+# Hue and cry
+
+A fugitive moves between rooms, leaving one true fact behind her at each
+one and taking the room's treasure with her. Searchers hold warrants for
+some rooms and not others, read what she left, intersect it, and try to
+name the room she is standing in *now*. She wins by outlasting them or by
+emptying the map. They win by arresting her, and how much she is still
+carrying when they do is a separate number that is never added to the
+first.
+
+That is the whole game. Everything below is why each piece is the shape it
+is, what was measured rather than assumed, and what must never be built.
+
+*Written 2026-09-07, in the sitting the game was invented, per CLAUDE.md's
+first standing decision. Nothing here is built yet and this document says so
+in the places it matters — see "What would have to be built". The island's
+document was direction for months before `games/island/` existed; this one
+starts where that one started.*
+
+## The name, and why it is not Carmen Sandiego
+
+The idea arrived as "let's build Carmen Sandiego" and the shape is hers: a
+thief who is always one landmark ahead, a trail of attribute clues, a
+warrant you have to ask for. **The name is not.** *Carmen Sandiego* is an
+active trademark, this repo is public, and a game published under it is a
+liability with no upside — the mechanic is what was wanted and the mechanic
+is not owned by anybody.
+
+**Hue and cry** is the English common-law name for the thing this game
+actually is: the obligation, on anyone who saw a thief flee, to raise a
+shout that every person within earshot was bound to join. It is public
+pursuit, it is loud, and *being heard coming* is the whole texture of a game
+played on a board where joining a room puts you on its roster. The fugitive
+has no name in the record; she is **the Fugitive**, and the searchers are
+**the Hue**. If Gal wants Carmen back as a nickname in the prose, nothing in
+the protocol changes.
+
+## It is an experiment first, and here is the experiment
+
+[`games/README.md`](README.md) permits exactly one ordering and it is not
+negotiable: *something is an experiment first, and becomes a game if opening
+it to outside players would produce data I can't get alone.* A game invented
+as a game is a game this repo does not build. So before anything else, the
+question.
+
+**001 recorded a preserved negative: a timing predictor that became well
+calibrated and bought no completion time at all.** Not broken — solving a
+problem the task did not have.
+[`roadmap/items/008-timing-tool-mechanism-and-outcome.yaml`](../roadmap/items/008-timing-tool-mechanism-and-outcome.yaml)
+carries that warning forward onto Switchboard's shipped timing facility and
+names the trap precisely: reported as one number, *converged and bought
+nothing* is indistinguishable from *worked and got lost in noise*. It
+requires two ledgers that are never added together, and it names the
+interesting cell as the one where they disagree.
+
+What 008 cannot supply is the other arm. Its instrument is a shared coding
+task, and a coding task is **not obviously timing-bound**: two agents who
+never once agree on when to speak can still both edit the repo and land a
+correct answer. If the outcome ledger comes out flat there, "the tool is
+useless" and "the task did not need it" both fit, and nothing separates
+them.
+
+**Hue and cry is timing-bound by construction.** The Fugitive's entire
+advantage is temporal — she moves *before you look*, and a searcher reading
+a room one tick late is reading a true fact about where she was. There is no
+version of this game in which knowing when your adversary next looks, and
+when they next post, is not the thing you most want to know. Switchboard
+ships exactly those two quantities as `timing_forecast`'s `p50`/`p95` (when
+the sender next *looks*) and `speak_p50`/`speak_p95` (when it next *posts*),
+and scores your own past forecasts back to you as `forecast_calibration`.
+
+So this is 008's **positive control**. If calibration buys nothing here, it
+buys nothing anywhere, and 008's flat cell is a fact about the tool. If it
+buys a great deal here and nothing there, 008's flat cell is a fact about
+coding tasks, and the lab has learned which of two indistinguishable
+explanations was true. Either result is worth the build; that is the test
+this document exists to pass.
+
+There is a second thing only a pursuit gives you, and it is not in 008 at
+all: **`timing_forecast` is a broadcast field, so for the Fugitive an
+accurate forecast is a weapon that is also a leak.** She wants to predict
+when the Hue looks, and publishing her own honest forecast tells them when
+to be watching. Nothing in the coding task makes a calibrated agent pay for
+its calibration. Here the price is built in, and whether agents find it is
+an observation nobody currently has.
+
+## What Switchboard actually provides — measured, not assumed
+
+Every claim in this section was read off the installed wheel on 2026-09-07
+(`agent-switchboard` **2.2.2**, the floor CLAUDE.md moved to on 2026-09-05),
+because this repo has been wrong three times about a Switchboard fact that
+was read from somebody's design document instead of downloaded.
+
+**1. A room is not a place you can be made to travel to.** This is the one
+that decides the design, and the naive version of this game dies on it.
+`join_room` stores its client in a dict keyed by workspace —
+`self._rooms[blob.workspace] = client` — and the tool loader adds a `room`
+parameter to *every* tool's input schema:
+
+```
+mcp_server.py:698   _tool["inputSchema"]["properties"]["room"] = _ROOM_PARAM
+mcp_server.py:895   self._rooms[blob.workspace] = client
+```
+
+An agent therefore holds **as many rooms as it has invites for, at once**,
+and moves between them by changing an argument. There is no cost, no
+latency, and nothing the hub could charge for it.
+
+Re-check:
+`grep -n '"room"' $(python3 -c "import switchboard.mcp_server as m; print(m.__file__)")`
+
+The consequence is the design's hinge and is stated here rather than
+discovered later: **the game cannot forbid omnipresence, so it must price
+it.** Anything in this document that reads like travel is really about who
+holds an invite, never about where a client is pointed.
+
+**2. The invite is the only scarce thing, and it is a credential.**
+`invite.py` says it outright — *"This string is a credential. It contains
+the token and the workspace key, so it grants everything its holder had."*
+So a warrant is an invite, and handing one out is the single act that
+changes what a searcher can read. A warrant that leaks is a warrant shared,
+which is a real move and is treated as one below.
+
+**3. A `dm` is private from the hub and not from the room.** Measured in
+[`switchboard-what-an-entrant-already-holds.md`](switchboard-what-an-entrant-already-holds.md)
+§2 and unchanged: a DM is sugar for posting to the recipient's `@` channel,
+sealed with the workspace key every member holds, and a third member reads
+it verbatim. **A warrant may never be sent by `dm`** — a rival reads the
+invite and joins the room, which is precisely the failure that document
+exists to stop being re-proposed.
+
+**4. `whisper` seals to one peer and is the tool for a warrant.** 2.2.2's
+MCP list carries `whisper` and no `ask`, and `crypto.WHISPER_MARKER` is
+`"whisper"` (checked by import, 2026-09-07). CLAUDE.md names *"sealing each
+seat's invite so the room holds only its seats"* as one of the things
+whisper unblocks; this game is that sentence with a map drawn on it.
+
+The operational detail that cost the island a run applies here unchanged and
+is the thing to put in the brief in bold: **both sides must read the roster
+first.** The sealer needs the recipient's exchange key, the opener needs the
+sealer's, and with only one side having called `agents()` the recipient's
+`inbox` returns a sealed envelope that looks exactly like a bug.
+
+**5. Presence in a room is public to that room.** `roster` returns
+`client.agents()` for the room it is called on, with `last_seen` per agent.
+A searcher holding a warrant is visible to everyone else holding one,
+including the Fugitive if she is standing there. This is not a leak to be
+plugged; it is the hue, and it is why the game has that name.
+
+## The map, and why a clue is not free text
+
+The obvious design has the Fugitive write a riddle and something decide
+whether it was fair. **That design is illegal here.** `games/README.md`
+requires deterministic judging — *"scoring must be computable from the run
+record by code, with no model in the loop"* — and states the cost plainly:
+entire categories of interesting task are off the table because of it. A
+model grading clue quality is a result about the grader, entangled with the
+players along the same axes.
+
+So the clue is not prose. **The map is a gazetteer**: a committed table of
+landmarks, each carrying a fixed set of boolean attributes drawn from one
+closed vocabulary — hemisphere, coastal, capital city, currency family,
+script, whether the room's treasure has already been taken. A clue is
+**exactly one attribute that is true of the room she has moved to**, written
+in the vocabulary's own words. The manager checks it against the table.
+Deterministic, one lookup, no judgement.
+
+Nothing is lost by this and something is gained. The Fugitive's strategy is
+now sharp and stateable: *post the least informative true fact*, which is a
+real optimisation against a real posterior. The Hue's strategy is
+intersection under a clock. And the whole information structure is
+computable, which is what gives this game a **frontier** rather than a
+leaderboard — see "Scoring".
+
+Two rules keep it honest:
+
+- **Every clue is true.** The Fugitive may not lie. A lie is not a richer
+  game, it is an unfalsifiable one: with lying allowed there is no posterior
+  to compute and therefore no floor to score against, and the whole
+  measurement collapses into taste. She may be as uninformative as the
+  vocabulary permits and that is the game.
+- **She must post one.** A tick with no clue is not a clever silence, it is
+  a fugitive who has stepped outside the record. The manager settles a
+  clueless tick as a **forfeited move**: she is held in place for that tick
+  and the Hue is told she was.
+
+## A tick
+
+The game's presentation name for the manager's episode is a **tick** —
+under exactly the rule CLAUDE.md set for the island calling an episode a
+day. It is a presentation name and nothing else: *the manager still writes
+"episode" on the board*, the frozen brief still says episode, and any metric
+keeps its own name. The transcript quotes the manager's word; everywhere the
+game speaks in its own voice it says tick.
+
+Two boards, both ordinary Switchboard rooms:
+
+- **the square** — one room holding the manager, every searcher, and the
+  Fugitive. Everything announced and everything declared happens here, in
+  public.
+- **the landmarks** — one room per gazetteer entry. The Fugitive is in all
+  of them. A searcher is in the ones it holds a warrant for.
+
+Within tick *t*:
+
+1. **The manager rings the bell** on the square and names the deadline.
+2. **The Fugitive commits.** She posts a commitment to her tick-*t* landmark
+   on the square — a hash, public, unreadable — and whispers the preimage to
+   the manager. Her position is hidden by cryptography rather than by the
+   manager's discretion, which is the point and is developed below.
+3. **She leaves a clue** in the room she has just left: one true attribute of
+   where she has gone.
+4. **She may steal.** A `TAKE` line in the room she is leaving, settled
+   against the treasure the manager put on that room's board at setup.
+5. **The Hue asks and reads.** A warrant request is a public line on the
+   square; the manager whispers back the invite for that landmark, sealed to
+   the asker. Reading a room you already hold is silent, unlimited and free.
+6. **Anyone may arrest.** `ARREST <landmark>` on the square, settled against
+   the tick-*t* commitment.
+7. **The bell rings again.** The manager settles what it can read by the
+   deadline and nothing after it.
+
+**Nothing waits for anybody.** No agent is prompted, no turn is taken, the
+manager never asks anyone for anything, and the tick closes on the clock
+whether or not the Fugitive moved. That is CLAUDE.md's "Agents run
+themselves" clause and this game does not get an exception to it: every
+participant is its own long-lived session reading and writing when it
+chooses, and the manager is a reader of board text and a settler of state.
+If the design starts to need a turn, something has gone wrong.
+
+## The grammar
+
+The manager recognises five formatted lines and nothing else. It never
+repairs a malformed line into a plausible one — a corrected line is the
+system making a player's decision, which CLAUDE.md forbids in the same
+sentence it forbids inventing a production plan.
+
+```
+posted on the square
+  COMMIT <tick> <hex64>              the Fugitive, once per tick
+  WARRANT <landmark>                 a searcher, asking
+  ARREST <landmark>                  a searcher, betting the game on it
+  SHARE <landmark> <agent-id>        a searcher, handing on what it holds
+
+posted in a landmark room
+  CLUE <attribute>                   the Fugitive, one true attribute
+  TAKE                               the Fugitive, the room's treasure
+
+whispered to the manager
+  REVEAL <tick> <landmark> <nonce>   the Fugitive's preimage
+```
+
+Everything else on the board is talk, and talk is allowed and unlimited.
+The searchers may negotiate, divide the map, lie to each other, and form and
+break alliances entirely in prose that the manager does not read. **That is
+deliberate**: the coordination is the interesting behaviour and it is
+recorded verbatim in the transcript, while nothing about it is settled or
+scored. The manager scores what settled.
+
+`SHARE` is in the grammar for one reason: warrants will be shared whether or
+not the grammar has a word for it, because an invite is a credential and
+credentials can be pasted into a message. This is CLAUDE.md's standing
+decision arriving in a new room — *interference is not preventable and is
+therefore made visible.* No permission model is wanted and Switchboard
+should not grow one. What the record does instead is show it: a `SHARE` is a
+public line and the manager notes it against both parties. A warrant handed
+on outside the grammar is still a warrant handed on, and the day somebody
+builds detection for it, the sentence to change is this one.
+
+## A manager nobody has to trust
+
+The Fugitive's position is the one secret in the game, and a manager that
+merely *promises* not to leak it is a manager every searcher has to trust.
+Commit–reveal removes the question.
+
+She posts `COMMIT <tick> <hex64>` in public, where the hash is over
+`<tick> <landmark> <nonce>` with a nonce she draws fresh each tick, and
+whispers the `REVEAL` to the manager. During the tick the commitment is
+opaque to everyone including a searcher who reads every line of the square.
+At the end of the game the manager publishes every `REVEAL`, and **anybody
+holding the square's transcript can recompute all of it**: that the
+commitments match, that every clue was true of the landmark committed to,
+that each arrest was settled against the right room, and that the Fugitive
+never moved to somewhere she had not committed.
+
+Two properties fall out that are worth having:
+
+- **The Fugitive cannot move after seeing an arrest.** The commitment is
+  posted before the tick's arrests can be. Without it, a fugitive who is
+  also the only one who knows where she is has no mechanism stopping her
+  from having been somewhere else all along, and the game is unscoreable.
+- **The manager cannot favour anybody**, and does not have to be believed
+  when it says so. It could still leak a position to a searcher mid-game;
+  what it cannot do is alter the outcome after the fact, and the leak shows
+  up as a searcher who guessed impossibly well against the published
+  posterior. That is weaker than "cannot cheat" and it is stated as the
+  weaker thing rather than dressed as the stronger one.
+
+## The theft, and why it is a second number
+
+At setup the manager writes a treasure onto each landmark's board
+(`board_set`). A `TAKE` moves it to the Fugitive. What it buys her is a
+second victory condition — **empty the map and she has won outright,
+whatever the clock says** — and what it buys the measurement is an objective
+that genuinely trades against speed.
+
+Because it does trade. A Hue that arrests on tick three has stopped a thief
+who is still carrying two treasures. A Hue that spends nine ticks
+triangulating recovers seven and may not arrest at all. There is no ordering
+between those outcomes that is not somebody's choice of weights, and
+`games/README.md` is explicit that a weighted sum *"destroys the finding and
+replaces it with my choice of weights, which nobody came here to learn
+about."* So **ticks-to-arrest and treasure-recovered are two columns and
+stay two columns**, and results read as a Pareto frontier the way the
+island's capture and per-trader ratios do.
+
+## Where the timing question lives, and the two ledgers
+
+The searchers' real problem is not *where* — with the gazetteer in hand the
+posterior is arithmetic — it is **when to look and when to commit**, because
+the room they read is the room she has already left. The tools for that are
+the ones 008 is about: `checkin` renewing every lease and returning what
+arrived since the last one, `back_in` putting "away, back in ~N" on the
+roster instead of an absence, and `timing_forecast` carrying `p50`/`p95`
+for the next look and `speak_p50`/`speak_p95` for the next post — which the
+tool's own description separates because reading a message and answering it
+are a whole turn apart.
+
+**Two ledgers, never added together**, exactly as 008 requires:
+
+- **mechanism** — `forecast_calibration` per player, convergence rate, how
+  often anybody acted outside a forecast they had published. Counts and
+  rates.
+- **outcome** — ticks-to-arrest against the reference searcher below, and
+  treasure recovered, with the instrument's own between-run movement printed
+  beside them.
+
+`forecast_calibration` is computed by the library and handed to the agents,
+which makes the mistake **easier** to make rather than harder: it is the
+number a flat run would reach for. It is a mechanism number, it is never
+reported as an outcome one, and a run that publishes it as evidence the game
+went better has committed the error 001 preserved a negative result to
+prevent.
+
+**This is a primitive the agents hold, not a scheduler.** It holds a time;
+nobody is driven to it; the bell rings on the clock regardless. If measuring
+it starts to require the runner to drive anybody to a rendezvous, that is
+the forbidden thing arriving in new clothes.
+
+## Scoring, and the frontier
+
+A level is keyed on `(landmarks, searchers, ticks, tick_seconds,
+gazetteer_hash)`, for the reason the island's level key already exists: 002
+measured a 60s and a 150s table scoring differently enough that ranking them
+together hides the finding. A ten-minute tick and a ninety-second tick are
+**different games** and are not each other's handicap.
+
+Ranking a chase needs a floor, and a chase does not have an obvious one. The
+honest version:
+
+- **The one-tick bound is computable exactly.** Given the gazetteer and the
+  candidate set, the smallest posterior the Fugitive can leave a perfect
+  searcher — she picks her least informative true attribute, the searcher
+  intersects — is a minimax over a finite matrix. That is a real bound and
+  it is cheap.
+- **The multi-tick optimum is not obviously computable**, and this document
+  is not going to claim it is. What stands in for it is a **reference
+  searcher**: a deterministic, model-free baseline — uniform prior over
+  landmarks, Bayes update on each clue read, arrest when one landmark's mass
+  crosses a threshold — run on the same seed, the same gazetteer and the
+  same tick length. It is the *solo reference* pattern 008 already uses, and
+  a score is read against it rather than against a number nobody can derive.
+
+The reference searcher is also the game's own null: **it does not use the
+timing tools at all.** A player that beats it is beating a searcher with the
+same information and no forecast, which is the comparison the whole
+experiment wants and is very hard to get any other way.
+
+The island's remaining scoring decisions carry over unchanged and are not
+re-litigated here: a game is one attempt, declared before it is played; the
+best game ranks, because luck counting is what a high score is; the ledger
+is the record and the board is a summary of it, never a replacement. And a
+game short of what it declared is **kept, counted and never ranked**.
+
+## People play, and the Fugitive is the human seat
+
+Gal, 2026-09-07: *"we can let humans play, but agents will probably be
+quicker in this game."* Right, and the fix is not a handicap — it is the
+roles, which are asymmetric in exactly the way that helps.
+
+**A searcher's tick is read-many, decide-once.** Poll every room you hold,
+intersect the attributes, recompute a posterior, beat a ninety-second clock.
+An agent does that in seconds. A person cannot, and — this is the part that
+matters — the axis they lose on **is the axis being scored**. In the island
+a human is slower at deliberating and the clock does not move, so they play
+a harder game and it is honest to say so. Here, a human searcher is not a
+weaker player; they are a player disqualified by the metric.
+
+**The Fugitive's tick is one decision.** Where to go, which true fact hurts
+least, whether to take the treasure. Three choices, low bandwidth, and a
+person's model of what will mislead a searcher is genuinely competitive
+against a language model's. That is a human-playable rate at ninety seconds
+where polling twelve rooms is not.
+
+So: **the human seat is the Fugitive**, and it is the seat this game should
+advertise to people.
+
+Two things follow, and both are decisions rather than observations:
+
+- **The island's rule carries over, and it is about the game, not the
+  seat.** A seat with a human driver is `driven`: kept, counted, **never
+  ranked**. A chase against a person is a different challenge from a chase
+  against an agent, and ranking them together is the same defect as ranking
+  a 60s table beside a 150s one — so when a person holds the Fugitive, *the
+  whole game* is unranked, the searchers' side included. They still get
+  their record, their transcript and their two columns. They do not get a
+  row on the ladder.
+- **A slow lane is a level, not a mercy.** A level with a ten-minute tick is
+  an ordinary level that ranks within itself, and people can play searchers
+  there against each other. Nothing about the protocol changes; only
+  `tick_seconds` in the level key does. That is how a human plays the Hue
+  without anybody pretending the numbers compare.
+
+And the island's hardest-won sentence applies here too: how much of a driven
+seat the person actually drove is **exactly the thing nobody can know**, and
+a taxonomy naming the difference would claim what the record cannot support.
+One word, one reason, `driven`.
+
+## What this must never become
+
+- **A second surface.** No `move()`, no `look()`, no action schema, no
+  entrant SDK. Everything a player does, it does by writing a message to a
+  board. Any argument beginning "the agent cannot do the crypto" is wrong at
+  the first clause — `whisper`, `keygen` and `join_room` are tools the agent
+  already holds, and the tool does the mathematics.
+- **A scheduler.** No loop that calls each searcher in sequence or in
+  parallel and applies their replies. It has been built twice in this repo
+  already and it looks natural in code every time.
+- **A model in the judging.** The gazetteer exists so that clue-checking is
+  a table lookup. The moment anything asks a model whether a clue was fair,
+  the result stops being about the players.
+- **A permission model on warrants.** Sharing is visible, not prevented.
+- **A game engine.** Nothing shared with the island until a third game
+  wants it, per `games/README.md`'s deliberately-not-being-built list.
+  The island's manager shape may be *read*; it is not to be extracted into a
+  framework on the strength of two games.
+
+## What would have to be built, in order
+
+Nothing here exists yet. The order is chosen so that the piece most likely
+to be wrong is the piece built first, which is why the island built its
+grammar before its pages.
+
+1. **The gazetteer and the settler.** A committed table, and a pure function
+   from a board transcript to a settled outcome: were the clues true, did
+   the commitments open, was the arrest right, what was taken. No hub, no
+   network, no model, no cost — and it makes this document's central claim
+   (deterministic judging) something you can run instead of something I
+   asserted.
+2. **The reference searcher**, against the settler, on seeded gazetteers.
+   This is the floor, and until it exists there is no score.
+3. **The one-tick minimax bound**, printed beside the reference searcher so
+   the two disagree in public where that is informative.
+4. **The manager**: a process that watches the square and the landmark
+   rooms, recognises the five lines, whispers warrants, and settles on the
+   clock.
+5. **The brief**, frozen by hash, and a door — which is where anything about
+   lobbies, seats and public play gets decided, not before.
+
+**A roadmap item is not filed**, and that is a gap rather than a choice:
+`roadmap-core` is not installed in this environment, and
+`roadmap/ROADMAP.md` and `ARCS.md` are generated files that must not be
+hand-edited. The item belongs to the `switchboard-coordination` arc, since
+what it answers is 001's preserved negative rather than anything about
+coding tasks. Filing it is the first thing to do in an environment that has
+the tool.
+
+## Open, and honestly open
+
+- **Does a shared warrant break the game?** Two searchers holding everything
+  between them is the cooperative optimum and possibly the only strategy,
+  which would make the interesting behaviour disappear into a solved
+  opening. If it does, the lever is the number of warrants, not a rule
+  against sharing.
+- **Is the vocabulary size a free parameter or the whole result?** A
+  gazetteer with too many attributes makes every clue nearly free and the
+  Fugitive uncatchable; too few and the first clue ends it. That curve has
+  to be measured before any treatment is compared on the instrument — the
+  same "noise before thresholds" discipline 008 already carries.
+- **Does the Fugitive suppress her own `timing_forecast`?** The leak is
+  real and predicted here. Whether any agent finds it unaided is an
+  observation, and it should be recorded as one rather than prompted for.
+- **What happens with one searcher?** A solo Hue removes all coordination
+  and leaves pure search under a clock, which may be the cleaner instrument
+  for the timing question and a worse game. Both, probably; run both.
