@@ -302,15 +302,33 @@ answers, completely, the objection that a hash left in a room is
 brute-forceable over twenty landmarks: **you cannot enumerate candidates
 against a matrix you do not have.**
 
-**Sparse, and large.** Few marks per row, many landmarks, many columns.
+**Sparse, and large — and sparse is why it can be large.** *Corrected by Gal
+2026-09-07, and it is the reason that was wrong rather than the fact.* This
+document had sparsity down as a game-design choice about information. It is
+a **generation cost** choice. Deciding every `(landmark, hint)` cell is
+`N × M` work, and the vocabulary grows with the map, so `N × M` is
+superlinear. Selecting a few hints per landmark instead is `N × 3` —
+**linear, and linear is the only thing that makes a large matrix
+affordable.**
 
-**A zero is not a denial.** This is the one that changes the game's
-character, and it is easy to read past. `M[landmark][hint] = 0` does **not**
-mean the hint is false of that landmark. It means *this hint will not be
-selected for this landmark* — a true fact may sit at zero. So a searcher
-may never reason "the hint says `coastal`, therefore rule out the landmarks
-that are not coastal". **Only a one carries information. A zero carries
-none.** The matrix is a permission table, not a truth table.
+```
+N=    100  M=    100    dense     10,000   sparse    300       33x cheaper
+N=100,000  M=100,000    dense 10,000,000,000   sparse 300,000  33,333x cheaper
+```
+
+Re-check: `python3 games/hue-and-cry/scale.py`. The saving is `M/3` and `M`
+grows, which is the whole of "linear versus superlinear": **the dense matrix
+cannot be made large and the sparse one can.**
+
+**A zero is not a denial**, and now for a reason rather than as a rule.
+`M[landmark][hint] = 0` does **not** mean the hint is false of that
+landmark — it means *the cell was never evaluated*. A true fact sits at zero
+whenever the generator did not pick it. So a searcher may never reason "the
+hint says `coastal`, therefore rule out the landmarks that are not
+coastal". **Only a one carries information. A zero carries none.** The
+matrix is a permission table, not a truth table — and it is one because
+filling in the denials would cost `N × M`, which is precisely what was not
+paid.
 
 Two consequences worth stating plainly, because they are load-bearing:
 
@@ -353,29 +371,51 @@ this whole design stops being unknown, and a late player is playing a
 different game from an early one — which also destroys comparability
 between them.
 
-The exploit needs one condition: **the same matrix, twice.** So the levers
-are all about whether a second game reuses the first game's structure, and
-they are not equally cheap:
+**The permuted-label fix is withdrawn.** This document proposed permuting
+the hint labels per round so that a harvester's table stopped meaning what
+it meant. Gal, 2026-09-07: *"that's just playing with the distribution ...
+I don't see it adding any real thing."* He is right, and the reason is that
+a permutation is an **isomorphism** — it preserves exactly the structure a
+harvester actually holds (which landmarks share a hint), and renames
+something they can re-identify from the observations they are already
+making. It moved a cost around without removing one. Recorded rather than
+deleted because it is a plausible-looking idea that will occur to the next
+reader too.
 
-- **One global matrix, each game drawing a subset of its places.** The
-  cheapest thing, and it is exactly what Gal described — and it is the
-  fully harvestable case, because every game is a window onto one table
-  somebody is assembling.
-- **A library of independent matrices, one drawn per round.** Not
-  harvestable, and it needs a large library to stay that way.
-- **One global matrix, with the hint labels permuted per round from the
-  round seed.** Proposed here as the cheap middle: the structure is reused,
-  so the precompilation is done once, but a harvester's table is keyed on
-  labels that no longer mean what they meant. Re-learning has to happen
-  inside a round, which is where there is not enough observation to do it.
-  A permutation is a few lines and no extra precompilation.
+**What answers it instead falls out of the cost argument above, and is
+better.** Harvesting requires observing the selected pairs, of which there
+are `N × 3`; a game of `k` ticks exposes `k` of them. So the games needed
+to reconstruct the matrix is `3N / k` — **linear in N**:
 
-**Not decided.** The permutation is a proposal, not a decision, and it
-wants checking before it is believed — in particular whether a harvester
-who holds the unlabelled structure can re-key it from a handful of
-within-round observations, which is a real question and not obviously
-answered in the direction I would like. Until somebody checks it, this
-document says the gap is open.
+```
+N=    100    300 selected pairs        25 games to harvest
+N=  1,000  3,000 selected pairs       250 games to harvest
+N= 10,000 30,000 selected pairs     2,500 games to harvest
+N=100,000    300,000 pairs          25,000 games to harvest
+```
+
+Generation is linear in `N` and harvesting is linear in `N`, so **the
+defence against a reconstructed matrix is simply a bigger matrix, and a
+bigger matrix is exactly what the sparsity was buying.** The two halves of
+Gal's argument close on each other: the reason the matrix can be large is
+the reason large is enough.
+
+**And the two knobs separate.** Harvesting cost depends only on `N`; how
+much a hint narrows depends only on `M`, running from ~3 landmarks per hint
+at `M = N` to ~1,500 at `M = 200`. So informativeness is tuned with the
+vocabulary and harvest-resistance is bought with the map, independently —
+which retires this document's worry, filed under the branching factor, that
+the two moved together and in opposite directions. On this parameter they
+do not.
+
+Re-check both tables: `python3 games/hue-and-cry/scale.py`.
+
+**What is still open** is not the mechanism but the number: nobody has said
+what `N` has to be for a given expected number of games, and the floor
+above (every pair seen once, no repeats) is generous to the harvester in
+one direction and stingy in another, since partial reconstruction pays
+before complete reconstruction does. That is an arithmetic question with an
+answer, and it should be answered before a public game rather than after.
 
 ### Carmel is an NPC, in her own process
 
@@ -515,17 +555,29 @@ whispered to the manager
   REVEAL <tick> <landmark> <nonce>   the Fugitive's preimage
 ```
 
-**The hash beside the hint** is Gal's, 2026-09-07, and it is what makes
-reaching a room worth more than reading about it: a searcher standing where
-Carmel stood can test a guess locally, without asking the manager and
-without announcing that they are close. It survives the obvious objection —
-that a hash over twenty landmarks is brute-forced in twenty tries — only
-because of the section above: the matrix is unknown, so there is no
-candidate list to enumerate. **What exactly it commits to is not settled
-here.** Gal wrote `hash(solution, landmark)`, and "solution" admits more
-than one reading; the grammar records the shape and the open question
-rather than inventing an answer, because the readings differ in what the
-game is (intercept her, or assemble something across rooms).
+**The hash beside the hint is `hash(landmark)`, and nothing else.** Settled
+by Gal 2026-09-07, correcting his own earlier `hash(solution, landmark)`.
+It is what makes reaching a room worth more than hearing about it: a
+searcher standing where Carmel stood can test a guess locally, without
+asking the manager and without announcing that they are close.
+
+**Say what that is, plainly: it is a lookup table.** An unsalted hash of a
+landmark name is the same value in every game forever, so anyone who can
+enumerate the names hashes them once and inverts it from then on. Nothing
+here is broken by that — under "this is a chase, not a clue game" it is
+arguably the point, and **arrival becomes certainty** rather than a
+narrowing. But it should be written down as a property rather than
+discovered later by somebody who assumed the hash was hiding something.
+
+**It does leave the hint redundant, and that is a real finding.** If the
+hint and the hash sit in the same room, and the hash names the destination
+outright, then everyone who reads the hint has already read the answer
+beside it. **Proposed, not decided**: separate them — the **hint goes on the
+square**, public and vague and available to everyone, and the **hash stays
+in the room**, precise and available only to whoever got there. Then both
+carry their own weight, the trail is followable at a distance and
+*resolvable* only up close, and the warrant is what buys the difference.
+That is one line of the design and it is Gal's to take or leave.
 
 Everything else on the board is talk, and talk is allowed and unlimited.
 The searchers may negotiate, divide the map, lie to each other, and form and
@@ -768,14 +820,20 @@ the tool.
   which would make the interesting behaviour disappear into a solved
   opening. If it does, the lever is the number of warrants, not a rule
   against sharing.
-- **Is the vocabulary size a free parameter or the whole result?** A
-  gazetteer with too many attributes makes every clue nearly free and the
-  Fugitive uncatchable; too few and the first clue ends it. That curve has
-  to be measured before any treatment is compared on the instrument — the
-  same "noise before thresholds" discipline 008 already carries. **The
-  branching factor is the same question and is worse**, because it moves
-  the clue's narrowing power and the belief's decay rate together and in
-  opposite directions. Both curves before any treatment.
+- **How big does the map have to be?** *Narrowed 2026-09-07 and no longer
+  the question it was.* This entry used to ask whether vocabulary size was
+  a free parameter or the whole result, and worried that the branching
+  factor was worse because it moved two things in opposite directions.
+  Half of that is retired: `N` and `M` separate cleanly — harvest cost
+  rides on the map, a hint's narrowing on the vocabulary — so they are two
+  curves rather than one tangle (`scale.py`). What remains is arithmetic
+  nobody has done: **what `N` makes harvesting uneconomic for the number of
+  games actually expected**, given that partial reconstruction pays before
+  complete reconstruction does. Answerable, and to be answered before a
+  public game rather than after.
+- **The branching factor still wants its own curve**, separately, since it
+  sets how fast certainty decays and that is the quantity the timing
+  measurement rests on. "Noise before thresholds", as 008 already carries.
 - **Does the Fugitive suppress her own `timing_forecast`?** The leak is
   real and predicted here. Whether any agent finds it unaided is an
   observation, and it should be recorded as one rather than prompted for.
