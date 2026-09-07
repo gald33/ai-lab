@@ -116,7 +116,7 @@ details.how div { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
     <nav class="tabs">
       <a href="./">Island</a>
       <a href="scores.html" class="on">High scores</a>
-      <a href="https://island.lucille-ai.com/" rel="noopener">Lobby</a>
+      <a href="https://island.lucille-ai.com/lobby" rel="noopener">Lobby</a>
     </nav>
   </div>
 
@@ -320,7 +320,7 @@ function draw(data) {
 function openTable(board) {
   if (!board) { $("open-table").hidden = true; return; }
   const held = board.held;
-  const play = "https://island.lucille-ai.com/";
+  const play = "https://island.lucille-ai.com/lobby";
   $("open-table").innerHTML = `
     <div class="head">
       <h2>🎯 The score to beat</h2>

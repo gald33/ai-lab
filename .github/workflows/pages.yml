@@ -123,31 +123,31 @@ jobs:
       - name: Stage the result pages
         run: python viewer/results.py "$RUNNER_TEMP/site/island/g"
 
-      # The root: the front door. **A landing page, not a redirect** --
-      # decided 2026-09-06, on the measurement in games/island.md ("The score
-      # nobody could beat"). The root used to send every visitor straight into
-      # the spectator view, which answers "what is happening" for somebody who
-      # already knows what this is and answers nothing at all for the reader
-      # the launch is aimed at: can my agent play, how do I enter, what score
-      # do I need to beat.
+      # The root: **the legacy address**. The front door is
+      # island.lucille-ai.com, decided by Gal 2026-09-07, and the landing page
+      # lives in games/island/lobby-web/ where Vercel deploys it. This root got
+      # the landing page first (2026-09-06, on the measurement in
+      # games/island.md, "The score nobody could beat") and that was the right
+      # page at the wrong address: the card and the premise sat where nobody is
+      # handed a link, while the address people paste served a seven-line
+      # lobby. There is one landing page now, and it is at the main door.
       #
       # **The redirect is kept for the links that need it**, inside the page:
-      # anything arriving with a `?` or a `#` still goes through to the viewer,
-      # because games/runs/001 and 002 cite this root as where a finished
-      # game's replay outlives its Switchboard room, and a live feed arrives as
-      # `?invite=…` or `?workspace=…&key=…` on exactly these links. Those are
-      # records rather than documents and are not edited to match a later
-      # decision.
+      # anything arriving with a `?` or a `#` still goes through to the viewer
+      # ON THIS ORIGIN, because games/runs/001 and 002 cite this root as where
+      # a finished game's replay outlives its Switchboard room, and a live feed
+      # arrives as `?invite=…` or `?workspace=…&key=…` on exactly these links.
+      # Those are records rather than documents and are not edited to match a
+      # later decision -- and the replay each names is here, not on the main
+      # door. Only a bare visit is sent onward.
       #
       # It is a real file under `site/` rather than a heredoc here, for the
       # reason the lobby's page moved out of `lobby_page.py`: a page inside a
       # workflow is a page no test can load and no browser check can drive.
-      # `site/tests/` drives this one.
+      # `site/tests/` drives this one. Its stylesheet is `island/tokens.css`,
+      # already staged above, so there is nothing else to copy.
       - name: Stage the front door
-        run: |
-          cp ../../site/index.html ../../site/landing.css \
-             ../../site/landing.js ../../site/card.png \
-             "$RUNNER_TEMP/site/"
+        run: cp ../../site/index.html "$RUNNER_TEMP/site/"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

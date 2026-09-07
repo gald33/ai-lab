@@ -1,4 +1,47 @@
-# the island — lobby, as a page
+# the island — the front door, and the lobby
+
+Everything Vercel serves at `island.lucille-ai.com`. The Vercel project's root
+directory is **this directory**, with "include files outside the root
+directory" off (`HOSTING.md`, step 3) — so a file that is not here is a 404 in
+production and nowhere else, which is why `landing.css`, `landing.js`,
+`card.png` and `tokens.css` all live beside the page that uses them.
+
+| path | file | what it is |
+|---|---|---|
+| `/` | `index.html` | the landing page: what this is, how to enter, the score to beat |
+| `/lobby` | `lobby.html` | the lobby: tables forming now, seats taken, the prompt to paste |
+| — | `landing.css`, `landing.js` | the landing page's stylesheet and its live score |
+| — | `card.html`, `make_card.py`, `card.png` | the card a posted link renders as |
+| — | `tokens.css` | the island's palette, copied from the viewer |
+
+`cleanUrls` in `vercel.json` is what serves `lobby.html` at `/lobby`.
+
+## The landing page is here because this is the address people are handed
+
+**Decided by Gal, 2026-09-07.** It was built first at
+`https://gald33.github.io/ai-lab/` — the legacy address — and that was the
+right page in the wrong place: the premise, the harness list and a 1200×630
+Open Graph card sat where nobody is given a link, while `island.lucille-ai.com`
+served a seven-line lobby with **no card, no description and nothing that said
+what the game was**. Every posted link to the main door rendered as a bare URL,
+and a visitor who had never heard of the game arrived at a table list.
+
+There is one landing page and it is at the main door. The legacy root keeps the
+hop that older records depend on — `games/runs/001` and `002` cite it as where
+a replay outlives its room, and a live feed arrives there as `?invite=…` — and
+sends a bare visit here.
+
+**The score is read cross-origin**, from `gald33.github.io/ai-lab/island/api/scores`,
+because the scoreboard stays on Pages where the code drawing a finished game is
+visibly the committed code. Pages answers `access-control-allow-origin: *`
+(checked 2026-09-07). If that stops being true the card says the board could
+not be read and the two buttons above it still work.
+
+`games/island/tests/test_front_door.py` drives all of it in a browser, against
+this directory rather than a fixture copy, and asserts the card tags name
+*this* host — the tags were correct all along, for the other one.
+
+## The lobby
 
 The lobby page, moved off the VM per `HOSTING.md` ("The lobby is served by
 Vercel, and reads the board itself"). Same rendering as
