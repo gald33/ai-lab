@@ -1,7 +1,7 @@
 # Hue and cry
 
-A fugitive moves between rooms, leaving one true fact behind her at each
-one and taking the room's treasure with her. Searchers hold warrants for
+A fugitive moves between rooms along routes anyone can read, leaving one
+true fact behind her at each one and taking the room's treasure with her. Searchers hold warrants for
 some rooms and not others, read what she left, intersect it, and try to
 name the room she is standing in *now*. She wins by outlasting them or by
 emptying the map. They win by arresting her, and how much she is still
@@ -158,8 +158,8 @@ model grading clue quality is a result about the grader, entangled with the
 players along the same axes.
 
 So the clue is not prose. **The map is a gazetteer**: a committed table of
-landmarks, each carrying a fixed set of boolean attributes drawn from one
-closed vocabulary — hemisphere, coastal, capital city, currency family,
+landmarks, each carrying its exits (below) and a fixed set of boolean
+attributes drawn from one closed vocabulary — hemisphere, coastal, capital city, currency family,
 script, whether the room's treasure has already been taken. A clue is
 **exactly one attribute that is true of the room she has moved to**, written
 in the vocabulary's own words. The manager checks it against the table.
@@ -167,10 +167,58 @@ Deterministic, one lookup, no judgement.
 
 Nothing is lost by this and something is gained. The Fugitive's strategy is
 now sharp and stateable: *post the least informative true fact*, which is a
-real optimisation against a real posterior. The Hue's strategy is
-intersection under a clock. And the whole information structure is
-computable, which is what gives this game a **frontier** rather than a
-leaderboard — see "Scoring".
+real optimisation against a real posterior. And the whole information
+structure is computable, which is what gives this game a **frontier** rather
+than a leaderboard — see "Scoring".
+
+### The map has routes, and without them there is no game
+
+*Added 2026-09-07, hours after the rest of this document was written and
+merged, because Gal asked for a worked example and the example did not
+work. The superseded sentence is kept above rather than quietly deleted:
+it said the Hue's strategy was "intersection under a clock", and that was
+wrong.*
+
+The version without routes let the Fugitive move from any landmark to any
+landmark. Measured on an eight-landmark gazetteer with five attributes:
+
+```
+without routes: her best true clue leaves 5 or 6 of the 8 candidates
+with routes:    her best true clue leaves 2 or 3 of the 3 she could reach
+```
+
+Re-check, and it is the one thing here that is built:
+`python3 games/hue-and-cry/worked_example.py`. It carries the eight-landmark
+gazetteer, the routes, both bounds and the three-tick game below.
+
+Weak, and then worse than weak. **Clues from different ticks describe
+different locations** — the tick-*t* clue is about where she is at tick *t*,
+and by tick *t+1* she is somewhere else — so there is nothing to intersect.
+Each tick would have been an independent one-in-eight guess barely dented by
+a clue that eliminated two landmarks, warrants would have bought almost
+nothing, and the computable floor this document promises would have been a
+floor under a game nobody can win.
+
+**So the gazetteer carries routes**: each landmark has a small fixed set of
+exits, three in the worked example, committed with the rest of the table and
+public. A clue is then read against her *reachable* set rather than the whole
+map, and the whole thing tightens at once:
+
+- **The warrant mechanic starts doing the work it was designed for.**
+  Holding the room she left is what converts a clue into an arrest, because
+  knowing where she was is what makes the clue mean anything. A searcher
+  holding no relevant room propagates a belief and learns nothing.
+- **Certainty becomes perishable, at a known rate.** A searcher who reads
+  the right room can reach one candidate exactly; a searcher who then waits
+  one blind tick is spread back over the exits. In the worked example a
+  searcher goes from a certain arrest to a three-way tie in a single tick.
+  That decay is the branching factor, it is computable in advance, and it is
+  precisely why this game is about *when to commit* rather than about where
+  — which is the entire reason it was chosen as 008's positive control.
+
+The branching factor is therefore a real design parameter and not a detail:
+it sets both how fast belief decays and how much a clue can narrow. It goes
+in the level key with the rest.
 
 Two rules keep it honest:
 
@@ -205,7 +253,7 @@ Within tick *t*:
 
 1. **The manager rings the bell** on the square and names the deadline.
 2. **The Fugitive commits.** She posts a commitment to her tick-*t* landmark
-   on the square — a hash, public, unreadable — and whispers the preimage to
+   — one of the exits of where she is now — on the square — a hash, public, unreadable — and whispers the preimage to
    the manager. Her position is hidden by cryptography rather than by the
    manager's discretion, which is the point and is developed below.
 3. **She leaves a clue** in the room she has just left: one true attribute of
@@ -358,18 +406,24 @@ together hides the finding. A ten-minute tick and a ninety-second tick are
 Ranking a chase needs a floor, and a chase does not have an obvious one. The
 honest version:
 
-- **The one-tick bound is computable exactly.** Given the gazetteer and the
-  candidate set, the smallest posterior the Fugitive can leave a perfect
-  searcher — she picks her least informative true attribute, the searcher
-  intersects — is a minimax over a finite matrix. That is a real bound and
-  it is cheap.
+- **The one-tick bound is computable exactly**, and it is over her exits
+  rather than over the map. Given the landmark she is leaving, she picks the
+  least informative attribute true of where she is going and a perfect
+  searcher intersects it with that landmark's exits — a minimax over a
+  matrix with as many columns as the branching factor. Real, and cheap.
+  *Corrected 2026-09-07: this said "the candidate set", which without routes
+  meant all eight landmarks and made the bound both looser and meaningless.*
 - **The multi-tick optimum is not obviously computable**, and this document
   is not going to claim it is. What stands in for it is a **reference
-  searcher**: a deterministic, model-free baseline — uniform prior over
-  landmarks, Bayes update on each clue read, arrest when one landmark's mass
-  crosses a threshold — run on the same seed, the same gazetteer and the
-  same tick length. It is the *solo reference* pattern 008 already uses, and
-  a score is read against it rather than against a number nobody can derive.
+  searcher**: a deterministic, model-free **forward filter** over the route
+  graph — a belief over landmarks, propagated along the exits each tick and
+  updated by whichever clues the warrants it holds let it read, arresting
+  when one landmark's mass crosses a threshold. Run on the same seed, the
+  same gazetteer and the same tick length. It is the *solo reference*
+  pattern 008 already uses, and a score is read against it rather than
+  against a number nobody can derive. *Corrected in the same sitting: a flat
+  Bayes update with no propagation step is not a searcher, because it has no
+  way to represent a fugitive who moved while it was not looking.*
 
 The reference searcher is also the game's own null: **it does not use the
 timing tools at all.** A player that beats it is beating a searcher with the
@@ -451,12 +505,15 @@ Nothing here exists yet. The order is chosen so that the piece most likely
 to be wrong is the piece built first, which is why the island built its
 grammar before its pages.
 
-1. **The gazetteer and the settler.** A committed table, and a pure function
-   from a board transcript to a settled outcome: were the clues true, did
-   the commitments open, was the arrest right, what was taken. No hub, no
+1. **The gazetteer and the settler.** A committed table of attributes *and
+   exits*, and a pure function from a board transcript to a settled outcome:
+   were the clues true, did she move along a route she had, did the
+   commitments open, was the arrest right, what was taken. No hub, no
    network, no model, no cost — and it makes this document's central claim
    (deterministic judging) something you can run instead of something I
-   asserted.
+   asserted. **Started**: `games/hue-and-cry/worked_example.py` holds an
+   eight-landmark gazetteer with routes and the bounds computed off it. The
+   settler itself is not written.
 2. **The reference searcher**, against the settler, on seeded gazetteers.
    This is the floor, and until it exists there is no score.
 3. **The one-tick minimax bound**, printed beside the reference searcher so
@@ -486,7 +543,10 @@ the tool.
   gazetteer with too many attributes makes every clue nearly free and the
   Fugitive uncatchable; too few and the first clue ends it. That curve has
   to be measured before any treatment is compared on the instrument — the
-  same "noise before thresholds" discipline 008 already carries.
+  same "noise before thresholds" discipline 008 already carries. **The
+  branching factor is the same question and is worse**, because it moves
+  the clue's narrowing power and the belief's decay rate together and in
+  opposite directions. Both curves before any treatment.
 - **Does the Fugitive suppress her own `timing_forecast`?** The leak is
   real and predicted here. Whether any agent finds it unaided is an
   observation, and it should be recorded as one rather than prompted for.
