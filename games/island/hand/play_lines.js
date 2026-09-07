@@ -370,3 +370,77 @@ export function seatLabels(lines) {
   }
   return {};
 }
+
+// --- what a child is shown, as opposed to what is sent --------------------
+//
+// Both of these are **display only**, and that is the property that makes
+// them safe. A quantity here is never composed into a line: `APPROVE p3`
+// carries an id and no numbers, and the manager settles the offer it already
+// holds. So rounding for a reader cannot change what is traded -- which is
+// exactly the argument that would *not* hold if these numbers went into a
+// `PROPOSE`, and the reason they are kept apart from the composers above.
+
+/**
+ * A quantity as a child reads it: `0.12428327472728834` -> `0.12`.
+ *
+ * Two decimals, which is the step every slider on the page offers. A number
+ * too small to survive that is written at one significant figure instead of
+ * as `0`, because "offers you 0 iron" is a sentence about a trade nobody is
+ * making.
+ */
+export function amount(value) {
+  const q = Number(value);
+  if (!Number.isFinite(q)) return String(value);
+  if (q === 0) return "0";
+  const trim = (text) => text.includes(".")
+    ? text.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") : text;
+  if (Number(q.toFixed(2)) !== 0) return trim(q.toFixed(2));
+  // Smaller than two places can hold. Written at enough places to reach its
+  // first real digit -- **never `toPrecision`**, which hands back `1e-7` for
+  // a tenth of a millionth, and an exponent is not an improvement on the
+  // number it replaced.
+  const places = Math.min(20, Math.max(2, 1 - Math.floor(Math.log10(Math.abs(q)))));
+  const small = trim(q.toFixed(places));
+  return Number(small) === 0 ? "almost none" : small;
+}
+
+
+/**
+ * The manager's notes to this seat, as lines to show: `[{kind, text}]`.
+ *
+ * Three things it does, and each is a defect it was written to fix -- all
+ * three visible in one screenshot of the page on 2026-09-07:
+ *
+ * - **A note this page could not open is said in words**, not printed as
+ *   `{"unreadable":"could not open the value at whisper.body: ..."}`. The
+ *   hand's lobby has said it in words since g27; this is the same courtesy on
+ *   the page a child reads. It matters more here, because the usual cause is
+ *   mundane and fixable: the seat key lives in one browser, so a second
+ *   browser or a private window reads with a key the lobby never witnessed.
+ * - **The private half is not printed twice.** When the bars are drawn from
+ *   it, the note itself is two Python dict reprs saying the same thing at
+ *   more length -- so it is dropped, and only while the bars are actually
+ *   showing (`privateShown`), because losing it entirely would be worse than
+ *   printing it.
+ * - **Everything else is shown untouched**, which is the part that must not
+ *   be lost: the manager's refusals arrive this way, and a refusal a child
+ *   does not see is a day they do not know they lost.
+ */
+export function notes(whispers, { privateShown = false } = {}) {
+  const out = [];
+  for (const row of whispers || []) {
+    const body = row && typeof row === "object" ? row.body : row;
+    if (body && typeof body === "object" && body.unreadable) {
+      out.push({ kind: "unreadable", text:
+        "A secret note arrived that this page could not open. That usually " +
+        "means this is not the browser that took your seat — the key is kept " +
+        "in one browser, so a different one, or a private window, reads with " +
+        `a key nobody witnessed. (${body.unreadable})` });
+      continue;
+    }
+    const text = typeof body === "string" ? body : JSON.stringify(body);
+    if (privateShown && PRIVATE.test(text)) continue;
+    out.push({ kind: "note", text });
+  }
+  return out;
+}

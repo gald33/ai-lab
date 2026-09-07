@@ -124,6 +124,8 @@
   .offer .id { font-weight: 700; color: var(--sun); }
   #whispers div { padding: .3rem 0; border-bottom: 1px dotted var(--edge);
                   font-size: .85rem; overflow-wrap: anywhere; }
+  #whispers .unreadable { color: #ffc9c5; border-left: 3px solid var(--coral);
+                          padding-left: .5rem; }
   #board div { padding: .25rem 0; border-bottom: 1px dotted var(--edge);
                font-size: .82rem; overflow-wrap: anywhere; color: var(--dim); }
   #board .mine { border-left: 3px solid var(--leaf); padding-left: .4rem;
@@ -177,6 +179,11 @@
   <p class=sub>Only you can read these. Never say these numbers out loud.</p>
   <div id=myHalf></div>
   <div id=whispers></div>
+  <!-- What `room.js` renders, which this page re-renders through
+       `play_lines.notes` instead: it prints an unopenable note as raw JSON
+       and repeats the private half the bars above already show. Kept in the
+       document, and hidden, because `Room` writes into it unconditionally. -->
+  <div id=rawWhispers hidden></div>
 
   <h2>Make things today</h2>
   <section>
@@ -240,7 +247,8 @@ import * as identity from "./identity.js";
 import { Room } from "./room.js";
 import { declaration } from "./declaration.js";
 import { GOODS, Malformed, produceLine, proposeLine, approveLine,
-         declineLine, privateHalf, seatLabels } from "./play_lines.js";
+         declineLine, privateHalf, seatLabels, amount,
+         notes } from "./play_lines.js";
 // The viewer's own drawing, over `../`. In service the hand's pages are
 // served at `/island/hand/` and the viewer's modules at `/island/`, which is
 // what makes this path the real one rather than a convenience -- see
@@ -260,8 +268,8 @@ for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]
 }
 if (params.get("workspace")) $("setup").open = false;
 
-const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
-                        say: $("say"), post: $("post"),
+const room = new Room({ board: $("board"), whispers: $("rawWhispers"),
+                        who: $("who"), say: $("say"), post: $("post"),
                         whisperLine: $("whisperLine"), whisper: $("whisper") },
                       say);
 
@@ -419,7 +427,7 @@ addEventListener("resize", () => { if (stage) { ensureStage(); stage.resize(); }
 
 let goods = GOODS.slice();
 let seats = [];
-let drawn = { offers: null, half: null };
+let drawn = { offers: null, half: null, notes: null };
 
 /** The rows `room` last read, in the shape `reducer.js` wants. */
 function rows() {
@@ -440,6 +448,7 @@ function paint() {
   if (named && named.join() !== goods.join()) { goods = named; buildMake(); }
   const halfMark = JSON.stringify(half);
   if (halfMark !== drawn.half) { drawn.half = halfMark; paintHalf(half); }
+  paintNotes(whispers, Boolean(half));
 
   const wrong = half && half.seat && half.seat !== $("seat").value.trim();
   $("seatWarning").hidden = !wrong;
@@ -490,6 +499,21 @@ function paint() {
     paintOffers(mine, (world?.final.proposals || []).filter((p) => p.status === "open").length);
   }
   preview();
+}
+
+/** The manager's notes, said rather than dumped. `play_lines.notes` decides
+ *  what to show; this only puts it on the page. */
+function paintNotes(whispers, privateShown) {
+  const lines = notes(whispers, { privateShown });
+  const mark = JSON.stringify(lines);
+  if (mark === drawn.notes) return;
+  drawn.notes = mark;
+  $("whispers").replaceChildren(...lines.map((note) => {
+    const div = document.createElement("div");
+    div.textContent = note.text;
+    if (note.kind === "unreadable") div.className = "unreadable";
+    return div;
+  }));
 }
 
 function paintHalf(half) {
@@ -564,8 +588,13 @@ function paintOffers(mine, total) {
   }));
 }
 
+//: `amount` and not `Number`: an offer of a twelfth of a loaf arrives as
+//: `0.12428327472728834`, and that is the worst sentence on a page written
+//: for an eight-year-old. Display only -- `APPROVE p1` carries the id and no
+//: quantity, so the manager settles the offer it holds whatever this says.
 const bundle = (of) =>
-  Object.entries(of || {}).map(([g, q]) => `${Number(q)} ${g}`).join(" and ") || "nothing";
+  Object.entries(of || {}).map(([g, q]) => `${amount(q)} ${g}`).join(" and ")
+  || "nothing";
 
 async function answer(id, compose) {
   try { await send("board", compose({ proposal: id })); }
@@ -679,7 +708,7 @@ for (const id of ["swapTo", "giveGood", "giveQty", "wantGood", "wantQty"]) {
   $(id).addEventListener("change", preview);
 }
 $("seat").addEventListener("input", () => {
-  drawn = { offers: null, half: null };
+  drawn = { offers: null, half: null, notes: null };
   fillSeats();
   paint();
 });

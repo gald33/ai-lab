@@ -109,6 +109,8 @@
   #board .mine { border-left: 4px solid var(--sea); padding-left: .5rem; }
   #board .who { color: var(--dim); }
   #whispers { background: #fffaf0; border-radius: 10px; padding: 0 .6rem; }
+  #whispers .unreadable { color: #a3241f; border-left: 3px solid var(--coral);
+                          padding-left: .5rem; }
   .offer { border: 2px solid var(--edge); border-radius: 12px; padding: .6rem .7rem;
            margin: .5rem 0; }
   .offer .id { font-weight: 700; color: var(--sea); }
@@ -173,6 +175,11 @@ and try to end up with some of everything you like.</p>
 at making and what you like — never say those numbers out loud on the board.</p>
 <div id=myHalf></div>
 <div id=whispers></div>
+<!-- What `room.js` renders, which this page re-renders through
+     `play_lines.notes` instead: it prints an unopenable note as raw JSON and
+     repeats the private half the bars above already show. Kept in the
+     document, and hidden, because `Room` writes into it unconditionally. -->
+<div id=rawWhispers hidden></div>
 
 <h2><span class=emoji>🔨</span>Make things today</h2>
 <section>
@@ -247,7 +254,7 @@ import { Room } from "./room.js";
 import { declaration } from "./declaration.js";
 import { GOODS, Malformed, produceLine, proposeLine, approveLine,
          declineLine, openOffers, seatsNamed, whichDay,
-         privateHalf } from "./play_lines.js";
+         privateHalf, notes } from "./play_lines.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad) => {
@@ -266,8 +273,8 @@ if (params.get("workspace")) $("setup").open = false;
 // The same room the other two pages enter, unchanged. Everything below only
 // *fills* its two inputs and presses its two buttons, so there is one path to
 // the board and this page cannot grow a second one.
-const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
-                        say: $("say"), post: $("post"),
+const room = new Room({ board: $("board"), whispers: $("rawWhispers"),
+                        who: $("who"), say: $("say"), post: $("post"),
                         whisperLine: $("whisperLine"), whisper: $("whisper") },
                       say);
 
@@ -339,7 +346,7 @@ let seats = [];
 // nothing. Not an optimisation: `paintOffers` replaces the buttons a child is
 // reaching for, and a button rebuilt under a finger every second is a press
 // that lands on nothing.
-let drawn = { offers: null, half: null };
+let drawn = { offers: null, half: null, notes: null };
 
 function paint() {
   const board = window.HAND_BOARD || [];
@@ -350,6 +357,7 @@ function paint() {
   if (named && named.join() !== goods.join()) { goods = named; buildMake(); }
   const halfMark = JSON.stringify(half);
   if (halfMark !== drawn.half) { drawn.half = halfMark; paintHalf(half); }
+  paintNotes(whispers, Boolean(half));
   // The manager's note opens "You are T1.", which is the only place this seat
   // is told its own label by somebody who knows. Said rather than fixed: the
   // declaration naming the other seat is already on the board, and a page
@@ -384,6 +392,21 @@ function paint() {
     paintOffers(mine, all.length);
   }
   preview();
+}
+
+/** The manager's notes, said rather than dumped. `play_lines.notes` decides
+ *  what to show; this only puts it on the page. */
+function paintNotes(whispers, privateShown) {
+  const lines = notes(whispers, { privateShown });
+  const mark = JSON.stringify(lines);
+  if (mark === drawn.notes) return;
+  drawn.notes = mark;
+  $("whispers").replaceChildren(...lines.map((note) => {
+    const div = document.createElement("div");
+    div.textContent = note.text;
+    if (note.kind === "unreadable") div.className = "unreadable";
+    return div;
+  }));
 }
 
 function paintHalf(half) {
@@ -596,7 +619,7 @@ for (const id of ["swapTo", "giveGood", "giveQty", "wantGood", "wantQty"]) {
   $(id).addEventListener("change", preview);
 }
 $("seat").addEventListener("input", () => {
-  drawn = { offers: null, half: null };
+  drawn = { offers: null, half: null, notes: null };
   fillSeats();
   paint();
 });

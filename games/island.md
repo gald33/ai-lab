@@ -1244,6 +1244,60 @@ catches anything the stage throws and says so in words: the controls below work
 on a page with a blank rectangle at the top, because the game is the controls
 and the island is the reason to look.
 
+### Three things the page said that nobody had looked at
+
+Found 2026-09-07 by photographing `kids-island.html` against a real hub and a
+real dealt island rather than by a test, and that is the point worth keeping:
+**every check on these pages asserted what went to the board, and all three
+defects were in what came back to the reader.** The composed lines were right
+the whole time.
+
+- **An offer card printed a raw float**: "T2 offers you 0.12428327472728834
+  iron for 0.12428327472728834 bread". A proposal's quantities are whatever
+  the maker's capacity produced, and the card wrote `Number(q)`.
+- **The private half was printed twice** — once as the bars `privateHalf`
+  draws, and again underneath as the manager's own two Python dict reprs. The
+  bars exist so that a child does not have to read that.
+- **A note this page could not open rendered as raw JSON**:
+  `{"unreadable":"could not open the value at whisper.body: ..."}`. The hand's
+  lobby has said that in words since g27; the pages a child reads dumped the
+  object.
+
+`amount` and `notes` in `hand/play_lines.js` are the fixes, kept in that
+module and pure so they are checked where the rest of its decisions are.
+
+**Rounding a quantity is safe here, and the reason is structural rather than
+careful.** A number a child reads never becomes a number anybody sends: the
+button under an offer composes `APPROVE <id>`, which carries no quantities at
+all, and the manager settles the offer it already holds. The quantities that
+*do* go on the wire come from the inputs through `produceLine` and
+`proposeLine`, which round nothing.
+`test_rounding_for_display_cannot_change_what_is_traded` asserts that, so
+moving `amount` into a composer fails rather than quietly trading a rounded
+number.
+
+**`toPrecision` is not the way to shorten a small number.** The first fix used
+it and turned a tenth of a millionth into `1e-7`, which is not an improvement
+on the number it replaced. Quantities are written at enough decimal places to
+reach their first real digit, and below what twenty places can hold the page
+says "almost none" rather than `0` — because "offers you 0 iron" describes a
+trade nobody is making.
+
+**What the tidying must never do is drop a refusal.** The manager's refusals
+arrive as notes on the same channel as the private half, and a refusal a child
+does not see is a day they do not know they lost. So `notes` drops exactly one
+thing, only while its bars are actually up, and a test asserts the refusal
+survives both ways.
+
+**One of the three checks passed against its own mutation before it was
+rewritten**, which is the lesson that outlives the bug. Both `room.js` and the
+page can write to `#whispers`, and the page repaints every second — so
+pointing `room` back at the visible element leaves a page that *flickers*
+between the two renderings, and a snapshot of the text sees whichever won that
+second. The check asserts the structural fact instead: `room` renders into a
+hidden `#rawWhispers`, and the visible list is the page's alone. A test that
+cannot fail is the frozen countdown again, one layer up.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —
