@@ -170,6 +170,14 @@ jobs:
       # refuses loses a driver their table in silence, and an input it turns
       # away that Python allows shrinks the game for nothing.
       #
+      # `test_hand_play_lines.py` does the same for the island's own four
+      # forms, which the kids' page composes from sliders and dropdowns. A
+      # driver who types `PROPOSE` reads the manager's refusal; a child who
+      # pressed a button does not, so a composer one commit behind the parser
+      # costs them the day in silence. It also pins the three things that page
+      # reads back off the manager's prose against a **real `Manager`'s**
+      # output rather than invented lines.
+      #
       # `test_hand_pages.py` drives the pages against a real hub and reads
       # what they posted back with a real Python client. That is the only
       # check on the wire format: sealing contexts, the `{b, ch, s}` wrapper,
@@ -179,6 +187,7 @@ jobs:
       # which is invisible from inside the browser.
       - run: >
           python -m pytest games/island/tests/test_hand_lobby_lines.py
+          games/island/tests/test_hand_play_lines.py
           games/island/tests/test_hand_pages.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"

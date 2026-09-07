@@ -83,9 +83,34 @@
 #
 # The managed hub reports 2.2.2 on `/health` as this is written.
 #
-# **What this floor does not do is upgrade a host that never reinstalls.** A
-# manager still on 2.0.1 opens `ask` and not `whisper`, which is why the
-# hand's page goes on sealing `ask` to a peer it has not heard from
-# (`hand/hub.js`): readers upgrade before senders, and a requirement is not a
-# deployment.
+# **What this floor does not do is upgrade a host that never reinstalls**, and
+# what that costs is stated rather than hidden.
+#
+# *This paragraph used to end the other way.* It read: a manager still on
+# 2.0.1 opens `ask` and not `whisper`, which is why the hand's page goes on
+# sealing `ask` to a peer it has not heard from — readers upgrade before
+# senders, and a requirement is not a deployment. **Both halves of that were
+# wrong by the time it was written**, and the correction is kept visible here
+# rather than tidied away, because the sentence was believable and nobody
+# would have gone looking. The condition it left the flip waiting on — hosts
+# *known* upgraded — is not a thing any measurement returns, so a default
+# waiting on it waits forever; Gal settled it by decision instead on
+# 2026-09-05 ("don't use the legacy `ask`"), and it named the wrong file
+# besides: the sealing is in `hand/switchboard.js`, not `hand/hub.js`.
+#
+# So: **nothing in this repo seals `ask` any more.** `sealToPeer` has no
+# `wire` argument left to seal the old form with, and reading stays
+# two-formed, which is not a contradiction — the compatibility only ever ran
+# one way, so *readers upgrade before senders* is satisfied by opening both
+# and writing one. A host that has not reinstalled is still an old reader and
+# gets an envelope it cannot open; a floor obliges an install and does not
+# perform one, so that host exists until somebody reinstalls it. Two tests in
+# `tests/test_hand_crypto.py` pin the cost as a fact rather than leave it to
+# be met under a clock: `test_python_opens_what_the_browser_whispered`'s
+# else-branch requires the `DecryptionError` an old reader gets, and
+# `test_the_browser_has_no_way_left_to_seal_the_old_form` exists because the
+# reintroduction is the easy mistake — the next person to read that
+# `DecryptionError` will go looking for a `wire: "ask"` switch. See
+# `CLAUDE.md`, "Switchboard is the only interface, and its agents are not
+# helpless".
 agent-switchboard>=2.2.2

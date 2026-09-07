@@ -39,6 +39,11 @@ from games.island.hand.declaration import hands_on_board
 
 HAND = pathlib.Path(__file__).resolve().parent.parent / "hand"
 WORKSPACE = "island-hand-test"
+#: The kids' page gets a room of its own, because `Room._findManager` takes
+#: the first roster row called `manager` and this file registers several. A
+#: shared roster would make which manager a whisper reached depend on the
+#: order the tests happened to run in.
+KIDS = "island-kids-test"
 KEY = "Z822U5v1WFyeOEJUeLchMgLED-VgI_0chD4OjmRxej0"
 
 
@@ -60,9 +65,9 @@ def site(tmp_path_factory):
     """The hand's pages, served. Copied rather than served in place, so what
     runs is the committed bytes and nothing beside them."""
     root = tmp_path_factory.mktemp("hand-site")
-    for name in ("lobby.html", "play.html", "switchboard.js", "hub.js",
-                 "identity.js", "lobby_lines.js", "declaration.js", "brief.js",
-                 "room.js", "transcript.js"):
+    for name in ("lobby.html", "play.html", "kids.html", "switchboard.js",
+                 "hub.js", "identity.js", "lobby_lines.js", "play_lines.js",
+                 "declaration.js", "brief.js", "room.js", "transcript.js"):
         shutil.copy(HAND / name, root / name)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler,
                                 directory=str(root))
@@ -365,7 +370,7 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
 
     # No button: after a JOIN the page keeps reading until the room is handed
     # out, so the link appears on its own within one poll.
-    link = tab.locator("#invite a")
+    link = tab.locator("#invite #playLink")
     link.wait_for(timeout=15_000)
     assert "own page" in link.inner_text()
     href = link.get_attribute("href")
@@ -374,6 +379,10 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     assert query["workspace"] == table.workspace
     assert query["name"] == "hand-w"
     assert query["write_key"], "the seat's invite carries the room's write key"
+    # And the same room with buttons instead of a grammar. A page nobody can
+    # reach is a page nobody plays, and this link is the only door to it.
+    kids = tab.locator("#kidsLink")
+    assert kids.get_attribute("href") == f"./kids.html?{href.split('?', 1)[1]}"
     # Under the status message, not somewhere else on the page: the message
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
@@ -413,7 +422,7 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     _fill_room(tab, cors_hub, name="hand-w")
     tab.fill("#table", table.id)
     tab.click("#refresh")
-    again = tab.locator("#invite a")
+    again = tab.locator("#invite #playLink")
     again.wait_for(timeout=15_000)
     assert again.get_attribute("href") == href
     assert not errors, errors
@@ -510,9 +519,10 @@ def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub
     lobby.post("lobby", f"g12 invite: {code}")
 
     tab.click("#refresh")
-    link = tab.locator("#invite a")
+    link = tab.locator("#invite #playLink")
     link.wait_for(timeout=15_000)
-    query = dict(urllib.parse.parse_qsl(link.get_attribute("href").split("?", 1)[1]))
+    query = dict(urllib.parse.parse_qsl(
+        link.get_attribute("href").split("?", 1)[1]))
     assert query["workspace"] == "ws_clear12"
     assert query["write_key"] == "seed-c"
     assert "in the clear" in tab.inner_text("#invite")
@@ -861,4 +871,446 @@ def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, site, cors_
         "nothing the keyless page tried reached the board"
     assert "write-protected" in tab.inner_text("body"), \
         "and the page says the hub refused it rather than going quiet"
+    tab.close()
+
+
+# --- the kids' island ------------------------------------------------------
+#
+# The same room as `play.html`, behind sliders and dropdowns. Everything here
+# is a thing the page *does*: compose a line from controls, show it before
+# sending it, seal it to the manager, and read an offer back off the board.
+# `test_hand_play_lines.py` checks the grammar those controls compose against
+# the manager's real parser; this checks that the page composes from the
+# controls a child actually touches, and posts what it showed.
+
+def _kids_room(hub_url, agent_id, *, write_key=None):
+    from switchboard.client import Client
+    from switchboard.config import ClientConfig
+    return Client(ClientConfig(url=hub_url, token="", workspace=KIDS, key=KEY,
+                               write_key=write_key), agent_id=agent_id)
+
+
+def _enter_kids(tab, hub_url, *, name, seat="T1", channel="island"):
+    tab.fill("#url", hub_url)
+    tab.fill("#token", "")
+    tab.fill("#workspace", KIDS)
+    tab.fill("#key", KEY)
+    tab.fill("#channel", channel)
+    tab.fill("#name", name)
+    tab.fill("#seat", seat)
+    tab.click("#enter")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+
+
+def _real_offer_line(to="T1", maker="T2"):
+    """The line a real `Manager` writes when it opens a proposal.
+
+    Driven rather than transcribed: the page reads its offers off this text,
+    and a manager that reworded it should fail here rather than leave a child
+    with an empty list and no reason.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island.dealer import Dealer
+    from island.manager import Manager
+    from island.protocol import Produce, Propose
+
+    class _Stub:
+        def __init__(self):
+            self.said = []
+
+        def post(self, channel, text):
+            self.said.append(text)
+
+        def history(self, channel, limit=500, **kw):
+            return []
+
+    dealer = Dealer.draw(seed=1, agents=2)
+    mgr = Manager(capacity=dealer.capacity, client=_Stub(), channel="c")
+    for name in mgr.names:
+        mgr.bind(name, name)
+    mgr.open_episode()
+    mgr._produce(maker, Produce(plan={mgr.goods[0]: 1.0}))
+    held = mgr.holders[maker].holdings[0]
+    mgr._propose(maker, Propose(to=to, give={mgr.goods[0]: held / 4},
+                                want={mgr.goods[1]: held / 4}))
+    return [line for line in mgr.client.said if line.startswith("p")][-1]
+
+
+def test_the_kids_page_declares_the_driver_in_the_records_own_words(
+        browser, site, cors_hub):
+    """**The mark, and it is the same mark.**
+
+    A younger driver is still a human driver, and there is no second word for
+    one: `games/island.md` settled that a taxonomy the record cannot support
+    is worse than one word that is true. So this page posts the declaration
+    `play.html` posts, byte for byte, `hands_on_board` reads it back, and the
+    page quotes the line it sent rather than describing it.
+    """
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-1", channel="kids-declare")
+
+    rows = _kids_room(cors_hub, "reader-kids-1").history("kids-declare", limit=50)
+    assert hands_on_board([{"body": r.get("body")} for r in rows]) == {"T1": "driven"}
+
+    banner = tab.inner_text("#humanPlay")
+    assert "kept and counted" in banner and "never ranked" in banner
+    assert py_declaration("T1") in tab.inner_text("#declared"), (
+        "the page quotes the line it put on the board, rather than a "
+        "description of one")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_sliders_compose_a_plan_and_seal_it_to_the_manager(
+        browser, site, cors_hub):
+    """The one control a child will touch first, end to end.
+
+    Two sliders, a preview that says exactly what will be sent, and a whisper
+    a real Python manager opens and the real parser reads as the plan the
+    sliders showed. Sealed rather than said, for the reason the manager gives
+    on its own board: a plan in public states the share, the receipt states
+    the quantity, and the two together are this seat's capacity.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import protocol as economy
+
+    manager = _kids_room(cors_hub, "manager-kids-plan")
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-plan", channel="kids-plan")
+
+    sliders = tab.locator("#makeGrid input[type=range]")
+    assert sliders.count() >= 2, "a slider for each of the island's goods"
+    sliders.nth(0).fill("0.6")
+    sliders.nth(1).fill("0.4")
+    first = sliders.nth(0).get_attribute("data-good")
+    second = sliders.nth(1).get_attribute("data-good")
+
+    tab.wait_for_function(
+        "document.getElementById('producePreview').textContent.startsWith('PRODUCE')",
+        timeout=15_000)
+    shown = tab.inner_text("#producePreview")
+    assert shown == f"PRODUCE {first}=0.6 {second}=0.4", shown
+    assert "0 of the day still free" in tab.inner_text("#labourLeft")
+
+    tab.click("#produceSend")
+    tab.wait_for_function(
+        "document.getElementById('says').textContent.startsWith('Whispered')",
+        timeout=15_000)
+
+    manager.agents()
+    [got] = [m for m in manager.inbox() if m.get("type") == "whisper"]
+    assert got["body"] == shown, "what was sent is what the preview showed"
+    plan = economy.parse(got["body"])
+    assert isinstance(plan, economy.Produce)
+    assert plan.plan == {first: 0.6, second: 0.4}
+    board = [r.get("body")
+             for r in _kids_room(cors_hub, "reader-kids-plan").history(
+                 "kids-plan", limit=50)]
+    assert shown not in board, "and the plan is not on the board"
+    assert not errors, errors
+    tab.close()
+
+
+def test_a_swap_built_from_dropdowns_is_read_by_the_real_parser(
+        browser, site, cors_hub):
+    """`PROPOSE` is public, and the child never types a colon.
+
+    The partner comes off the manager's own schedule line, so the dropdown
+    holds real seats rather than a spelling test -- and the line that lands on
+    the board is parsed here by the grammar the manager reads it with.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import protocol as economy
+    from island import schedule
+
+    manager = _kids_room(cors_hub, "manager-kids-swap")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    manager.post("kids-swap", schedule.schedule_text(4, ("T1", "T2"), opens_at=0.0))
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-swap", channel="kids-swap")
+
+    # The partner appears on its own, off the board, within one repaint.
+    tab.wait_for_function(
+        "document.querySelectorAll('#swapTo option')[0]?.value === 'T2'",
+        timeout=15_000)
+    assert tab.locator("#swapTo option").count() == 1, (
+        "this seat is not offered as its own partner")
+
+    tab.select_option("#giveGood", index=0)
+    tab.select_option("#wantGood", index=1)
+    tab.fill("#giveQty", "0.25")
+    tab.fill("#wantQty", "0.5")
+    give = tab.input_value("#giveGood")
+    want = tab.input_value("#wantGood")
+
+    shown = tab.inner_text("#proposePreview")
+    assert shown == f"PROPOSE to=T2 give={give}:0.25 want={want}:0.5", shown
+
+    tab.click("#proposeSend")
+    tab.wait_for_function(
+        "window.HAND_BOARD.some(r => String(r.body).startsWith('PROPOSE'))",
+        timeout=15_000)
+
+    rows = _kids_room(cors_hub, "reader-kids-swap").history("kids-swap", limit=50)
+    posted = [r.get("body") for r in rows if str(r.get("body")).startswith("PROPOSE")]
+    assert posted == [shown], "the board carries what the preview showed"
+    offer = economy.parse(posted[0])
+    assert isinstance(offer, economy.Propose)
+    assert offer.to == "T2"
+    assert offer.give == {give: 0.25}
+    assert offer.want == {want: 0.5}
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_offer_on_the_board_becomes_a_button_that_takes_it(
+        browser, site, cors_hub):
+    """**The step a child cannot do by eye**: an offer's id.
+
+    A real manager's receipt goes on the board; the page must show a button
+    for the offer addressed to this seat, show the exact line it will send,
+    and send that line when it is pressed.
+    """
+    manager = _kids_room(cors_hub, "manager-kids-offer")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    offer = _real_offer_line(to="T1", maker="T2")
+    manager.post("kids-offer", offer)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-offer", channel="kids-offer")
+
+    card = tab.locator("#offers .offer")
+    card.first.wait_for(timeout=15_000)
+    assert card.count() == 1, tab.inner_text("#offers")
+    pid = card.first.get_attribute("data-offer")
+    assert offer.startswith(f"{pid}:"), (offer, pid)
+    assert card.first.locator(".preview").inner_text() == f"APPROVE {pid}"
+
+    card.first.locator("button[data-act=approve]").click()
+    tab.wait_for_function(
+        f"window.HAND_BOARD.some(r => r.body === 'APPROVE {pid}')", timeout=15_000)
+
+    rows = _kids_room(cors_hub, "reader-kids-offer").history("kids-offer", limit=50)
+    assert f"APPROVE {pid}" in [r.get("body") for r in rows]
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_offer_the_manager_has_settled_stops_being_a_button(
+        browser, site, cors_hub):
+    """The other half, and the one that matters more: a button offering a
+    trade that is already done would have a child spend a day on a line the
+    manager refuses, and the refusal arrives privately where they will not
+    read it."""
+    manager = _kids_room(cors_hub, "manager-kids-gone")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    offer = _real_offer_line(to="T1", maker="T2")
+    pid = offer.split(":", 1)[0]
+    manager.post("kids-gone", offer)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-gone", channel="kids-gone")
+    tab.locator("#offers .offer").first.wait_for(timeout=15_000)
+
+    manager.post("kids-gone",
+                 f"{pid} settled: T2 and T1 exchanged x for y")
+    tab.wait_for_function(
+        "document.querySelectorAll('#offers .offer').length === 0", timeout=15_000)
+    assert "Nothing waiting for you" in tab.inner_text("#offers")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_kids_page_still_posts_whatever_is_typed(browser, site, cors_hub):
+    """**There is no validation gate here either.**
+
+    Buttons are a convenience over the board and never a fence around it. A
+    page that would not let its driver post a malformed line would be playing
+    an easier game than the seats beside it, which is the asymmetry that made
+    a validating composer wrong in the first place.
+    """
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-typed", channel="kids-typed")
+
+    tab.fill("#say", "PRODUC bread=oops")      # not a form, and posted anyway
+    tab.click("#post")
+    tab.wait_for_function(
+        "window.HAND_BOARD.some(r => r.body === 'PRODUC bread=oops')",
+        timeout=15_000)
+
+    rows = _kids_room(cors_hub, "reader-kids-typed").history("kids-typed", limit=50)
+    assert "PRODUC bread=oops" in [r.get("body") for r in rows]
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_page_refuses_to_compose_and_says_so_where_the_line_would_be(
+        browser, site, cors_hub):
+    """A refusal is shown in the driver's words, in the place the line would
+    have been, and the button that would send it is off.
+
+    The failure this is against is a page that shows a stale preview: the
+    child reads a line, presses the button, and something else goes out.
+    """
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-refuse", channel="kids-refuse")
+
+    # Nothing on any slider: there is no plan to write, and the manager would
+    # count `PRODUCE bread=0` as the day spent.
+    assert tab.is_disabled("#produceSend")
+    assert "pick at least one thing" in tab.inner_text("#producePreview")
+
+    tab.locator("#makeGrid input[type=range]").nth(0).fill("0.5")
+    tab.wait_for_function(
+        "document.getElementById('produceSend').disabled === false", timeout=15_000)
+
+    # And nobody has said who is at this table, so there is nobody to swap
+    # with and the offer cannot be composed.
+    assert tab.is_disabled("#proposeSend")
+    assert "who you want to swap with" in tab.inner_text("#proposePreview")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_private_half_is_shown_as_bars_and_never_posted(
+        browser, site, cors_hub):
+    """What makes the island playable by a child, and the one thing on the
+    page that must not reach the board.
+
+    The manager whispers this seat its capacities and tastes. The page draws
+    them, names the island's goods from them -- so the sliders are the goods
+    actually dealt rather than the whole list -- and posts none of it.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island.dealer import Dealer
+
+    dealer = Dealer.draw(seed=1, agents=2)
+    private = dealer.private_state("T1")
+
+    manager = _kids_room(cors_hub, "manager-kids-half")
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-half", channel="kids-half")
+    manager.agents()                       # this seat's exchange key
+    seat_id = next(a["agent_id"] for a in manager.agents()
+                   if a.get("name") == "kid-half")
+    manager.whisper(seat_id, private)
+
+    tab.wait_for_function("document.querySelectorAll('#myHalf .bar').length > 0",
+                          timeout=15_000)
+    assert tab.locator("#myHalf .bar").count() == 2 * len(dealer.goods), (
+        "one bar per good, twice: what you make well and what you like")
+    assert tab.locator("#makeGrid input[type=range]").count() == len(dealer.goods), (
+        "and the sliders are the goods this island deals, off the same note")
+
+    rows = _kids_room(cors_hub, "reader-kids-half").history("kids-half", limit=50)
+    said = " ".join(str(r.get("body")) for r in rows)
+    assert "capacity" not in said and "taste" not in said, (
+        "nothing of the private half reached the public board")
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_page_will_not_enter_without_a_seat_to_declare(browser, site, cors_hub):
+    """**The failure that would make this page the dangerous kind of weak.**
+
+    Entering the room posts the declaration, and `declaration.DECLARED` is
+    anchored: a blank seat writes `HAND:  has a human driver`, which matches
+    nothing. The board would carry a line that looks like a declaration, the
+    ledger would record a game between agents, and it would be ranked -- the
+    weaker thing wearing the stronger thing's face, which is the one failure
+    this page is not allowed to have.
+
+    So the refusal comes before the press, and nothing is posted at all.
+    """
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    tab.fill("#url", cors_hub)
+    tab.fill("#token", "")
+    tab.fill("#workspace", KIDS)
+    tab.fill("#key", KEY)
+    tab.fill("#channel", "kids-noseat")
+    tab.fill("#name", "kid-noseat")
+    tab.fill("#seat", "")
+    tab.click("#enter")
+
+    tab.wait_for_function(
+        "document.getElementById('says').classList.contains('bad')",
+        timeout=15_000)
+    assert "Which seat did you take" in tab.inner_text("#says")
+    assert tab.evaluate("window.HAND_READY") is not True, "it did not go in"
+    rows = _kids_room(cors_hub, "reader-kids-noseat").history("kids-noseat",
+                                                             limit=50)
+    assert rows == [], "and nothing at all reached the board"
+    assert not errors, errors
+    tab.close()
+
+
+def test_a_seat_the_manager_disagrees_with_is_said_out_loud(
+        browser, site, cors_hub):
+    """The declaration can name the wrong seat, and only the manager knows.
+
+    Its private note opens "You are T1.", which is the one place this seat is
+    told its label by somebody who knows. If it disagrees with what the page
+    put on the board, the mark names a seat this driver is not in -- said
+    plainly rather than corrected, because the line is already posted and a
+    page that quietly fixed itself would leave it standing and unread.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island.dealer import Dealer
+
+    manager = _kids_room(cors_hub, "manager-kids-seat")
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/kids.html", errors)
+    _enter_kids(tab, cors_hub, name="kid-seat", seat="T1", channel="kids-seat")
+    seat_id = next(a["agent_id"] for a in manager.agents()
+                   if a.get("name") == "kid-seat")
+    manager.whisper(seat_id, Dealer.draw(seed=1, agents=2).private_state("T2"))
+
+    warning = tab.locator("#seatWarning")
+    tab.wait_for_function(
+        "document.getElementById('seatWarning').hidden === false", timeout=15_000)
+    text = warning.inner_text()
+    assert "manager says you are T2" in text
+    assert "told the board you are T1" in text
+    assert not errors, errors
     tab.close()

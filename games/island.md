@@ -1083,6 +1083,87 @@ one game. Losing it to a script on the shared origin loses the same game. That
 is the whole of the exposure, and it is the reason the reversal is affordable
 — not that the risk went away.
 
+### A third page, for a driver who is eight
+
+Asked for by Gal, 2026-09-07: a copy of the island's playing page with a UI,
+so children can play too, **marked human play**. Built as
+`games/island/hand/kids.html`, and the three decisions inside it are worth
+more than the page is.
+
+**The mark is the mark that already exists, and there is no second word.** The
+page enters the room through the same `room.js` as `play.html`, which posts
+`declaration.js`'s line unchanged: `hands_on_board` reads the seat as
+`driven`, `run_game.record` sets `practice`, and `scores.why_not_ranked` holds
+the game out with the reason `driven`. A "child" flag was considered for about
+as long as it took to reread "One mode, because the two could not survive a
+shared key": the record cannot tell who was at the keyboard, so a word naming
+who it was is a claim nothing here can check. The page says the true thing at
+the top of itself instead — a person played this, it is kept and counted, and
+it is never ranked — and quotes the line it put on the board rather than
+describing it.
+
+**The one thing the page refuses to do is enter without a seat label.**
+`declaration.DECLARED` is anchored, so a blank seat writes `HAND:  has a human
+driver` — a line that looks exactly like a declaration on the board and
+matches nothing in the record. The game would then be human play recorded as a
+game between agents, and **ranked**: the weaker thing wearing the stronger
+thing's face, which is the failure this whole document is arranged against.
+The refusal comes before the press and nothing is posted at all
+(`test_the_page_will_not_enter_without_a_seat_to_declare`). It can still name
+the *wrong* seat, which only the manager knows — its private note opens "You
+are T1." — so the page says so out loud when the two disagree, and does not
+quietly correct itself, because the declaration is already on the board and a
+silent fix would leave that line standing and unread.
+
+**The composer is `hand/play_lines.js`, and the constraint is the one
+`lobby_lines.js` already lives under.** A second implementation of
+`island/protocol.py`'s four forms, because a static origin cannot call Python;
+kept honest by `tests/test_hand_play_lines.py`, where the JS composes and the
+real parser reads, in **both directions**. The asymmetry that makes it matter
+more here than on the lobby: a driver who types `PROPOSE` and gets it wrong
+reads the manager's refusal, and a child who pressed a button does not — the
+refusal arrives privately, mid-day, and is not going to be read. So a composer
+one commit behind the parser costs them the day in silence.
+
+`STRICTER_ON_PURPOSE` is empty on the lobby's side and has **one entry** here,
+which is a cost paid rather than a rule bent. `PRODUCE bread=0` parses, and
+with `SPLIT_LABOUR` off the manager marks the seat as having produced and
+refuses every later plan that day — so the all-zero plan is not a weaker move,
+it is the loss of the day, and it is exactly what a page of sliders composes
+when every slider is where the page opened it.
+`test_a_plan_of_nothing_spends_the_whole_day` asserts that against a real
+manager, so the entry stands on a fact and disappears if `SPLIT_LABOUR` ever
+turns on. Everything else the grammar allows, the page composes: a plan over
+the labour budget is **warned about in words and sent anyway**, because
+refusing it would make this page stricter than the game the seats beside it
+are playing.
+
+**The third half is a scrape, and it is designed to fail to nothing.** So the
+buttons have something to offer, the page reads three things back off the
+manager's own prose: which offers are open, who is at the table, and which day
+it is. That is not a grammar and nobody promised it would hold still — the
+drift surface this document already names under "two renderings of one lobby".
+What is done about it is not care, which does not survive a rewrite: every
+reader returns **empty** rather than a guess, the board is rendered verbatim
+underneath, and every field they fill can be typed by hand. The offers reader
+carries two independent guards — the manager's own literal instruction
+anchored at the end of its line, and the offer naming itself the same at head
+and tail — and the tests mutate each one out separately to prove both are
+load-bearing, because two guards where one would do is how a guard quietly
+stops guarding.
+
+A fourth reader is different in kind and is worth naming: `privateHalf` opens
+the manager's whisper and draws this seat's capacities and tastes as bars.
+**It is what makes the island playable by a child** — which of my things am I
+good at, which do I want — and it is also the one thing on the page that must
+never reach the board, since a capacity in public is the seal broken by the
+seat it protects. It composes nothing, and a test asserts it finds nothing on
+the public board.
+
+**"Two more pages" is now three**, and the sentence above stays as it was
+written. The dependency still runs one way: the viewer's pages would be
+correct if all three were deleted.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —
