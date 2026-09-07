@@ -38,6 +38,90 @@ the protocol changes.
 
 ## It is an experiment first, and here is the experiment
 
+*Rewritten 2026-09-07 after Gal said what the game is for, which is not what
+the first draft of this section had guessed. The superseded framing is kept
+below rather than replaced, because it is still true — it just is not the
+point.*
+
+**The question is how an agent finds the right agent in a large Switchboard
+space.**
+
+> *"the point of the game was to experiment with looking for 'the right'
+> agent within the switchboard space. that could make techniques, tools, and
+> ideas emerge for navigating efficiently"* — Gal, 2026-09-07
+
+That is a question about Switchboard rather than about pursuit, and it is
+the one this lab exists for: Switchboard was built because coordination in a
+real system could not be explained, and every experiment on it so far has
+run in a space with **one room in it**. The island has a lobby; everybody is
+in it; finding each other is not a problem anyone has. Nothing here has ever
+measured what happens when the space is large enough that *finding* is the
+work.
+
+**The room-is-the-hash construction is what makes the space large**, and it
+is why that section and this one are the same idea arriving from two
+directions. A room exists for every name anyone can derive, so the space is
+as large as the name space; nobody holds a directory; and the only way to
+be somewhere is to work out where it is. That is a genuine search problem in
+an address space, built out of Switchboard's own primitives and nothing
+else.
+
+**What is being collected is technique.** Not "who won" — what people *did*:
+how a search party divided a name space, what they told each other and in
+what form, what they wrote down and reused, when they gave up on a lead,
+what tools they built to keep track. `games/README.md` already requires the
+structured per-run record and says most of the analysis value is in what
+players did rather than who won. Here that is not a caveat. **It is the
+entire result**, and the leaderboard is the thing that gets people to
+generate it.
+
+So the metrics come in that order: the transcript first, and the numbers as
+its index.
+
+### Which turns harvesting from a defect into a finding
+
+**This inverts something written above.** The "harvesting gap" section
+treats reconstructing the matrix across games as an exploit to be priced out
+by making the map bigger. Under the question as Gal states it, **a group
+that builds a shared map across games has discovered a technique**, and that
+is precisely the data the game exists to produce. Defending against it would
+be suppressing the result.
+
+Both readings are true and they are about different things, so neither is
+dropped:
+
+- **As a finding**, harvesting is a navigation technique — arguably the most
+  interesting one available, since it is the only strategy that makes a
+  later game cheaper than an earlier one. It should be looked for, recorded,
+  and written up.
+- **As an instrument problem**, harvesting still breaks comparability: a
+  player with a partial map is not playing the game a newcomer is, and
+  ranking them together is the defect this repo keeps finding in new
+  clothes.
+
+**So it is measured rather than prevented.** Prior exposure — how many games
+this player has seen on this matrix — is recorded with the run, and cohorts
+are reported separately. That is the island's rule doing its usual work:
+kept, counted, and not ranked against a population it is not comparable to.
+The `scale.py` arithmetic keeps its job, which is now telling you how big
+the map must be for a *cohort* to stay meaningful, rather than how to stop
+anybody learning anything.
+
+### The timing question rides along, and is no longer the reason
+
+Everything the superseded framing said about 008 remains true: the chase is
+timing-bound by construction, the fugitive's advantage is that she moves
+before you look, and `forecast_calibration` is a mechanism number that must
+never be reported as an outcome one. A run of this game produces that ledger
+whether or not anybody was asking for it, and it is worth reporting.
+
+But it is a **second readout, not the justification**. What follows is the
+argument as first written, kept because it is sound and because a reader who
+wants the timing result needs it — and marked, because a document that
+quietly swaps its own motivation is the thing CLAUDE.md's first standing
+decision exists to prevent.
+
+
 [`games/README.md`](README.md) permits exactly one ordering and it is not
 negotiable: *something is an experiment first, and becomes a game if opening
 it to outside players would produce data I can't get alone.* A game invented
@@ -112,10 +196,21 @@ Re-check:
 
 The consequence is the design's hinge and is stated here rather than
 discovered later: **the game cannot forbid omnipresence, so it must price
-it.** Anything in this document that reads like travel is really about who
-holds an invite, never about where a client is pointed.
+it.** Anything in this document that reads like travel is really about which
+rooms you can reach, never about where a client is pointed.
 
-**2. The invite is the only scarce thing, and it is a credential.**
+*How it is priced changed on 2026-09-07, and the answer that replaced it is
+much cheaper — see "The room is the hash".* This section went on to say the
+invite was the scarce thing and that the manager would whisper one per
+searcher per landmark. **It isn't and it doesn't.** A room's address is
+derived from its name and the game's salt, so the scarce thing is
+**knowledge of names**, nothing is issued, and omnipresence is out of reach
+because the map is too large to enumerate rather than because anything
+forbids it.
+
+**2. The invite is a credential** — which mattered while invites were being
+handed out, and is now mostly a reason nothing hands one out.
+
 `invite.py` says it outright — *"This string is a credential. It contains
 the token and the workspace key, so it grants everything its holder had."*
 So a warrant is an invite, and handing one out is the single act that
@@ -542,42 +637,81 @@ sentence it forbids inventing a production plan.
 
 ```
 posted on the square
-  COMMIT <tick> <hex64>              the Fugitive, once per tick
-  WARRANT <landmark>                 a searcher, asking
+  COMMIT <tick> <hex64>              Carmel, once per tick
   ARREST <landmark>                  a searcher, betting the game on it
-  SHARE <landmark> <agent-id>        a searcher, handing on what it holds
 
 posted in a landmark room
-  CLUE <hint> <hex64>                Carmel, a permitted hint and her hash
+  CLUE <hint> <workspace>            Carmel, a hint and where she went
   TAKE                               Carmel, the room's treasure
 
 whispered to the manager
   REVEAL <tick> <landmark> <nonce>   the Fugitive's preimage
 ```
 
-**The hash beside the hint is `hash(landmark)`, and nothing else.** Settled
-by Gal 2026-09-07, correcting his own earlier `hash(solution, landmark)`.
-It is what makes reaching a room worth more than hearing about it: a
-searcher standing where Carmel stood can test a guess locally, without
-asking the manager and without announcing that they are close.
+### The room is the hash
 
-**Say what that is, plainly: it is a lookup table.** An unsalted hash of a
-landmark name is the same value in every game forever, so anyone who can
-enumerate the names hashes them once and inverts it from then on. Nothing
-here is broken by that — under "this is a chase, not a clue game" it is
-arguably the point, and **arrival becomes certainty** rather than a
-narrowing. But it should be written down as a property rather than
-discovered later by somebody who assumed the hash was hiding something.
+**The hash beside the hint is the address of the room she left for.**
+Settled by Gal 2026-09-07, correcting both his earlier
+`hash(solution, landmark)` and this document's reading of the correction —
+which had it as a puzzle to be solved, worried at length that an unsalted
+hash of a name is a rainbow table, and proposed rearranging the board to
+work around a problem that does not exist. It is not a puzzle. **It is
+where the room is.**
 
-**It does leave the hint redundant, and that is a real finding.** If the
-hint and the hash sit in the same room, and the hash names the destination
-outright, then everyone who reads the hint has already read the answer
-beside it. **Proposed, not decided**: separate them — the **hint goes on the
-square**, public and vague and available to everyone, and the **hash stays
-in the room**, precise and available only to whoever got there. Then both
-carry their own weight, the trail is followable at a distance and
-*resolvable* only up close, and the warrant is what buys the difference.
-That is one line of the design and it is Gal's to take or leave.
+```
+workspace_token = KDF(landmark name, game salt)
+```
+
+**This is not a new mechanism bolted onto Switchboard. It is how Switchboard
+already addresses rooms**, which is the part that makes it cheap.
+`rooms.workspace_for` derives a room's wire identifier by hashing its token
+and says why in its own docstring:
+
+> *"An ordinary token is a secret somebody minted, and knowing it is what
+> admits you."*
+
+So the whole of the idea is choosing what mints the token. Verified against
+the installed 2.2.2 wheel rather than assumed —
+`python3 games/hue-and-cry/rooms_from_names.py` derives a token from a name
+and a salt, confirms `workspace == rooms.workspace_for(token)`, constructs
+an `Invite` locally and hands it to `Client.from_invite`, which performs no
+I/O at all. The same landmark under two salts is two rooms.
+
+**Knowing a landmark's name is what admits you to it.** That single sentence
+replaces a mechanism:
+
+- **Nothing issues warrants.** The manager whispering an invite per searcher
+  per landmark — the design this document carried until now — is gone, with
+  the round trip, the roster-first requirement, and the sealed envelope that
+  went with it.
+- **`WARRANT` and `SHARE` leave the grammar.** There is nothing to request
+  and nothing to hand on but a name, and a name is talk. The board keeps the
+  three lines that settle state and loses the two that administered access.
+- **Nothing leaks in the dangerous sense.** Handing on a name *is* handing
+  on the room; they were never two acts. CLAUDE.md's "interference is not
+  preventable and is therefore made visible" is satisfied by construction
+  here rather than by a rule, because there is no permission to circumvent.
+
+**The salt is what makes it a game rather than a fixture.** Without it the
+address of a landmark is the same forever, and anybody who ever stood in it
+can walk back in next week. With a per-game salt, last week's addresses are
+worth nothing and the map has to be re-found every time.
+
+*This also supersedes "the invite is the scarce thing", above.* The scarce
+thing is **knowledge of names**. That is a better answer to the omnipresence
+problem than the one it replaces, because it needs no enforcement: you
+cannot join a room you cannot name, and the map is large and unknown, so you
+cannot enumerate the names in play. **The sparse matrix is doing a second
+job** — the property bought for generation cost turns out to be the access
+model as well.
+
+**And the hint and the hash are not redundant after all**, which retires the
+proposal this document was carrying to separate them across the square and
+the room. They are two different affordances on the same trail: the hash is
+the *direct* route, usable at once by whoever is standing where she stood;
+the hint is the *indirect* one, for everyone else, who must work a name out
+and derive the room themselves. Being in the right place buys immediacy.
+Being clever buys a way in without it.
 
 Everything else on the board is talk, and talk is allowed and unlimited.
 The searchers may negotiate, divide the map, lie to each other, and form and
@@ -804,6 +938,13 @@ grammar before its pages.
    clock.
 5. **The brief**, frozen by hash, and a door — which is where anything about
    lobbies, seats and public play gets decided, not before.
+
+**Started, and each one is a claim the document would otherwise be
+asserting**: `worked_example.py` (routes are what make a trail worth
+following), `scale.py` (sparsity is a cost argument, and a bigger map is
+what answers harvesting), `rooms_from_names.py` (a room derived from a name
+and a salt is joinable with no invite and no hub call, checked against the
+2.2.2 wheel). None of them is the settler.
 
 **A roadmap item is not filed**, and that is a gap rather than a choice:
 `roadmap-core` is not installed in this environment, and
