@@ -13,6 +13,14 @@ only when somebody asked for an example.
 Not the settler and not the reference searcher, both of which are still
 unbuilt (see "What would have to be built"). This is eight landmarks and one
 forward filter, sized to be read rather than to be general.
+
+READ THE POSTERIORS AS THE MANAGER'S VIEW, NOT A SEARCHER'S. Since
+2026-09-07 the design says the matrix is large, sparse and *unknown to
+players*, and that a zero in it is not a denial -- so nobody in a real game
+can run the filter below, which needs the whole table in hand. What this
+file still establishes, and the reason it is kept, is the point it was
+written for: routes are what make a trail worth following at all. That
+holds whether or not anyone can compute a posterior over them.
 """
 
 from fractions import Fraction

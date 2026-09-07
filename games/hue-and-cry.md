@@ -1,7 +1,8 @@
 # Hue and cry
 
-A fugitive moves between rooms along routes anyone can read, leaving one
-true fact behind her at each one and taking the room's treasure with her. Searchers hold warrants for
+Carmel moves between rooms along routes anyone can read, leaving a hint and
+a hash behind her at each one and taking the room's treasure — if she is
+left alone long enough to take it. Searchers hold warrants for
 some rooms and not others, read what she left, intersect it, and try to
 name the room she is standing in *now*. She wins by outlasting them or by
 emptying the map. They win by arresting her, and how much she is still
@@ -278,6 +279,176 @@ Two rules keep it honest:
   clueless tick as a **forfeited move**: she is held in place for that tick
   and the Hue is told she was.
 
+## Carmel, and the chase this actually is
+
+*Written 2026-09-07 from Gal's design, and it overturns two things above
+rather than extending them. The superseded text is left in place, as
+CLAUDE.md requires, because the reasoning that was wrong is what stops it
+being reached for again.*
+
+**She has a name: Carmel.** The role was "the Fugitive" while the game
+needed one that was not a trademark; Carmel is a real name, owned by
+nobody, and keeps the cadence the idea arrived with.
+
+### The matrix is unknown, sparse, and a zero is not a denial
+
+Three properties, and each one removes a mistake this document had made.
+
+**Unknown.** *Players do not hold the gazetteer.* Everything above assumed
+they did — "the Hue intersects", "a searcher's tick is read-many,
+decide-once", a reference searcher filtering a known table. All of it
+assumed a matrix in the searcher's hands, and there isn't one. This also
+answers, completely, the objection that a hash left in a room is
+brute-forceable over twenty landmarks: **you cannot enumerate candidates
+against a matrix you do not have.**
+
+**Sparse, and large.** Few marks per row, many landmarks, many columns.
+
+**A zero is not a denial.** This is the one that changes the game's
+character, and it is easy to read past. `M[landmark][hint] = 0` does **not**
+mean the hint is false of that landmark. It means *this hint will not be
+selected for this landmark* — a true fact may sit at zero. So a searcher
+may never reason "the hint says `coastal`, therefore rule out the landmarks
+that are not coastal". **Only a one carries information. A zero carries
+none.** The matrix is a permission table, not a truth table.
+
+Two consequences worth stating plainly, because they are load-bearing:
+
+- **The hints need not be factually true of anywhere.** They are tokens.
+  Evocative labels are for flavour and are not a promise, which frees the
+  matrix to be drawn rather than curated from real geography — and retires
+  this document's earlier worry that an i.i.d. draw would lack the
+  correlation structure real places have. What the draw must produce is a
+  *playable* matrix, not an accurate one.
+- **"Post the least informative true fact" is superseded.** She is choosing
+  among the hints her current row permits, and truth is not the property
+  under selection. The choice is still real and still hers; the sentence
+  describing it was wrong.
+
+**So this is a chase, not a clue game.** The deduction was never the point.
+Being in the right place at the right time is.
+
+### What the floor is now, and why the old one is gone
+
+*This supersedes the reference searcher described under "Scoring".* A
+forward filter over a known route graph, updating on a known matrix, is a
+searcher that cannot exist here: it is specified in terms of two things a
+player is not given.
+
+What replaces it is better, because it makes an assumption into a
+measurement. **The null is a searcher that ignores hints entirely** — one
+that chases on position alone, arresting from where Carmel has been seen
+and nothing else. Every hint-reading strategy is then scored against it,
+and *"does reading the trail help at all"* stops being an assumption of the
+design and becomes the first thing the instrument reports. Given the matrix
+is unknown and a zero says nothing, that question is genuinely open, which
+is exactly the condition under which it is worth measuring.
+
+### The harvesting gap, named and priced
+
+**Gal named this himself and it is the real weakness**: play enough games,
+record which hints appeared at which landmarks, and you reconstruct the
+matrix. Once reconstructed it stays reconstructed, the unknown that carries
+this whole design stops being unknown, and a late player is playing a
+different game from an early one — which also destroys comparability
+between them.
+
+The exploit needs one condition: **the same matrix, twice.** So the levers
+are all about whether a second game reuses the first game's structure, and
+they are not equally cheap:
+
+- **One global matrix, each game drawing a subset of its places.** The
+  cheapest thing, and it is exactly what Gal described — and it is the
+  fully harvestable case, because every game is a window onto one table
+  somebody is assembling.
+- **A library of independent matrices, one drawn per round.** Not
+  harvestable, and it needs a large library to stay that way.
+- **One global matrix, with the hint labels permuted per round from the
+  round seed.** Proposed here as the cheap middle: the structure is reused,
+  so the precompilation is done once, but a harvester's table is keyed on
+  labels that no longer mean what they meant. Re-learning has to happen
+  inside a round, which is where there is not enough observation to do it.
+  A permutation is a few lines and no extra precompilation.
+
+**Not decided.** The permutation is a proposal, not a decision, and it
+wants checking before it is believed — in particular whether a harvester
+who holds the unlabelled structure can re-key it from a handful of
+within-round observations, which is a real question and not obviously
+answered in the direction I would like. Until somebody checks it, this
+document says the gap is open.
+
+### Carmel is an NPC, in her own process
+
+She runs on the VM beside the manager, and **that is not merely convenient**
+— it is what makes the searchers' score mean anything. With a person or an
+agent playing Carmel, ticks-to-arrest confounds how good the searchers were
+with how good she was; against a fixed, stated policy it does not. **The
+adversary held constant is the control the 008 measurement needs.**
+
+She is her own process, for the island's reasons and not by preference
+(`games/island.md`, "what an NPC costs the table, and why the process
+boundary is the design"): one process holding several roles is the shape of
+a scheduler, which CLAUDE.md says has been built twice by accident here,
+and a process holding several keys can open every whisper addressed to any
+of them. Separate processes make both false by construction rather than by
+care.
+
+She declares herself on the board like the island's NPC, and a game she
+plays is **kept, counted, and ranked** — this is the one place the NPC rule
+inverts, because here the NPC is the instrument rather than a stand-in for
+a missing player. A game where a *person* holds Carmel is the exhibition:
+kept, counted, never ranked, reason `driven`.
+
+*This corrects "People play, and the Fugitive is the human seat" below.*
+The reasoning there was right about bandwidth — a searcher's tick is
+read-many, Carmel's is a few choices — and wrong to conclude that Carmel is
+therefore the seat to advertise. **NPC Carmel is the ranked game.** A human
+in her seat is a thing you may do, and it is an exhibition.
+
+### The theft is a dwell, and being seen aborts it
+
+The best of these, because it puts the two objectives in tension inside
+*her* decision rather than only in the searchers'.
+
+**Stealing takes time.** She arrives, and to take the room's treasure she
+must remain — and remaining is the only thing that makes her catchable at
+all. A Carmel who never steals is nearly uncatchable and wins nothing; a
+Carmel who steals everything stands still long enough to be taken. That is
+a real trade she makes every tick, and it is what stops "ticks-to-arrest"
+and "treasure recovered" being two numbers that merely sit beside each
+other.
+
+**If somebody is on her tail she abandons the theft and runs.** Which needs
+a definition the manager can settle, and the obvious one is wrong: *the
+room's roster shows a searcher* is ephemeral hub state, not board text, and
+the manager settles from the board. So:
+
+> **Somebody is on her tail when a searcher has posted in that room during
+> that tick.**
+
+On the board, in the record, deterministic a year later. And it is the
+better rule for the game as well as for the settler, because it makes
+shadowing an **act** rather than a lurk: to deny Carmel a theft you must
+show yourself, and showing yourself tells her exactly where you are. The
+hue has to be raised out loud, which is what the game is named for.
+
+This hands the searchers a second way to win. You may be unable to arrest
+her and still beat her, by being visible in the right rooms often enough
+that she never dwells long enough to take anything. **Chase to arrest, or
+spread to deny** — two strategies against two objectives, and no weighted
+sum reconciling them.
+
+### The places come from a precompiled matrix
+
+Agreed, and the reasons are the repo's own. Nothing generates a map at run
+time: no model in the loop, nothing to pay for per game, nothing that can
+differ between a run and its replay. The matrix is built once, frozen by
+hash, and a game names the draw it took — which is what `gazetteer_hash` in
+the level key is already for.
+
+The one thing precompilation does not settle is the harvesting gap above,
+because a table computed once is a table that can be learned once.
+
 ## A tick
 
 The game's presentation name for the manager's episode is a **tick** —
@@ -337,12 +508,24 @@ posted on the square
   SHARE <landmark> <agent-id>        a searcher, handing on what it holds
 
 posted in a landmark room
-  CLUE <attribute>                   the Fugitive, one true attribute
-  TAKE                               the Fugitive, the room's treasure
+  CLUE <hint> <hex64>                Carmel, a permitted hint and her hash
+  TAKE                               Carmel, the room's treasure
 
 whispered to the manager
   REVEAL <tick> <landmark> <nonce>   the Fugitive's preimage
 ```
+
+**The hash beside the hint** is Gal's, 2026-09-07, and it is what makes
+reaching a room worth more than reading about it: a searcher standing where
+Carmel stood can test a guess locally, without asking the manager and
+without announcing that they are close. It survives the obvious objection —
+that a hash over twenty landmarks is brute-forced in twenty tries — only
+because of the section above: the matrix is unknown, so there is no
+candidate list to enumerate. **What exactly it commits to is not settled
+here.** Gal wrote `hash(solution, landmark)`, and "solution" admits more
+than one reading; the grammar records the shape and the open question
+rather than inventing an answer, because the readings differ in what the
+game is (intercept her, or assemble something across rooms).
 
 Everything else on the board is talk, and talk is allowed and unlimited.
 The searchers may negotiate, divide the map, lie to each other, and form and
