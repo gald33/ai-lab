@@ -1664,3 +1664,198 @@ def test_the_sliders_still_seal_a_plan_to_the_manager_from_the_island(
     assert shown not in board, "the plan stayed off the board"
     assert not errors, errors
     tab.close()
+
+
+# --- what the pages show, as opposed to what they send ---------------------
+#
+# Three defects, all visible in one screenshot of `kids-island.html` taken
+# against a real hub on 2026-09-07, and all of them presentation rather than
+# play: the composed lines were right the whole time. That is exactly why
+# nothing already here caught them -- every check asserted on what went to the
+# board, and these are about what came back to the reader.
+#
+# `test_hand_play_lines.py` pins the decisions (`amount`, `notes`); these pin
+# that the pages actually use them, which is the half a pure test cannot see.
+
+
+def test_an_offer_reads_in_numbers_a_child_can_read(browser, island_site, cors_hub):
+    """**The line that was on the page**: "T2 offers you 0.12428327472728834
+    iron for 0.12428327472728834 bread".
+
+    A real manager's proposal carries an unrounded float, and the card printed
+    it. What the button sends is unchanged and is asserted alongside, because
+    that is the property making the rounding safe: `APPROVE p1` carries an id
+    and no quantity, so the manager settles the offer it holds whatever the
+    card says.
+    """
+    room = f"{KIDS_3D}-reads"
+    manager = _island_room(cors_hub, "manager-reads", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+    _played_board(manager, "island-reads")
+    offer = _real_offer_line(to="T1", maker="T2")
+    pid = offer.split(":", 1)[0]
+    manager.post("island-reads", offer)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-reads", channel="island-reads")
+
+    card = tab.locator("#offers .offer")
+    card.first.wait_for(timeout=20_000)
+    said = card.first.inner_text()
+
+    assert "0.12428327472728834" not in said, said
+    import re as _re
+    long = _re.findall(r"\d+\.\d{4,}", said)
+    assert not long, f"a quantity nobody can read is still on the card: {long}"
+    assert _re.search(r"\d", said), "and it still says how much"
+
+    # The line under it is untouched, and so is what lands on the board.
+    assert card.first.locator(".preview").inner_text() == f"APPROVE {pid}"
+    card.first.locator("button[data-act=approve]").click()
+    tab.wait_for_function(
+        f"window.HAND_BOARD.some(r => r.body === 'APPROVE {pid}')", timeout=15_000)
+    rows = _island_room(cors_hub, "reader-reads", room).history("island-reads",
+                                                                limit=50)
+    assert f"APPROVE {pid}" in [r.get("body") for r in rows]
+    assert not errors, errors
+    tab.close()
+
+
+def _half_and_notes(browser, site, cors_hub, room, channel, page, name):
+    """Enter, get whispered the private half and a refusal, and hand back what
+    the notes panel ended up showing."""
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island.dealer import Dealer
+
+    manager = _island_room(cors_hub, f"manager-{name}", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/{page}", errors)
+    tab.fill("#url", cors_hub)
+    tab.fill("#token", "")
+    tab.fill("#workspace", room)
+    tab.fill("#key", KEY)
+    tab.fill("#channel", channel)
+    tab.fill("#name", name)
+    tab.fill("#seat", "T1")
+    tab.click("#enter")
+    tab.wait_for_function("window.HAND_READY === true", timeout=20_000)
+
+    seat_id = next(a["agent_id"] for a in manager.agents() if a.get("name") == name)
+    manager.whisper(seat_id, Dealer.draw(seed=1, agents=2).private_state("T1"))
+    manager.whisper(seat_id, "not settled: shares sum to 1.8, over the budget "
+                             "of 1.0 by 0.8")
+
+    tab.wait_for_function(
+        "document.querySelectorAll('#myHalf .bar').length > 0", timeout=20_000)
+    tab.wait_for_function(
+        "document.getElementById('whispers').textContent.includes('not settled')",
+        timeout=20_000)
+    return tab, errors
+
+
+def test_the_private_half_is_not_printed_under_its_own_bars(
+        browser, island_site, cors_hub):
+    """It was shown twice: as the bars, and again as the manager's raw Python
+    dict repr underneath. The bars exist so a child does not have to read
+    that."""
+    tab, errors = _half_and_notes(browser, island_site, cors_hub,
+                                  f"{KIDS_3D}-notes", "island-notes",
+                                  "hand/kids-island.html", "kid-notes")
+
+    shown = tab.inner_text("#whispers")
+    assert "production capacity" not in shown, shown
+    assert "taste weights" not in shown
+    assert tab.locator("#myHalf .bar").count() > 0, "and the bars are what says it"
+    # The refusal is still there, which is the thing that must not be tidied
+    # away: a refusal a child does not see is a day they do not know they lost.
+    assert "not settled" in shown
+
+    # **And `room` is writing somewhere else**, asserted structurally rather
+    # than by what is on screen. Both renderers can reach `#whispers`, and
+    # this page repaints every second, so pointing `room` back at it leaves a
+    # page that merely *flickers* between the two renderings -- which a
+    # snapshot of the text cannot see, and which passed this check until it
+    # was written this way.
+    raw = tab.evaluate(
+        "document.getElementById('rawWhispers')?.textContent || ''")
+    assert "production capacity" in raw, (
+        "room.js renders into the hidden element, so the visible list is this "
+        "page's alone")
+    assert tab.locator("#rawWhispers").is_hidden()
+    assert not errors, errors
+    tab.close()
+
+
+def test_a_note_that_could_not_be_opened_is_said_in_words(
+        browser, island_site, cors_hub):
+    """It rendered as `{"unreadable":"could not open the value at
+    whisper.body: ..."}`.
+
+    Produced here the way it really happens rather than by injecting one: a
+    second browser context is a second IndexedDB, so the same name mints a new
+    key, the roster row is replaced, and a whisper sealed to the first key
+    cannot be opened by the second. That is a real key mismatch, which is
+    exactly the case the words have to explain.
+    """
+    import sys
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island.dealer import Dealer
+
+    room = f"{KIDS_3D}-unreadable"
+    manager = _island_room(cors_hub, "manager-unreadable", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+
+    errors: list[str] = []
+    first = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(first, cors_hub, room, name="twinned",
+                  channel="island-unreadable")
+    seat_id = next(a["agent_id"] for a in manager.agents()
+                   if a.get("name") == "twinned")
+    manager.whisper(seat_id, Dealer.draw(seed=1, agents=2).private_state("T1"))
+    first.close()
+
+    # A second context under the same name: a new key, and the note above is
+    # now sealed to somebody this page cannot be.
+    other = browser.new_context()
+    tab = other.new_page()
+    tab.on("pageerror", lambda e: errors.append(str(e)))
+    tab.goto(f"{island_site}/hand/kids-island.html")
+    _enter_island(tab, cors_hub, room, name="twinned",
+                  channel="island-unreadable")
+
+    tab.wait_for_function(
+        "document.querySelector('#whispers .unreadable') !== null", timeout=20_000)
+    said = tab.inner_text("#whispers .unreadable")
+
+    assert "could not open" in said
+    assert "browser" in said, "and why, in something a person can act on"
+    assert not said.strip().startswith("{"), f"still the raw object: {said}"
+    assert not errors, errors
+    other.close()
+
+
+def test_the_board_page_says_its_notes_the_same_way(browser, site, cors_hub):
+    """`kids.html` had both defects too -- the same `room.js` renderer, the
+    same audience. Fixed in one place, so it is checked in both."""
+    tab, errors = _half_and_notes(browser, site, cors_hub,
+                                  f"{KIDS}-notes", "kids-notes",
+                                  "kids.html", "kid-bnotes")
+
+    shown = tab.inner_text("#whispers")
+    assert "production capacity" not in shown, shown
+    assert "not settled" in shown
+    assert tab.locator("#myHalf .bar").count() > 0
+    assert not errors, errors
+    tab.close()

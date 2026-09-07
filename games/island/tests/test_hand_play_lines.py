@@ -179,7 +179,7 @@ _PAGE = """<!doctype html><meta charset=utf-8><title>play lines</title>
 <script type=module>
 import {{ produceLine, proposeLine, approveLine, declineLine,
          openOffers, seatsNamed, whichDay, privateHalf, seatLabels,
-         GOODS }} from './play_lines.js';
+         amount, notes, GOODS }} from './play_lines.js';
 
 const write = {{ produce: produceLine, propose: proposeLine,
                  approve: approveLine, decline: declineLine }};
@@ -195,6 +195,12 @@ for (const [kind, args] of cases) {{
 const board = {board};
 const noise = {noise};
 const whispered = {whispered};
+const EXTRA_NOTES = [
+  // A refusal, which must never be dropped.
+  {{ body: "not settled: shares sum to 1.8, over the budget of 1.0 by 0.8" }},
+  // A note this page could not open, as the transport hands it over.
+  {{ body: {{ unreadable: "could not open the value at whisper.body: wrong key, tampering, or a mismatched context" }} }},
+];
 window.RESULT = {{
   cases: out,
   goods: GOODS,
@@ -212,6 +218,10 @@ window.RESULT = {{
   half: privateHalf(whispered),
   labels: seatLabels(board),
   noiseLabels: seatLabels(noise),
+  amounts: {amounts}.map((q) => amount(q)),
+  // The notes a seat is shown, with the bars up and with them down.
+  notesShown: notes(whispered.concat(EXTRA_NOTES), {{ privateShown: true }}),
+  notesBare: notes(whispered.concat(EXTRA_NOTES), {{ privateShown: false }}),
   // The board is public and never carries this; a reader that found it there
   // would be reading somebody's sealed half off a page anyone can open.
   halfFromBoard: privateHalf(board),
@@ -300,6 +310,12 @@ def real_board() -> list[str]:
 #: `real_board`, which draws the island these numbers belong to.
 WHISPERED: list[str] = []
 
+#: Quantities as they really arrive in an offer, and the awkward ones around
+#: them. The first is the one that was on the page: a twelfth of a loaf,
+#: printed in full at an eight-year-old.
+AMOUNTS = [0.12428327472728834, 0.5, 1, 0, 0.999, 0.005, 0.0034, 12.5,
+           0.12, 2, 0.0000001, 1e-30]
+
 
 def _roll_call() -> str:
     """The manager naming its seats, from `run_game` rather than by hand.
@@ -336,7 +352,8 @@ def composed(tmp_path_factory, real_board):
     page.write_text(_PAGE.format(cases=json.dumps(CASES),
                                  board=json.dumps(lines),
                                  noise=json.dumps(NOISE),
-                                 whispered=json.dumps(WHISPERED)))
+                                 whispered=json.dumps(WHISPERED),
+                                 amounts=json.dumps(AMOUNTS)))
     server = _serve(tmp_path)
     url = f"http://127.0.0.1:{server.server_address[1]}/lines.html"
 
@@ -675,3 +692,84 @@ def test_no_roll_call_is_found_in_talk_about_one(composed):
     """The same guard the offers reader carries: a wrong name over somebody's
     hut is worse than a short one, because a child would trade against it."""
     assert composed["noiseLabels"] == {}
+
+
+# --- what a child is shown, as opposed to what is sent ---------------------
+
+def test_a_quantity_is_written_the_way_a_child_reads_it(composed):
+    """**The line that was actually on the page**: "T2 offers you
+    0.12428327472728834 iron for 0.12428327472728834 bread".
+
+    Two decimals, which is the step every slider offers. A number too small
+    to survive that is written at one significant figure rather than as `0`,
+    because "offers you 0 iron" describes a trade nobody is making.
+    """
+    got = dict(zip(AMOUNTS, composed["amounts"]))
+
+    assert got[0.12428327472728834] == "0.12"
+    assert got[0.5] == "0.5" and got[1] == "1" and got[0] == "0"
+    assert got[0.999] == "1", "rounded for reading, like any other number"
+    assert got[0.005] == "0.01"
+    assert got[0.0034] == "0.0034", "too small for two places, and not zero"
+    assert got[0.0000001] == "0.0000001", (
+        "written out -- `toPrecision` would hand back `1e-7`, and an exponent "
+        "is not an improvement on the number it replaced")
+    assert got[1e-30] == "almost none", "and below any of that, said in words"
+    assert got[12.5] == "12.5" and got[2] == "2"
+
+
+def test_rounding_for_display_cannot_change_what_is_traded():
+    """**Why the rounding above is safe, stated as a check rather than a
+    claim.** A quantity a child reads never becomes a quantity anybody sends:
+    the button under an offer composes `APPROVE <id>`, which carries no
+    numbers at all, and the manager settles the offer it already holds.
+
+    This is the property that would *not* hold for a `PROPOSE`, whose
+    quantities do go on the wire -- and those come from the input, through
+    `produceLine`/`proposeLine`, which round nothing. Asserted here so that
+    moving `amount` into a composer fails.
+    """
+    approve = economy.parse("APPROVE p1")
+    assert isinstance(approve, economy.Approve)
+    assert approve.proposal_id == "p1"
+    assert not [f for f in vars(approve) if "give" in f or "want" in f], \
+        "an APPROVE carries an id and nothing a display could have altered"
+
+
+def test_a_note_that_could_not_be_opened_is_said_in_words(composed):
+    """It used to render as `{"unreadable":"could not open the value at
+    whisper.body: ..."}` -- a wall of JSON at a child.
+
+    The usual cause is mundane and fixable, so the words say it: the seat key
+    lives in one browser, and a second browser or a private window reads with
+    a key the lobby never witnessed.
+    """
+    [bad] = [n for n in composed["notesShown"] if n["kind"] == "unreadable"]
+
+    assert "could not open" in bad["text"]
+    assert "browser" in bad["text"], "and why, in something a person can act on"
+    assert not bad["text"].startswith("{"), "not the raw object"
+
+
+def test_the_private_half_is_not_printed_under_its_own_bars(composed):
+    """Two Python dict reprs saying what the bars above already say.
+
+    Dropped only while the bars are actually showing: losing it altogether
+    would be worse than printing it, which is what `privateShown` is for.
+    """
+    shown = [n["text"] for n in composed["notesShown"]]
+    bare = [n["text"] for n in composed["notesBare"]]
+
+    assert not [t for t in shown if "production capacity" in t], \
+        "the bars are up, so the note they were drawn from is not repeated"
+    assert [t for t in bare if "production capacity" in t], \
+        "and with no bars it is still shown rather than lost"
+
+
+def test_a_refusal_is_never_dropped(composed):
+    """The part that must survive the tidying: the manager's refusals arrive
+    as notes, and a refusal a child does not see is a day they do not know
+    they lost."""
+    for key in ("notesShown", "notesBare"):
+        assert [n for n in composed[key]
+                if "not settled" in n["text"]], f"{key} lost the refusal"
