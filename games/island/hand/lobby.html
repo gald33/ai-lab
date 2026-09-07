@@ -463,14 +463,23 @@ async function readInvite(hub) {
   if (inv.wk) q.set("write_key", inv.wk);
   window.HAND_INVITE = inv;
   const a = document.createElement("a");
+  a.id = "playLink";
   a.href = `./play.html?${q}`;
   a.textContent = `open it on its own page instead`;
+  // The same room with buttons instead of a grammar. A page nobody can reach
+  // is a page nobody plays, and this is the only door to it.
+  const kids = document.createElement("a");
+  kids.id = "kidsLink";
+  kids.href = `./kids.html?${q}`;
+  kids.textContent = `play it with buttons`;
   const p = document.createElement("p");
   p.className = "sub";
   p.append(`The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). ` +
            `You are entering it here, below, under the key the lobby ` +
            `witnessed — or `, a, ` (that page also carries the brief to hand ` +
-           `an agent).`);
+           `an agent), or `, kids, ` — sliders and dropdowns instead of the ` +
+           `manager's grammar, for a younger driver. Both are human play and ` +
+           `both say so on the board.`);
   $("invite").replaceChildren(p);
   await enterRoom(seat, inv);
   return true;

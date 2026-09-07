@@ -1,0 +1,610 @@
+<!doctype html>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>The island — playing with buttons</title>
+<!--
+  The island, for somebody who is not going to type `PROPOSE to=T2
+  give=iron:0.4 want=salt:0.3`.
+
+  A copy of `play.html` with the same room behind it and a different front:
+  sliders for how you spend the day, dropdowns for a swap, and a button for
+  taking an offer somebody made you. Everything it composes goes through
+  `play_lines.js`, which is checked against the manager's real parser in
+  `tests/test_hand_play_lines.py` -- a button that wrote a line the manager
+  cannot read would lose a day with nothing on the page to say why, and a
+  child is not going to read their inbox for the refusal.
+
+  **It is human play and says so, in the same words the record uses.**
+  Entering the room posts the declaration `declaration.js` writes -- the same
+  line `play.html` posts, unchanged -- so `hands_on_board` reads this seat as
+  driven, `run_game.record` marks the game practice, and `scores` holds it out
+  of the ranking with the reason `driven`. There is no second word for a
+  younger driver and there should not be: the record cannot tell who was at
+  the keyboard, and a page that claimed otherwise would be claiming what
+  nothing here can check. The banner at the top says the true thing instead:
+  a person played this, it is kept and counted, and it is never ranked.
+
+  **Still no validation gate.** The composers refuse what the manager's
+  grammar refuses and nothing else, the exact line is shown before it is sent,
+  and the two plain input bars at the bottom post anything at all. A page that
+  stopped its driver making a mistake the agents at the table can make would
+  be playing a different game from the seats beside it.
+
+  Three things are read back off the manager's prose so the buttons have
+  something to offer -- which offers are open, who is at the table, and which
+  day it is. That is a scrape and not a grammar, so all three fail to
+  *nothing* rather than to something wrong, and the board is shown verbatim
+  underneath either way.
+-->
+<style>
+  /* Bright, large, and thumbable: this page is read by somebody who is eight,
+     on a phone, with a bell ringing. Everything that *does* something keeps
+     its id -- `tests/test_hand_pages.py` drives it by those. */
+  :root {
+    color-scheme: light;
+    --sea: #1b7fa8; --sand: #fff8e7; --ink: #23303a; --dim: #5d7080;
+    --leaf: #2f9e44; --sun: #f0a202; --coral: #e8544f; --edge: #e3d7bd;
+    --card: #ffffff; --shadow: 0 2px 0 #e8dcc2;
+    --face: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; padding: 1rem 1rem 4rem; max-width: 44rem;
+         font: 17px/1.5 var(--face); color: var(--ink); background: var(--sand); }
+  h1 { font-size: 1.5rem; margin: .2rem 0 .4rem; color: var(--sea); }
+  h2 { font-size: 1.15rem; margin: 1.6rem 0 .5rem; }
+  h2 .emoji { margin-right: .35rem; }
+  p { margin: .4rem 0; }
+  .sub { color: var(--dim); font-size: .92rem; }
+  a { color: var(--sea); }
+  section { background: var(--card); border: 2px solid var(--edge);
+            border-radius: 14px; padding: .9rem 1rem; margin: 0 0 1rem;
+            box-shadow: var(--shadow); }
+  /* The banner. Not decoration: it is the one thing on this page that says
+     what the record will say about the game being played on it. */
+  #humanPlay { background: #fff3cd; border: 2px solid var(--sun);
+               border-radius: 14px; padding: .8rem 1rem; margin: .6rem 0 1rem; }
+  #humanPlay b { display: block; font-size: 1.05rem; color: #8a5a00; }
+  #declared { font-size: .85rem; color: var(--dim); margin: .5rem 0 0;
+              overflow-wrap: anywhere; }
+  #seatWarning { margin: .5rem 0 0; padding: .5rem .6rem; border-radius: 10px;
+                 background: #fdecea; border: 2px solid var(--coral);
+                 color: #a3241f; font-weight: 600; }
+  #dayBanner { font-size: 1.25rem; font-weight: 700; color: var(--sea);
+               margin: 0 0 .2rem; }
+  label { display: block; margin: .5rem 0 .15rem; font-weight: 600; }
+  input, select, button { font: inherit; }
+  input[type=text], input[type=number], select {
+    padding: .5rem .6rem; border: 2px solid var(--edge); border-radius: 10px;
+    background: #fff; color: var(--ink); min-width: 0; }
+  input[type=range] { width: 100%; accent-color: var(--sea); height: 2rem; }
+  button { cursor: pointer; padding: .65rem 1.1rem; border-radius: 999px;
+           border: 2px solid var(--sea); background: var(--sea); color: #fff;
+           font-weight: 700; min-height: 2.9rem; }
+  button.quiet { background: #fff; color: var(--sea); }
+  button.no { border-color: var(--coral); color: var(--coral); background: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .row input[type=text] { flex: 1 1 12rem; }
+  .grid { display: grid; grid-template-columns: 6.5rem 1fr 3.2rem;
+          gap: .35rem .6rem; align-items: center; }
+  .grid .name { font-weight: 600; text-transform: capitalize; }
+  .grid .val { text-align: right; font-variant-numeric: tabular-nums; }
+  .bars { display: grid; grid-template-columns: 6.5rem 1fr; gap: .3rem .6rem;
+          align-items: center; }
+  .bar { height: .8rem; border-radius: 999px; background: #eee; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--leaf); }
+  .bar.taste > i { background: var(--sun); }
+  /* The exact line, before it is sent. The whole reason the buttons are
+     allowed: what the board says is what the page showed. */
+  .preview { font: 14px/1.45 ui-monospace, Menlo, Consolas, monospace;
+             background: #f3f6f8; border: 2px dashed var(--edge);
+             border-radius: 10px; padding: .5rem .6rem; margin: .6rem 0;
+             overflow-wrap: anywhere; }
+  .preview.bad { background: #fdecea; border-color: var(--coral); color: #a3241f; }
+  #says { margin: .6rem 0; padding: .55rem .7rem; border-radius: 10px;
+          background: #eef7ee; border: 2px solid var(--leaf); min-height: 1.2rem; }
+  #says.bad { background: #fdecea; border-color: var(--coral); }
+  #board div, #whispers div { padding: .35rem 0; border-bottom: 1px dotted var(--edge);
+                              font-size: .92rem; overflow-wrap: anywhere; }
+  #board .mine { border-left: 4px solid var(--sea); padding-left: .5rem; }
+  #board .who { color: var(--dim); }
+  #whispers { background: #fffaf0; border-radius: 10px; padding: 0 .6rem; }
+  .offer { border: 2px solid var(--edge); border-radius: 12px; padding: .6rem .7rem;
+           margin: .5rem 0; }
+  .offer .id { font-weight: 700; color: var(--sea); }
+  details > summary { cursor: pointer; font-weight: 600; color: var(--sea);
+                      padding: .3rem 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --sand: #10171d; --card: #17212a; --ink: #e8eef2;
+            --dim: #9bb0c0; --edge: #2b3a47; --shadow: none; }
+    input[type=text], input[type=number], select { background: #101820; }
+    .preview { background: #101820; }
+    .bar { background: #22303c; }
+    #says { background: #14261a; }
+    #humanPlay { background: #2a2413; }
+    #humanPlay b { color: #ffcf5c; }
+    #whispers { background: #1b1a14; }
+  }
+</style>
+
+<h1>🏝️ The island</h1>
+<p class=sub>You have a day. Make things, swap them with the other traders,
+and try to end up with some of everything you like.</p>
+
+<div id=humanPlay>
+  <b>👋 Human play</b>
+  A person is playing this seat with buttons. This game is <b
+  style="display:inline;font-size:inherit">kept and counted</b>, and it is
+  <b style="display:inline;font-size:inherit">never ranked</b> — the score
+  board is for games between agents, and nothing here can tell who was at the
+  keyboard. That is on purpose, and it is said out loud on the island's board
+  the moment you go in.
+  <p id=declared hidden></p>
+  <p id=seatWarning hidden></p>
+</div>
+
+<details id=setup open>
+  <summary>Grown-ups: getting into the room</summary>
+  <p class=sub>These come from the invite the lobby handed your table. If you
+  arrived by the lobby's link they are filled in already — just press the big
+  button.</p>
+  <label>hub <input type=text id=url size=34 value="https://switchboard.lucille-ai.com"></label>
+  <label>token <input type=text id=token size=18 value="sb_public_lucille"></label>
+  <label>workspace <input type=text id=workspace placeholder="island-g7"></label>
+  <label>key <input type=text id=key placeholder="the invite's key"></label>
+  <label>write key <input type=text id=write_key placeholder="the invite's write key (wk)"></label>
+  <label>channel <input type=text id=channel value="island"></label>
+  <label>your name <input type=text id=name placeholder="pip"></label>
+  <label>your seat <input type=text id=seat placeholder="T1"></label>
+</details>
+
+<p><button id=enter class=go>🚪 Go to the island</button></p>
+<p id=says>Not on the island yet.</p>
+<p class=sub id=who></p>
+
+<section>
+  <p id=dayBanner>Waiting for the island to open…</p>
+  <p class=sub id=dayNote>When a day opens you have until the bell. The bell
+  does not wait for anybody, so do the important thing first.</p>
+</section>
+
+<h2><span class=emoji>🤫</span>Your secret notes</h2>
+<p class=sub>Only you can read these. The manager sends you what you are good
+at making and what you like — never say those numbers out loud on the board.</p>
+<div id=myHalf></div>
+<div id=whispers></div>
+
+<h2><span class=emoji>🔨</span>Make things today</h2>
+<section>
+  <p class=sub>Slide how much of your day goes on each thing. One whole day is
+  1.00 altogether.</p>
+  <div class=grid id=makeGrid></div>
+  <p class=sub id=labourLeft></p>
+  <p class=preview id=producePreview></p>
+  <p><button id=produceSend>🤫 Send my plan (secretly)</button></p>
+  <p class=sub>It goes to the manager alone, so nobody can work out how good
+  you are from what turns up.</p>
+</section>
+
+<h2><span class=emoji>🤝</span>Offer a swap</h2>
+<section>
+  <div class=row>
+    <label style="margin:0">Swap with
+      <select id=swapTo></select>
+    </label>
+  </div>
+  <div class=row>
+    <label style="margin:0">I give
+      <select id=giveGood></select>
+      <input type=number id=giveQty min=0 step=0.01 value=0.2>
+    </label>
+  </div>
+  <div class=row>
+    <label style="margin:0">I want
+      <select id=wantGood></select>
+      <input type=number id=wantQty min=0 step=0.01 value=0.2>
+    </label>
+  </div>
+  <p class=preview id=proposePreview></p>
+  <p><button id=proposeSend>📣 Offer it, out loud</button></p>
+  <p class=sub>Everyone can see an offer. It holds your goods until the bell or
+  until the other trader answers, so do not offer the same thing twice.</p>
+</section>
+
+<h2><span class=emoji>📬</span>Offers waiting for you</h2>
+<div id=offers></div>
+
+<h2><span class=emoji>📋</span>What everyone can see</h2>
+<p class=sub>The island's board, exactly as it is written. The manager says
+&ldquo;episode&rdquo; where this page says &ldquo;day&rdquo; — same thing.</p>
+<div id=board></div>
+
+<h2><span class=emoji>⌨️</span>Type it yourself</h2>
+<section>
+  <p class=sub>Anything at all can go on the board — talking is most of what a
+  board is for. Nothing here checks your spelling: the manager reads what you
+  wrote, and a line it does not recognise is just talk.</p>
+  <div class=row>
+    <input type=text id=say placeholder="hello! want to swap some bread?">
+    <button id=post class=quiet>Say it</button>
+  </div>
+  <p class=sub>And a note only the manager reads:</p>
+  <div class=row>
+    <input type=text id=whisperLine placeholder="PRODUCE bread=0.5 fish=0.5">
+    <button id=whisper class=quiet>Whisper it</button>
+  </div>
+</section>
+
+<p class=sub>Grown-up version of this page, with the plain input bar and the
+brief to hand an agent: <a href="./play.html" id=grownUp>play.html</a>.</p>
+
+<script type=module>
+import * as identity from "./identity.js";
+import { Room } from "./room.js";
+import { declaration } from "./declaration.js";
+import { GOODS, Malformed, produceLine, proposeLine, approveLine,
+         declineLine, openOffers, seatsNamed, whichDay,
+         privateHalf } from "./play_lines.js";
+
+const $ = (id) => document.getElementById(id);
+const say = (text, bad) => {
+  $("says").textContent = text;
+  $("says").classList.toggle("bad", Boolean(bad));
+};
+
+const params = new URLSearchParams(location.search);
+for (const field of ["workspace", "key", "write_key", "channel", "name", "seat"]) {
+  if (params.get(field)) $(field).value = params.get(field);
+}
+// Arriving by the lobby's link means the room is already settled: shut the
+// grown-up fold so what a child meets is the button and the island.
+if (params.get("workspace")) $("setup").open = false;
+
+// The same room the other two pages enter, unchanged. Everything below only
+// *fills* its two inputs and presses its two buttons, so there is one path to
+// the board and this page cannot grow a second one.
+const room = new Room({ board: $("board"), whispers: $("whispers"), who: $("who"),
+                        say: $("say"), post: $("post"),
+                        whisperLine: $("whisperLine"), whisper: $("whisper") },
+                      say);
+
+let seat = null;
+
+$("enter").addEventListener("click", async () => {
+  try {
+    // **Before anything is posted**, because entering the room posts the
+    // declaration and the record reads it with an anchored expression: a
+    // blank seat writes "HAND:  has a human driver", which matches nothing,
+    // so the game would be human play that the ledger records as a game
+    // between agents. That is the weaker thing wearing the stronger thing's
+    // face, which is the one failure this page is not allowed to have.
+    if (!$("seat").value.trim() || /\s/.test($("seat").value.trim())) {
+      return say("Which seat did you take? It is a label like T1 — the lobby " +
+                 "posted yours when the table settled.", true);
+    }
+    if (!$("name").value.trim()) {
+      return say("What is your name here? It has to be the same name you " +
+                 "joined the lobby with, or the manager will not know you.", true);
+    }
+    $("enter").disabled = true;
+    // Keyed by the driver's name, not by the room: the key the lobby
+    // witnessed has to be the key that plays here. See `lobby.html`.
+    seat = (await identity.load($("name").value)) ||
+           (await identity.mint($("name").value));
+    await room.enter({
+      url: $("url").value, token: $("token").value,
+      workspace: $("workspace").value, key: $("key").value,
+      writeKey: $("write_key").value || null,
+      identity: seat, alias: $("name").value,
+      seat: $("seat").value, channel: $("channel").value,
+    });
+    // What went on the board on the way in, quoted rather than described:
+    // the banner claims this game is marked, and this is the mark.
+    $("declared").hidden = false;
+    $("declared").textContent = `On the board: “${declaration($("seat").value)}”`;
+    say("You are on the island. Wait for the manager to open a day.");
+    $("setup").open = false;
+  } catch (err) {
+    say(String(err.message), true);
+  } finally {
+    $("enter").disabled = false;
+  }
+});
+
+/** Send a composed line the way the driver would have typed it: into the
+ *  page's own input, through `room`'s own button. Nothing here talks to the
+ *  hub, so there is no second way to post and no second thing to get wrong. */
+async function send(where, line) {
+  const input = where === "board" ? $("say") : $("whisperLine");
+  input.value = line;
+  await (where === "board" ? room.postTyped() : room.whisperTyped());
+  // `room` clears the bar when it posted and leaves it alone when it did not,
+  // and either way the composed line is still in the preview above. Left as
+  // it is, the plain bar would hold somebody else's sentence next time.
+  input.value = "";
+}
+
+// --- what the page knows, repainted from what `room` last read -------------
+//
+// `room` polls the hub on its own clock and leaves what it read on
+// `window.HAND_BOARD` and `window.HAND_WHISPERS`. This reads those and adds
+// no hub traffic of its own: one poll, two renderings.
+
+let goods = GOODS.slice();
+let seats = [];
+// What the last repaint drew, so a repaint that would change nothing changes
+// nothing. Not an optimisation: `paintOffers` replaces the buttons a child is
+// reaching for, and a button rebuilt under a finger every second is a press
+// that lands on nothing.
+let drawn = { offers: null, half: null };
+
+function paint() {
+  const board = window.HAND_BOARD || [];
+  const whispers = window.HAND_WHISPERS || [];
+
+  const half = privateHalf(whispers);
+  const named = half ? Object.keys(half.capacity) : null;
+  if (named && named.join() !== goods.join()) { goods = named; buildMake(); }
+  const halfMark = JSON.stringify(half);
+  if (halfMark !== drawn.half) { drawn.half = halfMark; paintHalf(half); }
+  // The manager's note opens "You are T1.", which is the only place this seat
+  // is told its own label by somebody who knows. Said rather than fixed: the
+  // declaration naming the other seat is already on the board, and a page
+  // that quietly corrected itself would leave that line standing and unread.
+  const wrong = half && half.seat && half.seat !== $("seat").value.trim();
+  $("seatWarning").hidden = !wrong;
+  if (wrong) {
+    $("seatWarning").textContent =
+      `The manager says you are ${half.seat}, but this page told the board ` +
+      `you are ${$("seat").value.trim()}. The mark saying a person is ` +
+      `playing names the wrong seat. Go back, put ${half.seat} in the seat ` +
+      `box, and come in again.`;
+  }
+
+  const day = whichDay(board);
+  $("dayBanner").textContent = !day
+    ? "Waiting for the island to open…"
+    : day.over ? "🔔 That is the end of the game."
+    : day.open ? `☀️ Day ${day.day} of ${day.of}`
+    : `🌙 Day ${day.day} of ${day.of} is over — wait for the next one.`;
+
+  const found = seatsNamed(board);
+  if (found.length && found.join() !== seats.join()) {
+    seats = found;
+    fillSeats();
+  }
+  const all = openOffers(board);
+  const mine = all.filter((o) => o.to === $("seat").value.trim());
+  const offersMark = `${mine.map((o) => o.id).join(",")}/${all.length}`;
+  if (offersMark !== drawn.offers) {
+    drawn.offers = offersMark;
+    paintOffers(mine, all.length);
+  }
+  preview();
+}
+
+function paintHalf(half) {
+  if (!half) {
+    $("myHalf").replaceChildren();
+    return;
+  }
+  // Each set of bars is scaled against the largest of this seat's own
+  // numbers, because what a child needs off this is which of their things is
+  // the good one -- not how this island compares with one they cannot see.
+  const bars = (of, kind) => {
+    const top = Math.max(...Object.values(of), 1e-9);
+    const box = document.createElement("div");
+    box.className = "bars";
+    for (const [good, value] of Object.entries(of)) {
+      const name = document.createElement("div");
+      name.textContent = good;
+      const bar = document.createElement("div");
+      bar.className = `bar ${kind}`;
+      const fill = document.createElement("i");
+      fill.style.width = `${Math.round(100 * value / top)}%`;
+      bar.append(fill);
+      box.append(name, bar);
+    }
+    return box;
+  };
+  const caption = (text) => {
+    const p = document.createElement("p");
+    p.className = "sub";
+    p.textContent = text;
+    return p;
+  };
+  $("myHalf").replaceChildren(
+    caption("What you are good at making:"), bars(half.capacity, "cap"),
+    caption("What you like having:"), bars(half.taste, "taste"));
+}
+
+
+/** The offers this seat may take, each with the exact line its button sends.
+ *  Empty when the manager has said nothing this reader recognises -- and then
+ *  the board below still has every offer on it, to be answered by typing. */
+function paintOffers(mine, total) {
+  if (!mine.length) {
+    const none = document.createElement("p");
+    none.className = "sub";
+    none.textContent = total
+      ? "Nothing waiting for you right now — the open offers are for " +
+        "somebody else."
+      : "Nothing waiting for you right now.";
+    $("offers").replaceChildren(none);
+    return;
+  }
+  $("offers").replaceChildren(...mine.map((offer) => {
+    const box = document.createElement("div");
+    box.className = "offer";
+    box.dataset.offer = offer.id;
+    const head = document.createElement("p");
+    const id = document.createElement("span");
+    id.className = "id";
+    id.textContent = offer.id;
+    head.append("Somebody has offered you a swap: ", id,
+                ". The whole offer is on the board below.");
+    const row = document.createElement("div");
+    row.className = "row";
+    const yes = document.createElement("button");
+    yes.textContent = "👍 Yes please";
+    yes.dataset.act = "approve";
+    yes.addEventListener("click", () => answer(offer.id, approveLine));
+    const no = document.createElement("button");
+    no.className = "no";
+    no.textContent = "👎 No thanks";
+    no.dataset.act = "decline";
+    no.addEventListener("click", () => answer(offer.id, declineLine));
+    row.append(yes, no);
+    const line = document.createElement("p");
+    line.className = "preview";
+    line.textContent = approveLine({ proposal: offer.id });
+    box.append(head, line, row);
+    return box;
+  }));
+}
+
+async function answer(id, compose) {
+  try {
+    await send("board", compose({ proposal: id }));
+  } catch (err) { say(String(err.message), true); }
+}
+
+// --- the controls ----------------------------------------------------------
+
+function buildMake() {
+  $("makeGrid").replaceChildren(...goods.flatMap((good) => {
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = good;
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "1";
+    // Hundredths: fine enough to split a day sensibly, coarse enough that the
+    // number under the thumb is one a child can read.
+    slider.step = "0.01";
+    slider.value = "0";
+    slider.dataset.good = good;
+    slider.addEventListener("input", preview);
+    const value = document.createElement("div");
+    value.className = "val";
+    value.dataset.value = good;
+    value.textContent = "0";
+    return [name, slider, value];
+  }));
+  for (const select of [$("giveGood"), $("wantGood")]) {
+    const held = select.value;
+    select.replaceChildren(...goods.map((good) => {
+      const option = document.createElement("option");
+      option.value = good;
+      option.textContent = good;
+      return option;
+    }));
+    if (goods.includes(held)) select.value = held;
+  }
+  if ($("giveGood").value === $("wantGood").value && goods.length > 1) {
+    $("wantGood").selectedIndex = 1;
+  }
+}
+
+function fillSeats() {
+  const held = $("swapTo").value;
+  const mine = $("seat").value;
+  const others = seats.filter((s) => s !== mine);
+  $("swapTo").replaceChildren(...others.map((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    return option;
+  }));
+  if (others.includes(held)) $("swapTo").value = held;
+  if (!others.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "— nobody yet —";
+    $("swapTo").replaceChildren(option);
+  }
+}
+
+/** Both previews, and the buttons that depend on them.
+ *
+ *  A refusal is shown where the line would have been, in the driver's words
+ *  and not the parser's: the point of showing the line at all is that what
+ *  the board says is what the page showed, and that has to include the times
+ *  it would have said nothing. */
+function preview() {
+  const plan = {};
+  let spent = 0;
+  for (const slider of $("makeGrid").querySelectorAll("input[type=range]")) {
+    const share = Number(slider.value);
+    plan[slider.dataset.good] = share;
+    spent += share;
+    const value = $("makeGrid").querySelector(`[data-value="${slider.dataset.good}"]`);
+    if (value) value.textContent = share.toFixed(2);
+  }
+  // Rounded for the reader, because eight hundredths add up to 0.7999999.
+  const left = Math.round((1 - spent) * 100) / 100;
+  $("labourLeft").textContent = left < 0
+    ? `⚠️ That is ${(-left).toFixed(2)} more than one whole day. The manager ` +
+      `will refuse it and say so — you can still send it.`
+    : `${left.toFixed(2)} of the day still free.`;
+  show("producePreview", "produceSend", () => produceLine({ plan }));
+
+  const to = $("swapTo").value;
+  show("proposePreview", "proposeSend", () => {
+    const line = proposeLine({
+      to,
+      give: { [$("giveGood").value]: $("giveQty").value },
+      want: { [$("wantGood").value]: $("wantQty").value },
+    });
+    if (!to) throw new Malformed("Pick who you want to swap with first.");
+    return line;
+  });
+}
+
+function show(previewId, buttonId, compose) {
+  try {
+    $(previewId).textContent = compose();
+    $(previewId).classList.remove("bad");
+    $(buttonId).disabled = false;
+  } catch (err) {
+    if (!(err instanceof Malformed)) throw err;
+    $(previewId).textContent = err.message;
+    $(previewId).classList.add("bad");
+    $(buttonId).disabled = true;
+  }
+}
+
+$("produceSend").addEventListener("click", async () => {
+  // Sealed to the manager, for the reason the manager says on the board: a
+  // plan posted in public gives your capacity away, because the receipt
+  // states the quantity and the share is on the board beside it.
+  try { await send("manager", $("producePreview").textContent); }
+  catch (err) { say(String(err.message), true); }
+});
+
+$("proposeSend").addEventListener("click", async () => {
+  try { await send("board", $("proposePreview").textContent); }
+  catch (err) { say(String(err.message), true); }
+});
+
+for (const id of ["swapTo", "giveGood", "giveQty", "wantGood", "wantQty"]) {
+  $(id).addEventListener("input", preview);
+  $(id).addEventListener("change", preview);
+}
+$("seat").addEventListener("input", () => {
+  drawn = { offers: null, half: null };
+  fillSeats();
+  paint();
+});
+
+buildMake();
+fillSeats();
+preview();
+// A second clock, and no second poll: `room` fetches, this renders what it
+// found. The interval is short because it costs nothing -- it reads two
+// globals -- and because a bell a child watches for should not arrive a poll
+// late on top of a poll late.
+setInterval(paint, 1000);
+window.KIDS_READY = true;
+</script>
