@@ -573,16 +573,74 @@ that she never dwells long enough to take anything. **Chase to arrest, or
 spread to deny** — two strategies against two objectives, and no weighted
 sum reconciling them.
 
-### The places come from a precompiled matrix
+### A matrix nobody sees and nobody has to trust
 
-Agreed, and the reasons are the repo's own. Nothing generates a map at run
-time: no model in the loop, nothing to pay for per game, nothing that can
-differ between a run and its replay. The matrix is built once, frozen by
-hash, and a game names the draw it took — which is what `gazetteer_hash` in
-the level key is already for.
+Gal, 2026-09-07: *"next we need to compile a matrix, but, it should not be
+public, that's a problem"*. It is, and it has two halves that pull against
+each other:
 
-The one thing precompilation does not settle is the harvesting gap above,
-because a table computed once is a table that can be learned once.
+- **Secrecy.** The access model rests on players being unable to enumerate
+  landmark names. A published matrix hands them the enumeration and the
+  whole of "the room is the hash" collapses.
+- **Honesty.** This repo's manager is one nobody has to trust. A secret
+  table is a manager saying *"the hint was legal, take my word for it"* —
+  exactly what the island's commit–reveal exists to refuse.
+
+**The first half does not need solving, because there is nothing to
+publish.** *This supersedes "the places come from a precompiled matrix",
+which was Gal's own and which this document recorded as settled.* The matrix
+is **derived, not compiled**: one 32-byte seed and a PRF give a landmark's
+row on demand.
+
+```
+100,000-landmark matrix at rest:  32 bytes      (materialised: 1.2 MB)
+one row:                          12 microseconds
+```
+
+So the secret is a single environment variable, which is the pattern
+`.gitignore` and Switchboard's own `SWITCHBOARD_KEY_<ID>` already set, and
+there is no file to leak, publish or forget to ignore. **It is still not the
+on-the-fly generation Gal ruled out**: no model, no payment, no run-to-run
+variation — a pure function of the seed, so a game replays exactly. It also
+makes "large" free rather than merely linear, which `scale.py` had it as.
+
+**The second half is what a commitment is for.** The manager publishes a
+**Merkle root over the matrix before the game**, and afterwards **opens only
+the rows the game actually used**. Measured, not asserted —
+`python3 games/hue-and-cry/secret_matrix.py`:
+
+```
+root published before play:   32 bytes
+one row opened afterwards:    17 steps, 544 bytes   -> verifies
+a 12-tick game publishes:     6.8 KB
+a row the manager invented:   does not verify
+```
+
+What was never used stays unknown, which is what the access model needs.
+What was used is proved, which is what the record needs. **The manager keeps
+its secret and still cannot lie**, and that is the bar the island set.
+
+**And this is the better answer to harvesting**, not merely a compatible
+one. The reveals are **public and equal**: everyone who reads them
+accumulates the same partial map at the same rate. Building one stops being
+a private edge belonging to whoever played most — the thing that broke
+cohort comparability — and becomes **a technique available to every player**,
+which is precisely what the experiment set out to watch emerge. The
+per-cohort reporting written above is still worth keeping, but it is now
+guarding against a much smaller effect: the difference between a player who
+reads the published reveals and one who does not.
+
+**The cost, stated rather than hidden.** Opening rows spends the map: at
+twelve rows a game, a hundred-thousand-landmark matrix lasts about **8,300
+games** before it is fully public and a fresh seed is needed. That is a real
+horizon and it is generous, but it is a horizon, and the day it is reached
+the old matrix is worthless rather than merely tired.
+
+**Recommended, not decided.** The alternative is a fresh seed per game
+revealed whole afterwards: simpler, perfectly verifiable, unharvestable —
+and it **destroys the finding**, because nothing accumulates across games
+and the technique Gal wants to see emerge has nothing to emerge from. That
+is the trade, and it is his to take.
 
 ## A tick
 
