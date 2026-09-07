@@ -2128,6 +2128,28 @@ one level up. And the first version of the fetch got a flat **403** where
 refused by what sits in front of the host -- which, read as "the host is down",
 would have hidden the very defect the check exists to find.
 
+**It recurred the next day, which is the measurement that matters.** On
+2026-09-07 the hourly check found `g36` -- played on the host at 14:30:32Z,
+`[2,5,4,60]`, ranked, `capture -0.346` -- published and absent from the
+committed ledger, one day after the same repair was made by hand. The record
+itself was not wrong (`-0.346` is below `g35`'s `-0.320`, so the open table
+was still held and the front door still quoted the right number); what a
+visitor could not see was that the game had happened at all.
+
+So the drift is **daily, not a one-off backlog**, and the check earns its
+place: it found the second occurrence within hours rather than eight days.
+The repair is still manual and still refuses to reconstruct -- the host's own
+row was carried over verbatim, verified by `sha256` against the host's copy
+before it was appended, and then cross-checked a second way: recomputing
+`capture` from the committed row gives `-0.34646881987945577`, bit-identical
+to what `record.lucille-ai.com/games/index.json` publishes. **Two independent
+paths to the same number is what makes a relayed row a fact** rather than a
+report about one, which is the rule for self-reports everywhere else here.
+
+`g36` also carries the first `harness=` labels seen in the wild --
+`harnesses declared  codex x2` -- so the door's new fields are being filled in
+by entrants and not only by us.
+
 ## Watching
 
 **A running game is watched through the hub with a read-only invite, and
