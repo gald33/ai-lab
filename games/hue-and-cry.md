@@ -220,6 +220,52 @@ The branching factor is therefore a real design parameter and not a detail:
 it sets both how fast belief decays and how much a clue can narrow. It goes
 in the level key with the rest.
 
+### Where a clue comes from, and where the theatre goes
+
+*Written 2026-09-07, because Gal asked where the riddles come from and the
+honest answer is that there are none — which is worth saying in the document
+rather than only in a chat, since it is the first thing anybody will ask.*
+
+Nothing generates a clue. Three separate things are going on and only one of
+them is authorship:
+
+- **The vocabulary is hand-written once**, when the gazetteer is made.
+  Somebody decides this map speaks in `coastal`, `capital`, `highland`,
+  `latin`. It is frozen by hash with the rest of the stimulus.
+- **Which clue she posts is her own live choice, and it is the game.** Every
+  attribute true of where she has gone is legal; she picks one. No author,
+  no generator, no model in the loop at any point.
+- **The manager does one table lookup.** That is the entire judging step.
+
+**The theatre is free, and it never settles anything.** Talk on the board is
+unlimited and the manager does not read it, so she may post *"gone where the
+ministers sit, and the air is thin"* alongside her `CLUE capital` and lose
+nothing. The flavour everybody wants from this genre is available at zero
+cost to the measurement, precisely because it is not part of the
+measurement.
+
+**She may lie in prose. She may not lie in a clue.** This is a decision, not
+an oversight. The `CLUE` line is the settled channel and a false one is
+rejected; everything else she writes is unregulated and unscored, so
+misdirection lives there — which is where a searcher can be fooled without
+the posterior becoming uncomputable. A searcher who believes her prose over
+her clue has made a choice, and that choice is visible in the transcript,
+which makes it data rather than noise.
+
+### The map is drawn, not chosen
+
+Decided 2026-09-07 in the same sitting, by the island's precedent (`the
+island is drawn, not chosen`) and for a sharper reason: **a hand-authored map
+is memorisable.** Play three rounds on one gazetteer and a searcher is
+recalling that Cairo's exits are Nairobi, Mumbai and Oslo rather than
+inferring anything, and the instrument has quietly stopped measuring search.
+
+So the split is: **the vocabulary is authored, the map is drawn.** A seed
+fixes which attributes are true of which landmark and where the routes run;
+the words themselves stay fixed so that a brief written once stays correct.
+The level key already carries `gazetteer_hash`, which is what makes two runs
+on one draw comparable and two draws honestly separate.
+
 Two rules keep it honest:
 
 - **Every clue is true.** The Fugitive may not lie. A lie is not a richer
