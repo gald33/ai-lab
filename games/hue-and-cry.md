@@ -630,11 +630,64 @@ per-cohort reporting written above is still worth keeping, but it is now
 guarding against a much smaller effect: the difference between a player who
 reads the published reveals and one who does not.
 
-**The cost, stated rather than hidden.** Opening rows spends the map: at
-twelve rows a game, a hundred-thousand-landmark matrix lasts about **8,300
-games** before it is fully public and a fresh seed is needed. That is a real
-horizon and it is generous, but it is a horizon, and the day it is reached
-the old matrix is worthless rather than merely tired.
+### The whole tree is published, and the leaves are blinded
+
+Gal, 2026-09-07: *"we can publish the merkle tree. but the game is finite
+and so harvestable"*. Both halves are right, and the first one is only safe
+with a change the section above did not have.
+
+**Publishing the tree is better than publishing the root**, because it makes
+the commitment's *shape* auditable in advance rather than on trust: anyone
+can count the leaves, see there are exactly N of them, and know the manager
+cannot append a row mid-game. Three megabytes for a hundred thousand rows.
+
+**But a bare leaf is `H(name, hints)` over a finite input, and finite means
+guessable.** Measured at 10^10 hashes a second against a hundred-thousand-name
+list:
+
+```
+vocabulary    200    36.9 bits    13 seconds
+vocabulary  1,000    43.9 bits    28 minutes
+vocabulary 10,000    53.9 bits    0.1 years
+vocabulary 100,000   63.9 bits    52.8 years
+```
+
+Thirteen seconds at a small vocabulary. Publishing the tree unblinded would
+hand the map to anybody who wanted it, and would quietly give `M` a **third
+job** — leaf security — on top of narrowing and harvest cost, to be traded
+against them.
+
+**So each leaf carries a 256-bit nonce**, derived from the same seed and
+therefore free: `leaf = H(name, hints, nonce)`. The leaf becomes a *hiding*
+commitment, the attack costs 2^256 whatever the vocabulary is, `M` goes back
+to having one job, and the nonce is handed over with the row when the row is
+opened. A row opened without its nonce does not verify; a row the manager
+invented does not verify. Both are asserted in
+`games/hue-and-cry/secret_matrix.py` rather than claimed.
+
+### Finite is a season, not a leak
+
+**The second half is not a defect and should not be treated as one.** The
+map is finite, so playing it spends it: twelve rows a game against a hundred
+thousand landmarks is about **8,300 games**. That is a horizon, and it is the
+right shape for this experiment rather than a cost to be minimised.
+
+Call it what it is — **a season**. Within one, the harvest accumulates and
+that is the finding: techniques emerge, a shared map grows, later games are
+cheaper than earlier ones, and every player faces the same table. Cohorts
+are comparable because a season is the population.
+
+**At season end the seed is published.** Then the whole matrix is checkable
+at once, every game that was ever played on it can be re-verified in full by
+anyone, and the accumulated map is a public artifact to analyse rather than
+a leak to regret. The next season starts from a new seed, and everyone is
+level again.
+
+That also retires the last thing this document was carrying as an unanswered
+number. "How big must `N` be" was being asked as *how large to make
+harvesting uneconomic*; under seasons it is the friendlier **how long a
+season should last**, which is a scheduling choice rather than a security
+threshold — and `scale.py` already prints it.
 
 **Recommended, not decided.** The alternative is a fresh seed per game
 revealed whole afterwards: simpler, perfectly verifiable, unharvestable —
@@ -1019,17 +1072,13 @@ the tool.
   which would make the interesting behaviour disappear into a solved
   opening. If it does, the lever is the number of warrants, not a rule
   against sharing.
-- **How big does the map have to be?** *Narrowed 2026-09-07 and no longer
-  the question it was.* This entry used to ask whether vocabulary size was
-  a free parameter or the whole result, and worried that the branching
-  factor was worse because it moved two things in opposite directions.
-  Half of that is retired: `N` and `M` separate cleanly — harvest cost
-  rides on the map, a hint's narrowing on the vocabulary — so they are two
-  curves rather than one tangle (`scale.py`). What remains is arithmetic
-  nobody has done: **what `N` makes harvesting uneconomic for the number of
-  games actually expected**, given that partial reconstruction pays before
-  complete reconstruction does. Answerable, and to be answered before a
-  public game rather than after.
+- **~~How big does the map have to be?~~** *Closed 2026-09-07 by seasons.*
+  It was asked as a security threshold — what `N` makes harvesting
+  uneconomic — and under a season it is a scheduling choice: `N/12` is how
+  many games the map lasts, `scale.py` prints it, and the answer is
+  whatever season length is wanted. `N` and `M` were already separated;
+  what closed this was deciding that running out is the intended end of a
+  season rather than a failure.
 - **The branching factor still wants its own curve**, separately, since it
   sets how fast certainty decays and that is the quantity the timing
   measurement rests on. "Noise before thresholds", as 008 already carries.

@@ -34,6 +34,7 @@ import hmac
 #: Domain separators, so a digest minted for one purpose can never be
 #: mistaken for one minted for another.
 MATRIX_INFO = b"hue-and-cry/v1/matrix"
+NONCE_INFO = b"hue-and-cry/v1/nonce"
 LEAF_INFO = b"hue-and-cry/v1/leaf"
 NODE_INFO = b"hue-and-cry/v1/node"
 
@@ -65,11 +66,31 @@ def hints_for(seed: bytes, landmark: str, vocabulary: int,
     return sorted(chosen)
 
 
-def leaf(landmark: str, hints: list[int]) -> bytes:
-    """One landmark's row, as a commitment leaf."""
+def nonce_for(seed: bytes, landmark: str) -> bytes:
+    """This row's blinding factor. Derived, so it costs no storage."""
+    return hmac.new(
+        seed, NONCE_INFO + b"\x00" + landmark.encode("utf-8"), hashlib.sha256
+    ).digest()
+
+
+def leaf(landmark: str, hints: list[int], nonce: bytes) -> bytes:
+    """One landmark's row, as a HIDING commitment.
+
+    The nonce is why the tree can be published in full. Without it the leaf
+    is `H(name, hints)` over a finite, enumerable input, and a leaf is broken
+    by guessing: 13 SECONDS on one GPU at a 200-word vocabulary, and still
+    only decades at 100,000. See `main` for the table. With 256 bits of
+    blinding the same attack costs 2^256 whatever the vocabulary is, and the
+    row is revealed when -- and only when -- the nonce is.
+
+    It also decouples the vocabulary again. Without the nonce, M would be
+    setting how much a hint narrows AND how hard a leaf is to break, which
+    are unrelated jobs that would have had to be traded against each other.
+    """
     body = b",".join(str(h).encode() for h in hints)
     return hashlib.sha256(
         LEAF_INFO + b"\x00" + landmark.encode("utf-8") + b"\x00" + body
+        + b"\x00" + nonce
     ).digest()
 
 
@@ -99,13 +120,14 @@ def opening(layers: list[list[bytes]], index: int) -> list[bytes]:
     return path
 
 
-def opens(root: bytes, landmark: str, hints: list[int],
+def opens(root: bytes, landmark: str, hints: list[int], nonce: bytes,
           index: int, path: list[bytes]) -> bool:
     """Did this row really come from the matrix that was committed to?
 
-    What a player runs after a game, against a root published before it.
+    What a player runs after a game, against a root published before it. The
+    nonce arrives with the opening; it is the row's own secret until then.
     """
-    digest = leaf(landmark, hints)
+    digest = leaf(landmark, hints, nonce)
     for sibling in path:
         digest = (_pair(digest, sibling) if index % 2 == 0
                   else _pair(sibling, digest))
@@ -116,6 +138,7 @@ def opens(root: bytes, landmark: str, hints: list[int],
 def main() -> None:
     import os
     import time
+    from math import comb, log2
 
     seed = os.urandom(32)
     vocabulary, landmarks = 100_000, 100_000
@@ -134,40 +157,58 @@ def main() -> None:
           f"   |  materialised it would be"
           f" {landmarks * HINTS_PER_LANDMARK * 4 / 1e6:.1f} MB")
 
+    print("\nwhy the leaves are blinded -- cost of guessing ONE unsalted leaf,")
+    print("at 1e10 hashes/s against a 100,000-name list:")
+    for M in (200, 1_000, 10_000, 100_000):
+        seconds = comb(M, 3) * 100_000 / 1e10
+        human = (f"{seconds:.0f} seconds" if seconds < 90 else
+                 f"{seconds / 60:.0f} minutes" if seconds < 5400 else
+                 f"{seconds / 86400 / 365:.1f} years")
+        print(f"  vocabulary {M:>7,}   {log2(comb(M, 3) * 100_000):>5.1f} bits"
+              f"   {human}")
+    print("  with a 256-bit per-row nonce: 2^256, whatever the vocabulary is.")
+
     start = time.perf_counter()
-    layers = tree([leaf(n, hints_for(seed, n, vocabulary)) for n in names])
+    leaves = [leaf(n, hints_for(seed, n, vocabulary), nonce_for(seed, n))
+              for n in names]
+    layers = tree(leaves)
     built = time.perf_counter() - start
     root = layers[-1][0]
 
     index = 42_195
+    name = names[index]
     path = opening(layers, index)
-    verified = opens(root, names[index], hints_for(seed, names[index], vocabulary),
-                     index, path)
+    verified = opens(root, name, hints_for(seed, name, vocabulary),
+                     nonce_for(seed, name), index, path)
+    withheld = opens(root, name, hints_for(seed, name, vocabulary),
+                     b"\x00" * 32, index, path)
+    invented = opens(root, name, [1, 2, 3], nonce_for(seed, name), index, path)
 
     print(f"\ncommitment over {landmarks:,} rows, built in {built:.1f}s:")
-    print(f"  root published before the game:  {len(root)} bytes")
-    print(f"  one row opened afterwards:       {len(path)} steps,"
-          f" {len(path) * 32} bytes  ->  verifies: {verified}")
-    print(f"  a 12-tick game publishes:        "
-          f"{12 * (len(path) * 32 + 40) / 1024:.1f} KB")
-    print(f"  games before the map is spent:   "
-          f"{landmarks // 12:,}")
-
-    tampered = opens(root, names[index], [1, 2, 3], index, path)
-    print(f"  a row the manager made up:       verifies: {tampered}")
+    print(f"  the whole tree can be published:  "
+          f"{len(leaves) * 32 / 1e6:.1f} MB of leaves, root {len(root)} bytes")
+    print(f"  one row opened afterwards:        {len(path)} steps,"
+          f" {len(path) * 32 + 32} bytes with its nonce  ->  {verified}")
+    print(f"  the same row without its nonce:   {withheld}")
+    print(f"  a row the manager invented:       {invented}")
+    print(f"  a 12-tick game publishes:         "
+          f"{12 * (len(path) * 32 + 72) / 1024:.1f} KB")
+    print(f"  games before the map is spent:    {landmarks // 12:,}")
 
     print("""
-So the manager keeps its secret and still cannot lie. It publishes the root
-before play, opens only the rows a game actually used, and each opening is
-checkable by anyone against that root. What was never used stays unknown,
-which is what the access model needs; what was used is proved, which is what
-the record needs.
+So the manager keeps its secret and still cannot lie, and now the tree
+itself can be published: every leaf is visible, so the shape of the
+commitment is auditable in advance -- N rows, no additions mid-game -- while
+each leaf stays opaque until its nonce is handed over.
 
 And the reveals are PUBLIC and EQUAL. Everyone who reads them accumulates
 the same partial map at the same rate, so building one is a technique
 available to every player rather than a private edge belonging to whoever
-played most -- which is the harvesting problem turning into the thing the
-experiment wanted to watch.""")
+played most.
+
+The map is finite, so it is spent by being played. That is a season, not a
+leak: when the rows run out the seed is published, the whole matrix becomes
+checkable at once, and the next season starts from a new one.""")
 
 
 if __name__ == "__main__":
