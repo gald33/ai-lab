@@ -357,6 +357,150 @@ the posterior becoming uncomputable. A searcher who believes her prose over
 her clue has made a choice, and that choice is visible in the transcript,
 which makes it data rather than noise.
 
+### The hints are read by people, so they have to be true and worth saying
+
+*Gal, 2026-09-07, after seeing a rendered matrix: "that must be human
+readable. more than that, we 'sell' on human interacting about it in social
+media, it must evoke feelings." This supersedes the claim, above, that the
+hints "need not be factually true of anywhere — they are tokens".*
+
+That claim is right about the mechanism and wrong about the game. A
+uniformly drawn matrix produced **`Reykjavik: desert`**, which is precisely
+the line somebody screenshots to show the thing is broken. If what gets
+shared is *"she left a tannery and a minaret and I still guessed wrong"*,
+then every hint is read by a person and has to land as true, evocative, and
+worth repeating.
+
+So descriptors are **authored per landmark from the real place**. It costs a
+one-time pass — eight candidates per landmark, written once, offline,
+checked by a person, frozen by hash. Still `N × 8`, still linear, so
+`scale.py`'s argument survives; what changes is that the work is authorship
+rather than arithmetic. Nothing is generated at run time and no model is in
+the loop.
+
+**The seed still does the work that matters**: it picks which few of a
+landmark's candidates are *live* this game. So the table itself can be
+public — these are facts about places, and a public one is half the fun,
+since a reader can play along — while which of Cairo's eight are in play
+today stays sealed until the reveal.
+
+### And then the obvious fix broke it the other way
+
+**Measured, on the first authored pass**, which read beautifully:
+
+```
+97% of descriptors were true of exactly ONE landmark
+average candidates a hint left:  1.03
+17 of 20 landmarks gave the fugitive NO cover at all
+```
+
+**Evocative writing is specific, and specific means unique, and a unique
+hint hands over her position.** The uniform matrix had collisions by
+accident; a well-written one has almost none. Readable hints are *more*
+informative than random ones, which is the opposite of what this document
+would have guessed.
+
+**So the authoring rule is collision, not colour.** Every descriptor must be
+true of several landmarks, and the feeling has to come from the
+*combination*. `call to prayer` is true of Cairo, Fez, Marrakesh, Samarkand
+and Zanzibar; `harbour fog` of Bergen, Reykjavik, Ushuaia, Hobart and
+Valparaiso — five cold ports on four continents. Hearing one tells you the
+smell of the place and not which one you are standing in, which is what a
+clue is supposed to do, and it is worth saying out loud to somebody, which
+is why the words have to be real.
+
+After rewriting to that rule: **mean candidates 2.32**, and no landmark she
+cannot hide from.
+
+**The gate is per landmark, not per word** — and the first version of it was
+wrong. It counted globally unique descriptors and demanded zero, which fails
+a gazetteer that plays perfectly well: a rare word is harmless as long as
+she is never *forced* to post it. What matters is the chance that a random
+live-three leaves her at least one place to hide behind, per room, and it is
+`playable()` in `games/hue-and-cry/gazetteer.py`. Run it before shipping a
+map:
+
+```
+worst landmark cover:  98.2%   (needs >= 95%)
+landmarks she cannot hide from: none
+```
+
+### Routes run between places that resemble each other
+
+*Added 2026-09-07 after running a chase on the authored gazetteer, which
+found the collision gate measuring the wrong population — for the second
+time, in the same way.*
+
+**The gate above asks whether she holds a word shared with other landmarks.
+The game asks whether any place she can REACH is covered by it.** A
+descriptor shared with five places is no cover at all when none of those
+five is one of her exits. Measured over 400 drawn maps, every room and every
+destination:
+
+```
+cover measured against the whole map   98.2%   -> the gate said "playable"
+her moves that name her position       49.5%   -> half the trail is free
+```
+
+**So routes are drawn from a landmark's neighbourhood** — the places it
+shares the most descriptors with — rather than from the map at large, and
+a game gives each landmark five exits rather than three. Both levers, and
+they compose:
+
+```
+random exits, 3 each          pinned 49.7% of moves
+random exits, 5 each          pinned 27.2%
+neighbourhood exits, 3 each   pinned 30.7%
+neighbourhood exits, 5 each   pinned 12.8%
+```
+
+**And the neighbourhoods are the flavour, not a side effect.** Bergen's are
+Hobart, Reykjavik, Ushuaia and Valparaiso — the cold ports. Cairo's are Fez,
+Marrakesh and Samarkand. Kyoto's are Luang Prabang and Kathmandu. A trail
+through them reads as a journey rather than a random walk, which is the
+thing this whole section exists to protect: *Reykjavik → Gjirokaster → Fez →
+Zanzibar → Cairo* is a route somebody would describe out loud.
+
+**What it costs, which is not nothing.** Neighbourhood routing spends the
+deductive value of being in the room she left, because when everywhere she
+can reach looks alike, knowing where she was tells you less:
+
+```
+                        in the room    from outside    advantage
+random exits, 3            1.56            4.18          2.7x
+neighbourhood, 5           2.60            4.90          1.9x
+```
+
+Presence still wins outright — **the hash in the room is the exact address**,
+which no amount of deduction from outside can equal — but the *hint* stops
+discriminating as sharply. That is a real trade and the right one here: a
+chase where she is pinned half the time is not a chase, and a trail that
+reads as a random walk is not worth posting.
+
+**The gate is distributional now**, and it has to be: routes are drawn per
+game, so playability is a property of `(gazetteer, neighbourhood size, exit
+count)` rather than of the word list. `pin_rate()` in
+`games/hue-and-cry/gazetteer.py` measures it over many drawn maps;
+`MAX_PINNED = 0.20` is a guess and is flagged as one.
+
+### One consequence for the addresses
+
+If the gazetteer is public and the room is `KDF(name, seed)` with the seed
+secret, then **nobody can compute any room** and the chase becomes a pure
+chain — you can follow her but never get ahead, which is too weak.
+
+So the game seed yields two values: a **room salt published when the game
+opens**, and the **matrix seed revealed when it closes**. Publishing
+`H(seed ‖ "rooms")` says nothing about the seed, so the live hints stay
+sealed while anybody can compute the room for any name they can think of.
+The chase becomes: read the hint, look up which places it fits, work out the
+rooms, and go and wait in the one you believe. **The scarce thing stops
+being knowledge of names and becomes attention** — you cannot watch
+everywhere, so you have to choose, and being wrong costs you the tick.
+
+*That supersedes "the invite is the scarce thing" a second time, and this
+version is the one that survives a public map.*
+
 ### The map is drawn, not chosen
 
 Decided 2026-09-07 in the same sitting, by the island's precedent (`the
