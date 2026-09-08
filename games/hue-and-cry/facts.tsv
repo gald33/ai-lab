@@ -1,0 +1,1006 @@
+# Per-landmark facts from Wikidata (CC0), fetched by build_facts.py.
+# types is |-separated P31 labels. elev metres (P2044), founded year
+# (P571, negative is BCE), water is P206 labels, visitors is P1174,
+# tz is P421 time zone labels, crit is P2614 World Heritage
+# criteria, listed is the P1435 inscription year (qualifier P580).
+# qid	types	elev	founded	water	visitors	tz	crit	listed
+Q237	city-state|confessional state|country|enclave|institutional complex|landlocked country|religious complex|sacerdotal state|successor state|tourist destination|urban area		1929			Central European Time|Europe/Vatican|UTC+01:00	(i)|(ii)|(iv)|(vi)	1960
+Q513	mountain	8844.43			0			
+Q2844	administrative territorial entity|big city|federal capital|municipality of Brazil|planned national capital|political city	1171	1960	Paranoá Lake|Paranoá River			(i)|(iv)	1987
+Q6583	desert					UTC+01:00		
+Q5484	endorheic lake|lake|salt lake|sea	-28						
+Q12501	cordon		-0700		15100			2013
+Q243	architectural landmark|lattice tower|observation tower		1889		6.2073e+06			1964
+Q3551	big city|city|national capital	87	1146	Atlantic Ocean|Bou Regreg			(ii)|(iv)	2012
+Q7296	dormant volcano|massif	5895						
+Q9141	mausoleum|tomb		1631	Yamuna	6.53237e+06		(i)	
+Q5513	World Heritage Site|freshwater lake|lake|mountain lake	455.5					(ix)|(vii)|(viii)|(x)	1996
+Q23800	city|local council of Malta	56	1566	Mediterranean Sea			(i)|(vi)	1980
+Q2900	city	2850	1534					
+Q14452	island	211		Pacific Ocean		UTC−06:00		
+Q23883	endorheic lake|hypersaline lake	-441.33						
+Q5505	freshwater lake|lake	1133						
+Q7343	coral reef			Coral Sea			(ix)|(vii)|(viii)|(x)	2007
+Q9202	colossal statue|observation tower|part of UNESCO World Heritage Site|statue		1886		3.72203e+06			1984
+Q12506	mosque|museum		0532					1985
+Q5511	lake	773					(ix)|(viii)|(x)	
+Q5753	administrative territorial entity|big city	702	-0800	Zeravshan				
+Q676203	World Heritage Site|ancient city|archaeological site	2430	1450		950000			
+Q10285	Italian national museum|Museum of the Italian Ministry of Culture|Roman amphitheatre|archaeological artifact museum|archaeological site|historical civil building museum|roman ruins|stadium		0082		5.833e+06			
+Q39231	active volcano|highest point|isolated peak|mountain|shintaisan|stratovolcano	3777.24						2013
+Q66485	big city|state capital|town in India|urban area	431	1727				(ii)|(iv)|(vi)	2019
+Q35525	civic building|mansion|presidential palace		1800		114519			1960
+Q2028	Italian city-state|big city|city|comune of Italy|urban area	59	-0549	Adige			(ii)|(iv)	2000
+Q5086	cordon|defense line|destroyed building or structure|separation barrier		1961					
+Q12495	architectural landmark|skyscraper		2004					
+Q36947	metropolitan region|municipality of Brazil	8	1549	Atlantic Ocean|Bay of All Saints|Baía de Aratu|Enseada do Cabrito|Enseada dos Tainheiros				
+Q43473	Buddhist temple|Hindu temple|archaeological site|temple complex	65	1200					
+Q5869	big city|city|city-state|human settlement|prefecture-level city of China	3650	0633					
+Q524	active volcano|mountain|stratovolcano	1281						
+Q39671	archaeological site|cromlech|henge|history museum|monument		-3000		1.32742e+06		(i)|(ii)|(iii)	
+Q34221	horseshoe waterfall|waterfall							
+Q38095	WWF ecoregion|archipelago			Pacific Ocean	267688	Pacific/Galapagos|UTC−06:00	(ix)|(vii)|(viii)|(x)	
+Q29466	sacred place		0680					
+Q35342	lake|monomictic lake|mountain lake	3812						2005
+Q36755	desert|peninsula	730		Gulf of Aqaba|Mediterranean Sea|Red Sea				
+Q9427	city|urban area	261					(ii)|(iv)|(v)	1988
+Q7341	Nazi concentration camp|architectural ensemble|extermination camp|museum		1940		1.67e+06		(vi)	1979
+Q5684	ancient city|archaeological site|city-state		-2200					
+Q583	four-thousander|highest point|ice dome|main peak|mountain|pyramidal peak|ultra-prominent peak	4805.59						
+Q23513	national park of Vietnam		2001				(ix)|(viii)|(x)	2003
+Q9188	office building|skyscraper		1931					1982
+Q43332	ancient city|archaeological site		-0600					
+Q22647	Bronze Age settlement|city-state|polis|settlement site		-2999				(ii)|(iii)|(vi)	1998
+Q42070	desert	1547						
+Q5788	ancient city|archaeological site|city	800	-0799		1.142e+06		(i)|(iii)|(iv)	1985
+Q118841	canyon			Colorado River				
+Q351	National Park of the United States|biosphere reserve|national park|unincorporated community	2470	1872		4.25718e+06		(ix)|(vii)|(viii)|(x)	1978
+Q5582862	big city|city|historic district|urban area	3399	1534				(iii)|(iv)	1983
+Q39739	mountain	6962						
+Q43105	mountain	5642						
+Q22889	city of United Kingdom|unparished area|urban area	132	0043	River Avon			(i)|(ii)|(iv)	2021
+Q43512	mountain	8611						
+Q1066	glacial lake|lake|rift lake	183						
+Q72303	mountain|stratovolcano|volcano	5137						
+Q43278	horseshoe waterfall|waterfall	892		Zambezi River			(vii)|(viii)	1989
+Q44440	road bridge|steel bridge|suspension bridge|toll bridge		1937					1987
+Q5859	ancient city|archaeological site		0455				(i)|(ii)|(iii)	2015
+Q80344	Natura 2000 site|biosphere reserve|mountain|national park	2917.73	1938		10000			2026
+Q1062	lake	74.1						
+Q2946	art museum|château|palace|royal palace		1661		2.59326e+06		(i)|(ii)|(vi)	1906
+Q1169	lake	176						
+Q725591	mountain	2706						
+Q5747	Ancient Greek archaeological site|ancient city|ruins						(i)|(ii)|(iv)	1980
+Q43708	region|triad|triangle|urban legend							
+Q120730	fu|prefecture of Japan		1868	Sea of Japan		Japan Standard Time|UTC+09:00		1994
+Q5532	lake	474						
+Q47700	desert|deserts and xeric shrublands|savanna	1168		Orange River				
+Q125309	aeolian lake|endorheic lake|lake	100					(ii)|(iii)|(ix)|(v)|(vii)|(x)	2006
+Q47141	WWF ecoregion|desert	2657						
+Q80290	Chinese AAAAA-rated tourist attraction|building complex|museum|palace		1420		1.508e+07			1961
+Q510	oceanic trench	-10994		North Pacific Ocean				
+Q129072	ancient city|archaeological site|architectural landmark|cultural property	1627	-0510				(i)|(iii)|(vi)	1979
+Q82019	mountain|sacred mountain	8586						
+Q5492	lake	173						
+Q126084	city	10	-1499				(ii)|(iii)|(v)	2001
+Q177567	tropical forest							
+Q41116	square		1500					1990
+Q1143049	castle|château|museum building|palace		0990					1938
+Q131416	administrative divisions of Russia|big city|city or town	0	0438					
+Q1383	lake	176						
+Q36332	horseshoe waterfall|waterfall	1		Iguazu River				
+Q45178	architectural landmark|historical cultural heritage site|opera house	15	1973	Port Jackson	7e+06		(i)	1980
+Q5725	Bronze Age settlement|ancient city						(ii)|(iii)	1980
+Q131013	Ancient Greek archaeological site|acropolis		-0500		2.76622e+06		(i)|(ii)|(iii)|(iv)|(vi)	1987
+Q131198	archipelago|external territory of Australia|natural cultural heritage site	2745		Indian Ocean		UTC+05:00	(ix)|(viii)	1997
+Q162843	desert							
+Q83497	mountain	1745						
+Q42182	Residence of the British Royal Family|art collection|country house|historic house museum|royal palace	6.09601	1703					1970
+Q79961	colossal statue|colossal statue of Jesus|monument|pilgrimage site|statue	710	1920					2008
+Q80299	waterfall	1489						
+Q82613	caldera|former island	813		Sunda Strait		UTC+07:00		
+Q1374	mountain	4477.54						
+Q4152	castle|château|museum|palace	940	1869					2025
+Q170047	archaeological site|big city	80					(ii)|(iii)|(iv)	2007
+Q132956	desert			Keriya He|Qiemo River|Yurungkax He			(ix)|(viii)|(x)	2010
+Q33910	inselberg	863						
+Q172702	desert							
+Q131377	desert							
+Q38888	Ancient Greek archaeological site|Samian Ware Discovery Site|hieron|organized archaeological site|polis	69			484238		(i)|(ii)|(iii)|(iv)|(vi)	1989
+Q41225	architectural element|belfry|bell|clock bell|clock tower|cultural icon|inclined tower|national symbol|steeple|striking clock	17	1858					
+Q62378	archaeological site|castle|independent museum|museum		1066	River Thames	2.74113e+06		(ii)|(iv)	1900
+Q5832	city|district of Ethiopia	2131					(i)|(iv)	1980
+Q203197	city|human settlement	500					(iv)|(vi)	1988
+Q190165	city|district of Laos	305					(ii)|(iv)|(v)	1995
+Q130321	men only space|mountain	2033					(i)|(ii)|(iv)|(v)|(vi)|(vii)	1988
+Q377485	mountain	2287						
+Q54898	city|municipality of Spain	553	1496	Atlantic Ocean			(ii)|(iv)	1999
+Q180402	National Park of the United States|national park|unincorporated community	2686	1890		3.66755e+06		(vii)|(viii)	1984
+Q178835	ancient city|archaeological site|city	1170					(i)|(iv)	1984
+Q1865480	castle|destroyed building or structure|prison		1370					
+Q82425	architectural landmark|border checkpoint|city gate|national symbol|triumphal arch		1791					
+Q172697	archipelago	1230		Pacific Ocean		UTC−09:30	(iii)|(ix)|(v)|(vii)|(x)	2024
+Q4176	Catholic cathedral		1248		5e+06		(i)|(ii)|(iv)	1996
+Q42646	English country house|Residence of the British Royal Family|castle|historic house museum|palace|royal palace	54.8641	1070	River Thames				
+Q179046	Municipal council (India)|city|fort	213					(ii)|(iii)|(iv)	1986
+Q35045	big city|city|urban area	4070	1545				(ii)|(iv)|(vi)	1987
+Q134821	archaeological site|sacred place|wall		-0018	Gehenna		UTC+02:00|UTC+03:00		1981
+Q184427	artificial cave|grotto|temple		-0200				(i)|(ii)|(iii)|(vi)	1983
+Q173532	archaeological site|city|city-state|human settlement	10	-8000				(iii)|(iv)|(vi)	1984
+Q190128	bay						(vii)|(viii)	1994
+Q172691	WWF ecoregion|desert	61						
+Q4527	biodiversity hotspot|mountain range	2695					(ix)|(x)	2012
+Q57357	Roman archaeological site|Roman limes|cordon|international border		0122				(ii)|(iii)|(iv)	1987
+Q179570	municipality of Tunisia	68	0670				(i)|(ii)|(iii)|(v)|(vi)	1988
+Q173148	World Heritage Site|human settlement|island	112		Aegean Sea			(ii)|(iii)|(iv)|(vi)	1990
+Q5724	archaeological site|city|sacred place	81					(ii)|(iii)|(vi)	1982
+Q200200	ancient city|archaeological site|human settlement		-2499	Tigris			(iii)|(iv)	2003
+Q29317	ancient city|archaeological site|township of Myanmar		0200				(iii)|(iv)|(vi)	1996
+Q118388	basin|desert|graben|valley	-85						
+Q569766	big city|city	622	-0700				(iii)|(iv)	2000
+Q180773	ancient city|archaeological site|architectural landmark		-3999				(i)|(ii)|(iii)|(iv)	
+Q172613	archaeological site|historic site				1.78528e+06		(i)|(ii)|(iii)|(iv)|(vi)	1987
+Q214944	Neolithic settlement|tell	760	-9999				(i)|(ii)|(iv)	2011
+Q49650	lake	16						
+Q223589	national park		1925				(vii)|(viii)|(x)	1979
+Q171857	fort		1565	Yamuna	1.41e+06		(iii)	1983
+Q145165	IBRA bioregion|WWF ecoregion|bioregion|desert	353						
+Q133575	Stone Age site|cave with prehistoric art|monument	95	-13000					1985
+Q9213	pilgrimage site	150					(iii)|(vi)	1997
+Q179883	archipelago|car-free place	926		Tyrrhenian Sea	200000	UTC+01:00|UTC+02:00	(viii)	2000
+Q39651	ice cap	1651				UTC±00:00		
+Q106187	columnar basalt|landform						(vii)|(viii)	1986
+Q209217	archaeological site|city|ruins						(i)|(iii)|(vi)	1986
+Q192764	national park		1905				(ix)|(x)	1985
+Q45957	fort						(ii)|(iii)|(vi)	2007
+Q11812902	transboundary protected area		1940		430219		(vii)|(x)	1960
+Q44112	Greek colony|archaeological site|emporium|municipality of Libya|polis		-0629	Mediterranean Sea			(ii)|(iii)|(vi)	1982
+Q189616	archaeological site|cave				1.741e+06		(i)|(iii)|(vi)	1983
+Q188754	Japanese castle|hirayamajiro		1346	Senba River	1.53211e+06		(i)|(iv)	1956
+Q180274	Catholic cathedral|collection|minor basilica		1145				(i)|(ii)|(iv)	1979
+Q188315	comune of Italy	8						
+Q33561	city in the United States|county seat	1089	1869					
+Q156093	archaeological site						(iii)|(vi)	1980
+Q216243	archaeological site|mahavihara|university						(iv)|(vi)	2016
+Q187635	minaret				3.43958e+06		(iv)	1993
+Q192493	island|prison island	17		Atlantic Ocean		UTC+02:00	(iii)|(vi)	1999
+Q213360	mountain	1085						
+Q11259	neighborhood|square		1905					
+Q487070	Ortsteil|former municipality|municipality in Germany	63		Elbe|Mulde				
+Q3125051	monastic community|rock formation						(i)|(ii)|(iv)|(v)|(vii)	1988
+Q47721	Candi|Hindu temple|cultural heritage of Sleman Regency		0850				(i)|(iv)	1991
+Q274131	National Park of the United States|national park		1947		702319		(ix)|(viii)|(x)	1987
+Q186312	World Heritage Site|archaeological site|fortress						(iii)|(iv)|(vi)	2001
+Q193325	ancient city|archaeological site						(ii)|(iii)	1999
+Q216059	Chinese AAAAA-rated tourist attraction|mountain	1545					(i)|(ii)|(iii)|(iv)|(v)|(vi)|(vii)	1987
+Q189849	national park of Croatia		1949		946825		(ix)|(vii)|(viii)	1979
+Q61750	ancient city|archaeological site			Tiwanaku River			(iii)|(iv)	2000
+Q192522	Neolithic settlement|proto-city|tell		-7499				(iii)|(iv)	2012
+Q188938	island			Gulf of Gabès|Libyan Sea|Mediterranean Sea		UTC+01:00	(v)	2012
+Q31347	architectural ensemble						(i)|(iii)|(iv)|(vi)	2014
+Q26732	archaeological site	467		Tungabhadra River			(i)|(iii)|(iv)	1986
+Q231140	A-bombed building|memorial		1915	Motoyasu River	1.98162e+06		(vi)	1996
+Q189648	tomb				1.081e+06		(ii)|(iv)	1993
+Q191763	Itsukushima shrine|Munakata shrine|Shikinaisha|Shinto shrine		0593	Ōno Seto			(i)|(ii)|(iv)|(vi)	1996
+Q172125	Paleolithic site|cave with prehistoric art							1940
+Q191504	Roman city|ancient city|archaeological site|emporium		-0700	Mediterranean Sea			(i)|(ii)|(iii)	1982
+Q4513	Buddhist temple						(i)|(ii)|(iii)|(iv)|(vi)	2002
+Q2620036	archaeological site|geoglyph		-0199				(i)|(iii)|(iv)	1994
+Q192518	city|urban area	683	1600				(iii)|(iv)|(v)	1982
+Q190048	archaeological site|mountain range	2158					(i)|(iii)|(vii)|(viii)	1982
+Q309436	heritage|ksar						(iv)|(v)	1987
+Q970717	valley			Bagmati River			(iii)|(iv)|(vi)	1979
+Q1217726	protected area		1959				(iv)|(ix)|(vii)|(viii)|(x)	1979
+Q125445	Chinese AAAAA-rated tourist attraction|temple						(i)|(ii)|(iii)	1961
+Q106636	big city|city of Iran	1061					(ii)|(iii)|(iv)|(v)	2004
+Q5595	World Heritage Site|spit			Baltic Sea|Curonian Lagoon			(v)	2000
+Q4519	architectural landmark|cultural property|square		1598				(i)|(v)|(vi)	1932
+Q181427	archaeological site						(i)|(ii)|(iii)|(iv)	2015
+Q184534	historic building|mosque		1575				(i)|(iv)	2011
+Q177397	airbase|military restricted area|region associated with claims of anomalous or paranormal events	1360.33						
+Q152225	administrative territorial entity|atoll|reef island	25		Pacific Ocean		UTC+12:00	(iv)|(vi)	2010
+Q4523	ancient city|archaeological site						(iii)|(iv)	1979
+Q36034	Chinese AAAAA-rated tourist attraction|mountain range|protected area	1864					(ii)|(vii)|(x)	1990
+Q189657	Ramsar site|Ramsar site in Australia|national park of Australia|natural cultural heritage site	53	1979		208056			2007
+Q650872	body of water|inland delta|river delta|watercourse			Okavango River			(ix)|(vii)|(x)	2022
+Q230025	ancient city|archaeological site|cultural property						(i)|(ii)|(iii)|(iv)	1931
+Q131354	island	41		San Francisco Bay		UTC−08:00		1986
+Q184429	river delta	2	1991				(vii)|(x)	1991
+Q4520	national park of Indonesia	81	1980				(vii)|(x)	1991
+Q46650	island	260		Pacific Ocean		UTC+10:00	(vii)|(viii)	1997
+Q43286	World Heritage Site|archaeological site|architectural ensemble|building complex|cave						(i)|(ii)|(iii)|(iv)|(v)|(vi)	1961
+Q5908	church building|imperial cathedral		0801		105600		(i)|(ii)|(iv)|(vi)	1978
+Q767128	desert in Iran						(vii)|(viii)	2016
+Q193369	castle|hillfort	250	0900		2.55124e+06			
+Q830054	Eastern Orthodox cathedral|architectural heritage monument|church building		1011				(i)|(ii)|(iii)|(iv)	1990
+Q76122	salt pan|solonchak	3661						
+Q192243	World Heritage Site|building complex|meridian arc|nonbuilding structure						(ii)|(iii)|(vi)	2005
+Q189417	Roman road		-0311				(i)|(iii)|(iv)|(v)|(vi)	2006
+Q178124	island|protected area	155	1963	Atlantic Ocean		UTC±00:00	(ix)	2008
+Q9278	archaeological site					UTC+02:00	(iv)	1979
+Q192666	biosphere reserve|forest|nature reserve|old-growth forest	175	1932				(ix)|(x)	1979
+Q272680	archaeological site|city|populated place in Syria	850					(i)|(iii)|(vi)	1980
+Q188694	Ancient Greek archaeological site|polis						(iii)	1992
+Q194504	World Heritage Site|basilica|minor basilica		0327				(iv)|(vi)	2012
+Q220289	National Park of the United States|national park		1919		5.52074e+06		(ix)|(vii)|(viii)|(x)	1979
+Q466614	ancient city|archaeological site|city-state						(ii)|(iii)|(iv)|(vi)	1985
+Q134905	World Heritage Site|island|natural cultural heritage site|protected area	245	1992	Coral Sea		UTC+10:00	(ix)|(vii)|(viii)	1992
+Q4516	national park of Indonesia|nature reserve	64	1997				(ix)|(viii)|(x)	1999
+Q193241	city in Bulgaria|municipality seat|seaside resort|spa town	30		Black Sea				
+Q6396	Natura 2000 site|endorheic lake|steppe lake	115.45						1979
+Q457304	faunal reserve		1992				(x)	1996
+Q272153	human settlement	349					(ii)|(iii)|(iv)	1982
+Q107370	escarpment|graben|national park	120	2004	Öxará			(iii)|(vi)	2004
+Q36160	District-level town of Vietnam|big city|port city|provincial city of Vietnam	13					(ii)|(v)	1999
+Q48472	archaeological site|city						(ii)|(iii)	2005
+Q215992	national park|national park of Argentina	919	1937		688837		(vii)|(viii)	1981
+Q33200	cathedral|congregational mosque		0786		1.9233e+06			1882
+Q207917	mountain	2150					(i)|(iii)|(iv)	1987
+Q4132	palace						(i)|(ii)|(iii)	1998
+Q715124	Natura 2000 site|national park|protected area	2278	1954				(vii)|(viii)	2007
+Q1075023	national park		1973				(ix)|(vii)|(x)	1984
+Q500189	city	408					(iii)|(iv)|(vi)	2017
+Q237128	National Park of the United States|archaeological site|architectural ensemble|national park|unincorporated community		1906		16656		(iii)	2021
+Q679891	biosphere reserve|national park|national park of Senegal		1954				(x)	1981
+Q273456	river						(iii)|(iv)	1980
+Q40729	protected area|wadi	800					(iii)|(v)|(vii)	2011
+Q242176	island	1935		Pacific Ocean		UTC+09:00	(ix)|(vii)	1993
+Q546010	ancient city|archaeological site|fortress			Akhurian River			(ii)|(iii)|(iv)	2016
+Q374096	Paleolithic site|cave with prehistoric art						(i)|(iii)	2014
+Q501344	biosphere reserve|national park|park		1968				(ix)|(x)	1983
+Q208559	architectural ensemble|cultural property|heritage site in Sweden|museum|royal palace		1699				(iv)	1935
+Q114295	nuclear power plant		1966	Pacific Ocean				
+Q308893	national park		1938				(ix)|(x)	1980
+Q210610	palace						(ii)|(iii)|(iv)	2013
+Q244347	Communes d'arrondissement of Senegal|World Heritage Site|car-free place|cultural heritage|island|urban area			Atlantic Ocean			(vi)	1978
+Q331099	city|island|urban area			Mozambique Channel			(iv)|(vi)	1991
+Q211778	lake area|mountain range|region	978	1951				(ii)|(v)|(vi)	2017
+Q189764	Roman aqueduct|Roman bridge|ancient Roman structure|arch bridge|stone bridge		0050				(i)|(iii)|(iv)	1997
+Q2211959	national park		1976				(vii)	1979
+Q459629	Roman city|archaeological site|commune of Algeria						(ii)|(iii)|(iv)	1982
+Q212214	coast			Gulf of Salerno			(ii)|(iv)|(v)	1997
+Q331603	archaeological site|cave with prehistoric art|rock shelter						(iii)|(v)	2003
+Q215897	Category:Hohenstaufen castles in Southern Italy|Italian national museum|Museum of the Italian Ministry of Culture|historical park museum|military museum building		1240		214139		(i)|(ii)|(iii)	1996
+Q212065	archaeological site|building complex|castle|museum		1200					1993
+Q27356	archaeological site						(ii)|(iii)	2008
+Q151963	neighborhood	39		Spree			(ii)|(iv)	1999
+Q328488	national park|tropical forest		1970				(ix)|(vii)	1984
+Q324394	census town of India|city						(iii)|(vi)	1998
+Q213237	peninsula	69		San Matías Gulf			(x)	2012
+Q151545	building|castle|museum	393	1067				(iii)|(vi)	1999
+Q138986	city|human settlement|urban area	114					(ii)|(iv)|(vi)	1993
+Q9900	municipality of the Netherlands|polder	-4					(i)|(ii)|(iv)	1999
+Q1244337	national park		1962				(ix)|(vii)|(viii)|(x)	1994
+Q202494	summit level canal	0					(i)|(ii)|(iv)|(vi)	1996
+Q309426	monument|tomb						(i)|(iii)|(iv)|(vi)	2001
+Q834893	national park|protected area		1964		129208		(ix)|(x)	2007
+Q71279	Ordensburg|architectural heritage monument|castle		1270				(ii)|(iii)|(iv)	1997
+Q106934	Catholic cathedral|legal person		1220				(i)|(ii)	1998
+Q205711	World Heritage Site|archipelago|historic site|protected area of Russia			Onega Bay				1992
+Q22720	Catholic cathedral|imperial cathedral		1080				(ii)	1981
+Q532440	national park		1984				(ix)|(x)	1987
+Q192201	valley			Danube			(ii)|(iv)	2000
+Q156011	World Heritage Site|group|protected area						(ix)	2007
+Q215419	nuclear power plant		1972					
+Q214827	archaeological site						(iv)|(vi)	1980
+Q649384	cave						(i)|(iii)	1987
+Q215429	grand place	30					(ii)|(iv)	2002
+Q4111	Chinese AAAAA-rated tourist attraction|national park|protected area|valley		1978				(vii)	1990
+Q457324	national park		1970				(x)	1980
+Q235878	national park		1971				(x)	1985
+Q201428	château|museum						(ii)|(vi)	2009
+Q394443	human settlement						(i)|(iii)|(vi)	1982
+Q201013	built structure|seed bank|subterranea		2006					
+Q744420	Catholic cathedral		1221				(ii)|(iv)|(vi)	1885
+Q205367	château		1519				(i)	2000
+Q223385	cave|cave with prehistoric art			Pinturas River	8000		(iii)	1993
+Q457362	Roman city|archaeological site						(iii)|(iv)	1982
+Q275	cantilever bridge|railway bridge|steel bridge|truss bridge		1890				(i)|(iv)	1973
+Q205952	National Park of the United States|national park|unincorporated community		1916		589775		(viii)	1987
+Q46242	castle|château|museum|official residence|palace|tourist destination		1279					
+Q752091	Hindu temple|ruins|sun temple		1201		3.57635e+06		(i)|(iii)|(vi)	1984
+Q189358	castle|fort|museum|palace	16					(iv)	2000
+Q189113	archaeological site						(vi)	1968
+Q503835	national park	425	1979				(ix)|(x)	1988
+Q372093	National Park of the United States|national park		1938	Pacific Ocean	91863		(ix)|(vii)	1981
+Q2268839	game reserve		1922				(ix)|(x)	1982
+Q504315	national park|park		1969				(vii)|(x)	1978
+Q844417	city|urban area						(ii)|(iii)|(vi)	2000
+Q308807	archaeological site|mountain range						(iii)	1985
+Q503823	pyramid|tomb		1495				(ii)|(iii)|(iv)	2004
+Q333661	Illinois state park|ancient city|archaeological site		1050				(iii)|(iv)	1982
+Q235884	dead-end railway station|last station|station located on surface						(ii)|(iv)	2004
+Q464913	town|urban area	1	1462				(ii)|(iii)|(vi)	2009
+Q61757	Natura 2000 site|biosphere reserve|national parkin Hungary		1973				(iv)|(v)	1979
+Q181123	compound						(i)|(ii)|(iii)|(iv)|(vi)	1989
+Q244952	abbey church|church building|minor basilica		1401				(i)|(ii)	1980
+Q4521	protected area of Indonesia						(ix)|(vii)|(x)	2004
+Q4187	protected area						(vii)	1992
+Q207692	Chinese AAAAA-rated tourist attraction|mountain range	2158					(iii)|(vi)|(vii)|(x)	1999
+Q272771	archaeological site						(i)|(ii)|(iii)|(iv)|(ix)|(x)	2015
+Q464942	national park|protected area		1981				(ix)|(vii)	1986
+Q679979	monastery		1106				(iv)	1994
+Q1256501	cultural property|mosque						(ii)	1932
+Q272781	cultural heritage|monastery		1502		1.09628e+06		(iii)|(vi)	1983
+Q242681	National Park of the United States|biosphere reserve|national park|show cave|unincorporated community		1941		1.92454e+06		(vii)|(viii)|(x)	1981
+Q19053	archaeological site|fortified town	310			145939		(ii)|(iii)|(iv)	1989
+Q391406	Hindu temple|archaeological site						(ii)|(iii)	1999
+Q846967	archaeological site|artificial island|ruins						(i)|(iii)|(iv)|(vi)	1974
+Q501638	montane ecosystem|mountain range|natural landscape	766					(ix)	1993
+Q4531	city of Iran	1784					(ii)|(iii)|(iv)	2005
+Q166479	National Scenic Area|World Heritage Site|archipelago|national nature reserve	430		Atlantic Ocean		UTC±00:00	(iii)|(ix)|(v)|(vii)|(x)	1986
+Q1292442	fortress|fortress island|sea fort		1748	Gulf of Finland			(iv)	1991
+Q245151	ancient lighthouse|fortified tower|lighthouse|monument		0100	Atlantic Ocean			(iii)	2013
+Q214007	archaeological site	1489					(i)|(iii)|(vi)	2001
+Q391215	Carthaginian archaeological site|Roman archaeological site|ancient city		-0399				(ii)|(iii)|(iv)|(vi)	1997
+Q391338	dark-sky preserve|national park|national park of Canada		1922				(ix)|(vii)|(x)	1983
+Q4580	group|transboundary site						(iv)|(v)	2011
+Q272768	atoll	16		Indian Ocean		UTC+04:00	(ix)|(vii)|(x)	2010
+Q60977	human settlement|municipality of Lebanon	950					(iii)|(iv)	1984
+Q210957	Roman archaeological site|Roman limes|defense line|defensive wall		0142				(ii)|(iii)|(iv)	1987
+Q208181	English country house|garden|historic house museum	95	1705				(ii)|(iv)	1987
+Q277540	archaeological site		0850				(i)|(iii)	1986
+Q272777	Italian national museum|Museum of the Italian Ministry of Culture|Roman villa|archaeological park|archaeological site				77557		(i)|(ii)|(iii)	1999
+Q379759	island|limestone island	33		Pacific Ocean		UTC−08:00	(vii)|(x)	1988
+Q622865	municipality of Hungary						(v)	1987
+Q332381	national park	57	1980					
+Q188617	botanical garden|garden|herbarium|higher education institution			River Thames			(ii)|(iii)|(iv)	1987
+Q273834	Chinese AAAAA-rated tourist attraction|grotto						(i)|(ii)|(iii)	1961
+Q210055	arch bridge|stone bridge						(ii)|(iv)	2007
+Q45949	Khmer temple|archaeological site|disputed territory		0893				(i)	2008
+Q156439	island	412		Lake Constance			(iii)|(iv)|(vi)	2000
+Q241074	atoll|island|natural heritage|territory|unincorporated area	6		Atlantic Ocean		UTC−02:00	(ix)|(vii)|(x)	2001
+Q867586	archaeological site|city	820					(ii)|(iii)	2015
+Q207193	island	218		Atlantic Ocean		UTC±00:00	(iii)|(iv)	1996
+Q328577	biosphere reserve|national park	218	1972				(vii)|(x)	1982
+Q207985	Catholic cathedral		1195				(i)|(iv)	1998
+Q273195	National Park of the United States|national park|show cave		1930		183835		(vii)|(viii)	1995
+Q190060	citadel|protected area						(ii)|(iv)	2011
+Q306201	laccolith|mountain	1558	1906					
+Q463141	European Diploma of Protected Areas|Ramsar site|Special Area of Conservation|Special Protection Area|biosphere reserve|national park|protected area|site of community importance		1969	Guadalquivir|Gulf of Cádiz	392958		(ix)|(vii)|(x)	2007
+Q464004	National Park of the United States|national park		1934		860960		(ix)|(vii)|(viii)|(x)	1983
+Q474205	national park of Argentina|park	276	1934		1.5e+06			
+Q948975	road network						(ii)|(iii)|(iv)|(vi)	2014
+Q506511	national park		1990				(ix)|(vii)|(x)	1985
+Q651314	national park		1962				(ix)|(vii)|(viii)	1983
+Q500367	archaeological site|human settlement|qal'a		1007				(iii)	1980
+Q4522	national park of Indonesia	66	1980				(vii)|(x)	1991
+Q4706020	castle|cultural property	2131					(iii)	2003
+Q539518	national park|park	21	1976				(ix)|(x)	1989
+Q477157	palace						(ii)|(iii)|(iv)	1997
+Q696193	ancient city|archaeological site|cultural property|locality						(i)|(ii)|(iii)|(iv)	2024
+Q318181	conservation area		1966				(iii)	2007
+Q535577	human settlement|urban area						(iii)|(iv)|(v)	1990
+Q799893	human settlement						(iv)	1985
+Q748211	cadastral area in the Czech Republic|city center|municipal part of the Czech Republic|urban area	206		Vltava				1992
+Q379652	ancient city|archaeological site|polis						(iii)|(iv)	2016
+Q750245	square				1.178e+06		(i)|(ii)|(iv)|(vi)	1987
+Q824602	national park		1999				(vii)|(x)	1999
+Q28061	canyon|valley	3224		Grande River			(ii)|(iv)|(v)	2003
+Q1025825	ancient city|archaeological site						(ii)|(iii)|(iv)	2014
+Q115253	archaeological site|castle|cultural property|shrine	2200					(i)|(ii)|(iii)|(iv)|(vi)	1937
+Q593870	World Heritage Site|forest|natural landscape|old-growth forest|protected area of Russia		1995				(ix)|(vii)	1995
+Q392365	village						(iv)|(v)	1993
+Q276553	Eastern Orthodox church building|museum		0980				(ii)|(iii)	1979
+Q1130112	cultural heritage|group						(iii)|(vi)	1999
+Q464695	cultural heritage|fortress						(ii)|(iii)	1979
+Q61535	national park		1974				(ix)|(vii)|(viii)|(x)	2007
+Q385086	archaeological site	156	-7000				(ii)|(iii)|(iv)	1998
+Q209643	castle				196000		(ii)|(iv)	2000
+Q854672	ancient city|archaeological site|human settlement						(ii)|(iii)	2007
+Q208633	arched bridge|built-on bridge|deck arch bridge|footbridge|stone bridge		1335					
+Q318422	archaeological site						(i)|(ii)|(iv)	1981
+Q259313	railway line/metro line						(ii)|(iv)	1998
+Q816437	Neolithic settlement|archaeological site		-3179					1999
+Q391229	cathedral|church building		1101				(ii)|(iv)	2009
+Q210678	church building|cultural property|stave church		1101				(i)|(ii)|(iii)	1979
+Q330095	hill|impact crater						(viii)	2005
+Q308805	Chinese AAAAA-rated tourist attraction|grotto						(i)|(ii)|(iii)|(iv)	1961
+Q155743	architectural heritage monument|hall|multi-purpose hall		1911				(i)|(ii)|(iv)	2006
+Q379080	fort|historic landmark|national park		1593				(ii)|(v)	1970
+Q647777	World Heritage Site|national park|natural heritage		1981				(vii)|(viii)|(x)	2017
+Q319296			0710				(i)|(iii)	1979
+Q924276	nature reserve|strict nature reserve|transboundary protected area		1944				(ix)|(x)	1981
+Q120314	Chinese AAAAA-rated tourist attraction|mountain	3061					(ii)|(iii)|(iv)|(vi)	2009
+Q339503	Irish passage tomb|tomb							
+Q817250	archaeological site		0800				(iii)|(iv)	1987
+Q645157	Cistercian monastery		1150				(i)|(iv)	1921
+Q679568	World Heritage Site|national park|national park of Australia|natural cultural heritage site|suburb/locality of Australia	287	1987				(vii)|(viii)	2007
+Q740104	archaeological site|cultural heritage						(ii)|(iii)|(iv)	2005
+Q214924	waterfall	369						
+Q209705	Lutheran cathedral		1201				(ii)|(iv)	1995
+Q205558	castle ruin	610	1200					1993
+Q211962	World Heritage Site|architectural landmark|lavra		1337				(ii)|(iv)	1993
+Q1405154	strict nature reserve of Madagascar		1991				(vii)|(x)	1990
+Q605897	biosphere reserve|national park						(vii)|(x)	1988
+Q1353292	national park		2008				(viii)	2019
+Q505617	archaeological museum|archaeological park|archaeological site|museum|museum of a public entity|villa urbana				77721		(i)|(ii)|(iii)	1997
+Q471765	ancient city|archaeological site|planned community|summer capital						(ii)|(iii)|(iv)|(vi)	2012
+Q500376	cave|show cave	378					(vii)|(viii)	1999
+Q43277	citadel		-0500				(ii)|(iii)|(iv)|(v)	1966
+Q28361	cay|reef			Caribbean Sea		UTC−06:00	(ix)|(vii)|(x)	1996
+Q153430	architectural ensemble|kontor|neighborhood						(iii)	1979
+Q46313	castle|palace						(ii)|(iv)	1987
+Q500397	national park of Uganda		1991				(vii)|(x)	1994
+Q393841	abandoned village|archaeological site						(iii)|(iv)|(v)	2011
+Q877609	county-level city of China	2400						
+Q210280	waterfall			Jökulsá á Fjöllum				
+Q9468	archaeological site|human settlement						(iii)|(iv)	2014
+Q733676	national park of Senegal		1971				(vii)|(x)	1981
+Q38519	waterfall			Hvítá				
+Q755514	archaeological site|hypogeum						(iii)	1980
+Q390028	archaeological site|heritage site|legislative building		1753		3.0426e+06		(vi)	1979
+Q508634	collection|observatory		1738				(iii)|(iv)	2010
+Q724484	archaeological site|historical region|oasis|valley						(ii)|(iii)|(v)	1982
+Q46069	mausoleum		1400				(i)|(iii)|(iv)	2003
+Q16648	mountain	1097					(viii)	2003
+Q391391	national park|national park of Canada		1976				(vii)|(viii)	1978
+Q870258	archaeological site|highland|megalith|plain|plateau	1200					(iii)	2019
+Q277576	World Heritage Site|massif	1701					(ix)|(vii)	2010
+Q603622	World Heritage Site|architectural landmark|kremlin						(ii)|(iii)|(iv)	2000
+Q155188	fort			Kahan River			(ii)|(iv)	1997
+Q267394	World Heritage Site|national park|natural heritage		1979				(iii)	1991
+Q3046409	botanical garden|herbarium	33	1859		4e+06		(ii)|(iv)	2015
+Q122082	biosphere reserve		1948				(x)	1975
+Q202845	national park		1887				(vi)|(vii)|(viii)	1990
+Q251999	World Heritage Site|indigenous cultural heritage site|national park of Australia|natural cultural heritage site	812	1958		270000		(v)|(vi)|(vii)|(viii)	1987
+Q217449	cultural landscape|valley			Orcia			(iv)|(vi)	2004
+Q457453	museum building|villa		1930				(ii)|(iv)	1995
+Q746063	Giardino all'italiana|Italian national museum|Museum of the Italian Ministry of Culture|fountain|historical park museum|palazzo museum|religious museum|villa				139855		(i)|(ii)|(iii)|(iv)|(vi)	2001
+Q501833	natural monument|paleontological site	151					(viii)	2005
+Q464904	Chinese AAAAA-rated tourist attraction|archaeological site|city						(ii)|(iii)|(iv)|(vi)	1961
+Q650546	escarpment|protected area	323					(v)|(vii)	1989
+Q32378	Carthaginian archaeological site						(ii)|(iii)	1997
+Q86486	blue hole|natural monument							1996
+Q257598	national park|national park of Canada		2005				(vii)|(viii)	1987
+Q826452	cadastral area in the Czech Republic|municipal part of the Czech Republic	505					(ii)|(iv)	1998
+Q27985	archaeological site						(iii)|(iv)	1993
+Q753383	archaeological site|architectural ensemble		-3599				(iv)	1980
+Q873358	Chinese AAAAA-rated tourist attraction|geopark|mountain	1817	2008				(vii)	2008
+Q270725	World Heritage Site|architectural landmark|eastern orthodox monastery		1524				(i)|(iv)|(vi)	2004
+Q499517	château						(i)|(iii)|(iv)	1985
+Q838928	national park of Uganda|park		1991				(vii)|(x)	1994
+Q752181	biosphere reserve|nature reserve		1982				(ix)|(vii)|(viii)|(x)	2019
+Q839603	national park		1979				(ix)|(vii)|(viii)|(x)	1983
+Q4991540	ecosystem|plain|region			Lake Victoria				
+Q877391	municipality of Tunisia	98					(ii)|(iii)|(vi)	2024
+Q458167	archaeological site|hill|human settlement	1468					(iii)|(iv)|(vi)	2001
+Q156292	architectural ensemble						(ii)|(iv)	1984
+Q1010335	cultural landscape|mountain	2450					(iv)|(vi)	2015
+Q651278	Chinese AAAAA-rated tourist attraction|archaeological site						(i)|(ii)|(iii)	1999
+Q695229	group of structures or buildings|historic site						(ii)|(iii)	1987
+Q10428494	fortification system						(ii)|(iii)	2013
+Q1100964	quarter|urban area						(i)|(v)|(vi)	1979
+Q390264	national park of Peru		1973				(ix)|(x)	1987
+Q157886	former administrative territorial entity|monastery|museum		1147				(ii)|(iv)	1993
+Q156308	English garden|park		1815				(i)|(iv)	2004
+Q685357	human settlement|submerged settlement						(iv)|(vi)	2009
+Q740288	city of Colombia|municipality of Colombia	10	1537	Magdalena River			(iv)|(v)	1995
+Q239028	mansion		1905				(i)|(ii)	2006
+Q750190	cultural landscape|mountain|natural monument	1110					(iii)|(vi)	2009
+Q4399	architectural landmark|bazaar|cultural property						(ii)|(iii)|(iv)	2010
+Q138170	World Heritage Site|group of protected areas		1982				(iii)|(iv)|(ix)|(vi)|(vii)|(viii)|(x)	1982
+Q156675	Catholic pilgrimage church|church building		1754				(i)|(iii)	1983
+Q499552	Paleolithic site						(iii)|(vi)	1961
+Q157550	abbey|monastery|museum		0764				(iii)|(iv)	1991
+Q155699	benedictine abbey		0720				(ii)|(iv)	1983
+Q138388	mausoleum|mazar|mosque|pilgrimage site|shrine		1481					
+Q38417	rapids|waterfall							
+Q339489	archaeological complex|archaeological site		-3499	River Boyne			(i)|(iii)|(iv)	1993
+Q662102	kasbah|medina quarter|urban area						(ii)|(v)	1992
+Q741636	island|national park		1992	Pacific Ocean			(ix)|(x)	2005
+Q726842	frazione|mill town	180	1877				(iv)|(v)	1995
+Q289466	provincial park of Canada		1955				(vii)|(viii)	1979
+Q762570	concession|disputed territory|naval base	17	1898					
+Q575976	coast						(viii)	2001
+Q277683	World Heritage Site|hoodoo|natural monument of Russia|protected area of Russia	321	1995				(viii)	2012
+Q650710	national park|protected area of Bolivia	252	1979				(ix)|(x)	2000
+Q1353565	cultural landscape						(iv)|(v)	2007
+Q503387	group|museum		0013				(ii)|(iii)	1979
+Q213988	cemetery		1920				(ii)|(iv)	1994
+Q143042	monastery		1186				(i)|(ii)|(iv)|(vi)	1986
+Q8032604	transboundary site						(iii)|(iv)	2013
+Q48153	national park		2001				(ix)|(x)	2001
+Q1025100	historical park of Thailand						(iii)	1991
+Q1408909	fortress						(iv)	1987
+Q174779	cultural heritage|former convent|shrine of Our Lady		1386		288386		(i)|(ii)	1983
+Q750675	group of structures or buildings						(ii)|(iv)	1999
+Q1974274	floristic kingdom|heritage site						(ix)|(x)	2004
+Q278512	WWF ecoregion|natural heritage|savanna						(ix)|(x)	2001
+Q732554	World Heritage Site|archaeological site						(iii)	1985
+Q936884	architectural ensemble|ironworks|working life museum		1681	Åmänningen			(iv)	1974
+Q643063	World Heritage Site|natural cultural heritage site|rainforest		1986				(ix)|(viii)|(x)	2007
+Q180376	architectural landmark|cultural icon|sign|tourist attraction	491	1923					1973
+Q688060	region						(iii)|(iv)|(v)	2007
+Q564321	rainforest						(ix)|(x)	2007
+Q375634	nature reserve|protected forest		1978				(ix)|(x)	1988
+Q943327	archaeological site						(iii)	2004
+Q301815	museum|tomb						(i)|(iii)|(iv)	1979
+Q650531	tomb						(i)|(iii)	1985
+Q575035	protected area|temperate coniferous forest|triad						(ix)|(vii)|(viii)|(x)	2003
+Q927108	nature park						(ix)|(vii)|(x)	1999
+Q945514	group of protected areas						(iii)|(vi)	1979
+Q311341	big city|cultural landscape						(iii)|(iv)|(v)	2018
+Q584125	archaeological site						(iii)	1992
+Q733069	monastery		1687				(ii)	1993
+Q4107	Chinese AAAAA-rated tourist attraction|protected area						(vii)	1992
+Q742315	World Heritage Site|national park|natural heritage	265	1939				(vii)|(x)	1986
+Q588009	lonja						(i)|(iv)	1996
+Q305169	national park	4	1974				(ix)|(x)	1994
+Q332800	protected area						(v)	2013
+Q677659	archaeological site						(iv)	2023
+Q1639468	Man and the Biosphere Programme|national park		1949				(ix)|(vii)	1997
+Q743108	village						(ii)|(iv)|(vi)	2001
+Q2592613	old town|urban area		1975				(ii)	1998
+Q926729	municipality of Brazil	5	1597					
+Q435829	church building|wooden church	117	1763				(iv)	1994
+Q158822	aqueduct|navigable aqueduct	63.6					(i)|(ii)|(iv)	2009
+Q1026431	neighborhood	56	1863				(iv)|(vi)	2023
+Q573656	Schloss|architectural landmark|museum|parliament building	45						2024
+Q252814	pueblo						(iv)	1960
+Q55619850	group of structures or buildings						(i)|(ii)|(vi)	2016
+Q16064866	group of settlements						(ii)|(iii)	2021
+Q223649	waterfall	2925						
+Q747875	World Heritage Site|natural cultural heritage site|protected area		1981				(iii)|(viii)	1981
+Q2727469	World Heritage Site|ancient city|archaeological site	2					(iii)|(iv)|(v)	2013
+Q12193567	archaeological site						(iii)|(vi)	2015
+Q593147	Cistercian monastery|cultural heritage		1187		193881		(i)|(ii)|(iv)	1907
+Q837627	group of structures or buildings		1280				(i)|(iii)|(iv)	1986
+Q844427	archaeological park						(iii)|(iv)|(v)|(vi)	2004
+Q155495	World Heritage Site|protected area|protected area of Russia						(x)	1998
+Q917369	national park of Peru		1975				(vii)|(viii)	1985
+Q206219	citadel|geographical feature						(ii)|(iii)|(vi)	2010
+Q672241	waterfall							
+Q2605019	national park		1977				(iii)|(vi)|(vii)|(x)	
+Q1077596	national park		1980				(ix)|(vii)|(x)	1984
+Q696803	archaeological site|mine|monument						(i)|(ii)|(iii)|(iv)	1997
+Q162052	museum|palace	943	1870					2025
+Q495501	mountain|mountain range	1638					(iii)|(vii)	2000
+Q46275	archipelago						(ix)|(x)	1998
+Q787425	National Monument of the United States|marine protected area		2006				(iii)|(ix)|(vi)|(viii)|(x)	2010
+Q7293002	stepwell						(i)|(iv)	2014
+Q849318	WWF ecoregion|island group	1130		Pacific Ocean			(ix)|(vii)|(x)	2016
+Q2914326	Roman amphitheatre		0238				(iv)|(vi)	1979
+Q842328	archaeological site|cultural property						(iii)|(vi)	1996
+Q4243	Sufi lodge|architectural ensemble|cultural property|imamzadeh|mausoleum						(i)|(ii)|(iv)	2010
+Q282275	archaeological site|architectural ensemble							
+Q753895	archaeological site						(iii)|(iv)	1992
+Q575398	group of protected areas						(ix)|(vii)|(viii)|(x)	1990
+Q48108	nature area|valley	138					(iv)	1999
+Q1139084	architectural heritage monument|old town|urban area						(ii)|(vi)	1980
+Q797120	archaeological site						(iii)|(iv)	1999
+Q828412							(iv)	1999
+Q471717							(iii)|(iv)	2008
+Q25495	irrigation canal						(v)	2006
+Q1046818	Chinese AAAAA-rated tourist attraction|Chinese garden						(ii)|(iv)	1994
+Q589634	architectural ensemble						(iii)|(iv)|(vi)	2001
+Q48608	national park		1980				(ix)|(vii)|(x)	1981
+Q581641	community health center|former hospital|group of structures or buildings|historic site|mosque						(i)|(iv)	1985
+Q843147	biosphere reserve|faunal reserve		1987				(ix)|(x)	1987
+Q904128	human settlement						(iii)|(iv)	2007
+Q606763	cultural property|mausoleum|tower						(i)|(ii)|(iii)|(iv)	2012
+Q542854	archaeological site						(iii)	2023
+Q1025339	Chinese AAAAA-rated tourist attraction|car-free place|foreign concession in China|island			South China Sea	1.02117e+07		(ii)|(iv)	2017
+Q874027	cultural heritage|group of structures or buildings						(ii)|(iv)	1994
+Q877626	architectural ensemble|group of settlements			Shō River			(iv)|(v)	1995
+Q742362	Holy Trinity column|plague column		1715				(i)|(iv)	2000
+Q482423	fortress|historic site|palace						(ii)|(iii)	1963
+Q13220079	national park		1980				(x)	1980
+Q1647948							(viii)|(x)	1997
+Q1510436	massif|mountain range	3002					(iii)|(vi)	2025
+Q598892	botanical garden		1545				(ii)|(iii)	1997
+Q495276	cemetery|mausoleum						(iii)|(iv)|(vi)	2009
+Q239748	archaeological site|cemetery|grave cairn						(iii)|(iv)	1999
+Q777882	waterfall			Seljalandsá				
+Q822842	archaeological site						(i)|(iv)|(vi)	2004
+Q573558	nature reserve|protected area		1966				(ix)|(vii)|(viii)|(x)	1983
+Q829084	archipelago			Atlantic Ocean			(v)	2004
+Q491677	waterfall							
+Q310719	protected area	18	2000				(ix)|(vii)|(x)	1999
+Q464918	Cistercian monastery|monastery		1118				(iv)	1862
+Q391496	architectural ensemble						(iv)|(vi)	2010
+Q736692	convent|cultural heritage|monastery				260871		(i)|(vi)	1910
+Q645105	cathedral|cultural property|minor basilica		0553				(ii)|(iii)|(iv)	1997
+Q11605230	cultural heritage of China|terrace						(iii)|(v)	2010
+Q938685	ancient city|archaeological site|human settlement						(iii)|(iv)	1986
+Q508040	cultural landscape|human settlement|monument						(v)|(vi)	2004
+Q211252	archaeological museum|archaeological site|city		1000				(iii)|(iv)	2003
+Q574879	group|group of structures or buildings						(ii)|(iv)|(vi)	2013
+Q595802	museum		1877		130000		(ii)|(iii)|(iv)|(vi)	2005
+Q3076575	national park|protected area		1992				(vii)|(viii)	2013
+Q936285	Catholic church building|abbey|archabbey|cathedral|minor basilica|parish church		0901				(iv)|(vi)	1996
+Q56004	abbey|monastery|religious community|royal palace		0801				(ii)|(iii)|(iv)	2014
+Q1763364	national park		1935				(i)|(iii)|(v)	1995
+Q2425839	Historical Museum of Abomey|palace						(iii)|(iv)	1985
+Q738657	commune of France	72		Gartempe			(i)|(iii)	
+Q559789	biosphere reserve						(vii)|(x)	1987
+Q849517	archaeological site|eastern orthodox monastery|historic site		1335				(ii)|(iii)|(iv)	2004
+Q828212	transboundary protected area		1932				(ix)|(vii)	2017
+Q387687							(i)|(iv)	1993
+Q391973	cathedral|minor basilica		1431				(i)|(ii)|(iv)	2000
+Q19094	architectural ensemble|heritage site						(ii)|(iv)	2008
+Q852032	minaret	940	1100					2014
+Q389269	citadel|fortified town|fortress						(ii)|(iv)	1942
+Q1144337	Chinese AAAAA-rated tourist attraction|garden						(i)|(ii)|(iii)|(iv)|(v)	1997
+Q45690	Buddhist temple						(i)|(vi)	1991
+Q909755	national park		1985				(vii)|(viii)	1999
+Q876451	archaeological site	1904					(ii)|(iii)	1998
+Q838256	World Heritage Site|architectural landmark|eastern orthodox monastery		1398				(i)|(iv)	2000
+Q277525	archaeological site|architectural ensemble						(i)|(ii)|(iii)|(iv)	2004
+Q1544213	national park		1984				(x)	2014
+Q817164	burial plot						(i)|(ii)|(iii)|(iv)|(vi)	2000
+Q1569783	astronomical observatory	77					(i)|(ii)|(iv)|(vi)	2019
+Q1643788	World Heritage Site|archaeological site|cave|cave with prehistoric art|natural monument of Russia|protected area of Russia		1965				(iii)	2025
+Q753721	cathedral|church building|minor basilica		1050				(i)|(ii)|(iii)|(vi)	1997
+Q752318	Catholic pilgrimage church|church building		1719		20246		(iv)	1994
+Q750248	monastery						(iv)|(vi)	1993
+Q422929	archaeological site						(ii)|(iii)	2010
+Q253241	Italian national museum|Museum of the Italian Ministry of Culture|archaeological park|archaeological site|museum|nuraghe				26718		(i)|(iii)|(iv)	1997
+Q903792	locality of Mexico	10	1847				(ii)|(iv)	1998
+Q754791	archaeological site	550					(iii)|(v)	2007
+Q636774	archaeological park|archaeological site|museum of a public entity				334385		(i)|(ii)|(iii)|(iv)	1997
+Q1026415	old town|urban area						(i)|(ii)	1997
+Q217447	factory|industrial heritage site|industrial landscape						(iv)	1996
+Q854267	architectural ensemble						(iii)|(iv)	2003
+Q284444	arch bridge|stone bridge		1177					1840
+Q804881	national park|park		1969				(vii)|(x)	2023
+Q833850	archaeological site|stone row							1939
+Q689454	archaeological site|defensive wall		0600				(iii)|(iv)	
+Q852433	island|raised coral atoll			Pacific Ocean			(ix)	1998
+Q718001	Chinese AAAAA-rated tourist attraction|UNESCO building site in China|architectural ensemble						(iii)|(iv)|(v)	1996
+Q828071	fjord|protected area		2003				(vii)|(viii)	2004
+Q604604	group of protected areas						(ix)|(vii)|(viii)|(x)	1979
+Q910180	Chinese AAAAA-rated tourist attraction|archaeological site|mausoleum						(i)|(iii)|(iv)|(vi)	1961
+Q639217	geotope|paleontological site						(viii)	1995
+Q1541665	Australian marine park|World Heritage Site|natural cultural heritage site|reef		2011				(vii)|(x)	2010
+Q828417	old town|urban landscape						(iv)|(v)	1991
+Q156067	architectural ensemble		1864				(ii)|(iii)|(iv)	2011
+Q461272	architectural ensemble						(i)|(ii)|(iv)|(v)	1997
+Q433634	petroglyph|rock art						(iii)	1985
+Q557337	alcázar		1200	Clamores River|Eresma	776		(i)|(iii)|(iv)	1985
+Q941412	national park of Peru		1983				(iii)|(ix)|(vii)|(x)	1990
+Q753162	group						(ii)|(iv)	2003
+Q838920	model village						(ii)|(iv)	2001
+Q19479	Rathaus		1400				(iii)|(iv)|(vi)	2004
+Q9276	building complex						(vi)	2006
+Q794643	nature reserve		1988			UTC+01:00	(ix)|(vii)|(x)	2006
+Q939033	desert						(vii)|(viii)	2024
+Q200521	hill|national park		1987				(iii)|(iv)	1999
+Q72895	group of protected areas		1984				(vii)|(viii)	1984
+Q910189	fortress						(iv)|(v)	1997
+Q832262	archaeological site	2198					(iii)|(vi)	2006
+Q1165879	border crossing|canyon|ravine	1447						
+Q157543	World Heritage Site|cultural landscape|park		1780				(ii)|(iv)	2000
+Q477051	archives		1785					
+Q920206	architectural ensemble|industrial heritage site|radio station|radio transmitter|working life museum						(ii)|(iv)	2004
+Q683110	archaeological site|buffalo jump						(vi)	1976
+Q1055749	group of structures or buildings						(ii)|(iii)|(iv)|(vi)	1998
+Q174139	archaeological site|mine		1527				(ii)|(iii)|(v)	2007
+Q1137314	region	1620					(iii)|(ix)|(v)|(vii)|(viii)	1996
+Q1129992	kitesurf spot|mountain|peninsula	556					(iii)|(vi)	2008
+Q1013465	cultural property|village	2214					(v)	2015
+Q629436	national park		1975				(viii)|(x)	1997
+Q562529	rocca						(ii)|(iv)	1963
+Q1648266	biosphere reserve|national park		1982				(vii)|(x)	1988
+Q5938	Lutheran cathedral|church building		1300				(i)|(ii)	2018
+Q1453235	valley						(ii)|(iii)|(iv)	2004
+Q914231	historic house museum|single-family detached home		1924				(i)|(ii)	1976
+Q757067	benedictine nunnery		0701				(iii)	1983
+Q2580451	group of protected areas		1990				(ix)|(x)	2012
+Q445649	neighborhood of Vilnius|old town						(ii)|(iv)	1994
+Q1135808	World Heritage Site|natural cultural heritage site|natural landscape		1988				(ix)|(vii)|(viii)|(x)	2007
+Q159070	World Heritage Site|urban area						(ii)|(iv)	2003
+Q808563	group						(ii)|(iv)	1993
+Q447441	English garden|château|heritage site|mountain park|museum						(iii)|(iv)	2013
+Q608090	cave system						(viii)	1995
+Q189934	nature reserve|tropical forest						(ix)|(x)	2000
+Q2603196	national park	189	1989				(iii)|(ix)|(x)	2018
+Q1343339	mountain range|plateau						(iii)|(ix)|(vii)	2016
+Q833781	fortification system						(i)|(ii)|(iv)	2008
+Q118618	château|palace	528	1878					2025
+Q1214318	group of structures or buildings						(ii)|(iii)|(vi)	2011
+Q1982106	group of structures or buildings						(ii)|(iii)|(iv)	2004
+Q631128	national park of Quebec|paleontological site		1985				(viii)	1999
+Q642979	group|group of structures or buildings|vernacular architecture		1300				(i)|(ii)|(iii)	1978
+Q462702	church building						(ii)|(iii)|(iv)	1985
+Q930784	garden|grove						(ii)|(v)	1943
+Q1975533	aspect in a geographic region						(iii)	1998
+Q1128366	canyon						(ix)|(vii)|(viii)|(x)	1962
+Q1123956	cultural landscape						(iii)|(v)|(vi)	1999
+Q32797097	group of structures or buildings						(iii)|(iv)	2017
+Q838264	World Heritage Site|group of structures or buildings						(i)|(ii)|(iv)	1992
+Q4115349	citadel|old town						(iii)|(iv)	1986
+Q1141003	group of structures or buildings						(v)	1980
+Q206236	citadel|tell						(iv)	2014
+Q685476	factory		1911				(ii)|(iv)	2011
+Q477462	World Heritage Site|architectural ensemble|architectural landmark|museum complex|pogost		1714				(i)|(iv)|(v)	1990
+Q1404282	archaeological site|cave|painting series						(iii)|(vi)	2006
+Q547375	group of lakes						(vii)	2012
+Q118468	cultural landscape						(iii)|(iv)	2000
+Q48605	Catholic cathedral|church building		1860				(ii)|(iv)	2011
+Q828291	national park|national park of Argentina	827	1937				(vii)|(x)	2017
+Q278908	museum|opera house		1744				(i)|(iv)	2012
+Q1356828	Important Bird Area|forest|national park		2004				(x)	2023
+Q858794	geyser							
+Q621498	cultural heritage|forest|heritage site|monument|rainforest|sacred grove						(ii)|(iii)|(vi)	2005
+Q852427	cultural landscape						(i)|(ii)|(iv)	1990
+Q588417	company town|mining community	2150					(ii)	2006
+Q629902	nature reserve						(x)	2006
+Q726803	old town|urban area						(ii)|(iv)	1996
+Q122026	industrial heritage site|mine		1847				(ii)|(iii)	2001
+Q1354033	castle|fortified palace|monument|palace|parliament building						(iv)	1986
+Q636714	landscape						(iii)|(iv)	2000
+Q3197288	town	28	1773				(iii)|(iv)	2015
+Q27964							(ii)|(iii)	2000
+Q1642003	World Heritage Site|architectural ensemble		2012				(v)	2012
+Q646076	industrial zone						(ii)|(iv)	2001
+Q540237	abbey|building complex|destroyed building or structure|monastery|monastery ruins		1132				(i)|(iv)	1915
+Q1334966	group of protected areas						(i)|(ii)|(iii)|(iv)	1999
+Q572895	refinery						(ii)|(iii)|(iv)	2005
+Q1165562	archaeological site						(iii)|(iv)	2008
+Q852546	biosphere reserve		2000				(vii)	2008
+Q1330981	group						(ix)|(vii)|(x)	2008
+Q552106	archaeological site|cultural heritage|petroglyph						(i)|(iii)	1997
+Q3380656	Hindu temple						(i)|(iii)	2021
+Q1362222	forest|sacred grove		1600				(iii)|(v)|(vi)	2008
+Q7263	city of Indonesia	295	1888				(ii)|(iv)	2019
+Q853364	karst						(vii)|(viii)	2007
+Q1509537	archaeological site|national park of Guatemala						(ii)|(iii)	2023
+Q10810559	human settlement|landscape						(v)|(vii)|(viii)	2014
+Q206194	World Heritage Site|citadel|fort	910	1820					1982
+Q1501940	Roman colony|ancient city|archaeological site|fortified town|port city	67						
+Q199234	lighthouse		1615	Gironde estuary	20000		(i)|(iv)	2021
+Q464566	cultural landscape						(ii)|(iii)|(iv)	2006
+Q911953	road|trade route		1500				(ii)|(iv)	2010
+Q636194	mining community		1000				(ii)|(iii)|(iv)|(v)	2001
+Q647958	canyon						(i)|(ii)|(iv)|(vi)	1986
+Q9055979	national park		2002				(ix)	2021
+Q33934	mission station						(iv)|(v)	1990
+Q735278	cultural landscape|landscape heritage zone						(i)|(ii)|(iv)	1992
+Q680322	human settlement						(ii)|(iii)	2018
+Q1780249	cultural landscape						(ii)|(iv)|(v)	2002
+Q1761052	archaeological site						(i)|(iii)|(iv)	1994
+Q611345	pilgrims' way|reijō						(ii)|(iii)|(iv)|(vi)	2004
+Q1614152	Cretaceous–Paleogene boundary|cliff	41					(viii)	2014
+Q1235610	canyon|protected area of Russia							
+Q649738	cultural heritage|wine-producing region			Douro River			(iii)|(iv)|(v)	2001
+Q705132	archaeological site|human settlement						(iii)	2021
+Q25496	archaeological site|fortress						(iii)|(iv)	1988
+Q729327	architectural ensemble|fortification system						(ii)|(iii)|(iv)	1999
+Q1756286	church town of Sweden|cultural property|heritage site in Sweden						(ii)|(iv)|(v)	1996
+Q1790760	natural region						(vii)|(x)	2017
+Q28416	former hospital|hospice		1810				(i)|(ii)|(iii)|(iv)	1997
+Q1778458	archaeological site						(ii)	2023
+Q652634	old town|urban area						(iv)	1978
+Q599223	basilica|convent|cultural heritage|museum|palace				189694		(iv)	2019
+Q639487	mountain|volcanic plug	786					(vii)|(viii)	2004
+Q1551411	church building|cultural heritage		1835					
+Q1818746	archaeological site|human settlement						(ii)|(iii)|(vi)	2017
+Q2559020	cultural landscape						(ix)|(x)	2008
+Q179506	archaeological park						(iii)	1995
+Q162835	railway line/metro line						(ii)|(iv)	2017
+Q1061531	campus						(i)|(iv)	2000
+Q127754	event venue|ironworks						(ii)|(iv)	1994
+Q15041608	old town						(ii)|(iv)	2023
+Q852085	geological formation|lagerstätte|paleontological site						(viii)	1980
+Q134873	Chinese AAAAA-rated tourist attraction|archaeological site|tomb						(i)|(ii)|(iii)|(iv)|(v)	2004
+Q853265	archaeological site	1476					(iii)|(iv)	1998
+Q495286	dolmen						(iii)	2000
+Q616578	World Heritage Site|architectural ensemble|architectural landmark|urban area						(i)|(ii)|(iv)|(vi)	1990
+Q167298	group|temple complex						(i)|(iii)	1986
+Q1984562	archaeological site|cave|cave with prehistoric art		1974				(iii)|(v)	2024
+Q2114279	old town						(iv)|(vi)	1963
+Q732708	building complex						(i)|(ii)|(iv)	1988
+Q1632877	Chinese AAAAA-rated tourist attraction|archaeological site|cave with prehistoric art|mural						(iii)|(vi)	2016
+Q1063133	dyad|historic site|jisha|monad						(i)|(iv)|(vi)	1999
+Q2274974	architectural ensemble|cultural property|hydraulic system						(i)|(ii)|(v)	1998
+Q7751872	group of structures or buildings|industrial heritage site						(ii)|(iv)	2015
+Q614212	cultural landscape					UTC+01:00	(ii)|(iii)|(v)	2008
+Q99372	architectural ensemble			Canal du Centre			(iii)|(iv)	1992
+Q923894	prehistoric archaeological site						(iii)|(v)	2000
+Q2916296	cultural landscape						(iii)|(v)|(vi)	2012
+Q830805	World Heritage Site|archaeological site|protected area	74	1936				(ii)|(iii)	2015
+Q422941	region						(ix)|(x)	2010
+Q993402	island	77		Gulf of Tonkin			(ix)|(vii)|(viii)|(x)	2017
+Q5276996	necropolis						(iii)|(iv)	2019
+Q388641	canyon|fissure vent							
+Q312118	alpine group|landform|thrust fault						(viii)	2008
+Q477578	World Heritage Site|itinerary						(iii)|(v)	2005
+Q837642	Jesuit Estancia|Jesuit reduction|estancia						(ii)|(iv)	2000
+Q32904732	group|region						(v)	2017
+Q263883	national park	555	1935				(ix)|(x)	2023
+Q890652	Eastern Orthodox cathedral|archaeological site|historic site						(ii)|(iii)|(iv)	2004
+Q63863168	group of protected areas|protected area		1968	Pacific Ocean	265177		(ix)|(vii)	1980
+Q2733427	city walls|monument						(iv)	1993
+Q1422898	abandoned village|former settlement		1524				(iii)|(iv)	2000
+Q2887224	archaeological park|cultural property|museum						(iii)	1995
+Q2880621	landform|show cave	260					(vii)|(x)	2024
+Q2840764	aqueduct						(i)|(ii)|(iv)	2015
+Q841896	group of structures or buildings		0601				(ii)|(iii)|(vi)	2008
+Q1889313	group of structures or buildings						(iii)	2012
+Q826551	terrace							1995
+Q2707216	Catholic pilgrimage church|calvary|cultural heritage|minor basilica		1772				(iv)	2019
+Q601223	museum		1781				(iv)	1967
+Q934627	World Heritage Site|protected area		2000				(ix)|(x)	2000
+Q1333330	group of structures or buildings|gusuku						(ii)|(iii)|(vi)	2000
+Q1121835	museum|steamdriven pumping station						(i)|(ii)|(iv)	1977
+Q495733	World Heritage Site						(vii)|(viii)	2007
+Q2164885	château|event venue				26641		(ii)|(iv)	1999
+Q2278990	canyon		1994					
+Q1141009	World Heritage Site						(ii)|(iv)	1994
+Q3511938	cultural landscape|protected area						(i)|(ii)|(iii)|(iv)	1979
+Q629238	peninsula	1661		Nemuro Strait|Sea of Okhotsk		Japan Standard Time		
+Q3524629	archaeological site						(iii)|(iv)|(v)	2018
+Q1238775							(iii)	2025
+Q392215	mining region						(ii)|(iv)|(vi)	2012
+Q3678596	old town						(i)|(ii)|(iii)|(iv)|(vi)	1979
+Q775154	organization|protected area						(ix)|(x)	1999
+Q476801	crusader castle	717	1150				(ii)|(iv)	2024
+Q2231598	canyon			Charyn River				
+Q1286650	Danxia landform						(vii)|(viii)	2010
+Q130025	campus		1954				(i)|(ii)|(iv)	2007
+Q751146	group of structures or buildings						(ii)|(iii)	2003
+Q3522747	temple complex						(i)|(ii)|(iii)|(vi)	1984
+Q495241	archaeological site|historic site						(ii)|(iii)	2000
+Q2896261	historic site|human settlement						(ii)|(vi)	2011
+Q465960	cultural heritage|mission station|transboundary site		1609				(iv)	1983
+Q616912	region		2001				(ix)|(vii)|(viii)	2001
+Q2384313	depression|group of protected areas						(ix)|(vii)|(x)	2011
+Q430563	archaeological site							1996
+Q627095	canyon			Alazani				
+Q10620357	cultural landscape						(ii)|(iv)	2015
+Q552005	painting series|petroglyphic site						(i)|(iii)	1993
+Q17277933	transboundary site						(ii)|(iii)|(v)|(vi)	2014
+Q1505447	national park		1909					1996
+Q38278862	ancient Greek temple|archaeological site|ruins		-0419				(i)|(ii)|(iii)	1986
+Q19852428	archaeological site						(ii)|(iii)	2015
+Q20048515	archaeological site|historic heritage of Brazil|ruins|wharf		1811				(vi)	2017
+Q2328849	factory|office building		1931				(ii)|(iv)	2014
+Q16942531	urban landscape						(ii)|(iv)	2018
+Q2196869	Catholic cathedral|Monument (Spain)		1166					1931
+Q1046414	museum|single-family detached home		1998				(i)|(ii)	1988
+Q917429	hill|mountain range|non-geologically related mountain range						(iii)|(v)|(vi)	2003
+Q1443478	Stone Age site|World Heritage Site|archaeological site|nature reserve in Israel						(iii)|(v)	2012
+Q1292306	military school							2008
+Q240832	archaeological site|locality|village						(iii)	1981
+Q687973	World Heritage Site|old town|urban area						(iii)	1983
+Q964745	National Monument of the United States|National Park System unit|archaeological site|national monument						(iii)	1962
+Q422995	wildlife refuge		1974				(ix)|(vii)|(x)	1991
+Q1460797	canyon			Jinsha River|Yangtze River				
+Q3107493	human settlement						(v)|(vi)	2024
+Q2712111	historical region|region						(v)	2023
+Q20650483							(ii)|(iii)	2015
+Q1333799	Buddhist temple|group of structures or buildings						(i)|(ii)|(iv)|(vi)	1993
+Q3821829	biosphere reserve		2006				(vii)|(viii)|(x)	2008
+Q3370031	group of structures or buildings						(ii)|(iv)	2012
+Q93643	architectural ensemble			East China Sea			(iii)	2018
+Q1921177	group of structures or buildings						(ii)|(iv)	2012
+Q1426014	World Heritage Site						(i)|(ii)|(iv)	2000
+Q3301928	ecological reserve of Newfoundland and Labrador		1984	Atlantic Ocean			(viii)	2016
+Q677879	World Heritage Site|mine						(i)|(iii)|(iv)	1991
+Q930795	World Heritage Site|palace		1813					1982
+Q513893	Catholic cathedral|co-cathedral		1171				(iv)	1931
+Q17296768	cultural landscape|wine-producing region						(iii)|(v)	2014
+Q25379596	group of protected areas					UTC+01:00	(ix)|(x)	2020
+Q1069411	archaeological site|necropolis		1100				(ii)|(iii)	1988
+Q2149114	temple		1488				(ii)|(iii)|(iv)|(vi)	
+Q25933006	cultural landscape						(iii)|(ix)|(v)|(x)	2016
+Q20963672	group of structures or buildings						(ii)|(iv)	2015
+Q2015257	animal sanctuary|protected area		1994				(x)	1994
+Q2407530	World Heritage Site|national park						(v)	2014
+Q265453	architectural ensemble						(ii)|(iii)|(iv)	1998
+Q1091515							(ii)|(iv)	2000
+Q1051873	World Heritage Site|national park		1999					2025
+Q648787	human settlement|plantation			Suriname River			(iv)|(vi)	1998
+Q2284354	monastery						(ii)|(iv)|(vi)	1997
+Q1435206	harbor museum|marina							2016
+Q16965955	mine						(ii)|(iv)	2019
+Q20643274	archaeological site						(i)|(iii)	2015
+Q502518	archaeological site						(ii)|(iii)|(iv)	1970
+Q559363	World Heritage Site|biosphere reserve|river delta						(iii)|(iv)|(v)	1981
+Q1595417	calvary|church building|cultural heritage		1757				(i)|(iv)	1985
+Q55379486	group						(ii)|(iii)|(v)	2018
+Q2860218	archipelago|biosphere reserve	1503		Arabian Sea		UTC+03:00	(x)	2008
+Q1042821	human settlement|quarter		1200					
+Q510279	archaeological site|architectural ensemble						(iv)	2000
+Q2249113	old town|port|urban area						(ii)|(iv)	2007
+Q66053233	World Heritage Site|group of structures or buildings						(ii)	2019
+Q370956	World Heritage Site|artwork series|building|cultural property|group of artificial physical objects						(i)|(ii)	1994
+Q256160	botanical garden|chalet|mountain hut|villa		1871					2025
+Q2034331	art museum|museum|museum of a public entity|palace|specialized museum		1677		120			
+Q4361429	archaeological site|petroglyph|tomb						(iii)	2011
+Q20643889	factory complex						(ii)|(iv)	2015
+Q279968	architectural ensemble						(i)|(iii)|(iv)|(vi)	1986
+Q1269931	archaeological site		1400				(iii)	2009
+Q2402267	Bronze Age settlement|Neolithic settlement|proto-city		-9600				(iii)|(iv)	2012
+Q64494878	architectural ensemble|urban area						(iv)	2018
+Q1138108	nature reserve		1938				(ix)	2023
+Q17374397	Kulturdenkmal|Roman limes|archaeological site						(ii)|(iii)|(iv)	1987
+Q12012965	group of windmills						(i)|(ii)|(iv)	1997
+Q3909051	architectural ensemble|heritage site						(iv)	2021
+Q19285921	group of protected areas						(iii)	2017
+Q1218832	World Heritage Site|human settlement						(ii)|(iv)|(vi)	1992
+Q2448665	cultural heritage|protected landscape area|wine-producing region						(iii)|(iv)	2004
+Q6735332	group of structures or buildings|tumuli group						(v)	2024
+Q1136251	cultural landscape						(ii)|(iii)|(iv)|(v)	1984
+Q1283784	archaeological site|protected area						(ix)|(vii)|(viii)	2004
+Q3106527	medina quarter|urban area						(ii)|(iii)|(v)	1979
+Q9850285	architectural ensemble|cultural heritage|urban project		1943				(i)|(ii)|(iv)	1984
+Q863815	marine protected area		2008				(ix)|(vii)	2010
+Q63524	Cistercian monastery|Royal abbey		1101					2011
+Q396132	cultural landscape						(iv)|(v)	2000
+Q5853681	biosphere reserve		1998				(iv)|(x)	2018
+Q10498496	group of structures or buildings						(ii)	2008
+Q3529269	Roman colony|ancient city|archaeological site		-0600				(iii)|(iv)	1982
+Q16324987	cultural landscape						(v)	2018
+Q97633694	archaeological site|grave						(i)|(iii)|(iv)	1923
+Q4915544	archaeological site|group of protected areas						(iii)	2021
+Q26721344	church building|cultural property		1960				(iv)	2021
+Q1075681	old town|urban area						(iii)|(v)	1999
+Q19605615	mountain range	1800					(viii)	2018
+Q6744547	cultural heritage|natural heritage		2013				(i)|(iii)|(vii)|(x)	2000
+Q608100	medina quarter|urban area						(iii)|(iv)|(v)	1988
+Q3063392	archaeological site						(iii)|(iv)|(v)	2024
+Q2829327	archaeological site						(v)	2015
+Q66023123	cultural landscape						(i)|(ii)|(iv)	2023
+Q55306582	architectural ensemble						(iii)	2018
+Q2918480	human settlement						(iii)	
+Q3320082	fortification system|group of structures or buildings						(i)|(iv)	1980
+Q702477	château		1835				(i)|(ii)|(iv)	1990
+Q260465	mountain	178					(iii)|(v)	2019
+Q15726428	World Heritage Site|group of structures or buildings						(ii)|(iv)|(vi)	1986
+Q2470834	old town|urban area						(ii)|(iv)|(vi)	1990
+Q16963852	forest						(x)	2005
+Q50711	research library		1691					1998
+Q107715736	group of protected areas|tidal flat						(x)	2021
+Q1621046	old town						(ii)|(iv)|(vi)	1996
+Q7194595	World Heritage Site|group of protected areas						(iii)|(ix)|(vi)	2018
+Q1517758	historical park of Thailand						(ii)|(iii)	2023
+Q15052130	archaeological site			Mediterranean Sea			(iii)	1982
+Q1279597	archaeological site						(ii)|(iv)	1981
+Q314730	World Heritage Site|art colony|built structure		1899				(ii)|(iv)	2021
+Q4071782	World Heritage Site|architectural landmark|astronomical observatory		1837					2023
+Q27096877	World Heritage Site							2021
+Q2524402	Eastern Orthodox church building		1101				(i)|(ii)|(iii)|(iv)	1990
+Q107694185	group of protected areas|natural geographic entity						(ix)|(x)	2021
+Q3364446	national park		1952				(vii)|(viii)|(x)	1980
+Q927535	World Heritage Site|archaeological site|necropolis						(iii)|(iv)	2000
+Q778743	architectural ensemble|group of structures or buildings						(vi)	1979
+Q6172505	archaeological site|hill	412					(iii)|(iv)	2025
+Q11402500	group of archaeological sites						(iii)|(v)	2009
+Q1326977	archaeological site						(i)|(ii)|(iii)	2009
+Q11257230	Laurel forest|cultural heritage|natural heritage						(ix)|(x)	1999
+Q9390606	old town						(ii)|(iv)	1997
+Q1822397	Commonwealth War Graves Commission maintained memorial|city gate|war memorial		1927					2023
+Q35584069	municipality|old town						(ii)|(iv)|(vi)	2017
+Q3678597	old town|urban area		1580				(iv)	1992
+Q2004104	church building|historic building|minor basilica		1750					
+Q2149036	World Heritage Site|group of structures or buildings						(iii)|(vi)	2008
+Q905848	museum		1377					
+Q667763	castle ruin	628			53043			1907
+Q467763	architectural ensemble						(iii)|(vi)	1998
+Q66201394	World Heritage Site|archaeological site						(iii)	2023
+Q1512159	national park		2011				(ix)|(x)	2012
+Q1100749	cultural landscape|human settlement		1680				(v)|(vi)	1995
+Q5765542	protected area						(viii)|(x)	2016
+Q3320442	historic district|neighborhood|old town|urban area						(iv)	1988
+Q832957	neighborhood|urban area						(ii)|(iv)	1995
+Q1280433	architectural ensemble|calvary|pilgrimage site						(ii)|(iv)	2000
+Q134720951	architectural ensemble						(iv)|(vi)	2021
+Q5964053	Memorial of the Genocide against the Tutsi in Rwanda|memorial						(vi)	2023
+Q15278644	World Heritage Site|group|urban area						(iii)|(iv)	1988
+Q55495511	World Heritage Site|archaeological site|cultural landscape						(iii)|(v)	2019
+Q65684910	architectural ensemble						(iii)|(vi)	2024
+Q122666385	transboundary site						(ii)|(iii)|(v)	2023
+Q4411008	World Heritage Site|architectural landmark|eastern orthodox monastery		1555				(ii)|(iv)	2017
+Q10444176	cultural landscape						(iii)|(v)	2011
+Q8399	neighborhood|old town|urban area						(ii)|(iv)	1998
+Q2552354	wat						(ii)|(vi)	2026
+Q2962473	group of structures or buildings|itinerary|pilgrims' way						(ii)|(iv)|(vi)	1998
+Q8038519	provincial park of Canada		1957				(iii)	2019
+Q2548808	metro station|underground station		1970			Central European Time		
+Q21767547	military base		1966					
+Q18435290	city center|old town							
+Q7797635	island|lake island	163.983		Lake Winnipesaukee				
+Q64142956	glacier							
+Q117188122	World Heritage Site			Pacific Ocean			(ix)|(vii)|(viii)|(x)	1978

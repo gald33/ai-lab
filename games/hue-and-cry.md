@@ -1342,6 +1342,170 @@ One word, one reason, `driven`.
   The island's manager shape may be *read*; it is not to be extracted into a
   framework on the strength of two games.
 
+## The map is a thousand landmarks now, and three things broke at that size
+
+*Written 2026-09-08, building step one and two of what Gal asked for: "1)
+create 1000 landmarks. 2) for every landmark create 3 hint sentences. 3)
+add coordinates, treasures, and other stats." Every number below is
+reproducible from the repository; the commands are named against each.*
+
+The twenty landmarks in `gazetteer.py` were a demonstration, and the
+demonstration was load-bearing in a way nobody noticed: **three of this
+document's decisions were tuned on twenty landmarks and are wrong at a
+thousand.** None of them failed loudly. Each produced a map that looked
+fine, passed the gate it had, and could not be played.
+
+### The descriptors are derived now, not authored, and that is a real loss
+
+This document says descriptors are **"authored per landmark from the real
+place... eight candidates per landmark, written once, offline, checked by a
+person"**. At twenty landmarks that is 160 authored facts and an afternoon.
+At a thousand it is eight thousand, and an afternoon is not what it costs;
+worse, a person writing eight thousand descriptors from memory will write
+false ones, which is the single thing the hints may not be.
+
+So they are **derived from fetched facts** -- `games/hue-and-cry/descriptors.py`,
+reading `facts.tsv` and `countries.tsv`, which `build_facts.py` fetches from
+Wikidata. Seventy-two descriptors, every one a function of a coordinate or a
+checkable statement about the place.
+
+**What that costs is the colour, and it is not a small cost.** "Call to
+prayer" and "harbour fog" are what this document promised and what a person
+would repeat; `in_the_islamic_conference` and `at_sea_level` are not. The
+colour has to come back somewhere, and where it comes back is the **sentence
+layer** -- the three reports per landmark that Gal asked for, which dress a
+shared descriptor in prose unique to the landmark. Uniqueness in the words,
+collision in what the words assert. That is the only way both of his
+constraints hold at once, and it is why the sentences are a separate pass
+rather than a rendering of the descriptor names.
+
+The ten **UNESCO criteria** are the best descriptors on the map and were
+nearly missed. They are on 832 of the thousand, each true of between 87 and
+388, and unlike everything else they say what kind of thing a place *is*
+rather than where it sits -- so two landmarks in the same country routinely
+differ on them. Before they were added, every European landmark looked
+alike. The wording is a witness's rather than the committee's: criterion
+(vii) is "superlative natural phenomena or areas of exceptional natural
+beauty", and a person says they could not stop looking at it.
+
+### Six neighbours out of nineteen is a third of the map; out of nine hundred it is a clone
+
+`NEIGHBOURHOOD = 6` gave the best pin rate on the twenty-landmark map and is
+the reason routes read as journeys. At a thousand landmarks it collapses:
+
+```
+mean descriptors per landmark   : 13.7
+kinship to its top-6 neighbours : 13.0
+kinship to a random landmark    :  4.9
+```
+
+**A landmark shares thirteen of its fourteen descriptors with the six
+places it can reach.** Every hint she holds is true of every exit she has,
+so no hint discriminates and the chase is a one-in-five guess at every step
+regardless of what she posts.
+
+The gate did not catch it, because **the gate only had one side**.
+`MAX_PINNED` asks whether a hint narrows to exactly one place. Nothing asked
+whether a hint narrows at all. Measured over 50,000 of her moves, with the
+old parameters she posted a hint that left **4.96 of her 5 exits standing** --
+a perfect score on the gate this document had, and no game.
+
+So exits are drawn from a **band** of look-alikes rather than the top of it,
+and the band is a parameter of the map's size:
+
+```
+   N    she posts (of 5)   pinned   median hop
+   6          4.55           0.7%    1,425 km
+  30          4.03           2.1%    2,163 km
+  60          3.64           4.0%    2,625 km
+ 120          3.09           7.9%    3,479 km
+ 200          2.69          12.2%    4,223 km   <- chosen
+ 300          2.41          15.8%    4,978 km
+```
+
+200 is chosen because it lands on the twenty-landmark map's own measured
+behaviour -- 2.60 posted, 12.8% pinned, which is the `neighbourhood exits, 5
+each` row this document already records. Re-check both:
+
+```
+python3 games/hue-and-cry/descriptors.py --sweep
+python3 games/hue-and-cry/gazetteer.py
+```
+
+**Both numbers are the gate now.** A hint that leaves every exit standing
+says nothing; a hint that leaves one hands over her position. The second has
+had a constant since the beginning and the first has never had one, which is
+why a map that failed it completely passed for as long as it did.
+
+### A landmark offers six of the seventeen true things about it
+
+The third break is the subtlest. Derived facts gave each landmark
+**seventeen** true descriptors, and she posts the *least* informative one
+she holds -- so a single map-wide word ruins the hint. `north_of_the_line`
+is true of 855 landmarks; if it is live, it covers every exit.
+
+A **global ceiling** was the obvious fix and it starves the map: dropping
+every descriptor above 200 holders leaves 73 landmarks with nothing to say,
+because a landmark in a country holding thirty of them has only
+country-wide words to its name.
+
+What works is a per-landmark rule -- **a landmark offers the six rarest true
+things about it** -- which cannot starve anything, since it takes six of
+whatever a landmark has:
+
+```
+everything true of it (17 each)   she posts 4.96 of her 5 exits
+her six most distinctive           she posts  2.69
+```
+
+And the collision floor has to be applied to **what a searcher can see**,
+not to what is true. Applied to the raw facts it let `north_of_the_line`
+through: true of 855 landmarks and *offered* by five, because only those
+five had nothing rarer. A searcher who knows the rule -- and the rule is
+public -- reads that as five candidates. It is a pin wearing a common
+word's clothes. The floor is applied to the candidate sets and reselected
+until the counts stop moving.
+
+### Four axes were built, measured, and deleted for lying
+
+Currency, script, language family and time zone were the most evocative
+descriptors on the map. *"The signs were in Cyrillic."* *"Her watch was
+three hours ahead of London."* Every one of them was false somewhere:
+
+```
+Eiffel Tower   ... pays_in_francs
+Area 51        ... an_austronesian_tongue, still_yesterday_where_she_is
+```
+
+France has not paid in francs since 2002 and Wikidata's truthy `wdt:P38`
+still serves the CFP franc. Nobody speaks an Austronesian language in
+Nevada; the United States carries Hawaiian, Samoan, Chamorro and Carolinian
+on `P37` because each is official *somewhere* in it, and it spans fifteen
+time zones for the same reason.
+
+Three rounds of filtering were tried -- excluding ended statements
+(`pq:P582`), then part-scoped ones (`pq:P518`, `pq:P3005`), then deprecated
+rank -- and **each round traded one falsehood for another**. With the full
+filter France and Germany have no currency at all and the United States has
+no official language. Wikidata's modelling of these properties is not
+consistent enough to read mechanically.
+
+So they are gone. **A hint that is false is worse than a hint that is
+missing**, which is this game's oldest rule, written after `Reykjavik:
+desert`. The fetched columns stay in `facts.tsv` and `countries.tsv` as the
+evidence rather than being deleted -- which is exactly what makes
+re-deriving them tempting, so
+`test_descriptors.py::test_no_descriptor_is_derived_from_currency_language_or_time_zone`
+exists to refuse it. Bringing them back means a hand-written and
+hand-checked table of 159 countries, not a cleverer query.
+
+A fifth was not deleted but corrected, and it is the same class of error
+from the opposite direction: `wdt:P2044` serves elevation as a bare number
+with the unit discarded, so **Area 51's 4,463 feet arrived as 4,463 metres**
+and a desert airbase reported thinner air than Lhasa. `build_facts.py` asks
+for `psn:` -- the SI-normalised value -- and a test pins Everest between
+8,000 and 9,000 metres so the bug cannot come back silently.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
