@@ -23,6 +23,14 @@ island drawn rather than chosen, and a manager nobody has to trust. Most of
 that document is still direction; the lobby room and its settlement
 (`games/island/`) is the one piece built so far.
 
+The second is [hue and cry](hue-and-cry.md) — a fugitive moving between rooms,
+leaving one true fact behind her at each one, and searchers who hold warrants
+for some rooms and not others. It is 008's timing question given a task that is
+timing-bound by construction, which the shared coding task is not: if a
+calibrated forecast buys nothing in a *pursuit*, it buys nothing anywhere.
+Written 2026-09-07; **nothing of it is built**, and the document says in which
+order it would be.
+
 ## What a game has to preserve
 
 Wrapping an experiment in a game surface is allowed to change the presentation.
