@@ -1,0 +1,1004 @@
+# What she takes at each landmark, what it is worth, and the
+# hours of standing still it costs her. Written by
+# treasures.py; the impossible ones are hand-authored there.
+# landmark	treasure	reputation	dwell_hours	absurd
+Vatican City	the keys	100	11	1
+Mount Everest	the summit. She took the summit.	100	11	1
+Brasília	one day's takings from the whole quarter	80	7	0
+Sahara	the sand, in a bag, and the bag was not large	100	11	1
+Caspian Sea	the sea wall	80	7	0
+Great Wall of China	eleven miles of it, and nobody noticed which eleven	100	11	1
+Eiffel Tower	the tower itself, unbolted overnight and driven out in sections	100	11	1
+Rabat	one day's takings from the whole quarter	79	7	0
+Mount Kilimanjaro	the snow, and there was not much left to take	99	11	1
+Taj Mahal	the reflection in the long pool, taken and not returned	99	11	1
+Lake Baikal	the depth	99	11	1
+Valletta	the hands off the station clock	79	7	0
+Quito	the name off every street sign in the district	79	7	0
+Easter Island	one statue, walking, as they are said to have done before	99	11	1
+Dead Sea	the water, all of it, and the salt it was carrying	99	11	1
+Lake Victoria	the depth of it	79	7	0
+Great Barrier Reef	the reef, one polyp at a time, and she is patient	99	11	1
+Statue of Liberty	the torch, and the arm it was on	99	11	1
+Hagia Sophia	the light that comes in at the base of the dome	99	11	1
+Lake Tanganyika	the far shore	79	7	0
+Samarkand	the blue, off every tile in the city	98	11	1
+Machu Picchu	the terraces, rolled up like carpet	98	11	1
+Colosseum	the arena floor and everything that ever stood on it	98	11	1
+Mount Fuji	the shape of it, which is the only thing anybody wanted	98	11	1
+Jaipur	the hands off the station clock	78	6	0
+White House	the west wing, and the east wing did not notice	98	11	1
+Verona	the name off every street sign in the district	78	6	0
+Berlin Wall	the last of it, and now there is none to sell	98	11	1
+Burj Khalifa	the top forty floors, and nobody has looked up since	98	11	1
+Salvador	one day's takings from the whole quarter	78	6	0
+Angkor Wat	the roots, and the temple came with them	98	11	1
+Lhasa	the altitude	98	11	1
+Mount Vesuvius	the ash cloud, taken before it fell	98	11	1
+Stonehenge	the lintels, every one, lifted off in the dark	98	11	1
+Niagara Falls	the noise of it, so the water fell in silence for a day	97	11	1
+Galapagos Islands	the causeway	77	6	0
+Kaaba	nothing at all. She looked, and left it.	97	11	1
+Titicaca	the snow line	77	6	0
+Sinai Peninsula	the only shade for a day's walk	77	6	0
+Timbuktu	the manuscripts, and the reason anybody says the name	97	11	1
+Auschwitz	the door of the oldest house in it	77	6	0
+Babylon	the gate, which had been stolen once already	97	11	1
+Mont Blanc	the last hundred metres of it	77	6	0
+Phong Nha–Ke Bang National Park	the plan the whole thing was laid out from	77	6	0
+Empire State Building	the signboard at the gate	77	6	0
+Pompeii	the ash, and the shapes that were in it	97	11	1
+Troy	one day's takings from the whole quarter	77	6	0
+Gobi Desert	the map of where the water is	76	6	0
+Petra	the facade, peeled off the cliff in one piece	96	11	1
+Grand Canyon	the canyon, emptied, and the river left running in the air	96	11	1
+Yellowstone National Park	the geyser's timing, so it is no longer faithful	96	11	1
+Cusco	the name off every street sign in the district	76	6	0
+Aconcagua	the summit cairn	76	6	0
+Mount Elbrus	the summit cairn	76	6	0
+Bath	the hands off the station clock	76	6	0
+K2	the snow line	76	6	0
+Lake Superior	the far shore	76	6	0
+Mount Ararat	the summit cairn	76	6	0
+Victoria Falls	the smoke that thunders, bottled	96	11	1
+Golden Gate Bridge	the colour. The bridge is grey now.	96	11	1
+Chichen Itza	the echo from the staircase, which no longer answers	95	11	1
+Mount Olympus	every seed in the seed store	75	6	0
+Lake Ontario	the depth of it	75	6	0
+Palace of Versailles	the catalogue, which named things no longer there	75	6	0
+Lake Michigan	the depth of it	75	6	0
+Mount Bazardüzü	the summit cairn	75	6	0
+Palmyra	the colonnade, ahead of the people who were coming for it	95	11	1
+Bermuda Triangle	the triangle itself, leaving the sea unremarkable	95	11	1
+Kyoto Prefecture	the harbour light	75	6	0
+Lake Malawi	the far shore	75	6	0
+Kalahari Desert	the well	75	6	0
+Lake Chad	the depth of it	75	6	0
+Atacama Desert	the map of where the water is	75	6	0
+Forbidden City	the last door, so the city is merely difficult now	95	11	1
+Mariana Trench	the harbour light	74	6	0
+Persepolis	the staircase, and the procession carved on it	94	11	1
+Kanchenjunga	the snow line	74	6	0
+Lake Erie	the far shore	74	6	0
+Acre	the hands off the station clock	74	6	0
+Amazon rainforest	the signboard at the gate	74	6	0
+Red Square	the hour, off the clock, so the bells struck twelve twice	94	11	1
+Château de Montsoreau	the portcullis	74	6	0
+Derbent	one day's takings from the whole quarter	74	6	0
+Lake Huron	the far shore	74	6	0
+Iguaçu Falls	the spray, and the rainbow standing in it	94	11	1
+Sydney Opera House	the sails	94	11	1
+Mohenjo-daro	the name off every street sign in the district	74	6	0
+Acropolis of Athens	the marbles. Again.	93	11	1
+Heard Island and McDonald Islands	the only jetty	73	6	0
+Negev	the only shade for a day's walk	73	6	0
+Mount Rushmore	one of the faces, and she will not say which	93	11	1
+Buckingham Palace	the horizon	73	6	0
+Christ the Redeemer	the view He was looking at	93	11	1
+Angel Falls	the falling part	93	11	1
+Krakatoa	the bang, kept in a jar since 1883	93	11	1
+Matterhorn	the north face, which was not being used	93	11	1
+Neuschwanstein Castle	the castle, which was a copy anyway, so now there are none	93	11	1
+Samarra	everything in trench four, crated and gone	73	6	0
+Taklamakan	the map of where the water is	73	6	0
+Uluru	the rock. The whole rock.	93	11	1
+Karakum Desert	the only shade for a day's walk	72	6	0
+Namib	the only shade for a day's walk	72	6	0
+Olympia	the finds tray, and the labels with it	72	6	0
+Big Ben	the chime, taken between the third and the fourth note	92	11	1
+Tower of London	the crown jewels, obviously, and she left a receipt	92	11	1
+Axum	the hands off the station clock	72	6	0
+Kandy	the name off every street sign in the district	72	6	0
+Luang Prabang	the name off every street sign in the district	72	6	0
+Mount Athos	the last hundred metres of it	72	6	0
+Mount Sinai	the summit cairn	72	6	0
+San Cristóbal de La Laguna	the name off every street sign in the district	72	6	0
+Yosemite National Park	the waterfall, in the dry season, when nobody would miss it	92	11	1
+Baalbek	the site notebook, which was worse than the finds	71	6	0
+Bastille	the portcullis	71	6	0
+Brandenburg Gate	the quadriga, for the fourth time in its history	92	11	1
+Marquesas Islands	the causeway	72	6	0
+Cologne Cathedral	the rose window, in one piece	71	6	0
+Windsor Castle	the keys to a gate that has not been locked in centuries	71	6	0
+Fatehpur Sikri	the hands off the station clock	71	6	0
+Potosí	the hands off the station clock	71	6	0
+Western Wall	the notes in the cracks, every one, unread	91	11	1
+Ajanta Caves	the bell rope and the bell	71	6	0
+Byblos	everything in trench four, crated and gone	71	6	0
+Ha Long Bay	one karst, and the bay is asymmetric now	91	11	1
+Thar Desert	the only shade for a day's walk	71	6	0
+Western Ghats	the summit cairn	71	6	0
+Hadrian's Wall	the site notebook, which was worse than the finds	71	6	0
+Kairouan	one day's takings from the whole quarter	70	6	0
+Delos	the name off every street sign in the district	70	6	0
+Anuradhapura	the site notebook, which was worse than the finds	70	6	0
+Assur	the finds tray, and the labels with it	70	6	0
+Bagan	the finds tray, and the labels with it	70	6	0
+Death Valley	the bridge across it	70	6	0
+Shahrisabz	the hands off the station clock	70	6	0
+Susa	everything in trench four, crated and gone	70	6	0
+Teotihuacan	the finds tray, and the labels with it	70	6	0
+Göbekli Tepe	the oldest pillar, and eleven thousand years with it	90	11	1
+Loch Ness	whatever it is that lives in it	90	11	1
+Virunga National Park	the plan the whole thing was laid out from	70	6	0
+Agra Fort	one gate, hinges and all	69	6	0
+Great Victoria Desert	the well	70	6	0
+Cave of Altamira	the dark	69	6	0
+Lumbini	the oldest thing on the site	69	6	0
+Aeolian Islands	the causeway	69	6	0
+Eyjafjallajökull	the weather station	69	6	0
+Giant's Causeway	the plaque, and the screws it was on	69	6	0
+Great Zimbabwe	the hands off the station clock	69	6	0
+Kaziranga National Park	the plan the whole thing was laid out from	69	6	0
+Red Fort	one gate, hinges and all	69	6	0
+Serengeti National Park	the count, so nobody knows what is left	69	6	0
+Cyrene	the name off every street sign in the district	69	6	0
+Ellora Caves	the site notebook, which was worse than the finds	69	6	0
+Himeji Castle	the banner off the keep	69	6	0
+Notre-Dame de Chartres	the sound of the bells	68	6	0
+Porto Venere	the sea wall	68	6	0
+Roswell	the weather balloon, which is all it ever was	88	10	1
+Taxila	the site notebook, which was worse than the finds	69	6	0
+Nalanda Mahavihara	the site notebook, which was worse than the finds	68	6	0
+Qutb Minar	the visitors' book	68	6	0
+Robben Island	the horizon	68	6	0
+Table Mountain	the tablecloth	88	10	1
+Times Square	the visitors' book	68	6	0
+Dessau	the hands off the station clock	68	6	0
+Meteora	the visitors' book	68	6	0
+Prambanan Temple	the bell rope and the bell	68	6	0
+Everglades National Park	the oldest tree in it, roots and all	67	6	0
+Masada	the site notebook, which was worse than the finds	67	6	0
+Merv	the finds tray, and the labels with it	67	6	0
+Mount Tai	the last hundred metres of it	67	6	0
+Plitvice Lakes National Park	every seed in the seed store	67	6	0
+Tiwanaku	the name off every street sign in the district	68	6	0
+Çatalhöyük	the hands off the station clock	68	6	0
+Djerba	the boat, and then there was no way off	66	6	0
+Grand Canal	the shutters, from every window on one street	66	6	0
+Hampi	the finds tray, and the labels with it	66	6	0
+Hiroshima Peace Memorial	every boat tied up that night	66	6	0
+Humayun's Tomb	the effigy off the tomb	67	6	0
+Itsukushima Shrine	the bell rope and the bell	67	6	0
+Lascaux	the horses, off the wall, still running	87	10	1
+Leptis Magna	one day's takings from the whole quarter	67	6	0
+Mahabodhi Temple	the topmost finial	67	6	0
+Nazca Lines	the lines, lifted off the desert like a decal	87	10	1
+Shibam	one day's takings from the whole quarter	67	6	0
+Tassili n'Ajjer	the last hundred metres of it	67	6	0
+Aït Benhaddou	the plaque, and the screws it was on	66	6	0
+Kathmandu Valley	the bridge across it	66	6	0
+Ngorongoro Conservation Area	the tags off every animal in it	66	6	0
+Temple of Heaven	the incense, and the smell went with it	66	6	0
+Bam	one day's takings from the whole quarter	66	6	0
+Curonian Spit	the tide	66	6	0
+Naqsh-e Jahan Square	the signboard at the gate	66	6	0
+Palenque	the finds tray, and the labels with it	66	6	0
+Selimiye Mosque	the signboard at the gate	66	6	0
+Area 51	whatever is in the hangar, which nobody will describe	85	10	1
+Bikini Atoll	the lagoon, and what is on the bottom of it	85	10	1
+Chogha Zanbil	the site notebook, which was worse than the finds	65	5	0
+Huangshan	the last hundred metres of it	65	5	0
+Kakadu National Park	the oldest tree in it, roots and all	65	5	0
+Okavango Delta	the flood, three months early	85	10	1
+Pasargadae	the finds tray, and the labels with it	66	6	0
+Alcatraz Island	the island, towed out on the tide	85	10	1
+Danube Delta	the flood markers	65	5	0
+Komodo National Park	the plan the whole thing was laid out from	65	5	0
+Macquarie Island	the causeway	65	5	0
+Mogao Caves	everything in trench four, crated and gone	65	5	0
+Aachen Cathedral	the sound of the bells	64	5	0
+Dasht-e Lut	the only shade for a day's walk	64	5	0
+Prague Castle	the portcullis	64	5	0
+Saint Sophia Cathedral	the reliquary, and what was in it	64	5	0
+Salar de Uyuni	the mirror, rolled up wet	85	10	1
+Struve Geodetic Arc	one day's takings	65	5	0
+Appian Way	the keys to everything	64	5	0
+Surtsey	the tags off every animal in it	64	5	0
+Abu Mena	everything in trench four, crated and gone	63	5	0
+Białowieża Forest	the breeding pair	63	5	0
+Bosra	the site notebook, which was worse than the finds	63	5	0
+Butrint	the site notebook, which was worse than the finds	63	5	0
+Church of the Nativity	the sound of the bells	63	5	0
+Grand Canyon National Park	every seed in the seed store	63	5	0
+Hatra	the site notebook, which was worse than the finds	63	5	0
+K'gari	the count, so nobody knows what is left	64	5	0
+Lorentz National Park	every seed in the seed store	64	5	0
+Nesebar	one day's takings from the whole quarter	64	5	0
+Neusiedl Lake	the depth of it	64	5	0
+Okapi Wildlife Reserve	the keys to everything	64	5	0
+Sigiriya	one day's takings from the whole quarter	64	5	0
+Thingvellir National Park	the oldest tree in it, roots and all	64	5	0
+Hội An	the hands off the station clock	63	5	0
+Köneürgenç	the site notebook, which was worse than the finds	63	5	0
+Los Glaciares National Park	every seed in the seed store	63	5	0
+Mosque-Cathedral of Cordoba	the reliquary, and what was in it	63	5	0
+Mount Nemrut	the snow line	63	5	0
+Summer Palace	one portrait, and it was the good one	63	5	0
+Teide National Park	the plan the whole thing was laid out from	63	5	0
+Chitwan National Park	the plan the whole thing was laid out from	62	5	0
+M'banza-Kongo	one day's takings from the whole quarter	62	5	0
+Mesa Verde National Park	the finds tray, and the labels with it	62	5	0
+Niokolo-Koba National Park	the plan the whole thing was laid out from	62	5	0
+Omo River	the signboard at the gate	62	5	0
+Wadi Rum	the count, so nobody knows what is left	62	5	0
+Yakushima	the boat, and then there was no way off	62	5	0
+Ani	the site notebook, which was worse than the finds	61	5	0
+Chauvet Cave	the paintings off the wall	61	5	0
+Comoé National Park	every seed in the seed store	61	5	0
+Drottningholm Palace	the door of the oldest house in it	61	5	0
+Fukushima Daiichi Nuclear Power Plant	the exclusion, so people came back	81	10	1
+Garamba National Park	the plan the whole thing was laid out from	61	5	0
+Golestan Palace	one portrait, and it was the good one	61	5	0
+Gorée	one day's takings from the whole quarter	62	5	0
+Island of Mozambique	one day's takings from the whole quarter	62	5	0
+Lake District	the summit cairn	62	5	0
+Pont du Gard	the last hundred metres of it	62	5	0
+Sagarmatha National Park	the oldest tree in it, roots and all	62	5	0
+Timgad	the finds tray, and the labels with it	62	5	0
+Amalfi Coast	every boat tied up that night	60	5	0
+Bhimbetka rock shelters	everything in trench four, crated and gone	60	5	0
+Castel del Monte	the keys to a gate that has not been locked in centuries	60	5	0
+Edinburgh Castle	the portcullis	60	5	0
+Hegra	the finds tray, and the labels with it	60	5	0
+Museum Island	the tide	61	5	0
+Salonga National Park	every seed in the seed store	61	5	0
+Sarnath	one day's takings from the whole quarter	61	5	0
+Valdes Peninsula	the only jetty	61	5	0
+Wartburg	the banner off the keep	61	5	0
+Zabid	the name off every street sign in the district	61	5	0
+Beemster	one day's takings from the whole quarter	59	5	0
+Canaima National Park	the oldest tree in it, roots and all	59	5	0
+Canal du Midi	the snow line	60	5	0
+Kasubi Tombs	the effigy off the tomb	60	5	0
+Kinabalu Park	every seed in the seed store	60	5	0
+Malbork Castle	the keys to a gate that has not been locked in centuries	60	5	0
+Notre-Dame d'Amiens	the sound of the bells	60	5	0
+Solovetsky Islands	the count, so nobody knows what is left	60	5	0
+Speyer Cathedral	the reliquary, and what was in it	60	5	0
+Sundarbans National Park	the plan the whole thing was laid out from	60	5	0
+Wachau	the bridge across it	60	5	0
+Ancient and Primeval Beech Forests of the Carpathians and Other Regions of Europe	the count, so nobody knows what is left	59	5	0
+Chernobyl Nuclear Power Plant	the silence, which is the valuable part	79	10	1
+Copán	everything in trench four, crated and gone	59	5	0
+Elephanta Caves	the deepest chamber	59	5	0
+Grand-Place	the plaque, and the screws it was on	59	5	0
+Jiuzhaigou Valley	the oldest tree in it, roots and all	59	5	0
+Kahuzi-Biéga National Park	the oldest tree in it, roots and all	59	5	0
+Kevladev National Park	every seed in the seed store	59	5	0
+Palace of Fontainebleau	the third case from the left, and the card beside it	59	5	0
+Polonnaruwa	the hands off the station clock	59	5	0
+Svalbard Global Seed Vault	one seed, and it was the important one	79	10	1
+Burgos Cathedral	the sound of the bells	57	5	0
+Château de Chambord	the state bed	57	5	0
+Cueva de las Manos	the dark	57	5	0
+Djemila	the site notebook, which was worse than the finds	57	5	0
+Forth Bridge	the last hundred metres of it	58	5	0
+Hawaiʻi Volcanoes National Park	the plan the whole thing was laid out from	58	5	0
+Hofburg Palace	the keys to a gate that has not been locked in centuries	58	5	0
+Konark Sun Temple	the doorway everyone photographs	58	5	0
+Kronborg Castle	the portcullis	58	5	0
+L'Anse aux Meadows	the site notebook, which was worse than the finds	58	5	0
+Manovo-Gounda St. Floris National Park	the oldest tree in it, roots and all	58	5	0
+Olympic National Park	the oldest tree in it, roots and all	58	5	0
+Selous Game Reserve	the tags off every animal in it	58	5	0
+Simien Mountains National Park	the plan the whole thing was laid out from	58	5	0
+Stone Town	one day's takings from the whole quarter	58	5	0
+Tadrart Acacus	everything in trench four, crated and gone	58	5	0
+Tomb of Askia	the inscription, chiselled out entire	58	5	0
+Cahokia	everything in trench four, crated and gone	57	5	0
+Chhatrapati Shivaji Maharaj Terminus	the great wheel	57	5	0
+Cidade Velha	one day's takings from the whole quarter	57	5	0
+Hortobágy National Park	the oldest tree in it, roots and all	57	5	0
+Sanchi	one day's takings	57	5	0
+Santa Maria delle Grazie	the reliquary, and what was in it	57	5	0
+Tropical Rainforest Heritage of Sumatra	the breeding pair	57	5	0
+Wulingyuan	the breeding pair	57	5	0
+Wuyi Mountains	the last hundred metres of it	57	5	0
+Calakmul	the site notebook, which was worse than the finds	55	5	0
+Garajonay National Park	every seed in the seed store	55	5	0
+Gelati Monastery	the recipe, which was the only secret they had	55	5	0
+Jameh Mosque of Isfahan	one day's takings	55	5	0
+Jerónimos Monastery	the library's oldest book	56	5	0
+Mammoth Cave National Park	the ranger's log for forty years	56	5	0
+Mystras	the finds tray, and the labels with it	56	5	0
+Mỹ Sơn	everything in trench four, crated and gone	56	5	0
+Nan Madol	the finds tray, and the labels with it	56	5	0
+Shirakami-Sanchi	the summit cairn	56	5	0
+Soltaniyeh	one day's takings from the whole quarter	56	5	0
+St Kilda	the tags off every animal in it	56	5	0
+Suomenlinna	the causeway	56	5	0
+Tower of Hercules	the span, and both banks are still there	56	5	0
+Tsodilo	the site notebook, which was worse than the finds	56	5	0
+Volubilis	the hands off the station clock	56	5	0
+Wood Buffalo National Park	the plan the whole thing was laid out from	56	5	0
+prehistoric pile dwellings around the Alps	the visitors' book	57	5	0
+Aldabra	the sea wall	54	4	0
+Anjar	one day's takings from the whole quarter	54	4	0
+Antonine Wall	the site notebook, which was worse than the finds	54	4	0
+Blenheim Palace	the plan the whole thing was laid out from	54	4	0
+Chan Chan	the finds tray, and the labels with it	54	4	0
+Hadrian's Villa	the finds tray, and the labels with it	54	4	0
+Henderson Island	the causeway	54	4	0
+Hollókő	the name off every street sign in the district	54	4	0
+Jaú National Park	the oldest tree in it, roots and all	54	4	0
+Kew Gardens	the plan the whole thing was laid out from	55	5	0
+Longmen Grottoes	the paintings off the wall	55	5	0
+Mehmed Paša Sokolović Bridge	the last hundred metres of it	55	5	0
+Preah Vihear Temple	everything in trench four, crated and gone	55	5	0
+Reichenau Island	the only jetty	55	5	0
+Rocas Atoll	the flood markers	55	5	0
+Salt	the finds tray, and the labels with it	55	5	0
+Skellig Michael	the only jetty	55	5	0
+Taï National Park	the oldest tree in it, roots and all	55	5	0
+Bourges Cathedral	the rose window, in one piece	53	4	0
+Carlsbad Caverns National Park	the plan the whole thing was laid out from	53	4	0
+Citadel of the Hồ Dynasty	the breeding pair	53	4	0
+Devils Tower	the grooves, and the story about the bear	73	9	1
+Doñana National Park	the plan the whole thing was laid out from	53	4	0
+Great Smoky Mountains National Park	the oldest tree in it, roots and all	53	4	0
+Iguazú National Park	the plan the whole thing was laid out from	53	4	0
+Inca road system	the visitors' book	53	4	0
+Manas National Park	the plan the whole thing was laid out from	54	4	0
+Pirin National Park	every seed in the seed store	54	4	0
+Qal'at Bani Hammad	the finds tray, and the labels with it	54	4	0
+Ujung Kulon National Park	the plan the whole thing was laid out from	54	4	0
+Alamut Castle	the keys to a gate that has not been locked in centuries	52	4	0
+Banc d'Arguin National Park	the oldest tree in it, roots and all	52	4	0
+Changdeokgung	the state bed	52	4	0
+Ecbatana	the site notebook, which was worse than the finds	52	4	0
+Gobustan State Historical and Cultural Reserve	the breeding pair	52	4	0
+Itchan Kala	one day's takings from the whole quarter	52	4	0
+Mosque City of Bagerhat	the hands off the station clock	52	4	0
+Old Town	the hands off the station clock	52	4	0
+Philippi	everything in trench four, crated and gone	52	4	0
+Piazza del Duomo, Pisa	the oldest thing on the site	52	4	0
+Puerto Princesa Subterranean River National Park	the oldest tree in it, roots and all	53	4	0
+Quebrada de Humahuaca	the river at the bottom	53	4	0
+Shahr-e Sukhteh	the finds tray, and the labels with it	53	4	0
+Takht-e Soleyman	the keys to a gate that has not been locked in centuries	53	4	0
+Virgin Komi Forests	the tags off every animal in it	53	4	0
+Vlkolínec	the chandelier, lowered and walked out	53	4	0
+Boyana Church	the sound of the bells	51	4	0
+Cradle of Humankind	the visitors' book	51	4	0
+Fasil Ghebbi	the stretch of wall the postcards use	51	4	0
+Gunung Mulu National Park	every seed in the seed store	51	4	0
+Khirokitia	everything in trench four, crated and gone	51	4	0
+Mir Castle Complex	the portcullis	51	4	0
+Nisa	everything in trench four, crated and gone	51	4	0
+Ponte Vecchio	the summit cairn	51	4	0
+Quiriguá	everything in trench four, crated and gone	51	4	0
+Semmering railway	the drawings the whole place was built from	51	4	0
+Skara Brae	the site notebook, which was worse than the finds	51	4	0
+Tournai Cathedral	the rose window, in one piece	51	4	0
+Urnes Stave Church	the sound of the bells	52	4	0
+Vredefort crater	the summit cairn	52	4	0
+Yungang Grottoes	the deepest chamber	52	4	0
+Centennial Hall	the signboard at the gate	49	4	0
+Fort Jesus Museum	every seed in the seed store	49	4	0
+Lençóis Maranhenses National Park	the oldest tree in it, roots and all	49	4	0
+Madara Rider	the visitors' book	49	4	0
+Mount Nimba Strict Nature Reserve	the count, so nobody knows what is left	49	4	0
+Mount Wutai	the summit cairn	49	4	0
+Newgrange	the effigy off the tomb	50	4	0
+Pattadakal Group of Monuments	the finds tray, and the labels with it	50	4	0
+Poblet Monastery	the library's oldest book	50	4	0
+Purnululu National Park	the plan the whole thing was laid out from	50	4	0
+Qal’at al Bahrain	the site notebook, which was worse than the finds	50	4	0
+Rhine Falls	the oldest thing on the site	50	4	0
+Roskilde Cathedral	the reliquary, and what was in it	50	4	0
+Spiš Castle	the banner off the keep	50	4	0
+Trinity Lavra of St. Sergius	the recipe, which was the only secret they had	50	4	0
+Tsingy de Bemaraha Strict Nature Reserve	the count, so nobody knows what is left	50	4	0
+Valley of Flowers National Park	every seed in the seed store	50	4	0
+Vatnajökull National Park	the plan the whole thing was laid out from	50	4	0
+Villa Romana del Casale	everything in trench four, crated and gone	50	4	0
+Xanadu	the site notebook, which was worse than the finds	50	4	0
+Škocjan Caves	the dark	51	4	0
+Bam Citadel	the stretch of wall the postcards use	47	4	0
+Belize Barrier Reef	the causeway	47	4	0
+Bryggen	the shutters, from every window on one street	47	4	0
+Buda Castle	the portcullis	47	4	0
+Bwindi Impenetrable National Park	the oldest tree in it, roots and all	47	4	0
+Dead Cities	the finds tray, and the labels with it	47	4	0
+Dengfeng	the name off every street sign in the district	47	4	0
+Dettifoss	the harbour light	47	4	0
+Dholavira	the site notebook, which was worse than the finds	47	4	0
+Djoudj National Bird Sanctuary	every seed in the seed store	47	4	0
+Gullfoss	every boat tied up that night	47	4	0
+Hypogeum of Ħal Saflieni	the site notebook, which was worse than the finds	47	4	0
+Independence Hall	the finds tray, and the labels with it	48	4	0
+Jantar Mantar	the visitors' book	48	4	0
+M'zab	the site notebook, which was worse than the finds	48	4	0
+Mausoleum of Khoja Ahmed Yasawi	the inscription, chiselled out entire	48	4	0
+Monte San Giorgio	the last hundred metres of it	48	4	0
+Nahanni National Park Reserve	every seed in the seed store	48	4	0
+Plain of Jars	the site notebook, which was worse than the finds	48	4	0
+Putorana Plateau	the summit cairn	48	4	0
+Qazan Kremlin	the plaque, and the screws it was on	48	4	0
+Rohtas Fort	the stretch of wall the postcards use	48	4	0
+Serra da Capivara National Park	the oldest tree in it, roots and all	48	4	0
+Singapore Botanic Gardens	every seed in the seed store	48	4	0
+Srebarna Nature Reserve	the breeding pair	48	4	0
+Tongariro National Park	the plan the whole thing was laid out from	49	4	0
+Uluṟu-Kata Tjuṯa National Park	every seed in the seed store	49	4	0
+Val d'Orcia	the river at the bottom	49	4	0
+Villa Tugendhat	the catalogue, which named things no longer there	49	4	0
+Villa d'Este	every seed in the seed store	49	4	0
+Wadi Al-Hitan	the plaque, and the screws it was on	49	4	0
+Yinxu	everything in trench four, crated and gone	49	4	0
+Bandiagara Escarpment	the tags off every animal in it	46	4	0
+Dougga	the finds tray, and the labels with it	46	4	0
+Great Blue Hole	the plaque, and the screws it was on	46	4	0
+Gros Morne National Park	the oldest tree in it, roots and all	46	4	0
+Holašovice	the keys to everything	46	4	0
+Joya de Cerén	the site notebook, which was worse than the finds	46	4	0
+Megalithic Temples of Malta	the finds tray, and the labels with it	46	4	0
+Mount Sanqing	the oldest tree in it, roots and all	46	4	0
+Novodevichy Convent	the library's oldest book	46	4	0
+Qasr Amra	one portrait, and it was the good one	46	4	0
+Rwenzori Mountains National Park	the oldest tree in it, roots and all	46	4	0
+Río Plátano Biosphere Reserve	the tags off every animal in it	46	4	0
+Sangay National Park	the plan the whole thing was laid out from	46	4	0
+Serengeti	the migration, redirected, and it has not come back	67	9	1
+Sidi Bou Said	the name off every street sign in the district	47	4	0
+Ambohimanga	the finds tray, and the labels with it	44	4	0
+Augustusburg and Falkenlust Palaces	the cobbles, and they were numbered	44	4	0
+Burkhan Khaldun	the snow line	44	4	0
+Dazu Rock Carvings	the finds tray, and the labels with it	44	4	0
+Great Living Chola Temples	the door of the oldest house in it	44	4	0
+Hill Forts of Rajasthan	the stretch of wall the postcards use	45	4	0
+Islamic Cairo	one day's takings from the whole quarter	45	4	0
+Manu National Park	the plan the whole thing was laid out from	45	4	0
+Maulbronn Monastery	the library's oldest book	45	4	0
+Muskau Park	every seed in the seed store	45	4	0
+Port Royal	the name off every street sign in the district	45	4	0
+Santa Cruz de Mompós	the name off every street sign in the district	45	4	0
+Stoclet Palace	the oldest thing on the site	45	4	0
+Sulaiman-Too	the snow line	45	4	0
+Tabriz Bazaar	the plaque, and the screws it was on	45	4	0
+Tasmanian Wilderness	the tags off every animal in it	45	4	0
+Wieskirche	the reliquary, and what was in it	45	4	0
+Zhoukoudian site	the keys to everything	45	4	0
+Abbey and Altenmünster of Lorsch	the recipe, which was the only secret they had	43	4	0
+Abbey of Saint Gall	the library's oldest book	43	4	0
+Blue Mosque of Mazar-i-Sharif	the blue	63	8	1
+Boyoma Falls	the visitors' book	43	4	0
+Brú na Bóinne	everything in trench four, crated and gone	43	4	0
+Casbah of Algiers	the name off every street sign in the district	43	4	0
+Coiba	every seed in the seed store	43	4	0
+Crespi d'Adda	the hands off the station clock	43	4	0
+Dinosaur Provincial Park	the oldest tree in it, roots and all	43	4	0
+Guantanamo Bay Naval Base	a filing cabinet, and it was the right one	64	8	1
+Jurassic Coast	the keys to everything	44	4	0
+Lena Pillars	the breeding pair	44	4	0
+Noel Kempff Mercado National Park	the oldest tree in it, roots and all	44	4	0
+Richtersveld	a season's harvest, standing	44	4	0
+Rock-hewn Churches of Ivanovo	the catalogue, which named things no longer there	44	4	0
+Skogskyrkogården	the effigy off the tomb	44	4	0
+Studenica monastery	the library's oldest book	44	4	0
+Wooden tserkvas of Carpathian region in Poland and Ukraine	the plaque, and the screws it was on	44	4	0
+Alexander von Humboldt National Park	every seed in the seed store	41	3	0
+Ayutthaya Historical Park	the oldest tree in it, roots and all	41	3	0
+Bahla Fort	the stretch of wall the postcards use	41	3	0
+Batalha Monastery	the recipe, which was the only secret they had	42	4	0
+Belfries of Belgium and France	the door of the oldest house in it	42	4	0
+Cape Floristic Kingdom	one day's takings	42	4	0
+Cerrado	the signboard at the gate	42	4	0
+Chavin de Huantar	the site notebook, which was worse than the finds	42	4	0
+Engelsberg Ironworks	the door of the oldest house in it	42	4	0
+Gondwana Rainforests of Australia	the oldest thing on the site	42	4	0
+Hollywood Sign	the letters, rearranged, and then taken	62	8	1
+Lavaux	the visitors' book	42	4	0
+Rainforests of the Atsinanana	the plaque, and the screws it was on	42	4	0
+Sinharaja Forest Reserve	the breeding pair	42	4	0
+Tamgaly	everything in trench four, crated and gone	42	4	0
+Thracian Tomb of Kazanlak	the exhibit everyone comes for	42	4	0
+Thracian Tomb of Sveshtari	the grave goods, all of them	43	4	0
+Three Parallel Rivers National Park	the breeding pair	43	4	0
+Tubbataha Reef	the plan the whole thing was laid out from	43	4	0
+rock drawings in Valcamonica	the breeding pair	43	4	0
+Al-Ahsa Oasis	the hands off the station clock	40	3	0
+Ban Chiang	the site notebook, which was worse than the finds	40	3	0
+Horezu monastery	the library's oldest book	40	3	0
+Huanglong	the tags off every animal in it	40	3	0
+Iguaçu National Park	the plan the whole thing was laid out from	40	3	0
+Lonja de la Seda	the plaque, and the screws it was on	40	3	0
+Los Katíos National Park	the oldest tree in it, roots and all	40	3	0
+Madriu-Perafita-Claror Valley	the count, so nobody knows what is left	40	3	0
+Maison Carrée	the finds tray, and the labels with it	40	3	0
+Mount Kenya National Park	the oldest tree in it, roots and all	40	3	0
+New Lanark	one portrait, and it was the good one	40	3	0
+Old Town of Lviv	one day's takings from the whole quarter	40	3	0
+Paraty	one day's takings from the whole quarter	41	3	0
+Petäjävesi Old Church	the rose window, in one piece	41	3	0
+Pontcysyllte Aqueduct	the lock gates	41	3	0
+Santiniketan	the plaque, and the screws it was on	41	3	0
+Schwerin Castle	the catalogue, which named things no longer there	41	3	0
+Taos Pueblo	the plaque, and the screws it was on	41	3	0
+The Architectural Work of Le Corbusier	the cobbles, and they were numbered	41	3	0
+The Great Spa Towns of Europe	the keys to everything	41	3	0
+Tugela Falls	the last shelter below the summit	41	3	0
+Willandra Lakes Region	the tags off every animal in it	41	3	0
+Zubarah	the finds tray, and the labels with it	41	3	0
+Al Maghtas	everything in trench four, crated and gone	38	3	0
+Alcobaça Monastery	the library's oldest book	38	3	0
+Castles and Town Walls of King Edward in Gwynedd	the shutters, from every window on one street	38	3	0
+Champaner-Pavagadh Archaeological Park	the finds tray, and the labels with it	38	3	0
+Golden Mountains of Altai	the breeding pair	38	3	0
+Huascarán National Park	the oldest tree in it, roots and all	38	3	0
+Imperial Citadel of Thang Long	the watchman's horn	38	3	0
+Jog Falls	the oldest thing on the site	38	3	0
+Khangchendzonga National Park	the plan the whole thing was laid out from	38	3	0
+Lake Malawi National Park	every seed in the seed store	38	3	0
+Las Médulas	the site notebook, which was worse than the finds	38	3	0
+Linderhof Palace	the third case from the left, and the card beside it	38	3	0
+Mount Kumgang	the last hundred metres of it	38	3	0
+New Zealand Subantarctic Islands	the causeway	38	3	0
+Papahānaumokuākea Marine National Monument	the count, so nobody knows what is left	39	3	0
+Rani ki vav	one day's takings	39	3	0
+Revillagigedo Islands	the boat, and then there was no way off	39	3	0
+Roman amphitheatre of El Jem	the oldest thing on the site	39	3	0
+Sangiran	everything in trench four, crated and gone	39	3	0
+Sheikh Safi al-Din Khānegāh and Shrine Ensemble	the door of the oldest house in it	39	3	0
+Stone spheres of Costa Rica	everything in trench four, crated and gone	39	3	0
+Tajín Veracruz	everything in trench four, crated and gone	39	3	0
+Te Wahipounamu	the count, so nobody knows what is left	39	3	0
+Viñales Valley	the echo	39	3	0
+Warsaw Old Town	one day's takings from the whole quarter	39	3	0
+Xochicalco	the site notebook, which was worse than the finds	39	3	0
+wooden churches of Maramureș	the keys to everything	39	3	0
+wooden churches of the Slovak Carpathians	one day's takings	40	3	0
+Aflaj Irrigation System of Oman	the drawings the whole place was built from	36	3	0
+Chengde Mountain Resort and its outlying temples	every seed in the seed store	36	3	0
+Churches of Peace	the shutters, from every window on one street	36	3	0
+Darién National Park	the oldest tree in it, roots and all	36	3	0
+Divriği Great Mosque and Hospital	the shutters, from every window on one street	36	3	0
+Dja Faunal Reserve	the count, so nobody knows what is left	36	3	0
+Gamzigrad	one day's takings from the whole quarter	36	3	0
+Gonbad-e Qabus	the grave goods, all of them	36	3	0
+Gordion	everything in trench four, crated and gone	36	3	0
+Gulangyu	the boat, and then there was no way off	36	3	0
+Historic Monuments of Ancient Kyoto	the door of the oldest house in it	36	3	0
+Historic Villages of Shirakawa-gō and Gokayama	the door of the oldest house in it	36	3	0
+Holy Trinity Column in Olomouc	the keys to everything	36	3	0
+Hwaseong Fortress	the state bed	37	3	0
+Ichkeul National Park	every seed in the seed store	37	3	0
+Lake Turkana National Parks	the visitors' book	37	3	0
+Mulanje Massif	the last hundred metres of it	37	3	0
+Padova botanical garden	the oldest tree in it, roots and all	37	3	0
+Royal Tombs of the Joseon Dynasty	the inscription, chiselled out entire	37	3	0
+Sammallahdenmäki	everything in trench four, crated and gone	37	3	0
+Seljalandsfoss	the tide	37	3	0
+Umm ar-Rasas	the site notebook, which was worse than the finds	37	3	0
+Vallée de Mai	the count, so nobody knows what is left	37	3	0
+Vega Archipelago	the only jetty	37	3	0
+Yosemite Falls	the keys to everything	37	3	0
+iSimangaliso Wetland Park	the tags off every animal in it	37	3	0
+Abbey of Fontenay	the recipe, which was the only secret they had	34	3	0
+Australian Convict Sites	the door of the oldest house in it	34	3	0
+Convent of Christ	the recipe, which was the only secret they had	34	3	0
+Euphrasian Basilica	the sound of the bells	34	3	0
+Honghe Hani Rice Terraces	a season's harvest, standing	34	3	0
+Khami	the finds tray, and the labels with it	34	3	0
+Koutammakou	one day's takings from the whole quarter	34	3	0
+Madinat Al-Zahra	the site notebook, which was worse than the finds	35	3	0
+Medici Villas and Gardens in Tuscany	the cobbles, and they were numbered	35	3	0
+Museum Plantin-Moretus	the third case from the left, and the card beside it	35	3	0
+Pamir National Park	the plan the whole thing was laid out from	35	3	0
+Pannonhalma Archabbey	the sound of the bells	35	3	0
+Princely Abbey of Corvey	the library's oldest book	35	3	0
+Rapa Nui National Park	the plan the whole thing was laid out from	35	3	0
+Royal Palaces of Abomey	the exhibit everyone comes for	35	3	0
+Saint-Savin	the harbour light	35	3	0
+Sian Ka'an	the tags off every animal in it	35	3	0
+Visoki Dečani	the finds tray, and the labels with it	35	3	0
+Waterton-Glacier International Peace Park	the breeding pair	35	3	0
+churches of Moldavia	the signboard at the gate	35	3	0
+Šibenik Cathedral	the rose window, in one piece	35	3	0
+Berlin Modernism Housing Estates	the cobbles, and they were numbered	32	3	0
+Burana Tower	the keys to everything	32	3	0
+Cité de Carcassonne	one day's takings from the whole quarter	32	3	0
+Classical Gardens of Suzhou	the plan the whole thing was laid out from	32	3	0
+Dambulla cave temple	the bell rope and the bell	32	3	0
+Desembarco del Granma National Park	every seed in the seed store	32	3	0
+El Fuerte de Samaipata	the site notebook, which was worse than the finds	33	3	0
+Ferapontov Monastery	the bell that keeps the hours	33	3	0
+Goguryeo tombs	everything in trench four, crated and gone	33	3	0
+Great Himalayan National Park	the plan the whole thing was laid out from	33	3	0
+Imperial Tombs of the Ming and Qing Dynasties	the inscription, chiselled out entire	33	3	0
+Jodrell Bank Observatory	the plaque, and the screws it was on	33	3	0
+Kapova Cave	everything in trench four, crated and gone	33	3	0
+Modena Cathedral	the sound of the bells	33	3	0
+Pilgrimage Church of Saint John of Nepomuk	the sound of the bells	33	3	0
+Royal Monastery of Saint Mary of Guadalupe	the bell that keeps the hours	33	3	0
+Sarazm	the finds tray, and the labels with it	33	3	0
+Su Nuraxi di Barumini	the site notebook, which was worse than the finds	33	3	0
+Tlacotalpan	the flood markers	33	3	0
+Twyfelfontein	the finds tray, and the labels with it	34	3	0
+Valle dei Templi	everything in trench four, crated and gone	34	3	0
+Vecrīga	the hands off the station clock	34	3	0
+Verla	the great wheel	34	3	0
+Wooden churches of Southern Lesser Poland	the shutters, from every window on one street	34	3	0
+pont Saint-Bénézet	the summit cairn	34	3	0
+Bale Mountains National Park	the oldest tree in it, roots and all	31	3	0
+Carnac stones	the finds tray, and the labels with it	31	3	0
+Danevirke	the site notebook, which was worse than the finds	31	3	0
+East Rennell	the boat, and then there was no way off	31	3	0
+Fujian Tulou sites	the shutters, from every window on one street	31	3	0
+Ilulissat Icefjord	the tags off every animal in it	31	3	0
+Kluane / Wrangell – St. Elias / Glacier Bay / Tatshenshini-Alsek	the count, so nobody knows what is left	31	3	0
+Mausoleum of the First Qin Emperor	everything in trench four, crated and gone	31	3	0
+Messel pit	the signboard at the gate	31	3	0
+Ningaloo Reef	the plan the whole thing was laid out from	31	3	0
+Old Rauma	the hands off the station clock	31	3	0
+Residence of Bukovinian and Dalmatian Metropolitans	the door of the oldest house in it	32	3	0
+Residences of the Royal House of Savoy	the door of the oldest house in it	32	3	0
+Rock carvings at Alta	the keys to everything	32	3	0
+Royal Alcázar of Segovia	the harbour light	32	3	0
+Río Abiseo National Park	every seed in the seed store	32	3	0
+Sacri Monti of Piedmont and Lombardy	the oldest thing on the site	32	3	0
+Saltaire	one portrait, and it was the good one	32	3	0
+Town Hall of Bremen	the signboard at the gate	32	3	0
+Aapravasi Ghat	the visitors' book	29	2	0
+Aïr and Ténéré National Nature Reserve	the tags off every animal in it	29	2	0
+Badain Jaran Desert	the map of where the water is	29	2	0
+Brimstone Hill Fortress National Park	the plan the whole thing was laid out from	29	2	0
+Canadian Rocky Mountain Parks World Heritage Site	the tags off every animal in it	29	2	0
+Castillo de San Pedro de la Roca	the watchman's horn	29	2	0
+Chongoni Rock Art Area	everything in trench four, crated and gone	29	2	0
+Darial Gorge	the bridge across it	29	2	0
+Dessau-Wörlitz Garden Realm	every seed in the seed store	29	2	0
+General Archive of the Indies	the third case from the left, and the card beside it	29	2	0
+Grimeton VLF transmitter	the door of the oldest house in it	29	2	0
+Head-Smashed-In Buffalo Jump	everything in trench four, crated and gone	29	2	0
+Historic Monuments of Ancient Nara	the door of the oldest house in it	29	2	0
+Iwami Ginzan Silver Mine	the site notebook, which was worse than the finds	30	2	0
+Laponian National Park	the oxygen	30	2	0
+Le Morne Brabant	the snow line	30	2	0
+Maymand	one portrait, and it was the good one	30	2	0
+Morne Trois Pitons National Park	the plan the whole thing was laid out from	30	2	0
+Namhansanseong	the keys to everything	30	2	0
+Nanda Devi National Park	the plan the whole thing was laid out from	30	2	0
+Naumburg Cathedral	the rose window, in one piece	30	2	0
+Orkhon Valley	the echo	30	2	0
+Rietveld Schröder House	the exhibit everyone comes for	30	2	0
+Saint John Abbey	the signboard at the gate	30	2	0
+Sangha Trinational	the breeding pair	30	2	0
+Vilnius Old Town	the name off every street sign in the district	30	2	0
+Wet Tropics of Queensland	the keys to everything	31	3	0
+White City	the name off every street sign in the district	31	3	0
+Baroque Churches of the Philippines	the signboard at the gate	27	2	0
+Bergpark Wilhelmshöhe	the plan the whole thing was laid out from	27	2	0
+Caves of Aggtelek Karst and Slovak Karst	the deepest chamber	27	2	0
+Central Suriname Nature Reserve	the tags off every animal in it	27	2	0
+Chiribiquete National Park	the oldest tree in it, roots and all	27	2	0
+Ennedi Plateau	the summit cairn	28	2	0
+Fortifications of Vauban	one gate, hinges and all	28	2	0
+Herrenchiemsee	the state bed	28	2	0
+Longobards in Italy, Places of Power	the shutters, from every window on one street	28	2	0
+Medieval Monuments in Kosovo	the shutters, from every window on one street	28	2	0
+Miguasha National Park	every seed in the seed store	28	2	0
+Monolithic churches in Lalibela	the door of the oldest house in it	28	2	0
+Painted Churches in the Troödos Region	the sound of the bells	28	2	0
+Palmeral of Elche	the oldest tree in it, roots and all	28	2	0
+Rock Art of the Mediterranean Basin on the Iberian Peninsula	one day's takings	28	2	0
+Samariá Gorge National Park	the bridge across it	28	2	0
+Sukur	a season's harvest, standing	28	2	0
+The Venetian Works of defence between 15th and 17th centuries	the shutters, from every window on one street	28	2	0
+White Monuments of Vladimir and Suzdal	the shutters, from every window on one street	28	2	0
+Ancient City of Aleppo	the name off every street sign in the district	26	2	0
+Asante Traditional Buildings	the shutters, from every window on one street	26	2	0
+Citadel of Erbil	the watchman's horn	26	2	0
+Fagus Factory	the last working engine	26	2	0
+Kizhi Pogost	the cobbles, and they were numbered	26	2	0
+Kondoa Rock Art Sites	the site notebook, which was worse than the finds	26	2	0
+Lakes of Ounianga	the depth of it	26	2	0
+Land of Frankincense	the terrace walls, stone by stone	26	2	0
+León Cathedral	the rose window, in one piece	26	2	0
+Los Alerces National Park	the plan the whole thing was laid out from	26	2	0
+Margravial Opera House	the exhibit everyone comes for	26	2	0
+Nyungwe Forest	every seed in the seed store	27	2	0
+Old Faithful	the keys to everything	27	2	0
+Osun-Osogbo Grove	the visitors' book	27	2	0
+Palaces and Parks of Potsdam and Berlin	a season's harvest, standing	27	2	0
+Sewell	the hands off the station clock	27	2	0
+Sichuan Giant Panda Sanctuaries	the count, so nobody knows what is left	27	2	0
+Tallinn Old Town	one day's takings from the whole quarter	27	2	0
+Zollverein Coal Mine Industrial Complex	the drawings the whole place was built from	27	2	0
+Aljafería	the keys to a gate that has not been locked in centuries	24	2	0
+Archaeological Landscape of the First Coffee Plantations in the South-East of Cuba	one day's takings	24	2	0
+Christiansfeld	the name off every street sign in the district	24	2	0
+Churches of Chiloé	the signboard at the gate	25	2	0
+Decorated Farmhouses of Hälsingland	the door of the oldest house in it	25	2	0
+Derwent Valley Mills	the great wheel	25	2	0
+Fountains Abbey	the recipe, which was the only secret they had	25	2	0
+Heart of Neolithic Orkney	the tags off every animal in it	25	2	0
+Humberstone and Santa Laura Saltpeter Works	one day's takings	25	2	0
+Kuk Swamp	the finds tray, and the labels with it	25	2	0
+Monarch Butterfly Biosphere Reserve	the count, so nobody knows what is left	25	2	0
+New Caledonia Barrier Reef	the oldest thing on the site	25	2	0
+Prehistoric Rock Art Sites in the Côa Valley	the site notebook, which was worse than the finds	25	2	0
+Ramappa Temple	the topmost finial	25	2	0
+Sacred Mijikenda Kaya Forests	the oldest thing on the site	25	2	0
+Sawahlunto	one day's takings from the whole quarter	25	2	0
+South China Karst	the plaque, and the screws it was on	25	2	0
+Takalik Abaj	everything in trench four, crated and gone	26	2	0
+Tràng An	the hands off the station clock	26	2	0
+Citadelle Laferrière	the watchman's horn	23	2	0
+Colonia Iulia Urbs Triumphalis Tarraco	everything in trench four, crated and gone	23	2	0
+Cordouan Lighthouse	the span, and both banks are still there	23	2	0
+Cornwall and West Devon Mining Landscape	a season's harvest, standing	23	2	0
+El Camino Real de Tierra Adentro	one day's takings	23	2	0
+Falun Mine	the visitors' book	23	2	0
+Ironbridge Gorge	the bridge across it	24	2	0
+Ivindo National Park	the plan the whole thing was laid out from	24	2	0
+Jesuit Missions of Chiquitos	the visitors' book	24	2	0
+Lednice-Valtice Cultural Landscape	the water rights	24	2	0
+Qalhat	the hands off the station clock	24	2	0
+Rhine Gorge	the water rights	24	2	0
+Rock Carvings in Tanum	the finds tray, and the labels with it	24	2	0
+Sacred Sites and Pilgrimage Routes in the Kii Mountain Range	the visitors' book	24	2	0
+Stevns Klint	one day's takings	24	2	0
+Valley of Geysers	the breeding pair	24	2	0
+Alto Douro Wine Region	the tide	22	2	0
+Arslantepe	the site notebook, which was worse than the finds	22	2	0
+Bat, Al-Khutm and Al-Ayn archaeological sites	the finds tray, and the labels with it	22	2	0
+Dacian Fortresses of the Orăștie Mountains	the cobbles, and they were numbered	22	2	0
+Gammelstad Church Town	the rose window, in one piece	22	2	0
+Hoh Xil	the plaque, and the screws it was on	22	2	0
+Hospicio Cabañas	the keys to everything	22	2	0
+Koh Ker	everything in trench four, crated and gone	22	2	0
+Kraków Old Town	the name off every street sign in the district	22	2	0
+Palace of Mafra	the reliquary, and what was in it	22	2	0
+Pitons	the last hundred metres of it	22	2	0
+Ruins of St. Paul's	the rose window, in one piece	22	2	0
+Sambor Prei Kuk	the site notebook, which was worse than the finds	23	2	0
+Saryarka – Steppe and Lakes of Northern Kazakhstan	the water rights	23	2	0
+Tierradentro	the site notebook, which was worse than the finds	23	2	0
+Trans-Iranian railway	the great wheel	23	2	0
+University City of Caracas	the signboard at the gate	23	2	0
+Völklingen Ironworks	one day's takings	23	2	0
+historical city centre of Odesa	the hands off the station clock	23	2	0
+Burgess Shale	the visitors' book	21	2	0
+Capital Cities and Tombs of the Ancient Koguryo Kingdom	the finds tray, and the labels with it	21	2	0
+Casas Grandes	the finds tray, and the labels with it	21	2	0
+Gochang, Hwasun and Ganghwa Dolmen Sites	one day's takings	21	2	0
+Historic Centre of Saint Petersburg and Related Groups of Monuments	the name off every street sign in the district	21	2	0
+Khajuraho Group of Monuments	the incense, and the smell went with it	21	2	0
+Niah National Park	the finds tray, and the labels with it	21	2	0
+Old Quebec	one day's takings from the whole quarter	21	2	0
+Paleochristian and Byzantine monuments of Thessaloniki	the oldest thing on the site	21	2	0
+Rock Paintings of Hua Mountain	the finds tray, and the labels with it	21	2	0
+Shrines and Temples of Nikkō	the plaque, and the screws it was on	21	2	0
+Shushtar Historical Hydraulic System	the shutters, from every window on one street	21	2	0
+Sites of Japan’s Meiji Industrial Revolution: Iron and Steel, Shipbuilding and Coal Mining	the door of the oldest house in it	21	2	0
+Stari Grad Plain	a season's harvest, standing	22	2	0
+lifts on the old Canal du Centre	the cobbles, and they were numbered	22	2	0
+Atapuerca	the site notebook, which was worse than the finds	19	2	0
+Bassari Country	the water rights	19	2	0
+Beit She'arim National Park	the site notebook, which was worse than the finds	19	2	0
+Central Highlands of Sri Lanka	the keys to everything	19	2	0
+Cát Bà Island	the only jetty	19	2	0
+Dilmun Burial Mounds	the effigy off the tomb	20	2	0
+Eldgjá	the river at the bottom	20	2	0
+Glarus thrust	the visitors' book	20	2	0
+Incense Route – Desert Cities in the Negev	the oldest thing on the site	20	2	0
+Jesuit Block and Estancias of Córdoba	the signboard at the gate	20	2	0
+Kujataa	one day's takings	20	2	0
+Odzala National Park	the plan the whole thing was laid out from	20	2	0
+Our Lady of Promise	the reliquary, and what was in it	20	2	0
+Redwood National and State Parks	the breeding pair	20	2	0
+Roman Walls of Lugo	the hands off the station clock	20	2	0
+Ruínas de León Viejo	the doorway everyone photographs	20	2	0
+San Agustin archeological park	everything in trench four, crated and gone	20	2	0
+Vjetrenica	the deepest chamber	20	2	0
+Aqueduct of Padre Tembleque	the keystone	18	2	0
+Armenian Monastic Ensembles of Iran	the shutters, from every window on one street	18	2	0
+Bahrain Pearling Trail	the cobbles, and they were numbered	18	2	0
+Banaue Rice Terraces	a season's harvest, standing	18	2	0
+Bom Jesus do Monte	the sound of the bells	18	2	0
+Eise Eisinga Planetarium	the catalogue, which named things no longer there	18	2	0
+Greater Blue Mountains Area	the tags off every animal in it	18	2	0
+Gusuku Sites and Related Properties of the Kingdom of Ryukyu	the door of the oldest house in it	18	2	0
+Ir.D.F. Woudagemaal	the catalogue, which named things no longer there	18	2	0
+Jeju Volcanic Island and Lava Tubes	the keys to everything	19	2	0
+Litomyšl Chateau	one portrait, and it was the good one	19	2	0
+Matka Canyon	the echo	19	2	0
+Monasteries on the slopes of Popocatépetl	the plaque, and the screws it was on	19	2	0
+Natural and Culturo-Historical Region of Kotor	the count, so nobody knows what is left	19	2	0
+Shiretoko Peninsula	the boat, and then there was no way off	19	2	0
+Thimlich Ohinga	the finds tray, and the labels with it	19	2	0
+domus de janas	the signboard at the gate	19	2	0
+northern French coal mining region	one day's takings	19	2	0
+Ancient City of Damascus	the hands off the station clock	16	1	0
+Area de Conservación Guanacaste World Heritage Site	the tags off every animal in it	16	1	0
+Beaufort Castle	the portcullis	16	1	0
+Charyn Canyon	the bridge across it	16	1	0
+China Danxia	the keys to everything	16	1	0
+Ciudad Universitaria	the visitors' book	16	1	0
+Franciscan Missions in the Sierra Gorda	the shutters, from every window on one street	16	1	0
+Group of monuments at Mahabalipuram	the topmost finial	17	1	0
+Gyeongju Historic Areas	the site notebook, which was worse than the finds	17	1	0
+Hiraizumi – Temples, Gardens and Archaeological Sites Representing the Buddhist Pure Land	the hands off the station clock	17	1	0
+Jesuit missions among the Guaraní	the plaque, and the screws it was on	17	1	0
+Jungfrau-Aletsch protected area	the keys to everything	17	1	0
+Kenya Lake System in the Great Rift Valley	the tags off every animal in it	17	1	0
+Pachacámac	the finds tray, and the labels with it	17	1	0
+Pankisi Gorge	the bridge across it	17	1	0
+Par force hunting landscape in North Zealand	the terrace walls, stone by stone	17	1	0
+Rock Paintings of Sierra de San Francisco	one day's takings	17	1	0
+Silk Roads: the Routes Network of Chang'an-Tianshan Corridor	the oldest thing on the site	17	1	0
+Stora Sjöfallet National Park	every seed in the seed store	17	1	0
+Temple of Apollo Epicurius in Bassae	the finds tray, and the labels with it	17	1	0
+Tusi Sites	the site notebook, which was worse than the finds	18	2	0
+Valongo Wharf	the finds tray, and the labels with it	18	2	0
+Van Nelle Factory	the last working engine	18	2	0
+Victorian Gothic and Art Deco Ensembles of Mumbai	the signboard at the gate	18	2	0
+Cathedral of the Savior in his Epiphany of Zaragoza	the sound of the bells	15	1	0
+Luis Barragán House and Studio	the exhibit everyone comes for	15	1	0
+Matobo Hills	the last hundred metres of it	15	1	0
+Nahal Me'arot Nature Reserve	the site notebook, which was worse than the finds	15	1	0
+Navy Petty-Officers School of Mechanics	the plaque, and the screws it was on	15	1	0
+Ninstints	the site notebook, which was worse than the finds	16	1	0
+Old City of Bern	the hands off the station clock	16	1	0
+Poverty Point	the finds tray, and the labels with it	16	1	0
+Thungyai Naresuan Wildlife Sanctuary	the breeding pair	16	1	0
+Tiger Leaping Gorge	the bridge across it	16	1	0
+Umm el-Jimal	the hands off the station clock	16	1	0
+Zagori	one day's takings	16	1	0
+Baekje Historic Areas	the oldest thing on the site	14	1	0
+Buddhist Monuments in the Hōryū-ji Area	the topmost finial	14	1	0
+El Pinacate y Gran Desierto de Altar Biosphere Reserve	the count, so nobody knows what is left	14	1	0
+Heritage of Mercury. Almadén and Idrija	the shutters, from every window on one street	14	1	0
+Hidden Christian Sites in the Nagasaki Region	the door of the oldest house in it	14	1	0
+Major Mining Sites of Wallonia	the cobbles, and they were numbered	14	1	0
+Major Town Houses of the Architect Victor Horta	the visitors' book	15	1	0
+Mistaken Point Ecological Reserve	the harbour light	15	1	0
+Neolithic flint mines of Spiennes	the keys to everything	15	1	0
+Sans-Souci Palace	the chandelier, lowered and walked out	15	1	0
+Teruel Cathedral	the rose window, in one piece	15	1	0
+The Vineyard Landscape of Piedmont: Langhe-Roero and Monferrato	the terrace walls, stone by stone	15	1	0
+W-Arly-Pendjari Complex	the count, so nobody knows what is left	15	1	0
+Western Xia Mausoleums	the finds tray, and the labels with it	15	1	0
+A-Ma Temple	the bell rope and the bell	13	1	0
+Ahwar of Southern Iraq	a season's harvest, standing	13	1	0
+Arab-Norman Palermo and the Cathedral Churches of Cefalú and Monreale	the shutters, from every window on one street	13	1	0
+Arabian Oryx Sanctuary	the tags off every animal in it	13	1	0
+Beit Guvrin National Park	the oldest tree in it, roots and all	13	1	0
+Béguinages in Flanders	the shutters, from every window on one street	13	1	0
+Catalan Romanesque Churches of the Vall de Boí	the keys to everything	13	1	0
+Cavernas do Peruaçu National Park	the plan the whole thing was laid out from	13	1	0
+Jodensavanne	the name off every street sign in the district	13	1	0
+Monasteries of San Millán de la Cogolla	the recipe, which was the only secret they had	13	1	0
+Nelson's Dockyard	the exhibit everyone comes for	13	1	0
+Ombilin coal mine	the keys to everything	13	1	0
+Rock Art in the Hail Region of Saudi Arabia	the finds tray, and the labels with it	13	1	0
+Ruins of Gedi	the finds tray, and the labels with it	13	1	0
+Saloum Delta	the tags off every animal in it	14	1	0
+Sanctuary of Bom Jesus de Matosinhos	the rose window, in one piece	14	1	0
+Sassanid Archaeological Landscape of Fars Region	the oldest thing on the site	14	1	0
+Socotra Archipelago	the count, so nobody knows what is left	14	1	0
+Spišská Kapitula	one day's takings from the whole quarter	14	1	0
+Three Castles of Bellinzona	the site notebook, which was worse than the finds	14	1	0
+port of the Moon	one day's takings from the whole quarter	14	1	0
+Churches of the Pskov School of Architecture	the door of the oldest house in it	11	1	0
+City of Vicenza and the Palladian Villas of the Veneto	the visitors' book	12	1	0
+King's House on Schachen	the plan the whole thing was laid out from	12	1	0
+Palazzo Rosso	the catalogue, which named things no longer there	12	1	0
+Petroglyphic Complexes of the Mongolian Altai	everything in trench four, crated and gone	12	1	0
+Rjukan–Notodden Industrial Heritage Site	the last working engine	12	1	0
+Roman Monuments, Cathedral of St. Peter and Church of Our Lady in Trier UNESCO World Heritage Site	the cobbles, and they were numbered	12	1	0
+Ruins of Loropéni	the site notebook, which was worse than the finds	12	1	0
+Tell es-Sultan	the name off every street sign in the district	12	1	0
+The works of Jože Plečnik in Ljubljana – Human Centred Urban Design	one day's takings from the whole quarter	12	1	0
+Tigrovaya Balka Nature Reserve	the count, so nobody knows what is left	12	1	0
+Upper German-Raetian Limes	everything in trench four, crated and gone	12	1	0
+Windmills at Kinderdijk	the last working engine	12	1	0
+porticoes of Bologna	the door of the oldest house in it	12	1	0
+Caves and Ice Age Art in the Swabian Jura	the count, so nobody knows what is left	10	1	0
+Historic Monuments of Novgorod and Surroundings	one day's takings from the whole quarter	10	1	0
+Landscape of the Pico Island Vineyard Culture	the oldest thing on the site	11	1	0
+Maidam	the cobbles, and they were numbered	11	1	0
+Mapungubwe Cultural Landscape	the water rights	11	1	0
+Markovi Kuli	the finds tray, and the labels with it	11	1	0
+Medina of Tunis	the name off every street sign in the district	11	1	0
+Pampulha Modern Ensemble	the door of the oldest house in it	11	1	0
+Phoenix Islands Protected Area	the breeding pair	11	1	0
+Royal Abbey of Hautecombe	the recipe, which was the only secret they had	11	1	0
+Southern Öland cultural landscape	the water rights	11	1	0
+Tehuacán-Cuicatlán Biosphere Reserve	the breeding pair	11	1	0
+The 20th-Century Architecture of Frank Lloyd Wright	the shutters, from every window on one street	11	1	0
+Tipasa	the finds tray, and the labels with it	11	1	0
+Aasivissuit–Nipisat	the water rights	9	1	0
+Antequera Dolmens Site	the finds tray, and the labels with it	9	1	0
+Bir Hima Rock Petroglyphs and Inscriptions	everything in trench four, crated and gone	10	1	0
+Church of Cristo Obrero y Nuestra Señora de Lourdes	the sound of the bells	10	1	0
+Historic Centre of Sighișoara	one day's takings from the whole quarter	10	1	0
+Makhonjwa Mountains	the last hundred metres of it	10	1	0
+Maloti-Drakensberg Park	the visitors' book	10	1	0
+Medina of Sousse	the hands off the station clock	10	1	0
+Melka Kunture	everything in trench four, crated and gone	10	1	0
+Qaryat al-Faw	everything in trench four, crated and gone	10	1	0
+Sacred Ensembles of the Hoysalas	the terrace walls, stone by stone	10	1	0
+Sansa, Buddhist Mountain Monasteries in Korea	the door of the oldest house in it	10	1	0
+Sebastia	the name off every street sign in the district	10	1	0
+fortifications on the Caribbean Side of Panama: Portobelo-San Lorenzo	the shutters, from every window on one street	10	1	0
+Babelsberg Palace	one portrait, and it was the good one	9	1	0
+Budj Bim	the snow line	9	1	0
+Churches and Convents of Goa	the cobbles, and they were numbered	9	1	0
+Colonial City of Santo Domingo	one day's takings from the whole quarter	9	1	0
+Dong Phayayen-Khao Yai Forest Complex	the keys to everything	9	1	0
+Duchess Anna Amalia Library	the exhibit everyone comes for	9	1	0
+Getbol, Korean Tidal Flats	the count, so nobody knows what is left	9	1	0
+Historic Centre of the City of Salzburg	the name off every street sign in the district	9	1	0
+Pimachiowin Aki	the breeding pair	9	1	0
+Si Thep historical park	the oldest tree in it, roots and all	9	1	0
+Archaeological Site of Sabratha	the site notebook, which was worse than the finds	7	1	0
+Arles, Roman and Romanesque Monuments	the site notebook, which was worse than the finds	7	1	0
+Artists' Colony in Darmstadt	the oldest thing on the site	7	1	0
+Astronomical Observatory of the University of Kazan	one day's takings	7	1	0
+Chinchorro mummies	the visitors' book	7	1	0
+Church of the Saviour at Berestove	the rose window, in one piece	8	1	0
+Colchic Rainforests and Wetlands	the breeding pair	8	1	0
+Durmitor National Park	the plan the whole thing was laid out from	8	1	0
+Early Christian Necropolis of Pécs	everything in trench four, crated and gone	8	1	0
+Forts and Castles, Volta, Greater Accra, Central and Western Regions	the shutters, from every window on one street	8	1	0
+Jabal Al Fayah	the site notebook, which was worse than the finds	8	1	0
+Jōmon Prehistoric Sites in Northern Japan	the site notebook, which was worse than the finds	8	1	0
+Kokino	the finds tray, and the labels with it	8	1	0
+Laurisilva of Madeira	the keys to everything	8	1	0
+Medieval Town of Toruń	one day's takings from the whole quarter	8	1	0
+Menin Gate	the hands off the station clock	8	1	0
+Old City of Hebron	the name off every street sign in the district	8	1	0
+Old City of Zamość	the name off every street sign in the district	8	1	0
+Sanctuary of the Madonna di San Luca	the reliquary, and what was in it	9	1	0
+Bahá'í World Centre buildings	the cobbles, and they were numbered	5	1	0
+Bruges City Hall	the third case from the left, and the card beside it	6	1	0
+Château de Quéribus	the keys to a gate that has not been locked in centuries	6	1	0
+Classical Weimar	the door of the oldest house in it	6	1	0
+Gaya Tumuli	the finds tray, and the labels with it	6	1	0
+Gola National Park	the plan the whole thing was laid out from	6	1	0
+Grand-Pré	the name off every street sign in the district	6	1	0
+Hin Nam No National Protected Area	the tags off every animal in it	6	1	0
+Historic Centre of Lima	the hands off the station clock	6	1	0
+Historic Centre of Naples	the name off every street sign in the district	6	1	0
+Kalwaria Zebrzydowska park	the shutters, from every window on one street	6	1	0
+Maratha Military Landscapes of India	the door of the oldest house in it	6	1	0
+Murambi Genocide Memorial	one day's takings	6	1	0
+Old Towns of Djenné	the hands off the station clock	6	1	0
+Risco Caido	everything in trench four, crated and gone	7	1	0
+Royal Court of Tiébélé	the door of the oldest house in it	7	1	0
+Silk Roads: Zarafshan-Karakum Corridor	the keys to everything	7	1	0
+Sviyazhsk Assumption Monastery	the library's oldest book	7	1	0
+The Causses and the Cévennes, Mediterranean agro-pastoral Cultural Landscape	the water rights	7	1	0
+Vieux Lyon	the name off every street sign in the district	7	1	0
+Wat Phra Mahathat	the visitors' book	7	1	0
+Way of Saint James UNESCO World Heritage Sites in France	the shutters, from every window on one street	7	1	0
+Writing-on-Stone Provincial Park	the plan the whole thing was laid out from	7	1	0
+Sagrada Família	the finished part	60	8	1
+Cheyenne Mountain Complex	the signboard at the gate	5	1	0
+Pentagon	one side of it, so it is a quadrilateral now	60	8	1
+Three Mile Island	the reactor's second unit, and it was not using it	60	8	1
+Denali	the other name, so the mountain has only one now	60	8	1
+Galápagos Islands	one finch, and the argument that came with it	60	8	1

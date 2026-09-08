@@ -1588,6 +1588,89 @@ python3 games/hue-and-cry/hints.py            # read some
 python3 games/hue-and-cry/hints.py --build    # rewrite hints.tsv
 ```
 
+## The treasures, where a joke turned out to be the mechanic
+
+*Step three, 2026-09-08: "add coordinates, treasures, and other stats",
+with a steer that did more work than it looked like it would --* "the
+treasure can be absurdly impossible to steal like Carmen likes in some
+places".
+
+That could have been flavour text. It is the mechanic, because **the theft
+is a dwell**: she must stand still to take a thing, and standing still is
+the only reason she is catchable at all. So the impossible treasures are
+worth the most and take the longest, and going after one is a bet that
+nobody reads the room in time.
+
+```
+100  11h  Eiffel Tower    the tower itself, unbolted overnight and driven out in sections
+100  11h  Mount Everest   the summit. She took the summit.
+100  11h  Sahara          the sand, in a bag, and the bag was not large
+100  11h  Vatican City    the keys
+  5   1h  Cheyenne Mountain Complex   the signboard at the gate
+```
+
+Eighty are hand-written, one per place famous enough that a person has a
+picture of it in their head; the other 920 are drawn from what the place
+is -- the sound of the bells, everything in trench four, the third case
+from the left and the card beside it.
+
+### The tension is in the data and nobody put it there
+
+Reputation tracks fame, and fame runs *against* cover:
+
+```
+correlation(cover, reputation) = -0.285
+```
+
+A famous landmark carries rarer descriptors, so **the rooms worth the most
+are the rooms where her hint hides her least**. That is the trade the whole
+theft mechanic needs, and it was not designed: it falls out of a map of
+real places. This is the second time real geography has supplied a balance
+this game would otherwise have had to fake -- the first is in "Routes run
+between places that resemble each other" -- and it is the argument for
+building the map out of the world rather than out of a generator.
+
+`test_treasures.py::test_the_richest_rooms_are_the_most_exposed` holds the
+sign, because a later change to the descriptor vocabulary could flip it and
+nothing else would notice.
+
+### Two scoring attempts that were wrong, kept because the shape recurs
+
+A **multiplier** on the impossible ones piled seventy treasures onto the
+cap of 100, which is the same as not scoring them. Replacing it with a flat
+bonus then put **Denali's impossible theft at 25**, below the average
+ordinary one, because Wikidata records Denali as having no sitelinks at
+all -- and taking a mountain's name away is not a small job however obscure
+the ranking thinks the mountain is. So the bonus has a floor under it.
+
+Four rows on this map have a sitelink count under eight and **every one of
+them is a recording error rather than an obscure place**: Denali and the
+Galápagos at zero, Three Mile Island at four, the Pentagon at seven. Rank
+does not repair that; it puts them at the bottom in order. All four are
+named by hand instead, which is the honest fix and also the right one,
+since each is exactly the sort of place Carmel would take something
+ridiculous from.
+
+### The names may say where she is, and the hints may not
+
+A treasure is not a clue. It is written on the room's own board at setup
+and settles into the record when a `TAKE` is recognised, so anybody who can
+read it is already standing in the room and has won. That is why "the
+tower itself" is allowed to name the tower while no hint sentence may name
+anything.
+
+The hand-written treasures are keyed by landmark name, which is a hostage
+to a rebuild of `landmarks.tsv` -- and it collected two immediately, before
+the test that catches it was five minutes old. `Kremlin` had been folded
+into Red Square by the kilometre rule and `Iguazu Falls` is spelled
+`Iguaçu` in the feature bucket, so both lines were being written and
+silently never used. Nothing else in the repository would have noticed.
+
+```
+python3 games/hue-and-cry/treasures.py            # read some
+python3 games/hue-and-cry/treasures.py --build    # rewrite treasures.tsv
+```
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
