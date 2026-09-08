@@ -662,6 +662,83 @@ def test_the_arrow_opens_the_other_ways_in_and_all_of_them_carry_the_room(
     tab.close()
 
 
+def test_the_way_chosen_on_the_front_door_is_the_one_offered_here(
+        browser, site, cors_hub):
+    """**A click on the front door has to still mean something two pages on.**
+
+    `island.lucille-ai.com` offers the same four names, and every one of them
+    by hand lands here -- none of the playing pages exists until a table has
+    settled and whispered its room. Landing a visitor who chose "my kid wants
+    to play" on a menu defaulting to "send in my agent" makes their click mean
+    nothing and asks them to find the drawn island a second time.
+
+    So the door carries `?play=` and this page opens that door first. The
+    check is that both the button and the menu's top row move -- the button is
+    built from the list, so one of them moving alone is the drift this is here
+    to catch.
+    """
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html?play=island", errors)
+    _fill_room(tab, cors_hub, name="hand-chose")
+    tab.fill("#table", "g45")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    lobby = _client(cors_hub, "lobby-chose")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_chose45", token="", key=KEY,
+                  write_key="seed-c45", note="g45").encode()
+    lobby.post("lobby", f"g45 invite: {code}")
+    tab.click("#refresh")
+
+    link = tab.locator("#invite #playLink")
+    link.wait_for(timeout=15_000)
+    assert link.get_attribute("href").startswith("./kids-island.html?"), \
+        link.get_attribute("href")
+    assert "my kid wants to play" in link.inner_text().lower()
+
+    order = tab.eval_on_selector_all(
+        "#waysIn a", "els => els.map(a => a.id)")
+    assert order[0] == "kidsIslandLink", order
+    # Every way stays on the menu: the parameter is a hint about which door to
+    # open first, so a wrong guess costs a scroll and never a page.
+    assert sorted(order) == sorted(
+        ["waysAgent", "hackerLink", "kidsLink", "kidsIslandLink"]), order
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_unknown_way_leaves_the_menu_as_it_was(browser, site, cors_hub):
+    """A hint, not a route. A `?play=` nobody wrote down must not empty the
+    menu or blank the button -- the visitor still gets every way in, in the
+    order the page would have offered anyway."""
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html?play=nonsense", errors)
+    _fill_room(tab, cors_hub, name="hand-odd")
+    tab.fill("#table", "g46")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    lobby = _client(cors_hub, "lobby-odd")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_odd46", token="", key=KEY,
+                  write_key="seed-o46", note="g46").encode()
+    lobby.post("lobby", f"g46 invite: {code}")
+    tab.click("#refresh")
+
+    link = tab.locator("#invite #playLink")
+    link.wait_for(timeout=15_000)
+    assert link.get_attribute("href").startswith("./play.html?")
+    order = tab.eval_on_selector_all("#waysIn a", "els => els.map(a => a.id)")
+    assert order == ["waysAgent", "hackerLink", "kidsLink", "kidsIslandLink"], order
+    assert not errors, errors
+    tab.close()
+
+
 # --- the island ------------------------------------------------------------
 
 def test_entering_the_room_declares_the_driver_without_being_asked(

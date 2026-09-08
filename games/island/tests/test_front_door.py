@@ -30,6 +30,7 @@ browser check in this repo takes that flag: a skip and a pass are the same tick.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import pathlib
@@ -107,6 +108,43 @@ def _visit(board, path: str = ""):
     return text, where[len(base):]
 
 
+@contextlib.contextmanager
+def _driving(board):
+    """The same door as `_visit`, held open so a test can press something.
+
+    `_visit` loads, reads and closes, which is right for what the page *says*.
+    A menu that opens is a thing the page *does* (`CLAUDE.md`), and there is
+    no reading of markup that can tell a bound click from an unbound one.
+    """
+    try:
+        from playwright import sync_api as play
+    except ImportError:
+        _missing("no playwright to drive a page with")
+    chrome = next((p for p in pathlib.Path("/opt/pw-browsers").glob("chromium*")
+                   if p.is_file()), None)
+    httpd, base = _serve(WEB)
+    try:
+        with play.sync_playwright() as pw:
+            try:
+                browser = pw.chromium.launch(
+                    executable_path=str(chrome) if chrome else None)
+            except Exception as exc:                       # noqa: BLE001
+                _missing(f"no chromium to drive a page with: {exc!r}")
+            tab = browser.new_page()
+            errors: list[str] = []
+            tab.on("pageerror", lambda e: errors.append(str(e)))
+            tab.route(SCORES, lambda route: route.fulfill(
+                status=200, content_type="application/json",
+                body=json.dumps(board)))
+            tab.goto(base)
+            tab.wait_for_load_state("networkidle")
+            yield tab
+            assert not errors, f"the page threw: {errors}"
+            browser.close()
+    finally:
+        httpd.shutdown()
+
+
 # ---- the page a visitor lands on ------------------------------------------
 
 def test_a_bare_visit_says_what_this_is_and_how_to_enter():
@@ -123,6 +161,88 @@ def test_the_lobby_is_one_click_away_and_at_its_new_path():
     html = (WEB / "index.html").read_text()
     assert 'href="/lobby"' in html
     assert (WEB / "lobby.html").is_file(), "nothing serves /lobby"
+
+
+#: The hand's lobby, named once here and read out of the committed source in
+#: both places it is written, so the door and the page behind it cannot drift
+#: to two hosts.
+HAND = "https://gald33.github.io/ai-lab/island/hand/lobby.html"
+
+#: The ways the door offers, in the order it offers them. Gal's own words
+#: (2026-09-08), which is why they are transcribed rather than derived: what
+#: they are is the ask, and a test that read them out of the page it drives
+#: would agree with any menu at all.
+WAYS_ON_THE_DOOR = ["agent", "hand", "agent-too", "kids", "island"]
+
+
+def test_the_arrow_on_the_door_opens_the_other_ways_to_play():
+    """**The island is playable by hand, and the door did not say so.**
+
+    Gal, 2026-09-08: a small arrow on "Send in my agent" that opens a menu of
+    more options -- hacker hand, hand and agent, nice buttons, my kid wants to
+    play the full visual UI. Until then the only mention of playing it yourself
+    was a sentence inside a fold, on the page *after* this one.
+
+    Driven rather than read: the arrow is a thing the page does, and a
+    fragment assertion cannot tell a bound click from an unbound one -- which
+    is the frozen countdown, on the front door.
+    """
+    with _driving(_board(None)) as tab:
+        menu = tab.locator("#waysIn")
+        assert not menu.is_visible(), "shut until the arrow is pressed"
+        assert tab.locator("#moreWays").get_attribute("aria-expanded") == "false"
+
+        tab.click("#moreWays")
+        menu.wait_for(state="visible", timeout=5_000)
+        assert tab.locator("#moreWays").get_attribute("aria-expanded") == "true"
+
+        rows = tab.eval_on_selector_all(
+            "#waysIn a",
+            "els => els.map(a => [a.dataset.way, a.getAttribute('href')])")
+        assert [key for key, _ in rows] == WAYS_ON_THE_DOOR, rows
+        # Sending an agent stays on this deployment; every way by hand is the
+        # hand's lobby on the other origin, because none of the playing pages
+        # exists until a table has settled and whispered its room.
+        assert rows[0][1] == "/lobby"
+        assert (WEB / "lobby.html").is_file(), "nothing serves /lobby"
+        for key, href in rows[1:]:
+            assert href.startswith(f"{HAND}?play="), (key, href)
+
+        # The button is the first way, from the same list, so the door's
+        # headline action and the menu's top row cannot drift apart.
+        assert tab.locator("#sendAgent").get_attribute("href") == rows[0][1]
+
+        tab.click("#moreWays")
+        assert not menu.is_visible(), "and it shuts again"
+
+
+def test_every_way_by_hand_names_a_page_the_hand_lobby_knows():
+    """**A click on the door has to still mean something two pages later.**
+
+    Every way by hand goes through the hand's lobby, and what makes the choice
+    survive the trip is `?play=`: that lobby puts the named way first when the
+    room arrives (`hand/lobby.html`, `waysInOrder`). The keys the door sends
+    have to be keys it knows.
+
+    Read off both files rather than transcribed, because the failure is
+    silent: a menu sending `?play=drawn` at a lobby that knows `island` drops
+    the visitor on the default with nothing said, and no page is broken enough
+    for anybody to notice.
+    """
+    ways = (WEB / "ways.js").read_text()
+    lobby = (pathlib.Path(__file__).resolve().parent.parent
+             / "hand" / "lobby.html").read_text()
+
+    sent = set(re.findall(r"\?play=(\w+)", ways))
+    known = set(re.findall(r'key: "(\w+)", id: "\w+", page:', lobby))
+    assert sent, "the menu sends no way at all"
+    assert known, "the hand's lobby has no ways to be sent to"
+    assert sent <= known, (
+        f"the door sends {sorted(sent - known)}, which the hand's lobby does "
+        f"not know: those visitors land on the default with nothing said")
+    # And the hand's lobby is one host in both places that write it down.
+    assert f'"{HAND}"' in ways
+    assert f'"{HAND}"' in (WEB / "render.js").read_text()
 
 
 def test_the_lobby_page_loads_its_assets_from_the_root():

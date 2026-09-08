@@ -1586,6 +1586,44 @@ face this page's monospace stack asks for, and it fell back to a hollow box in
 a screenshot of the button itself -- a missing glyph reads as a broken page,
 not as a menu.
 
+### The same arrow on the front door, and what carries the click
+
+*"I meant the button in the landing page"* (Gal, 2026-09-08), on seeing the
+menu land on the hand's lobby instead. The button is
+`lobby-web/index.html`'s **Send in my agent**, the first thing anybody sees at
+`island.lucille-ai.com`, and it now splits the same way: `ways.js` fills the
+menu and sets the button's `href` from one list, so the door's headline action
+and its top row cannot drift.
+
+**Until this, the door did not say the island was playable by hand at all.**
+The one mention was a sentence inside the `ways` fold, on the lobby page
+*after* the door -- so a visitor who wanted to play, or whose child did, had to
+already suspect they could.
+
+**Every way by hand goes through the hand's lobby, and cannot not.** None of
+the four playing pages exists until a table has settled and whispered its room,
+so what the menu links to is the lobby that seats you. Which makes the whole
+thing turn on the part that is easy to leave out: **`?play=` carries the
+click**. `hand/lobby.html`'s `waysInOrder` puts the named way first when the
+room arrives, so a visitor who chose "my kid wants to play" gets the drawn
+island offered rather than having to find it a second time, three pages from
+where they asked for it. Without the parameter the menu item would be true
+about where it goes and false about what it does.
+
+It is a **hint, not a route**: an unknown or absent `play=` leaves the order
+alone and every way stays on the menu, so a wrong guess costs a scroll and
+never a page. Both halves are pinned -- the chosen way reordering *and* the
+unknown one changing nothing -- because the second is the failure that would
+otherwise be found by a visitor with an empty menu.
+
+**The two lists are held together across the two files.** The door sends
+`?play=` keys and the hand's lobby knows a fixed set of them; a test reads both
+sources and requires the first to be a subset of the second, because the
+failure is silent -- `?play=drawn` at a lobby that knows `island` drops the
+visitor on the default with nothing said, and no page is broken enough for
+anybody to notice. The hand's lobby URL is checked to be one host in both
+places that write it down (`ways.js` and `render.js`).
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —

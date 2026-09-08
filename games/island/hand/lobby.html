@@ -520,17 +520,40 @@ async function readInvite(hub) {
 //: the middle of a paragraph, which is where a reader finds a link and not
 //: where a driver finds a door.
 const WAYS = [
-  { id: "waysAgent", page: "play.html", name: "Send in my agent",
+  { key: "agent", id: "waysAgent", page: "play.html", name: "Send in my agent",
     what: "the brief, sealed to this room only, for a model to play the seat" },
-  { id: "hackerLink", page: "play.html", name: "Hacker hand",
+  { key: "hand", id: "hackerLink", page: "play.html", name: "Hacker hand",
     what: "the same page, typing the manager's grammar yourself" },
-  { id: "kidsLink", page: "kids.html", name: "Nice buttons",
+  { key: "kids", id: "kidsLink", page: "kids.html", name: "Nice buttons",
     what: "sliders and dropdowns instead of the grammar" },
-  { id: "kidsIslandLink", page: "kids-island.html", name: "My kid wants to play",
+  { key: "island", id: "kidsIslandLink", page: "kids-island.html",
+    name: "My kid wants to play",
     what: "the same buttons under the drawn island itself" },
 ];
 
+/** The ways in, with the one the visitor already chose first.
+ *
+ *  **A choice made on the front door has to survive the trip.** The landing
+ *  page offers the same four names, and a visitor who clicked "my kid wants to
+ *  play" arrives here -- because none of the playing pages exist until a table
+ *  has settled and whispered its room. Landing them on a menu whose default is
+ *  "send in my agent" would make the click they made mean nothing, and would
+ *  ask them to find the drawn island a second time. `?play=` is that click,
+ *  carried.
+ *
+ *  An unknown or absent value leaves the order alone. It is a hint about which
+ *  door to open first and nothing more -- every way in stays on the menu, so
+ *  a wrong guess costs a scroll and never a page.
+ */
+function waysInOrder() {
+  const wanted = new URLSearchParams(location.search).get("play");
+  const first = WAYS.findIndex((w) => w.key === wanted);
+  if (first < 1) return WAYS;
+  return [WAYS[first], ...WAYS.filter((_, i) => i !== first)];
+}
+
 function waysIn(q) {
+  const ways = waysInOrder();
   const split = document.createElement("div");
   split.className = "split";
   const first = document.createElement("a");
@@ -538,8 +561,8 @@ function waysIn(q) {
   first.className = "primary";
   // The default is the first way in the list, so the button and the menu's
   // top row cannot drift apart.
-  first.href = `./${WAYS[0].page}?${q}`;
-  first.textContent = WAYS[0].name;
+  first.href = `./${ways[0].page}?${q}`;
+  first.textContent = ways[0].name;
   const arrow = document.createElement("button");
   arrow.id = "moreWays";
   arrow.type = "button";
@@ -553,7 +576,7 @@ function waysIn(q) {
   const menu = document.createElement("ul");
   menu.id = "waysIn";
   menu.hidden = true;
-  for (const way of WAYS) {
+  for (const way of ways) {
     const li = document.createElement("li");
     const a = document.createElement("a");
     a.id = way.id;
