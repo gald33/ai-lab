@@ -49,6 +49,12 @@ the place. It is a fame proxy and a rough one -- it reads Tower Bridge as
 better known than the Tower of London, and returns 0 for Denali -- so it
 orders the file and decides nothing else.
 
+`qid` is the Wikidata item, and it is in the file because the name is not an
+identifier. Asking Wikidata for "Eiffel Tower" returns four things, three of
+them in the United States; asking for Q243 returns the tower. Step three
+wants elevation, age and type for every landmark, and every one of those
+lookups is exact with a Q-number and a guess without one.
+
 ONE LANDMARK PER PLACE, at a kilometre. The raw selection had 27 pairs
 closer than that: the Dome of the Rock, Al-Aqsa and the Western Wall inside
 200 metres of each other; "Basilica and Expiatory Church of the Holy Family"
@@ -76,15 +82,15 @@ DATA = Path(__file__).with_name("landmarks.tsv")
 
 
 def load() -> list[dict]:
-    """Every landmark, as {name, country, lat, lon, source, sitelinks}."""
+    """Every landmark, as {name, country, lat, lon, source, sitelinks, qid}."""
     out = []
     for line in DATA.read_text(encoding="utf-8").splitlines():
         if line.startswith("#") or not line.strip():
             continue
-        name, cc, lat, lon, source, sitelinks = line.split("\t")
+        name, cc, lat, lon, source, sitelinks, qid = line.split("\t")
         out.append({"name": name, "country": cc, "lat": float(lat),
                     "lon": float(lon), "source": source,
-                    "sitelinks": int(sitelinks)})
+                    "sitelinks": int(sitelinks), "qid": qid})
     return out
 
 

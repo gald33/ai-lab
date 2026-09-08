@@ -1,1004 +1,1004 @@
 # 1,000 known or interesting landmarks, from Wikidata (CC0) --
 # UNESCO World Heritage Sites (wdt:P1435 wd:Q9259), named icons, and
 # natural features. Selection and use: games/hue-and-cry/landmarks.py
-# name	country	lat	lon	source	sitelinks
-Vatican City	Vatican City	41.90400	12.45300	unesco	342
-Mount Everest	Nepal	27.98806	86.92500	iconic	237
-Brasília	Brazil	-15.79389	-47.88278	unesco	226
-Sahara	Algeria	23.07972	12.61222	iconic	224
-Caspian Sea	Azerbaijan	42.00000	50.50000	feature	207
-Great Wall of China	China	40.43139	116.56444	iconic	194
-Eiffel Tower	France	48.85830	2.29448	iconic	191
-Rabat	Morocco	34.02111	-6.84139	unesco	188
-Mount Kilimanjaro	Tanzania	-3.06667	37.35917	iconic	187
-Taj Mahal	India	27.17500	78.04194	iconic	184
-Lake Baikal	Russia	53.30278	108.00472	iconic	182
-Valletta	Malta	35.89778	14.51250	unesco	181
-Quito	Ecuador	-0.22000	-78.51250	unesco	180
-Easter Island	Chile	-27.12000	-109.35000	iconic	164
-Dead Sea	Israel	31.52070	35.48450	iconic	163
-Lake Victoria	Kenya	-1.00000	33.00000	feature	161
-Great Barrier Reef	Australia	-16.40000	145.80000	iconic	157
-Statue of Liberty	United States	40.68921	-74.04443	iconic	157
-Hagia Sophia	Turkey	41.00833	28.98000	iconic	152
-Lake Tanganyika	Burundi	-6.10000	29.50000	feature	150
-Samarkand	Uzbekistan	39.65472	66.97583	iconic	149
-Machu Picchu	Peru	-13.16333	-72.54556	iconic	148
-Colosseum	Italy	41.89028	12.49222	iconic	146
-Mount Fuji	Japan	35.36056	138.72750	iconic	146
-Jaipur	India	26.91500	75.82000	unesco	144
-White House	United States	38.89778	-77.03667	iconic	143
-Verona	Italy	45.43861	10.99278	unesco	142
-Berlin Wall	Germany	52.50444	13.44111	iconic	140
-Burj Khalifa	United Arab Emirates	25.19722	55.27417	iconic	139
-Salvador	Brazil	-12.98306	-38.49278	unesco	138
-Angkor Wat	Cambodia	13.41250	103.86667	iconic	137
-Lhasa	China	29.64576	91.14082	iconic	136
-Mount Vesuvius	Italy	40.82261	14.42919	iconic	135
-Stonehenge	United Kingdom	51.17889	-1.82611	iconic	135
-Niagara Falls	Canada	43.08000	-79.07100	iconic	134
-Galapagos Islands	Ecuador	-0.66667	-90.55000	unesco	133
-Kaaba	Saudi Arabia	21.42250	39.82617	iconic	133
-Titicaca	Bolivia	-15.82500	-69.32500	feature	132
-Sinai Peninsula	Egypt	29.50000	34.00000	feature	131
-Timbuktu	Mali	16.77333	-2.99944	iconic	129
-Auschwitz	Poland	50.03583	19.17833	unesco	128
-Babylon	Achaemenid Empire	32.54250	44.42111	iconic	127
-Mont Blanc	France	45.83278	6.86500	feature	127
-Phong Nha–Ke Bang National Park	Vietnam	17.53333	106.15000	unesco	125
-Empire State Building	United States	40.74833	-73.98556	iconic	124
-Pompeii	Italy	40.75056	14.48972	iconic	122
-Troy	Turkey	39.95750	26.23889	unesco	121
-Gobi Desert	Mongolia	42.50000	103.00000	iconic	118
-Petra	Jordan	30.32861	35.44194	iconic	117
-Grand Canyon	United States	36.09750	-112.09528	iconic	116
-Yellowstone National Park	United States	44.60000	-110.50000	iconic	116
-Cusco	Peru	-13.51694	-71.97861	unesco	115
-Aconcagua	Argentina	-32.65306	-70.01167	feature	113
-Mount Elbrus	Russia	43.35254	42.43787	feature	113
-Bath	United Kingdom	51.38139	-2.35972	unesco	112
-K2	Pakistan	35.88111	76.51333	iconic	112
-Lake Superior	Canada	47.52882	-87.76002	feature	112
-Mount Ararat	Turkey	39.70194	44.29833	feature	111
-Victoria Falls	Zambia	-17.92478	25.85806	iconic	111
-Golden Gate Bridge	United States	37.81972	-122.47861	iconic	110
-Chichen Itza	Mexico	20.68306	-88.56861	iconic	109
-Mount Olympus	Greece	40.08333	22.35000	feature	109
-Lake Ontario	Canada	43.72889	-78.10639	feature	108
-Palace of Versailles	France	48.80472	2.12028	unesco	108
-Lake Michigan	United States	44.00787	-86.75645	feature	107
-Mount Bazardüzü	Azerbaijan	41.22049	47.85834	feature	107
-Palmyra	Syria	34.55038	38.26979	iconic	107
-Bermuda Triangle	The Bahamas	25.00000	-71.00000	iconic	106
-Kyoto Prefecture	Japan	35.02103	135.75558	unesco	106
-Lake Malawi	Malawi	-12.18333	34.36667	feature	106
-Kalahari Desert	Angola	-23.00000	22.00000	feature	105
-Lake Chad	Cameroon	13.09789	14.53381	feature	105
-Atacama Desert	Chile	-24.50000	-69.25000	iconic	104
-Forbidden City	China	39.91583	116.39083	iconic	104
-Mariana Trench	United States	11.35000	142.20000	iconic	103
-Persepolis	Iran	29.93500	52.89000	iconic	103
-Kanchenjunga	India	27.70300	88.14735	feature	102
-Lake Erie	Canada	42.25000	-80.99972	feature	102
-Acre	Israel	32.92611	35.08389	unesco	101
-Amazon rainforest	Brazil	-3.16000	-60.03000	iconic	101
-Red Square	Russia	55.75417	37.62000	iconic	101
-Château de Montsoreau	France	47.21560	0.06220	feature	100
-Derbent	Russia	42.05778	48.28889	unesco	100
-Lake Huron	Canada	44.59258	-82.75629	feature	100
-Iguaçu Falls	Argentina	-25.69528	-54.43667	feature	99
-Sydney Opera House	Australia	-33.85706	151.21490	iconic	99
-Mohenjo-daro	Pakistan	27.32917	68.13889	unesco	98
-Acropolis of Athens	Greece	37.97167	23.72611	iconic	97
-Heard Island and McDonald Islands	Australia	-53.07833	73.50750	unesco	97
-Negev	Israel	30.50000	34.91667	feature	97
-Mount Rushmore	United States	43.87889	-103.45917	iconic	96
-Buckingham Palace	United Kingdom	51.50100	-0.14200	iconic	95
-Christ the Redeemer	Brazil	-22.95192	-43.21046	iconic	94
-Angel Falls	Venezuela	5.97006	-62.53622	iconic	93
-Krakatoa	Indonesia	-6.10200	105.42300	iconic	92
-Matterhorn	Switzerland	45.97639	7.65861	iconic	92
-Neuschwanstein Castle	Germany	47.55749	10.74944	feature	92
-Samarra	Iraq	34.19590	43.88568	unesco	92
-Taklamakan	China	38.90000	82.20000	feature	92
-Uluru	Australia	-25.34500	131.03611	iconic	92
-Karakum Desert	Turkmenistan	39.00000	60.00000	feature	91
-Namib	Namibia	-23.00000	15.00000	feature	89
-Olympia	Greece	37.63833	21.63000	unesco	89
-Big Ben	United Kingdom	51.50067	-0.12457	iconic	88
-Tower of London	United Kingdom	51.50820	-0.07620	iconic	88
-Axum	Ethiopia	14.11667	38.73333	unesco	87
-Kandy	Sri Lanka	7.29306	80.63500	unesco	87
-Luang Prabang	Laos	19.89000	102.13472	unesco	87
-Mount Athos	Greece	40.15833	24.32722	iconic	87
-Mount Sinai	Egypt	28.53840	33.97520	iconic	87
-San Cristóbal de La Laguna	Spain	28.48528	-16.31667	unesco	87
-Yosemite National Park	United States	37.74250	-119.53750	iconic	87
-Baalbek	Lebanon	34.00611	36.20861	unesco	86
-Bastille	France	48.85333	2.36917	feature	86
-Brandenburg Gate	Germany	52.51627	13.37772	iconic	86
-Marquesas Islands	France	-8.90000	-139.60000	unesco	86
-Cologne Cathedral	Germany	50.94139	6.95833	unesco	85
-Windsor Castle	United Kingdom	51.48389	-0.60444	feature	85
-Fatehpur Sikri	India	27.09111	77.66111	unesco	84
-Potosí	Bolivia	-19.58917	-65.75333	unesco	84
-Western Wall	Palestine	31.77695	35.23425	iconic	84
-Ajanta Caves	India	20.55342	75.70047	unesco	83
-Byblos	Lebanon	34.11667	35.65000	unesco	83
-Ha Long Bay	Vietnam	20.90000	107.20000	iconic	83
-Thar Desert	India	26.98444	71.00167	feature	83
-Western Ghats	India	10.16972	77.06111	unesco	83
-Hadrian's Wall	United Kingdom	55.02417	-2.29250	unesco	82
-Kairouan	Tunisia	35.68333	10.10000	unesco	81
-Delos	Greece	37.39121	25.27122	unesco	80
-Anuradhapura	Sri Lanka	8.33500	80.41083	unesco	79
-Assur	Iraq	35.45667	43.26250	unesco	79
-Bagan	Myanmar	21.17250	94.86000	unesco	79
-Death Valley	United States	36.45694	-116.86528	feature	79
-Shahrisabz	Uzbekistan	39.05000	66.83333	unesco	79
-Susa	Iran	32.18944	48.25611	unesco	79
-Teotihuacan	Mexico	19.69250	-98.84389	unesco	79
-Göbekli Tepe	Turkey	37.22306	38.92250	iconic	78
-Loch Ness	United Kingdom	57.30000	-4.45000	iconic	78
-Virunga National Park	Democratic Republic of the Congo	-0.50000	29.50000	unesco	78
-Agra Fort	India	27.17958	78.02130	unesco	77
-Great Victoria Desert	Australia	-29.15222	129.25972	feature	77
-Cave of Altamira	Spain	43.38333	-4.11667	unesco	76
-Lumbini	Nepal	27.48140	83.27583	unesco	76
-Aeolian Islands	Italy	38.49667	14.93583	unesco	75
-Eyjafjallajökull	Iceland	63.63333	-19.60000	iconic	75
-Giant's Causeway	United Kingdom	55.24083	-6.51167	unesco	75
-Great Zimbabwe	Zimbabwe	-20.27000	30.93300	unesco	75
-Kaziranga National Park	India	26.66667	93.35000	unesco	75
-Red Fort	India	28.65583	77.24028	unesco	75
-Serengeti National Park	Tanzania	-2.40000	34.60000	unesco	75
-Cyrene	Libya	32.82304	21.85727	unesco	74
-Ellora Caves	India	20.02639	75.17917	unesco	74
-Himeji Castle	Japan	34.83944	134.69361	unesco	74
-Notre-Dame de Chartres	France	48.44778	1.48778	unesco	73
-Porto Venere	Italy	44.05000	9.83333	unesco	73
-Roswell	United States	33.39417	-104.52278	iconic	73
-Taxila	Pakistan	33.74569	72.81521	unesco	73
-Nalanda Mahavihara	India	25.13680	85.44383	unesco	72
-Qutb Minar	India	28.52435	77.18525	unesco	72
-Robben Island	South Africa	-33.80500	18.37000	unesco	72
-Table Mountain	South Africa	-33.96216	18.41352	iconic	72
-Times Square	United States	40.75750	-73.98583	iconic	72
-Dessau	Germany	51.83417	12.24611	unesco	71
-Meteora	Greece	39.71250	21.62667	unesco	71
-Prambanan Temple	Indonesia	-7.75200	110.49122	unesco	71
-Everglades National Park	United States	25.31250	-80.68750	unesco	70
-Masada	Israel	31.31556	35.35389	unesco	70
-Merv	Turkmenistan	37.66278	62.19250	unesco	70
-Mount Tai	China	36.26667	117.10000	unesco	70
-Plitvice Lakes National Park	Croatia	44.88045	15.61604	unesco	70
-Tiwanaku	Bolivia	-16.55472	-68.67333	unesco	70
-Çatalhöyük	Turkey	37.66750	32.82833	unesco	70
-Djerba	Tunisia	33.78370	10.88330	unesco	69
-Grand Canal	China	30.26139	120.22389	unesco	69
-Hampi	India	15.33455	76.46216	unesco	69
-Hiroshima Peace Memorial	Japan	34.39556	132.45361	unesco	69
-Humayun's Tomb	India	28.59326	77.25060	unesco	69
-Itsukushima Shrine	Japan	34.29577	132.32011	unesco	69
-Lascaux	France	45.05377	1.17096	iconic	69
-Leptis Magna	Libya	32.63833	14.29050	unesco	69
-Mahabodhi Temple	India	24.69600	84.99136	unesco	69
-Nazca Lines	Peru	-14.69750	-75.13500	iconic	69
-Shibam	Yemen	15.92694	48.62667	unesco	69
-Tassili n'Ajjer	Algeria	25.66667	9.00000	unesco	69
-Aït Benhaddou	Morocco	31.05000	-7.13333	unesco	68
-Kathmandu Valley	Nepal	27.70394	85.30858	unesco	68
-Ngorongoro Conservation Area	Tanzania	-3.21000	35.46000	unesco	68
-Temple of Heaven	China	39.88220	116.40660	unesco	68
-Bam	Iran	29.10611	58.35694	unesco	67
-Curonian Spit	Lithuania	55.27444	20.97083	unesco	67
-Naqsh-e Jahan Square	Iran	32.65822	51.67733	unesco	67
-Palenque	Mexico	17.48417	-92.04639	unesco	67
-Selimiye Mosque	Turkey	41.67806	26.55944	unesco	67
-Area 51	United States	37.23333	-115.80833	iconic	66
-Bikini Atoll	Marshall Islands	11.60000	165.40000	iconic	66
-Chogha Zanbil	Iran	32.00833	48.52083	unesco	66
-Huangshan	China	30.12500	118.16667	unesco	66
-Kakadu National Park	Australia	-13.00547	132.51951	unesco	66
-Okavango Delta	Botswana	-19.40000	22.90000	iconic	66
-Pasargadae	Iran	30.20000	53.17944	unesco	66
-Alcatraz Island	United States	37.82672	-122.42283	iconic	65
-Danube Delta	Romania	45.20000	29.50000	unesco	65
-Komodo National Park	Indonesia	-8.65162	119.57657	unesco	65
-Macquarie Island	Australia	-54.63000	158.86000	unesco	65
-Mogao Caves	China	40.03722	94.80417	unesco	65
-Aachen Cathedral	Germany	50.77475	6.08392	unesco	64
-Dasht-e Lut	Iran	30.26389	59.24111	unesco	64
-Prague Castle	Czech Republic	50.09000	14.40000	feature	64
-Saint Sophia Cathedral	Ukraine	50.45278	30.51444	unesco	64
-Salar de Uyuni	Bolivia	-20.33333	-67.70000	iconic	64
-Struve Geodetic Arc	Belarus	52.28944	25.64944	unesco	64
-Appian Way	Italy	41.84139	12.53250	unesco	63
-Surtsey	Iceland	63.30403	-20.60471	unesco	63
-Abu Mena	Egypt	30.84105	29.66349	unesco	62
-Białowieża Forest	Belarus	52.75000	23.95000	unesco	62
-Bosra	Syria	32.51667	36.48333	unesco	62
-Butrint	Albania	39.75707	20.01663	unesco	62
-Church of the Nativity	Palestine	31.70431	35.20758	unesco	62
-Grand Canyon National Park	United States	36.05530	-112.12200	unesco	62
-Hatra	Iraq	35.58806	42.71833	unesco	62
-K'gari	Australia	-25.24000	153.15000	unesco	62
-Lorentz National Park	Indonesia	-4.62973	137.97268	unesco	62
-Nesebar	Bulgaria	42.65951	27.72472	unesco	62
-Neusiedl Lake	Austria	47.83333	16.75000	unesco	62
-Okapi Wildlife Reserve	Democratic Republic of the Congo	2.00000	28.50000	unesco	62
-Sigiriya	Sri Lanka	7.95694	80.75972	unesco	62
-Thingvellir National Park	Iceland	64.25806	-21.12500	unesco	62
-Hội An	Vietnam	15.87767	108.33265	unesco	61
-Köneürgenç	Turkmenistan	42.31667	59.15861	unesco	61
-Los Glaciares National Park	Argentina	-50.33053	-73.23416	unesco	61
-Mosque-Cathedral of Cordoba	Spain	37.87887	-4.77934	unesco	61
-Mount Nemrut	Turkey	37.98074	38.74083	unesco	61
-Summer Palace	China	39.99750	116.26890	unesco	61
-Teide National Park	Spain	28.27646	-16.64267	unesco	61
-Chitwan National Park	Nepal	27.50000	84.33333	unesco	60
-M'banza-Kongo	Angola	-6.26667	14.25000	unesco	60
-Mesa Verde National Park	United States	37.26038	-108.49444	unesco	60
-Niokolo-Koba National Park	Senegal	13.07417	-12.72222	unesco	60
-Omo River	Ethiopia	8.25630	37.48990	unesco	60
-Wadi Rum	Jordan	29.57650	35.41993	unesco	60
-Yakushima	Japan	30.35861	130.52861	unesco	60
-Ani	Turkey	40.50750	43.57278	unesco	59
-Chauvet Cave	France	44.38812	4.41614	unesco	59
-Comoé National Park	Ivory Coast	9.16361	-3.77250	unesco	59
-Drottningholm Palace	Sweden	59.32169	17.88638	unesco	59
-Fukushima Daiichi Nuclear Power Plant	Japan	37.42139	141.03250	iconic	59
-Garamba National Park	Democratic Republic of the Congo	4.19559	29.48093	unesco	59
-Golestan Palace	Iran	35.67972	51.42028	unesco	59
-Gorée	Senegal	14.66694	-17.39833	unesco	59
-Island of Mozambique	Mozambique	-15.03667	40.73278	unesco	59
-Lake District	United Kingdom	54.50000	-3.16667	unesco	59
-Pont du Gard	France	43.94730	4.53550	unesco	59
-Sagarmatha National Park	Nepal	27.89107	86.69303	unesco	59
-Timgad	Algeria	35.48424	6.46867	unesco	59
-Amalfi Coast	Italy	40.63333	14.60000	unesco	58
-Bhimbetka rock shelters	India	22.93863	77.61438	unesco	58
-Castel del Monte	Italy	41.08475	16.27093	unesco	58
-Edinburgh Castle	United Kingdom	55.94870	-3.20073	feature	58
-Hegra	Saudi Arabia	26.81417	37.94750	unesco	58
-Museum Island	Germany	52.52139	13.39556	unesco	58
-Salonga National Park	Democratic Republic of the Congo	-1.76516	21.49723	unesco	58
-Sarnath	India	25.38111	83.02139	unesco	58
-Valdes Peninsula	Argentina	-42.50000	-63.93333	unesco	58
-Wartburg	Germany	50.96611	10.30639	feature	58
-Zabid	Yemen	14.20000	43.31667	unesco	58
-Beemster	Netherlands	52.55000	4.92780	unesco	57
-Canaima National Park	Venezuela	5.31934	-61.79535	unesco	57
-Canal du Midi	France	43.61111	1.41833	unesco	57
-Kasubi Tombs	Uganda	0.32917	32.55333	unesco	57
-Kinabalu Park	Malaysia	6.15000	116.65000	unesco	57
-Malbork Castle	Poland	54.03972	19.02778	feature	57
-Notre-Dame d'Amiens	France	49.89457	2.30210	unesco	57
-Solovetsky Islands	Russia	65.02444	35.71056	unesco	57
-Speyer Cathedral	Germany	49.31722	8.44250	unesco	57
-Sundarbans National Park	India	21.75000	88.75000	unesco	57
-Wachau	Austria	48.36444	15.43417	unesco	57
-Ancient and Primeval Beech Forests of the Carpathians and Other Regions of Europe	Albania	49.00000	15.00000	unesco	56
-Chernobyl Nuclear Power Plant	Ukraine	51.38955	30.09915	iconic	56
-Copán	Honduras	14.83796	-89.14244	unesco	56
-Elephanta Caves	India	18.96333	72.93139	unesco	56
-Grand-Place	Belgium	50.84671	4.35254	unesco	56
-Jiuzhaigou Valley	China	33.20000	103.90000	unesco	56
-Kahuzi-Biéga National Park	Democratic Republic of the Congo	-2.31481	28.75867	unesco	56
-Kevladev National Park	India	27.16667	77.51667	unesco	56
-Palace of Fontainebleau	France	48.40222	2.70056	unesco	56
-Polonnaruwa	Sri Lanka	7.93333	81.00000	unesco	56
-Svalbard Global Seed Vault	Norway	78.23587	15.49137	iconic	56
-Burgos Cathedral	Spain	42.34081	-3.70447	unesco	55
-Château de Chambord	France	47.61611	1.51722	unesco	55
-Cueva de las Manos	Argentina	-47.15000	-70.66667	unesco	55
-Djemila	Algeria	36.32056	5.73667	unesco	55
-Forth Bridge	United Kingdom	55.99840	-3.38760	unesco	55
-Hawaiʻi Volcanoes National Park	United States	19.40083	-155.12361	unesco	55
-Hofburg Palace	Austria	48.20639	16.36528	feature	55
-Konark Sun Temple	India	19.88744	86.09460	unesco	55
-Kronborg Castle	Denmark	56.03861	12.62194	feature	55
-L'Anse aux Meadows	Canada	51.59527	-55.53122	unesco	55
-Manovo-Gounda St. Floris National Park	Central African Republic	8.50000	21.50000	unesco	55
-Olympic National Park	United States	47.70000	-123.75000	unesco	55
-Selous Game Reserve	Tanzania	-9.00000	37.40000	unesco	55
-Simien Mountains National Park	Ethiopia	13.18333	38.06667	unesco	55
-Stone Town	Tanzania	-6.16494	39.19879	unesco	55
-Tadrart Acacus	Libya	24.83343	10.33332	unesco	55
-Tomb of Askia	Mali	16.28972	-0.04444	unesco	55
-Cahokia	United States	38.65389	-90.06444	unesco	54
-Chhatrapati Shivaji Maharaj Terminus	India	18.93980	72.83550	unesco	54
-Cidade Velha	Cape Verde	14.91667	-23.60417	unesco	54
-Hortobágy National Park	Hungary	47.59458	21.15678	unesco	54
-Sanchi	India	23.47944	77.73972	unesco	54
-Santa Maria delle Grazie	Italy	45.46583	9.17111	unesco	54
-Tropical Rainforest Heritage of Sumatra	Indonesia	-2.50000	101.50000	unesco	54
-Wulingyuan	China	29.34556	110.46667	unesco	54
-Wuyi Mountains	China	27.71667	117.68333	unesco	54
-Calakmul	Mexico	18.10500	-89.81056	unesco	53
-Garajonay National Park	Spain	28.12625	-17.23722	unesco	53
-Gelati Monastery	Georgia	42.29472	42.76806	unesco	53
-Jameh Mosque of Isfahan	Iran	32.66972	51.68528	unesco	53
-Jerónimos Monastery	Portugal	38.69785	-9.20560	unesco	53
-Mammoth Cave National Park	United States	37.18694	-86.10111	unesco	53
-Mystras	Greece	37.07400	22.36730	unesco	53
-Mỹ Sơn	Vietnam	15.76324	108.12445	unesco	53
-Nan Madol	Federated States of Micronesia	6.84194	158.33222	unesco	53
-Shirakami-Sanchi	Japan	40.47000	140.13000	unesco	53
-Soltaniyeh	Iran	36.43472	48.79750	unesco	53
-St Kilda	United Kingdom	57.81500	-8.58750	unesco	53
-Suomenlinna	Finland	60.14361	24.98444	unesco	53
-Tower of Hercules	Spain	43.38583	-8.40639	unesco	53
-Tsodilo	Botswana	-18.77167	21.75417	unesco	53
-Volubilis	Morocco	34.07250	-5.55480	unesco	53
-Wood Buffalo National Park	Canada	59.38330	-112.98300	unesco	53
-prehistoric pile dwellings around the Alps	Austria	47.67460	9.12099	unesco	53
-Aldabra	Seychelles	-9.41639	46.41639	unesco	52
-Anjar	Lebanon	33.72583	35.92972	unesco	52
-Antonine Wall	United Kingdom	55.96700	-4.06700	unesco	52
-Blenheim Palace	United Kingdom	51.84136	-1.36095	unesco	52
-Chan Chan	Peru	-8.11056	-79.07500	unesco	52
-Hadrian's Villa	Italy	41.94194	12.77528	unesco	52
-Henderson Island	United Kingdom	-24.37500	-128.32500	unesco	52
-Hollókő	Hungary	47.99611	19.59167	unesco	52
-Jaú National Park	Brazil	-2.17028	-62.61722	unesco	52
-Kew Gardens	United Kingdom	51.47889	-0.29361	unesco	52
-Longmen Grottoes	China	34.55556	112.46972	unesco	52
-Mehmed Paša Sokolović Bridge	Bosnia and Herzegovina	43.78248	19.28794	unesco	52
-Preah Vihear Temple	Cambodia	14.39056	104.68028	unesco	52
-Reichenau Island	Germany	47.69306	9.06306	unesco	52
-Rocas Atoll	Brazil	-3.86639	-33.80194	unesco	52
-Salt	Jordan	32.03917	35.72722	unesco	52
-Skellig Michael	Ireland	51.77111	-10.54056	unesco	52
-Taï National Park	Ivory Coast	5.75000	-7.12000	unesco	52
-Bourges Cathedral	France	47.08222	2.39917	unesco	51
-Carlsbad Caverns National Park	United States	32.17528	-104.44389	unesco	51
-Citadel of the Hồ Dynasty	Vietnam	20.07806	105.60472	unesco	51
-Devils Tower	United States	44.59028	-104.71528	iconic	51
-Doñana National Park	Spain	37.02000	-6.44000	unesco	51
-Great Smoky Mountains National Park	United States	35.61111	-83.42500	unesco	51
-Iguazú National Park	Argentina	-25.70500	-54.24833	unesco	51
-Inca road system	Argentina	-18.25000	-69.59167	unesco	51
-Manas National Park	India	26.71667	90.93333	unesco	51
-Pirin National Park	Bulgaria	41.67222	23.48778	unesco	51
-Qal'at Bani Hammad	Algeria	35.81389	4.79333	unesco	51
-Ujung Kulon National Park	Indonesia	-6.75000	105.33333	unesco	51
-Alamut Castle	Iran	36.44472	50.58611	feature	50
-Banc d'Arguin National Park	Mauritania	20.23472	-16.10889	unesco	50
-Changdeokgung	South Korea	37.57944	126.99167	unesco	50
-Ecbatana	Iran	34.80650	48.51625	unesco	50
-Gobustan State Historical and Cultural Reserve	Azerbaijan	40.10556	49.38889	unesco	50
-Itchan Kala	Uzbekistan	41.37772	60.35948	unesco	50
-Mosque City of Bagerhat	Bangladesh	22.66097	89.75855	unesco	50
-Old Town	Czech Republic	50.08470	14.42030	unesco	50
-Philippi	Greece	41.01306	24.28639	unesco	50
-Piazza del Duomo, Pisa	Italy	43.72343	10.39478	unesco	50
-Puerto Princesa Subterranean River National Park	Philippines	10.16667	118.91667	unesco	50
-Quebrada de Humahuaca	Argentina	-23.19986	-65.34886	feature	50
-Shahr-e Sukhteh	Iran	30.59528	61.33194	unesco	50
-Takht-e Soleyman	Iran	36.60472	47.23417	unesco	50
-Virgin Komi Forests	Russia	65.06667	60.15000	unesco	50
-Vlkolínec	Slovakia	49.03970	19.27840	unesco	50
-Boyana Church	Bulgaria	42.64467	23.26617	unesco	49
-Cradle of Humankind	South Africa	-25.96723	27.66244	unesco	49
-Fasil Ghebbi	Ethiopia	12.60806	37.46972	unesco	49
-Gunung Mulu National Park	Malaysia	4.04250	114.81250	unesco	49
-Khirokitia	Cyprus	34.79673	33.34372	unesco	49
-Mir Castle Complex	Belarus	53.45127	26.47289	unesco	49
-Nisa	Turkmenistan	37.95115	58.21241	unesco	49
-Ponte Vecchio	Italy	43.76799	11.25319	unesco	49
-Quiriguá	Guatemala	15.26944	-89.04028	unesco	49
-Semmering railway	Austria	47.64300	15.83100	unesco	49
-Skara Brae	United Kingdom	59.04871	-3.34175	iconic	49
-Tournai Cathedral	Belgium	50.60650	3.38890	unesco	49
-Urnes Stave Church	Norway	61.29806	7.32250	unesco	49
-Vredefort crater	South Africa	-26.81667	27.41667	unesco	49
-Yungang Grottoes	China	40.10972	113.12222	unesco	49
-Centennial Hall	Poland	51.10694	17.07722	unesco	48
-Fort Jesus Museum	Kenya	-4.07117	39.68206	unesco	48
-Lençóis Maranhenses National Park	Brazil	-2.48333	-43.13333	unesco	48
-Madara Rider	Bulgaria	43.27737	27.11889	unesco	48
-Mount Nimba Strict Nature Reserve	Guinea	7.60300	-8.39100	unesco	48
-Mount Wutai	China	39.08139	113.56694	unesco	48
-Newgrange	Ireland	53.69473	-6.47557	iconic	48
-Pattadakal Group of Monuments	India	15.94833	75.81667	unesco	48
-Poblet Monastery	Spain	41.38083	1.08250	unesco	48
-Purnululu National Park	Australia	-17.44879	128.54605	unesco	48
-Qal’at al Bahrain	Bahrain	26.23361	50.52056	unesco	48
-Rhine Falls	Switzerland	47.67722	8.61583	feature	48
-Roskilde Cathedral	Denmark	55.64267	12.08031	unesco	48
-Spiš Castle	Slovakia	49.00056	20.76833	unesco	48
-Trinity Lavra of St. Sergius	Russia	56.31035	38.13065	unesco	48
-Tsingy de Bemaraha Strict Nature Reserve	Madagascar	-18.66667	44.75139	unesco	48
-Valley of Flowers National Park	India	30.73000	79.61750	unesco	48
-Vatnajökull National Park	Iceland	64.50000	-17.00000	unesco	48
-Villa Romana del Casale	Italy	37.36472	14.33455	unesco	48
-Xanadu	China	42.35802	116.18516	unesco	48
-Škocjan Caves	Slovenia	45.66500	13.99472	unesco	48
-Bam Citadel	Iran	29.11686	58.36847	unesco	47
-Belize Barrier Reef	Belize	17.26250	-88.05278	unesco	47
-Bryggen	Norway	60.39750	5.32333	unesco	47
-Buda Castle	Hungary	47.49611	19.03972	unesco	47
-Bwindi Impenetrable National Park	Uganda	-1.05000	29.71667	unesco	47
-Dead Cities	Syria	36.33417	36.84417	unesco	47
-Dengfeng	China	34.46031	113.02803	unesco	47
-Dettifoss	Iceland	65.82192	-16.38817	feature	47
-Dholavira	India	23.88611	70.21667	unesco	47
-Djoudj National Bird Sanctuary	Senegal	16.35849	-16.27410	unesco	47
-Gullfoss	Iceland	64.32733	-20.11940	feature	47
-Hypogeum of Ħal Saflieni	Malta	35.86956	14.50688	unesco	47
-Independence Hall	United States	39.94889	-75.15000	unesco	47
-Jantar Mantar	India	26.92472	75.82500	unesco	47
-M'zab	Algeria	32.48722	3.68139	unesco	47
-Mausoleum of Khoja Ahmed Yasawi	Kazakhstan	43.29764	68.27104	unesco	47
-Monte San Giorgio	Switzerland	45.91667	8.95000	unesco	47
-Nahanni National Park Reserve	Canada	61.59710	-125.85200	unesco	47
-Plain of Jars	Laos	19.43111	103.15250	unesco	47
-Putorana Plateau	Russia	69.00000	93.00000	unesco	47
-Qazan Kremlin	Russia	55.79744	49.10724	unesco	47
-Rohtas Fort	Pakistan	32.96528	73.57642	unesco	47
-Serra da Capivara National Park	Brazil	-8.66670	-42.55000	unesco	47
-Singapore Botanic Gardens	Singapore	1.31510	103.81620	unesco	47
-Srebarna Nature Reserve	Bulgaria	44.11112	27.07221	unesco	47
-Tongariro National Park	New Zealand	-39.20000	175.58333	unesco	47
-Uluṟu-Kata Tjuṯa National Park	Australia	-25.32208	130.98573	unesco	47
-Val d'Orcia	Italy	43.06667	11.55000	unesco	47
-Villa Tugendhat	Czech Republic	49.20722	16.61583	unesco	47
-Villa d'Este	Italy	41.96250	12.79611	unesco	47
-Wadi Al-Hitan	Egypt	29.27083	30.04389	unesco	47
-Yinxu	China	36.12250	114.31861	unesco	47
-Bandiagara Escarpment	Mali	14.41667	-3.31667	unesco	46
-Dougga	Tunisia	36.42333	9.22028	unesco	46
-Great Blue Hole	Belize	17.31556	-87.53444	iconic	46
-Gros Morne National Park	Canada	49.68944	-57.73806	unesco	46
-Holašovice	Czech Republic	48.96667	14.26667	unesco	46
-Joya de Cerén	El Salvador	13.82749	-89.35616	unesco	46
-Megalithic Temples of Malta	Malta	36.04917	14.26944	unesco	46
-Mount Sanqing	China	28.95194	118.05194	unesco	46
-Novodevichy Convent	Russia	55.72597	37.55658	unesco	46
-Qasr Amra	Jordan	31.80175	36.58731	unesco	46
-Rwenzori Mountains National Park	Uganda	0.40000	29.95000	unesco	46
-Río Plátano Biosphere Reserve	Honduras	15.60000	-84.80000	unesco	46
-Sangay National Park	Ecuador	-1.83333	-78.33333	unesco	46
-Serengeti	Tanzania	-2.33083	34.83333	iconic	46
-Sidi Bou Said	Tunisia	36.86976	10.34101	unesco	46
-Ambohimanga	Madagascar	-18.75917	47.56278	unesco	45
-Augustusburg and Falkenlust Palaces	Germany	50.82750	6.90806	unesco	45
-Burkhan Khaldun	Mongolia	48.78333	109.16667	unesco	45
-Dazu Rock Carvings	China	29.71333	105.70694	unesco	45
-Great Living Chola Temples	India	10.78306	79.13250	unesco	45
-Hill Forts of Rajasthan	India	24.88331	74.64611	unesco	45
-Islamic Cairo	Egypt	30.04600	31.26270	unesco	45
-Manu National Park	Peru	-12.14000	-71.66000	unesco	45
-Maulbronn Monastery	Germany	49.00110	8.81290	unesco	45
-Muskau Park	Germany	51.54756	14.72323	unesco	45
-Port Royal	Jamaica	17.93750	-76.84139	unesco	45
-Santa Cruz de Mompós	Colombia	9.23944	-74.42500	unesco	45
-Stoclet Palace	Belgium	50.83514	4.41625	unesco	45
-Sulaiman-Too	Kyrgyzstan	40.52944	72.78333	unesco	45
-Tabriz Bazaar	Iran	38.08077	46.29229	unesco	45
-Tasmanian Wilderness	Australia	-42.59570	146.17290	unesco	45
-Wieskirche	Germany	47.68060	10.90044	unesco	45
-Zhoukoudian site	China	39.68896	115.92483	unesco	45
-Abbey and Altenmünster of Lorsch	Germany	49.65389	8.56889	unesco	44
-Abbey of Saint Gall	Switzerland	47.42306	9.37722	unesco	44
-Blue Mosque of Mazar-i-Sharif	Afghanistan	36.70889	67.11083	iconic	44
-Boyoma Falls	Democratic Republic of the Congo	0.49111	25.20639	feature	44
-Brú na Bóinne	Ireland	53.69284	-6.44932	unesco	44
-Casbah of Algiers	Algeria	36.78333	3.06028	unesco	44
-Coiba	Panama	7.48000	-81.79000	unesco	44
-Crespi d'Adda	Italy	45.59667	9.53611	unesco	44
-Dinosaur Provincial Park	Canada	50.76170	-111.48500	unesco	44
-Guantanamo Bay Naval Base	Cuba	19.91750	-75.16000	iconic	44
-Jurassic Coast	United Kingdom	50.70556	-2.98989	unesco	44
-Lena Pillars	Russia	61.10694	127.36167	unesco	44
-Noel Kempff Mercado National Park	Bolivia	-14.23028	-60.84667	unesco	44
-Richtersveld	South Africa	-28.60000	17.20389	unesco	44
-Rock-hewn Churches of Ivanovo	Bulgaria	43.69556	25.98806	unesco	44
-Skogskyrkogården	Sweden	59.27556	18.09944	unesco	44
-Studenica monastery	Serbia	43.48672	20.53164	unesco	44
-Wooden tserkvas of Carpathian region in Poland and Ukraine	Poland	49.53390	21.03220	unesco	44
-Alexander von Humboldt National Park	Cuba	20.49675	-74.85790	unesco	43
-Ayutthaya Historical Park	Thailand	14.35163	100.55751	unesco	43
-Bahla Fort	Oman	22.96440	57.30070	unesco	43
-Batalha Monastery	Portugal	39.65917	-8.82611	unesco	43
-Belfries of Belgium and France	Belgium	50.63527	3.51484	unesco	43
-Cape Floristic Kingdom	South Africa	-34.16667	18.37500	unesco	43
-Cerrado	Brazil	-14.00569	-47.68461	unesco	43
-Chavin de Huantar	Peru	-9.59277	-77.17845	unesco	43
-Engelsberg Ironworks	Sweden	59.96917	16.01028	unesco	43
-Gondwana Rainforests of Australia	Australia	-29.60000	149.60000	unesco	43
-Hollywood Sign	United States	34.13410	-118.32169	iconic	43
-Lavaux	Switzerland	46.49194	6.74611	unesco	43
-Rainforests of the Atsinanana	Madagascar	-14.45972	49.70250	unesco	43
-Sinharaja Forest Reserve	Sri Lanka	6.24000	80.28000	unesco	43
-Tamgaly	Kazakhstan	43.80333	75.53500	unesco	43
-Thracian Tomb of Kazanlak	Bulgaria	42.62556	25.39917	unesco	43
-Thracian Tomb of Sveshtari	Bulgaria	43.74496	26.76630	unesco	43
-Three Parallel Rivers National Park	China	27.89500	98.40639	unesco	43
-Tubbataha Reef	Philippines	8.95333	119.86750	unesco	43
-rock drawings in Valcamonica	Italy	46.02389	10.35000	unesco	43
-Al-Ahsa Oasis	Saudi Arabia	25.42944	49.62194	unesco	42
-Ban Chiang	Thailand	17.54861	103.35833	unesco	42
-Horezu monastery	Romania	45.16860	24.00690	unesco	42
-Huanglong	China	32.74076	103.83108	unesco	42
-Iguaçu National Park	Brazil	-25.50000	-53.80000	unesco	42
-Lonja de la Seda	Spain	39.47444	-0.37833	unesco	42
-Los Katíos National Park	Colombia	7.80000	-77.15000	unesco	42
-Madriu-Perafita-Claror Valley	Andorra	42.49215	1.59443	unesco	42
-Maison Carrée	France	43.83819	4.35611	unesco	42
-Mount Kenya National Park	Kenya	-0.12389	37.33667	unesco	42
-New Lanark	United Kingdom	55.66361	-3.78139	unesco	42
-Old Town of Lviv	Ukraine	49.84167	24.03194	unesco	42
-Paraty	Brazil	-23.21944	-44.71472	unesco	42
-Petäjävesi Old Church	Finland	62.25014	25.18394	unesco	42
-Pontcysyllte Aqueduct	United Kingdom	52.97020	-3.08782	unesco	42
-Santiniketan	India	23.67760	87.68520	unesco	42
-Schwerin Castle	Germany	53.62417	11.41889	unesco	42
-Taos Pueblo	United States	36.43889	-105.54167	unesco	42
-The Architectural Work of Le Corbusier	Argentina	46.46841	6.82934	unesco	42
-The Great Spa Towns of Europe	Austria	50.49222	5.86694	unesco	42
-Tugela Falls	South Africa	-28.75220	28.89410	feature	42
-Willandra Lakes Region	Australia	-33.61814	143.10141	unesco	42
-Zubarah	Qatar	25.98339	51.02722	unesco	42
-Al Maghtas	Jordan	31.83722	35.55028	unesco	41
-Alcobaça Monastery	Portugal	39.54859	-8.97863	unesco	41
-Castles and Town Walls of King Edward in Gwynedd	United Kingdom	53.13972	-4.27694	unesco	41
-Champaner-Pavagadh Archaeological Park	India	22.48333	73.53333	unesco	41
-Golden Mountains of Altai	Russia	50.46667	86.00000	unesco	41
-Huascarán National Park	Peru	-9.40000	-77.40000	unesco	41
-Imperial Citadel of Thang Long	Vietnam	21.03250	105.83972	unesco	41
-Jog Falls	India	14.23000	74.81278	feature	41
-Khangchendzonga National Park	India	27.65630	88.31230	unesco	41
-Lake Malawi National Park	Malawi	-14.03333	34.88333	unesco	41
-Las Médulas	Spain	42.45870	-6.75900	unesco	41
-Linderhof Palace	Germany	47.57162	10.96075	unesco	41
-Mount Kumgang	North Korea	38.65676	128.10490	unesco	41
-New Zealand Subantarctic Islands	New Zealand	-50.75000	166.10400	unesco	41
-Papahānaumokuākea Marine National Monument	United States	25.50000	-170.50000	unesco	41
-Rani ki vav	India	23.85892	72.10162	unesco	41
-Revillagigedo Islands	Mexico	18.82139	-112.76389	unesco	41
-Roman amphitheatre of El Jem	Tunisia	35.29639	10.70694	unesco	41
-Sangiran	Indonesia	-7.45000	110.85000	unesco	41
-Sheikh Safi al-Din Khānegāh and Shrine Ensemble	Iran	38.24861	48.29139	unesco	41
-Stone spheres of Costa Rica	Costa Rica	8.91139	-83.47750	unesco	41
-Tajín Veracruz	Mexico	20.44806	-97.37824	unesco	41
-Te Wahipounamu	New Zealand	-45.03600	167.32000	unesco	41
-Viñales Valley	Cuba	22.61667	-83.71667	unesco	41
-Warsaw Old Town	Poland	52.24972	21.01222	unesco	41
-Xochicalco	Mexico	18.80431	-99.29664	unesco	41
-wooden churches of Maramureș	Romania	47.81940	24.05580	unesco	41
-wooden churches of the Slovak Carpathians	Slovakia	49.33611	19.55833	unesco	41
-Aflaj Irrigation System of Oman	Oman	22.99889	57.53606	unesco	40
-Chengde Mountain Resort and its outlying temples	China	40.98750	117.93750	unesco	40
-Churches of Peace	Poland	51.05391	16.18904	unesco	40
-Darién National Park	Panama	7.73611	-77.54722	unesco	40
-Divriği Great Mosque and Hospital	Turkey	39.37122	38.12158	unesco	40
-Dja Faunal Reserve	Cameroon	3.01670	12.98330	unesco	40
-Gamzigrad	Serbia	43.89931	22.18617	unesco	40
-Gonbad-e Qabus	Iran	37.25812	55.16899	unesco	40
-Gordion	Turkey	39.65048	31.97848	unesco	40
-Gulangyu	China	24.44750	118.06194	unesco	40
-Historic Monuments of Ancient Kyoto	Japan	35.06028	135.75278	unesco	40
-Historic Villages of Shirakawa-gō and Gokayama	Japan	36.25694	136.90639	unesco	40
-Holy Trinity Column in Olomouc	Czech Republic	49.59402	17.25049	unesco	40
-Hwaseong Fortress	South Korea	37.28073	127.01020	unesco	40
-Ichkeul National Park	Tunisia	37.12344	9.65544	unesco	40
-Lake Turkana National Parks	Kenya	3.05131	36.50367	unesco	40
-Mulanje Massif	Malawi	-15.90000	35.65000	unesco	40
-Padova botanical garden	Italy	45.39953	11.88068	unesco	40
-Royal Tombs of the Joseon Dynasty	South Korea	37.19722	128.45278	unesco	40
-Sammallahdenmäki	Finland	61.11767	21.77517	unesco	40
-Seljalandsfoss	Iceland	63.61545	-19.98828	feature	40
-Umm ar-Rasas	Jordan	31.49972	35.91972	unesco	40
-Vallée de Mai	Seychelles	-4.32917	55.73750	unesco	40
-Vega Archipelago	Norway	65.63333	11.90000	unesco	40
-Yosemite Falls	United States	37.75502	-119.59730	feature	40
-iSimangaliso Wetland Park	South Africa	-27.83890	32.55000	unesco	40
-Abbey of Fontenay	France	47.63966	4.38933	unesco	39
-Australian Convict Sites	Australia	-33.37833	150.99444	unesco	39
-Convent of Christ	Portugal	39.60364	-8.41926	unesco	39
-Euphrasian Basilica	Croatia	45.22861	13.59361	unesco	39
-Honghe Hani Rice Terraces	China	23.11719	102.73770	unesco	39
-Khami	Zimbabwe	-20.14329	28.42344	unesco	39
-Koutammakou	Benin	10.06744	1.13453	unesco	39
-Madinat Al-Zahra	Spain	37.88608	-4.86779	unesco	39
-Medici Villas and Gardens in Tuscany	Italy	43.85778	11.30417	unesco	39
-Museum Plantin-Moretus	Belgium	51.21829	4.39816	unesco	39
-Pamir National Park	Tajikistan	38.74123	72.11975	unesco	39
-Pannonhalma Archabbey	Hungary	47.55278	17.76111	unesco	39
-Princely Abbey of Corvey	Germany	51.77778	9.41000	unesco	39
-Rapa Nui National Park	Chile	-27.07288	-109.34858	unesco	39
-Royal Palaces of Abomey	Benin	7.18645	1.99400	unesco	39
-Saint-Savin	France	46.56611	0.86361	unesco	39
-Sian Ka'an	Mexico	19.38333	-87.79167	unesco	39
-Visoki Dečani	Serbia	42.54694	20.26639	unesco	39
-Waterton-Glacier International Peace Park	Canada	48.99606	-113.90417	unesco	39
-churches of Moldavia	Romania	47.73300	25.93300	unesco	39
-Šibenik Cathedral	Croatia	43.73556	15.88917	unesco	39
-Berlin Modernism Housing Estates	Germany	52.44833	13.45000	unesco	38
-Burana Tower	Karakhanid Khanate	42.74648	75.25038	unesco	38
-Cité de Carcassonne	France	43.20644	2.36379	unesco	38
-Classical Gardens of Suzhou	China	31.32667	120.62556	unesco	38
-Dambulla cave temple	Sri Lanka	7.85667	80.64917	unesco	38
-Desembarco del Granma National Park	Cuba	19.88333	-77.63333	unesco	38
-El Fuerte de Samaipata	Bolivia	-18.17836	-63.81899	unesco	38
-Ferapontov Monastery	Russia	59.95639	38.56750	unesco	38
-Goguryeo tombs	North Korea	38.86306	125.41500	unesco	38
-Great Himalayan National Park	India	31.80429	77.95102	unesco	38
-Imperial Tombs of the Ming and Qing Dynasties	China	31.01667	112.65000	unesco	38
-Jodrell Bank Observatory	United Kingdom	53.23625	-2.30714	unesco	38
-Kapova Cave	Russia	53.04444	57.06389	unesco	38
-Modena Cathedral	Italy	44.64644	10.92525	unesco	38
-Pilgrimage Church of Saint John of Nepomuk	Czech Republic	49.58000	15.94194	unesco	38
-Royal Monastery of Saint Mary of Guadalupe	Spain	39.45278	-5.32750	unesco	38
-Sarazm	Tajikistan	39.51667	67.56667	unesco	38
-Su Nuraxi di Barumini	Italy	39.70286	8.99988	unesco	38
-Tlacotalpan	Mexico	18.61303	-95.65627	unesco	38
-Twyfelfontein	Namibia	-20.59558	14.37258	unesco	38
-Valle dei Templi	Italy	37.28972	13.59000	unesco	38
-Vecrīga	Latvia	56.94850	24.10820	unesco	38
-Verla	Finland	61.06199	26.64002	unesco	38
-Wooden churches of Southern Lesser Poland	Poland	49.63059	21.18605	unesco	38
-pont Saint-Bénézet	France	43.95389	4.80500	unesco	38
-Bale Mountains National Park	Ethiopia	6.75000	39.75000	unesco	37
-Carnac stones	France	47.59333	-3.07972	iconic	37
-Danevirke	Germany	54.47750	9.48667	unesco	37
-East Rennell	Solomon Islands	-11.68333	160.33333	unesco	37
-Fujian Tulou sites	China	24.65870	116.97500	unesco	37
-Ilulissat Icefjord	Greenland	69.15000	-49.55000	unesco	37
-Kluane / Wrangell – St. Elias / Glacier Bay / Tatshenshini-Alsek	Canada	61.19750	-140.99200	unesco	37
-Mausoleum of the First Qin Emperor	China	34.38167	109.25389	unesco	37
-Messel pit	Germany	49.91750	8.75667	unesco	37
-Ningaloo Reef	Australia	-22.73900	113.62800	unesco	37
-Old Rauma	Finland	61.12827	21.51321	unesco	37
-Residence of Bukovinian and Dalmatian Metropolitans	Ukraine	48.29664	25.92491	unesco	37
-Residences of the Royal House of Savoy	Italy	45.07250	7.68583	unesco	37
-Rock carvings at Alta	Norway	69.94694	23.18778	unesco	37
-Royal Alcázar of Segovia	Spain	40.95250	-4.13250	unesco	37
-Río Abiseo National Park	Peru	-7.75000	-77.25000	unesco	37
-Sacri Monti of Piedmont and Lombardy	Italy	45.97456	9.16956	unesco	37
-Saltaire	United Kingdom	53.83717	-1.79026	unesco	37
-Town Hall of Bremen	Germany	53.07590	8.80760	unesco	37
-Aapravasi Ghat	Mauritius	-20.15861	57.50306	unesco	36
-Aïr and Ténéré National Nature Reserve	Niger	18.00000	9.00000	unesco	36
-Badain Jaran Desert	China	40.07250	102.21000	unesco	36
-Brimstone Hill Fortress National Park	Saint Kitts and Nevis	17.34744	-62.83575	unesco	36
-Canadian Rocky Mountain Parks World Heritage Site	Canada	51.42472	-116.47972	unesco	36
-Castillo de San Pedro de la Roca	Cuba	19.96871	-75.87030	unesco	36
-Chongoni Rock Art Area	Malawi	-14.29333	34.27917	unesco	36
-Darial Gorge	Russia	42.74472	44.62250	feature	36
-Dessau-Wörlitz Garden Realm	Germany	51.86360	12.28140	unesco	36
-General Archive of the Indies	Spain	37.38478	-5.99308	unesco	36
-Grimeton VLF transmitter	Sweden	57.11398	12.40442	unesco	36
-Head-Smashed-In Buffalo Jump	Canada	49.74940	-113.62500	unesco	36
-Historic Monuments of Ancient Nara	Japan	34.67556	135.83944	unesco	36
-Iwami Ginzan Silver Mine	Japan	35.10722	132.43750	unesco	36
-Laponian National Park	Sweden	67.33333	17.58333	unesco	36
-Le Morne Brabant	Mauritius	-20.46056	57.31361	unesco	36
-Maymand	Iran	30.16806	55.37556	unesco	36
-Morne Trois Pitons National Park	Dominica	15.26667	-61.28333	unesco	36
-Namhansanseong	South Korea	37.47803	127.18419	unesco	36
-Nanda Devi National Park	India	30.41861	79.84972	unesco	36
-Naumburg Cathedral	Germany	51.15472	11.80389	unesco	36
-Orkhon Valley	Mongolia	47.55667	102.83139	unesco	36
-Rietveld Schröder House	Netherlands	52.08533	5.14760	unesco	36
-Saint John Abbey	Switzerland	46.62917	10.44778	unesco	36
-Sangha Trinational	Cameroon	2.66667	16.33333	unesco	36
-Vilnius Old Town	Lithuania	54.68333	25.28333	unesco	36
-Wet Tropics of Queensland	Australia	-17.20000	145.80000	unesco	36
-White City	Israel	32.07778	34.77389	unesco	36
-Baroque Churches of the Philippines	Philippines	18.06148	120.52159	unesco	35
-Bergpark Wilhelmshöhe	Germany	51.31670	9.40000	unesco	35
-Caves of Aggtelek Karst and Slovak Karst	Hungary	48.47178	20.49532	unesco	35
-Central Suriname Nature Reserve	Suriname	4.00000	-56.50000	unesco	35
-Chiribiquete National Park	Colombia	0.70061	-72.80540	unesco	35
-Ennedi Plateau	Chad	17.25000	22.00000	unesco	35
-Fortifications of Vauban	France	50.28250	2.75889	unesco	35
-Herrenchiemsee	Germany	47.86043	12.40220	unesco	35
-Longobards in Italy, Places of Power	Italy	46.09417	13.43306	unesco	35
-Medieval Monuments in Kosovo	Serbia	42.66111	20.26556	unesco	35
-Miguasha National Park	Canada	48.11056	-66.36944	unesco	35
-Monolithic churches in Lalibela	Ethiopia	12.02935	39.04042	unesco	35
-Painted Churches in the Troödos Region	Cyprus	34.92028	33.09583	unesco	35
-Palmeral of Elche	Spain	38.26944	-0.69833	unesco	35
-Rock Art of the Mediterranean Basin on the Iberian Peninsula	Spain	39.79000	-1.03333	unesco	35
-Samariá Gorge National Park	Greece	35.27111	23.96139	feature	35
-Sukur	Nigeria	10.74056	13.57167	unesco	35
-The Venetian Works of defence between 15th and 17th centuries	Croatia	45.70333	9.66361	unesco	35
-White Monuments of Vladimir and Suzdal	Russia	56.15000	40.41670	unesco	35
-Ancient City of Aleppo	Syria	36.18333	37.15000	unesco	34
-Asante Traditional Buildings	Ghana	6.40111	-1.62583	unesco	34
-Citadel of Erbil	Iraq	36.19100	44.00900	unesco	34
-Fagus Factory	Germany	51.98370	9.81256	unesco	34
-Kizhi Pogost	Russia	62.06767	35.22345	unesco	34
-Kondoa Rock Art Sites	Tanzania	-4.72444	35.83389	unesco	34
-Lakes of Ounianga	Chad	18.98333	20.66667	unesco	34
-Land of Frankincense	Oman	18.25333	53.64759	unesco	34
-León Cathedral	Nicaragua	12.43500	-86.87810	unesco	34
-Los Alerces National Park	Argentina	-42.80750	-71.89889	unesco	34
-Margravial Opera House	Germany	49.94434	11.57866	unesco	34
-Nyungwe Forest	Rwanda	-2.52822	29.27585	unesco	34
-Old Faithful	United States	44.46047	-110.82814	iconic	34
-Osun-Osogbo Grove	Nigeria	7.75556	4.55222	unesco	34
-Palaces and Parks of Potsdam and Berlin	Germany	52.40000	13.03333	unesco	34
-Sewell	Chile	-34.08500	-70.38250	unesco	34
-Sichuan Giant Panda Sanctuaries	China	30.83333	103.00000	unesco	34
-Tallinn Old Town	Estonia	59.43722	24.74528	unesco	34
-Zollverein Coal Mine Industrial Complex	Germany	51.48650	7.04408	unesco	34
-Aljafería	Spain	41.65649	-0.89708	unesco	33
-Archaeological Landscape of the First Coffee Plantations in the South-East of Cuba	Cuba	20.03000	-75.39140	unesco	33
-Christiansfeld	Denmark	55.35667	9.48306	unesco	33
-Churches of Chiloé	Chile	-42.50000	-73.76667	unesco	33
-Decorated Farmhouses of Hälsingland	Sweden	61.70722	16.19583	unesco	33
-Derwent Valley Mills	United Kingdom	53.10800	-1.55600	unesco	33
-Fountains Abbey	United Kingdom	54.10970	-1.58139	unesco	33
-Heart of Neolithic Orkney	United Kingdom	58.99750	-3.21500	unesco	33
-Humberstone and Santa Laura Saltpeter Works	Chile	-20.20833	-69.79444	unesco	33
-Kuk Swamp	Papua New Guinea	-5.78250	144.33000	unesco	33
-Monarch Butterfly Biosphere Reserve	Mexico	19.60639	-100.24167	unesco	33
-New Caledonia Barrier Reef	France	-20.41194	164.56639	unesco	33
-Prehistoric Rock Art Sites in the Côa Valley	Portugal	41.03333	-7.11667	unesco	33
-Ramappa Temple	India	18.25944	79.94250	unesco	33
-Sacred Mijikenda Kaya Forests	Kenya	-3.93194	39.59611	unesco	33
-Sawahlunto	Indonesia	-0.68278	100.77833	unesco	33
-South China Karst	China	24.92330	110.35440	unesco	33
-Takalik Abaj	Guatemala	14.64583	-91.73611	unesco	33
-Tràng An	Vietnam	20.25570	105.91560	unesco	33
-Citadelle Laferrière	Haiti	19.57361	-72.24389	unesco	32
-Colonia Iulia Urbs Triumphalis Tarraco	Spain	41.11648	1.25523	unesco	32
-Cordouan Lighthouse	France	45.58632	-1.17333	unesco	32
-Cornwall and West Devon Mining Landscape	United Kingdom	50.13611	-5.38361	unesco	32
-El Camino Real de Tierra Adentro	Mexico	22.60806	-102.37917	unesco	32
-Falun Mine	Sweden	60.60472	15.63083	unesco	32
-Ironbridge Gorge	United Kingdom	52.62639	-2.47278	feature	32
-Ivindo National Park	Gabon	0.08800	12.63000	unesco	32
-Jesuit Missions of Chiquitos	Bolivia	-16.27480	-62.50720	unesco	32
-Lednice-Valtice Cultural Landscape	Czech Republic	48.77580	16.77500	unesco	32
-Qalhat	Oman	22.70000	59.36990	unesco	32
-Rhine Gorge	Germany	50.17360	7.69417	unesco	32
-Rock Carvings in Tanum	Sweden	58.69995	11.33641	unesco	32
-Sacred Sites and Pilgrimage Routes in the Kii Mountain Range	Japan	33.83694	135.77639	unesco	32
-Stevns Klint	Denmark	55.28220	12.45000	unesco	32
-Valley of Geysers	Russia	54.43056	160.13944	feature	32
-Alto Douro Wine Region	Portugal	41.16575	-7.51774	unesco	31
-Arslantepe	Turkey	38.38194	38.36111	unesco	31
-Bat, Al-Khutm and Al-Ayn archaeological sites	Oman	23.27000	56.74500	unesco	31
-Dacian Fortresses of the Orăștie Mountains	Romania	45.62310	23.31190	unesco	31
-Gammelstad Church Town	Sweden	65.64611	22.02861	unesco	31
-Hoh Xil	China	35.15000	91.00000	unesco	31
-Hospicio Cabañas	Mexico	20.67690	-103.33733	unesco	31
-Koh Ker	Cambodia	13.78333	104.53333	unesco	31
-Kraków Old Town	Poland	50.06209	19.93688	unesco	31
-Palace of Mafra	Portugal	38.93692	-9.32639	unesco	31
-Pitons	Saint Lucia	13.80708	-61.07036	unesco	31
-Ruins of St. Paul's	China	22.19747	113.54086	unesco	31
-Sambor Prei Kuk	Cambodia	12.86728	105.04002	unesco	31
-Saryarka – Steppe and Lakes of Northern Kazakhstan	Kazakhstan	50.43333	69.18889	unesco	31
-Tierradentro	Colombia	2.58300	-76.03300	unesco	31
-Trans-Iranian railway	Iran	35.65831	51.39833	unesco	31
-University City of Caracas	Venezuela	10.49083	-66.89056	unesco	31
-Völklingen Ironworks	Germany	49.25056	6.84528	unesco	31
-historical city centre of Odesa	Ukraine	46.48500	30.74100	unesco	31
-Burgess Shale	Canada	51.43330	-116.46700	unesco	30
-Capital Cities and Tombs of the Ancient Koguryo Kingdom	China	41.15694	126.18722	unesco	30
-Casas Grandes	Mexico	30.37583	-107.95556	unesco	30
-Gochang, Hwasun and Ganghwa Dolmen Sites	South Korea	34.96667	126.92917	unesco	30
-Historic Centre of Saint Petersburg and Related Groups of Monuments	Russia	59.93889	30.31556	unesco	30
-Khajuraho Group of Monuments	India	24.85000	79.93333	unesco	30
-Niah National Park	Malaysia	3.81389	113.78139	unesco	30
-Old Quebec	Canada	46.80944	-71.21056	unesco	30
-Paleochristian and Byzantine monuments of Thessaloniki	Greece	40.63860	22.94780	unesco	30
-Rock Paintings of Hua Mountain	China	22.24833	107.04228	unesco	30
-Shrines and Temples of Nikkō	Japan	36.74750	139.61056	unesco	30
-Shushtar Historical Hydraulic System	Iran	32.05372	48.84869	unesco	30
-Sites of Japan’s Meiji Industrial Revolution: Iron and Steel, Shipbuilding and Coal Mining	Japan	34.43056	131.41222	unesco	30
-Stari Grad Plain	Croatia	43.18167	16.63861	unesco	30
-lifts on the old Canal du Centre	Belgium	50.47140	4.09450	unesco	30
-Atapuerca	Spain	42.35009	-3.51947	unesco	29
-Bassari Country	Senegal	12.59333	-12.84583	unesco	29
-Beit She'arim National Park	Israel	32.70417	35.12806	unesco	29
-Central Highlands of Sri Lanka	Sri Lanka	7.45245	80.80210	unesco	29
-Cát Bà Island	Vietnam	20.80000	106.99972	unesco	29
-Dilmun Burial Mounds	Bahrain	26.14972	50.51278	unesco	29
-Eldgjá	Iceland	63.96662	-18.60913	feature	29
-Glarus thrust	Switzerland	46.91667	9.25000	unesco	29
-Incense Route – Desert Cities in the Negev	Israel	31.09750	34.65778	unesco	29
-Jesuit Block and Estancias of Córdoba	Argentina	-31.65611	-64.43528	unesco	29
-Kujataa	Greenland	61.16444	-45.59806	unesco	29
-Odzala National Park	Republic of the Congo	0.80000	14.90000	unesco	29
-Our Lady of Promise	Serbia	42.21139	20.73583	unesco	29
-Redwood National and State Parks	United States	41.37389	-123.99806	unesco	29
-Roman Walls of Lugo	Spain	43.01419	-7.55989	unesco	29
-Ruínas de León Viejo	Nicaragua	12.40055	-86.61780	unesco	29
-San Agustin archeological park	Colombia	1.88444	-76.29611	unesco	29
-Vjetrenica	Bosnia and Herzegovina	42.84583	17.98389	unesco	29
-Aqueduct of Padre Tembleque	Mexico	19.83639	-98.66222	unesco	28
-Armenian Monastic Ensembles of Iran	Iran	38.97889	45.47333	unesco	28
-Bahrain Pearling Trail	Bahrain	26.25000	50.61000	unesco	28
-Banaue Rice Terraces	Philippines	16.93472	121.13472	iconic	28
-Bom Jesus do Monte	Portugal	41.55460	-8.37750	unesco	28
-Eise Eisinga Planetarium	Netherlands	53.18738	5.54375	unesco	28
-Greater Blue Mountains Area	Australia	-33.70000	150.00000	unesco	28
-Gusuku Sites and Related Properties of the Kingdom of Ryukyu	Japan	26.20860	127.68300	unesco	28
-Ir.D.F. Woudagemaal	Netherlands	52.84583	5.67889	unesco	28
-Jeju Volcanic Island and Lava Tubes	South Korea	33.36139	126.53250	unesco	28
-Litomyšl Chateau	Czech Republic	49.87344	16.31265	unesco	28
-Matka Canyon	North Macedonia	41.94000	21.30000	feature	28
-Monasteries on the slopes of Popocatépetl	Mexico	18.93472	-98.89778	unesco	28
-Natural and Culturo-Historical Region of Kotor	Montenegro	42.43000	18.77000	unesco	28
-Shiretoko Peninsula	Japan	44.05000	145.10000	unesco	28
-Thimlich Ohinga	Kenya	-0.89134	34.32611	unesco	28
-domus de janas	Italy	40.08500	8.95100	unesco	28
-northern French coal mining region	France	50.46250	3.54611	unesco	28
-Ancient City of Damascus	Syria	33.51111	36.30639	unesco	27
-Area de Conservación Guanacaste World Heritage Site	Costa Rica	10.85000	-85.61667	unesco	27
-Beaufort Castle	Lebanon	33.32471	35.53215	unesco	27
-Charyn Canyon	Kazakhstan	43.36194	79.09056	feature	27
-China Danxia	China	28.42190	106.04300	unesco	27
-Ciudad Universitaria	Mexico	19.33222	-99.18806	unesco	27
-Franciscan Missions in the Sierra Gorda	Mexico	21.20389	-99.46389	unesco	27
-Group of monuments at Mahabalipuram	India	12.61667	80.19167	unesco	27
-Gyeongju Historic Areas	South Korea	35.78889	129.22667	unesco	27
-Hiraizumi – Temples, Gardens and Archaeological Sites Representing the Buddhist Pure Land	Japan	38.98861	141.11028	unesco	27
-Jesuit missions among the Guaraní	Argentina	-27.25528	-55.53167	unesco	27
-Jungfrau-Aletsch protected area	Switzerland	46.50000	8.03333	unesco	27
-Kenya Lake System in the Great Rift Valley	Kenya	0.44250	36.24000	unesco	27
-Pachacámac	Peru	-12.25806	-76.90000	unesco	27
-Pankisi Gorge	Georgia	42.11667	45.26667	feature	27
-Par force hunting landscape in North Zealand	Denmark	55.91360	12.35780	unesco	27
-Rock Paintings of Sierra de San Francisco	Mexico	27.65556	-112.91611	unesco	27
-Silk Roads: the Routes Network of Chang'an-Tianshan Corridor	Kazakhstan	34.30440	108.85720	unesco	27
-Stora Sjöfallet National Park	Sweden	67.56690	17.99365	unesco	27
-Temple of Apollo Epicurius in Bassae	Greece	37.42965	21.90039	unesco	27
-Tusi Sites	China	28.99861	109.96694	unesco	27
-Valongo Wharf	Brazil	-22.89711	-43.18739	unesco	27
-Van Nelle Factory	Netherlands	51.92278	4.43361	unesco	27
-Victorian Gothic and Art Deco Ensembles of Mumbai	India	18.92981	72.83008	unesco	27
-Cathedral of the Savior in his Epiphany of Zaragoza	Spain	41.65456	-0.87585	unesco	26
-Luis Barragán House and Studio	Mexico	19.41111	-99.19250	unesco	26
-Matobo Hills	Zimbabwe	-20.50000	28.50000	unesco	26
-Nahal Me'arot Nature Reserve	Israel	32.67083	34.96611	unesco	26
-Navy Petty-Officers School of Mechanics	Argentina	-34.53842	-58.46361	unesco	26
-Ninstints	Canada	52.09889	-131.21750	unesco	26
-Old City of Bern	Switzerland	46.94806	7.45028	unesco	26
-Poverty Point	United States	32.64250	-91.40833	unesco	26
-Thungyai Naresuan Wildlife Sanctuary	Thailand	15.33333	98.91667	unesco	26
-Tiger Leaping Gorge	China	27.23000	100.14000	feature	26
-Umm el-Jimal	Jordan	32.32667	36.36972	unesco	26
-Zagori	Greece	39.86670	20.70000	unesco	26
-Baekje Historic Areas	South Korea	36.46194	127.12722	unesco	25
-Buddhist Monuments in the Hōryū-ji Area	Japan	34.61427	135.73424	unesco	25
-El Pinacate y Gran Desierto de Altar Biosphere Reserve	Mexico	32.00000	-113.91667	unesco	25
-Heritage of Mercury. Almadén and Idrija	Slovenia	46.00389	14.02667	unesco	25
-Hidden Christian Sites in the Nagasaki Region	Japan	32.80222	128.90389	unesco	25
-Major Mining Sites of Wallonia	Belgium	50.43528	3.83833	unesco	25
-Major Town Houses of the Architect Victor Horta	Belgium	50.81667	4.35000	unesco	25
-Mistaken Point Ecological Reserve	Canada	46.63190	-53.19030	unesco	25
-Neolithic flint mines of Spiennes	Belgium	50.41999	3.98258	unesco	25
-Sans-Souci Palace	Haiti	19.60469	-72.21860	unesco	25
-Teruel Cathedral	Spain	40.34390	-1.10722	unesco	25
-The Vineyard Landscape of Piedmont: Langhe-Roero and Monferrato	Italy	44.65194	7.99417	unesco	25
-W-Arly-Pendjari Complex	Benin	11.88420	2.48780	unesco	25
-Western Xia Mausoleums	China	38.43503	105.98717	unesco	25
-A-Ma Temple	China	22.18611	113.53114	unesco	24
-Ahwar of Southern Iraq	Iraq	31.56222	47.65778	unesco	24
-Arab-Norman Palermo and the Cathedral Churches of Cefalú and Monreale	Italy	38.11083	13.35306	unesco	24
-Arabian Oryx Sanctuary	Oman	19.70000	57.00000	unesco	24
-Beit Guvrin National Park	Israel	31.61306	34.89833	unesco	24
-Béguinages in Flanders	Belgium	51.03097	4.47375	unesco	24
-Catalan Romanesque Churches of the Vall de Boí	Spain	42.50472	0.80361	unesco	24
-Cavernas do Peruaçu National Park	Brazil	-15.12251	-44.32434	unesco	24
-Jodensavanne	Suriname	5.41328	-54.95298	unesco	24
-Monasteries of San Millán de la Cogolla	Spain	42.32583	-2.86505	unesco	24
-Nelson's Dockyard	Antigua and Barbuda	17.00833	-61.76444	unesco	24
-Ombilin coal mine	Indonesia	-0.68333	100.76700	unesco	24
-Rock Art in the Hail Region of Saudi Arabia	Saudi Arabia	28.00000	40.90000	unesco	24
-Ruins of Gedi	Kenya	-3.30917	40.01667	unesco	24
-Saloum Delta	Senegal	13.83528	-16.49861	unesco	24
-Sanctuary of Bom Jesus de Matosinhos	Brazil	-20.50778	-43.86069	unesco	24
-Sassanid Archaeological Landscape of Fars Region	Iran	29.77748	51.57045	unesco	24
-Socotra Archipelago	Mahra Sultanate	12.50000	53.40000	unesco	24
-Spišská Kapitula	Slovakia	49.00056	20.74111	unesco	24
-Three Castles of Bellinzona	Switzerland	46.19278	9.02222	unesco	24
-port of the Moon	France	44.83889	-0.57222	unesco	24
-Churches of the Pskov School of Architecture	Russia	57.80720	28.32860	unesco	23
-City of Vicenza and the Palladian Villas of the Veneto	Italy	45.55000	11.55000	unesco	23
-King's House on Schachen	Germany	47.41970	11.11259	unesco	23
-Palazzo Rosso	Italy	44.41125	8.93212	unesco	23
-Petroglyphic Complexes of the Mongolian Altai	Mongolia	49.33389	88.39528	unesco	23
-Rjukan–Notodden Industrial Heritage Site	Norway	59.87861	8.59361	unesco	23
-Roman Monuments, Cathedral of St. Peter and Church of Our Lady in Trier UNESCO World Heritage Site	Germany	49.75000	6.63306	unesco	23
-Ruins of Loropéni	Burkina Faso	10.31028	-3.56306	unesco	23
-Tell es-Sultan	Palestine	31.87172	35.44456	unesco	23
-The works of Jože Plečnik in Ljubljana – Human Centred Urban Design	Slovenia	46.04333	14.50222	unesco	23
-Tigrovaya Balka Nature Reserve	Tajikistan	37.25000	68.50000	unesco	23
-Upper German-Raetian Limes	Germany	49.79639	9.15750	unesco	23
-Windmills at Kinderdijk	Netherlands	51.88861	4.63472	unesco	23
-porticoes of Bologna	Italy	44.49139	11.33278	unesco	23
-Caves and Ice Age Art in the Swabian Jura	Germany	48.38778	9.76556	unesco	22
-Historic Monuments of Novgorod and Surroundings	Russia	58.51833	31.28556	unesco	22
-Landscape of the Pico Island Vineyard Culture	Portugal	38.51333	-28.54111	unesco	22
-Maidam	India	26.94310	94.87920	unesco	22
-Mapungubwe Cultural Landscape	South Africa	-22.21167	29.38789	unesco	22
-Markovi Kuli	North Macedonia	41.36160	21.53847	unesco	22
-Medina of Tunis	Tunisia	36.79903	10.17006	unesco	22
-Pampulha Modern Ensemble	Brazil	-19.85194	-43.97361	unesco	22
-Phoenix Islands Protected Area	Kiribati	-3.64972	-172.85750	unesco	22
-Royal Abbey of Hautecombe	France	45.75278	5.83972	unesco	22
-Southern Öland cultural landscape	Sweden	56.46667	16.55000	unesco	22
-Tehuacán-Cuicatlán Biosphere Reserve	Mexico	18.21140	-97.39940	unesco	22
-The 20th-Century Architecture of Frank Lloyd Wright	United States	39.90557	-79.46648	unesco	22
-Tipasa	Algeria	36.59424	2.44192	unesco	22
-Aasivissuit–Nipisat	Greenland	67.06393	-51.43321	unesco	21
-Antequera Dolmens Site	Spain	37.02333	-4.54806	unesco	21
-Bir Hima Rock Petroglyphs and Inscriptions	Saudi Arabia	18.31700	44.54500	unesco	21
-Church of Cristo Obrero y Nuestra Señora de Lourdes	Uruguay	-34.74400	-55.76600	unesco	21
-Historic Centre of Sighișoara	Romania	46.21778	24.79222	unesco	21
-Makhonjwa Mountains	South Africa	-33.40000	22.00000	unesco	21
-Maloti-Drakensberg Park	Lesotho	-29.46650	29.39390	unesco	21
-Medina of Sousse	Tunisia	35.82780	10.63860	unesco	21
-Melka Kunture	Ethiopia	8.70250	38.60833	unesco	21
-Qaryat al-Faw	Saudi Arabia	19.78330	45.15000	unesco	21
-Sacred Ensembles of the Hoysalas	India	13.21245	75.99407	unesco	21
-Sansa, Buddhist Mountain Monasteries in Korea	South Korea	34.99658	127.33112	unesco	21
-Sebastia	Palestine	32.27562	35.19873	unesco	21
-fortifications on the Caribbean Side of Panama: Portobelo-San Lorenzo	Panama	9.55389	-79.65583	unesco	21
-Babelsberg Palace	Germany	52.40760	13.09330	unesco	20
-Budj Bim	Australia	-38.06670	141.91700	unesco	20
-Churches and Convents of Goa	India	15.50240	73.91170	unesco	20
-Colonial City of Santo Domingo	Dominican Republic	18.47300	-69.88300	unesco	20
-Dong Phayayen-Khao Yai Forest Complex	Thailand	14.33000	102.05000	unesco	20
-Duchess Anna Amalia Library	Germany	50.97861	11.33222	unesco	20
-Getbol, Korean Tidal Flats	South Korea	34.82882	126.10444	unesco	20
-Historic Centre of the City of Salzburg	Austria	47.79970	13.04860	unesco	20
-Pimachiowin Aki	Canada	51.00000	-95.00000	unesco	20
-Si Thep historical park	Thailand	15.46659	101.15009	unesco	20
-Archaeological Site of Sabratha	Libya	32.80528	12.48500	unesco	19
-Arles, Roman and Romanesque Monuments	France	43.67764	4.63069	unesco	19
-Artists' Colony in Darmstadt	Germany	49.87543	8.66650	unesco	19
-Astronomical Observatory of the University of Kazan	Russia	55.79083	49.11917	unesco	19
-Chinchorro mummies	Chile	-18.48060	-70.32111	unesco	19
-Church of the Saviour at Berestove	Ukraine	50.43733	30.55500	unesco	19
-Colchic Rainforests and Wetlands	Georgia	41.70222	41.95111	unesco	19
-Durmitor National Park	Montenegro	43.15320	19.03687	unesco	19
-Early Christian Necropolis of Pécs	Hungary	46.07444	18.22778	unesco	19
-Forts and Castles, Volta, Greater Accra, Central and Western Regions	Ghana	5.10369	-1.24100	unesco	19
-Jabal Al Fayah	United Arab Emirates	25.11140	55.83896	unesco	19
-Jōmon Prehistoric Sites in Northern Japan	Japan	41.06556	140.55222	unesco	19
-Kokino	North Macedonia	42.26361	21.95361	unesco	19
-Laurisilva of Madeira	Portugal	32.76667	-17.00000	unesco	19
-Medieval Town of Toruń	Poland	53.01028	18.60472	unesco	19
-Menin Gate	Belgium	50.85205	2.89107	unesco	19
-Old City of Hebron	Palestine	31.52528	35.10833	unesco	19
-Old City of Zamość	Poland	50.72056	23.25861	unesco	19
-Sanctuary of the Madonna di San Luca	Italy	44.47915	11.29789	unesco	19
-Bahá'í World Centre buildings	Israel	32.81378	34.98655	unesco	18
-Bruges City Hall	Belgium	51.20806	3.22694	unesco	18
-Château de Quéribus	France	42.83667	2.62167	unesco	18
-Classical Weimar	Germany	50.98333	11.31667	unesco	18
-Gaya Tumuli	South Korea	35.23726	128.87373	unesco	18
-Gola National Park	Sierra Leone	7.50000	-10.98333	unesco	18
-Grand-Pré	Canada	45.10889	-64.30917	unesco	18
-Hin Nam No National Protected Area	Laos	17.45830	105.93330	unesco	18
-Historic Centre of Lima	Peru	-12.04667	-77.03139	unesco	18
-Historic Centre of Naples	Italy	40.85139	14.26278	unesco	18
-Kalwaria Zebrzydowska park	Poland	49.86032	19.67072	unesco	18
-Maratha Military Landscapes of India	India	20.72250	73.94250	unesco	18
-Murambi Genocide Memorial	Rwanda	-2.45440	29.56840	unesco	18
-Old Towns of Djenné	Mali	13.90639	-4.55500	unesco	18
-Risco Caido	Spain	28.04356	-15.66126	unesco	18
-Royal Court of Tiébélé	Burkina Faso	11.08972	-0.96156	unesco	18
-Silk Roads: Zarafshan-Karakum Corridor	Tajikistan	39.44149	69.68556	unesco	18
-Sviyazhsk Assumption Monastery	Russia	55.77012	48.65245	unesco	18
-The Causses and the Cévennes, Mediterranean agro-pastoral Cultural Landscape	France	44.22030	3.47310	unesco	18
-Vieux Lyon	France	45.76306	4.82806	unesco	18
-Wat Phra Mahathat	Thailand	8.41139	99.96667	unesco	18
-Way of Saint James UNESCO World Heritage Sites in France	France	45.18406	-0.72294	unesco	18
-Writing-on-Stone Provincial Park	Canada	49.08190	-111.61700	unesco	18
-Sagrada Família	Spain	41.40453	2.17449	iconic	17
-Cheyenne Mountain Complex	United States	38.74247	-104.84844	iconic	11
-Pentagon	United States	38.87090	-77.05630	iconic	7
-Three Mile Island	United States	40.15330	-76.72470	iconic	4
-Denali	United States	63.06910	-151.00626	iconic	0
-Galápagos Islands	Ecuador	-0.62298	-90.36124	iconic	0
+# name	country	lat	lon	source	sitelinks	qid
+Vatican City	Vatican City	41.90400	12.45300	unesco	342	Q237
+Mount Everest	Nepal	27.98806	86.92500	iconic	237	Q513
+Brasília	Brazil	-15.79389	-47.88278	unesco	226	Q2844
+Sahara	Algeria	23.07972	12.61222	iconic	224	Q6583
+Caspian Sea	Azerbaijan	42.00000	50.50000	feature	207	Q5484
+Great Wall of China	China	40.43139	116.56444	iconic	194	Q12501
+Eiffel Tower	France	48.85830	2.29448	iconic	191	Q243
+Rabat	Morocco	34.02111	-6.84139	unesco	188	Q3551
+Mount Kilimanjaro	Tanzania	-3.06667	37.35917	iconic	187	Q7296
+Taj Mahal	India	27.17500	78.04194	iconic	184	Q9141
+Lake Baikal	Russia	53.30278	108.00472	iconic	182	Q5513
+Valletta	Malta	35.89778	14.51250	unesco	181	Q23800
+Quito	Ecuador	-0.22000	-78.51250	unesco	180	Q2900
+Easter Island	Chile	-27.12000	-109.35000	iconic	164	Q14452
+Dead Sea	Israel	31.52070	35.48450	iconic	163	Q23883
+Lake Victoria	Kenya	-1.00000	33.00000	feature	161	Q5505
+Great Barrier Reef	Australia	-16.40000	145.80000	iconic	157	Q7343
+Statue of Liberty	United States	40.68921	-74.04443	iconic	157	Q9202
+Hagia Sophia	Turkey	41.00833	28.98000	iconic	152	Q12506
+Lake Tanganyika	Burundi	-6.10000	29.50000	feature	150	Q5511
+Samarkand	Uzbekistan	39.65472	66.97583	iconic	149	Q5753
+Machu Picchu	Peru	-13.16333	-72.54556	iconic	148	Q676203
+Colosseum	Italy	41.89028	12.49222	iconic	146	Q10285
+Mount Fuji	Japan	35.36056	138.72750	iconic	146	Q39231
+Jaipur	India	26.91500	75.82000	unesco	144	Q66485
+White House	United States	38.89778	-77.03667	iconic	143	Q35525
+Verona	Italy	45.43861	10.99278	unesco	142	Q2028
+Berlin Wall	Germany	52.50444	13.44111	iconic	140	Q5086
+Burj Khalifa	United Arab Emirates	25.19722	55.27417	iconic	139	Q12495
+Salvador	Brazil	-12.98306	-38.49278	unesco	138	Q36947
+Angkor Wat	Cambodia	13.41250	103.86667	iconic	137	Q43473
+Lhasa	China	29.64576	91.14082	iconic	136	Q5869
+Mount Vesuvius	Italy	40.82261	14.42919	iconic	135	Q524
+Stonehenge	United Kingdom	51.17889	-1.82611	iconic	135	Q39671
+Niagara Falls	Canada	43.08000	-79.07100	iconic	134	Q34221
+Galapagos Islands	Ecuador	-0.66667	-90.55000	unesco	133	Q38095
+Kaaba	Saudi Arabia	21.42250	39.82617	iconic	133	Q29466
+Titicaca	Bolivia	-15.82500	-69.32500	feature	132	Q35342
+Sinai Peninsula	Egypt	29.50000	34.00000	feature	131	Q36755
+Timbuktu	Mali	16.77333	-2.99944	iconic	129	Q9427
+Auschwitz	Poland	50.03583	19.17833	unesco	128	Q7341
+Babylon	Achaemenid Empire	32.54250	44.42111	iconic	127	Q5684
+Mont Blanc	France	45.83278	6.86500	feature	127	Q583
+Phong Nha–Ke Bang National Park	Vietnam	17.53333	106.15000	unesco	125	Q23513
+Empire State Building	United States	40.74833	-73.98556	iconic	124	Q9188
+Pompeii	Italy	40.75056	14.48972	iconic	122	Q43332
+Troy	Turkey	39.95750	26.23889	unesco	121	Q22647
+Gobi Desert	Mongolia	42.50000	103.00000	iconic	118	Q42070
+Petra	Jordan	30.32861	35.44194	iconic	117	Q5788
+Grand Canyon	United States	36.09750	-112.09528	iconic	116	Q118841
+Yellowstone National Park	United States	44.60000	-110.50000	iconic	116	Q351
+Cusco	Peru	-13.51694	-71.97861	unesco	115	Q5582862
+Aconcagua	Argentina	-32.65306	-70.01167	feature	113	Q39739
+Mount Elbrus	Russia	43.35254	42.43787	feature	113	Q43105
+Bath	United Kingdom	51.38139	-2.35972	unesco	112	Q22889
+K2	Pakistan	35.88111	76.51333	iconic	112	Q43512
+Lake Superior	Canada	47.52882	-87.76002	feature	112	Q1066
+Mount Ararat	Turkey	39.70194	44.29833	feature	111	Q72303
+Victoria Falls	Zambia	-17.92478	25.85806	iconic	111	Q43278
+Golden Gate Bridge	United States	37.81972	-122.47861	iconic	110	Q44440
+Chichen Itza	Mexico	20.68306	-88.56861	iconic	109	Q5859
+Mount Olympus	Greece	40.08333	22.35000	feature	109	Q80344
+Lake Ontario	Canada	43.72889	-78.10639	feature	108	Q1062
+Palace of Versailles	France	48.80472	2.12028	unesco	108	Q2946
+Lake Michigan	United States	44.00787	-86.75645	feature	107	Q1169
+Mount Bazardüzü	Azerbaijan	41.22049	47.85834	feature	107	Q725591
+Palmyra	Syria	34.55038	38.26979	iconic	107	Q5747
+Bermuda Triangle	The Bahamas	25.00000	-71.00000	iconic	106	Q43708
+Kyoto Prefecture	Japan	35.02103	135.75558	unesco	106	Q120730
+Lake Malawi	Malawi	-12.18333	34.36667	feature	106	Q5532
+Kalahari Desert	Angola	-23.00000	22.00000	feature	105	Q47700
+Lake Chad	Cameroon	13.09789	14.53381	feature	105	Q125309
+Atacama Desert	Chile	-24.50000	-69.25000	iconic	104	Q47141
+Forbidden City	China	39.91583	116.39083	iconic	104	Q80290
+Mariana Trench	United States	11.35000	142.20000	iconic	103	Q510
+Persepolis	Iran	29.93500	52.89000	iconic	103	Q129072
+Kanchenjunga	India	27.70300	88.14735	feature	102	Q82019
+Lake Erie	Canada	42.25000	-80.99972	feature	102	Q5492
+Acre	Israel	32.92611	35.08389	unesco	101	Q126084
+Amazon rainforest	Brazil	-3.16000	-60.03000	iconic	101	Q177567
+Red Square	Russia	55.75417	37.62000	iconic	101	Q41116
+Château de Montsoreau	France	47.21560	0.06220	feature	100	Q1143049
+Derbent	Russia	42.05778	48.28889	unesco	100	Q131416
+Lake Huron	Canada	44.59258	-82.75629	feature	100	Q1383
+Iguaçu Falls	Argentina	-25.69528	-54.43667	feature	99	Q36332
+Sydney Opera House	Australia	-33.85706	151.21490	iconic	99	Q45178
+Mohenjo-daro	Pakistan	27.32917	68.13889	unesco	98	Q5725
+Acropolis of Athens	Greece	37.97167	23.72611	iconic	97	Q131013
+Heard Island and McDonald Islands	Australia	-53.07833	73.50750	unesco	97	Q131198
+Negev	Israel	30.50000	34.91667	feature	97	Q162843
+Mount Rushmore	United States	43.87889	-103.45917	iconic	96	Q83497
+Buckingham Palace	United Kingdom	51.50100	-0.14200	iconic	95	Q42182
+Christ the Redeemer	Brazil	-22.95192	-43.21046	iconic	94	Q79961
+Angel Falls	Venezuela	5.97006	-62.53622	iconic	93	Q80299
+Krakatoa	Indonesia	-6.10200	105.42300	iconic	92	Q82613
+Matterhorn	Switzerland	45.97639	7.65861	iconic	92	Q1374
+Neuschwanstein Castle	Germany	47.55749	10.74944	feature	92	Q4152
+Samarra	Iraq	34.19590	43.88568	unesco	92	Q170047
+Taklamakan	China	38.90000	82.20000	feature	92	Q132956
+Uluru	Australia	-25.34500	131.03611	iconic	92	Q33910
+Karakum Desert	Turkmenistan	39.00000	60.00000	feature	91	Q172702
+Namib	Namibia	-23.00000	15.00000	feature	89	Q131377
+Olympia	Greece	37.63833	21.63000	unesco	89	Q38888
+Big Ben	United Kingdom	51.50067	-0.12457	iconic	88	Q41225
+Tower of London	United Kingdom	51.50820	-0.07620	iconic	88	Q62378
+Axum	Ethiopia	14.11667	38.73333	unesco	87	Q5832
+Kandy	Sri Lanka	7.29306	80.63500	unesco	87	Q203197
+Luang Prabang	Laos	19.89000	102.13472	unesco	87	Q190165
+Mount Athos	Greece	40.15833	24.32722	iconic	87	Q130321
+Mount Sinai	Egypt	28.53840	33.97520	iconic	87	Q377485
+San Cristóbal de La Laguna	Spain	28.48528	-16.31667	unesco	87	Q54898
+Yosemite National Park	United States	37.74250	-119.53750	iconic	87	Q180402
+Baalbek	Lebanon	34.00611	36.20861	unesco	86	Q178835
+Bastille	France	48.85333	2.36917	feature	86	Q1865480
+Brandenburg Gate	Germany	52.51627	13.37772	iconic	86	Q82425
+Marquesas Islands	France	-8.90000	-139.60000	unesco	86	Q172697
+Cologne Cathedral	Germany	50.94139	6.95833	unesco	85	Q4176
+Windsor Castle	United Kingdom	51.48389	-0.60444	feature	85	Q42646
+Fatehpur Sikri	India	27.09111	77.66111	unesco	84	Q179046
+Potosí	Bolivia	-19.58917	-65.75333	unesco	84	Q35045
+Western Wall	Palestine	31.77695	35.23425	iconic	84	Q134821
+Ajanta Caves	India	20.55342	75.70047	unesco	83	Q184427
+Byblos	Lebanon	34.11667	35.65000	unesco	83	Q173532
+Ha Long Bay	Vietnam	20.90000	107.20000	iconic	83	Q190128
+Thar Desert	India	26.98444	71.00167	feature	83	Q172691
+Western Ghats	India	10.16972	77.06111	unesco	83	Q4527
+Hadrian's Wall	United Kingdom	55.02417	-2.29250	unesco	82	Q57357
+Kairouan	Tunisia	35.68333	10.10000	unesco	81	Q179570
+Delos	Greece	37.39121	25.27122	unesco	80	Q173148
+Anuradhapura	Sri Lanka	8.33500	80.41083	unesco	79	Q5724
+Assur	Iraq	35.45667	43.26250	unesco	79	Q200200
+Bagan	Myanmar	21.17250	94.86000	unesco	79	Q29317
+Death Valley	United States	36.45694	-116.86528	feature	79	Q118388
+Shahrisabz	Uzbekistan	39.05000	66.83333	unesco	79	Q569766
+Susa	Iran	32.18944	48.25611	unesco	79	Q180773
+Teotihuacan	Mexico	19.69250	-98.84389	unesco	79	Q172613
+Göbekli Tepe	Turkey	37.22306	38.92250	iconic	78	Q214944
+Loch Ness	United Kingdom	57.30000	-4.45000	iconic	78	Q49650
+Virunga National Park	Democratic Republic of the Congo	-0.50000	29.50000	unesco	78	Q223589
+Agra Fort	India	27.17958	78.02130	unesco	77	Q171857
+Great Victoria Desert	Australia	-29.15222	129.25972	feature	77	Q145165
+Cave of Altamira	Spain	43.38333	-4.11667	unesco	76	Q133575
+Lumbini	Nepal	27.48140	83.27583	unesco	76	Q9213
+Aeolian Islands	Italy	38.49667	14.93583	unesco	75	Q179883
+Eyjafjallajökull	Iceland	63.63333	-19.60000	iconic	75	Q39651
+Giant's Causeway	United Kingdom	55.24083	-6.51167	unesco	75	Q106187
+Great Zimbabwe	Zimbabwe	-20.27000	30.93300	unesco	75	Q209217
+Kaziranga National Park	India	26.66667	93.35000	unesco	75	Q192764
+Red Fort	India	28.65583	77.24028	unesco	75	Q45957
+Serengeti National Park	Tanzania	-2.40000	34.60000	unesco	75	Q11812902
+Cyrene	Libya	32.82304	21.85727	unesco	74	Q44112
+Ellora Caves	India	20.02639	75.17917	unesco	74	Q189616
+Himeji Castle	Japan	34.83944	134.69361	unesco	74	Q188754
+Notre-Dame de Chartres	France	48.44778	1.48778	unesco	73	Q180274
+Porto Venere	Italy	44.05000	9.83333	unesco	73	Q188315
+Roswell	United States	33.39417	-104.52278	iconic	73	Q33561
+Taxila	Pakistan	33.74569	72.81521	unesco	73	Q156093
+Nalanda Mahavihara	India	25.13680	85.44383	unesco	72	Q216243
+Qutb Minar	India	28.52435	77.18525	unesco	72	Q187635
+Robben Island	South Africa	-33.80500	18.37000	unesco	72	Q192493
+Table Mountain	South Africa	-33.96216	18.41352	iconic	72	Q213360
+Times Square	United States	40.75750	-73.98583	iconic	72	Q11259
+Dessau	Germany	51.83417	12.24611	unesco	71	Q487070
+Meteora	Greece	39.71250	21.62667	unesco	71	Q3125051
+Prambanan Temple	Indonesia	-7.75200	110.49122	unesco	71	Q47721
+Everglades National Park	United States	25.31250	-80.68750	unesco	70	Q274131
+Masada	Israel	31.31556	35.35389	unesco	70	Q186312
+Merv	Turkmenistan	37.66278	62.19250	unesco	70	Q193325
+Mount Tai	China	36.26667	117.10000	unesco	70	Q216059
+Plitvice Lakes National Park	Croatia	44.88045	15.61604	unesco	70	Q189849
+Tiwanaku	Bolivia	-16.55472	-68.67333	unesco	70	Q61750
+Çatalhöyük	Turkey	37.66750	32.82833	unesco	70	Q192522
+Djerba	Tunisia	33.78370	10.88330	unesco	69	Q188938
+Grand Canal	China	30.26139	120.22389	unesco	69	Q31347
+Hampi	India	15.33455	76.46216	unesco	69	Q26732
+Hiroshima Peace Memorial	Japan	34.39556	132.45361	unesco	69	Q231140
+Humayun's Tomb	India	28.59326	77.25060	unesco	69	Q189648
+Itsukushima Shrine	Japan	34.29577	132.32011	unesco	69	Q191763
+Lascaux	France	45.05377	1.17096	iconic	69	Q172125
+Leptis Magna	Libya	32.63833	14.29050	unesco	69	Q191504
+Mahabodhi Temple	India	24.69600	84.99136	unesco	69	Q4513
+Nazca Lines	Peru	-14.69750	-75.13500	iconic	69	Q2620036
+Shibam	Yemen	15.92694	48.62667	unesco	69	Q192518
+Tassili n'Ajjer	Algeria	25.66667	9.00000	unesco	69	Q190048
+Aït Benhaddou	Morocco	31.05000	-7.13333	unesco	68	Q309436
+Kathmandu Valley	Nepal	27.70394	85.30858	unesco	68	Q970717
+Ngorongoro Conservation Area	Tanzania	-3.21000	35.46000	unesco	68	Q1217726
+Temple of Heaven	China	39.88220	116.40660	unesco	68	Q125445
+Bam	Iran	29.10611	58.35694	unesco	67	Q106636
+Curonian Spit	Lithuania	55.27444	20.97083	unesco	67	Q5595
+Naqsh-e Jahan Square	Iran	32.65822	51.67733	unesco	67	Q4519
+Palenque	Mexico	17.48417	-92.04639	unesco	67	Q181427
+Selimiye Mosque	Turkey	41.67806	26.55944	unesco	67	Q184534
+Area 51	United States	37.23333	-115.80833	iconic	66	Q177397
+Bikini Atoll	Marshall Islands	11.60000	165.40000	iconic	66	Q152225
+Chogha Zanbil	Iran	32.00833	48.52083	unesco	66	Q4523
+Huangshan	China	30.12500	118.16667	unesco	66	Q36034
+Kakadu National Park	Australia	-13.00547	132.51951	unesco	66	Q189657
+Okavango Delta	Botswana	-19.40000	22.90000	iconic	66	Q650872
+Pasargadae	Iran	30.20000	53.17944	unesco	66	Q230025
+Alcatraz Island	United States	37.82672	-122.42283	iconic	65	Q131354
+Danube Delta	Romania	45.20000	29.50000	unesco	65	Q184429
+Komodo National Park	Indonesia	-8.65162	119.57657	unesco	65	Q4520
+Macquarie Island	Australia	-54.63000	158.86000	unesco	65	Q46650
+Mogao Caves	China	40.03722	94.80417	unesco	65	Q43286
+Aachen Cathedral	Germany	50.77475	6.08392	unesco	64	Q5908
+Dasht-e Lut	Iran	30.26389	59.24111	unesco	64	Q767128
+Prague Castle	Czech Republic	50.09000	14.40000	feature	64	Q193369
+Saint Sophia Cathedral	Ukraine	50.45278	30.51444	unesco	64	Q830054
+Salar de Uyuni	Bolivia	-20.33333	-67.70000	iconic	64	Q76122
+Struve Geodetic Arc	Belarus	52.28944	25.64944	unesco	64	Q192243
+Appian Way	Italy	41.84139	12.53250	unesco	63	Q189417
+Surtsey	Iceland	63.30403	-20.60471	unesco	63	Q178124
+Abu Mena	Egypt	30.84105	29.66349	unesco	62	Q9278
+Białowieża Forest	Belarus	52.75000	23.95000	unesco	62	Q192666
+Bosra	Syria	32.51667	36.48333	unesco	62	Q272680
+Butrint	Albania	39.75707	20.01663	unesco	62	Q188694
+Church of the Nativity	Palestine	31.70431	35.20758	unesco	62	Q194504
+Grand Canyon National Park	United States	36.05530	-112.12200	unesco	62	Q220289
+Hatra	Iraq	35.58806	42.71833	unesco	62	Q466614
+K'gari	Australia	-25.24000	153.15000	unesco	62	Q134905
+Lorentz National Park	Indonesia	-4.62973	137.97268	unesco	62	Q4516
+Nesebar	Bulgaria	42.65951	27.72472	unesco	62	Q193241
+Neusiedl Lake	Austria	47.83333	16.75000	unesco	62	Q6396
+Okapi Wildlife Reserve	Democratic Republic of the Congo	2.00000	28.50000	unesco	62	Q457304
+Sigiriya	Sri Lanka	7.95694	80.75972	unesco	62	Q272153
+Thingvellir National Park	Iceland	64.25806	-21.12500	unesco	62	Q107370
+Hội An	Vietnam	15.87767	108.33265	unesco	61	Q36160
+Köneürgenç	Turkmenistan	42.31667	59.15861	unesco	61	Q48472
+Los Glaciares National Park	Argentina	-50.33053	-73.23416	unesco	61	Q215992
+Mosque-Cathedral of Cordoba	Spain	37.87887	-4.77934	unesco	61	Q33200
+Mount Nemrut	Turkey	37.98074	38.74083	unesco	61	Q207917
+Summer Palace	China	39.99750	116.26890	unesco	61	Q4132
+Teide National Park	Spain	28.27646	-16.64267	unesco	61	Q715124
+Chitwan National Park	Nepal	27.50000	84.33333	unesco	60	Q1075023
+M'banza-Kongo	Angola	-6.26667	14.25000	unesco	60	Q500189
+Mesa Verde National Park	United States	37.26038	-108.49444	unesco	60	Q237128
+Niokolo-Koba National Park	Senegal	13.07417	-12.72222	unesco	60	Q679891
+Omo River	Ethiopia	8.25630	37.48990	unesco	60	Q273456
+Wadi Rum	Jordan	29.57650	35.41993	unesco	60	Q40729
+Yakushima	Japan	30.35861	130.52861	unesco	60	Q242176
+Ani	Turkey	40.50750	43.57278	unesco	59	Q546010
+Chauvet Cave	France	44.38812	4.41614	unesco	59	Q374096
+Comoé National Park	Ivory Coast	9.16361	-3.77250	unesco	59	Q501344
+Drottningholm Palace	Sweden	59.32169	17.88638	unesco	59	Q208559
+Fukushima Daiichi Nuclear Power Plant	Japan	37.42139	141.03250	iconic	59	Q114295
+Garamba National Park	Democratic Republic of the Congo	4.19559	29.48093	unesco	59	Q308893
+Golestan Palace	Iran	35.67972	51.42028	unesco	59	Q210610
+Gorée	Senegal	14.66694	-17.39833	unesco	59	Q244347
+Island of Mozambique	Mozambique	-15.03667	40.73278	unesco	59	Q331099
+Lake District	United Kingdom	54.50000	-3.16667	unesco	59	Q211778
+Pont du Gard	France	43.94730	4.53550	unesco	59	Q189764
+Sagarmatha National Park	Nepal	27.89107	86.69303	unesco	59	Q2211959
+Timgad	Algeria	35.48424	6.46867	unesco	59	Q459629
+Amalfi Coast	Italy	40.63333	14.60000	unesco	58	Q212214
+Bhimbetka rock shelters	India	22.93863	77.61438	unesco	58	Q331603
+Castel del Monte	Italy	41.08475	16.27093	unesco	58	Q215897
+Edinburgh Castle	United Kingdom	55.94870	-3.20073	feature	58	Q212065
+Hegra	Saudi Arabia	26.81417	37.94750	unesco	58	Q27356
+Museum Island	Germany	52.52139	13.39556	unesco	58	Q151963
+Salonga National Park	Democratic Republic of the Congo	-1.76516	21.49723	unesco	58	Q328488
+Sarnath	India	25.38111	83.02139	unesco	58	Q324394
+Valdes Peninsula	Argentina	-42.50000	-63.93333	unesco	58	Q213237
+Wartburg	Germany	50.96611	10.30639	feature	58	Q151545
+Zabid	Yemen	14.20000	43.31667	unesco	58	Q138986
+Beemster	Netherlands	52.55000	4.92780	unesco	57	Q9900
+Canaima National Park	Venezuela	5.31934	-61.79535	unesco	57	Q1244337
+Canal du Midi	France	43.61111	1.41833	unesco	57	Q202494
+Kasubi Tombs	Uganda	0.32917	32.55333	unesco	57	Q309426
+Kinabalu Park	Malaysia	6.15000	116.65000	unesco	57	Q834893
+Malbork Castle	Poland	54.03972	19.02778	feature	57	Q71279
+Notre-Dame d'Amiens	France	49.89457	2.30210	unesco	57	Q106934
+Solovetsky Islands	Russia	65.02444	35.71056	unesco	57	Q205711
+Speyer Cathedral	Germany	49.31722	8.44250	unesco	57	Q22720
+Sundarbans National Park	India	21.75000	88.75000	unesco	57	Q532440
+Wachau	Austria	48.36444	15.43417	unesco	57	Q192201
+Ancient and Primeval Beech Forests of the Carpathians and Other Regions of Europe	Albania	49.00000	15.00000	unesco	56	Q156011
+Chernobyl Nuclear Power Plant	Ukraine	51.38955	30.09915	iconic	56	Q215419
+Copán	Honduras	14.83796	-89.14244	unesco	56	Q214827
+Elephanta Caves	India	18.96333	72.93139	unesco	56	Q649384
+Grand-Place	Belgium	50.84671	4.35254	unesco	56	Q215429
+Jiuzhaigou Valley	China	33.20000	103.90000	unesco	56	Q4111
+Kahuzi-Biéga National Park	Democratic Republic of the Congo	-2.31481	28.75867	unesco	56	Q457324
+Kevladev National Park	India	27.16667	77.51667	unesco	56	Q235878
+Palace of Fontainebleau	France	48.40222	2.70056	unesco	56	Q201428
+Polonnaruwa	Sri Lanka	7.93333	81.00000	unesco	56	Q394443
+Svalbard Global Seed Vault	Norway	78.23587	15.49137	iconic	56	Q201013
+Burgos Cathedral	Spain	42.34081	-3.70447	unesco	55	Q744420
+Château de Chambord	France	47.61611	1.51722	unesco	55	Q205367
+Cueva de las Manos	Argentina	-47.15000	-70.66667	unesco	55	Q223385
+Djemila	Algeria	36.32056	5.73667	unesco	55	Q457362
+Forth Bridge	United Kingdom	55.99840	-3.38760	unesco	55	Q275
+Hawaiʻi Volcanoes National Park	United States	19.40083	-155.12361	unesco	55	Q205952
+Hofburg Palace	Austria	48.20639	16.36528	feature	55	Q46242
+Konark Sun Temple	India	19.88744	86.09460	unesco	55	Q752091
+Kronborg Castle	Denmark	56.03861	12.62194	feature	55	Q189358
+L'Anse aux Meadows	Canada	51.59527	-55.53122	unesco	55	Q189113
+Manovo-Gounda St. Floris National Park	Central African Republic	8.50000	21.50000	unesco	55	Q503835
+Olympic National Park	United States	47.70000	-123.75000	unesco	55	Q372093
+Selous Game Reserve	Tanzania	-9.00000	37.40000	unesco	55	Q2268839
+Simien Mountains National Park	Ethiopia	13.18333	38.06667	unesco	55	Q504315
+Stone Town	Tanzania	-6.16494	39.19879	unesco	55	Q844417
+Tadrart Acacus	Libya	24.83343	10.33332	unesco	55	Q308807
+Tomb of Askia	Mali	16.28972	-0.04444	unesco	55	Q503823
+Cahokia	United States	38.65389	-90.06444	unesco	54	Q333661
+Chhatrapati Shivaji Maharaj Terminus	India	18.93980	72.83550	unesco	54	Q235884
+Cidade Velha	Cape Verde	14.91667	-23.60417	unesco	54	Q464913
+Hortobágy National Park	Hungary	47.59458	21.15678	unesco	54	Q61757
+Sanchi	India	23.47944	77.73972	unesco	54	Q181123
+Santa Maria delle Grazie	Italy	45.46583	9.17111	unesco	54	Q244952
+Tropical Rainforest Heritage of Sumatra	Indonesia	-2.50000	101.50000	unesco	54	Q4521
+Wulingyuan	China	29.34556	110.46667	unesco	54	Q4187
+Wuyi Mountains	China	27.71667	117.68333	unesco	54	Q207692
+Calakmul	Mexico	18.10500	-89.81056	unesco	53	Q272771
+Garajonay National Park	Spain	28.12625	-17.23722	unesco	53	Q464942
+Gelati Monastery	Georgia	42.29472	42.76806	unesco	53	Q679979
+Jameh Mosque of Isfahan	Iran	32.66972	51.68528	unesco	53	Q1256501
+Jerónimos Monastery	Portugal	38.69785	-9.20560	unesco	53	Q272781
+Mammoth Cave National Park	United States	37.18694	-86.10111	unesco	53	Q242681
+Mystras	Greece	37.07400	22.36730	unesco	53	Q19053
+Mỹ Sơn	Vietnam	15.76324	108.12445	unesco	53	Q391406
+Nan Madol	Federated States of Micronesia	6.84194	158.33222	unesco	53	Q846967
+Shirakami-Sanchi	Japan	40.47000	140.13000	unesco	53	Q501638
+Soltaniyeh	Iran	36.43472	48.79750	unesco	53	Q4531
+St Kilda	United Kingdom	57.81500	-8.58750	unesco	53	Q166479
+Suomenlinna	Finland	60.14361	24.98444	unesco	53	Q1292442
+Tower of Hercules	Spain	43.38583	-8.40639	unesco	53	Q245151
+Tsodilo	Botswana	-18.77167	21.75417	unesco	53	Q214007
+Volubilis	Morocco	34.07250	-5.55480	unesco	53	Q391215
+Wood Buffalo National Park	Canada	59.38330	-112.98300	unesco	53	Q391338
+prehistoric pile dwellings around the Alps	Austria	47.67460	9.12099	unesco	53	Q4580
+Aldabra	Seychelles	-9.41639	46.41639	unesco	52	Q272768
+Anjar	Lebanon	33.72583	35.92972	unesco	52	Q60977
+Antonine Wall	United Kingdom	55.96700	-4.06700	unesco	52	Q210957
+Blenheim Palace	United Kingdom	51.84136	-1.36095	unesco	52	Q208181
+Chan Chan	Peru	-8.11056	-79.07500	unesco	52	Q277540
+Hadrian's Villa	Italy	41.94194	12.77528	unesco	52	Q272777
+Henderson Island	United Kingdom	-24.37500	-128.32500	unesco	52	Q379759
+Hollókő	Hungary	47.99611	19.59167	unesco	52	Q622865
+Jaú National Park	Brazil	-2.17028	-62.61722	unesco	52	Q332381
+Kew Gardens	United Kingdom	51.47889	-0.29361	unesco	52	Q188617
+Longmen Grottoes	China	34.55556	112.46972	unesco	52	Q273834
+Mehmed Paša Sokolović Bridge	Bosnia and Herzegovina	43.78248	19.28794	unesco	52	Q210055
+Preah Vihear Temple	Cambodia	14.39056	104.68028	unesco	52	Q45949
+Reichenau Island	Germany	47.69306	9.06306	unesco	52	Q156439
+Rocas Atoll	Brazil	-3.86639	-33.80194	unesco	52	Q241074
+Salt	Jordan	32.03917	35.72722	unesco	52	Q867586
+Skellig Michael	Ireland	51.77111	-10.54056	unesco	52	Q207193
+Taï National Park	Ivory Coast	5.75000	-7.12000	unesco	52	Q328577
+Bourges Cathedral	France	47.08222	2.39917	unesco	51	Q207985
+Carlsbad Caverns National Park	United States	32.17528	-104.44389	unesco	51	Q273195
+Citadel of the Hồ Dynasty	Vietnam	20.07806	105.60472	unesco	51	Q190060
+Devils Tower	United States	44.59028	-104.71528	iconic	51	Q306201
+Doñana National Park	Spain	37.02000	-6.44000	unesco	51	Q463141
+Great Smoky Mountains National Park	United States	35.61111	-83.42500	unesco	51	Q464004
+Iguazú National Park	Argentina	-25.70500	-54.24833	unesco	51	Q474205
+Inca road system	Argentina	-18.25000	-69.59167	unesco	51	Q948975
+Manas National Park	India	26.71667	90.93333	unesco	51	Q506511
+Pirin National Park	Bulgaria	41.67222	23.48778	unesco	51	Q651314
+Qal'at Bani Hammad	Algeria	35.81389	4.79333	unesco	51	Q500367
+Ujung Kulon National Park	Indonesia	-6.75000	105.33333	unesco	51	Q4522
+Alamut Castle	Iran	36.44472	50.58611	feature	50	Q4706020
+Banc d'Arguin National Park	Mauritania	20.23472	-16.10889	unesco	50	Q539518
+Changdeokgung	South Korea	37.57944	126.99167	unesco	50	Q477157
+Ecbatana	Iran	34.80650	48.51625	unesco	50	Q696193
+Gobustan State Historical and Cultural Reserve	Azerbaijan	40.10556	49.38889	unesco	50	Q318181
+Itchan Kala	Uzbekistan	41.37772	60.35948	unesco	50	Q535577
+Mosque City of Bagerhat	Bangladesh	22.66097	89.75855	unesco	50	Q799893
+Old Town	Czech Republic	50.08470	14.42030	unesco	50	Q748211
+Philippi	Greece	41.01306	24.28639	unesco	50	Q379652
+Piazza del Duomo, Pisa	Italy	43.72343	10.39478	unesco	50	Q750245
+Puerto Princesa Subterranean River National Park	Philippines	10.16667	118.91667	unesco	50	Q824602
+Quebrada de Humahuaca	Argentina	-23.19986	-65.34886	feature	50	Q28061
+Shahr-e Sukhteh	Iran	30.59528	61.33194	unesco	50	Q1025825
+Takht-e Soleyman	Iran	36.60472	47.23417	unesco	50	Q115253
+Virgin Komi Forests	Russia	65.06667	60.15000	unesco	50	Q593870
+Vlkolínec	Slovakia	49.03970	19.27840	unesco	50	Q392365
+Boyana Church	Bulgaria	42.64467	23.26617	unesco	49	Q276553
+Cradle of Humankind	South Africa	-25.96723	27.66244	unesco	49	Q1130112
+Fasil Ghebbi	Ethiopia	12.60806	37.46972	unesco	49	Q464695
+Gunung Mulu National Park	Malaysia	4.04250	114.81250	unesco	49	Q61535
+Khirokitia	Cyprus	34.79673	33.34372	unesco	49	Q385086
+Mir Castle Complex	Belarus	53.45127	26.47289	unesco	49	Q209643
+Nisa	Turkmenistan	37.95115	58.21241	unesco	49	Q854672
+Ponte Vecchio	Italy	43.76799	11.25319	unesco	49	Q208633
+Quiriguá	Guatemala	15.26944	-89.04028	unesco	49	Q318422
+Semmering railway	Austria	47.64300	15.83100	unesco	49	Q259313
+Skara Brae	United Kingdom	59.04871	-3.34175	iconic	49	Q816437
+Tournai Cathedral	Belgium	50.60650	3.38890	unesco	49	Q391229
+Urnes Stave Church	Norway	61.29806	7.32250	unesco	49	Q210678
+Vredefort crater	South Africa	-26.81667	27.41667	unesco	49	Q330095
+Yungang Grottoes	China	40.10972	113.12222	unesco	49	Q308805
+Centennial Hall	Poland	51.10694	17.07722	unesco	48	Q155743
+Fort Jesus Museum	Kenya	-4.07117	39.68206	unesco	48	Q379080
+Lençóis Maranhenses National Park	Brazil	-2.48333	-43.13333	unesco	48	Q647777
+Madara Rider	Bulgaria	43.27737	27.11889	unesco	48	Q319296
+Mount Nimba Strict Nature Reserve	Guinea	7.60300	-8.39100	unesco	48	Q924276
+Mount Wutai	China	39.08139	113.56694	unesco	48	Q120314
+Newgrange	Ireland	53.69473	-6.47557	iconic	48	Q339503
+Pattadakal Group of Monuments	India	15.94833	75.81667	unesco	48	Q817250
+Poblet Monastery	Spain	41.38083	1.08250	unesco	48	Q645157
+Purnululu National Park	Australia	-17.44879	128.54605	unesco	48	Q679568
+Qal’at al Bahrain	Bahrain	26.23361	50.52056	unesco	48	Q740104
+Rhine Falls	Switzerland	47.67722	8.61583	feature	48	Q214924
+Roskilde Cathedral	Denmark	55.64267	12.08031	unesco	48	Q209705
+Spiš Castle	Slovakia	49.00056	20.76833	unesco	48	Q205558
+Trinity Lavra of St. Sergius	Russia	56.31035	38.13065	unesco	48	Q211962
+Tsingy de Bemaraha Strict Nature Reserve	Madagascar	-18.66667	44.75139	unesco	48	Q1405154
+Valley of Flowers National Park	India	30.73000	79.61750	unesco	48	Q605897
+Vatnajökull National Park	Iceland	64.50000	-17.00000	unesco	48	Q1353292
+Villa Romana del Casale	Italy	37.36472	14.33455	unesco	48	Q505617
+Xanadu	China	42.35802	116.18516	unesco	48	Q471765
+Škocjan Caves	Slovenia	45.66500	13.99472	unesco	48	Q500376
+Bam Citadel	Iran	29.11686	58.36847	unesco	47	Q43277
+Belize Barrier Reef	Belize	17.26250	-88.05278	unesco	47	Q28361
+Bryggen	Norway	60.39750	5.32333	unesco	47	Q153430
+Buda Castle	Hungary	47.49611	19.03972	unesco	47	Q46313
+Bwindi Impenetrable National Park	Uganda	-1.05000	29.71667	unesco	47	Q500397
+Dead Cities	Syria	36.33417	36.84417	unesco	47	Q393841
+Dengfeng	China	34.46031	113.02803	unesco	47	Q877609
+Dettifoss	Iceland	65.82192	-16.38817	feature	47	Q210280
+Dholavira	India	23.88611	70.21667	unesco	47	Q9468
+Djoudj National Bird Sanctuary	Senegal	16.35849	-16.27410	unesco	47	Q733676
+Gullfoss	Iceland	64.32733	-20.11940	feature	47	Q38519
+Hypogeum of Ħal Saflieni	Malta	35.86956	14.50688	unesco	47	Q755514
+Independence Hall	United States	39.94889	-75.15000	unesco	47	Q390028
+Jantar Mantar	India	26.92472	75.82500	unesco	47	Q508634
+M'zab	Algeria	32.48722	3.68139	unesco	47	Q724484
+Mausoleum of Khoja Ahmed Yasawi	Kazakhstan	43.29764	68.27104	unesco	47	Q46069
+Monte San Giorgio	Switzerland	45.91667	8.95000	unesco	47	Q16648
+Nahanni National Park Reserve	Canada	61.59710	-125.85200	unesco	47	Q391391
+Plain of Jars	Laos	19.43111	103.15250	unesco	47	Q870258
+Putorana Plateau	Russia	69.00000	93.00000	unesco	47	Q277576
+Qazan Kremlin	Russia	55.79744	49.10724	unesco	47	Q603622
+Rohtas Fort	Pakistan	32.96528	73.57642	unesco	47	Q155188
+Serra da Capivara National Park	Brazil	-8.66670	-42.55000	unesco	47	Q267394
+Singapore Botanic Gardens	Singapore	1.31510	103.81620	unesco	47	Q3046409
+Srebarna Nature Reserve	Bulgaria	44.11112	27.07221	unesco	47	Q122082
+Tongariro National Park	New Zealand	-39.20000	175.58333	unesco	47	Q202845
+Uluṟu-Kata Tjuṯa National Park	Australia	-25.32208	130.98573	unesco	47	Q251999
+Val d'Orcia	Italy	43.06667	11.55000	unesco	47	Q217449
+Villa Tugendhat	Czech Republic	49.20722	16.61583	unesco	47	Q457453
+Villa d'Este	Italy	41.96250	12.79611	unesco	47	Q746063
+Wadi Al-Hitan	Egypt	29.27083	30.04389	unesco	47	Q501833
+Yinxu	China	36.12250	114.31861	unesco	47	Q464904
+Bandiagara Escarpment	Mali	14.41667	-3.31667	unesco	46	Q650546
+Dougga	Tunisia	36.42333	9.22028	unesco	46	Q32378
+Great Blue Hole	Belize	17.31556	-87.53444	iconic	46	Q86486
+Gros Morne National Park	Canada	49.68944	-57.73806	unesco	46	Q257598
+Holašovice	Czech Republic	48.96667	14.26667	unesco	46	Q826452
+Joya de Cerén	El Salvador	13.82749	-89.35616	unesco	46	Q27985
+Megalithic Temples of Malta	Malta	36.04917	14.26944	unesco	46	Q753383
+Mount Sanqing	China	28.95194	118.05194	unesco	46	Q873358
+Novodevichy Convent	Russia	55.72597	37.55658	unesco	46	Q270725
+Qasr Amra	Jordan	31.80175	36.58731	unesco	46	Q499517
+Rwenzori Mountains National Park	Uganda	0.40000	29.95000	unesco	46	Q838928
+Río Plátano Biosphere Reserve	Honduras	15.60000	-84.80000	unesco	46	Q752181
+Sangay National Park	Ecuador	-1.83333	-78.33333	unesco	46	Q839603
+Serengeti	Tanzania	-2.33083	34.83333	iconic	46	Q4991540
+Sidi Bou Said	Tunisia	36.86976	10.34101	unesco	46	Q877391
+Ambohimanga	Madagascar	-18.75917	47.56278	unesco	45	Q458167
+Augustusburg and Falkenlust Palaces	Germany	50.82750	6.90806	unesco	45	Q156292
+Burkhan Khaldun	Mongolia	48.78333	109.16667	unesco	45	Q1010335
+Dazu Rock Carvings	China	29.71333	105.70694	unesco	45	Q651278
+Great Living Chola Temples	India	10.78306	79.13250	unesco	45	Q695229
+Hill Forts of Rajasthan	India	24.88331	74.64611	unesco	45	Q10428494
+Islamic Cairo	Egypt	30.04600	31.26270	unesco	45	Q1100964
+Manu National Park	Peru	-12.14000	-71.66000	unesco	45	Q390264
+Maulbronn Monastery	Germany	49.00110	8.81290	unesco	45	Q157886
+Muskau Park	Germany	51.54756	14.72323	unesco	45	Q156308
+Port Royal	Jamaica	17.93750	-76.84139	unesco	45	Q685357
+Santa Cruz de Mompós	Colombia	9.23944	-74.42500	unesco	45	Q740288
+Stoclet Palace	Belgium	50.83514	4.41625	unesco	45	Q239028
+Sulaiman-Too	Kyrgyzstan	40.52944	72.78333	unesco	45	Q750190
+Tabriz Bazaar	Iran	38.08077	46.29229	unesco	45	Q4399
+Tasmanian Wilderness	Australia	-42.59570	146.17290	unesco	45	Q138170
+Wieskirche	Germany	47.68060	10.90044	unesco	45	Q156675
+Zhoukoudian site	China	39.68896	115.92483	unesco	45	Q499552
+Abbey and Altenmünster of Lorsch	Germany	49.65389	8.56889	unesco	44	Q157550
+Abbey of Saint Gall	Switzerland	47.42306	9.37722	unesco	44	Q155699
+Blue Mosque of Mazar-i-Sharif	Afghanistan	36.70889	67.11083	iconic	44	Q138388
+Boyoma Falls	Democratic Republic of the Congo	0.49111	25.20639	feature	44	Q38417
+Brú na Bóinne	Ireland	53.69284	-6.44932	unesco	44	Q339489
+Casbah of Algiers	Algeria	36.78333	3.06028	unesco	44	Q662102
+Coiba	Panama	7.48000	-81.79000	unesco	44	Q741636
+Crespi d'Adda	Italy	45.59667	9.53611	unesco	44	Q726842
+Dinosaur Provincial Park	Canada	50.76170	-111.48500	unesco	44	Q289466
+Guantanamo Bay Naval Base	Cuba	19.91750	-75.16000	iconic	44	Q762570
+Jurassic Coast	United Kingdom	50.70556	-2.98989	unesco	44	Q575976
+Lena Pillars	Russia	61.10694	127.36167	unesco	44	Q277683
+Noel Kempff Mercado National Park	Bolivia	-14.23028	-60.84667	unesco	44	Q650710
+Richtersveld	South Africa	-28.60000	17.20389	unesco	44	Q1353565
+Rock-hewn Churches of Ivanovo	Bulgaria	43.69556	25.98806	unesco	44	Q503387
+Skogskyrkogården	Sweden	59.27556	18.09944	unesco	44	Q213988
+Studenica monastery	Serbia	43.48672	20.53164	unesco	44	Q143042
+Wooden tserkvas of Carpathian region in Poland and Ukraine	Poland	49.53390	21.03220	unesco	44	Q8032604
+Alexander von Humboldt National Park	Cuba	20.49675	-74.85790	unesco	43	Q48153
+Ayutthaya Historical Park	Thailand	14.35163	100.55751	unesco	43	Q1025100
+Bahla Fort	Oman	22.96440	57.30070	unesco	43	Q1408909
+Batalha Monastery	Portugal	39.65917	-8.82611	unesco	43	Q174779
+Belfries of Belgium and France	Belgium	50.63527	3.51484	unesco	43	Q750675
+Cape Floristic Kingdom	South Africa	-34.16667	18.37500	unesco	43	Q1974274
+Cerrado	Brazil	-14.00569	-47.68461	unesco	43	Q278512
+Chavin de Huantar	Peru	-9.59277	-77.17845	unesco	43	Q732554
+Engelsberg Ironworks	Sweden	59.96917	16.01028	unesco	43	Q936884
+Gondwana Rainforests of Australia	Australia	-29.60000	149.60000	unesco	43	Q643063
+Hollywood Sign	United States	34.13410	-118.32169	iconic	43	Q180376
+Lavaux	Switzerland	46.49194	6.74611	unesco	43	Q688060
+Rainforests of the Atsinanana	Madagascar	-14.45972	49.70250	unesco	43	Q564321
+Sinharaja Forest Reserve	Sri Lanka	6.24000	80.28000	unesco	43	Q375634
+Tamgaly	Kazakhstan	43.80333	75.53500	unesco	43	Q943327
+Thracian Tomb of Kazanlak	Bulgaria	42.62556	25.39917	unesco	43	Q301815
+Thracian Tomb of Sveshtari	Bulgaria	43.74496	26.76630	unesco	43	Q650531
+Three Parallel Rivers National Park	China	27.89500	98.40639	unesco	43	Q575035
+Tubbataha Reef	Philippines	8.95333	119.86750	unesco	43	Q927108
+rock drawings in Valcamonica	Italy	46.02389	10.35000	unesco	43	Q945514
+Al-Ahsa Oasis	Saudi Arabia	25.42944	49.62194	unesco	42	Q311341
+Ban Chiang	Thailand	17.54861	103.35833	unesco	42	Q584125
+Horezu monastery	Romania	45.16860	24.00690	unesco	42	Q733069
+Huanglong	China	32.74076	103.83108	unesco	42	Q4107
+Iguaçu National Park	Brazil	-25.50000	-53.80000	unesco	42	Q742315
+Lonja de la Seda	Spain	39.47444	-0.37833	unesco	42	Q588009
+Los Katíos National Park	Colombia	7.80000	-77.15000	unesco	42	Q305169
+Madriu-Perafita-Claror Valley	Andorra	42.49215	1.59443	unesco	42	Q332800
+Maison Carrée	France	43.83819	4.35611	unesco	42	Q677659
+Mount Kenya National Park	Kenya	-0.12389	37.33667	unesco	42	Q1639468
+New Lanark	United Kingdom	55.66361	-3.78139	unesco	42	Q743108
+Old Town of Lviv	Ukraine	49.84167	24.03194	unesco	42	Q2592613
+Paraty	Brazil	-23.21944	-44.71472	unesco	42	Q926729
+Petäjävesi Old Church	Finland	62.25014	25.18394	unesco	42	Q435829
+Pontcysyllte Aqueduct	United Kingdom	52.97020	-3.08782	unesco	42	Q158822
+Santiniketan	India	23.67760	87.68520	unesco	42	Q1026431
+Schwerin Castle	Germany	53.62417	11.41889	unesco	42	Q573656
+Taos Pueblo	United States	36.43889	-105.54167	unesco	42	Q252814
+The Architectural Work of Le Corbusier	Argentina	46.46841	6.82934	unesco	42	Q55619850
+The Great Spa Towns of Europe	Austria	50.49222	5.86694	unesco	42	Q16064866
+Tugela Falls	South Africa	-28.75220	28.89410	feature	42	Q223649
+Willandra Lakes Region	Australia	-33.61814	143.10141	unesco	42	Q747875
+Zubarah	Qatar	25.98339	51.02722	unesco	42	Q2727469
+Al Maghtas	Jordan	31.83722	35.55028	unesco	41	Q12193567
+Alcobaça Monastery	Portugal	39.54859	-8.97863	unesco	41	Q593147
+Castles and Town Walls of King Edward in Gwynedd	United Kingdom	53.13972	-4.27694	unesco	41	Q837627
+Champaner-Pavagadh Archaeological Park	India	22.48333	73.53333	unesco	41	Q844427
+Golden Mountains of Altai	Russia	50.46667	86.00000	unesco	41	Q155495
+Huascarán National Park	Peru	-9.40000	-77.40000	unesco	41	Q917369
+Imperial Citadel of Thang Long	Vietnam	21.03250	105.83972	unesco	41	Q206219
+Jog Falls	India	14.23000	74.81278	feature	41	Q672241
+Khangchendzonga National Park	India	27.65630	88.31230	unesco	41	Q2605019
+Lake Malawi National Park	Malawi	-14.03333	34.88333	unesco	41	Q1077596
+Las Médulas	Spain	42.45870	-6.75900	unesco	41	Q696803
+Linderhof Palace	Germany	47.57162	10.96075	unesco	41	Q162052
+Mount Kumgang	North Korea	38.65676	128.10490	unesco	41	Q495501
+New Zealand Subantarctic Islands	New Zealand	-50.75000	166.10400	unesco	41	Q46275
+Papahānaumokuākea Marine National Monument	United States	25.50000	-170.50000	unesco	41	Q787425
+Rani ki vav	India	23.85892	72.10162	unesco	41	Q7293002
+Revillagigedo Islands	Mexico	18.82139	-112.76389	unesco	41	Q849318
+Roman amphitheatre of El Jem	Tunisia	35.29639	10.70694	unesco	41	Q2914326
+Sangiran	Indonesia	-7.45000	110.85000	unesco	41	Q842328
+Sheikh Safi al-Din Khānegāh and Shrine Ensemble	Iran	38.24861	48.29139	unesco	41	Q4243
+Stone spheres of Costa Rica	Costa Rica	8.91139	-83.47750	unesco	41	Q282275
+Tajín Veracruz	Mexico	20.44806	-97.37824	unesco	41	Q753895
+Te Wahipounamu	New Zealand	-45.03600	167.32000	unesco	41	Q575398
+Viñales Valley	Cuba	22.61667	-83.71667	unesco	41	Q48108
+Warsaw Old Town	Poland	52.24972	21.01222	unesco	41	Q1139084
+Xochicalco	Mexico	18.80431	-99.29664	unesco	41	Q797120
+wooden churches of Maramureș	Romania	47.81940	24.05580	unesco	41	Q828412
+wooden churches of the Slovak Carpathians	Slovakia	49.33611	19.55833	unesco	41	Q471717
+Aflaj Irrigation System of Oman	Oman	22.99889	57.53606	unesco	40	Q25495
+Chengde Mountain Resort and its outlying temples	China	40.98750	117.93750	unesco	40	Q1046818
+Churches of Peace	Poland	51.05391	16.18904	unesco	40	Q589634
+Darién National Park	Panama	7.73611	-77.54722	unesco	40	Q48608
+Divriği Great Mosque and Hospital	Turkey	39.37122	38.12158	unesco	40	Q581641
+Dja Faunal Reserve	Cameroon	3.01670	12.98330	unesco	40	Q843147
+Gamzigrad	Serbia	43.89931	22.18617	unesco	40	Q904128
+Gonbad-e Qabus	Iran	37.25812	55.16899	unesco	40	Q606763
+Gordion	Turkey	39.65048	31.97848	unesco	40	Q542854
+Gulangyu	China	24.44750	118.06194	unesco	40	Q1025339
+Historic Monuments of Ancient Kyoto	Japan	35.06028	135.75278	unesco	40	Q874027
+Historic Villages of Shirakawa-gō and Gokayama	Japan	36.25694	136.90639	unesco	40	Q877626
+Holy Trinity Column in Olomouc	Czech Republic	49.59402	17.25049	unesco	40	Q742362
+Hwaseong Fortress	South Korea	37.28073	127.01020	unesco	40	Q482423
+Ichkeul National Park	Tunisia	37.12344	9.65544	unesco	40	Q13220079
+Lake Turkana National Parks	Kenya	3.05131	36.50367	unesco	40	Q1647948
+Mulanje Massif	Malawi	-15.90000	35.65000	unesco	40	Q1510436
+Padova botanical garden	Italy	45.39953	11.88068	unesco	40	Q598892
+Royal Tombs of the Joseon Dynasty	South Korea	37.19722	128.45278	unesco	40	Q495276
+Sammallahdenmäki	Finland	61.11767	21.77517	unesco	40	Q239748
+Seljalandsfoss	Iceland	63.61545	-19.98828	feature	40	Q777882
+Umm ar-Rasas	Jordan	31.49972	35.91972	unesco	40	Q822842
+Vallée de Mai	Seychelles	-4.32917	55.73750	unesco	40	Q573558
+Vega Archipelago	Norway	65.63333	11.90000	unesco	40	Q829084
+Yosemite Falls	United States	37.75502	-119.59730	feature	40	Q491677
+iSimangaliso Wetland Park	South Africa	-27.83890	32.55000	unesco	40	Q310719
+Abbey of Fontenay	France	47.63966	4.38933	unesco	39	Q464918
+Australian Convict Sites	Australia	-33.37833	150.99444	unesco	39	Q391496
+Convent of Christ	Portugal	39.60364	-8.41926	unesco	39	Q736692
+Euphrasian Basilica	Croatia	45.22861	13.59361	unesco	39	Q645105
+Honghe Hani Rice Terraces	China	23.11719	102.73770	unesco	39	Q11605230
+Khami	Zimbabwe	-20.14329	28.42344	unesco	39	Q938685
+Koutammakou	Benin	10.06744	1.13453	unesco	39	Q508040
+Madinat Al-Zahra	Spain	37.88608	-4.86779	unesco	39	Q211252
+Medici Villas and Gardens in Tuscany	Italy	43.85778	11.30417	unesco	39	Q574879
+Museum Plantin-Moretus	Belgium	51.21829	4.39816	unesco	39	Q595802
+Pamir National Park	Tajikistan	38.74123	72.11975	unesco	39	Q3076575
+Pannonhalma Archabbey	Hungary	47.55278	17.76111	unesco	39	Q936285
+Princely Abbey of Corvey	Germany	51.77778	9.41000	unesco	39	Q56004
+Rapa Nui National Park	Chile	-27.07288	-109.34858	unesco	39	Q1763364
+Royal Palaces of Abomey	Benin	7.18645	1.99400	unesco	39	Q2425839
+Saint-Savin	France	46.56611	0.86361	unesco	39	Q738657
+Sian Ka'an	Mexico	19.38333	-87.79167	unesco	39	Q559789
+Visoki Dečani	Serbia	42.54694	20.26639	unesco	39	Q849517
+Waterton-Glacier International Peace Park	Canada	48.99606	-113.90417	unesco	39	Q828212
+churches of Moldavia	Romania	47.73300	25.93300	unesco	39	Q387687
+Šibenik Cathedral	Croatia	43.73556	15.88917	unesco	39	Q391973
+Berlin Modernism Housing Estates	Germany	52.44833	13.45000	unesco	38	Q19094
+Burana Tower	Karakhanid Khanate	42.74648	75.25038	unesco	38	Q852032
+Cité de Carcassonne	France	43.20644	2.36379	unesco	38	Q389269
+Classical Gardens of Suzhou	China	31.32667	120.62556	unesco	38	Q1144337
+Dambulla cave temple	Sri Lanka	7.85667	80.64917	unesco	38	Q45690
+Desembarco del Granma National Park	Cuba	19.88333	-77.63333	unesco	38	Q909755
+El Fuerte de Samaipata	Bolivia	-18.17836	-63.81899	unesco	38	Q876451
+Ferapontov Monastery	Russia	59.95639	38.56750	unesco	38	Q838256
+Goguryeo tombs	North Korea	38.86306	125.41500	unesco	38	Q277525
+Great Himalayan National Park	India	31.80429	77.95102	unesco	38	Q1544213
+Imperial Tombs of the Ming and Qing Dynasties	China	31.01667	112.65000	unesco	38	Q817164
+Jodrell Bank Observatory	United Kingdom	53.23625	-2.30714	unesco	38	Q1569783
+Kapova Cave	Russia	53.04444	57.06389	unesco	38	Q1643788
+Modena Cathedral	Italy	44.64644	10.92525	unesco	38	Q753721
+Pilgrimage Church of Saint John of Nepomuk	Czech Republic	49.58000	15.94194	unesco	38	Q752318
+Royal Monastery of Saint Mary of Guadalupe	Spain	39.45278	-5.32750	unesco	38	Q750248
+Sarazm	Tajikistan	39.51667	67.56667	unesco	38	Q422929
+Su Nuraxi di Barumini	Italy	39.70286	8.99988	unesco	38	Q253241
+Tlacotalpan	Mexico	18.61303	-95.65627	unesco	38	Q903792
+Twyfelfontein	Namibia	-20.59558	14.37258	unesco	38	Q754791
+Valle dei Templi	Italy	37.28972	13.59000	unesco	38	Q636774
+Vecrīga	Latvia	56.94850	24.10820	unesco	38	Q1026415
+Verla	Finland	61.06199	26.64002	unesco	38	Q217447
+Wooden churches of Southern Lesser Poland	Poland	49.63059	21.18605	unesco	38	Q854267
+pont Saint-Bénézet	France	43.95389	4.80500	unesco	38	Q284444
+Bale Mountains National Park	Ethiopia	6.75000	39.75000	unesco	37	Q804881
+Carnac stones	France	47.59333	-3.07972	iconic	37	Q833850
+Danevirke	Germany	54.47750	9.48667	unesco	37	Q689454
+East Rennell	Solomon Islands	-11.68333	160.33333	unesco	37	Q852433
+Fujian Tulou sites	China	24.65870	116.97500	unesco	37	Q718001
+Ilulissat Icefjord	Greenland	69.15000	-49.55000	unesco	37	Q828071
+Kluane / Wrangell – St. Elias / Glacier Bay / Tatshenshini-Alsek	Canada	61.19750	-140.99200	unesco	37	Q604604
+Mausoleum of the First Qin Emperor	China	34.38167	109.25389	unesco	37	Q910180
+Messel pit	Germany	49.91750	8.75667	unesco	37	Q639217
+Ningaloo Reef	Australia	-22.73900	113.62800	unesco	37	Q1541665
+Old Rauma	Finland	61.12827	21.51321	unesco	37	Q828417
+Residence of Bukovinian and Dalmatian Metropolitans	Ukraine	48.29664	25.92491	unesco	37	Q156067
+Residences of the Royal House of Savoy	Italy	45.07250	7.68583	unesco	37	Q461272
+Rock carvings at Alta	Norway	69.94694	23.18778	unesco	37	Q433634
+Royal Alcázar of Segovia	Spain	40.95250	-4.13250	unesco	37	Q557337
+Río Abiseo National Park	Peru	-7.75000	-77.25000	unesco	37	Q941412
+Sacri Monti of Piedmont and Lombardy	Italy	45.97456	9.16956	unesco	37	Q753162
+Saltaire	United Kingdom	53.83717	-1.79026	unesco	37	Q838920
+Town Hall of Bremen	Germany	53.07590	8.80760	unesco	37	Q19479
+Aapravasi Ghat	Mauritius	-20.15861	57.50306	unesco	36	Q9276
+Aïr and Ténéré National Nature Reserve	Niger	18.00000	9.00000	unesco	36	Q794643
+Badain Jaran Desert	China	40.07250	102.21000	unesco	36	Q939033
+Brimstone Hill Fortress National Park	Saint Kitts and Nevis	17.34744	-62.83575	unesco	36	Q200521
+Canadian Rocky Mountain Parks World Heritage Site	Canada	51.42472	-116.47972	unesco	36	Q72895
+Castillo de San Pedro de la Roca	Cuba	19.96871	-75.87030	unesco	36	Q910189
+Chongoni Rock Art Area	Malawi	-14.29333	34.27917	unesco	36	Q832262
+Darial Gorge	Russia	42.74472	44.62250	feature	36	Q1165879
+Dessau-Wörlitz Garden Realm	Germany	51.86360	12.28140	unesco	36	Q157543
+General Archive of the Indies	Spain	37.38478	-5.99308	unesco	36	Q477051
+Grimeton VLF transmitter	Sweden	57.11398	12.40442	unesco	36	Q920206
+Head-Smashed-In Buffalo Jump	Canada	49.74940	-113.62500	unesco	36	Q683110
+Historic Monuments of Ancient Nara	Japan	34.67556	135.83944	unesco	36	Q1055749
+Iwami Ginzan Silver Mine	Japan	35.10722	132.43750	unesco	36	Q174139
+Laponian National Park	Sweden	67.33333	17.58333	unesco	36	Q1137314
+Le Morne Brabant	Mauritius	-20.46056	57.31361	unesco	36	Q1129992
+Maymand	Iran	30.16806	55.37556	unesco	36	Q1013465
+Morne Trois Pitons National Park	Dominica	15.26667	-61.28333	unesco	36	Q629436
+Namhansanseong	South Korea	37.47803	127.18419	unesco	36	Q562529
+Nanda Devi National Park	India	30.41861	79.84972	unesco	36	Q1648266
+Naumburg Cathedral	Germany	51.15472	11.80389	unesco	36	Q5938
+Orkhon Valley	Mongolia	47.55667	102.83139	unesco	36	Q1453235
+Rietveld Schröder House	Netherlands	52.08533	5.14760	unesco	36	Q914231
+Saint John Abbey	Switzerland	46.62917	10.44778	unesco	36	Q757067
+Sangha Trinational	Cameroon	2.66667	16.33333	unesco	36	Q2580451
+Vilnius Old Town	Lithuania	54.68333	25.28333	unesco	36	Q445649
+Wet Tropics of Queensland	Australia	-17.20000	145.80000	unesco	36	Q1135808
+White City	Israel	32.07778	34.77389	unesco	36	Q159070
+Baroque Churches of the Philippines	Philippines	18.06148	120.52159	unesco	35	Q808563
+Bergpark Wilhelmshöhe	Germany	51.31670	9.40000	unesco	35	Q447441
+Caves of Aggtelek Karst and Slovak Karst	Hungary	48.47178	20.49532	unesco	35	Q608090
+Central Suriname Nature Reserve	Suriname	4.00000	-56.50000	unesco	35	Q189934
+Chiribiquete National Park	Colombia	0.70061	-72.80540	unesco	35	Q2603196
+Ennedi Plateau	Chad	17.25000	22.00000	unesco	35	Q1343339
+Fortifications of Vauban	France	50.28250	2.75889	unesco	35	Q833781
+Herrenchiemsee	Germany	47.86043	12.40220	unesco	35	Q118618
+Longobards in Italy, Places of Power	Italy	46.09417	13.43306	unesco	35	Q1214318
+Medieval Monuments in Kosovo	Serbia	42.66111	20.26556	unesco	35	Q1982106
+Miguasha National Park	Canada	48.11056	-66.36944	unesco	35	Q631128
+Monolithic churches in Lalibela	Ethiopia	12.02935	39.04042	unesco	35	Q642979
+Painted Churches in the Troödos Region	Cyprus	34.92028	33.09583	unesco	35	Q462702
+Palmeral of Elche	Spain	38.26944	-0.69833	unesco	35	Q930784
+Rock Art of the Mediterranean Basin on the Iberian Peninsula	Spain	39.79000	-1.03333	unesco	35	Q1975533
+Samariá Gorge National Park	Greece	35.27111	23.96139	feature	35	Q1128366
+Sukur	Nigeria	10.74056	13.57167	unesco	35	Q1123956
+The Venetian Works of defence between 15th and 17th centuries	Croatia	45.70333	9.66361	unesco	35	Q32797097
+White Monuments of Vladimir and Suzdal	Russia	56.15000	40.41670	unesco	35	Q838264
+Ancient City of Aleppo	Syria	36.18333	37.15000	unesco	34	Q4115349
+Asante Traditional Buildings	Ghana	6.40111	-1.62583	unesco	34	Q1141003
+Citadel of Erbil	Iraq	36.19100	44.00900	unesco	34	Q206236
+Fagus Factory	Germany	51.98370	9.81256	unesco	34	Q685476
+Kizhi Pogost	Russia	62.06767	35.22345	unesco	34	Q477462
+Kondoa Rock Art Sites	Tanzania	-4.72444	35.83389	unesco	34	Q1404282
+Lakes of Ounianga	Chad	18.98333	20.66667	unesco	34	Q547375
+Land of Frankincense	Oman	18.25333	53.64759	unesco	34	Q118468
+León Cathedral	Nicaragua	12.43500	-86.87810	unesco	34	Q48605
+Los Alerces National Park	Argentina	-42.80750	-71.89889	unesco	34	Q828291
+Margravial Opera House	Germany	49.94434	11.57866	unesco	34	Q278908
+Nyungwe Forest	Rwanda	-2.52822	29.27585	unesco	34	Q1356828
+Old Faithful	United States	44.46047	-110.82814	iconic	34	Q858794
+Osun-Osogbo Grove	Nigeria	7.75556	4.55222	unesco	34	Q621498
+Palaces and Parks of Potsdam and Berlin	Germany	52.40000	13.03333	unesco	34	Q852427
+Sewell	Chile	-34.08500	-70.38250	unesco	34	Q588417
+Sichuan Giant Panda Sanctuaries	China	30.83333	103.00000	unesco	34	Q629902
+Tallinn Old Town	Estonia	59.43722	24.74528	unesco	34	Q726803
+Zollverein Coal Mine Industrial Complex	Germany	51.48650	7.04408	unesco	34	Q122026
+Aljafería	Spain	41.65649	-0.89708	unesco	33	Q1354033
+Archaeological Landscape of the First Coffee Plantations in the South-East of Cuba	Cuba	20.03000	-75.39140	unesco	33	Q636714
+Christiansfeld	Denmark	55.35667	9.48306	unesco	33	Q3197288
+Churches of Chiloé	Chile	-42.50000	-73.76667	unesco	33	Q27964
+Decorated Farmhouses of Hälsingland	Sweden	61.70722	16.19583	unesco	33	Q1642003
+Derwent Valley Mills	United Kingdom	53.10800	-1.55600	unesco	33	Q646076
+Fountains Abbey	United Kingdom	54.10970	-1.58139	unesco	33	Q540237
+Heart of Neolithic Orkney	United Kingdom	58.99750	-3.21500	unesco	33	Q1334966
+Humberstone and Santa Laura Saltpeter Works	Chile	-20.20833	-69.79444	unesco	33	Q572895
+Kuk Swamp	Papua New Guinea	-5.78250	144.33000	unesco	33	Q1165562
+Monarch Butterfly Biosphere Reserve	Mexico	19.60639	-100.24167	unesco	33	Q852546
+New Caledonia Barrier Reef	France	-20.41194	164.56639	unesco	33	Q1330981
+Prehistoric Rock Art Sites in the Côa Valley	Portugal	41.03333	-7.11667	unesco	33	Q552106
+Ramappa Temple	India	18.25944	79.94250	unesco	33	Q3380656
+Sacred Mijikenda Kaya Forests	Kenya	-3.93194	39.59611	unesco	33	Q1362222
+Sawahlunto	Indonesia	-0.68278	100.77833	unesco	33	Q7263
+South China Karst	China	24.92330	110.35440	unesco	33	Q853364
+Takalik Abaj	Guatemala	14.64583	-91.73611	unesco	33	Q1509537
+Tràng An	Vietnam	20.25570	105.91560	unesco	33	Q10810559
+Citadelle Laferrière	Haiti	19.57361	-72.24389	unesco	32	Q206194
+Colonia Iulia Urbs Triumphalis Tarraco	Spain	41.11648	1.25523	unesco	32	Q1501940
+Cordouan Lighthouse	France	45.58632	-1.17333	unesco	32	Q199234
+Cornwall and West Devon Mining Landscape	United Kingdom	50.13611	-5.38361	unesco	32	Q464566
+El Camino Real de Tierra Adentro	Mexico	22.60806	-102.37917	unesco	32	Q911953
+Falun Mine	Sweden	60.60472	15.63083	unesco	32	Q636194
+Ironbridge Gorge	United Kingdom	52.62639	-2.47278	feature	32	Q647958
+Ivindo National Park	Gabon	0.08800	12.63000	unesco	32	Q9055979
+Jesuit Missions of Chiquitos	Bolivia	-16.27480	-62.50720	unesco	32	Q33934
+Lednice-Valtice Cultural Landscape	Czech Republic	48.77580	16.77500	unesco	32	Q735278
+Qalhat	Oman	22.70000	59.36990	unesco	32	Q680322
+Rhine Gorge	Germany	50.17360	7.69417	unesco	32	Q1780249
+Rock Carvings in Tanum	Sweden	58.69995	11.33641	unesco	32	Q1761052
+Sacred Sites and Pilgrimage Routes in the Kii Mountain Range	Japan	33.83694	135.77639	unesco	32	Q611345
+Stevns Klint	Denmark	55.28220	12.45000	unesco	32	Q1614152
+Valley of Geysers	Russia	54.43056	160.13944	feature	32	Q1235610
+Alto Douro Wine Region	Portugal	41.16575	-7.51774	unesco	31	Q649738
+Arslantepe	Turkey	38.38194	38.36111	unesco	31	Q705132
+Bat, Al-Khutm and Al-Ayn archaeological sites	Oman	23.27000	56.74500	unesco	31	Q25496
+Dacian Fortresses of the Orăștie Mountains	Romania	45.62310	23.31190	unesco	31	Q729327
+Gammelstad Church Town	Sweden	65.64611	22.02861	unesco	31	Q1756286
+Hoh Xil	China	35.15000	91.00000	unesco	31	Q1790760
+Hospicio Cabañas	Mexico	20.67690	-103.33733	unesco	31	Q28416
+Koh Ker	Cambodia	13.78333	104.53333	unesco	31	Q1778458
+Kraków Old Town	Poland	50.06209	19.93688	unesco	31	Q652634
+Palace of Mafra	Portugal	38.93692	-9.32639	unesco	31	Q599223
+Pitons	Saint Lucia	13.80708	-61.07036	unesco	31	Q639487
+Ruins of St. Paul's	China	22.19747	113.54086	unesco	31	Q1551411
+Sambor Prei Kuk	Cambodia	12.86728	105.04002	unesco	31	Q1818746
+Saryarka – Steppe and Lakes of Northern Kazakhstan	Kazakhstan	50.43333	69.18889	unesco	31	Q2559020
+Tierradentro	Colombia	2.58300	-76.03300	unesco	31	Q179506
+Trans-Iranian railway	Iran	35.65831	51.39833	unesco	31	Q162835
+University City of Caracas	Venezuela	10.49083	-66.89056	unesco	31	Q1061531
+Völklingen Ironworks	Germany	49.25056	6.84528	unesco	31	Q127754
+historical city centre of Odesa	Ukraine	46.48500	30.74100	unesco	31	Q15041608
+Burgess Shale	Canada	51.43330	-116.46700	unesco	30	Q852085
+Capital Cities and Tombs of the Ancient Koguryo Kingdom	China	41.15694	126.18722	unesco	30	Q134873
+Casas Grandes	Mexico	30.37583	-107.95556	unesco	30	Q853265
+Gochang, Hwasun and Ganghwa Dolmen Sites	South Korea	34.96667	126.92917	unesco	30	Q495286
+Historic Centre of Saint Petersburg and Related Groups of Monuments	Russia	59.93889	30.31556	unesco	30	Q616578
+Khajuraho Group of Monuments	India	24.85000	79.93333	unesco	30	Q167298
+Niah National Park	Malaysia	3.81389	113.78139	unesco	30	Q1984562
+Old Quebec	Canada	46.80944	-71.21056	unesco	30	Q2114279
+Paleochristian and Byzantine monuments of Thessaloniki	Greece	40.63860	22.94780	unesco	30	Q732708
+Rock Paintings of Hua Mountain	China	22.24833	107.04228	unesco	30	Q1632877
+Shrines and Temples of Nikkō	Japan	36.74750	139.61056	unesco	30	Q1063133
+Shushtar Historical Hydraulic System	Iran	32.05372	48.84869	unesco	30	Q2274974
+Sites of Japan’s Meiji Industrial Revolution: Iron and Steel, Shipbuilding and Coal Mining	Japan	34.43056	131.41222	unesco	30	Q7751872
+Stari Grad Plain	Croatia	43.18167	16.63861	unesco	30	Q614212
+lifts on the old Canal du Centre	Belgium	50.47140	4.09450	unesco	30	Q99372
+Atapuerca	Spain	42.35009	-3.51947	unesco	29	Q923894
+Bassari Country	Senegal	12.59333	-12.84583	unesco	29	Q2916296
+Beit She'arim National Park	Israel	32.70417	35.12806	unesco	29	Q830805
+Central Highlands of Sri Lanka	Sri Lanka	7.45245	80.80210	unesco	29	Q422941
+Cát Bà Island	Vietnam	20.80000	106.99972	unesco	29	Q993402
+Dilmun Burial Mounds	Bahrain	26.14972	50.51278	unesco	29	Q5276996
+Eldgjá	Iceland	63.96662	-18.60913	feature	29	Q388641
+Glarus thrust	Switzerland	46.91667	9.25000	unesco	29	Q312118
+Incense Route – Desert Cities in the Negev	Israel	31.09750	34.65778	unesco	29	Q477578
+Jesuit Block and Estancias of Córdoba	Argentina	-31.65611	-64.43528	unesco	29	Q837642
+Kujataa	Greenland	61.16444	-45.59806	unesco	29	Q32904732
+Odzala National Park	Republic of the Congo	0.80000	14.90000	unesco	29	Q263883
+Our Lady of Promise	Serbia	42.21139	20.73583	unesco	29	Q890652
+Redwood National and State Parks	United States	41.37389	-123.99806	unesco	29	Q63863168
+Roman Walls of Lugo	Spain	43.01419	-7.55989	unesco	29	Q2733427
+Ruínas de León Viejo	Nicaragua	12.40055	-86.61780	unesco	29	Q1422898
+San Agustin archeological park	Colombia	1.88444	-76.29611	unesco	29	Q2887224
+Vjetrenica	Bosnia and Herzegovina	42.84583	17.98389	unesco	29	Q2880621
+Aqueduct of Padre Tembleque	Mexico	19.83639	-98.66222	unesco	28	Q2840764
+Armenian Monastic Ensembles of Iran	Iran	38.97889	45.47333	unesco	28	Q841896
+Bahrain Pearling Trail	Bahrain	26.25000	50.61000	unesco	28	Q1889313
+Banaue Rice Terraces	Philippines	16.93472	121.13472	iconic	28	Q826551
+Bom Jesus do Monte	Portugal	41.55460	-8.37750	unesco	28	Q2707216
+Eise Eisinga Planetarium	Netherlands	53.18738	5.54375	unesco	28	Q601223
+Greater Blue Mountains Area	Australia	-33.70000	150.00000	unesco	28	Q934627
+Gusuku Sites and Related Properties of the Kingdom of Ryukyu	Japan	26.20860	127.68300	unesco	28	Q1333330
+Ir.D.F. Woudagemaal	Netherlands	52.84583	5.67889	unesco	28	Q1121835
+Jeju Volcanic Island and Lava Tubes	South Korea	33.36139	126.53250	unesco	28	Q495733
+Litomyšl Chateau	Czech Republic	49.87344	16.31265	unesco	28	Q2164885
+Matka Canyon	North Macedonia	41.94000	21.30000	feature	28	Q2278990
+Monasteries on the slopes of Popocatépetl	Mexico	18.93472	-98.89778	unesco	28	Q1141009
+Natural and Culturo-Historical Region of Kotor	Montenegro	42.43000	18.77000	unesco	28	Q3511938
+Shiretoko Peninsula	Japan	44.05000	145.10000	unesco	28	Q629238
+Thimlich Ohinga	Kenya	-0.89134	34.32611	unesco	28	Q3524629
+domus de janas	Italy	40.08500	8.95100	unesco	28	Q1238775
+northern French coal mining region	France	50.46250	3.54611	unesco	28	Q392215
+Ancient City of Damascus	Syria	33.51111	36.30639	unesco	27	Q3678596
+Area de Conservación Guanacaste World Heritage Site	Costa Rica	10.85000	-85.61667	unesco	27	Q775154
+Beaufort Castle	Lebanon	33.32471	35.53215	unesco	27	Q476801
+Charyn Canyon	Kazakhstan	43.36194	79.09056	feature	27	Q2231598
+China Danxia	China	28.42190	106.04300	unesco	27	Q1286650
+Ciudad Universitaria	Mexico	19.33222	-99.18806	unesco	27	Q130025
+Franciscan Missions in the Sierra Gorda	Mexico	21.20389	-99.46389	unesco	27	Q751146
+Group of monuments at Mahabalipuram	India	12.61667	80.19167	unesco	27	Q3522747
+Gyeongju Historic Areas	South Korea	35.78889	129.22667	unesco	27	Q495241
+Hiraizumi – Temples, Gardens and Archaeological Sites Representing the Buddhist Pure Land	Japan	38.98861	141.11028	unesco	27	Q2896261
+Jesuit missions among the Guaraní	Argentina	-27.25528	-55.53167	unesco	27	Q465960
+Jungfrau-Aletsch protected area	Switzerland	46.50000	8.03333	unesco	27	Q616912
+Kenya Lake System in the Great Rift Valley	Kenya	0.44250	36.24000	unesco	27	Q2384313
+Pachacámac	Peru	-12.25806	-76.90000	unesco	27	Q430563
+Pankisi Gorge	Georgia	42.11667	45.26667	feature	27	Q627095
+Par force hunting landscape in North Zealand	Denmark	55.91360	12.35780	unesco	27	Q10620357
+Rock Paintings of Sierra de San Francisco	Mexico	27.65556	-112.91611	unesco	27	Q552005
+Silk Roads: the Routes Network of Chang'an-Tianshan Corridor	Kazakhstan	34.30440	108.85720	unesco	27	Q17277933
+Stora Sjöfallet National Park	Sweden	67.56690	17.99365	unesco	27	Q1505447
+Temple of Apollo Epicurius in Bassae	Greece	37.42965	21.90039	unesco	27	Q38278862
+Tusi Sites	China	28.99861	109.96694	unesco	27	Q19852428
+Valongo Wharf	Brazil	-22.89711	-43.18739	unesco	27	Q20048515
+Van Nelle Factory	Netherlands	51.92278	4.43361	unesco	27	Q2328849
+Victorian Gothic and Art Deco Ensembles of Mumbai	India	18.92981	72.83008	unesco	27	Q16942531
+Cathedral of the Savior in his Epiphany of Zaragoza	Spain	41.65456	-0.87585	unesco	26	Q2196869
+Luis Barragán House and Studio	Mexico	19.41111	-99.19250	unesco	26	Q1046414
+Matobo Hills	Zimbabwe	-20.50000	28.50000	unesco	26	Q917429
+Nahal Me'arot Nature Reserve	Israel	32.67083	34.96611	unesco	26	Q1443478
+Navy Petty-Officers School of Mechanics	Argentina	-34.53842	-58.46361	unesco	26	Q1292306
+Ninstints	Canada	52.09889	-131.21750	unesco	26	Q240832
+Old City of Bern	Switzerland	46.94806	7.45028	unesco	26	Q687973
+Poverty Point	United States	32.64250	-91.40833	unesco	26	Q964745
+Thungyai Naresuan Wildlife Sanctuary	Thailand	15.33333	98.91667	unesco	26	Q422995
+Tiger Leaping Gorge	China	27.23000	100.14000	feature	26	Q1460797
+Umm el-Jimal	Jordan	32.32667	36.36972	unesco	26	Q3107493
+Zagori	Greece	39.86670	20.70000	unesco	26	Q2712111
+Baekje Historic Areas	South Korea	36.46194	127.12722	unesco	25	Q20650483
+Buddhist Monuments in the Hōryū-ji Area	Japan	34.61427	135.73424	unesco	25	Q1333799
+El Pinacate y Gran Desierto de Altar Biosphere Reserve	Mexico	32.00000	-113.91667	unesco	25	Q3821829
+Heritage of Mercury. Almadén and Idrija	Slovenia	46.00389	14.02667	unesco	25	Q3370031
+Hidden Christian Sites in the Nagasaki Region	Japan	32.80222	128.90389	unesco	25	Q93643
+Major Mining Sites of Wallonia	Belgium	50.43528	3.83833	unesco	25	Q1921177
+Major Town Houses of the Architect Victor Horta	Belgium	50.81667	4.35000	unesco	25	Q1426014
+Mistaken Point Ecological Reserve	Canada	46.63190	-53.19030	unesco	25	Q3301928
+Neolithic flint mines of Spiennes	Belgium	50.41999	3.98258	unesco	25	Q677879
+Sans-Souci Palace	Haiti	19.60469	-72.21860	unesco	25	Q930795
+Teruel Cathedral	Spain	40.34390	-1.10722	unesco	25	Q513893
+The Vineyard Landscape of Piedmont: Langhe-Roero and Monferrato	Italy	44.65194	7.99417	unesco	25	Q17296768
+W-Arly-Pendjari Complex	Benin	11.88420	2.48780	unesco	25	Q25379596
+Western Xia Mausoleums	China	38.43503	105.98717	unesco	25	Q1069411
+A-Ma Temple	China	22.18611	113.53114	unesco	24	Q2149114
+Ahwar of Southern Iraq	Iraq	31.56222	47.65778	unesco	24	Q25933006
+Arab-Norman Palermo and the Cathedral Churches of Cefalú and Monreale	Italy	38.11083	13.35306	unesco	24	Q20963672
+Arabian Oryx Sanctuary	Oman	19.70000	57.00000	unesco	24	Q2015257
+Beit Guvrin National Park	Israel	31.61306	34.89833	unesco	24	Q2407530
+Béguinages in Flanders	Belgium	51.03097	4.47375	unesco	24	Q265453
+Catalan Romanesque Churches of the Vall de Boí	Spain	42.50472	0.80361	unesco	24	Q1091515
+Cavernas do Peruaçu National Park	Brazil	-15.12251	-44.32434	unesco	24	Q1051873
+Jodensavanne	Suriname	5.41328	-54.95298	unesco	24	Q648787
+Monasteries of San Millán de la Cogolla	Spain	42.32583	-2.86505	unesco	24	Q2284354
+Nelson's Dockyard	Antigua and Barbuda	17.00833	-61.76444	unesco	24	Q1435206
+Ombilin coal mine	Indonesia	-0.68333	100.76700	unesco	24	Q16965955
+Rock Art in the Hail Region of Saudi Arabia	Saudi Arabia	28.00000	40.90000	unesco	24	Q20643274
+Ruins of Gedi	Kenya	-3.30917	40.01667	unesco	24	Q502518
+Saloum Delta	Senegal	13.83528	-16.49861	unesco	24	Q559363
+Sanctuary of Bom Jesus de Matosinhos	Brazil	-20.50778	-43.86069	unesco	24	Q1595417
+Sassanid Archaeological Landscape of Fars Region	Iran	29.77748	51.57045	unesco	24	Q55379486
+Socotra Archipelago	Mahra Sultanate	12.50000	53.40000	unesco	24	Q2860218
+Spišská Kapitula	Slovakia	49.00056	20.74111	unesco	24	Q1042821
+Three Castles of Bellinzona	Switzerland	46.19278	9.02222	unesco	24	Q510279
+port of the Moon	France	44.83889	-0.57222	unesco	24	Q2249113
+Churches of the Pskov School of Architecture	Russia	57.80720	28.32860	unesco	23	Q66053233
+City of Vicenza and the Palladian Villas of the Veneto	Italy	45.55000	11.55000	unesco	23	Q370956
+King's House on Schachen	Germany	47.41970	11.11259	unesco	23	Q256160
+Palazzo Rosso	Italy	44.41125	8.93212	unesco	23	Q2034331
+Petroglyphic Complexes of the Mongolian Altai	Mongolia	49.33389	88.39528	unesco	23	Q4361429
+Rjukan–Notodden Industrial Heritage Site	Norway	59.87861	8.59361	unesco	23	Q20643889
+Roman Monuments, Cathedral of St. Peter and Church of Our Lady in Trier UNESCO World Heritage Site	Germany	49.75000	6.63306	unesco	23	Q279968
+Ruins of Loropéni	Burkina Faso	10.31028	-3.56306	unesco	23	Q1269931
+Tell es-Sultan	Palestine	31.87172	35.44456	unesco	23	Q2402267
+The works of Jože Plečnik in Ljubljana – Human Centred Urban Design	Slovenia	46.04333	14.50222	unesco	23	Q64494878
+Tigrovaya Balka Nature Reserve	Tajikistan	37.25000	68.50000	unesco	23	Q1138108
+Upper German-Raetian Limes	Germany	49.79639	9.15750	unesco	23	Q17374397
+Windmills at Kinderdijk	Netherlands	51.88861	4.63472	unesco	23	Q12012965
+porticoes of Bologna	Italy	44.49139	11.33278	unesco	23	Q3909051
+Caves and Ice Age Art in the Swabian Jura	Germany	48.38778	9.76556	unesco	22	Q19285921
+Historic Monuments of Novgorod and Surroundings	Russia	58.51833	31.28556	unesco	22	Q1218832
+Landscape of the Pico Island Vineyard Culture	Portugal	38.51333	-28.54111	unesco	22	Q2448665
+Maidam	India	26.94310	94.87920	unesco	22	Q6735332
+Mapungubwe Cultural Landscape	South Africa	-22.21167	29.38789	unesco	22	Q1136251
+Markovi Kuli	North Macedonia	41.36160	21.53847	unesco	22	Q1283784
+Medina of Tunis	Tunisia	36.79903	10.17006	unesco	22	Q3106527
+Pampulha Modern Ensemble	Brazil	-19.85194	-43.97361	unesco	22	Q9850285
+Phoenix Islands Protected Area	Kiribati	-3.64972	-172.85750	unesco	22	Q863815
+Royal Abbey of Hautecombe	France	45.75278	5.83972	unesco	22	Q63524
+Southern Öland cultural landscape	Sweden	56.46667	16.55000	unesco	22	Q396132
+Tehuacán-Cuicatlán Biosphere Reserve	Mexico	18.21140	-97.39940	unesco	22	Q5853681
+The 20th-Century Architecture of Frank Lloyd Wright	United States	39.90557	-79.46648	unesco	22	Q10498496
+Tipasa	Algeria	36.59424	2.44192	unesco	22	Q3529269
+Aasivissuit–Nipisat	Greenland	67.06393	-51.43321	unesco	21	Q16324987
+Antequera Dolmens Site	Spain	37.02333	-4.54806	unesco	21	Q97633694
+Bir Hima Rock Petroglyphs and Inscriptions	Saudi Arabia	18.31700	44.54500	unesco	21	Q4915544
+Church of Cristo Obrero y Nuestra Señora de Lourdes	Uruguay	-34.74400	-55.76600	unesco	21	Q26721344
+Historic Centre of Sighișoara	Romania	46.21778	24.79222	unesco	21	Q1075681
+Makhonjwa Mountains	South Africa	-33.40000	22.00000	unesco	21	Q19605615
+Maloti-Drakensberg Park	Lesotho	-29.46650	29.39390	unesco	21	Q6744547
+Medina of Sousse	Tunisia	35.82780	10.63860	unesco	21	Q608100
+Melka Kunture	Ethiopia	8.70250	38.60833	unesco	21	Q3063392
+Qaryat al-Faw	Saudi Arabia	19.78330	45.15000	unesco	21	Q2829327
+Sacred Ensembles of the Hoysalas	India	13.21245	75.99407	unesco	21	Q66023123
+Sansa, Buddhist Mountain Monasteries in Korea	South Korea	34.99658	127.33112	unesco	21	Q55306582
+Sebastia	Palestine	32.27562	35.19873	unesco	21	Q2918480
+fortifications on the Caribbean Side of Panama: Portobelo-San Lorenzo	Panama	9.55389	-79.65583	unesco	21	Q3320082
+Babelsberg Palace	Germany	52.40760	13.09330	unesco	20	Q702477
+Budj Bim	Australia	-38.06670	141.91700	unesco	20	Q260465
+Churches and Convents of Goa	India	15.50240	73.91170	unesco	20	Q15726428
+Colonial City of Santo Domingo	Dominican Republic	18.47300	-69.88300	unesco	20	Q2470834
+Dong Phayayen-Khao Yai Forest Complex	Thailand	14.33000	102.05000	unesco	20	Q16963852
+Duchess Anna Amalia Library	Germany	50.97861	11.33222	unesco	20	Q50711
+Getbol, Korean Tidal Flats	South Korea	34.82882	126.10444	unesco	20	Q107715736
+Historic Centre of the City of Salzburg	Austria	47.79970	13.04860	unesco	20	Q1621046
+Pimachiowin Aki	Canada	51.00000	-95.00000	unesco	20	Q7194595
+Si Thep historical park	Thailand	15.46659	101.15009	unesco	20	Q1517758
+Archaeological Site of Sabratha	Libya	32.80528	12.48500	unesco	19	Q15052130
+Arles, Roman and Romanesque Monuments	France	43.67764	4.63069	unesco	19	Q1279597
+Artists' Colony in Darmstadt	Germany	49.87543	8.66650	unesco	19	Q314730
+Astronomical Observatory of the University of Kazan	Russia	55.79083	49.11917	unesco	19	Q4071782
+Chinchorro mummies	Chile	-18.48060	-70.32111	unesco	19	Q27096877
+Church of the Saviour at Berestove	Ukraine	50.43733	30.55500	unesco	19	Q2524402
+Colchic Rainforests and Wetlands	Georgia	41.70222	41.95111	unesco	19	Q107694185
+Durmitor National Park	Montenegro	43.15320	19.03687	unesco	19	Q3364446
+Early Christian Necropolis of Pécs	Hungary	46.07444	18.22778	unesco	19	Q927535
+Forts and Castles, Volta, Greater Accra, Central and Western Regions	Ghana	5.10369	-1.24100	unesco	19	Q778743
+Jabal Al Fayah	United Arab Emirates	25.11140	55.83896	unesco	19	Q6172505
+Jōmon Prehistoric Sites in Northern Japan	Japan	41.06556	140.55222	unesco	19	Q11402500
+Kokino	North Macedonia	42.26361	21.95361	unesco	19	Q1326977
+Laurisilva of Madeira	Portugal	32.76667	-17.00000	unesco	19	Q11257230
+Medieval Town of Toruń	Poland	53.01028	18.60472	unesco	19	Q9390606
+Menin Gate	Belgium	50.85205	2.89107	unesco	19	Q1822397
+Old City of Hebron	Palestine	31.52528	35.10833	unesco	19	Q35584069
+Old City of Zamość	Poland	50.72056	23.25861	unesco	19	Q3678597
+Sanctuary of the Madonna di San Luca	Italy	44.47915	11.29789	unesco	19	Q2004104
+Bahá'í World Centre buildings	Israel	32.81378	34.98655	unesco	18	Q2149036
+Bruges City Hall	Belgium	51.20806	3.22694	unesco	18	Q905848
+Château de Quéribus	France	42.83667	2.62167	unesco	18	Q667763
+Classical Weimar	Germany	50.98333	11.31667	unesco	18	Q467763
+Gaya Tumuli	South Korea	35.23726	128.87373	unesco	18	Q66201394
+Gola National Park	Sierra Leone	7.50000	-10.98333	unesco	18	Q1512159
+Grand-Pré	Canada	45.10889	-64.30917	unesco	18	Q1100749
+Hin Nam No National Protected Area	Laos	17.45830	105.93330	unesco	18	Q5765542
+Historic Centre of Lima	Peru	-12.04667	-77.03139	unesco	18	Q3320442
+Historic Centre of Naples	Italy	40.85139	14.26278	unesco	18	Q832957
+Kalwaria Zebrzydowska park	Poland	49.86032	19.67072	unesco	18	Q1280433
+Maratha Military Landscapes of India	India	20.72250	73.94250	unesco	18	Q134720951
+Murambi Genocide Memorial	Rwanda	-2.45440	29.56840	unesco	18	Q5964053
+Old Towns of Djenné	Mali	13.90639	-4.55500	unesco	18	Q15278644
+Risco Caido	Spain	28.04356	-15.66126	unesco	18	Q55495511
+Royal Court of Tiébélé	Burkina Faso	11.08972	-0.96156	unesco	18	Q65684910
+Silk Roads: Zarafshan-Karakum Corridor	Tajikistan	39.44149	69.68556	unesco	18	Q122666385
+Sviyazhsk Assumption Monastery	Russia	55.77012	48.65245	unesco	18	Q4411008
+The Causses and the Cévennes, Mediterranean agro-pastoral Cultural Landscape	France	44.22030	3.47310	unesco	18	Q10444176
+Vieux Lyon	France	45.76306	4.82806	unesco	18	Q8399
+Wat Phra Mahathat	Thailand	8.41139	99.96667	unesco	18	Q2552354
+Way of Saint James UNESCO World Heritage Sites in France	France	45.18406	-0.72294	unesco	18	Q2962473
+Writing-on-Stone Provincial Park	Canada	49.08190	-111.61700	unesco	18	Q8038519
+Sagrada Família	Spain	41.40453	2.17449	iconic	17	Q2548808
+Cheyenne Mountain Complex	United States	38.74247	-104.84844	iconic	11	Q21767547
+Pentagon	United States	38.87090	-77.05630	iconic	7	Q18435290
+Three Mile Island	United States	40.15330	-76.72470	iconic	4	Q7797635
+Denali	United States	63.06910	-151.00626	iconic	0	Q64142956
+Galápagos Islands	Ecuador	-0.62298	-90.36124	iconic	0	Q117188122
