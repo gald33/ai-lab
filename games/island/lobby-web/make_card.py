@@ -1,6 +1,6 @@
 """Render `card.html` to `card.png`, the image a posted link renders as.
 
-    python site/make_card.py
+    python games/island/lobby-web/make_card.py
 
 Committed as a PNG because that is what Open Graph consumers fetch -- most of
 them will not rasterise an SVG, and several will not follow a redirect -- but
@@ -10,10 +10,14 @@ guessing at the font.
 
 `--check` re-renders to a temporary file and compares, so CI can say the
 committed PNG is the one the current `card.html` produces. That check is
-deliberately not wired into the `pages` job: a font substitution on a different
+deliberately not wired into any deploy job: a font substitution on a different
 runner would fail it for a reason nobody can act on, and the card being one
 revision behind its source is not worth a red deploy. It is here for the person
 changing the card.
+
+It lives beside the page that declares it because Vercel's root directory is
+`games/island/lobby-web` with "include files outside the root directory" off,
+so `card.png` has to be a file in here to exist at `/card.png` at all.
 """
 
 from __future__ import annotations
@@ -69,7 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if fresh.read_bytes() != OUT.read_bytes():
             print("card.png is not what card.html renders; re-run "
-                  "`python site/make_card.py`", file=sys.stderr)
+                  "`python games/island/lobby-web/make_card.py`",
+                  file=sys.stderr)
             return 1
     print("card.png matches card.html")
     return 0

@@ -219,14 +219,24 @@ jobs:
       - run: python -m pytest games/island/tests/test_lobby_web_reconstruct.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
-      # The front door, and the redirect that used to be the whole of it. A
-      # bare visit gets the landing page; anything carrying a `?` or a `#`
-      # still hops into the viewer with it, because games/runs/001 and 002
-      # cite the root as where a finished game's replay lives and a live feed
-      # arrives as `?invite=...` on exactly those links. The hop is a script,
-      # so where a visit ends up is behaviour and not markup -- and the score
-      # the page quotes is fetched, so its unheld and unreadable states are
-      # invisible to any assertion on the file.
+      # The front door: the landing page at island.lucille-ai.com, driven
+      # against the directory Vercel actually deploys rather than a fixture
+      # copy. The score it quotes is fetched -- and fetched cross-origin now --
+      # so its unheld and unreadable states are invisible to any assertion on
+      # the file. It also asserts the Open Graph tags name THIS host and the
+      # card is a file in THIS directory, which is the defect it was written
+      # for: every tag was correct all along, for the other host, while the
+      # address people paste served a seven-line lobby with no card at all.
+      - run: python -m pytest games/island/tests/test_front_door.py -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
+      # The legacy root, and the redirect that is all it still is. A bare visit
+      # goes to the main door; anything carrying a `?` or a `#` still hops into
+      # the viewer ON THAT ORIGIN with it, because games/runs/001 and 002 cite
+      # that root as where a finished game's replay lives and a live feed
+      # arrives as `?invite=...` on exactly those links -- and the replay each
+      # names is a file there. The hop is a script, so where a visit ends up is
+      # behaviour and not markup.
       - run: python -m pytest site/tests -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"

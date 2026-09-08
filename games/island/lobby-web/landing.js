@@ -5,6 +5,14 @@
  * page with its own idea of what the record is would eventually disagree with
  * the board it links to, and the visitor would find that out by clicking.
  *
+ * **The read is cross-origin and that is not incidental.** This page is the
+ * main door on `island.lucille-ai.com` and the scoreboard is on the Pages
+ * origin, because the rendering of a finished game is meant to be visibly the
+ * committed code. Pages answers `access-control-allow-origin: *` -- checked
+ * with `curl -D-` on 2026-09-07 -- so the fetch works from here. If it ever
+ * stops being true, this page does not go blank: the read fails, the card says
+ * the board could not be read, and the two buttons above it still work.
+ *
  * Three states, all of them shown rather than one of them hidden:
  *
  * - **held** -- somebody has a ranked game on the format the lobby hands out.
@@ -21,12 +29,13 @@ const $ = (id) => document.getElementById(id);
 
 /** The page's own percent, matching `scores.html`'s to the digit.
  *
- * Deliberately a copy of five lines rather than a shared module: this page is
- * at the site root and the scoreboard is under `island/`, and importing across
- * that boundary would tie the front door's ability to render to the viewer's
- * build stamp. The one thing that must not drift is the 99.5-100 band, where a
- * game that left something on the table must not round to the number that says
- * it did not -- so that rule is carried here with its reason.
+ * Deliberately a copy of five lines rather than a shared module: this page and
+ * the scoreboard are on different origins, and importing across that boundary
+ * would tie the front door's ability to render to the viewer's build stamp and
+ * to a second host being up. The one thing that must not drift is the
+ * 99.5-100 band, where a game that left something on the table must not round
+ * to the number that says it did not -- so that rule is carried here with its
+ * reason.
  */
 const pct = (x) => {
   if (x === null || x === undefined) return "—";
@@ -67,7 +76,15 @@ function paint(board) {
     ` — best of ${board.ranked} ranked game${board.ranked === 1 ? "" : "s"}`;
 }
 
-fetch("island/api/scores", { cache: "no-store" })
+/** Where the board is. Absolute, because the scoreboard is on another origin.
+ *
+ * A constant rather than something a fixture can override: the tests drive
+ * this exact URL and intercept it in the browser, so what they exercise is the
+ * string that deploys. A page whose data source is swapped out under test is a
+ * page whose real data source nothing checked. */
+const SCORES = "https://gald33.github.io/ai-lab/island/api/scores";
+
+fetch(SCORES, { cache: "no-store" })
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
   .then((data) => paint((data.boards || data).open_table))
   .catch(() => paint(null));

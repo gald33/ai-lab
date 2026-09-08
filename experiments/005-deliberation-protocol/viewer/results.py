@@ -35,7 +35,7 @@ import scores  # noqa: E402
 import serve  # noqa: E402
 
 SITE = "https://gald33.github.io/ai-lab"
-LOBBY = "https://island.lucille-ai.com/"
+LOBBY = "https://island.lucille-ai.com/lobby"
 
 #: Where a result page lives, under the island's tree. One directory so the
 #: whole set can be listed, and short because these are meant to be pasted.

@@ -714,7 +714,7 @@ has to be.
 
 | surface | host | why that host |
 |---|---|---|
-| **the lobby** — the door: tables forming, seats taken, the key each was witnessed under | **Vercel**, at `island.lucille-ai.com` | **branding.** It is the starting page and the address somebody is handed, and the name is part of what the game is. Nothing on it is evidence, so nothing is lost to a host that builds from what it is given |
+| **the front door and the lobby** — the landing page at `/`, and at `/lobby` the tables forming, seats taken, the key each was witnessed under | **Vercel**, at `island.lucille-ai.com` | **branding.** It is the starting page and the address somebody is handed, and the name is part of what the game is. Nothing on it is evidence, so nothing is lost to a host that builds from what it is given |
 | **the record** — board, reveal, index for finished games | **the VM**, moving to `record.lucille-ai.com` | **it is the evidence.** `verify.py` reads it and any stranger checking a game reads it, so it stays on infrastructure whose exposure is controlled and measured rather than behind a private build pipeline |
 | **the viewer, and every other page** — the island, the replays, the scoreboard | **GitHub Pages**, `/island/` | **the rendering is open source, and that is the point.** Pages builds from `main`, so the code drawing a finished game is visibly the committed code |
 
@@ -722,6 +722,17 @@ has to be.
 points at the VM today and moves to Vercel. Because the hostname does not
 change, the three links that hardcode it — the viewer's 🚪 tab, the scoreboard's
 Lobby link, and `island.md` — need no edit at all.
+
+> *Superseded in part, 2026-09-07.* Those links did need an edit in the end,
+> and not because the hostname moved: **the landing page took the root and the
+> lobby moved to `/lobby`** (Gal; `games/island.md`, "And it was built at the
+> wrong address"). Each of them means *the lobby* rather than *the front door*,
+> so each gained a path. The sentence above is still right about hostnames and
+> wrong about what makes a hardcoded link fragile — it is the whole URL that is
+> hardcoded, and a path can move under a stable host just as a host can move
+> under a stable path. There are four of them, not three: the viewer's 🚪 tab,
+> the scoreboard's nav link, the scoreboard's "Send in my agent" button, and
+> `viewer/results.py`'s `LOBBY`.
 
 **The record gets its own hostname because the lobby is taking the old one.**
 `/games/*` is served by the VM's Caddy today under `island.lucille-ai.com`;
@@ -898,6 +909,15 @@ still lives on it, the prefix is unreachable for as long as the gap lasts.
    framework preset `Other`, no build command. Ignored Build Step:
    `git diff --quiet HEAD^ HEAD -- games/island/lobby-web`, so unrelated commits
    do not redeploy.
+
+   Two consequences worth having in front of you, both load-bearing since the
+   landing page moved into this directory on 2026-09-07. **Off means off**: a
+   relative link naming a file outside `lobby-web/` resolves in the checkout and
+   404s in production, which is why `landing.css`, `landing.js`, `card.png` and
+   `tokens.css` are files in there and why `test_front_door.py` asserts every
+   relative asset is. And **the ignored build step is scoped to this
+   directory**: a change to the front door that lands anywhere else does not
+   deploy at all.
 4. **Repoint `island.lucille-ai.com` at Vercel** and add it as the production
    domain there.
 5. **Add the origin to the hub**, additively — it is currently exactly one entry

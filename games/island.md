@@ -1997,13 +1997,87 @@ than asserting the presence of a script that might never run.
 
 **A posted link now renders as a card.** Nothing in this repository carried
 Open Graph metadata, and the whole distribution model for a launch is a link on
-somebody else's site. `site/card.html` is the card as a page and
-`site/make_card.py` screenshots it at 1200x630, so the image is a diff rather
-than a binary nobody can review -- `python site/make_card.py --check` says
+somebody else's site. `lobby-web/card.html` is the card as a page and
+`lobby-web/make_card.py` screenshots it at 1200x630, so the image is a diff rather
+than a binary nobody can review -- `python games/island/lobby-web/make_card.py --check` says
 whether the committed PNG is still what the source renders. The tags are static
 on every page that has them, because **a crawler does not run scripts**: the
 score is fetched, so it can never be in the card, and a card promising a number
 it cannot carry would be worse than one that does not.
+
+### And it was built at the wrong address
+
+**Corrected by Gal, 2026-09-07: `island.lucille-ai.com` is the main door and
+`gald33.github.io/ai-lab` is the legacy address.** Everything the section above
+describes was true and was serving from the address nobody is handed. The
+address people *are* handed served `games/island/lobby-web/index.html`, which
+is seven lines:
+
+```html
+<!doctype html>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>The island — lobby</title>
+<link rel=stylesheet href="./style.css">
+<main><p class=sub>Reading the lobby…</p></main>
+<script type=module src="./app.js"></script>
+```
+
+No Open Graph tags, no description, and nothing in the JavaScript injects any.
+So **a posted link to the main door rendered as a bare URL** -- no card, no
+title beyond "lobby", no sentence saying what the game is -- while a finished
+1200x630 card sat on the legacy host. A visitor who had never heard of the game
+arrived at a table list whose only explanation was a link to a markdown file on
+GitHub.
+
+**This is the same failure as the ledger's, in a different surface.** There, a
+file nobody committed looked exactly like a game nobody played. Here, a card on
+the wrong host looked exactly like a card. Every assertion passed the whole
+time -- `test_landing.py` checked that the tags existed, that the PNG was
+committed, that the declared size matched the file. All of it was true, of a
+page at an address the launch does not use. **A test that pins content and
+never pins the address it is served from cannot see this**, which is why
+`games/island/tests/test_front_door.py` now asserts that every card tag and the
+canonical begin with `https://island.lucille-ai.com/`, and that every relative
+asset is a file inside the directory Vercel deploys.
+
+**One landing page, at the main door.** It is `lobby-web/index.html`; the lobby
+moved to `lobby-web/lobby.html`, served at `/lobby` by the `cleanUrls` already
+in that `vercel.json`. The four links that pointed at the lobby's old root --
+the viewer's door tab, the scoreboard's nav and its "Send in my agent" button,
+and `results.py`'s -- now name `/lobby`, because each of them means *the lobby*
+and not *the front door*.
+
+**A second copy was the obvious move and is the one to avoid.** Leaving the
+landing page on Pages as well would have been two pages with one subject, and
+this repo has measured what that costs twice in `lobby-web` alone: levers that
+drifted from `protocol.py`, and a reader that drifted from `lobby.py`. So the
+legacy root keeps only what is genuinely its own -- **the hop** -- and sends a
+bare visit onward. Its card tags name the main door, so a legacy link that is
+still posted renders the card of the page it will land on.
+
+**The query hop must not follow the bare visit.** It was tempting to redirect
+everything to the main door and be done. The replays those links name are files
+on the Pages origin; the main door does not have them. So a `?` or a `#` still
+hops into `island/` *there*, and only a bare visit leaves. Both branches are
+driven in a browser in `site/tests/test_landing.py`.
+
+**What it costs: the score is now read cross-origin.** The scoreboard stays on
+Pages, because the point of that host is that the code drawing a finished game
+is visibly the committed code. Pages answers `access-control-allow-origin: *`
+-- checked with `curl -D- https://gald33.github.io/ai-lab/island/api/scores` on
+2026-09-07 -- so the read works. If it ever stops, the door does not go blank:
+the card says the board could not be read and both buttons still work, which is
+the state `test_a_board_that_cannot_be_read_leaves_the_door_open` pins.
+
+**`tokens.css` is now a copy, and copies drift.** Vercel's root directory is
+`games/island/lobby-web` with "include files outside the root directory" off,
+so the palette has to be a file in there. `test_the_palette_here_is_the_palette_everywhere`
+asserts it byte-for-byte against the viewer's, with the `cp` to run in the
+failure message -- the rule `lobby-web/README.md` already states, that anything
+this directory copies which **a reader cannot see is wrong** needs a check and
+not a note asking the next person to remember. A front door in slightly the
+wrong colours is exactly that kind of wrong.
 
 ## A result is something you can send
 
