@@ -77,6 +77,46 @@ h1 {
 .actions a:hover { border-color: var(--ink-2); }
 .actions a.go:hover { filter: brightness(1.08); }
 
+/* ---- the ways to play --------------------------------------------------- */
+/* The headline action and the arrow read as one control: square the edge
+   between them and round the outside, so it is a split button and not two
+   buttons that happen to touch. */
+.split { display: inline-flex; }
+.split .go { border-radius: .7rem 0 0 .7rem; }
+.actions .split .arrow {
+  border-radius: 0 .7rem .7rem 0;
+  background: var(--eff); border: 1px solid var(--eff); border-left-color: #10181c33;
+  color: #10181c; cursor: pointer;
+  padding: .85rem 1rem; min-height: 2.75rem;
+  display: inline-flex; align-items: center;
+}
+.actions .split .arrow:hover { filter: brightness(1.08); }
+/* Drawn, not typed. `\u25be` is missing from enough faces that it falls back
+   to a hollow box, which reads as a broken page rather than as a menu -- seen
+   in a screenshot of the hand lobby's version of this button. Borders are in
+   every browser, and `currentColor` keeps it on the button's own ink. */
+.arrow .caret {
+  display: inline-block; width: 0; height: 0;
+  border-left: .34em solid transparent; border-right: .34em solid transparent;
+  border-top: .4em solid currentColor;
+}
+
+.ways {
+  list-style: none;
+  margin: .75rem 0 0;
+  padding: .5rem .75rem;
+  max-width: 34rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: .7rem;
+}
+.ways li { padding: .6rem .25rem; border-bottom: 1px solid var(--line); }
+.ways li:last-child { border-bottom: 0; }
+.ways a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.ways a:hover { color: var(--eff); }
+.ways .what { display: block; margin-top: .15rem; color: var(--ink-2);
+              font-size: .92rem; line-height: 1.45; }
+
 /* ---- the score to beat -------------------------------------------------- */
 
 .beat {
