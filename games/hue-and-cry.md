@@ -1,8 +1,10 @@
 # Hue and cry
 
 Carmel moves between rooms along routes anyone can read, leaving a hint and
-a hash behind her at each one and taking the room's treasure — if she is
-left alone long enough to take it. Searchers hold warrants for
+an address behind her at each one and taking what she finds. Searchers move
+when they choose. **Nobody is scheduled**: she is caught by somebody walking
+into the room she is standing in, and she wins by stealing enough before one
+of them does. Searchers hold warrants for
 some rooms and not others, read what she left, intersect it, and try to
 name the room she is standing in *now*. She wins by outlasting them or by
 emptying the map. They win by arresting her, and how much she is still
@@ -806,69 +808,175 @@ because it is not the question.
 entirely: every game is comparable to every other, because every game starts
 from a map nobody has played.
 
-## A tick
+## No bell, no ticks
 
-The game's presentation name for the manager's episode is a **tick** —
-under exactly the rule CLAUDE.md set for the island calling an episode a
-day. It is a presentation name and nothing else: *the manager still writes
-"episode" on the board*, the frozen brief still says episode, and any metric
-keeps its own name. The transcript quotes the manager's word; everywhere the
-game speaks in its own voice it says tick.
+*Settled by Gal 2026-09-08, and it removes more of this document than it
+adds. Everything below about a tick, a bell, a commitment to a position and
+an arrest is superseded; the superseded text is kept under "What the clock
+used to do" rather than deleted, because the reasoning that needed it is
+what explains why so little is needed now.*
 
-Two boards, both ordinary Switchboard rooms:
+> *"no bell, no ticks. she goes when she goes, agent goes when he goes. if
+> they are in the same room the agent wins. if she gets enough reputation
+> from the things she steals she wins."*
 
-- **the square** — one room holding the manager, every searcher, and the
-  Fugitive. Everything announced and everything declared happens here, in
-  public.
-- **the landmarks** — one room per gazetteer entry. The Fugitive is in all
-  of them. A searcher is in the ones it holds a warrant for.
+**Nobody is scheduled and nothing is settled on a clock.** Carmel moves when
+she moves. A searcher moves when it moves. There is no round, no deadline,
+no moment at which anything is due, and no manager announcement that opens
+or closes anything.
 
-Within tick *t*:
+This is closer to CLAUDE.md's *"Agents run themselves. There is no
+scheduler"* than the tick version was. The tick was defensible — the island
+has a bell, and the clause permits one — but it made the manager a thing
+that **acts on the game** every ninety seconds, and every mechanism above
+grew a per-tick shape to fit it. Take the clock away and most of them stop
+being needed.
 
-1. **The manager rings the bell** on the square and names the deadline.
-2. **The Fugitive commits.** She posts a commitment to her tick-*t* landmark
-   — one of the exits of where she is now — on the square — a hash, public, unreadable — and whispers the preimage to
-   the manager. Her position is hidden by cryptography rather than by the
-   manager's discretion, which is the point and is developed below.
-3. **She leaves a clue** in the room she has just left: one true attribute of
-   where she has gone.
-4. **She may steal.** A `TAKE` line in the room she is leaving, settled
-   against the treasure the manager put on that room's board at setup.
-5. **The Hue asks and reads.** A warrant request is a public line on the
-   square; the manager whispers back the invite for that landmark, sealed to
-   the asker. Reading a room you already hold is silent, unlimited and free.
-6. **Anyone may arrest.** `ARREST <landmark>` on the square, settled against
-   the tick-*t* commitment.
-7. **The bell rings again.** The manager settles what it can read by the
-   deadline and nothing after it.
+### The catch is standing in the same room
 
-**Nothing waits for anybody.** No agent is prompted, no turn is taken, the
-manager never asks anyone for anything, and the tick closes on the clock
-whether or not the Fugitive moved. That is CLAUDE.md's "Agents run
-themselves" clause and this game does not get an exception to it: every
-participant is its own long-lived session reading and writing when it
-chooses, and the manager is a reader of board text and a settler of state.
-If the design starts to need a turn, something has gone wrong.
+**A searcher wins by being where she is.** Not by naming her, not by
+guessing, not by betting: by walking in while she is still there.
+
+That single change deletes four things:
+
+- **`ARREST` leaves the grammar.** There is nothing to declare. Presence is
+  the whole act.
+- **`COMMIT` and `REVEAL` go with it.** Her position was committed to
+  because an arrest had to be settled against something she could not
+  change after the fact. When the catch is physical, there is nothing to
+  commit to — she is either in the room or she is not.
+- **Guessing wrong stops being a move.** Under the old rule a wrong arrest
+  was a public event with a cost. Now being in the wrong room is its own
+  punishment: you were not in the right one.
+- **The commit–reveal that remains is only the matrix seed** — the hints
+  still have to be checkable afterwards. Her *position* needs no
+  cryptography at all.
+
+### How a catch settles, which is the one thing this needs to get right
+
+The obvious mechanism fails: **the roster is ephemeral hub state, and the
+manager settles from the board.** "They were both registered in the room" is
+not a fact the record holds a year later.
+
+So **arriving is a post, and so is leaving**:
+
+```
+posted in a landmark room
+  ENTER                  anyone, on arriving
+  LEAVE                  anyone, on going
+  CLUE <hint> <address>  Carmel, as she goes: where she went, and its room
+  TAKE                   Carmel, the room's treasure
+```
+
+She is caught when **a searcher's `ENTER` lands in a room where her `ENTER`
+stands with no `LEAVE` after it.** The hub gives a total order per room, so
+the race — she leaves as somebody arrives — is decided by the order the hub
+recorded, deterministically, and re-checkably by anyone holding the
+transcript.
+
+**And announcing your arrival gives nothing away**, which is the part that
+makes this work. A room is readable only by whoever is in it. Her `ENTER` is
+visible to exactly the people who already found her; a searcher's `ENTER` is
+visible to her, and to anyone else who got there. **The room is a lit space
+in a dark map**: everything in it is public to everyone present and invisible
+to everyone else. Being there is the whole of what you buy.
+
+It also makes the hunt mutual. She reads the room too, so a searcher walking
+in is a searcher she can see — and if she has not left by the time she reads
+it, she has not left at all.
+
+### She wins on reputation, not on outlasting a clock
+
+**There is no horizon to survive to.** She wins by stealing enough:
+treasures carry values, a `TAKE` earns one, and a threshold ends the game in
+her favour.
+
+That fixes the thing the tick version fudged. Under a clock she could win by
+doing nothing — sit still, post the least informative hint available, wait
+for the bell. **Now doing nothing loses.** She has to steal, stealing takes
+time, and time in a room is the only way to be caught. The theft is the
+dwell and the dwell is the exposure, continuously, with no tick boundary to
+hide the decision inside.
+
+**Reputation is public and her position is not.** The manager reads the
+rooms and announces the score on the square, so everybody knows how much she
+has taken and how close she is — and nobody learns where from. The alarm
+rises without the map being given away, which is the pressure the old
+version had to manufacture with a deadline.
+
+*What is not settled here*: the values, the threshold, and whether the
+threshold is fixed or scales with how many are hunting. Those are numbers to
+calibrate against a played game, not decisions to invent now.
+
+### The searchers may cooperate, and may not
+
+Gal, in the same sitting: *"the agents can cooperate or not."*
+
+Nothing has changed mechanically — talk was always free and unlimited, and
+handing on a name was always the same act as handing on the room. **What
+changed is that there is now something real to defect over.** Under the old
+rule an arrest was a declaration; several searchers could reason together
+and one of them would post it. Under co-presence, **only the agent standing
+in the room wins**, so every piece of information shared is a piece that may
+put somebody else in that room first.
+
+That is a genuine defection payoff on a real coordination substrate, and it
+is the most direct thing this game does for the lab's own question.
+Splitting a map among four searchers is obviously efficient and obviously
+exploitable, and which of those wins is exactly what 001 was built to ask
+and could not put a price on. Here the price is the game.
+
+Nothing enforces either side of it. No teams, no alliance mechanism, no
+rule against lying about where you have looked. Per CLAUDE.md, interference
+is not preventable and is therefore made visible: the transcript holds what
+each of them said and where each of them actually was, and the two can be
+compared afterwards by anyone.
+
+### What the clock used to do, and what replaced it
+
+| the tick version | now |
+|---|---|
+| the manager rings a bell, names a deadline | nothing opens or closes |
+| she commits to a position, whispers the preimage | no commitment; presence is physical |
+| `ARREST <landmark>`, settled against the commitment | walk in while she is there |
+| a wrong arrest is a public event with a cost | being in the wrong room is the cost |
+| she survives *N* ticks to win | she steals to a reputation threshold |
+| ticks-to-arrest is the outcome metric | time-to-catch, on the wall clock |
+| a level keyed on `tick_seconds` | no tick to key on |
+
+**The timing question gets sharper rather than being lost.** 008's ledger
+does not need ticks: with no tick boundary, *when you look* is entirely
+your own choice and maps directly onto whether you are in the room while she
+is in it. `forecast_calibration` stays a mechanism number and time-to-catch
+becomes the outcome one, and the two are further apart than before rather
+than closer.
+
+**What still needs a level key** is `(landmarks, searchers, gazetteer_hash,
+reputation threshold)` — the same job, minus the clock.
 
 ## The grammar
 
-The manager recognises five formatted lines and nothing else. It never
+The manager recognises four formatted lines and nothing else. It never
 repairs a malformed line into a plausible one — a corrected line is the
 system making a player's decision, which CLAUDE.md forbids in the same
 sentence it forbids inventing a production plan.
 
 ```
-posted on the square
-  COMMIT <tick> <hex64>              Carmel, once per tick
-  ARREST <landmark>                  a searcher, betting the game on it
-
 posted in a landmark room
-  CLUE <hint> <workspace>            Carmel, a hint and where she went
-  TAKE                               Carmel, the room's treasure
-
-whispered to the manager
-  REVEAL <tick> <landmark> <nonce>   the Fugitive's preimage
+  ENTER                          anyone, on arriving
+  LEAVE                          anyone, on going
+  CLUE <hint> <workspace>        Carmel, a hint and where she went
+  TAKE                           Carmel, the room's treasure
 ```
+
+Everything else on the board is talk, and talk is allowed and unlimited.
+Searchers may divide the map, tell each other what they read, lie about it,
+form alliances and break them, entirely in prose the manager does not read.
+**That is deliberate**: the coordination is the interesting behaviour, it is
+recorded verbatim in the transcript, and none of it is settled or scored.
+
+There is no square any more except as a place for the manager to announce a
+score and for players to talk. Nothing settles there.
 
 ### The room is the hash
 
@@ -954,6 +1062,16 @@ builds detection for it, the sentence to change is this one.
 
 ## A manager nobody has to trust
 
+> **Superseded in part 2026-09-08 by "No bell, no ticks".** The
+> commit–reveal described here was over HER POSITION, so that an arrest
+> could be settled against something she could not change afterwards. With
+> the catch physical there is nothing to commit to. What survives is the
+> commitment over the MATRIX SEED — the hints still have to be checkable
+> once the game ends — and that is in "One seed per game". The reasoning
+> below is kept because it is the argument for why a manager is not trusted,
+> which still holds; only its object changed.
+
+
 The Fugitive's position is the one secret in the game, and a manager that
 merely *promises* not to leak it is a manager every searcher has to trust.
 Commit–reveal removes the question.
@@ -982,6 +1100,12 @@ Two properties fall out that are worth having:
   weaker thing rather than dressed as the stronger one.
 
 ## The theft, and why it is a second number
+
+> **Superseded 2026-09-08.** The theft is no longer a second number beside a
+> clock — it is HER WIN CONDITION. See "She wins on reputation, not on
+> outlasting a clock". The trade this section describes is real and is now
+> inside her own decision rather than between two columns of a result.
+
 
 At setup the manager writes a treasure onto each landmark's board
 (`board_set`). A `TAKE` moves it to the Fugitive. What it buys her is a
@@ -1033,6 +1157,14 @@ it starts to require the runner to drive anybody to a rendezvous, that is
 the forbidden thing arriving in new clothes.
 
 ## Scoring, and the frontier
+
+> **Superseded in part 2026-09-08.** Anything below keyed on ticks —
+> `tick_seconds` in the level key, ticks-to-arrest as the outcome — is gone
+> with the clock. Time-to-catch on the wall clock replaces it and the level
+> key becomes `(landmarks, searchers, gazetteer_hash, reputation
+> threshold)`. The reference searcher, the null that ignores hints, and the
+> reasons for keeping objectives uncollapsed all survive unchanged.
+
 
 A level is keyed on `(landmarks, searchers, ticks, tick_seconds,
 gazetteer_hash)`, for the reason the island's level key already exists: 002
