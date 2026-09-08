@@ -123,6 +123,25 @@ jobs:
       - name: Stage the result pages
         run: python viewer/results.py "$RUNNER_TEMP/site/island/g"
 
+      # **The card the link previews show.** Every page staged above declares
+      # `og:image` at `<site>/card.png` -- the viewer, the scoreboard, and one
+      # result page per game -- and until 2026-09-08 nothing put a file there.
+      # `curl` on the live host answered 404, so the pages that exist *for*
+      # link previews previewed with no image, for as long as they had existed.
+      #
+      # It stayed green because `test_results.py` asserted the tag STRING and
+      # not the file: the same shape as the defect in `games/island.md`, "And
+      # it was built at the wrong address" -- an assertion about a page nobody
+      # had loaded. `test_the_card_the_pages_declare_is_staged_here` now reads
+      # this workflow and requires the copy, so deleting this step fails a test
+      # rather than quietly emptying every preview again.
+      #
+      # One card, rendered once, in `lobby-web/` where `make_card.py` writes it
+      # and Vercel deploys it. Copied rather than re-rendered: two renderers
+      # would drift, and this is the same image at both addresses on purpose.
+      - name: Stage the card the pages declare
+        run: cp ../../games/island/lobby-web/card.png "$RUNNER_TEMP/site/"
+
       # The root: **the legacy address**. The front door is
       # island.lucille-ai.com, decided by Gal 2026-09-07, and the landing page
       # lives in games/island/lobby-web/ where Vercel deploys it. This root got
