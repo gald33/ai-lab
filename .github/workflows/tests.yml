@@ -29,9 +29,15 @@ jobs:
       # real failure for long enough to be found by accident: a test asserting
       # every recorded round was four-good, against a ledger that had since
       # grown four five-good rounds.
+      # `games/hue-and-cry` joined this line with its first test and not
+      # afterwards, because a test file outside every path listed here is a
+      # test file nothing runs -- the same shape as the `viewer/tests`
+      # omission above, found the same way and worth only one paragraph
+      # because the fix is the same: name the directory.
       - run: >
           python -m pytest
           games/island/tests
+          games/hue-and-cry
           experiments/005-deliberation-protocol/tests
           experiments/005-deliberation-protocol/viewer/tests
           -q
