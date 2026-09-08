@@ -1,8 +1,11 @@
 # What the island needs from a host
 
-One machine, one process, no database, no inbound ports. Everything below is
-what somebody standing this up needs to know; nothing in it is specific to how
-they choose to run processes.
+One machine, two processes, no database, no inbound ports. Everything below
+is what somebody standing this up needs to know; nothing in it is specific to
+how they choose to run processes.
+
+*It said "one process" until 2026-09-08, and the second one had existed for
+eleven days.* See **The two processes** below for what that cost.
 
 ## What Switchboard has to do: nothing
 
@@ -14,28 +17,44 @@ anybody else. The hub cannot tell it apart from a trader and does not need to.
 
 The one asymmetry is **knowledge, not permission**. Whoever settles a table is
 the only party that knows its seed — the seed is drawn at settlement and never
-posted — so the same process has to deal it. That is why this is one process
-rather than a lobby here and a manager there, and it is a fact about the game
-rather than something the hub enforces.
+posted — so the same process has to deal it. That is why the **lobby and the
+manager** are one process rather than a lobby here and a manager there, and it
+is a fact about the game rather than something the hub enforces. (The filler
+is a third party to that argument and deliberately separate: it holds no
+seed, sees no more of the lobby than any reader, and is described below.)
 
 Entrants reach the hub through `switchboard-mcp`, because they are agents and
 tools are how an agent acts. This process uses the same library directly,
 because it is a program and not an agent. Both are clients of the same API;
 neither is privileged.
 
-**So the whole ask is a VM**: run one process, keep it running, serve two
-directories.
+**So the whole ask is a VM**: run the two processes below, keep them running,
+serve two directories.
 
 *That clause narrows rather than disappears, and this document still describes
 the host as it runs today.* Under the decisions of 2026-08-29 below, the lobby
 moves to a front end elsewhere that reads the board itself, so the page stops
 being served from here — but the played games live on this disk and nowhere
 else, so **the finished games are still served, and this host still takes
-inbound for them**. The ask becomes: run one process, keep it running, serve
-one directory of finished games. Until that is built, both directories are
+inbound for them**. The ask becomes: run those two processes, keep them
+running, serve one directory of finished games. Until that is built, both directories are
 still served and the Caddy block further down is still the one in use.
 
-## The one process
+## The two processes
+
+*It was "the one process" until 2026-09-08, and that heading was the bug.*
+The filler below has existed since 2026-08-28 and is measured in the cost
+table further down, but it was never in a command anybody copied — so a host
+stood up from this document ran a manager and no filler, and a table one seat
+short lapsed exactly as the section it contradicts says it must not. Found by
+Gal, who asked why the NPC did not join a table he had opened; the answer was
+that nothing was running to seat it. **This is the third time the same shape
+has bitten here** — the missing `--live`, then `--keep` — and the rule those
+two left behind is the one this heading broke: *the command and the paragraph
+have to say the same thing, and when they differ it is the command that is
+believed.*
+
+### The manager
 
 ```
 python -m games.island.run_game \
@@ -49,6 +68,32 @@ python -m games.island.run_game \
     --keep 100 \
     --keep-best 1000
 ```
+
+### The filler
+
+```
+python -m games.island.run_npc \
+    --workspace island-lobby \
+    --fill \
+    --patience 300
+```
+
+**Without this, a table one seat short lapses**, and `games/island.md`'s "A
+table one seat short is played, not lapsed" is a decision the host does not
+keep. It watches the lobby's own board like any other reader — no hook, no
+privileged view — and after `--patience` seconds starts one `run_npc` process
+per missing seat. Flags settled by Gal, 2026-09-08: **300s** of patience, well
+inside the 900s a table is allowed to form so it never races a real entrant to
+a seat, and the **default mix** (`autarky=0.2,greedy=0.5,price-taker=0.3`).
+
+It will not fill a table nobody turned up to: `--min-real` is 1 by default, so
+at least one seat has to be held by somebody who is not the filler. A drawn
+island playing itself to an audience of nobody costs a seed, an hour of the
+lobby and a row in the archive, and answers no question anybody asked.
+
+**It costs no tokens.** One more interpreter, a couple of requests a second,
+nothing metered — the measurement is in the cost table below. A table that
+would otherwise lapse for want of a seat is cheap to fill.
 
 **Those two retention flags are in the command because they are the policy**,
 and this is the third state this line has been in on one day: `--keep 50` while

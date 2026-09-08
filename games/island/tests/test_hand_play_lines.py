@@ -179,7 +179,8 @@ _PAGE = """<!doctype html><meta charset=utf-8><title>play lines</title>
 <script type=module>
 import {{ produceLine, proposeLine, approveLine, declineLine,
          openOffers, seatsNamed, whichDay, privateHalf, seatLabels,
-         amount, notes, GOODS }} from './play_lines.js';
+         amount, notes, roomQuery, roomLink, seatTaken,
+         GOODS }} from './play_lines.js';
 
 const write = {{ produce: produceLine, propose: proposeLine,
                  approve: approveLine, decline: declineLine }};
@@ -195,6 +196,8 @@ for (const [kind, args] of cases) {{
 const board = {board};
 const noise = {noise};
 const whispered = {whispered};
+const SEAT_LINES = {seat_lines};
+const SEAT_NOISE = {seat_noise};
 const EXTRA_NOTES = [
   // A refusal, which must never be dropped.
   {{ body: "not settled: shares sum to 1.8, over the budget of 1.0 by 0.8" }},
@@ -216,6 +219,16 @@ window.RESULT = {{
   noiseSeats: seatsNamed(noise),
   noiseDay: whichDay(noise),
   half: privateHalf(whispered),
+  // The room, hung on a link. Empty fields must not be written out blank.
+  query: roomQuery({{ workspace: "island-g7", key: "K", seat: "T1",
+                     name: "pip", write_key: "", token: "  ", channel: null }}),
+  emptyLink: roomLink("./kids.html", {{}}),
+  fullLink: roomLink("./kids.html", {{ workspace: "w", key: "k" }}),
+  // The seat, off the lobby's own witnessing line.
+  seatFromLobby: seatTaken(SEAT_LINES, {{ table: "g39", name: "Gal" }}),
+  seatWrongTable: seatTaken(SEAT_LINES, {{ table: "g40", name: "Gal" }}),
+  seatWrongName: seatTaken(SEAT_LINES, {{ table: "g39", name: "Mallory" }}),
+  seatFromNoise: seatTaken(SEAT_NOISE, {{ table: "g39", name: "Gal" }}),
   labels: seatLabels(board),
   noiseLabels: seatLabels(noise),
   amounts: {amounts}.map((q) => amount(q)),
@@ -310,6 +323,24 @@ def real_board() -> list[str]:
 #: `real_board`, which draws the island these numbers belong to.
 WHISPERED: list[str] = []
 
+#: The lobby's own witnessing lines, in the shape `lobby._join` writes them.
+#: The real thing is asserted end to end in `test_hand_pages.py`, against a
+#: real `Lobby` that really seated somebody; these are here for the awkward
+#: cases, which an integration test cannot reach on purpose.
+SEAT_LINES = [
+    "g39 seat T1 = Gal, key sWk00c5VlODNSpy96, sealed, nonce 479a0169 (1/2)",
+    "g39 seat T2 = npc-g39-1, key wY2gDwO0hRu1RlW4, sealed, nonce 1525db05 (2/2)",
+]
+
+#: Lines that name a seat without being the lobby witnessing one. A wrong
+#: answer here puts somebody else's label in a driver's declaration, which the
+#: record then reads as that seat having a human on it.
+SEAT_NOISE = [
+    "g39 seat T1 = Gal was witnessed, key sWk00c5, and I am not Gal",
+    "reminder: g39 seat T9 = Gal, key nope, sealed",
+    "T1 = Gal, key sWk00c5VlODNSpy96, sealed",
+]
+
 #: Quantities as they really arrive in an offer, and the awkward ones around
 #: them. The first is the one that was on the page: a twelfth of a loaf,
 #: printed in full at an eight-year-old.
@@ -353,7 +384,9 @@ def composed(tmp_path_factory, real_board):
                                  board=json.dumps(lines),
                                  noise=json.dumps(NOISE),
                                  whispered=json.dumps(WHISPERED),
-                                 amounts=json.dumps(AMOUNTS)))
+                                 amounts=json.dumps(AMOUNTS),
+                                 seat_lines=json.dumps(SEAT_LINES),
+                                 seat_noise=json.dumps(SEAT_NOISE)))
     server = _serve(tmp_path)
     url = f"http://127.0.0.1:{server.server_address[1]}/lines.html"
 
@@ -773,3 +806,44 @@ def test_a_refusal_is_never_dropped(composed):
     for key in ("notesShown", "notesBare"):
         assert [n for n in composed[key]
                 if "not settled" in n["text"]], f"{key} lost the refusal"
+
+
+# --- getting from one page to another without losing the room --------------
+
+def test_a_link_between_the_pages_carries_the_room(composed):
+    """**They used to carry nothing.**
+
+    Clicking "the same game with the island drawn" mid-round dropped the
+    workspace, the key and the seat, and landed on an empty form with the bell
+    still running.
+    """
+    import urllib.parse
+
+    got = dict(urllib.parse.parse_qsl(composed["query"]))
+
+    assert got == {"workspace": "island-g7", "key": "K", "seat": "T1",
+                   "name": "pip"}, got
+    assert "write_key" not in got and "token" not in got and "channel" not in got, (
+        "an empty field is left out rather than written blank")
+    assert composed["emptyLink"] == "./kids.html", (
+        "and a link built before anybody entered is still a link to the page")
+    assert composed["fullLink"] == "./kids.html?workspace=w&key=k"
+
+
+def test_the_seat_comes_off_the_lobbys_own_witnessing_line(composed):
+    """**Which is why nobody should have to type `T1`.**
+
+    The lobby says which label it gave you, in public, at the moment it seated
+    you. Asking the driver for it asked for something the page already had --
+    and asked a child to go and find a label on a board written for agents.
+    """
+    assert composed["seatFromLobby"] == "T1"
+    assert composed["seatWrongTable"] == "", "a seat at another table is not yours"
+    assert composed["seatWrongName"] == "", "and neither is somebody else's"
+
+
+def test_no_seat_is_taken_from_talk_about_one(composed):
+    """The consequence of guessing here is worse than the consequence of
+    asking: a wrong label goes into this driver's declaration, and the record
+    then reads a seat as having a human on it that does not."""
+    assert composed["seatFromNoise"] == ""

@@ -220,6 +220,7 @@ import { openLine, joinLine, nonce, LIMITS, Malformed } from "./lobby_lines.js";
 import { Hub } from "./hub.js";
 import * as identity from "./identity.js";
 import { Room, bindShortcuts } from "./room.js";
+import { seatTaken } from "./play_lines.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad) => {
@@ -461,6 +462,13 @@ async function readInvite(hub) {
                                   name: $("name").value || "hand" });
   // The room is write-protected; the seat's invite carries its write key.
   if (inv.wk) q.set("write_key", inv.wk);
+  // **And the seat, because this board is where it was witnessed.** The
+  // playing pages used to ask for it, which asked the driver to go and find
+  // a label on a board written for agents -- while the line naming it was
+  // already here, posted by the lobby at the moment it seated them.
+  const label = seatTaken(window.HAND_BOARD || [],
+                          { table: seat.table, name: $("name").value });
+  if (label) q.set("seat", label);
   window.HAND_INVITE = inv;
   const a = document.createElement("a");
   a.id = "playLink";

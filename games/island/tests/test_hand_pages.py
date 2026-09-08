@@ -425,6 +425,14 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     drawn = tab.locator("#kidsIslandLink")
     assert drawn.get_attribute("href") == \
         f"./kids-island.html?{href.split('?', 1)[1]}"
+
+    # **And the seat, so nobody has to type `T1`.** The lobby witnessed this
+    # driver into a labelled seat and said so on its own board; a page that
+    # then asked for the label would be asking for something it already had --
+    # and asking a child to find it on a board written for agents.
+    assert query["seat"] == table.label(
+        next(peer for peer, name in table.seats.items() if name == "hand-w")), \
+        f"the link carries the seat the lobby gave: {query}"
     # Under the status message, not somewhere else on the page: the message
     # says where to look, and the test holds it to that.
     assert tab.evaluate(
@@ -1857,5 +1865,49 @@ def test_the_board_page_says_its_notes_the_same_way(browser, site, cors_hub):
     assert "production capacity" not in shown, shown
     assert "not settled" in shown
     assert tab.locator("#myHalf .bar").count() > 0
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_nav_between_the_playing_pages_carries_the_room(
+        browser, island_site, cors_hub):
+    """**They used to carry nothing at all.**
+
+    Clicking "the same game without the picture" mid-round dropped the
+    workspace, the key and the seat, and landed on an empty form with the bell
+    still running -- and the only way back to the invite was the lobby page in
+    the browser that joined. Followed for real here rather than asserted on an
+    `href`, because what matters is the page you arrive at.
+    """
+    room = f"{KIDS_3D}-nav"
+    manager = _island_room(cors_hub, "manager-nav", room)
+    manager.register(name="manager", kind="local", branch="main", task="")
+    _played_board(manager, "island-nav")
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/kids-island.html", errors)
+    _enter_island(tab, cors_hub, room, name="kid-nav", channel="island-nav")
+
+    tab.click("#toKids")
+    tab.wait_for_url("**/kids.html?*", timeout=15_000)
+    query = dict(urllib.parse.parse_qsl(tab.url.split("?", 1)[1]))
+    assert query["workspace"] == room
+    assert query["key"] == KEY
+    assert query["seat"] == "T1"
+    assert query["name"] == "kid-nav"
+    assert query["channel"] == "island-nav"
+
+    # And the page it lands on is ready to play, not a blank form: the fields
+    # are filled and the grown-up fold is shut, which is the whole point.
+    assert tab.input_value("#workspace") == room
+    assert tab.input_value("#seat") == "T1"
+    assert not tab.locator("#setup").get_attribute("open"), \
+        "arriving with a room means the setup fold is shut"
+
+    # Back again, still carrying it.
+    tab.click("#toIsland")
+    tab.wait_for_url("**/kids-island.html?*", timeout=15_000)
+    assert dict(urllib.parse.parse_qsl(
+        tab.url.split("?", 1)[1]))["workspace"] == room
     assert not errors, errors
     tab.close()

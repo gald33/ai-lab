@@ -444,3 +444,71 @@ export function notes(whispers, { privateShown = false } = {}) {
   }
   return out;
 }
+
+// --- getting from one page to another without losing the room -------------
+
+//: What a page needs to be the same room again. `seat` and `channel` are here
+//: and are **not** in the invite the lobby builds -- the lobby does not know
+//: which seat you will turn out to be, and a page that already does should
+//: not make its driver type it a second time.
+const CARRIED = ["url", "token", "workspace", "key", "write_key", "channel",
+                 "name", "seat"];
+
+/**
+ * The room, as a query string to hang on a link: `workspace=…&key=…`.
+ *
+ * **The links between these pages used to carry nothing at all.** Clicking
+ * "the same game with the island drawn" mid-round dropped the room and landed
+ * on an empty form -- with the bell still running, and the invite only
+ * reachable by going back to the lobby page in the browser that joined. A
+ * driver who did that lost the day, and nothing on the page said why.
+ *
+ * Empty fields are left out rather than written blank, so a link built before
+ * anybody has entered is still a link to the page rather than to a page
+ * carrying eight empty answers.
+ */
+export function roomQuery(fields) {
+  const q = new URLSearchParams();
+  for (const name of CARRIED) {
+    const value = fields?.[name];
+    if (typeof value === "string" && value.trim()) q.set(name, value.trim());
+  }
+  return q.toString();
+}
+
+/** The same room on another page: `./kids.html?workspace=…`. */
+export function roomLink(page, fields) {
+  const q = roomQuery(fields);
+  return q ? `${page}?${q}` : page;
+}
+
+//: `lobby._join`: "g39 seat T1 = Gal, key sWk0…, sealed, nonce 479a… (1/2)".
+//: A trader name is `[A-Za-z0-9._-]{1,32}` (`protocol._NAME`), so it holds no
+//: comma and no space, and the comma before `key` ends it.
+const SEAT_TAKEN = /^(\S+) seat (\S+) = (\S+?), key /;
+
+/**
+ * The seat the lobby witnessed for this name at this table, or `""`.
+ *
+ * **Which is why nobody should have to type `T1`.** The lobby says which
+ * label it gave you, in public, on its own board, at the moment it seated
+ * you -- so the page that reads that board can put the seat in the link it
+ * builds, and the driver never meets the question. Asking was the first
+ * design and it was asking for something the page already had; worse, it
+ * asked a child to go and find a label on a board written for agents.
+ *
+ * It stays a field on the playing pages for the case this cannot cover: a
+ * driver arriving by a link somebody typed by hand, or from a lobby that has
+ * since forgotten the table. `""` means "not on this board", and then the
+ * question is worth asking.
+ */
+export function seatTaken(lines, { table, name } = {}) {
+  if (!table || !name) return "";
+  for (const row of lines || []) {
+    const body = typeof row === "string" ? row
+               : (row && typeof row.body === "string" ? row.body : "");
+    const found = SEAT_TAKEN.exec(body.trim());
+    if (found && found[1] === table && found[3] === name) return found[2];
+  }
+  return "";
+}
