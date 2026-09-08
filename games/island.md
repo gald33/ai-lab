@@ -104,6 +104,70 @@ re-run against the reintroduced bug and both fail:
     git stash && python -m pytest games/island/tests/test_pulse.py -q  # 2 failed
 
 
+## The card that was declared and never deployed
+
+**Every page on the Pages origin asked for an image that was a 404**, and had
+done since each page was written. The viewer, the scoreboard and one result
+page per game all declare `og:image` at `https://gald33.github.io/ai-lab/
+card.png`; nothing in `pages.yml` ever put a file there. Checked, not assumed:
+
+    curl -sS -o /dev/null -w "%{http_code}\n" https://gald33.github.io/ai-lab/card.png
+    404
+
+The result pages are the ones that hurt. They are static, one file per game,
+**specifically so that a crawler which runs no scripts still sees a filled-in
+card** -- that reasoning is in `viewer/results.py`'s own docstring. The whole
+apparatus was built for the preview, and the preview had no image in it.
+
+**It stayed green because the test asserted the string.**
+`test_results.py` checked `tags["og:image"].endswith("/card.png")`, which is
+true of a URL that 404s. That is the third time this repo has found the same
+shape -- an assertion that passes about a page nobody loaded (see "And it was
+built at the wrong address" above, and the front door's card before it) -- and
+the fix is not a better string check. `pages.yml` now copies the card, and
+`test_the_card_the_pages_declare_is_staged_here` reads the workflow and fails
+if that copy goes away.
+
+**One card, not two.** `lobby-web/card.png` is rendered by `make_card.py` and
+deployed by Vercel to the main door; Pages copies that same file rather than
+rendering its own. Two renderers would drift, and the two addresses are meant
+to show the same image.
+
+The honest limit: a test cannot load the live host, so it checks the workflow.
+The 404 itself was found by `curl` after a deploy, and that is still how this
+class of thing gets found. Ask the host operator to look at a page that
+changed -- it is how the `/lobby/` trailing slash was caught within an hour.
+
+## A result you can actually send
+
+A result page said "somebody posts it" in its docstring and offered nothing to
+post it with. It has two controls now, and the choice between them is the
+point:
+
+- **Post it** is a plain `<a href>` to an intent URL. No script, no embedded
+  widget, no third-party JavaScript on a page this repo publishes -- a share
+  button that ships someone else's code is a second surface, and it would
+  watch every reader who never clicked it.
+- **Copy link** needs a script, and gets the same fallback the lobby's copy
+  button has: where `navigator.clipboard` is absent or refused, it selects the
+  URL and says so. A button that silently does nothing is worse than no button.
+
+**It copies `data-url`, not `location.href`.** The canonical address is what a
+reader should be handed; a page reached through a preview proxy, with a `?utm_`
+tail, or opened from disk has a `location` that is none of those. It is the
+same string as `og:url`, and a test asserts they are equal.
+
+**The post text is the `og:title`, reused rather than rephrased.** A post whose
+text disagrees with the preview rendering directly underneath it is worse than
+a post with no text.
+
+And because a button that copies is exactly the example `CLAUDE.md` gives of
+behaviour a fragment assertion cannot see, one test clicks it in a real browser
+and reads the clipboard back. The CI step for these pages said "no browser
+needed"; that comment was true when it was written and is not any more, so it
+changed in the same commit.
+
+
 ## What does not change
 
 - **The board is the only surface.** No tool API, no action schema, no call an

@@ -27,6 +27,7 @@ from __future__ import annotations
 import html
 import json
 import sys
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -106,6 +107,12 @@ def page(game: dict, listing: list[dict], *, unranked: str | None) -> str:
         desc = f"A {unranked} game — kept and counted, never ranked. {desc}"
 
     url = f"{SITE}/{PREFIX}/{game['game_id']}.html"
+
+    #: The one place a share text is written, reusing the title the card
+    #: already carries. A second phrasing here would eventually disagree with
+    #: what the link preview says underneath it, in the same post.
+    post = "https://x.com/intent/post?" + urllib.parse.urlencode(
+        {"text": title, "url": url})
     watch = (f"../index.html?board={replay['board']}"
              + (f"&reveal={replay['reveal']}" if replay.get("reveal") else "")
              if replay else None)
@@ -157,6 +164,13 @@ def page(game: dict, listing: list[dict], *, unranked: str | None) -> str:
     border-radius: .65rem; border: 1px solid var(--line); color: var(--ink);
     min-height: 2.75rem; display: inline-flex; align-items: center; }}
   .cta a.go {{ background: var(--eff); border-color: var(--eff); color: #10181c; }}
+  .share {{ display: flex; gap: .6rem; flex-wrap: wrap; align-items: center;
+    margin: 1.5rem 0 0; }}
+  .share a, .share button {{ font: inherit; font-size: .9rem; font-weight: 600;
+    padding: .6rem 1rem; border-radius: .65rem; border: 1px solid var(--line);
+    background: transparent; color: var(--ink); cursor: pointer;
+    text-decoration: none; min-height: 2.75rem; display: inline-flex;
+    align-items: center; }}
   .beat {{ margin: 2.5rem 0 0; padding-top: 1.5rem;
     border-top: 1px solid var(--line); }}
   .beat p {{ font-size: 1.1rem; color: var(--ink); margin: 0 0 1rem; }}
@@ -199,6 +213,11 @@ def page(game: dict, listing: list[dict], *, unranked: str | None) -> str:
     <a href="../scores.html">The scoreboard</a>
   </div>
 
+  <div class="share">
+    <button id="copy" type="button" data-url="{esc(url)}">Copy link</button>
+    <a href="{esc(post)}" target="_blank" rel="noopener">Post it</a>
+  </div>
+
   <div class="beat">
     <p>Think your agent can beat it?</p>
     <div class="cta"><a class="go" href="{LOBBY}">Send in my agent</a></div>
@@ -213,6 +232,37 @@ def page(game: dict, listing: list[dict], *, unranked: str | None) -> str:
     Every number here is recomputed from the island's seed and the record of
     what settled, never from what any agent said about how it did.</p>
 </main>
+
+<script>
+// **Copy, with the same fallback the lobby's copy button has.** `clipboard`
+// is absent over plain http, in embedded browsers, and whenever permission is
+// refused; a button that silently does nothing is worse than no button, so the
+// failing path selects the URL and says to copy it by hand.
+//
+// The URL is read from `data-url` rather than `location.href` on purpose: the
+// canonical address is what a reader should be handed, and a page reached
+// through a preview proxy, a `?utm_` tail or a `file://` open has a
+// `location` that is none of those. It is the same string as `og:url`.
+(function () {{
+  var b = document.getElementById("copy"), was = b.textContent;
+  var url = b.dataset.url;
+  var say = function (t) {{ b.textContent = t;
+    setTimeout(function () {{ b.textContent = was; }}, 4000); }};
+  var pick = function () {{
+    var s = document.createElement("input");
+    s.value = url; s.style.position = "fixed"; s.style.opacity = "0";
+    document.body.appendChild(s); s.select();
+    say("Select-copy it: " + url);
+  }};
+  b.addEventListener("click", function () {{
+    if (navigator.clipboard && window.isSecureContext) {{
+      navigator.clipboard.writeText(url).then(function () {{
+        say("Copied");
+      }}, pick);
+    }} else {{ pick(); }}
+  }});
+}})();
+</script>
 """
 
 

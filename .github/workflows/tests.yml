@@ -248,13 +248,22 @@ jobs:
           experiments/005-deliberation-protocol/viewer/tests/test_scores_page.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
-      # The per-game result pages. No browser needed -- they are static files
-      # and the point is that their Open Graph tags are *in* the file, which is
-      # a text assertion. Here rather than in the `viewer` job because they are
-      # part of the same public surface as everything above.
+      # The per-game result pages. Most of what matters here is still a text
+      # assertion -- their Open Graph tags are *in* the file, because a crawler
+      # runs no scripts and these pages exist for crawlers as much as for
+      # people. **This step used to say "no browser needed" and that stopped
+      # being true on 2026-09-08**, when the pages gained a Copy-link button:
+      # `CLAUDE.md` names "a button that copies" as the example of behaviour
+      # that a fragment assertion cannot see, so one test now clicks it in a
+      # real browser and reads the clipboard back.
+      #
+      # Here rather than in the `viewer` job because they are part of the same
+      # public surface as everything above.
       - run: >
           python -m pytest
           experiments/005-deliberation-protocol/viewer/tests/test_results.py -q
+        env:
+          ISLAND_REQUIRE_BROWSER: "1"
 
   drawing-quick:
     runs-on: ubuntu-latest
