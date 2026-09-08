@@ -1506,6 +1506,88 @@ and a desert airbase reported thinner air than Lhasa. `build_facts.py` asks
 for `psn:` -- the SI-normalised value -- and a test pins Everest between
 8,000 and 9,000 metres so the bug cannot come back silently.
 
+## The sentences, and how "unique per landmark" stopped contradicting the collision rule
+
+*Written 2026-09-08, step two: "for every landmark create 3 hint
+sentences", and, chosen over a recommendation to the contrary, **per
+landmark, unique**.*
+
+Those two look like they cannot both hold. This document's most expensive
+measured lesson is that a hint true of exactly one landmark ends the chase
+-- the authored pass that read beautifully and scored 1.03 candidates. A
+sentence unique to a landmark is the same thing said in prose.
+
+**They hold because they are about different layers**, and separating them
+is the whole design of `hints.py`:
+
+- **The words are unique.** No two landmarks carry the same sentence.
+  Asserted in `test_hints.py`, not hoped for.
+- **What the words assert is shared.** Every sentence renders one
+  descriptor, and no descriptor is carried by fewer than sixteen landmarks.
+
+So two places that share `traffic_keeps_left` get two different sentences
+about stepping off a kerb the wrong way. A reader who has seen a line
+before has learned the descriptor and not the room -- which is exactly what
+a clue is for -- and nobody ever reads the same line twice, which is what
+makes it worth posting. **The prose carries the feeling; the descriptor
+carries the ambiguity.**
+
+### Six, not three, and why
+
+A landmark carries six candidate descriptors and the seed makes three live.
+Three sentences per landmark would be the gazetteer deciding what the seed
+is supposed to decide, so there are six -- **5,963 of them**, not 6,000,
+because 25 landmarks have fewer than six candidates once the collision
+floor has taken its cut, and printing the real number is cheaper than
+explaining a round one later.
+
+### Where the feeling comes from, given that the descriptors are dull
+
+Deriving descriptors from Wikidata bought truth at the cost of colour:
+`in_the_islamic_conference` is not `call to prayer`. The colour is put back
+in `clauses.py`, which is the authorship in this game -- 329 hand-written
+observations, several per descriptor, each written to pass one test that is
+not "is this evocative":
+
+> Would this be true of **every** landmark that carries the descriptor?
+
+That test kills the good lines first, and it is supposed to.
+`south_of_the_line` cannot say the water went down the drain backwards,
+because it does not; it says Orion was standing on his head, which he is.
+`inside_the_tropics` cannot say she had no shadow at noon -- that happens
+on two days a year -- so it says the day and the night were much the same
+length. `a_crown_still_on_the_coins` cannot say a queen's head, because
+most of those monarchies have kings.
+
+Where a descriptor is institutional and has no smell, the clause reaches
+for what a traveller would have noticed -- Schengen is *she crossed a
+border and nobody asked her for anything* -- and where there is no such
+thing it states the fact plainly. **A dull true clause beats a vivid false
+one**, every time, and the first draft of this file had the ratio wrong: a
+descriptor carried by 189 landmarks had one clause, so the "unique"
+sentences were one observation wearing 189 different names. The banks were
+widened until no descriptor carries more than about twenty-five landmarks
+per clause.
+
+### The witnesses had a gender and should not have
+
+A sentence is a clause in a frame, and the frame supplies the witness -- a
+night porter, a laundry woman, a nun, a girl selling cigarettes. The
+clauses were written saying "he": *he tracked her as far as the African
+continent*. Composed, that produced **a nun reporting that he had tracked
+her across Africa** -- wrong about the person and wrong about the grammar,
+from a bank of 45 clauses that all read fine in isolation.
+
+Clauses say "they" now. `she` and `her` are untouched and are checked
+against: they are Carmel, who is the one thing every clause may assume.
+`test_hints.py::test_no_clause_gives_the_witness_a_gender` holds the line,
+with Orion exempted on the grounds that he is a constellation.
+
+```
+python3 games/hue-and-cry/hints.py            # read some
+python3 games/hue-and-cry/hints.py --build    # rewrite hints.tsv
+```
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
