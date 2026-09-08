@@ -886,8 +886,9 @@ pages use it. `lobby.html` enters the room **the moment it has the invite**,
 whispered or in the clear, with the very `Hub` identity that posted the JOIN,
 and shows the controls under the lobby it is already showing. `play.html` is
 the same room behind a button, for a driver arriving with an invite in the
-URL, and it keeps the brief. The link between them is still offered, as
-"open it on its own page instead", and is no longer the only way in.
+URL, and it keeps the brief. The link between them is still offered -- since
+2026-09-08 as the split "Send in my agent" button and its menu, one row per
+playing page -- and is no longer the only way in.
 
 **Polling is reading, not driving.** The board reads itself while the round
 is on because a driver has sixty seconds an episode and cannot be asked to
@@ -1477,6 +1478,151 @@ the *coordinates*, never the key. Closing that would mean letting a page
 import a signing key — `play.html` already exports one in the brief, so it is
 the symmetric operation and not a new capability — and that is a decision
 about what a page may be handed, not a navigation fix. It is not made here.
+
+### The key import that solved nothing
+
+Written down because it was nearly built. The section above ends by naming a
+CLI joiner's seat as the thing a link cannot carry, and proposes letting a page
+import a signing key as the symmetric operation to the brief that already
+exports one. Gal asked the question that ended it (2026-09-07): *"before
+solving the kids viewer playable UI, which is in a browser — what's the
+difference between that and the hand's page, which is also in the browser?"*
+
+**There is none.** All four pages — `lobby.html`, `play.html`, `kids.html`,
+`kids-island.html` — import the same `identity.js`, which keys one IndexedDB
+store (`island-hand`) by the driver's name, and the deploy serves all four from
+one origin. A driver who joined in a browser already has their seat key on
+every one of those pages; carrying the room in a link is the whole of what was
+missing, and that shipped. The import would have bought exactly one case: a
+driver who took a seat from the CLI and then wants to play in a browser --
+which nobody had asked for.
+
+So it is not built, and the reason is recorded rather than the conclusion
+alone: **the problem was invented by describing the fix**. The paragraph above
+is left standing because reading it is how the second person will nearly build
+it too.
+
+### The page you play on could not tell you what you were holding
+
+Gal, 2026-09-08: *"the hand page is not organized and you can't even see your
+table stats as you see them in the lobby"*. Both halves were true and the
+second is the worse one.
+
+**The lobby's card carries the table's shape and its seats; `play.html`
+carried neither**, and the two numbers only the room can know -- which day it
+is, and what this seat is holding -- were on no page at all. A driver could
+watch every receipt scroll past on the board and still not answer *how much
+bread do I have*, because the answer is a running total of receipts and nobody
+totals a scrolling log in their head. `kids-island.html` had shown the day
+since it was written, so the grown-up page was behind its own descendant.
+
+**The panel reads the board through the viewer's own `reduce`**, imported over
+`../reducer.js` the way the drawn page imports it. Not a second reading: this
+repo has one reducer for the manager's receipts and a scraper written beside
+it would drift the first time the manager rewords a line. What that costs is
+a real dependency on the directory above, which is why `play.html` moved out
+of the flat test fixture and into `island_site` -- a fixture serving a page
+that cannot exist is the frozen countdown's failure again, a green tick over
+nothing.
+
+**Two ways to know what the island deals, and the panel says which it has.**
+The manager whispers each seat one capacity per good, which is the whole list
+from the first moment of the round. `reduce` infers the goods from receipts
+instead, which is right for a finished board and *short* on a live one: a good
+nobody has produced yet has left no receipt, so a four-good island reads as
+three. The test pins both -- before the whisper it requires the short list and
+the words "goods seen so far", after it the full one -- because the failure
+being guarded is not an error message but a number quietly standing for
+another number. There is no `GOODS` fallback here: five named goods and five
+zeroes on a table that deals three would be read as the game's own.
+
+**Holdings are shown for every seat, not only this one.** They are public --
+the manager posts a receipt for each production and each settled exchange --
+so hiding the other seat's would not hide them from anyone and would leave the
+driver worse informed than the agent across the table. At the bell the stocks
+reset, so the panel shows the closed day's holdings and says the bell has rung,
+rather than showing zeroes that read as "you have nothing".
+
+**And the order of the page is now the order of the game.** The form filled in
+once was first, "hand it to a model" sat between the board and the input bar it
+interrupted, and the line reporting what you had just done was below the bars
+that did it. Setup folds itself away the moment it is used -- a `<details>` and
+not a removal, because a driver who mistyped a key has to fix it without
+reloading and losing the room -- the two hand-off blocks are at the bottom
+where a thing done once belongs, and the table, the whispers, the board and the
+bars are the run of the page.
+
+**The countdown is checked by watching it fall.** `CLAUDE.md`'s rule, and the
+exact failure it was written for: the panel ticks on a clock rather than
+repainting when a line arrives, and the test requires the number to drop while
+the board is checked to have said nothing new. A panel that read the bell off
+the newest line would sit still through a quiet stretch of an open day, which
+is precisely when a driver looks at it.
+
+### The ways in are a door, not a sentence
+
+Gal, 2026-09-08: the lobby should offer *"a small arrow on the 'send in my
+agent' button that opens up a small menu of more options: hacker hand, hand and
+agent, nice buttons, my kid wants to play full visual UI"*.
+
+Until then the three playing pages were links inside a paragraph of prose --
+which is where a reader finds a link, and not where a driver who has just been
+seated finds a door. They are one split button now: **Send in my agent**, and
+an arrow that opens the four ways in with a line each on what they are.
+
+**Two of the four are the same page, and it says so.** `play.html` is both the
+terminal a driver types the manager's grammar into and the page carrying the
+brief that hands the seat to a model. Naming it twice with one URL is honest;
+giving the brief a page of its own so the menu would look tidy is the kind of
+thing that leaves two pages to keep in step for a cosmetic reason.
+
+**The button is the first row of the menu**, taken from the same list, so the
+default and the menu cannot drift apart -- and every entry carries the room,
+which the test checks one by one, because a menu entry that dropped the key is
+a page asking a driver to type one.
+
+**The arrow is drawn with borders and not typed.** `\u25be` is not in every
+face this page's monospace stack asks for, and it fell back to a hollow box in
+a screenshot of the button itself -- a missing glyph reads as a broken page,
+not as a menu.
+
+### The same arrow on the front door, and what carries the click
+
+*"I meant the button in the landing page"* (Gal, 2026-09-08), on seeing the
+menu land on the hand's lobby instead. The button is
+`lobby-web/index.html`'s **Send in my agent**, the first thing anybody sees at
+`island.lucille-ai.com`, and it now splits the same way: `ways.js` fills the
+menu and sets the button's `href` from one list, so the door's headline action
+and its top row cannot drift.
+
+**Until this, the door did not say the island was playable by hand at all.**
+The one mention was a sentence inside the `ways` fold, on the lobby page
+*after* the door -- so a visitor who wanted to play, or whose child did, had to
+already suspect they could.
+
+**Every way by hand goes through the hand's lobby, and cannot not.** None of
+the four playing pages exists until a table has settled and whispered its room,
+so what the menu links to is the lobby that seats you. Which makes the whole
+thing turn on the part that is easy to leave out: **`?play=` carries the
+click**. `hand/lobby.html`'s `waysInOrder` puts the named way first when the
+room arrives, so a visitor who chose "my kid wants to play" gets the drawn
+island offered rather than having to find it a second time, three pages from
+where they asked for it. Without the parameter the menu item would be true
+about where it goes and false about what it does.
+
+It is a **hint, not a route**: an unknown or absent `play=` leaves the order
+alone and every way stays on the menu, so a wrong guess costs a scroll and
+never a page. Both halves are pinned -- the chosen way reordering *and* the
+unknown one changing nothing -- because the second is the failure that would
+otherwise be found by a visitor with an empty menu.
+
+**The two lists are held together across the two files.** The door sends
+`?play=` keys and the hand's lobby knows a fixed set of them; a test reads both
+sources and requires the first to be a subset of the second, because the
+failure is silent -- `?play=drawn` at a lobby that knows `island` drops the
+visitor on the default with nothing said, and no page is broken enough for
+anybody to notice. The hand's lobby URL is checked to be one host in both
+places that write it down (`ways.js` and `render.js`).
 
 ## Seats, and who is in one
 

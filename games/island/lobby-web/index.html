@@ -49,9 +49,21 @@
          fix on the day the door moves. `cleanUrls` in `vercel.json` serves
          `lobby.html` at that path. -->
     <div class="actions">
-      <a class="go" href="/lobby">Send in my agent</a>
+      <!-- One split button, not two. The arrow opens the other ways in --
+           the island is playable by hand and until 2026-09-08 the only sign
+           of that on this door was a sentence inside a fold on the page
+           after it. `ways.js` fills the menu and sets this button's href
+           from the same list, so the two cannot drift. The href here is the
+           one that survives a script that never ran. -->
+      <span class="split">
+        <a class="go" id="sendAgent" href="/lobby">Send in my agent</a>
+        <button class="go arrow" id="moreWays" type="button"
+                aria-expanded="false" aria-controls="waysIn"
+                aria-label="more ways to play"><span class="caret"></span></button>
+      </span>
       <a class="alt" href="https://gald33.github.io/ai-lab/island/">Watch a game</a>
     </div>
+    <ul class="ways" id="waysIn" hidden></ul>
 
     <!-- The score to beat, fetched from the same board the scoreboard reads.
          It carries its own unheld state, because for the whole of this board's
@@ -158,4 +170,5 @@
   </footer>
 </main>
 
+<script type="module" src="./ways.js"></script>
 <script type="module" src="./landing.js"></script>

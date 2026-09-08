@@ -71,10 +71,18 @@ def _free_port() -> int:
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
-    """The hand's pages, served. Copied rather than served in place, so what
-    runs is the committed bytes and nothing beside them."""
+    """The hand's flat pages, served. Copied rather than served in place, so
+    what runs is the committed bytes and nothing beside them.
+
+    **`play.html` is not here any more**, and neither is `kids-island.html`:
+    both import the viewer's modules from one directory up, so a flat fixture
+    would serve a page that cannot exist and would 404 on its own reducer
+    while passing. They are driven from `island_site`, which is the layout
+    `pages.yml` actually stages. What is left here is the two pages that
+    genuinely have no parent directory to reach into.
+    """
     root = tmp_path_factory.mktemp("hand-site")
-    for name in ("lobby.html", "play.html", "kids.html", "switchboard.js",
+    for name in ("lobby.html", "kids.html", "switchboard.js",
                  "hub.js", "identity.js", "lobby_lines.js", "play_lines.js",
                  "declaration.js", "brief.js", "room.js", "transcript.js"):
         shutil.copy(HAND / name, root / name)
@@ -411,7 +419,9 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     # out, so the link appears on its own within one poll.
     link = tab.locator("#invite #playLink")
     link.wait_for(timeout=15_000)
-    assert "own page" in link.inner_text()
+    # `text-transform: uppercase` is paint, so the words are compared and
+    # not the casing the stylesheet happens to render them in.
+    assert "send in my agent" in link.inner_text().lower()
     href = link.get_attribute("href")
     assert href.startswith("./play.html?"), href
     query = dict(urllib.parse.parse_qsl(href.split("?", 1)[1]))
@@ -425,6 +435,9 @@ def test_the_invite_the_lobby_whispers_becomes_the_link_to_the_island_page(
     drawn = tab.locator("#kidsIslandLink")
     assert drawn.get_attribute("href") == \
         f"./kids-island.html?{href.split('?', 1)[1]}"
+    # They are behind the arrow rather than in the sentence, and the arrow is
+    # a thing the page *does* -- checked in a browser below.
+    assert not tab.locator("#waysIn").is_visible()
 
     # **And the seat, so nobody has to type `T1`.** The lobby witnessed this
     # driver into a labelled seat and said so on its own board; a page that
@@ -586,10 +599,150 @@ def test_an_invite_posted_in_the_clear_is_still_the_link(browser, site, cors_hub
     tab.close()
 
 
+
+def test_the_arrow_opens_the_other_ways_in_and_all_of_them_carry_the_room(
+        browser, site, cors_hub):
+    """**A door, not a link in the middle of a sentence.**
+
+    Gal, 2026-09-08: the ways into a table should be one button with "a small
+    arrow ... that opens up a small menu of more options: hacker hand, hand
+    and agent, nice buttons, my kid wants to play full visual UI". Until then
+    three of the four were inline links in a paragraph of prose, where a
+    reader finds a link and a driver does not find a door.
+
+    The opening is a thing the page *does*, so it is driven rather than read
+    off the markup: the menu is checked to be invisible, the arrow clicked,
+    and every way in checked to carry the same room -- because a menu entry
+    that dropped the key is a page that asks a driver to type one.
+    """
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html", errors)
+    _fill_room(tab, cors_hub, name="hand-ways")
+    tab.fill("#table", "g44")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    lobby = _client(cors_hub, "lobby-ways")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_ways44", token="", key=KEY,
+                  write_key="seed-w", note="g44").encode()
+    lobby.post("lobby", f"g44 invite: {code}")
+    tab.click("#refresh")
+
+    tab.locator("#invite #playLink").wait_for(timeout=15_000)
+    menu = tab.locator("#waysIn")
+    assert not menu.is_visible(), "the menu is shut until the arrow is pressed"
+    assert tab.locator("#moreWays").get_attribute("aria-expanded") == "false"
+
+    tab.click("#moreWays")
+    menu.wait_for(state="visible", timeout=5_000)
+    assert tab.locator("#moreWays").get_attribute("aria-expanded") == "true"
+
+    ways = tab.eval_on_selector_all(
+        "#waysIn a", "els => els.map(a => [a.id, a.getAttribute('href')])")
+    assert [w[0] for w in ways] == \
+        ["waysAgent", "hackerLink", "kidsLink", "kidsIslandLink"], ways
+    pages = [href.split("?", 1)[0] for _, href in ways]
+    assert pages == ["./play.html", "./play.html", "./kids.html",
+                     "./kids-island.html"], pages
+    # Every one of them, the same room. A menu entry that dropped the key
+    # would hand a driver a page asking them to type one.
+    for _, href in ways:
+        query = dict(urllib.parse.parse_qsl(href.split("?", 1)[1]))
+        assert query["workspace"] == "ws_ways44", href
+        assert query["write_key"] == "seed-w", href
+    # And the button is the first way, so the two cannot drift apart.
+    assert tab.locator("#playLink").get_attribute("href") == ways[0][1]
+
+    tab.click("#moreWays")
+    assert not menu.is_visible(), "and it shuts again"
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_way_chosen_on_the_front_door_is_the_one_offered_here(
+        browser, site, cors_hub):
+    """**A click on the front door has to still mean something two pages on.**
+
+    `island.lucille-ai.com` offers the same four names, and every one of them
+    by hand lands here -- none of the playing pages exists until a table has
+    settled and whispered its room. Landing a visitor who chose "my kid wants
+    to play" on a menu defaulting to "send in my agent" makes their click mean
+    nothing and asks them to find the drawn island a second time.
+
+    So the door carries `?play=` and this page opens that door first. The
+    check is that both the button and the menu's top row move -- the button is
+    built from the list, so one of them moving alone is the drift this is here
+    to catch.
+    """
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html?play=island", errors)
+    _fill_room(tab, cors_hub, name="hand-chose")
+    tab.fill("#table", "g45")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    lobby = _client(cors_hub, "lobby-chose")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_chose45", token="", key=KEY,
+                  write_key="seed-c45", note="g45").encode()
+    lobby.post("lobby", f"g45 invite: {code}")
+    tab.click("#refresh")
+
+    link = tab.locator("#invite #playLink")
+    link.wait_for(timeout=15_000)
+    assert link.get_attribute("href").startswith("./kids-island.html?"), \
+        link.get_attribute("href")
+    assert "my kid wants to play" in link.inner_text().lower()
+
+    order = tab.eval_on_selector_all(
+        "#waysIn a", "els => els.map(a => a.id)")
+    assert order[0] == "kidsIslandLink", order
+    # Every way stays on the menu: the parameter is a hint about which door to
+    # open first, so a wrong guess costs a scroll and never a page.
+    assert sorted(order) == sorted(
+        ["waysAgent", "hackerLink", "kidsLink", "kidsIslandLink"]), order
+    assert not errors, errors
+    tab.close()
+
+
+def test_an_unknown_way_leaves_the_menu_as_it_was(browser, site, cors_hub):
+    """A hint, not a route. A `?play=` nobody wrote down must not empty the
+    menu or blank the button -- the visitor still gets every way in, in the
+    order the page would have offered anyway."""
+    from switchboard.invite import Invite
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{site}/lobby.html?play=nonsense", errors)
+    _fill_room(tab, cors_hub, name="hand-odd")
+    tab.fill("#table", "g46")
+    tab.click("#join")
+    tab.wait_for_function("window.HAND_SEAT !== undefined", timeout=15_000)
+
+    lobby = _client(cors_hub, "lobby-odd")
+    lobby.register(name="lobby", kind="local", branch="main", task="")
+    code = Invite(url=cors_hub, workspace="ws_odd46", token="", key=KEY,
+                  write_key="seed-o46", note="g46").encode()
+    lobby.post("lobby", f"g46 invite: {code}")
+    tab.click("#refresh")
+
+    link = tab.locator("#invite #playLink")
+    link.wait_for(timeout=15_000)
+    assert link.get_attribute("href").startswith("./play.html?")
+    order = tab.eval_on_selector_all("#waysIn a", "els => els.map(a => a.id)")
+    assert order == ["waysAgent", "hackerLink", "kidsLink", "kidsIslandLink"], order
+    assert not errors, errors
+    tab.close()
+
+
 # --- the island ------------------------------------------------------------
 
 def test_entering_the_room_declares_the_driver_without_being_asked(
-        browser, site, cors_hub):
+        browser, island_site, cors_hub):
     """**The mechanism by which declarations happen at all.**
 
     Nobody can be made to declare -- an open room means a person can drive a
@@ -599,7 +752,7 @@ def test_entering_the_room_declares_the_driver_without_being_asked(
     the same way the record will.
     """
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     tab.fill("#url", cors_hub)
     tab.fill("#token", "")
     tab.fill("#workspace", WORKSPACE)
@@ -619,7 +772,7 @@ def test_entering_the_room_declares_the_driver_without_being_asked(
 
 
 def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_key(
-        browser, site, cors_hub):
+        browser, island_site, cors_hub):
     """Gal, 2026-09-04: a command can go by `say` or by `whisper`, and the
     page needs both. The manager settles a whispered `PRODUCE` exactly as one
     said on the board -- same author, same signature check -- so what has to
@@ -638,7 +791,7 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
     manager.register(name="manager", kind="local", branch="main", task="")
 
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     _enter(tab, cors_hub, WORKSPACE, write_key=None, name="driver-whisper")
     tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
     seat_key = tab.evaluate("document.getElementById('who').textContent")
@@ -668,7 +821,7 @@ def test_a_line_whispered_from_the_page_opens_for_the_manager_under_the_seats_ke
 
 
 def test_the_room_copies_itself_for_a_model_and_then_only_what_is_new(
-        browser, site, cors_hub):
+        browser, island_site, cors_hub):
     """**The hand as intermediary, and the part that makes it worth having.**
 
     `games/island.md` ("A person may sit in a seat") describes a driver taking
@@ -686,7 +839,7 @@ def test_the_room_copies_itself_for_a_model_and_then_only_what_is_new(
     manager.post("island", "Schedule for this round. 2 traders: T1, T2.")
 
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     _enter(tab, cors_hub, WORKSPACE, write_key=None, name="driver-copy")
     tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
     tab.wait_for_function(
@@ -782,7 +935,7 @@ def test_the_pages_brief_is_byte_for_byte_the_pythons(browser, site):
     tab.close()
 
 
-def test_the_island_page_posts_whatever_is_typed(browser, site, cors_hub):
+def test_the_island_page_posts_whatever_is_typed(browser, island_site, cors_hub):
     """**There is no validation gate, on purpose.**
 
     An agent at the table can post a malformed line and lose the exchange; the
@@ -791,7 +944,7 @@ def test_the_island_page_posts_whatever_is_typed(browser, site, cors_hub):
     the asymmetry that made a validating composer wrong in the first place.
     """
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     tab.fill("#url", cors_hub)
     tab.fill("#token", "")
     tab.fill("#workspace", WORKSPACE)
@@ -814,12 +967,12 @@ def test_the_island_page_posts_whatever_is_typed(browser, site, cors_hub):
     tab.close()
 
 
-def test_a_shortcut_button_fills_the_bar_and_does_not_post(browser, site):
+def test_a_shortcut_button_fills_the_bar_and_does_not_post(browser, island_site):
     """The buttons are a convenience over the input bar and never a second
     path to the board: what they do is put text where the driver can see and
     edit it before pressing."""
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     tab.click("[data-fill='APPROVE p1']")
     tab.click("[data-fill='PRODUCE ']")
     assert tab.input_value("#whisperLine") == "PRODUCE ", \
@@ -876,7 +1029,7 @@ def _hub_preflights_the_write_headers(hub_url: str, origin: str) -> bool:
     return answer.status_code == 200
 
 
-def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_hub):
+def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, island_site, cors_hub):
     """**The JS half of `RoomWriteKey.sign_request`, checked by the hub.**
 
     A table's room is write-protected (2026-09-03): the hub refuses any
@@ -885,12 +1038,12 @@ def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_
     goes on the wire, and the hub -- real, with the Python verifier -- lets
     its line through. A Python client on the same room reads it back.
     """
-    if not _hub_preflights_the_write_headers(cors_hub, site):
+    if not _hub_preflights_the_write_headers(cors_hub, island_site):
         pytest.xfail("this hub's CORS layer refuses the write-key headers "
                      "(agent-switchboard 2.0.0); see gald33/switchboard#208")
     seed, room = _write_protected_room()
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     _enter(tab, cors_hub, room, write_key=seed, name="driver-w")
     tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
 
@@ -900,7 +1053,7 @@ def test_the_page_signs_its_writes_with_the_rooms_write_key(browser, site, cors_
     tab.close()
 
 
-def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, site, cors_hub):
+def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, island_site, cors_hub):
     """The read-only invite, from the page's side: the same room, the same
     read key, no write key -- and the hub, not the page, says no."""
     seed, room = _write_protected_room()
@@ -910,7 +1063,7 @@ def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, site, cors_
     writer.post("island", "the round is open")
 
     errors: list[str] = []
-    tab = _tab(browser, f"{site}/play.html", errors)
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
     _enter(tab, cors_hub, room, write_key=None, name="watcher-r")
     tab.wait_for_function(
         "window.HAND_READY === true || document.querySelector('.warn') !== null",
@@ -921,6 +1074,229 @@ def test_a_page_without_the_write_key_is_refused_by_the_hub(browser, site, cors_
         "nothing the keyless page tried reached the board"
     assert "write-protected" in tab.inner_text("body"), \
         "and the page says the hub refused it rather than going quiet"
+    tab.close()
+
+
+# --- what this table is ----------------------------------------------------
+#
+# The panel a driver was going back to the lobby to read, plus the two things
+# only the room can say: which day it is and what the seat is holding.
+
+TABLE = "island-table-test"
+
+
+def _table_client(hub_url, agent_id):
+    from switchboard.client import Client
+    from switchboard.config import ClientConfig
+    return Client(ClientConfig(url=hub_url, token="", workspace=TABLE,
+                               key=KEY), agent_id=agent_id)
+
+
+def _a_day_in_play(*, episodes=8, seconds=90):
+    """The lines a real game writes on its board through one played day.
+
+    Driven rather than transcribed, for the reason `_real_offer_line` is: the
+    panel reads the shape, the roll-call, the day, the bell and every holding
+    out of these exact sentences. A manager that reworded one should fail
+    here, rather than leave a driver reading a table of zeroes on a table
+    that is full.
+
+    Returns the board's lines, the `Manager` that wrote them and the `Dealer`
+    that drew the island, so what the page shows is checked against the state
+    the manager actually settled rather than against a number typed into this
+    file.
+    """
+    import sys
+    import time
+
+    island = (pathlib.Path(__file__).resolve().parents[3]
+              / "experiments" / "005-deliberation-protocol")
+    if str(island) not in sys.path:
+        sys.path.insert(0, str(island))
+    from island import schedule
+    from island.dealer import Dealer
+    from island.manager import Manager
+    from island.protocol import Produce
+
+    from games.island.lobby import Table
+    from games.island.run_game import who_is_at_this_table
+
+    class _Stub:
+        def __init__(self):
+            self.said = []
+
+        def post(self, channel, text):
+            self.said.append(text)
+
+        def history(self, channel, limit=500, **kw):
+            return []
+
+    dealer = Dealer.draw(seed=5, agents=2)
+    mgr = Manager(capacity=dealer.capacity, client=_Stub(), channel="c")
+    for name in mgr.names:
+        mgr.bind(name, name)
+
+    table = Table(id="g7", opened_by="opener", opened_at=0.0, traders=2,
+                  episodes=episodes, rounds=1, goods=len(mgr.goods),
+                  seconds=seconds)
+    table.seats = {"peer-a": "pip", "peer-b": "robin"}
+    table.keys = {"peer-a": "abc123", "peer-b": "def456"}
+
+    lines = [who_is_at_this_table(table),
+             schedule.schedule_text(episodes, mgr.names, opens_at=0.0)]
+    mgr.open_episode()
+    bell = time.time() + seconds
+    lines.append(f"episode 2 of {episodes} is open; the bell is at "
+                 f"{schedule.stamp(bell)} ({seconds}s). PRODUCE, PROPOSE and "
+                 f"APPROVE all settle until the bell.")
+    mgr._produce("T1", Produce(plan={mgr.goods[0]: 0.6, mgr.goods[1]: 0.4}))
+    mgr._produce("T2", Produce(plan={mgr.goods[2]: 1.0}))
+    lines.extend(mgr.client.said)
+    return lines, mgr, dealer
+
+
+def test_the_playing_page_says_what_this_table_is_and_what_the_seat_holds(
+        browser, island_site, cors_hub):
+    """**The lobby's card, on the page where the game is played.**
+
+    Gal, 2026-09-08: *"the hand page is not organized and you can't even see
+    your table stats as you see them in the lobby"*. The lobby's card carries
+    the table's shape and who is in which seat; this page carried neither, and
+    the two numbers only the room knows -- which day it is, and what this seat
+    is holding -- were on no page at all. A driver could watch every receipt
+    scroll past on the board and still not be able to answer "how much bread
+    do I have".
+
+    Checked against the manager's own settled state rather than against the
+    text of a receipt: `mgr.holders["T1"].holdings` is what the island granted,
+    and the panel has to agree with it good for good.
+    """
+    lines, mgr, dealer = _a_day_in_play()
+    manager = _table_client(cors_hub, "manager-table")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    for line in lines:
+        manager.post("island", line)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
+    _enter(tab, cors_hub, TABLE, write_key=None, name="pip")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+    tab.wait_for_function("(window.HAND_TABLE || {}).traders?.length === 2",
+                          timeout=15_000)
+
+    shown = tab.evaluate("window.HAND_TABLE")
+    assert shown["traders"] == list(mgr.names)
+    assert shown["episode"] == 2 and shown["episodes"] == 8
+
+    # **The weaker knowledge, and it says so.** Nobody has produced the last
+    # good, so it has left no receipt: read off the board alone this island
+    # deals three goods and not four. The panel shows the three it can see
+    # and says on its own face that they are what the receipts show.
+    assert shown["goodsFrom"] == "receipts"
+    assert shown["goods"] == list(mgr.goods)[:-1], \
+        "a good nobody has produced has left no receipt to read it from"
+    assert "goods seen so far" in tab.inner_text("#tableShape")
+
+    # The stronger one: the manager whispers this seat one capacity per good,
+    # which is the whole island from the first moment of the round.
+    seat_id = next(a["agent_id"] for a in manager.agents()
+                   if a.get("name") == "pip")
+    manager.whisper(seat_id, dealer.private_state("T1"))
+    tab.wait_for_function(
+        f"(window.HAND_TABLE || {{}}).goods?.length === {len(mgr.goods)}",
+        timeout=15_000)
+    shown = tab.evaluate("window.HAND_TABLE")
+    assert shown["goodsFrom"] == "whispered"
+    assert shown["goods"] == list(mgr.goods)
+    assert f"{len(mgr.goods)} goods:" in tab.inner_text("#tableShape")
+
+    # And what the seat is holding, good for good against what the island
+    # actually granted -- including the good it produced none of.
+    for good, qty in zip(mgr.goods, mgr.holders["T1"].holdings):
+        assert shown["stocks"]["T1"][good] == pytest.approx(qty, abs=5e-4), good
+
+    panel = tab.inner_text("#table")
+    assert "Day 2 of 8" in panel, panel
+    assert "the bell in " in panel, panel
+    assert "2 traders" in panel, panel
+    # The roll-call names the seat; a row labelled with six characters of a
+    # blinded hub id is a row nobody can find themselves in.
+    assert "T1 (you)" in panel and "pip" in panel, panel
+    assert "robin" in panel, panel
+    # Every seat, not only this one. Holdings are public -- the manager posts
+    # a receipt for each -- so hiding the other seat's here would leave the
+    # driver worse informed than the agent across the table.
+    biggest = mgr.goods[0]
+    assert f"{biggest} " in panel, panel
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_bell_counts_down_on_the_playing_page_with_no_new_line(
+        browser, island_site, cors_hub):
+    """**The frozen countdown, one page further on.**
+
+    `CLAUDE.md`: the lobby's clocks all showed the number the server wrote and
+    never moved, and every markup assertion around them passed. A panel that
+    read the bell off the newest line would sit still through a quiet stretch
+    of an open day -- which is exactly when a driver looks at it. So the
+    countdown is required to *fall* while the board says nothing new, and the
+    board is checked to have said nothing new.
+    """
+    lines, _, _dealer = _a_day_in_play(seconds=600)
+    manager = _table_client(cors_hub, "manager-tick")
+    manager.register(name="manager", kind="local", branch="main", task="")
+    for line in lines:
+        manager.post("island", line)
+
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
+    _enter(tab, cors_hub, TABLE, write_key=None, name="pip-tick")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+    tab.wait_for_function(
+        "document.getElementById('tableDay').textContent.includes('the bell in')",
+        timeout=15_000)
+
+    first = tab.inner_text("#tableDay")
+    lines_before = tab.evaluate("(window.HAND_BOARD || []).length")
+    tab.wait_for_function(
+        f"document.getElementById('tableDay').textContent !== {first!r}",
+        timeout=15_000)
+    later = tab.inner_text("#tableDay")
+    assert tab.evaluate("(window.HAND_BOARD || []).length") == lines_before, \
+        "the clock moved because a line arrived, which is not what this checks"
+
+    def seconds_left(text):
+        stamp = text.rsplit("the bell in ", 1)[1].strip()
+        minutes, secs = stamp.split(":")
+        return int(minutes) * 60 + int(secs)
+
+    assert seconds_left(later) < seconds_left(first), (first, later)
+    assert not errors, errors
+    tab.close()
+
+
+def test_the_setup_folds_away_once_it_has_been_used(
+        browser, island_site, cors_hub):
+    """A form filled in once does not stay at the top of the page for the rest
+    of the round. It folds, rather than disappearing, because a driver who
+    mistyped a key has to be able to fix it without reloading and losing the
+    room they are in.
+    """
+    errors: list[str] = []
+    tab = _tab(browser, f"{island_site}/hand/play.html", errors)
+    assert tab.evaluate("document.getElementById('setup').open"), \
+        "and it is open before it has been used, or nobody can enter"
+    _enter(tab, cors_hub, TABLE, write_key=None, name="pip-fold")
+    tab.wait_for_function("window.HAND_READY === true", timeout=15_000)
+
+    tab.wait_for_function(
+        "document.getElementById('setup').open === false", timeout=15_000)
+    # Folded, not gone: the key is still there to be corrected.
+    assert tab.locator("#key").count() == 1
+    tab.click("#setup > summary")
+    assert tab.locator("#key").is_visible()
+    assert not errors, errors
     tab.close()
 
 

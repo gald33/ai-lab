@@ -94,6 +94,34 @@
   .seat button { font-size: 11px; padding: .1rem .45rem; }
   .seat code { font-size: 12px; }
   details > summary { cursor: pointer; color: var(--cyan); }
+  /* The ways in, as one button with an arrow rather than three links in a
+     sentence. A driver arriving here has a table and wants to start; which of
+     the four pages they want is a second question, and a menu is where a
+     second question goes. */
+  .split { display: flex; flex-wrap: wrap; gap: 0; align-items: stretch;
+           margin: .6rem 0 .2rem; }
+  a.primary { display: inline-block; border: 2px solid var(--neon); border-right-width: 1px;
+              border-radius: 2px 0 0 2px; color: var(--neon); background: transparent;
+              text-transform: uppercase; letter-spacing: .06em; font-size: .8rem;
+              font-weight: 700; padding: .35rem .7rem; text-decoration: none; }
+  a.primary:hover { background: var(--neon); color: #03130a; box-shadow: var(--glow); }
+  #moreWays { border-width: 2px; border-left-width: 1px; border-radius: 0 2px 2px 0;
+              padding: .35rem .55rem; line-height: 1; }
+  /* The arrow is drawn rather than typed. `\u25be` is not in every monospace
+     face this page asks for and falls back to a hollow box, which reads as a
+     missing glyph and not as a menu -- seen in a screenshot of this very
+     button. Borders are in every browser. `currentColor` so it inverts with
+     the button on hover instead of staying green on green. */
+  #moreWays .caret { display: inline-block; width: 0; height: 0; vertical-align: middle;
+                     border-left: .34em solid transparent; border-right: .34em solid transparent;
+                     border-top: .4em solid currentColor; }
+  #waysIn { list-style: none; margin: .4rem 0 0; padding: .4rem;
+            border: 1px solid var(--edge); border-radius: 2px; background: var(--panel);
+            box-shadow: 0 0 12px rgba(0,229,255,.06); width: 100%; box-sizing: border-box; }
+  #waysIn li { padding: .3rem .2rem; border-bottom: 1px dotted var(--edge); }
+  #waysIn li:last-child { border-bottom: 0; }
+  #waysIn a { border-bottom: 0; font-weight: 700; }
+  #waysIn .what { display: block; color: var(--dim); font-size: 12.5px; }
   @keyframes blink { to { visibility: hidden; } }
   @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
 </style>
@@ -470,34 +498,104 @@ async function readInvite(hub) {
                           { table: seat.table, name: $("name").value });
   if (label) q.set("seat", label);
   window.HAND_INVITE = inv;
-  const a = document.createElement("a");
-  a.id = "playLink";
-  a.href = `./play.html?${q}`;
-  a.textContent = `open it on its own page instead`;
-  // The same room with buttons instead of a grammar. A page nobody can reach
-  // is a page nobody plays, and this is the only door to it.
-  const kids = document.createElement("a");
-  kids.id = "kidsLink";
-  kids.href = `./kids.html?${q}`;
-  kids.textContent = `play it with buttons`;
-  // The same buttons under the island the spectator watches. A page nobody
-  // can reach is a page nobody plays, and this is the only door to it.
-  const drawn = document.createElement("a");
-  drawn.id = "kidsIslandLink";
-  drawn.href = `./kids-island.html?${q}`;
-  drawn.textContent = `play it on the drawn island`;
   const p = document.createElement("p");
   p.className = "sub";
-  p.append(`The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). ` +
-           `You are entering it here, below, under the key the lobby ` +
-           `witnessed — or `, a, ` (that page also carries the brief to hand ` +
-           `an agent), or `, kids, ` — sliders and dropdowns instead of the ` +
-           `manager's grammar, for a younger driver — or `, drawn,
-           ` — the same controls under the island itself. All three are human ` +
-           `play and all three say so on the board.`);
-  $("invite").replaceChildren(p);
+  p.textContent =
+    `The lobby ${found.how} ${seat.table}'s room (workspace ${inv.w}). You ` +
+    `are entering it here, below, under the key the lobby witnessed — or ` +
+    `take it to one of the playing pages. Every one of them is human play ` +
+    `and every one of them says so on the board.`;
+  $("invite").replaceChildren(p, waysIn(q));
   await enterRoom(seat, inv);
   return true;
+}
+
+//: The four ways in, as one button with an arrow. Two of them are the same
+//: page and that is said rather than hidden: `play.html` is both the terminal
+//: a driver types the manager's grammar into and the page carrying the brief
+//: that hands the seat to a model. Naming it twice with one URL is honest;
+//: giving the brief a page of its own to make the menu tidy would not be.
+//:
+//: Asked for by Gal, 2026-09-08 -- until then the ways in were three links in
+//: the middle of a paragraph, which is where a reader finds a link and not
+//: where a driver finds a door.
+const WAYS = [
+  { key: "agent", id: "waysAgent", page: "play.html", name: "Send in my agent",
+    what: "the brief, sealed to this room only, for a model to play the seat" },
+  { key: "hand", id: "hackerLink", page: "play.html", name: "Hacker hand",
+    what: "the same page, typing the manager's grammar yourself" },
+  { key: "kids", id: "kidsLink", page: "kids.html", name: "Nice buttons",
+    what: "sliders and dropdowns instead of the grammar" },
+  { key: "island", id: "kidsIslandLink", page: "kids-island.html",
+    name: "My kid wants to play",
+    what: "the same buttons under the drawn island itself" },
+];
+
+/** The ways in, with the one the visitor already chose first.
+ *
+ *  **A choice made on the front door has to survive the trip.** The landing
+ *  page offers the same four names, and a visitor who clicked "my kid wants to
+ *  play" arrives here -- because none of the playing pages exist until a table
+ *  has settled and whispered its room. Landing them on a menu whose default is
+ *  "send in my agent" would make the click they made mean nothing, and would
+ *  ask them to find the drawn island a second time. `?play=` is that click,
+ *  carried.
+ *
+ *  An unknown or absent value leaves the order alone. It is a hint about which
+ *  door to open first and nothing more -- every way in stays on the menu, so
+ *  a wrong guess costs a scroll and never a page.
+ */
+function waysInOrder() {
+  const wanted = new URLSearchParams(location.search).get("play");
+  const first = WAYS.findIndex((w) => w.key === wanted);
+  if (first < 1) return WAYS;
+  return [WAYS[first], ...WAYS.filter((_, i) => i !== first)];
+}
+
+function waysIn(q) {
+  const ways = waysInOrder();
+  const split = document.createElement("div");
+  split.className = "split";
+  const first = document.createElement("a");
+  first.id = "playLink";
+  first.className = "primary";
+  // The default is the first way in the list, so the button and the menu's
+  // top row cannot drift apart.
+  first.href = `./${ways[0].page}?${q}`;
+  first.textContent = ways[0].name;
+  const arrow = document.createElement("button");
+  arrow.id = "moreWays";
+  arrow.type = "button";
+  const caret = document.createElement("span");
+  caret.className = "caret";
+  arrow.append(caret);
+  arrow.title = "more ways in";
+  arrow.setAttribute("aria-expanded", "false");
+  arrow.setAttribute("aria-controls", "waysIn");
+  arrow.setAttribute("aria-label", "more ways in");
+  const menu = document.createElement("ul");
+  menu.id = "waysIn";
+  menu.hidden = true;
+  for (const way of ways) {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.id = way.id;
+    a.href = `./${way.page}?${q}`;
+    a.textContent = way.name;
+    const what = document.createElement("span");
+    what.className = "what";
+    what.textContent = way.what;
+    li.append(a, what);
+    menu.append(li);
+  }
+  arrow.addEventListener("click", () => {
+    menu.hidden = !menu.hidden;
+    arrow.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+  split.append(first, arrow);
+  const wrap = document.createElement("div");
+  wrap.append(split, menu);
+  return wrap;
 }
 
 /**

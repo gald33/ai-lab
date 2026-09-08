@@ -5,11 +5,11 @@
 <!--
   The hand's island. Where a driver plays the seat they took in the lobby.
 
-  Three things it does and nothing else: shows the room's board, opens what
-  was whispered to this seat, and posts what the driver types. The shortcut
-  buttons compose the manager's three forms; the input bar posts anything at
-  all, because the manager reads board text and a driver may say whatever they
-  like to the room.
+  Four things it does and nothing else: says what this table is and what this
+  seat is holding, shows the room's board, opens what was whispered to this
+  seat, and posts what the driver types. The shortcut buttons compose the
+  manager's three forms; the input bar posts anything at all, because the
+  manager reads board text and a driver may say whatever they like to the room.
 
   **There is no validation gate here.** The manager never repairs a malformed
   line into a plausible one, and a page that refused to post one would be
@@ -19,6 +19,15 @@
 
   The declaration is posted once, on arrival, as a side effect of using this
   page -- which is the whole mechanism by which declarations happen at all.
+
+  **The order of this page is the order of the game.** Until 2026-09-08 it ran
+  the other way: the form a driver fills in once was first, "hand it to a
+  model" sat between the board and the input bar it interrupted, and the line
+  reporting on what you had just done was below the bars that did it. Setup
+  now folds itself away the moment it is used, the two hand-off blocks are at
+  the bottom where a thing done once belongs, and what a driver looks at
+  while playing -- the table, the whispers, the board, the bars -- is the run
+  of the page.
 -->
 <style>
   /* The hand's terminal. A dark phosphor screen, on purpose: this page is
@@ -97,6 +106,33 @@
   .seat button { font-size: 11px; padding: .1rem .45rem; }
   .seat code { font-size: 12px; }
   details > summary { cursor: pointer; color: var(--cyan); }
+  /* The setup panel, which folds itself away once it has been used. A
+     `<details>` rather than a `hidden` fieldset so a driver who mistyped the
+     key can open it again without reloading and losing the room. */
+  details.panel { border: 1px solid var(--edge); border-radius: 2px; margin: 0 0 1rem;
+                  padding: .5rem .9rem; background: var(--panel); }
+  details.panel > summary { font-weight: 700; color: var(--neon); letter-spacing: .1em;
+                            text-transform: uppercase; font-size: .8rem; padding: .3rem 0; }
+  details.panel[open] > summary { margin-bottom: .6rem; }
+  details.panel > summary::before { content: "[ "; color: var(--dim); }
+  details.panel > summary::after { content: " ]"; color: var(--dim); }
+  /* This table. The numbers a driver was going back to the lobby for, on the
+     page where the game is actually played. */
+  #table { border: 1px solid var(--cyan); border-radius: 2px; margin: 0 0 1rem;
+           padding: .7rem .9rem; background: linear-gradient(180deg, rgba(0,229,255,.06), transparent);
+           box-shadow: 0 0 14px rgba(0,229,255,.08); }
+  #table h2 { margin: 0 0 .3rem; }
+  #tableDay { margin: .1rem 0 .5rem; color: var(--neon); font-size: 1rem;
+              text-shadow: var(--glow); }
+  #tableShape { margin: 0 0 .4rem; }
+  #tableSeats .row { display: flex; flex-wrap: wrap; gap: .1rem .6rem; align-items: baseline;
+                     padding: .25rem 0; border-bottom: 1px dotted var(--edge); font-size: 13px; }
+  #tableSeats .label { color: var(--cyan); min-width: 3rem; }
+  #tableSeats .alias { color: var(--mag); }
+  #tableSeats .held { color: var(--ink); }
+  #tableSeats .none { color: var(--dim); }
+  #tableSeats .row.me { border-left: 3px solid var(--cyan); padding-left: .4rem;
+                        background: rgba(0,229,255,.05); }
   @keyframes blink { to { visibility: hidden; } }
   @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
 </style>
@@ -104,8 +140,8 @@
 <h1>Playing a seat by hand</h1>
 <p class=sub id=who>Not connected.</p>
 
-<fieldset>
-  <legend>The room</legend>
+<details class=panel id=setup open>
+  <summary>The room</summary>
   <label>hub <input id=url size=34 value="https://switchboard.lucille-ai.com"></label>
   <label>token <input id=token size=18 value="sb_public_lucille"></label><br>
   <label>workspace <input id=workspace size=16 placeholder="island-g7"></label>
@@ -116,27 +152,25 @@
   <label>seat <input id=seat size=6 placeholder="T1"></label>
   <button id=enter>Enter the room</button>
   <p class=sub>The workspace and key come from the invite the lobby posted for
-  your table. This page keeps the seat key you took it under.</p>
-</fieldset>
+  your table. This page keeps the seat key you took it under. Once you are in,
+  this folds away — open it again to change a key or a seat.</p>
+</details>
+
+<p id=says class=warn></p>
+
+<section id=table hidden>
+  <h2>This table</h2>
+  <p id=tableDay></p>
+  <p class=sub id=tableShape></p>
+  <div id=tableSeats></div>
+  <p class=sub id=tableNote></p>
+</section>
 
 <h2>What was whispered to you</h2>
 <div id=whispers></div>
 
 <h2>The board</h2>
 <div id=board></div>
-
-<fieldset>
-  <legend>Hand it to a model</legend>
-  <p class=sub>
-    <button id=copyAll>Copy the whole room</button>
-    <button id=copyNew>Copy new</button>
-    — for a chat window with no board access: it reads only what you paste.
-    <b>Copy new</b> sends what has arrived since your last copy, so a round
-    is not re-pasted every bell. The manager's own lines carry the schedule
-    and the house rules, so the whole-room copy already has them.
-  </p>
-  <textarea id=copyOut rows=6 hidden readonly></textarea>
-</fieldset>
 
 <fieldset>
   <legend>Say, on the board</legend>
@@ -169,26 +203,51 @@
   not recognise is a line you did not play; it never repairs one.</p>
 </fieldset>
 
-<p id=says class=warn></p>
+<fieldset>
+  <legend>Hand it to a model</legend>
+  <p class=sub>
+    <button id=copyAll>Copy the whole room</button>
+    <button id=copyNew>Copy new</button>
+    — for a chat window with no board access: it reads only what you paste.
+    <b>Copy new</b> sends what has arrived since your last copy, so a round
+    is not re-pasted every bell. The manager's own lines carry the schedule
+    and the house rules, so the whole-room copy already has them.
+  </p>
+  <textarea id=copyOut rows=6 hidden readonly></textarea>
+</fieldset>
 
-<h2>Hand the seat to an agent</h2>
-<p class=sub>This brief names <em>this room only</em> — not the lobby — so an
-agent given it cannot open a table or take another seat in your name. It
-carries your seat's keys, because the lobby witnessed one key for this seat
-and the manager refuses any line that does not match it. Handing it over hands
-away this one game.</p>
-<button id=makeBrief>Show the brief</button>
-<pre id=brief hidden></pre>
+<fieldset>
+  <legend>Hand the seat to an agent</legend>
+  <p class=sub>This brief names <em>this room only</em> — not the lobby — so an
+  agent given it cannot open a table or take another seat in your name. It
+  carries your seat's keys, because the lobby witnessed one key for this seat
+  and the manager refuses any line that does not match it. Handing it over hands
+  away this one game.</p>
+  <button id=makeBrief>Show the brief</button>
+  <pre id=brief hidden></pre>
+</fieldset>
 
 <script type=module>
 import * as identity from "./identity.js";
 import { brief } from "./brief.js";
 import { Room, bindShortcuts } from "./room.js";
+import { seatLabels, privateHalf, amount } from "./play_lines.js";
+// The viewer's own reducer, from one directory up -- `pages.yml` stages
+// `viewer/web/` at `/island/` and this page at `/island/hand/`, which is the
+// same path `kids-island.html` takes. **Read rather than re-read**: the board
+// already has one reading in this repo and a second one here would be a
+// second implementation of the ledger, drifting the moment the manager's
+// wording changes.
+import { reduce } from "../reducer.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad) => {
   $("says").textContent = text;
   $("says").style.borderLeftColor = bad ? "#ff2bd6" : "#39ff88";
+  // The bars that fail are far down the page from the line that reports it.
+  // `nearest` does nothing when it is already on screen, so this scrolls
+  // only when it would otherwise have gone unread.
+  $("says").scrollIntoView({ block: "nearest" });
 };
 
 let seat = null;
@@ -222,7 +281,11 @@ $("enter").addEventListener("click", async () => {
       identity: seat, alias: $("name").value,
       seat: $("seat").value, channel: $("channel").value,
     });
+    // Used once, so it gets out of the way once. It is a `<details>` and not
+    // a removal: a driver who typed the wrong key opens it and fixes it.
+    $("setup").open = false;
     say("In the room, and the board says a person is driving this seat.");
+    paintTable();
   } catch (err) { say(String(err.message), true); }
 });
 
@@ -241,4 +304,174 @@ $("makeBrief").addEventListener("click", () => {
     seconds: Number(params.get("seconds") || 60),
   });
 });
+
+// --- this table ------------------------------------------------------------
+//
+// **What a driver was going back to the lobby to read.** The lobby's card says
+// how big the table is, who is in which seat and what state it is in; this
+// page said none of it, and the two things only it can say -- which day it is
+// and what this seat is holding -- were nowhere either. A driver could see
+// every receipt scroll past on the board and still not be able to answer
+// "how much bread do I have".
+//
+// Everything below is **display only**. No quantity here is composed into a
+// line: what settles is typed, and the manager settles from its own state.
+// So rounding for a reader cannot change what is traded.
+
+/** The rows `room` last read, in the shape `reducer.js` wants. */
+function boardRows() {
+  return (window.HAND_BOARD || []).map((r, i) => ({
+    seq: r.seq ?? i,
+    at: r.created_at || r.at || null,
+    author: String(r.from ?? "?"),
+    body: typeof r.body === "string" ? r.body : "",
+  }));
+}
+
+/** `0:42`, or `—` when there is no bell to count to. */
+function untilBell(state) {
+  if (!state.bell_at) return null;
+  const bell = Date.parse(state.bell_at);
+  if (!Number.isFinite(bell)) return null;
+  const left = Math.max(0, Math.round((bell - Date.now()) / 1000));
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}
+
+function dayLine(state) {
+  const of = state.episodes ? ` of ${state.episodes}` : "";
+  if (state.phase === "over") return "The round is over.";
+  if (state.phase === "closed") {
+    return `Day ${state.episode}${of} — the bell has rung. The next one opens ` +
+           `when the manager says so.`;
+  }
+  if (state.phase === "before") return "Waiting for the manager to open the round.";
+  if (state.phase === "ack") {
+    return "The round is scheduled. Nothing is open yet — ACK when you are ready.";
+  }
+  const left = untilBell(state);
+  const shape = state.phase === "production" ? "production" : "open";
+  return `Day ${state.episode}${of} — ${shape}` +
+         (left ? `, the bell in ${left}` : "");
+}
+
+/** One row per seat: the label, who is in it, and what they are holding.
+ *
+ *  **Holdings are public**, which is why every seat's are shown and not only
+ *  this one's: the manager posts a receipt for every production and every
+ *  settled exchange, so anybody reading the board can total them. Hiding the
+ *  others here would not hide them from anyone, and would leave the driver
+ *  worse informed than the agent across the table.
+ */
+function seatRows(state, world, mine, aliases) {
+  // The bell empties the stocks. Showing zeroes then reads as "you have
+  // nothing" rather than "the day ended", so the last closed day's holdings
+  // are shown instead, said as what they are.
+  const closed = state.phase === "closed" && state.episodes_closed.length;
+  const held = closed ? state.episodes_closed[state.episodes_closed.length - 1].holdings
+                      : state.stocks;
+  const rows = [];
+  for (const trader of world.traders) {
+    const row = document.createElement("div");
+    row.className = "row" + (trader === mine ? " me" : "");
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = trader === mine ? `${trader} (you)` : trader;
+    row.append(label);
+    if (aliases[trader]) {
+      const who = document.createElement("span");
+      who.className = "alias";
+      who.textContent = aliases[trader];
+      row.append(who);
+    }
+    const bundle = Object.entries(held[trader] || {})
+      .filter(([, qty]) => qty > 1e-9);
+    if (!bundle.length) {
+      const none = document.createElement("span");
+      none.className = "none";
+      none.textContent = "holding nothing";
+      row.append(none);
+    } else {
+      for (const [good, qty] of bundle) {
+        const one = document.createElement("span");
+        one.className = "held";
+        one.textContent = `${good} ${amount(qty)}`;
+        row.append(one);
+      }
+    }
+    const labour = state.labour[trader];
+    if (trader === mine && labour !== null && labour !== undefined) {
+      const left = document.createElement("span");
+      left.className = "none";
+      // A day's labour is one unit and a plan spends shares of it. "0 labour
+      // unspent" is true and reads like a quantity of something; what a
+      // driver needs to know is whether there is any of the day left to use.
+      left.textContent = labour > 1e-9
+        ? `${amount(labour)} of today's labour still unspent`
+        : "today's labour is all spent";
+      row.append(left);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function paintTable() {
+  if (!window.HAND_READY) return;
+  const board = boardRows();
+  // **Two ways to know what this island deals, and they are not equally
+  // good.** The manager whispers this seat one capacity per good, which is
+  // the whole list and is right from the first moment. `reduce` works them
+  // out from the receipts instead, which is right for a finished board and
+  // *short* on a live one -- a good nobody has produced yet has left no
+  // receipt, so a four-good island reads as three. The shape line says which
+  // of the two it is rather than passing the short list off as the island.
+  //
+  // No fallback list. `GOODS` here would put five named goods and five
+  // zeroes on a table that deals three, and a driver would read them as the
+  // game's own.
+  const half = privateHalf(window.HAND_WHISPERS || []);
+  const dealt = half ? Object.keys(half.capacity) : null;
+  const world = reduce(board, dealt ? { goods: dealt } : {});
+  const state = world.final;
+  $("table").hidden = false;
+  $("tableDay").textContent = dayLine(state);
+  const room_ = $("workspace").value.trim();
+  const goods = dealt
+    ? `${world.goods.length} goods: ${world.goods.join(", ")}`
+    : world.goods.length
+      ? `goods seen so far: ${world.goods.join(", ")} — the manager has not ` +
+        `whispered your capacities yet, so this is what the receipts show ` +
+        `and not the whole island`
+      : "no goods named yet";
+  $("tableShape").textContent =
+    [room_, `${world.traders.length} traders`, goods].filter(Boolean).join(" · ");
+  // Alias per seat, from the manager's roll-call: `{ T1: "pip" }`. The board
+  // names an author by their blinded hub id, and a row labelled with six
+  // characters of a hash is a row nobody can find themselves in.
+  const aliases = {};
+  for (const [alias, label] of Object.entries(seatLabels(board))) aliases[label] = alias;
+  const mine = $("seat").value.trim();
+  $("tableSeats").replaceChildren(...seatRows(state, world, mine, aliases));
+  $("tableNote").textContent =
+    world.traders.length
+      ? "Everything here is read off the board, which is the same board the " +
+        "manager settles from. Holdings are public — every seat can total them."
+      : "The manager has not said who is playing yet.";
+  // What the panel was drawn from, for the browser checks: read rather than
+  // scraped back out of the markup it just wrote.
+  window.HAND_TABLE = {
+    traders: world.traders, goods: world.goods, phase: state.phase,
+    episode: state.episode, episodes: state.episodes,
+    stocks: state.stocks, bell_at: state.bell_at, seat: mine,
+    //: whether the goods above are the island's own list or only what the
+    //: receipts have shown so far.
+    goodsFrom: dealt ? "whispered" : "receipts",
+  };
+}
+
+// One clock: `room` fetches on its own, this renders what it found. A second
+// after the bell the countdown has to have moved even though no line arrived,
+// so this ticks rather than waiting to be told.
+setInterval(paintTable, 1000);
+window.HAND_PLAY_READY = true;
 </script>
