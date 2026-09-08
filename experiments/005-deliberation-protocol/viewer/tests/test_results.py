@@ -93,7 +93,39 @@ def test_the_canonical_url_is_the_page_s_own(tmp_path):
     out = _build(tmp_path, [_row()])
     name = sorted(out.glob("*.html"))[0].stem
     text = (out / f"{name}.html").read_text()
-    assert f'href="{results.SITE}/{results.PREFIX}/{name}.html"' in text
+    assert f'href="{results.PAGES}/{results.PREFIX}/{name}.html"' in text
+
+
+def test_the_declared_url_is_where_the_workflow_puts_the_page():
+    """The 404 every result page had declared about itself since it existed.
+
+    These pages are staged to `$RUNNER_TEMP/site/island/g` and said they lived
+    at `<SITE>/g/`. Both true, neither checked against the other:
+
+        .../ai-lab/g/<id>.html         404
+        .../ai-lab/island/g/<id>.html  200
+
+    It survived a test because that test restated the constant --
+    `f'href="{results.SITE}/{results.PREFIX}/..."'` is a tautology, green for
+    any value of `SITE`. Reading it off the workflow is the only version of
+    this check that can fail, so this parses the staging path out of
+    `pages.yml` and requires the declared URL to be the same place.
+
+    Found by curling the live host after #239 merged, twenty minutes after
+    that PR shipped a Copy-link button which had been putting the 404 on
+    people's clipboards -- the honest version of "a test cannot load the live
+    host, so it checks the workflow" is that somebody still has to look.
+    """
+    workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text()
+    staged = re.search(r'results\.py "\$RUNNER_TEMP/site/(\S+?)"', workflow)
+    assert staged, "pages.yml no longer stages the result pages"
+
+    where = staged.group(1)                       # e.g. "island/g"
+    assert where.endswith(f"/{results.PREFIX}"), \
+        f"the workflow stages into {where!r}, which does not end in PREFIX"
+    assert f"{results.PAGES}/{results.PREFIX}" == f"{results.SITE}/{where}", (
+        f"pages declare {results.PAGES}/{results.PREFIX} and deploy to "
+        f"{results.SITE}/{where} -- one of them is a 404")
 
 
 def test_a_name_with_markup_in_it_cannot_reach_the_page(tmp_path):

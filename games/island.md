@@ -168,6 +168,44 @@ needed"; that comment was true when it was written and is not any more, so it
 changed in the same commit.
 
 
+## The button that copied a 404
+
+**Twenty minutes after the share controls merged**, the live check that the
+previous section says is the only real one found that every result page had
+been declaring a URL that does not exist -- and had been since the pages were
+written:
+
+    curl -o /dev/null -w "%{http_code}" .../ai-lab/g/<id>.html         404
+    curl -o /dev/null -w "%{http_code}" .../ai-lab/island/g/<id>.html  200
+
+`pages.yml` stages them into `$RUNNER_TEMP/site/island/g`; `results.py` set
+`SITE` to the site root and wrote `{SITE}/{PREFIX}/...`. Both statements were
+true and neither had ever been checked against the other. The `canonical` tag,
+`og:url`, and every link preview ever generated from one of these pages pointed
+at nothing.
+
+**Adding the Copy-link button is what made it matter enough to look.** For
+those twenty minutes the button's whole job was handing somebody a 404 --
+which is worse than the button not existing, and is the second time in one
+day that a change of mine went out with a defect its own tests were shaped
+not to see.
+
+**The test that was there is the lesson.** It read:
+
+    assert f'href="{results.SITE}/{results.PREFIX}/{name}.html"' in text
+
+That is a tautology. It restates the constants it is checking, so it is green
+for every value of them, including the wrong one. The replacement parses the
+staging path out of `pages.yml` and requires the declared URL to be the same
+place -- the two can no longer drift without a red tick, because the check now
+has an independent source for one side of the comparison.
+
+The relative links on the page were never wrong: `../scores.html` and
+`../index.html` resolve correctly *from the real location*, which is how this
+survived being clicked. Only the absolute self-reference was wrong, and a
+self-reference is exactly the thing nobody clicks and every crawler reads.
+
+
 ## What does not change
 
 - **The board is the only surface.** No tool API, no action schema, no call an
