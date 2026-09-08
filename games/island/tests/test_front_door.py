@@ -125,6 +125,31 @@ def test_the_lobby_is_one_click_away_and_at_its_new_path():
     assert (WEB / "lobby.html").is_file(), "nothing serves /lobby"
 
 
+def test_the_lobby_page_loads_its_assets_from_the_root():
+    """A page served at two paths cannot reach its assets relatively.
+
+    `cleanUrls` serves `lobby.html` at `/lobby`, where `./style.css` resolves
+    to `/style.css` and works. Vercel also answers `/lobby/`, and there the
+    same href resolves to `/lobby/style.css` -- a 404. The page then sits on
+    "Reading the lobby…" for ever: no error, no recovery, no way back.
+
+    Found on the live door by the host operator within an hour of the move to
+    `/lobby`, which is the second time this launch that a page was correct in
+    the checkout and wrong at the address people reach it by. Asserted on the
+    href form because the href form *is* the defect -- reproducing the two
+    paths at all needs Vercel's `cleanUrls`, which a local server has none of,
+    so a browser check here would only ever check its own fixture.
+    """
+    html = (WEB / "lobby.html").read_text()
+    for href in re.findall(r'(?:href|src)="([^"]+)"', html):
+        assert not href.startswith("./"), (
+            f"{href!r} is relative, so it 404s when the page is served at "
+            f"/lobby/ rather than /lobby. Use a root-absolute path.")
+        if not href.startswith(("http", "data:")):
+            assert href.startswith("/"), f"{href!r} should be root-absolute"
+            assert (WEB / href.lstrip("/")).is_file(), f"{href} is not deployed"
+
+
 def test_an_unheld_score_says_so_and_invites():
     text, _ = _visit(_board({
         "level": [2, 5, 4, 60],
