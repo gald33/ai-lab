@@ -1,7 +1,7 @@
 # Hue and cry
 
-Carmel moves between rooms along routes anyone can read, leaving a hint and
-an address behind her at each one and taking what she finds. Searchers move
+Carmel Taldiego moves between rooms along routes anyone can read, leaving a
+hint and an address behind her at each one and taking what she finds. Searchers move
 when they choose. **Nobody is scheduled**: she is caught by somebody walking
 into the room she is standing in, and she wins by stealing enough before one
 of them does. Searchers hold warrants for
@@ -536,9 +536,11 @@ rather than extending them. The superseded text is left in place, as
 CLAUDE.md requires, because the reasoning that was wrong is what stops it
 being reached for again.*
 
-**She has a name: Carmel.** The role was "the Fugitive" while the game
-needed one that was not a trademark; Carmel is a real name, owned by
-nobody, and keeps the cadence the idea arrived with.
+**She has a name: Carmel Taldiego.** Given by Gal, 2026-09-08. The role was
+"the Fugitive" while the game needed a name that was not a trademark;
+*Carmel Taldiego* is an invention, echoes the cadence the idea arrived with,
+and is nobody's mark. The document says **Carmel** everywhere it speaks of
+her, and the full name is what a brief, a leaderboard or a poster carries.
 
 ### The matrix is unknown, sparse, and a zero is not a denial
 
@@ -879,38 +881,82 @@ passage is the only thing written down, which is what makes a trail a trail
 
 ### What that costs, which is verifiability, and it is not nothing
 
-**The catch becomes the manager's observation rather than a settled fact.**
+**The catch stops being a settled fact and becomes something somebody saw.**
 Checked against the installed wheel rather than assumed: `GET /agents` is a
 live query of who is present *now*, answered by
 `store.list_agents(workspace, now)`, and the hub keeps **no durable join
 log**. Nobody can reconstruct from the hub, a year later, that two agents
 were once in a room together.
 
-So the manager sits in every room, polls the roster, and **writes down what
-it saw**. That record is durable and is what settles the game. It is
-strictly weaker than the commit–reveal it replaces, and this document is not
-going to call it equivalent.
+So somebody has to be watching, and the obvious somebody — a manager sitting
+in every room, polling — has a gap: a searcher who arrives and leaves
+between two polls was never there as far as the record goes.
 
-Three things about it, in the right direction:
+### Carmel keeps the record, because only she is always in the room with herself
 
-- **A catch is witnessed live by both parties.** Presence is public to the
-  room, so Carmel sees the roster too. The manager is not making an
-  unwitnessed claim about a private fact; it records something the caught
-  and the catcher both saw at the time. Under the island's rule a dispute is
-  said out loud once and the record holds both.
-- **Polling has gaps, and they are published rather than hidden.** A
-  searcher who arrives and leaves between two polls was never there as far
-  as the record is concerned. The poll interval is a stated parameter of the
-  game and belongs in the level key, not an implementation detail.
-- **A searcher may post, and is never required to.** To put its own catch on
-  the record independently of whether the manager blinked, it can write in
-  the room. Self-interest rather than ceremony: nothing asks for it, nothing
-  scores it, and an agent that never writes a line plays the whole game.
+*Gal, 2026-09-08, and it is a real argument rather than the joke it is
+dressed as.* **The one participant guaranteed to be present wherever the
+only interesting event can happen is Carmel**, because the event is
+*somebody walking in on her*. A manager has to be in twenty rooms and poll
+all of them. She is in one, continuously, and it is always the right one.
 
-**What this deletes on top of the tick's four**: the `ENTER` and `LEAVE`
-grammar, and with it the rule that denying a theft meant showing yourself —
-already gone for a better reason, since under co-presence a searcher in the
-room does not interrupt the theft, it ends the game.
+**So there is no polling gap at all**, and there is no manager in twenty
+rooms either. The observer is placed exactly where the observation has to be
+made.
+
+### Which makes the adversary the referee, and that needs answering
+
+It is the thing `games/island.md` refuses — a manager who is also a player.
+Three of the four jobs turn out not to need her at all, and the fourth has
+an answer.
+
+**Nothing is placed, so nothing can be invented.** The treasures and their
+values derive from the game seed, like the matrix and the room addresses. So
+her `TAKE` is checkable: once the seed is published, anybody can compute what
+was in that room and what it was worth. **She cannot invent loot**, which is
+the one report she has an interest in inflating.
+
+**Nothing is judged, so nothing can be judged wrongly.** A hint was legal or
+it was not, and the revealed seed decides it. There is no discretion left to
+abuse.
+
+**Her own capture is a statement against interest.** Reporting it ends the
+game against her, so a false one is not a lie anybody tells. **Failing to
+report it is the real risk**, and the answer is that co-presence is
+symmetric: the searcher saw the same roster. So the two reports are not
+equal and should not be treated as equal —
+
+> **Her report that she was caught is conclusive. A searcher's report is a
+> claim she may refute**, and if she refutes it the record holds both, said
+> out loud once, per CLAUDE.md's rule for a key that was handed on.
+
+A searcher has every reason to claim a capture falsely and she has none, so
+the asymmetry in credibility follows the asymmetry in incentive rather than
+from anybody being trusted.
+
+**What is left is one thing she could withhold: the seed.** Everything
+verifiable depends on it being published at the end, and a fugitive who has
+just lost has nothing to gain from publishing except the record of her
+defeat. So:
+
+> **No seed, no win.** A game whose seed is never revealed is scored as a
+> loss for her, not as void. Withholding it costs her the game it would have
+> cost her anyway, and denies the searchers nothing.
+
+**What is genuinely left of a manager is close to nothing.** She publishes a
+commitment before, plays, and publishes the seed after; everything else in
+this document that says "the manager" is arithmetic anyone holding the
+transcript can do. That is further than the island got, and it is only
+available because the seed does so much: the map, the rooms, the hints, the
+treasures and their values all come out of thirty-two bytes.
+
+*Two things this does not solve, stated rather than glossed.* She still sees
+her own roster live, which is information no searcher has about her — that
+is not refereeing, it is the game, and it is why she gets to run. And a
+searcher who is caught out by the poll-free record has no complaint left,
+but a searcher who believes she suppressed a capture has only the refutable
+claim above; if that turns out to be exercised often, the answer is a
+witness in the room and not a better rule.
 
 ### She wins on reputation, not on outlasting a clock
 
@@ -925,8 +971,7 @@ time, and time in a room is the only way to be caught. The theft is the
 dwell and the dwell is the exposure, continuously, with no tick boundary to
 hide the decision inside.
 
-**Reputation is public and her position is not.** The manager reads the
-rooms and announces the score on the square, so everybody knows how much she
+**Reputation is public and her position is not.** She posts the score, so everybody knows how much she
 has taken and how close she is — and nobody learns where from. The alarm
 rises without the map being given away, which is the pressure the old
 version had to manufacture with a deadline.
