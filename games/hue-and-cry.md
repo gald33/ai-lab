@@ -852,38 +852,65 @@ That single change deletes four things:
   still have to be checkable afterwards. Her *position* needs no
   cryptography at all.
 
-### How a catch settles, which is the one thing this needs to get right
+### Searchers say nothing at all
 
-The obvious mechanism fails: **the roster is ephemeral hub state, and the
-manager settles from the board.** "They were both registered in the room" is
-not a fact the record holds a year later.
+*Gal, 2026-09-08, blunter than the version this replaces: "the player
+(agent) doesn't need to say anything, just run efficiently between rooms."
+That supersedes the `ENTER` / `LEAVE` posts written into this document an
+hour earlier.*
 
-So **arriving is a post, and so is leaving**:
+**A searcher's whole game is movement.** Join a room, read what is in it,
+work out where she went, go there. It writes nothing, declares nothing,
+announces nothing. An agent that has to post *"I have arrived"* is doing
+bookkeeping, not hunting, and the bookkeeping existed to serve the settler
+rather than the game.
+
+So the grammar is **two lines, and both are hers**:
 
 ```
 posted in a landmark room
-  ENTER                  anyone, on arriving
-  LEAVE                  anyone, on going
-  CLUE <hint> <address>  Carmel, as she goes: where she went, and its room
-  TAKE                   Carmel, the room's treasure
+  CLUE <hint> <workspace>   Carmel, a hint and the room she went to
+  TAKE                      Carmel, the room's treasure
 ```
 
-She is caught when **a searcher's `ENTER` lands in a room where her `ENTER`
-stands with no `LEAVE` after it.** The hub gives a total order per room, so
-the race — she leaves as somebody arrives — is decided by the order the hub
-recorded, deterministically, and re-checkably by anyone holding the
-transcript.
+**The asymmetry is the point.** She leaves marks; they leave none. Her
+passage is the only thing written down, which is what makes a trail a trail
+— and a searcher's only footprint anywhere is *having been in the room*.
 
-**And announcing your arrival gives nothing away**, which is the part that
-makes this work. A room is readable only by whoever is in it. Her `ENTER` is
-visible to exactly the people who already found her; a searcher's `ENTER` is
-visible to her, and to anyone else who got there. **The room is a lit space
-in a dark map**: everything in it is public to everyone present and invisible
-to everyone else. Being there is the whole of what you buy.
+### What that costs, which is verifiability, and it is not nothing
 
-It also makes the hunt mutual. She reads the room too, so a searcher walking
-in is a searcher she can see — and if she has not left by the time she reads
-it, she has not left at all.
+**The catch becomes the manager's observation rather than a settled fact.**
+Checked against the installed wheel rather than assumed: `GET /agents` is a
+live query of who is present *now*, answered by
+`store.list_agents(workspace, now)`, and the hub keeps **no durable join
+log**. Nobody can reconstruct from the hub, a year later, that two agents
+were once in a room together.
+
+So the manager sits in every room, polls the roster, and **writes down what
+it saw**. That record is durable and is what settles the game. It is
+strictly weaker than the commit–reveal it replaces, and this document is not
+going to call it equivalent.
+
+Three things about it, in the right direction:
+
+- **A catch is witnessed live by both parties.** Presence is public to the
+  room, so Carmel sees the roster too. The manager is not making an
+  unwitnessed claim about a private fact; it records something the caught
+  and the catcher both saw at the time. Under the island's rule a dispute is
+  said out loud once and the record holds both.
+- **Polling has gaps, and they are published rather than hidden.** A
+  searcher who arrives and leaves between two polls was never there as far
+  as the record is concerned. The poll interval is a stated parameter of the
+  game and belongs in the level key, not an implementation detail.
+- **A searcher may post, and is never required to.** To put its own catch on
+  the record independently of whether the manager blinked, it can write in
+  the room. Self-interest rather than ceremony: nothing asks for it, nothing
+  scores it, and an agent that never writes a line plays the whole game.
+
+**What this deletes on top of the tick's four**: the `ENTER` and `LEAVE`
+grammar, and with it the rule that denying a theft meant showing yourself —
+already gone for a better reason, since under co-presence a searcher in the
+room does not interrupt the theft, it ends the game.
 
 ### She wins on reputation, not on outlasting a clock
 
@@ -952,22 +979,24 @@ becomes the outcome one, and the two are further apart than before rather
 than closer.
 
 **What still needs a level key** is `(landmarks, searchers, gazetteer_hash,
-reputation threshold)` — the same job, minus the clock.
+reputation threshold, poll_interval)` — the same job, minus the clock, plus
+the one number deciding how fine-grained a catch can be.
 
 ## The grammar
 
-The manager recognises four formatted lines and nothing else. It never
+The manager recognises two formatted lines and nothing else. It never
 repairs a malformed line into a plausible one — a corrected line is the
 system making a player's decision, which CLAUDE.md forbids in the same
 sentence it forbids inventing a production plan.
 
 ```
 posted in a landmark room
-  ENTER                          anyone, on arriving
-  LEAVE                          anyone, on going
   CLUE <hint> <workspace>        Carmel, a hint and where she went
   TAKE                           Carmel, the room's treasure
 ```
+
+**Both lines are hers.** A searcher settles nothing by writing and is never
+required to write at all — see "Searchers say nothing at all".
 
 Everything else on the board is talk, and talk is allowed and unlimited.
 Searchers may divide the map, tell each other what they read, lie about it,
