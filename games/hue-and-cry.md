@@ -425,6 +425,64 @@ worst landmark cover:  98.2%   (needs >= 95%)
 landmarks she cannot hide from: none
 ```
 
+### Routes run between places that resemble each other
+
+*Added 2026-09-07 after running a chase on the authored gazetteer, which
+found the collision gate measuring the wrong population — for the second
+time, in the same way.*
+
+**The gate above asks whether she holds a word shared with other landmarks.
+The game asks whether any place she can REACH is covered by it.** A
+descriptor shared with five places is no cover at all when none of those
+five is one of her exits. Measured over 400 drawn maps, every room and every
+destination:
+
+```
+cover measured against the whole map   98.2%   -> the gate said "playable"
+her moves that name her position       49.5%   -> half the trail is free
+```
+
+**So routes are drawn from a landmark's neighbourhood** — the places it
+shares the most descriptors with — rather than from the map at large, and
+a game gives each landmark five exits rather than three. Both levers, and
+they compose:
+
+```
+random exits, 3 each          pinned 49.7% of moves
+random exits, 5 each          pinned 27.2%
+neighbourhood exits, 3 each   pinned 30.7%
+neighbourhood exits, 5 each   pinned 12.8%
+```
+
+**And the neighbourhoods are the flavour, not a side effect.** Bergen's are
+Hobart, Reykjavik, Ushuaia and Valparaiso — the cold ports. Cairo's are Fez,
+Marrakesh and Samarkand. Kyoto's are Luang Prabang and Kathmandu. A trail
+through them reads as a journey rather than a random walk, which is the
+thing this whole section exists to protect: *Reykjavik → Gjirokaster → Fez →
+Zanzibar → Cairo* is a route somebody would describe out loud.
+
+**What it costs, which is not nothing.** Neighbourhood routing spends the
+deductive value of being in the room she left, because when everywhere she
+can reach looks alike, knowing where she was tells you less:
+
+```
+                        in the room    from outside    advantage
+random exits, 3            1.56            4.18          2.7x
+neighbourhood, 5           2.60            4.90          1.9x
+```
+
+Presence still wins outright — **the hash in the room is the exact address**,
+which no amount of deduction from outside can equal — but the *hint* stops
+discriminating as sharply. That is a real trade and the right one here: a
+chase where she is pinned half the time is not a chase, and a trail that
+reads as a random walk is not worth posting.
+
+**The gate is distributional now**, and it has to be: routes are drawn per
+game, so playability is a property of `(gazetteer, neighbourhood size, exit
+count)` rather than of the word list. `pin_rate()` in
+`games/hue-and-cry/gazetteer.py` measures it over many drawn maps;
+`MAX_PINNED = 0.20` is a guess and is flagged as one.
+
 ### One consequence for the addresses
 
 If the gazetteer is public and the room is `KDF(name, seed)` with the seed

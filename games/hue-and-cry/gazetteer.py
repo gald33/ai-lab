@@ -83,11 +83,20 @@ GAZETTEER: dict[str, tuple[str, ...]] = {
                     "mountain shadow"),
 }
 
-#: A gazetteer is playable when the fugitive has somewhere to hide FROM EVERY
-#: ROOM. Not when every descriptor is shared -- a rare word is harmless as
-#: long as she is never forced to post it, which is what the first version of
-#: this check got wrong by counting singletons globally.
-MIN_COVER = 0.95
+#: How many of its most-alike places a landmark connects to. The exits of a
+#: game are drawn from this neighbourhood, not from the whole map.
+NEIGHBOURHOOD = 6
+
+#: Exits per landmark in a game.
+EXITS = 5
+
+#: The gate. Over many drawn maps, the share of her moves where every hint in
+#: her hand names exactly one reachable place -- that is, where the trail
+#: gives her position away for free.
+#:
+#: A GUESS, and flagged as one. It wants calibrating against how often a
+#: searcher actually converts a pinned hint into an arrest.
+MAX_PINNED = 0.20
 
 
 def candidates(landmark: str) -> tuple[str, ...]:
@@ -104,37 +113,80 @@ def holders() -> dict[str, list[str]]:
     return out
 
 
-def cover(landmark: str) -> float:
-    """Chance a random live-three leaves her at least one place to hide behind.
+def kinship(a: str, b: str) -> int:
+    """How many descriptors two landmarks share. What makes them neighbours."""
+    return len(set(GAZETTEER[a]) & set(GAZETTEER[b]))
 
-    The quantity that actually decides whether a room is playable: if every
-    one of her three live descriptors is unique to this landmark, the hint
-    names her position and the tick is over before it starts.
+
+def neighbourhood(landmark: str, size: int = NEIGHBOURHOOD) -> list[str]:
+    """The places most like this one, which are the ones it connects to.
+
+    Routes run between landmarks that RESEMBLE each other, and this does two
+    jobs at once. It gives her somewhere to hide -- a shared word is only
+    cover if the place sharing it is somewhere she could actually have gone.
+    And it makes a trail read as a journey: Bergen's neighbours are Hobart,
+    Reykjavik, Ushuaia and Valparaiso, which is the cold-port circuit;
+    Cairo's are Fez, Marrakesh and Samarkand.
     """
-    import itertools
-    h = holders()
-    words = GAZETTEER[landmark]
-    trios = list(itertools.combinations(words, 3))
-    return sum(1 for t in trios if any(len(h[w]) > 1 for w in t)) / len(trios)
+    return sorted((x for x in GAZETTEER if x != landmark),
+                  key=lambda x: (-kinship(landmark, x), x))[:size]
 
 
-def playable() -> tuple[bool, float, list[str]]:
-    """Can she hide from every room? Returns (passes, worst cover, offenders).
+def pin_rate(trials: int = 200, exits: int = EXITS, seed_bytes: int = 32) -> float:
+    """Share of her moves where the trail names her position for free.
 
-    *This replaced a check that counted globally unique descriptors and
-    demanded zero.* That gate failed a gazetteer that plays perfectly well,
-    because it measured the wrong thing: what matters is not whether a word
-    is rare but whether a landmark can be caught with nothing but rare words
-    in hand.
+    THE GATE, and the third version of it. The first counted globally unique
+    descriptors; the second measured cover against the whole map. Both asked
+    "does she hold a shared word", when the game asks "is any place she could
+    REACH covered by it" -- a word shared with five landmarks is no cover at
+    all when none of those five is one of her exits. Measured against the
+    whole map the committed gazetteer scored 98.2% cover and passed; measured
+    against her exits, half her moves gave her away.
+
+    Routes are drawn per game, so this is distributional by necessity: a
+    property of (gazetteer, neighbourhood size, exit count), not of the word
+    list alone.
     """
-    covers = {lm: cover(lm) for lm in GAZETTEER}
-    weak = sorted(lm for lm, c in covers.items() if c < MIN_COVER)
-    return not weak, min(covers.values()), weak
+    import hashlib
+    import hmac
+    import os
+
+    places = list(GAZETTEER)
+    pinned = total = 0
+    for _ in range(trials):
+        seed = os.urandom(seed_bytes)
+
+        def draw(tag: bytes, pool: list[str], key: str, count: int) -> list[str]:
+            out: list[str] = []
+            i = 0
+            while len(out) < count:
+                digest = hmac.new(seed, tag + b"\0" + key.encode() + bytes([i]),
+                                  hashlib.sha256).digest()
+                pick = pool[int.from_bytes(digest[:8], "big") % len(pool)]
+                if pick not in out:
+                    out.append(pick)
+                i += 1
+            return out
+
+        for here in places:
+            reachable = draw(b"exit", neighbourhood(here), here, exits)
+            for destination in reachable:
+                live = draw(b"live", list(GAZETTEER[destination]), destination, 3)
+                best = max(len([x for x in reachable if w in GAZETTEER[x]])
+                           for w in live)
+                total += 1
+                pinned += best == 1
+    return pinned / total
+
+
+def playable(trials: int = 200) -> tuple[bool, float]:
+    """Does a drawn map leave her room to run? (passes, pin rate)."""
+    rate = pin_rate(trials)
+    return rate <= MAX_PINNED, rate
 
 
 def main() -> None:
     h = holders()
-    ok, worst, weak = playable()
     total = sum(len(v) for v in GAZETTEER.values())
 
     print(f"{len(GAZETTEER)} landmarks, {len(h)} distinct descriptors, "
@@ -149,10 +201,17 @@ def main() -> None:
     mean = sum(len(v) for v in h.values()) / len(h)
     print(f"\n  mean candidates a hint leaves : {mean:.2f}"
           f"   (was 1.03 when authored for colour)")
-    print(f"  worst landmark cover          : {worst:.1%}"
-          f"   (needs >= {MIN_COVER:.0%})")
-    print(f"  landmarks she cannot hide from: {', '.join(weak) or 'none'}")
-    print(f"  playable                      : {ok}")
+
+    print("\nneighbourhoods -- routes run between places that resemble each other:")
+    for place in ("Bergen", "Cairo", "Kyoto"):
+        near = neighbourhood(place, 4)
+        print(f"  {place:<10} -> "
+              + ", ".join(f"{n} ({kinship(place, n)})" for n in near))
+
+    ok, rate = playable(trials=60)
+    print(f"\n  moves where the trail names her : {rate:.1%}"
+          f"   (needs <= {MAX_PINNED:.0%})")
+    print(f"  playable                        : {ok}")
 
     print("\nthe ambiguities a person can feel:")
     for word in ("call to prayer", "harbour fog", "tanning pits", "monsoon",
