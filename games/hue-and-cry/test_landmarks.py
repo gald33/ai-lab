@@ -68,3 +68,17 @@ def test_every_landmark_has_a_country_to_be_reported_from():
     """A hint says where she was seen. A blank country is a sentence that
     cannot be written."""
     assert [p["name"] for p in load() if not p["country"]] == []
+
+
+def test_every_landmark_has_a_wikidata_item():
+    """The name is not an identifier -- "Eiffel Tower" returns four items,
+    three of them in the United States. Enrichment is exact with a Q-number
+    and a guess without one."""
+    bad = [p["name"] for p in load()
+           if not p["qid"].startswith("Q") or not p["qid"][1:].isdigit()]
+    assert bad == []
+
+
+def test_no_two_landmarks_are_the_same_wikidata_item():
+    places = load()
+    assert len({p["qid"] for p in places}) == len(places)

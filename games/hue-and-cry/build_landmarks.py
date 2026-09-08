@@ -34,7 +34,7 @@ UA = "hue-and-cry-gazetteer/1.0 (https://github.com/gald33/ai-lab)"
 RETRIES = 5
 
 UNESCO = """
-SELECT ?name ?cc ?coord ?sl WHERE {
+SELECT ?item ?name ?cc ?coord ?sl WHERE {
   ?item wdt:P1435 wd:Q9259 ; wdt:P625 ?coord ; rdfs:label ?name .
   OPTIONAL { ?item wdt:P17 ?c . ?c rdfs:label ?cc . FILTER(lang(?cc)="en") }
   ?item wikibase:sitelinks ?sl .
@@ -150,7 +150,7 @@ FEATURES = {  # label -> Wikidata class
 }
 
 FEATURE_Q = """
-SELECT ?name ?cc ?coord ?sl WHERE {
+SELECT ?item ?name ?cc ?coord ?sl WHERE {
   ?item wdt:P31 wd:%s ; wdt:P625 ?coord ; rdfs:label ?name ;
         wikibase:sitelinks ?sl .
   OPTIONAL { ?item wdt:P17 ?c . ?c rdfs:label ?cc . FILTER(lang(?cc)="en") }
@@ -159,7 +159,7 @@ SELECT ?name ?cc ?coord ?sl WHERE {
 """
 
 LOOKUP = """
-SELECT ?name ?cc ?coord ?sl WHERE {
+SELECT ?item ?name ?cc ?coord ?sl WHERE {
   VALUES ?name { %s }
   ?item rdfs:label ?name ; wdt:P625 ?coord ; wikibase:sitelinks ?sl .
   OPTIONAL { ?item wdt:P17 ?c . ?c rdfs:label ?cc . FILTER(lang(?cc)="en") }
@@ -254,13 +254,14 @@ def collect(rows: list[dict], source: str, into: dict) -> None:
         if not name or not p:
             continue
         sl, cc = int(row.get("sl") or 0), row.get("cc") or ""
+        qid = (row.get("item") or "").rsplit("/", 1)[-1]
         prev = into.get(name)
         if prev and (prev["sl"], prev["cc"]) <= (sl, cc) and prev["sl"] >= sl:
             continue
         if prev and prev["sl"] > sl:
             continue
         into[name] = {"lat": p[0], "lon": p[1], "cc": cc,
-                      "sl": sl, "src": source}
+                      "sl": sl, "src": source, "qid": qid}
 
 
 def haversine(a: dict, b: dict) -> float:
@@ -286,9 +287,9 @@ def build() -> dict:
     # threshold that admits a reasonable number of castles admits four
     # hundred lakes, and the map wants some of each.
     feature: dict = {}
-    for qid in FEATURES.values():
+    for cls in FEATURES.values():
         got: dict = {}
-        collect(query(FEATURE_Q % qid), "feature", got)
+        collect(query(FEATURE_Q % cls), "feature", got)
         best = sorted(got.items(), key=lambda kv: -kv[1]["sl"])[:FEATURE_QUOTA]
         feature.update(best)
     print(f"  feature  {len(feature)}", file=sys.stderr)
@@ -359,12 +360,12 @@ def write(kept: dict, out) -> None:
               "# UNESCO World Heritage Sites (wdt:P1435 wd:Q9259), named icons,"
               " and\n# natural features. Selection and use:"
               " games/hue-and-cry/landmarks.py\n"
-              "# name\tcountry\tlat\tlon\tsource\tsitelinks\n")
+              "# name\tcountry\tlat\tlon\tsource\tsitelinks\tqid\n")
     rows = sorted(kept.items(), key=lambda kv: (-kv[1]["sl"], kv[0]))
     for name, v in rows:
         assert "\t" not in name, name
         out.write(f"{name}\t{v['cc']}\t{v['lat']:.5f}\t{v['lon']:.5f}"
-                  f"\t{v['src']}\t{v['sl']}\n")
+                  f"\t{v['src']}\t{v['sl']}\t{v['qid']}\n")
 
 
 def main() -> None:
