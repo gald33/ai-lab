@@ -291,16 +291,30 @@ def empty_slots(page, where: str) -> list[str]:
                  mark: zero ? getComputedStyle(zero).opacity : null };
       })"""
     slots = page.evaluate(read)
-    #: The mark fades in over 0.3s, and this reads the *computed* opacity --
-    #: so a sample taken while the transition is still running is a number
+    #: The mark fades in over 0.3s (`.bar-zero`: `opacity 0` -> `.9`,
+    #: `transition: opacity .3s ease`), and this reads the *computed* opacity
+    #: -- so a sample taken while the transition is still running is a number
     #: about how loaded the machine is. It flaked exactly that way: three
     #: slots at opacity 0 in one run and none in the next, on the same commit.
     #:
     #: Waited out rather than loosened. A transition that has finished does
-    #: not go back down, so a second read after longer than its own duration
-    #: is the settled value, and a mark that is genuinely never shown is still
-    #: at zero when it arrives.
-    if any(s["mark"] is not None and float(s["mark"]) < 0.5 for s in slots):
+    #: not go back down, so a read taken once the value stops climbing is the
+    #: settled one, and a mark that is genuinely never shown sits at zero
+    #: through every attempt and still fails.
+    #:
+    #: **One 500ms sleep was not enough**, and 2026-09-08 says by how much:
+    #: `drawing-slow` failed at opacity 0.0346208, which on that ease curve is
+    #: roughly 20ms in -- so the second read landed almost where the first
+    #: did. The runner was starved (`palette` took 389.7s in that run against
+    #: a usual ~90), which is the same signature as the `shutters` flake in
+    #: `README.md`: wall-clock passes and the browser does not advance. A
+    #: fixed delay is a bet on how loaded the machine is. This waits for the
+    #: value instead, which is the thing the paragraph above already said it
+    #: wanted.
+    for _ in range(8):
+        if not any(s["mark"] is not None and float(s["mark"]) < 0.5
+                   for s in slots):
+            break
         page.wait_for_timeout(500)
         slots = page.evaluate(read)
     bad = []

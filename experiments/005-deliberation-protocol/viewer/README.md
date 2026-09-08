@@ -13,6 +13,46 @@ too, and reads it rather than the hub.
 
 ![the island, mid-trade](docs/island.png)
 
+## A second timing-shaped flake, and the same cause underneath
+
+**`drawing-slow`, 2026-09-08, on #241:**
+
+    FAIL island-game-002b-g1 @mid: an empty iron slot's zero mark is
+    invisible (opacity 0.0346208)
+
+Not `recorded`, and not `shutters`. But the same shape, and this one names its
+own cause: `.bar-zero` is `opacity: 0` with `transition: opacity .3s ease`, and
+`.cell.empty .bar-zero` is `.9`. **0.0346 is about 20ms into that curve** --
+the check sampled a transition that had barely started.
+
+`slot_marks` already knew this could happen and re-read once after 500ms. The
+failure says that was not enough: the second sample landed essentially where
+the first did. The seconds table says why --
+
+| check | this run | usual |
+|---|---|---|
+| palette | **389.7s** | ~90s |
+| total | 837.0s | ~300s |
+
+-- which is the `shutters` signature above: **wall-clock passes and the browser
+does not advance**, so a fixed delay is a bet on how loaded the machine is.
+
+**Fixed by waiting for the value rather than for a duration.** The check now
+re-reads up to eight times, stopping as soon as nothing is below the threshold.
+This does not loosen anything: the threshold is unchanged, and a mark that is
+genuinely never shown stays at zero through all eight and still fails. It is
+what the existing comment already said it wanted -- "a transition that has
+finished does not go back down" -- applied to the value instead of to a clock.
+
+**Base was green.** `main` at `3b4df39` passed `drawing-slow` at 18:31, minutes
+before this failed at 18:32 on a head whose diff was `results.py`, its tests
+and `games/island.md`. Nothing in that diff reaches the drawn scene. I could
+not re-run the job to confirm (403 on rerun-failed-jobs, rerun and
+workflow_dispatch), which is why this is a pushed robustness fix rather than a
+re-run: the rule is that when a flake cannot be re-run and *can* be made
+robust, it gets made robust.
+
+
 ## What it draws, and what it refuses to
 
 **Only what the manager said.** A trader writing `PRODUCE bread=0.5` has
