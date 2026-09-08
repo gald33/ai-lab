@@ -187,6 +187,14 @@ COUNTRY_FIX = {
     "Mount Everest": "Nepal",        # the border; Nepal is the approach
     "Matterhorn": "Switzerland",
     "Nahal Me'arot Nature Reserve": "Israel",  # Wikidata has no P17 on it
+    # P17 sometimes names the state that built the place rather than the one
+    # that holds it, and the alphabetical tiebreak has no way to tell. A hint
+    # reading "seen in the Achaemenid Empire" is a false hint, which is the
+    # one thing the hints may never be. `test_facts.py` catches the class by
+    # requiring every country to have a continent and a side of the road.
+    "Babylon": "Iraq",                    # Wikidata: Achaemenid Empire
+    "Burana Tower": "Kyrgyzstan",         # Wikidata: Karakhanid Khanate
+    "Socotra Archipelago": "Yemen",       # Wikidata: Mahra Sultanate
 }
 RENAME = {"Blue Mosque": "Blue Mosque of Mazar-i-Sharif"}
 COUNTRY_NAMES = {"People's Republic of China": "China"}
