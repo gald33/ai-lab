@@ -1298,6 +1298,50 @@ second. The check asserts the structural fact instead: `room` renders into a
 hidden `#rawWhispers`, and the visible list is the page's alone. A test that
 cannot fail is the frozen countdown again, one layer up.
 
+### The links carried nothing, and the seat was asked for twice
+
+Two findings from Gal playing `g39` on 2026-09-07, both of the same shape: the
+page asking for something it already had, or dropping something it already
+held.
+
+**Every link between the hand's pages carried no room at all.** Clicking "the
+same game with the island drawn" mid-round dropped the workspace, the key, the
+write key and the seat, and landed on an empty form — with the bell running,
+and the invite reachable only by going back to the lobby page *in the browser
+that joined*, because that is where the seat key lives. `roomQuery` and
+`roomLink` in `hand/play_lines.js` fix it, and the check follows the link for
+real rather than asserting on an `href`: what matters is the page you arrive
+at, and it must arrive filled in with its setup fold shut.
+
+**And nobody should ever have been asked to type `T1`.** The lobby says which
+label it gave you — in public, on its own board, at the moment it seated you:
+`g39 seat T1 = Gal, key sWk0…`. The playing pages asked for it anyway, which
+asked a child to go and find a label on a board written for agents. `seatTaken`
+reads that line and the lobby puts the seat in the link it builds, so the
+question never arrives. Gal put it plainly: *what's the point of inputting T1
+if it recognises by name.*
+
+**The field stays, and the guard on it stays.** A driver can arrive by a link
+somebody typed by hand, or from a lobby that has since forgotten the table, and
+then the question is worth asking — and entering without a seat still writes a
+declaration the record cannot read, which is the one failure these pages may
+not have. What changed is that the normal path no longer asks.
+
+**The seat is guessed from nothing.** `seatTaken` requires the table *and* the
+name to match the lobby's own line, and finds nothing in talk about a seat.
+The cost of guessing here is worse than the cost of asking: a wrong label goes
+into this driver's declaration, and the record then reads a seat as having a
+human on it that does not.
+
+**What this does not fix, and cannot.** A driver who joined from the CLI has a
+seat the browser cannot play: the signing key lives in whichever client took
+the seat, the browser mints its own per-browser, and the manager refuses every
+line under a key the lobby did not witness. Carrying the room in a link moves
+the *coordinates*, never the key. Closing that would mean letting a page
+import a signing key — `play.html` already exports one in the brief, so it is
+the symmetric operation and not a new capability — and that is a decision
+about what a page may be handed, not a navigation fix. It is not made here.
+
 ## Seats, and who is in one
 
 A name typed on a board proves nothing. The hub does not validate `agent_id` —

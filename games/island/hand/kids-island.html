@@ -238,8 +238,9 @@
   </details>
 
   <p class=sub>Other ways in:
-    <a href="./kids.html" id=toKids>the same game without the picture</a> ·
-    <a href="./play.html" id=toPlay>the grown-up page</a></p>
+    <a data-page="./kids.html" id=toKids>the same game without the picture</a> ·
+    <a data-page="./play.html" id=toPlay>the grown-up page</a> ·
+    <a data-page="./lobby.html" id=toLobby>back to the lobby</a></p>
 </main>
 
 <script type=module>
@@ -248,7 +249,7 @@ import { Room } from "./room.js";
 import { declaration } from "./declaration.js";
 import { GOODS, Malformed, produceLine, proposeLine, approveLine,
          declineLine, privateHalf, seatLabels, amount,
-         notes } from "./play_lines.js";
+         notes, roomLink } from "./play_lines.js";
 // The viewer's own drawing, over `../`. In service the hand's pages are
 // served at `/island/hand/` and the viewer's modules at `/island/`, which is
 // what makes this path the real one rather than a convenience -- see
@@ -499,6 +500,22 @@ function paint() {
     paintOffers(mine, (world?.final.proposals || []).filter((p) => p.status === "open").length);
   }
   preview();
+  paintNav();
+}
+
+/** **Every link off this page carries the room.** They used to carry nothing,
+ *  so "the same game with the island drawn" dropped the workspace, the key and
+ *  the seat and landed on an empty form -- mid-round, with the bell running,
+ *  and the invite reachable only by going back to the lobby in the browser
+ *  that joined. Rebuilt on every repaint, because the fields change under it.
+ */
+function paintNav() {
+  const fields = Object.fromEntries(
+    ["url", "token", "workspace", "key", "write_key", "channel", "name", "seat"]
+      .map((id) => [id, $(id)?.value || ""]));
+  for (const link of document.querySelectorAll("a[data-page]")) {
+    link.href = roomLink(link.dataset.page, fields);
+  }
 }
 
 /** The manager's notes, said rather than dumped. `play_lines.notes` decides
@@ -716,6 +733,7 @@ $("seat").addEventListener("input", () => {
 buildMake();
 fillSeats();
 preview();
+paintNav();
 // One clock and one poll: `room` fetches on its own, this renders what it
 // found. The island's own animation runs on `Stage`'s frame loop.
 setInterval(paint, 1000);
