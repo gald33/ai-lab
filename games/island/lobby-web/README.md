@@ -6,6 +6,16 @@ directory" off (`HOSTING.md`, step 3) — so a file that is not here is a 404 in
 production and nowhere else, which is why `landing.css`, `landing.js`,
 `card.png` and `tokens.css` all live beside the page that uses them.
 
+**That root directory is confirmed by the deploy itself, not only by the
+runbook.** Vercel's own PR comment payload carries
+`"rootDirectory":"games/island/lobby-web"` (observed 2026-09-07 on #232 and
+#233). Worth writing down because the whole layout below rests on it and it
+was otherwise a documented setting nobody here could see: this container is
+answered by Vercel with `x-vercel-mitigated: deny`, so neither the live door
+nor a preview URL can be loaded from it, and `test_front_door.py`'s
+"every relative asset is a file in this directory" assertion is the only other
+thing standing behind the claim.
+
 | path | file | what it is |
 |---|---|---|
 | `/` | `index.html` | the landing page: what this is, how to enter, the score to beat |
