@@ -2123,6 +2123,37 @@ this directory copies which **a reader cannot see is wrong** needs a check and
 not a note asking the next person to remember. A front door in slightly the
 wrong colours is exactly that kind of wrong.
 
+### The door was right and its trailing slash was not
+
+**Found on the live site by the host operator, 2026-09-08, within an hour of
+the move.** `cleanUrls` serves `lobby-web/lobby.html` at `/lobby`, and Vercel
+answers `/lobby/` as well. The page's assets were relative -- `./style.css`,
+`./app.js` -- so at `/lobby` they resolved to `/style.css` and worked, and at
+`/lobby/` they resolved to `/lobby/style.css` and 404ed. The result was a
+lobby stuck on "Reading the lobby…" for ever: no error, no recovery, nothing
+telling the visitor to drop the slash.
+
+**This is the same shape as the defect the move itself fixed**, one level
+down. There, the card was correct and served from an address nobody is handed.
+Here, the page is correct and one of the two addresses it answers on cannot
+load it. Both times the checkout was right and the *served* thing was wrong,
+and both times every test passed, because a test that reads the file cannot
+see which URL the file was reached by.
+
+The hrefs are root-absolute now, correct at both paths, and
+`test_the_lobby_page_loads_its_assets_from_the_root` refuses a relative one.
+That check is deliberately an assertion on the href form rather than a browser
+visit: reproducing the two paths at all needs Vercel's `cleanUrls`, and a
+local server has none, so a browser check here would be a check of the
+fixture. The href form *is* the defect.
+
+**And it was found by somebody who could load the page.** This container is
+answered by `x-vercel-mitigated: deny`, so nothing here has ever seen the main
+door render. Asking the host operator to open `/`, `/lobby` and `/card.png` was
+the whole of the verification, and it returned a defect on the first look. A
+surface nobody in the loop can load is a surface whose bugs are found by
+strangers.
+
 ## A result is something you can send
 
 **One static page per game**, at `/island/g/<game_id>.html`, built at publish

@@ -2,6 +2,14 @@
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>The island — lobby</title>
-<link rel=stylesheet href="./style.css">
+<!-- **Root-absolute, not relative, because this page answers at two paths.**
+     `cleanUrls` serves this file at `/lobby`, where `./style.css` resolves to
+     `/style.css` and works -- but Vercel also answers `/lobby/`, and there the
+     same href resolves to `/lobby/style.css`, which is a 404. A visitor who
+     typed or was sent the trailing slash got a page stuck on "Reading the
+     lobby…" for ever, with no error and no way back. Found on the live door by
+     the host operator within an hour of the move to /lobby (2026-09-08).
+     Root-absolute hrefs are correct at both paths. -->
+<link rel=stylesheet href="/style.css">
 <main><p class=sub>Reading the lobby…</p></main>
-<script type=module src="./app.js"></script>
+<script type=module src="/app.js"></script>
