@@ -4,37 +4,70 @@ Step one of building the gazetteer for real (Gal, 2026-09-08: "1) create 1000
 landmarks"). The twenty in `gazetteer.py` were a demonstration; these are the
 map.
 
+HOW THEY WERE CHOSEN, and this reverses an earlier answer that is left here
+because the reasoning is the correction. The first thousand were **cities**,
+taken from GeoNames by population: every national capital, then a fill capped
+at six per country so nowhere could crowd the map. It gave excellent spread
+and it was the wrong map. Gal, the same day:
+
+    "but you should choose landmarks, and don't base them on how many per
+    area or country. pick 1000 known or interesting landmarks. The Eifel
+    tower, Dead sea, Area 51, Stonehenge. Then the game is interesting and
+    you have something to say about every one of them."
+
+That last clause is the whole requirement, and population cannot satisfy it.
+Step two of this build writes three hint sentences for every landmark, and a
+hint is a report, a sighting, a rumour -- a sentence a person reads and feels
+something about. There is nothing to say about the 700th largest city that
+anybody would want to read, and there is something to say about every one of
+Area 51, the Dead Sea, Stonehenge and Uluru. **Spread is a property you can
+optimise for and interest is not**, so interest was chosen first and the
+spread checked afterwards: 162 countries, latitude -54.6 to +78.2,
+longitude -172.9 to +175.6. Enough.
+
 WHERE THEY COME FROM, because a coordinate written from memory is a
-coordinate nobody can check. `landmarks.tsv` is derived from GeoNames'
-`cities15000` dump -- 34,134 settlements above 15,000 people, with surveyed
-latitude and longitude -- rather than authored here. GeoNames is licensed
-CC BY 4.0; the attribution is in `landmarks.tsv` and this docstring is the
-other half of it.
+coordinate nobody can check. Every row is from Wikidata (CC0), by three
+queries in `build_landmarks.py`, and the `source` column records which one:
 
-    https://download.geonames.org/export/dump/cities15000.zip
+- **`unesco`** (848) -- `?item wdt:P1435 wd:Q9259`, the UNESCO World Heritage
+  Sites, of which 1,875 have coordinates. A list of the places the world
+  agreed were worth keeping is very close to a list of places worth being
+  chased through.
+- **`iconic`** (95) -- named directly, by label lookup, because no property
+  in Wikidata means "famous": Area 51, the Bermuda Triangle, Loch Ness,
+  Roswell, Chernobyl, the Svalbard Global Seed Vault, the Hollywood Sign.
+  These are the ones with a story rather than a citation.
+- **`feature`** (57) -- lakes, deserts, canyons, waterfalls, mountains and
+  castles by `wdt:P31`, twelve of each by sitelinks. A quota per type and
+  not one threshold across all six, because the threshold that admits a
+  reasonable number of castles admits four hundred lakes. This is where
+  Neuschwanstein, the Namib, Tiger Leaping Gorge and the Valley of Geysers
+  come from.
 
-HOW THE THOUSAND WERE CHOSEN, and it is not "the thousand biggest". Taking
-the largest cities gives a map that is four fifths Asian megacity, where
-every route is short and every place is a capital of somewhere. The game
-needs spread -- distance is a cost now, and clusters have to form -- so:
+`sitelinks` is the number of Wikipedia language editions with an article on
+the place. It is a fame proxy and a rough one -- it reads Tower Bridge as
+better known than the Tower of London, and returns 0 for Denali -- so it
+orders the file and decides nothing else.
 
-1. **Every national capital first** (GeoNames feature code `PPLC`): 241 of
-   them, which buys world coverage in one move.
-2. **Fill to a thousand by population, capped at six per country**, so no
-   country can crowd the map. India and the United States get six each, the
-   same as Latvia.
+ONE LANDMARK PER PLACE, at a kilometre. The raw selection had 27 pairs
+closer than that: the Dome of the Rock, Al-Aqsa and the Western Wall inside
+200 metres of each other; "Basilica and Expiatory Church of the Holy Family"
+and "Sagrada Família"; Chichen Itza and the Temple of Kukulcan. Two rooms
+that near are one room under two names, and the game cannot have them --
+the landmark hashes to the room, so one place would hold two rooms whose
+hints are interchangeable, and **travel between them is free**, which is the
+one cost the design leans on. The better-known name was kept and the pool
+backfilled to a thousand.
 
-What that produces, and it is worth reading as game design rather than as
-statistics: latitude −54 to +78, longitude −176 to +179, 244 countries, and
-a long tail of places that are the whole reason to do this properly --
-**Grytviken**, an abandoned whaling station on South Georgia; **Plymouth**,
-the capital of Montserrat that a volcano buried, population 0;
-**Adamstown** on Pitcairn, population 46; **Longyearbyen** on Svalbard;
-**Port-aux-Français** on Kerguelen, population 45.
+Eight rows are corrected by hand in `build_landmarks.py`, which reports
+each as fired or stale so a correction cannot outlive the defect it was
+for: the Pentagon and Three Mile Island had coordinates in Brussels and in
+New Hampshire, and five countries were defunct (the Berlin Wall in East
+Germany) or merely the first of several (the Amazon in France).
 
-Those are the rooms worth being caught in.
-
-    python3 games/hue-and-cry/landmarks.py
+    python3 games/hue-and-cry/landmarks.py           # read the committed file
+    python3 games/hue-and-cry/build_landmarks.py \
+        --out games/hue-and-cry/landmarks.tsv        # rebuild it from Wikidata
 """
 
 from pathlib import Path
@@ -43,14 +76,15 @@ DATA = Path(__file__).with_name("landmarks.tsv")
 
 
 def load() -> list[dict]:
-    """Every landmark, as {name, country, lat, lon, population}."""
+    """Every landmark, as {name, country, lat, lon, source, sitelinks}."""
     out = []
     for line in DATA.read_text(encoding="utf-8").splitlines():
         if line.startswith("#") or not line.strip():
             continue
-        name, cc, lat, lon, pop = line.split("\t")
+        name, cc, lat, lon, source, sitelinks = line.split("\t")
         out.append({"name": name, "country": cc, "lat": float(lat),
-                    "lon": float(lon), "population": int(pop)})
+                    "lon": float(lon), "source": source,
+                    "sitelinks": int(sitelinks)})
     return out
 
 
@@ -61,22 +95,27 @@ def main() -> None:
     lons = [p["lon"] for p in places]
 
     print(f"{len(places):,} landmarks across {len(countries)} countries")
-    print(f"  latitude  {min(lats):+.0f} .. {max(lats):+.0f}")
-    print(f"  longitude {min(lons):+.0f} .. {max(lons):+.0f}")
-    print(f"  population {min(p['population'] for p in places):,}"
-          f" .. {max(p['population'] for p in places):,}")
+    print(f"  latitude  {min(lats):+.1f} .. {max(lats):+.1f}")
+    print(f"  longitude {min(lons):+.1f} .. {max(lons):+.1f}")
+    for source in ("unesco", "iconic", "feature"):
+        n = sum(1 for p in places if p["source"] == source)
+        print(f"  {source:<8} {n}")
 
-    print("\n  the far corners, which are the point:")
-    for p in sorted(places, key=lambda p: p["lat"])[:3]:
-        print(f"    {p['name']:<22} {p['country']}  {p['lat']:+7.2f}"
-              f" {p['lon']:+8.2f}   pop {p['population']:,}")
-    for p in sorted(places, key=lambda p: -p["lat"])[:2]:
-        print(f"    {p['name']:<22} {p['country']}  {p['lat']:+7.2f}"
-              f" {p['lon']:+8.2f}   pop {p['population']:,}")
+    print("\n  the ones the map was rebuilt for:")
+    wanted = ["Eiffel Tower", "Dead Sea", "Area 51", "Stonehenge",
+              "Uluru", "Bermuda Triangle", "Svalbard Global Seed Vault"]
+    by_name = {p["name"]: p for p in places}
+    for name in wanted:
+        p = by_name[name]
+        print(f"    {p['name']:<28} {p['lat']:+7.2f} {p['lon']:+8.2f}"
+              f"  {p['country']}")
 
-    print("\n  and the smallest rooms on the map:")
-    for p in sorted(places, key=lambda p: p["population"])[:5]:
-        print(f"    {p['name']:<22} {p['country']}  pop {p['population']:,}")
+    print("\n  the far corners:")
+    edges = (sorted(places, key=lambda p: p["lat"])[:2]
+             + sorted(places, key=lambda p: -p["lat"])[:2])
+    for p in edges:
+        print(f"    {p['name']:<28} {p['lat']:+7.2f} {p['lon']:+8.2f}"
+              f"  {p['country']}")
 
 
 if __name__ == "__main__":
