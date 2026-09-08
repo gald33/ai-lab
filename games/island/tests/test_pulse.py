@@ -200,3 +200,75 @@ def test_an_unreachable_record_host_is_stated_not_silently_current(monkeypatch):
                          "record": out})
     assert "UNREACHABLE" in text
     assert "nothing missing" not in text
+
+
+# ---- the hub half, which used to be untested and therefore crashed ---------
+
+def test_an_agent_with_no_task_does_not_stop_the_whole_report(monkeypatch):
+    """The crash of 2026-09-08, as a test.
+
+    The hub sends `task` as an explicit `null` for an agent that registered
+    without one, and `a.get("task", "")` returns that `None` -- a default only
+    fills a *missing* key. One such agent joined `island-lobby` and `pulse`
+    died with `AttributeError: 'NoneType' object has no attribute
+    'startswith'`, which took out the only tool that says whether the
+    published board has drifted from what the host actually scored.
+
+    The hub half had no test at all, on the reasoning that a live hub is not
+    worth a live test. That is still true -- so this fakes the client rather
+    than reaching the network, and asserts the thing the live hub actually
+    sends.
+    """
+    class FakeClient:
+        def __init__(self, *a, **kw): pass
+        def agents(self):
+            # The agent with no task comes FIRST, and that ordering is the
+            # test. `any()` short-circuits: with the runner first, the null
+            # entry is never evaluated and this passes against the bug. The
+            # live roster on the day of the crash had the runner listed
+            # first too, and `pulse` still died -- so the order the hub
+            # happens to return is not something to rely on.
+            return [{"name": "quiet", "task": None},
+                    {"name": "runner", "task": "running tables in island-lobby"},
+                    {"name": "lobby", "task": "reading lobby"}]
+        def stats(self): return {"messages": 3}
+        def history(self, _channel, limit=200):
+            return [{"text": "OPEN foo"}, {"text": None}]
+
+    import switchboard
+    monkeypatch.setattr(switchboard, "Client", FakeClient)
+
+    hub = pulse.from_the_hub()
+    assert hub["reachable"] is True, hub.get("why")
+    assert hub["runner_running"] is True, \
+        "the agent with a task must still be found past the one without"
+    assert hub["lobby_running"] is True
+    assert hub["opens_on_the_board"] == 1
+
+    # And the report renders the door rather than an unreachable hub, which
+    # is the thing that was actually lost. (The published-board section is
+    # separately unreachable here -- no record host is faked -- so the
+    # assertion is on the hub's own lines.)
+    text = pulse.report({"ledger": pulse.from_the_ledger([]), "hub": hub})
+    assert "lobby process" in text
+    assert "hub UNREACHABLE" not in text
+
+
+def test_a_roster_where_nothing_matches_is_still_read_to_the_end(monkeypatch):
+    """`any()` traverses everything when there is no match, so a null task
+    anywhere in the room is enough. This is the shape the room takes with the
+    table runner down -- exactly when the report matters most."""
+    class FakeClient:
+        def __init__(self, *a, **kw): pass
+        def agents(self):
+            return [{"name": "a", "task": "reading lobby"},
+                    {"name": "b", "task": None}]
+        def stats(self): return {"messages": 0}
+        def history(self, _channel, limit=200): return []
+
+    import switchboard
+    monkeypatch.setattr(switchboard, "Client", FakeClient)
+
+    hub = pulse.from_the_hub()
+    assert hub["reachable"] is True, hub.get("why")
+    assert hub["runner_running"] is False

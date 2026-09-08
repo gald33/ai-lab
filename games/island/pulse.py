@@ -172,7 +172,14 @@ def from_the_hub() -> dict:
         # process, and a served page with a dead lobby looks exactly like a
         # quiet one.
         "lobby_running": "lobby" in present,
-        "runner_running": any(a.get("task", "").startswith("running tables")
+        # `or ""` and not `.get("task", "")`: the hub sends the key with a
+        # null value for an agent that registered without a task, and a
+        # default only applies to a missing key. On 2026-09-08 one such agent
+        # joined the room and `pulse` stopped running entirely --
+        # AttributeError on None -- which is the one tool that reports whether
+        # the ledger has drifted. The idiom two lines up already had this
+        # right; this line did not.
+        "runner_running": any((a.get("task") or "").startswith("running tables")
                               for a in agents if not a.get("stale")),
         "on_the_roster": sorted(n for n in present if n),
         # The hub keeps a room about an hour, so these are "right now" and not
