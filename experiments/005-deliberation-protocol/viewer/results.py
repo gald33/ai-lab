@@ -35,7 +35,27 @@ sys.path.insert(0, str(HERE))
 import scores  # noqa: E402
 import serve  # noqa: E402
 
+#: The Pages site root. The card lives here and nothing else these pages use
+#: does -- `pages.yml` stages `card.png` to `$RUNNER_TEMP/site/`, verified live
+#: at `https://gald33.github.io/ai-lab/card.png` returning 200.
 SITE = "https://gald33.github.io/ai-lab"
+
+#: **Where these pages actually deploy**, which is not the site root.
+#: `pages.yml` runs `results.py "$RUNNER_TEMP/site/island/g"`, so a page is
+#: served from `<SITE>/island/g/<id>.html`.
+#:
+#: This constant exists because for as long as result pages had existed they
+#: declared `<SITE>/g/<id>.html` -- canonical, `og:url`, and, for the twenty
+#: minutes between #239 merging and this, the URL the Copy-link button put on
+#: somebody's clipboard. All of them 404. Checked, not reasoned about:
+#:
+#:     curl -o /dev/null -w "%{http_code}" .../ai-lab/g/<id>.html        404
+#:     curl -o /dev/null -w "%{http_code}" .../ai-lab/island/g/<id>.html 200
+#:
+#: `test_the_declared_url_is_where_the_workflow_puts_the_page` derives this
+#: from `pages.yml` rather than restating it, because the two drifting apart
+#: silently is the entire defect.
+PAGES = f"{SITE}/island"
 LOBBY = "https://island.lucille-ai.com/lobby"
 
 #: Where a result page lives, under the island's tree. One directory so the
@@ -106,7 +126,7 @@ def page(game: dict, listing: list[dict], *, unranked: str | None) -> str:
     if unranked:
         desc = f"A {unranked} game — kept and counted, never ranked. {desc}"
 
-    url = f"{SITE}/{PREFIX}/{game['game_id']}.html"
+    url = f"{PAGES}/{PREFIX}/{game['game_id']}.html"
 
     #: The one place a share text is written, reusing the title the card
     #: already carries. A second phrasing here would eventually disagree with
