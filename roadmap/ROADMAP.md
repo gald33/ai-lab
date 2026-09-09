@@ -16,6 +16,7 @@ Claim before starting: `roadmap claim <key>`
 - `now` **`005-viewer-first-view-has-no-hierarchy`** — Give the viewer a first-view hierarchy — nothing currently says where to look first
 - `now` **`008-carry-forward-what-survives`** — Write down which coordination lessons survive the island, as the design input to 008
 - `now` **`008-coding-task-with-an-answer-key`** — Build a shared coding task whose outcome is read off settled state and has a reference point
+- `now` **`hue-and-cry-purge-the-leaked-tables`** — Ask GitHub Support to purge the hue-and-cry secret tables from PR
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
@@ -75,6 +76,7 @@ graph TD
   008_helper_tools_after_conventions["Open a second treatment family — helper tools that do part of the reasoning"]
   008_noise_before_thresholds["Measure the coding instrument's own run-to-run movement before any treatment is compared on it"]
   008_timing_tool_mechanism_and_outcome["Measure Switchboard's timing convergence as a mechanism and as an outcome, separately"]
+  hue_and_cry_purge_the_leaked_tables["Ask GitHub Support to purge the hue-and-cry secret tables from PR"]
   island_viewer_density_scaled_spacing["Scale element size to element count on the island viewer, so huts and production sites are never crowded together"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
@@ -1116,6 +1118,58 @@ graph TD
 > Done when both ledgers are pre-registered as separate metrics with separate
 > thresholds, and the run reports them side by side even when they point in
 > opposite directions.
+
+</details>
+
+### `hue-and-cry-purge-the-leaked-tables`
+
+- **title:** Ask GitHub Support to purge the hue-and-cry secret tables from PR
+- **status:** ready
+- **arc:** lab-practice
+- **priority:** now
+- **refs:**
+  - `games/hue-and-cry.md`
+  - `games/hue-and-cry/hints.py`
+  - `games/hue-and-cry/treasures.py`
+
+<details><summary>evidence</summary>
+
+> The hue-and-cry build merged two of the game's secrets into the public
+> repository in plain text: `hints.tsv`, mapping every landmark to the unique
+> sentence that renders it, and `treasures.tsv`, mapping every landmark to what
+> she takes there. Either one ends the chase by lookup — post a sentence or
+> name a theft, grep the file, and the room is named exactly.
+>
+> Both are fixed at the tip. The renderings are drawn from the game seed now
+> and sealed in `hints.enc`; the treasure mapping is sealed in `treasures.enc`
+> under a key held outside the repository; `.gitignore` refuses the plaintext
+> names, and two tests fail if a plaintext mapping is ever tracked again. The
+> branch history was rewritten in three filter-branch passes — removing both
+> TSVs and redacting the quoted pairs from `games/hue-and-cry.md` and
+> `treasures.py` — and every rewritten commit was scanned against all 75
+> treasure strings and all 5,963 sentence renderings. `refs/heads/main` and the
+> feature branch are clean.
+>
+> **What is left is the one thing a force-push cannot reach.** GitHub keeps
+> `refs/pull/244/head` pointing at the pre-rewrite commits, and serves both
+> files from it: verified 2026-09-09 by fetching
+> `games/hue-and-cry/hints.tsv` at that ref and getting 982,752 characters of
+> it back. Pull-request refs cannot be deleted through the API or by a push.
+> Only GitHub Support can purge the unreferenced objects.
+>
+> Done when a support request has been filed against gald33/ai-lab naming the
+> two paths and PR #244, and fetching `games/hue-and-cry/hints.tsv` at
+> `refs/pull/244/head` returns a 404. If Support declines, the fallback is to
+> decide in `games/hue-and-cry.md` whether the residual exposure is
+> acceptable — the leaked sentence column is a rendering the seeded builder can
+> no longer reproduce, and the landmark-to-descriptor columns were already
+> public by the "one seed per game" decision, so the live exposure is the
+> treasure mapping and the eighty hand-written lines.
+>
+> The practice question underneath it is the item's real value and outlives the
+> purge: **a secret committed to a public repository is not recallable by the
+> person who committed it.** Everything else here was reversible in twenty
+> minutes; this was not reversible at all.
 
 </details>
 

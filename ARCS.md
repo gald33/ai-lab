@@ -114,7 +114,7 @@ control moving under it.
 
 ### 🟠 How the lab itself is run — process, records, and the tools that hold them
 
-`lab-practice` · 4 item(s), 2 startable
+`lab-practice` · 5 item(s), 3 startable
 
 `CLAUDE.md` · `CONTRIBUTING.md` · `reports/README.md`
 
@@ -126,6 +126,7 @@ utility moves in when a second experiment needs it, not in anticipation).
 | item | status | priority |
 |---|---|---|
 | `008-carry-forward-what-survives` | ready | now |
+| `hue-and-cry-purge-the-leaked-tables` | ready | now |
 | `lab-roadmap-adoption` | verifying | now |
 | `lab-roadmap-core-0-2-0` | blocked | next |
 | `island-viewer-density-scaled-spacing` | ready | later |
