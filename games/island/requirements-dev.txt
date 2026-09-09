@@ -6,3 +6,8 @@
 -r requirements.txt
 agent-switchboard[server]>=2.0.1
 pytest
+
+# `tools/tests/test_workflows.py` reads the workflow files as YAML rather than
+# grepping them: a `paths:` filter is a nested structure, and a regex over it
+# would pass on a filter that parses to something else entirely.
+pyyaml
