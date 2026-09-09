@@ -138,7 +138,12 @@ def test_a_known_key_matches_on_the_stable_half_only():
 #: across CI jobs by group. Both of those are ways for a check to stop running
 #: while the ticks stay green, which is the same failure `--require` exists to
 #: prevent, so both get a test.
-WORKFLOW = HERE.parents[3] / ".github" / "workflows" / "tests.yml"
+#: Every workflow, not one of them by name. The groups moved to
+#: `drawing.yml` on 2026-09-09 when the render jobs were gated on the folders
+#: they draw from, and this test failed because it was looking only at
+#: `tests.yml` -- correct about the danger, wrong about where to look. A test
+#: pinned to one filename turns a job *moving* into a job *missing*.
+WORKFLOWS = HERE.parents[3] / ".github" / "workflows"
 
 
 def _plan():
@@ -175,11 +180,15 @@ def test_the_groups_partition_the_suite():
 def test_the_workflow_runs_every_group():
     """The split is only safe while CI carries both halves of it.
 
-    Read off `tests.yml` rather than asserted about the code alone, because
+    Read off the workflows rather than asserted about the code alone, because
     the way this goes wrong is a group added here and not there -- and that
     failure is silent in exactly the way a skip is.
+
+    Across every workflow, because which file runs a group is not the point:
+    that some job does is. Splitting the render jobs out of `tests.yml` is a
+    move, and a move must not read as a disappearance.
     """
-    text = WORKFLOW.read_text()
+    text = "\n".join(p.read_text() for p in sorted(WORKFLOWS.glob("*.yml")))
     for group in render.GROUPS:
         assert f"--group {group}" in text, (
             f"no CI job runs `--group {group}`, so those checks run nowhere")
