@@ -3186,6 +3186,25 @@ different picture from the one that was asked for, which is `CLAUDE.md`'s
 is a fixed layer, date and address -- so a re-render touches the network
 once and the offline path is the default.
 
+### And a test that was green because NASA was up
+
+Found by blocking the network on a branch CI had already passed.
+`test_a_card_on_imagery_names_no_landmark_but_the_trail` calls
+`trail_card.card(..., imagery="relief")`, which takes no opener -- so it
+went to GIBS for real, fetched fifteen tiles, and passed. It was named
+after disclosure and was **also** silently asserting that NASA is
+reachable, which is instance seven of "a check is green for the reason it
+names, or it is not a check".
+
+Blocking the network turned it red in 0.9 seconds. The fix is not the one
+test: `no_network` replaces `urllib.request.urlopen` for every test in the
+file, so the *next* one to forget an opener fails saying so rather than
+quietly going to Maryland. Guarding the class rather than the instance is
+what that section asks for, and the demonstration is kept in the file as a
+function one rename away from being a test.
+
+The suite also got eight seconds faster, which is the smaller half of it.
+
 ### The guard, since the objection this escapes is a real one
 
 GIBS serves `Reference_Labels_15m` and `Reference_Features_15m` alongside

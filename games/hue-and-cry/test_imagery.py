@@ -2,9 +2,18 @@
 
     python3 -m pytest games/hue-and-cry/test_imagery.py -q
 
-Nothing here touches the network. `fetch` takes an `opener`, so the tests
-serve their own tiles and count how often they are asked for -- which is
-also the only way to check the cache does anything.
+Nothing here touches the network, and that is **enforced rather than
+intended**. `no_network` below replaces `urllib.request.urlopen` for every
+test in the file, so a test that forgets to pass an opener fails saying so
+instead of quietly fetching fifteen tiles from NASA.
+
+IT WAS WRITTEN BECAUSE ONE ALREADY HAD.
+`test_a_card_on_imagery_names_no_landmark_but_the_trail` called
+`trail_card.card(..., imagery="relief")`, which takes no opener, so it went
+to NASA for real -- and passed in CI only because the runner had a network.
+A green tick that also silently asserted "NASA is up" is `CLAUDE.md`'s
+disease exactly: the check was named after disclosure and was measuring
+something else as well. Blocking the network turned it red in 0.9s.
 
 Every test below was made to fail on purpose: the disclosure one by adding
 GIBS's `Reference_Labels_15m` to `LAYERS`, the loudness one by returning
@@ -15,6 +24,7 @@ re-encoding a tile on the way through.
 import base64
 import re
 import sys
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -65,6 +75,23 @@ def own_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(IM, "CACHE", tmp_path / "tiles")
 
 
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """No test in this file may reach NASA, whatever it forgets to pass.
+
+    `fetch` resolves `opener or urllib.request.urlopen` at call time, so
+    replacing the module attribute closes the one door a test can leave
+    open. This guards the class rather than the instance -- the next test
+    written here will be caught by it without anybody remembering to.
+    """
+    def refuse(*args, **kwargs):
+        raise AssertionError(
+            "a test reached the network. Pass an opener, or monkeypatch "
+            "imagery.fetch: the suite must not depend on NASA being up.")
+
+    monkeypatch.setattr(urllib.request, "urlopen", refuse)
+
+
 def frame(seed: bytes = SEED):
     world = C.Map(seed)
     result = C.chase(seed, C.LOBBY_LANDMARK, searchers=2, world=world)
@@ -89,7 +116,9 @@ def test_no_layer_carries_a_name():
                              layer, re.I), (name, layer)
 
 
-def test_a_card_on_imagery_names_no_landmark_but_the_trail():
+def test_a_card_on_imagery_names_no_landmark_but_the_trail(monkeypatch):
+    monkeypatch.setattr(IM, "fetch",
+                        lambda *args, **kwargs: TILE)
     world, result, _ = frame()
     svg = TC.card(result, world, SEED, C.LOBBY_LANDMARK, imagery="relief")
     walked = {C.LOBBY_LANDMARK} | {leg["to"] for leg in result["moves"]}
@@ -199,3 +228,11 @@ def test_over_a_photograph_the_borders_are_drawn_and_the_coastlines_are_not():
     assert over and all(TC.INK["frontier"] in shape for shape in over)
     assert any(TC.INK["land"] in shape for shape in plain)
     assert not any(TC.INK["land"] in shape for shape in over)
+
+
+def _deliberately_forgets_the_opener():
+    """Not a test. Kept as the demonstration that `no_network` bites:
+    rename it to `test_...` and it fails with the assertion above rather
+    than fetching fifteen tiles."""
+    _, _, camera = frame()
+    return IM.background(camera, "relief")
