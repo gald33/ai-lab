@@ -2683,6 +2683,81 @@ the one event that lets a searcher keep up. Under the handed-address game it
 protected her; under this one it may be capping the wrong side. Flagged
 rather than moved, because it needs the field model that was deleted.
 
+## "There are 1000 landmarks, every one of them is a possibility" — yes, unless the searcher has the map
+
+*Gal, 2026-09-09, on being told a hint leaves about 2.7 candidates.*
+
+He is right, and the answer has two halves. One is a number and the other is
+an entry requirement this document has never stated.
+
+### How much the routes are worth
+
+```
+a hint alone, against the whole map   median 115 candidates   worst 184
+the same hint, against her 5 exits    median   2              mean 2.62
+```
+
+**Fifty-seven times.** Every claim in "Why five exits?" — the branching
+factor, the legs-per-room arithmetic, the minimum field size — is a claim
+about the second row. Against the first, a lone searcher is not slightly
+behind, it is looking for one place in a hundred and fifteen while she moves.
+
+### And the second row is only available to a searcher who can compute the routes
+
+Which is the part I had been assuming. `exits(X)` needs, in order:
+
+1. **every landmark's descriptors** — `landmarks.tsv`, `facts.tsv`,
+   `countries.tsv`, *and* `descriptors.py`'s exact vocabulary, its
+   `MIN_SHARED` floor and its "six rarest" `CANDIDATES` rule;
+2. **kinship of X against all 1000** — `gazetteer.kinship`;
+3. **the band** — the top `NEIGHBOURHOOD = 200` of that ranking;
+4. **the draw** — `sha256(EXIT_INFO ‖ salt ‖ name ‖ i)`, five times.
+
+That is **352 KB of committed data and three modules of exact logic**. It is
+not "one SHA-256", which is what the entry requirement said an hour ago. A
+searcher without it does not get 2.62 candidates; it gets 115, and no amount
+of cleverness recovers the difference, because the difference *is* the map.
+
+**Which is a decision this document already made and never followed
+through.** "One seed per game" says the table can be public — *"these are
+facts about places, and a public one is half the fun, since a reader can
+play along"* — but publishing a table is not the same as publishing a
+**derivation**, and it is the derivation the routes need. Every number in
+this document assumes a searcher who has run `descriptors.py`.
+
+So the entry requirement, stated properly at last:
+
+> **A searcher needs the gazetteer and its derivation, not just the
+> algorithm.** The algorithm turns a name into a room; the gazetteer is what
+> turns a hint into a shortlist of names. Without it the game is still
+> playable and is a different, much larger one.
+
+*That is not an SDK and does not become one.* CLAUDE.md refuses a second
+surface — a wrapper an entrant calls instead of Switchboard. This is data
+and the rules for reading it, which is a rulebook. The distinction is that
+nothing here is a thing an agent *calls*; it is a thing an agent *knows*.
+
+### Which makes the exit count a choice about how big a game this is
+
+The two rows above are two games, and both are coherent:
+
+| | routes public | no routes |
+|---|---|---|
+| candidates a hint leaves | 2.6 | 115 |
+| searchers to cover them | ~2 | ~58 |
+| what an entrant must hold | the gazetteer and its derivation | the algorithm and a salt |
+| what the chase is | deduction between look-alikes | a search across the whole world |
+
+**The second is closer to the thing this game was started for** — *"the point
+of the game was to experiment with looking for 'the right' agent within the
+switchboard space"* — and it is the one that needs no rulebook to enter. The
+first is the one every measurement in this document was taken on.
+
+*Not decided.* It is a choice between a two-person deduction game with a
+352 KB entry requirement and a fifty-person search game with none, and that
+is Gal's to make rather than mine to assume — which is what I did by
+carrying `EXITS = 5` forward without noticing what it now meant.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
