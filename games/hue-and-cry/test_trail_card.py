@@ -23,6 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import carmel as C  # noqa: E402
+import basemap as BM  # noqa: E402
 import trail_card as TC  # noqa: E402
 
 #: A seed whose campaign ends in an arrest, and one where she gets away.
@@ -141,9 +142,8 @@ def scene(seed: bytes):
     stops = [C.LOBBY_LANDMARK] + [leg["to"] for leg in result["moves"]]
     points = [(world.places[n]["lat"], world.places[n]["lon"]) for n in stops]
     plot_h = TC.HEIGHT - TC.TOP - TC.BOTTOM
-    frame = TC.Frame(TC.window(points, TC.WIDTH / plot_h),
-                     0, TC.TOP, TC.WIDTH, plot_h)
-    pins = [frame.at(lat, lon) for lat, lon in points]
+    camera = TC.fit(points, 0, TC.TOP, TC.WIDTH, plot_h)
+    pins = [camera.at(lat, lon) for lat, lon in points]
     blocks = [[(f"{i}. {name}", 17), ("“a hint of some length”", 13),
                ("something she took, at length", 13)]
               for i, name in enumerate(stops)]
@@ -172,21 +172,61 @@ def test_every_label_stays_on_the_card():
 # --- the projection -------------------------------------------------------
 
 def test_a_trail_across_the_antimeridian_is_not_the_width_of_the_world():
-    """Two places 3,000 km apart either side of the date line. Wrapped
-    naively the box is 340 degrees wide and the card draws the Atlantic."""
-    box = TC.window([(-18.0, 178.0), (-21.0, -175.0)], 2.0)
-    assert box[3] - box[1] < 60
+    """Two places either side of the date line. Wrapped naively the frame is
+    340 degrees wide and the card draws the Atlantic instead of Fiji."""
+    camera = TC.fit([(-18.0, 178.0), (-21.0, -175.0)], 0, 0, 1000, 500)
+    x0, _, x1, _ = camera.box()
+    assert x1 - x0 < 0.2, (x0, x1)
 
 
 def test_the_great_circle_is_the_distance_she_was_billed_for():
     """`carmel.travel_hours` charges her great-circle kilometres, so the
     line on the card is the line she paid for."""
-    a = {"lat": 51.5, "lon": -0.1}
-    b = {"lat": 35.7, "lon": 139.7}
-    points = TC.arc(a, b)
-    assert abs(points[0][0] - a["lat"]) < 1e-6
-    assert abs(points[0][1] - a["lon"]) < 1e-6
-    assert abs(points[-1][0] - b["lat"]) < 1e-6
-    # a great circle from London to Tokyo goes over the arctic, not through
-    # the middle of the map: its highest latitude beats both endpoints
+    points = BM.great_circle((51.5, -0.1), (35.7, 139.7))
+    assert abs(points[0][0] - 51.5) < 1e-6
+    assert abs(points[-1][0] - 35.7) < 1e-6
+    # London to Tokyo goes over the arctic, not across the middle of the
+    # map: its highest latitude beats both ends
     assert max(lat for lat, _ in points) > 65
+
+
+def test_mercator_round_trips():
+    for lat, lon in ((0.0, 0.0), (51.5, -0.1), (-54.8, -68.3), (78.2, 15.6)):
+        back = BM.unmercator(*BM.mercator(lat, lon))
+        assert abs(back[0] - lat) < 1e-6 and abs(back[1] - lon) < 1e-6
+
+
+# --- what replaced the field of dots ---------------------------------------
+
+def test_the_card_draws_real_geography_and_not_the_gazetteer():
+    """Gal, 2026-09-09: *"don't disclose the potential landmarks"*. The
+    first version drew all thousand as a dot field and argued they were
+    free because `landmarks.tsv` is public. A public table is not a plotted
+    map: the dots were the candidate set, positioned, which is the one job
+    a searcher reading a hint actually has."""
+    world, result = run(ESCAPED)
+    svg = TC.card(result, world, ESCAPED, C.LOBBY_LANDMARK)
+    walked = {C.LOBBY_LANDMARK} | {leg["to"] for leg in result["moves"]}
+
+    # every stop she made is drawn, and there are only that many markers
+    circles = [n for n in ET.fromstring(svg).iter()
+               if n.tag.endswith("circle")]
+    stole = len(TC.kept(result))
+    assert len(circles) <= len(walked) + 2, len(circles)
+
+    # and the basemap that replaced them is real, and is there
+    assert 'fill="' + TC.INK["land"] + '"' in svg
+    assert svg.count("<path") > 10
+
+
+def test_the_basemap_has_no_names_in_it():
+    """The other half of why a real map is safe here: no toponyms at any
+    zoom. A labelled street map would print the names of exactly the famous
+    places this game is hiding."""
+    world = BM.load()
+    assert set(world) == {"source", "land", "borders", "lakes", "land_coarse"}
+    for key in ("land", "borders", "lakes", "land_coarse"):
+        for shape in world[key]:
+            for point in shape:
+                assert len(point) == 2
+                assert all(isinstance(v, (int, float)) for v in point)
