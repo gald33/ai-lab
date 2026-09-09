@@ -2863,15 +2863,22 @@ and three legs may simply be what 140 buys. It is recorded because the
 measurement did not exist an hour ago and the argument about field size was
 being made without it.
 
-### The basemap is the gazetteer, which is not a saving on a dependency
+### ~~The basemap is the gazetteer, which is not a saving on a dependency~~
 
-There are no coastlines on the card and no shapefile behind it. The faint
-dots are the thousand landmarks, and they read as continents because that
-is where landmarks are. This is the honest picture rather than the cheap
-one: **the world of this game is those thousand places**, and a searcher
-choosing where to wait chooses among dots on that field and not among
-countries. A borrowed coastline would draw a world with places in it that
-this game does not have.
+*Superseded 2026-09-09, the same day, by Gal: "don't disclose the potential
+landmarks." The reasoning is kept because it is the mistake, and it is a
+persuasive one -- see "A public table is not a plotted map" below.*
+
+> There are no coastlines on the card and no shapefile behind it. The faint
+> dots are the thousand landmarks, and they read as continents because that
+> is where landmarks are. This is the honest picture rather than the cheap
+> one: **the world of this game is those thousand places**, and a searcher
+> choosing where to wait chooses among dots on that field and not among
+> countries. A borrowed coastline would draw a world with places in it that
+> this game does not have.
+
+The last sentence is the tell. It is an argument about *fidelity*, and the
+question was never fidelity.
 
 ### And drawing it found a bug in the accounting, which is the argument for drawing it
 
@@ -2908,6 +2915,183 @@ is allowed to assert on markup: `CLAUDE.md`'s browser rule governs what a
 page *does*, and the card only says. The first test in that file is the one
 that checks that claim is still true, since it is the premise the other ten
 rest on.
+
+## The map is the real one now, and it moves
+
+*Gal, 2026-09-09, three asks in one line: "can we overlay it on the real
+world map? maybe from google maps or a free service? also don't disclose
+the potential landmarks. also, zoom in when arrive and animate zoom out in
+flight."*
+
+All three are done. The first two turned out to be one question with a
+sharp edge, and the third turns the card into a page, which changes which
+of `CLAUDE.md`'s rules govern it.
+
+    python3 games/hue-and-cry/trail_flight.py --out /tmp/flight.html
+    python3 games/hue-and-cry/trail_card.py   --out /tmp/trail.svg
+
+### A public table is not a plotted map
+
+The still card drew all thousand landmarks as a field of faint dots and
+this document argued they cost nothing, since `landmarks.tsv` is committed
+and public. **That argument is wrong and the correction is worth more than
+the picture was.**
+
+Publishing a table and plotting it are different acts. Turning a hint into
+a shortlist means knowing *where the candidates are* -- it is the whole of
+`exits(X)`'s second row, the 57x -- and a dot field is that work done for
+the reader, handed over as a background. Nothing was disclosed that could
+not have been derived. It was disclosed **already derived**, which is the
+only part that was ever scarce.
+
+This is the same shape as the mistake in "There are 1000 landmarks": that
+one said publishing a table is not publishing a derivation, and then the
+card published the derivation as scenery. Twice now the gap between *the
+data is public* and *the work is done for you* has been the thing that
+matters, so it goes here as a rule rather than a third instance:
+
+> **Ask what the picture saves a searcher, not what it reveals.** A card
+> that shows only public facts can still hand over the one step that was
+> expensive.
+
+### A real map that names places discloses more than the dots did
+
+Which is the trap in "maybe from google maps". The landmarks are famous
+places, and at the zoom this card sits at every raster style prints their
+names -- Fez, Bergen, Ushuaia, labelled, on the map she is being chased
+across. Swapping an anonymous dot field for that would have moved in
+exactly the wrong direction while looking like the right one.
+
+So the basemap is **geography with no toponyms at all**: coastlines,
+country borders, big lakes, from Natural Earth 1:50m, public domain (CC0),
+committed as `basemap.json` and rebuilt by `build_basemap.py`. It says
+"this is the real world" and nothing about who is in it.
+
+Three further reasons not to use tiles, and the third is the one that would
+have decided it anyway:
+
+- **Google's tiles need an API key and a billing account**, and its terms
+  forbid caching them. A stimulus this repo cannot commit is one it cannot
+  freeze by hash, which the whole of "Process" turns on.
+- **OSM's tile policy forbids bulk downloading**, and one flight fetches a
+  few hundred tiles across eight zoom levels.
+- **Raster tiles snap between integer zooms.** The flight zooms
+  continuously from a hemisphere to a valley; over vectors that is one
+  smooth scale and over tiles it is eight visible steps.
+
+**And the geography earns its place beyond looking real.** The vocabulary a
+hint is drawn from is `coastal`, `landlocked`, `far_from_the_equator`,
+`no_passport_needed_next_door`. A coastline and a border are the picture of
+precisely those words -- so the basemap is not a backdrop behind the game,
+it is the game's own vocabulary drawn.
+
+### Mercator, and one number for the camera
+
+`basemap.py` projects to Web Mercator, which the still card also uses now.
+The reason is the flight: Mercator is conformal, so **zoom is a single
+scale factor** and the camera is three numbers. The equirectangular frame
+the first card used stretched everything sideways as it approached the
+poles and needed a per-latitude correction that was wrong the moment the
+camera moved.
+
+The cost is stated rather than hidden: Mercator lies about area, badly,
+towards the poles. Nothing here is scored on area.
+
+One consequence worth its own line: the camera holds **kilometres**, not
+units. Mercator's scale runs as `1/cos(lat)`, so a fixed number of units is
+a different distance in Bergen than in Zanzibar, and a hold that did not
+correct for it would make northern rooms look like provinces and equatorial
+ones like streets.
+
+### What the camera does, and the two numbers that are measured
+
+    hold    at a room, 500 km across, long enough to read what she said
+    flight  eases out to fit both ends, crosses, eases back in
+
+The zoom curve is `sin(pi t)` in **log** space -- zero at both ends, one at
+the middle -- because a camera's zoom reads as geometric, and a linear ramp
+spends four fifths of a flight looking at nothing.
+
+**500 km is a floor, not a taste.** Natural Earth 1:50m is drawn for
+viewing at about that scale; at 50 km it would be a smooth wrong coastline
+stated confidently, which is worse than a coarse one. There is nothing to
+see closer in anyway, because the map has no labels on purpose -- so a
+room's surroundings *are* its coast and its border, which is the hint
+vocabulary again.
+
+**The pull-back has a floor too, and that one was measured.** With the wide
+point set purely by what fits, a 170 km leg (Rhine Falls to Wieskirche)
+widened by **1.1x** -- on screen, nothing: the camera slid sideways and the
+journey did not read as a journey. `MIN_PULL = 2.4` is the floor under the
+short legs. It never zooms *in*: where fitting a leg would be tighter than
+the hold, the wide point is clamped to the hold.
+
+### Two schemes to make the page lighter, built and deleted
+
+An intercontinental flight carries **21,212 of the basemap's 45,548
+points**, about 390 KB. Two obvious fixes were built and measured:
+
+| scheme | saved |
+|---|---|
+| level of detail -- a crushed world when wide, the real one when close | 30%, and a visible pop |
+| corridor filtering -- one frame per keyframe, not their bounding box | **1%** |
+
+Both fail for the same reason, and it is not a bug: **when the camera pulls
+back to fit a 6,300 km leg, it is looking at that much world.** A page that
+shows a lot of world carries a lot of world. Level of detail cannot help
+because at any zoom where the crushed layer is honest, everything closer
+still needs the real one, and "everything closer" is the whole corridor:
+crude enough to save is crude enough to see.
+
+What clipping to the frame *does* buy is real and is the common case -- a
+European campaign, which is the median, carries 1,899 points and 56 KB, 4%
+of the map. `basemap.near` keeps the numbers; `test_trail_flight.py` pins
+both ends of the population so neither can drift unnoticed, and says in
+the test name that the heavy end is not a defect.
+
+### The card says; the flight does. Which changes the rule that governs it
+
+`CLAUDE.md`: *"A page's behaviour is checked in a browser, or it is not
+checked."* The still card only ever said things, which is why
+`test_trail_card.py` is allowed to assert on markup and why its first test
+is the one that checks the card still has no script in it.
+
+**Everything the flight is for is behaviour.** A camera that pulls back
+mid-leg, a line that draws as she flies, a caption that changes when she
+lands: not one of those is visible to a markup assertion, and the lobby's
+frozen countdowns are what happens when you try. So
+`test_trail_flight.py` drives a real Chromium, and it is in the `pages` CI
+job with **`HUE_REQUIRE_BROWSER=1`** -- the counterpart to
+`ISLAND_REQUIRE_BROWSER`, for the same reason: the `island` job collects
+these tests and skips them, and a skip and a pass are the same green tick.
+There is a test on that guard itself, because the six instances in "A check
+is green for the reason it names" are all things somebody assumed.
+
+Two deliberate surfaces exist for those tests and are documented rather
+than smuggled: `window.flight` reports the camera each frame, and
+`window.seekFlight(ms)` moves the clock. Without the second, asserting that
+the camera pulls back at the middle of the second leg means sleeping
+through twenty seconds and racing the frame; with it the assertion is exact
+and the page plays no differently for a reader.
+
+**One test does not touch `seek`**, and it is the one that matters most:
+everything else would pass on a page whose clock never ran.
+
+### Motion is not compulsory
+
+A reader who has asked their system for reduced motion gets the closing
+shot -- the whole trail, drawn, at once -- and nothing moves. That is the
+frame the flight builds to anyway, so nothing is lost but the journey.
+
+### What it still refuses
+
+Unchanged, and now guarded twice over: **no exits are drawn, and no
+landmark is named but the ones she visited.** Motion adds a way to leak
+that a still cannot -- a camera that pulls back far enough could show a
+searcher the neighbourhood to look in -- so the guarantee is enforced on
+the *data*: the page embeds only the stops she made and coastlines, and a
+test walks every string in the embedded JSON to prove it. A reader who
+opens the source finds geography, not a gazetteer.
 
 ## What would have to be built, in order
 
