@@ -1,0 +1,49 @@
+id: premium-rung0-noise-before-thresholds
+title: Measure this island's own run-to-run movement before naming any threshold
+arc: coordination-premium
+priority: now
+status: ready
+refs:
+  - experiments/how-wrong-can-a-shared-convention-be/experiment/noise.py
+  - experiments/how-wrong-can-a-shared-convention-be/PREFLIGHT.md
+  - reports/2026-08-24-hypothesis-ledger.md
+evidence: |
+  The lab's most expensive lesson, run first this time. Three experiments named
+  thresholds of 0.10-0.15 against an instrument whose between-run movement was
+  later measured at 0.229 on the ratio and 1.03 per round; rows 10-16 of the
+  hypothesis ledger are the wreckage, and the measurement that would have
+  prevented all of it cost one afternoon and was run last.
+
+  **Half of it is free, and run 001 measured which half.** `games/island/npc.py`
+  gives three heuristic policies and `experiment/noise.py` plays a cell end to
+  end against a real hub -- lobby, seats, manager, ledger. But heuristics are
+  deterministic given their seed: two replicates of the identical cell came back
+  byte-identical, `capture` agreeing to sixteen digits, so the free run reports
+  a between-replicate sd of exactly zero.
+
+  Zero is the honest answer to what that run asks -- how much does the harness
+  move on its own -- and it is not a threshold. The 0.229 and 1.03 this lab
+  measured before are **agent** variance, and no NPC run contains any. So this
+  item splits: the free harness bound (H0a), and a paid replication of one
+  model cell (H0b) which is the number rung 1's threshold is actually written
+  against.
+
+  Two properties the runner already has, both found by running it rather than
+  by reasoning about it:
+
+  - **A pinned cell is refused.** At `--seconds 15` no NPC completes a round
+    trip, every game settles nothing, every bounded share sits on a bound, and
+    the reported sd is 0.0000 -- which reads as the most precise instrument
+    this lab has ever had. The runner now names those endpoints as pinned and
+    exits non-zero, because a threshold taken from that run would be a
+    threshold of zero.
+  - **Games that settled nothing are counted, never dropped.** A seat that says
+    nothing has said nothing and the bell rings anyway, so a dead game is an
+    outcome; a cell where every game is dead is measuring the clock.
+
+  Done when both are recorded at the table shape the paid rungs will use, each
+  candidate endpoint carries a stated between-replicate sd with its denominator,
+  and H0b's numbers are written into PREREGISTRATION.md as an amendment --
+  before rung 1 is designed against them. H0a alone does not close this item:
+  a threshold taken from a run that cannot move is a threshold of zero. A treatment run before
+  this exists is a run this lab already knows how to waste.

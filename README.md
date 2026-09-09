@@ -92,6 +92,7 @@ numbers are in [experiments/README.md](experiments/README.md).
 | [`does-telling-traders-what-to-disclose-help`](experiments/does-telling-traders-what-to-disclose-help/) | Does telling traders what to disclose improve coordination? | Run; unresolved |
 | [`do-they-take-a-handed-over-answer`](experiments/do-they-take-a-handed-over-answer/) | If the answer is handed to them, do they take it — and what survives when it is taken away? | Run; open tail |
 | [`can-an-agent-hold-availability`](experiments/can-an-agent-hold-availability/) | Can an agent hold availability across time, and what is actually holding it? | Probes only |
+| [`how-wrong-can-a-shared-convention-be`](experiments/how-wrong-can-a-shared-convention-be/) | How wrong may a convention be and still be worth holding, purely because everyone holds it? | Designed, nothing run |
 
 ## Layout
 

@@ -56,6 +56,55 @@ its runtime can lend it, is the arc.
 |---|---|---|
 | `006-standby-alarm-has-never-rung` | ready | next |
 
+### 🟠 how wrong can a shared convention be and still beat a private correct one?
+
+`coordination-premium` · 5 item(s), 2 startable
+
+`experiments/how-wrong-can-a-shared-convention-be/README.md` · `experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md` · `experiments/which-part-of-a-convention-works/tier3-design.md`
+
+The one question this island can ask that no deployed system can. Because
+`economy.walras()` returns the competitive equilibrium, a convention can be
+manufactured to a known content-quality -- so "shared" and "correct" become
+two independent dials, where everywhere else they arrive together and cannot
+be separated. The headline quantity is the error at which wrong-but-shared
+stops beating correct-but-private.
+
+The design is Tier 3 of `which-part-of-a-convention-works`, pre-registered in
+August, scripted half run, model half never started. It was shelved because
+its instrument could not resolve it: at a perfectly correct convention, fully
+adopted, half the islands were ruined before the perturbation began, and the
+whole curve ran from 48% survival to 0%.
+
+Three things have since removed that. `is-ruin-the-convention-or-the-commitment`
+showed the cliff was the accumulation rule and not the convention -- under
+flow, permanent ruin goes 14/24 to 1/24 -- and the island the game runs on is
+already a flow island. The endpoint that survives this lab's noise already
+exists in the ledger as a per-trader count. And the noise measurement that
+should precede every threshold is free here, because the island has NPCs.
+
+What makes it worth an arc rather than a run is that it is the first design
+in this lab where a null is a result. Every previous null was unresolvable:
+the thresholds were 0.10-0.15 against instrument movement later measured at
+0.229 and 1.03, so "we did not find it" was the strongest available sentence.
+Here the manipulation check is a count, the noise floor is measured before
+the threshold is named, and the two arms differ in one sentence of
+byte-identical content -- which makes "it is not there, to within this bound"
+sayable, and that is a different object.
+
+The ladder is deliberately top-down, the method
+`do-they-take-a-handed-over-answer` arrived at after five experiments spent
+learning that subtle treatments could not be resolved: a rung runs only on
+evidence that the rung above it moved, so a dead arm is found on the first
+rung rather than the fifth. Two free rungs gate every paid one.
+
+| item | status | priority |
+|---|---|---|
+| `premium-rung0-noise-before-thresholds` | ready | now |
+| `premium-rung0b-recalibrate-the-content-axis` | ready | now |
+| `premium-rung1-does-a-correct-shared-convention-beat-silence` | blocked | next |
+| `premium-rung2-common-against-private` | blocked | next |
+| `premium-rung3-the-delta-sweep` | blocked | later |
+
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
 `deliberation-protocol` · 9 item(s), 5 startable

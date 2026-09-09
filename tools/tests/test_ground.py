@@ -10,6 +10,7 @@ rather than a choice.
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -71,7 +72,17 @@ def test_no_match_lists_what_there_is():
 
 
 def test_no_experiment_directory_is_numbered_any_more():
-    """The convention, asserted where it can actually be checked."""
-    numbered = [d.name for d in (ROOT / "experiments").iterdir()
-                if d.is_dir() and d.name[:3].isdigit()]
+    """The convention, asserted where it can actually be checked.
+
+    Against what git *tracks*, not against what is on disk: running the old
+    suite at an earlier commit leaves `__pycache__` under the old paths, and a
+    build artefact resurrecting a directory name is not a naming violation. It
+    would still fail this test on disk, and a test that cries wolf over litter
+    is one somebody deletes.
+    """
+    tracked = subprocess.run(
+        ["git", "ls-files", "experiments/"], cwd=ROOT,
+        capture_output=True, text=True, check=True).stdout.splitlines()
+    numbered = sorted({p.split("/")[1] for p in tracked
+                       if p.count("/") >= 1 and p.split("/")[1][:3].isdigit()})
     assert numbered == []

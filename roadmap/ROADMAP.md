@@ -17,6 +17,8 @@ Claim before starting: `roadmap claim <key>`
 - `now` **`008-carry-forward-what-survives`** — Write down which coordination lessons survive the island, as the design input to 008
 - `now` **`008-coding-task-with-an-answer-key`** — Build a shared coding task whose outcome is read off settled state and has a reference point
 - `now` **`hue-and-cry-purge-the-leaked-tables`** — Ask GitHub Support to purge the hue-and-cry secret tables from PR
+- `now` **`premium-rung0-noise-before-thresholds`** — Measure this island's own run-to-run movement before naming any threshold
+- `now` **`premium-rung0b-recalibrate-the-content-axis`** — Recalibrate the delta curve at this island's table shape and accumulation rule
 - `next` **`005-episodes-to-threshold`** — Measure episodes-to-first-clear across a threshold ladder, not total efficiency
   - ↔ related: **`005-paired-statistic-choice`** — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - ↔ related: **`005-rerun-at-twenty-one-rounds`** — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
@@ -50,8 +52,14 @@ _Nothing claimed._
   waiting on `008-coding-task-with-an-answer-key`
 - **`lab-roadmap-core-0-2-0`** — Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI  
   waiting on `lab-roadmap-adoption`
+- **`premium-rung1-does-a-correct-shared-convention-beat-silence`** — Run the feasibility rung — a correct, common convention against no convention  
+  waiting on `premium-rung0-noise-before-thresholds`, `premium-rung0b-recalibrate-the-content-axis`
+- **`premium-rung2-common-against-private`** — Run the claim — common against private, with the content byte-identical  
+  waiting on `premium-rung1-does-a-correct-shared-convention-beat-silence`
 - **`008-helper-tools-after-conventions`** — Open a second treatment family — helper tools that do part of the reasoning  
   waiting on `008-convention-ladder-start-at-the-end`
+- **`premium-rung3-the-delta-sweep`** — Sweep delta on the common arms and put a number on the coordination premium  
+  waiting on `premium-rung2-common-against-private`
 
 ## Dependency graph
 
@@ -80,6 +88,11 @@ graph TD
   island_viewer_density_scaled_spacing["Scale element size to element count on the island viewer, so huts and production sites are never crowded together"]
   lab_roadmap_adoption["Adopt roadmap-core so lab work is filed as items rather than as prose"]
   lab_roadmap_core_0_2_0["Regenerate the roadmap markdown once roadmap-core 0.2.0 is on PyPI"]
+  premium_rung0_noise_before_thresholds["Measure this island's own run-to-run movement before naming any threshold"]
+  premium_rung0b_recalibrate_the_content_axis["Recalibrate the delta curve at this island's table shape and accumulation rule"]
+  premium_rung1_does_a_correct_shared_convention_beat_silence["Run the feasibility rung — a correct, common convention against no convention"]
+  premium_rung2_common_against_private["Run the claim — common against private, with the content byte-identical"]
+  premium_rung3_the_delta_sweep["Sweep delta on the common arms and put a number on the coordination premium"]
   005_render_precision_fix --> 005_rerun_at_twenty_one_rounds
   008_coding_task_with_an_answer_key --> 008_asymmetry_is_the_design_factor
   008_carry_forward_what_survives --> 008_convention_ladder_start_at_the_end
@@ -88,6 +101,10 @@ graph TD
   008_coding_task_with_an_answer_key --> 008_noise_before_thresholds
   008_coding_task_with_an_answer_key --> 008_timing_tool_mechanism_and_outcome
   lab_roadmap_adoption --> lab_roadmap_core_0_2_0
+  premium_rung0_noise_before_thresholds --> premium_rung1_does_a_correct_shared_convention_beat_silence
+  premium_rung0b_recalibrate_the_content_axis --> premium_rung1_does_a_correct_shared_convention_beat_silence
+  premium_rung1_does_a_correct_shared_convention_beat_silence --> premium_rung2_common_against_private
+  premium_rung2_common_against_private --> premium_rung3_the_delta_sweep
   005_display_precision_artifact -.- 005_word_cap_fits_the_protocol
   005_episodes_to_threshold -.- 005_paired_statistic_choice
   005_episodes_to_threshold -.- 005_rerun_at_twenty_one_rounds
@@ -1273,5 +1290,237 @@ graph TD
 > sessions actually file their open tail as items is a claim about behaviour
 > that no commit settles, and retiring this one first would report the adoption
 > as finished on the strength of a version bump.
+
+</details>
+
+### `premium-rung0-noise-before-thresholds`
+
+- **title:** Measure this island's own run-to-run movement before naming any threshold
+- **status:** ready
+- **arc:** coordination-premium
+- **priority:** now
+- **blocks:** `premium-rung1-does-a-correct-shared-convention-beat-silence`
+- **refs:**
+  - `experiments/how-wrong-can-a-shared-convention-be/experiment/noise.py`
+  - `experiments/how-wrong-can-a-shared-convention-be/PREFLIGHT.md`
+  - `reports/2026-08-24-hypothesis-ledger.md`
+
+<details><summary>evidence</summary>
+
+> The lab's most expensive lesson, run first this time. Three experiments named
+> thresholds of 0.10-0.15 against an instrument whose between-run movement was
+> later measured at 0.229 on the ratio and 1.03 per round; rows 10-16 of the
+> hypothesis ledger are the wreckage, and the measurement that would have
+> prevented all of it cost one afternoon and was run last.
+>
+> **Half of it is free, and run 001 measured which half.** `games/island/npc.py`
+> gives three heuristic policies and `experiment/noise.py` plays a cell end to
+> end against a real hub -- lobby, seats, manager, ledger. But heuristics are
+> deterministic given their seed: two replicates of the identical cell came back
+> byte-identical, `capture` agreeing to sixteen digits, so the free run reports
+> a between-replicate sd of exactly zero.
+>
+> Zero is the honest answer to what that run asks -- how much does the harness
+> move on its own -- and it is not a threshold. The 0.229 and 1.03 this lab
+> measured before are **agent** variance, and no NPC run contains any. So this
+> item splits: the free harness bound (H0a), and a paid replication of one
+> model cell (H0b) which is the number rung 1's threshold is actually written
+> against.
+>
+> Two properties the runner already has, both found by running it rather than
+> by reasoning about it:
+>
+> - **A pinned cell is refused.** At `--seconds 15` no NPC completes a round
+>   trip, every game settles nothing, every bounded share sits on a bound, and
+>   the reported sd is 0.0000 -- which reads as the most precise instrument
+>   this lab has ever had. The runner now names those endpoints as pinned and
+>   exits non-zero, because a threshold taken from that run would be a
+>   threshold of zero.
+> - **Games that settled nothing are counted, never dropped.** A seat that says
+>   nothing has said nothing and the bell rings anyway, so a dead game is an
+>   outcome; a cell where every game is dead is measuring the clock.
+>
+> Done when both are recorded at the table shape the paid rungs will use, each
+> candidate endpoint carries a stated between-replicate sd with its denominator,
+> and H0b's numbers are written into PREREGISTRATION.md as an amendment --
+> before rung 1 is designed against them. H0a alone does not close this item:
+> a threshold taken from a run that cannot move is a threshold of zero. A treatment run before
+> this exists is a run this lab already knows how to waste.
+
+</details>
+
+### `premium-rung0b-recalibrate-the-content-axis`
+
+- **title:** Recalibrate the delta curve at this island's table shape and accumulation rule
+- **status:** ready
+- **arc:** coordination-premium
+- **priority:** now
+- **blocks:** `premium-rung1-does-a-correct-shared-convention-beat-silence`
+- **refs:**
+  - `experiments/which-part-of-a-convention-works/tier3-design.md`
+  - `experiments/is-ruin-the-convention-or-the-commitment/README.md`
+  - `experiments/how-wrong-can-a-shared-convention-be/README.md`
+
+<details><summary>evidence</summary>
+
+> The correction most likely to be skipped, because the curve already exists
+> and looks usable. It is not.
+>
+> The published calibration in `tier3-design.md` was measured on 002's
+> **accumulating** island at 12 agents over 24-48 islands. This experiment runs
+> on the **flow** island at 2-4 traders. Those differ in the one rule that
+> `is-ruin-the-convention-or-the-commitment` showed dominates the outcome:
+> permanent ruin goes 14/24 to 1/24 and 18/24 to 0/24 between them. A model
+> tier compared against a curve from a different accumulation rule and a
+> different table shape is compared against nothing.
+>
+> It is also the calibration gate in the ordinary sense -- does the instrument
+> read? The published curve's own finding was that **efficiency carries no
+> signal about delta**: across every delta, both directions, 121 surviving
+> islands, survivor efficiency has median 0.972 and range 0.741-1.000, and it
+> is 0.978 at delta 0 against 0.998 at delta 0.3. The whole effect was on
+> whether an island survived at all. So the recalibration is run on the
+> zero-episode share, and the old curve's variable is not reused.
+>
+> Done when the sweep is recorded at this island's shape, both perturbation
+> directions reported separately, the endpoint shown off both its floor and its
+> ceiling with those printed, and the realised error recorded beside each delta
+> -- delta is a knob, not a distance, and the same value means different things
+> in the two directions.
+>
+> If the curve is flat here, stop and do not spend: with no content axis there
+> is nothing for the distribution axis to hold constant, and rungs 1-3 are
+> unrunnable whatever the distribution does.
+
+</details>
+
+### `premium-rung1-does-a-correct-shared-convention-beat-silence`
+
+- **title:** Run the feasibility rung — a correct, common convention against no convention
+- **status:** blocked
+- **arc:** coordination-premium
+- **priority:** next
+- **blocked on:** `premium-rung0-noise-before-thresholds`, `premium-rung0b-recalibrate-the-content-axis`
+- **blocks:** `premium-rung2-common-against-private`
+- **refs:**
+  - `experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md`
+  - `experiments/do-they-take-a-handed-over-answer/README.md`
+
+<details><summary>evidence</summary>
+
+> CS at delta 0 against `silent`, paired on identical seeded rounds. The
+> cheapest rung that can kill the arc, which is why it is first among the paid
+> ones: if a correct shared convention does not beat nothing, no distribution
+> question is worth asking, because the content the distribution is
+> distributing does nothing.
+>
+> This is `do-they-take-a-handed-over-answer`'s method imported rather than
+> rediscovered. That experiment inverted the order after five experiments spent
+> on subtle treatments and got answers immediately by starting at the most
+> informative instruction possible; a rung is only run if the rung above it
+> worked, so a dead arm costs one rung rather than five.
+>
+> What must not be reported as a result: the manipulation check. Instruction
+> reliably changes behaviour here -- 214/214 settled productions matched a
+> handed plan against 0/215 in control, and a capability nobody mentions is
+> used 0 times out of 20. The agents will adopt the announced vector. That is
+> assumed, cited by row in PREREGISTRATION.md, and is not a finding.
+>
+> Done when the cell is run at the seed count rung 0's sd actually supports,
+> against a **replicated** control rather than a single draw -- the lab's
+> best-supported difference to date rests on four treated draws against one
+> control draw, and that is the only reason it is still "probably".
+
+</details>
+
+### `premium-rung2-common-against-private`
+
+- **title:** Run the claim — common against private, with the content byte-identical
+- **status:** blocked
+- **arc:** coordination-premium
+- **priority:** next
+- **blocked on:** `premium-rung1-does-a-correct-shared-convention-beat-silence`
+- **blocks:** `premium-rung3-the-delta-sweep`
+- **refs:**
+  - `experiments/how-wrong-can-a-shared-convention-be/README.md`
+  - `experiments/which-part-of-a-convention-works/tier3-design.md`
+
+<details><summary>evidence</summary>
+
+> The rung the experiment exists for, and the one the paper is written from.
+> CS against CP at delta 0, plus WP as the obedience control.
+>
+> **The two arms differ in one sentence.** The announced vector is
+> byte-identical; what changes is whether the brief states that every trader
+> received it. That is the whole treatment, and it is what makes the contrast
+> clean enough to report either way.
+>
+> This axis is why the tier costs money at all. A scripted trader has no
+> beliefs about other agents, so announcing a vector to the island and handing
+> the same vector privately produce byte-identical behaviour at every delta.
+> The scripted rungs calibrate the content axis and the adherence axis; the
+> distribution axis **does not exist in them**. The paid tier is not a more
+> realistic version of the free one -- it is the only place one of the three
+> axes exists.
+>
+> Both outcomes are worth the run:
+>
+> - CS > CP gives an exchange rate for sharedness on LLM agents, against an
+>   answer key nobody else has.
+> - CS ~ CP kills the strong form of the claim that opened this line of work:
+>   what a newborn agent needs would be the right answer, not the same answer.
+>
+> Confounded rather than refused if WP ~ WS -- agents were following
+> instructions and the sharedness never entered. Check the transcripts for
+> whether agents acted on the sharedness at all before concluding it is
+> worthless, because CS measures *believed* common knowledge.
+>
+> Done when both arms are run paired on identical seeds at the pre-registered
+> count, the adoption ledger is reported beside the outcome ledger and never
+> added to it, and every arm is placed in the adopted-by-moved quadrant. No arm
+> of any previous experiment here can be placed in that table, which is the
+> sharpest statement of what has been missing.
+
+</details>
+
+### `premium-rung3-the-delta-sweep`
+
+- **title:** Sweep delta on the common arms and put a number on the coordination premium
+- **status:** blocked
+- **arc:** coordination-premium
+- **priority:** later
+- **blocked on:** `premium-rung2-common-against-private`
+- **refs:**
+  - `experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md`
+
+<details><summary>evidence</summary>
+
+> Where the headline number is. Sweep the content error on the common arms and
+> find the error at which wrong-but-shared stops beating correct-but-private --
+> how wrong a convention may be and still be worth holding, purely because
+> everyone holds it. That is "conventions are important" as an exchange rate
+> rather than a slogan.
+>
+> The pre-registered shape is carried over verbatim from the Tier 3 design,
+> **including its own mistake**: it predicted the common-arm curve would cliff
+> rather than slope, and the calibration then found exactly that cliff -- 23,
+> 19, 18, 7, then zero, with non-overlapping intervals across the drop -- in
+> survival, while predicting it in efficiency, where there is no signal at all.
+> The shape claim survives; the variable is now the zero-episode share.
+>
+> Both perturbation directions run and are reported separately, because they
+> are not the same mistake. At a matched realised error of 0.019 the scripted
+> curve left 19/48 islands alive when flattening and 7/48 when sharpening,
+> intervals barely touching: overstating how much better the best good is
+> destroys islands at a perturbation an agent would struggle to notice, while
+> understating the spread degrades them gracefully over an order of magnitude
+> more error. Whether that asymmetry survives with model agents, and whether
+> sharedness protects against the sharpen cliff, is the interesting half.
+>
+> The most expensive rung, and the last, and it is only worth running if rung 2
+> moved. Done when the sweep is recorded, the premium is stated with the
+> interval its seed count actually supports, and the disposition curve --
+> adoption against delta, restricted to traders whose own capacities contradict
+> the announced vector -- is reported beside it.
 
 </details>

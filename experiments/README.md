@@ -14,6 +14,7 @@ numbered.
 | [`does-telling-traders-what-to-disclose-help`](does-telling-traders-what-to-disclose-help/) | Does telling traders what to disclose improve coordination? | run; unresolved |
 | [`do-they-take-a-handed-over-answer`](do-they-take-a-handed-over-answer/) | If the answer is handed to them, do they take it — and what survives when it is taken away? | run; open tail |
 | [`can-an-agent-hold-availability`](can-an-agent-hold-availability/) | Can an agent hold availability across time, and what is actually holding it? | probes only |
+| [`how-wrong-can-a-shared-convention-be`](how-wrong-can-a-shared-convention-be/) | How wrong may a convention be and still be worth holding, purely because everyone holds it? | **designed, nothing run** |
 
 Each directory carries its own `CLAUDE.md`, which is the only
 experiment-specific grounding an agent working on it should read. The rule, and
