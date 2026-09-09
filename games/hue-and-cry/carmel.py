@@ -62,7 +62,7 @@ import treasures as T  # noqa: E402
 from descriptors import NEIGHBOURHOOD, all_descriptors  # noqa: E402
 from gazetteer import EXITS, kinship  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
-from secret_matrix import _prf, hints_for  # noqa: E402
+from secret_matrix import _prf, hints_for, token_for  # noqa: E402
 
 EXIT_INFO = b"hue-and-cry/v1/exits"
 
@@ -75,45 +75,36 @@ EXIT_INFO = b"hue-and-cry/v1/exits"
 #: costs trade against each other instead of one dominating.
 TRAVEL_KMH = 400
 
-#: What she needs to win, per searcher hunting her. MEASURED rather than
-#: guessed -- the first version of this file carried a flat 600, which
-#: `--calibrate` showed she reaches in none of sixty chases against two
-#: searchers. She is caught at a median of 162.
+#: What she needs to win. ONE NUMBER, and the correction that made it one is
+#: the whole shape of the game.
 #:
-#: `games/hue-and-cry.md` left it open "whether the threshold is fixed or
-#: scales with how many are hunting". It cannot be fixed. Her whole budget
-#: is the NEARER searcher's head start, so it falls as hunters are added:
+#: This was a table keyed by how many searchers were hunting, calibrated so
+#: each size came out near even. Gal, 2026-09-09: *"You don't know who
+#: chases you. She does not know who chases her."* A threshold that reads
+#: the size of the field is a threshold nobody at the table can compute --
+#: she cannot, because she never learns who came; and it cannot be set at
+#: setup either, because **the field is not closed at setup**. She opens a
+#: campaign, posts a notice, and whoever wants to join joins, whenever they
+#: like.
 #:
-#:     searchers   her budget   she reaches
-#:         1          19h          229
-#:         2          11h          162
-#:         3           8h          134
-#:         5           6h          101
-#:
-#: These sit at about 60% of what she reaches, which is where a chase comes
-#: out near even against the reference searcher. That searcher is a FLOOR --
-#: it never reads a hint and never cooperates -- so a real one moves every
-#: number here, and these are a starting point for a played game rather than
-#: an answer to it.
-REPUTATION_TO_WIN = {1: 140, 2: 100, 3: 80, 5: 60}
+#: So the number is fixed and the turnout is the weather. She is not playing
+#: a balanced match against a known field; she is stealing until somebody
+#: arrives. 140 is what a chase against a single searcher comes out even at,
+#: which makes a solo hunt a contest and a crowd a hard game -- and that
+#: asymmetry is now a property of the design rather than a bug in it.
+REPUTATION_TO_WIN = 140
 
+#: The lobby is a public room whose key is published -- the island's shape
+#: (`games/island/lobby.py`) and for its reason: a room nobody can find is
+#: not an announcement. Its name is fixed and salt-free, because a lobby
+#: that moved with the game salt could not be found by anybody who was not
+#: already playing.
+LOBBY = "hue-and-cry"
 
-def reputation_to_win(searchers: int) -> int:
-    """Interpolated for sizes the sweep did not run, and clamped at both
-    ends rather than extrapolated: the curve is measured over 1..5 and says
-    nothing about 20."""
-    table = REPUTATION_TO_WIN
-    if searchers in table:
-        return table[searchers]
-    known = sorted(table)
-    if searchers < known[0]:
-        return table[known[0]]
-    if searchers > known[-1]:
-        return table[known[-1]]
-    lo = max(k for k in known if k < searchers)
-    hi = min(k for k in known if k > searchers)
-    span = (searchers - lo) / (hi - lo)
-    return round(table[lo] + span * (table[hi] - table[lo]))
+#: How long people take to notice the notice and set off. A GUESS, and the
+#: parameter that decides how much of a head start she gets: nobody is
+#: hunting her until somebody reads the lobby.
+JOIN_WINDOW_HOURS = 12
 
 
 def travel_hours(a: dict, b: dict) -> float:
@@ -286,6 +277,35 @@ class Searcher:
         return trail.get(self.at)
 
 
+def open_campaign(seed: bytes, start: str) -> str:
+    """The notice she posts in the lobby when she starts stealing.
+
+    Gal, 2026-09-09: *"she would start a new campaign for stealing things.
+    Then once she goes to the first room, she also posts a note in some
+    lobby. And then whoever wants to join the hunt, just join the hunt."*
+
+    Two things follow, and they are the reason this function exists at all
+    rather than the game simply beginning.
+
+    **She starts it.** Nobody convenes a match. A campaign is a thing she
+    does, and the field assembles around it or does not.
+
+    **Joining is not a move.** There is no `JOIN` line and nothing to
+    approve, because "knowing a landmark's name is what admits you" and this
+    game has no permission model to ask. The notice carries the room she is
+    starting from; going there is the whole of joining. That is a smaller
+    lobby than the island's, which settles `OPEN`, `JOIN` and `MANAGE` --
+    here only the first is a line, and the other two are somebody walking in.
+
+    The address is the opening landmark's, not her current one. She posts it
+    on the way out, so by the time anybody reads it she has gone -- which is
+    the same one-room head start the trail gives everybody afterwards, and
+    the reason the game is findable at all: with a thousand rooms and nothing
+    broadcast, a searcher with no lead never finds her.
+    """
+    return f"OPEN {token_for(seed, start)}"
+
+
 def itinerary(seed: bytes, start: str, world: Map,
               limit: int = 40) -> list[dict]:
     """Where she goes and how long she stands still, ignoring the searchers.
@@ -317,8 +337,8 @@ def itinerary(seed: bytes, start: str, world: Map,
     return out
 
 
-def pursue(world: Map, start: str, home: str,
-           trail: list[dict]) -> tuple[int | None, float]:
+def pursue(world: Map, start: str, home: str, trail: list[dict],
+           joined_at: float = 0.0) -> tuple[int | None, float]:
     """Run one searcher along the trail. Returns (move it catches her on,
     the lag it settles at).
 
@@ -338,7 +358,7 @@ def pursue(world: Map, start: str, home: str,
     `initial lag` hours of standing still in her, total, and has to be worth
     `REPUTATION_TO_WIN` before she spends them.
     """
-    clock = travel_hours(world.places[home], world.places[start])
+    clock = joined_at + travel_hours(world.places[home], world.places[start])
     lag = clock  # she left `start` at t=0
     for i, leg in enumerate(trail):
         # It is standing where she stood, so it reads the address and goes.
@@ -351,7 +371,8 @@ def pursue(world: Map, start: str, home: str,
 
 def chase(seed: bytes, start: str, searchers: int = 2,
           limit: int = 40, world: Map | None = None,
-          threshold: int | None = None) -> dict:
+          threshold: int = REPUTATION_TO_WIN,
+          join_window: float = JOIN_WINDOW_HOURS) -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
     Two rules that look like one and are not, both from
@@ -365,8 +386,6 @@ def chase(seed: bytes, start: str, searchers: int = 2,
       is no other.*
     """
     world = world or Map(seed)
-    threshold = reputation_to_win(searchers) if threshold is None \
-        else threshold
     trail = itinerary(seed, start, world, limit)
 
     names = sorted(world.descriptors)
@@ -374,7 +393,12 @@ def chase(seed: bytes, start: str, searchers: int = 2,
     for i in range(searchers):
         digest = _prf(seed, b"hue-and-cry/v1/searcher-start", str(i), 0)
         home = names[int.from_bytes(digest[:8], "big") % len(names)]
-        move, lag = pursue(world, start, home, trail)
+        # When this one read the lobby and set off. Nobody is dispatched;
+        # they arrive at the notice on their own time, which is why her head
+        # start is not a property of the field's size.
+        joined = join_window * (
+            int.from_bytes(digest[8:16], "big") / 2 ** 64)
+        move, lag = pursue(world, start, home, trail, joined_at=joined)
         lags.append(lag)
         if move is not None and (caught_on is None or move < caught_on):
             caught_on = move
@@ -394,13 +418,14 @@ def chase(seed: bytes, start: str, searchers: int = 2,
             "reputation": trail[-1]["reputation"], "hours": trail[-1]["leaves"]}
 
 
-def _run(world: Map, seed: bytes, names: list[str], searchers: int) -> dict:
+def _run(world: Map, seed: bytes, names: list[str], searchers: int,
+         join_window: float = JOIN_WINDOW_HOURS) -> dict:
     w = Map(seed)
     w.descriptors, w.places, w.treasure = (
         world.descriptors, world.places, world.treasure)
     start = names[int.from_bytes(seed[:4], "big") % len(names)]
     return chase(seed, start, searchers=searchers, world=w,
-                 threshold=10 ** 9, limit=40)
+                 threshold=10 ** 9, limit=40, join_window=join_window)
 
 
 def main() -> None:
@@ -431,80 +456,66 @@ def main() -> None:
 
 
 def calibrate(world: Map, trials: int = 60) -> None:
-    """Where the threshold has to sit for the game to be a contest.
+    """What a fixed threshold means when the field is not fixed.
 
-    Too low and she wins before anyone reads a board; too high and the
-    reference searcher catches her every time. What is wanted is a number
-    where neither side is a formality -- and the honest report is the whole
-    curve, since the reference searcher is a floor and a better one moves it.
+    The previous version of this asked what threshold balanced a chase
+    against N searchers, and answered with a table keyed by N. That question
+    is not available any more: she never learns who came, and the field is
+    not closed when she opens the campaign. So the number is fixed and the
+    turnout is weather -- what is worth measuring is how hard the weather
+    makes it, and what she is actually buying with the hours before anybody
+    reads the lobby.
     """
     names = sorted(world.descriptors)
     seeds = [os.urandom(32) for _ in range(trials)]
 
-    print(f"{trials} chases per row, travel at {TRAVEL_KMH} km/h\n")
-    print("  How many are hunting, and what it costs her -- the question"
-          " games/hue-and-cry.md\n  left open as \"whether the threshold is"
-          " fixed or scales with how many are hunting\":\n")
-    print(f"  {'searchers':>10}{'her budget':>12}{'she reaches':>13}")
-    for n in (1, 2, 3, 5):
-        rs = [_run(world, s, names, searchers=n) for s in seeds]
+    print(f"{trials} campaigns per row, travel {TRAVEL_KMH} km/h,"
+          f" threshold {REPUTATION_TO_WIN}\n")
+    print("  She opens a campaign and whoever turns up, turns up. She never"
+          " learns how many.\n")
+    print(f"  {'turnout':>8}{'her budget':>12}{'she reaches':>13}"
+          f"{'she wins':>10}")
+    for n in (1, 2, 3, 5, 10):
+        rs = [_run(world, sd, names, searchers=n) for sd in seeds]
         budget = sorted(min(r["lags"]) for r in rs if r["lags"])
         got = sorted(r["moves"][-1]["reputation"] for r in rs if r["moves"])
-        print(f"  {n:>10}{budget[len(budget) // 2]:>10.0f}h"
-              f"{got[len(got) // 2]:>13,.0f}")
-    print("\n  The head start is the nearer searcher's, so it falls as they"
-          " add hunters --\n  which answers the open question: the threshold"
-          " CANNOT be fixed. The same\n  number that is a contest against one"
-          " is unreachable against five.\n")
+        wins = sum(1 for r in rs if _wins(r, REPUTATION_TO_WIN))
+        print(f"  {n:>8}{budget[len(budget) // 2]:>10.0f}h"
+              f"{got[len(got) // 2]:>13,.0f}{wins / trials:>10.0%}")
+    print("\n  A fixed threshold cannot be fair to every turnout, and that is"
+          " now a property\n  of the design rather than a number to tune: she"
+          " is not playing a balanced\n  match against a known field, she is"
+          " stealing until somebody arrives.\n")
 
-    results = []
-    for i in range(trials):
-        # Run with no threshold and read every candidate off one history.
-        # The first version of this called chase() at the default 600 and
-        # then asked what happened at 800, which no run could reach because
-        # it had already stopped: every row above the threshold it was run
-        # at read 0% wins and 92% "neither", which looks like a finding and
-        # is an artefact.
-        results.append(_run(world, seeds[i], names, searchers=2))
+    print("  What the lobby's latency buys her -- the hours before anybody"
+          " has read the\n  notice are hours nobody is behind her at all,"
+          " and it is the only lever\n  that does not require changing what"
+          " a theft is worth:\n")
+    print(f"  {'join window':>13}{'her budget':>12}{'she reaches':>13}"
+          f"{'she wins':>10}")
+    for window in (0, 6, 12, 24, 48):
+        rs = [_run(world, sd, names, searchers=3, join_window=window)
+              for sd in seeds]
+        budget = sorted(min(r["lags"]) for r in rs if r["lags"])
+        got = sorted(r["moves"][-1]["reputation"] for r in rs if r["moves"])
+        wins = sum(1 for r in rs if _wins(r, REPUTATION_TO_WIN))
+        print(f"  {window:>11}h{budget[len(budget) // 2]:>10.0f}h"
+              f"{got[len(got) // 2]:>13,.0f}{wins / trials:>10.0%}")
+    print("\n  Three searchers throughout. Everything above is measured"
+          " against the reference\n  searcher, which follows the exact"
+          " address in each room and never reads a hint,\n  never cooperates"
+          " and never guesses ahead. It is a floor, and a real searcher\n"
+          "  moves every number here.\n")
 
-    print("  Two reference searchers, and what threshold makes a contest:\n")
-    # The quantity the whole chase turns on. A searcher follows the same
-    # legs she does, so its travel cancels hers exactly: the only thing that
-    # closes the gap is her standing still. Lag falls by one dwell per hop
-    # and by nothing else, which is what "the theft is the dwell and the
-    # dwell is the exposure" means arithmetically.
-    best = sorted(min(r["lags"]) for r in results if r["lags"])
-    dwells = sorted(m["dwell"] for r in results for m in r["moves"]
-                    if m["dwell"])
-    print(f"  the nearer searcher settles {best[len(best) // 2]:.0f}h behind"
-          f" her (median), and her longest theft is {max(dwells)}h.")
-    print("  EVERY THEFT HANDS THE FOLLOWER THE HOURS SHE SPENT ON IT. Their"
-          " travel cancels\n  exactly -- it walks her legs -- so the only"
-          " asymmetry is that she stands still\n  and it does not. The gap"
-          " is her head start minus everything she has stolen,\n  and it"
-          " catches her on the first room where that reaches zero.\n")
-    print("  So her win condition is a BUDGET, not a race: about"
-          f" {best[len(best) // 2]:.0f} hours of standing\n  still in total,"
-          " to be spent on the most valuable rooms she can reach.\n")
-    reached = sorted(r["moves"][-1]["reputation"] for r in results
-                     if r["moves"])
-    print(f"  she reaches a median of {reached[len(reached) // 2]:,}"
-          f" reputation before the chase ends or runs out of moves\n")
-    print(f"  {'threshold':>10}{'she wins':>10}{'caught':>9}{'neither':>9}")
-    for threshold in (50, 100, 150, 200, 300, 600):
-        wins = caught = neither = 0
-        for r in results:
-            hit = next((m for m in r["moves"]
-                        if m["reputation"] >= threshold), None)
-            caught_at = r["hours"] if r["outcome"] == "caught" else None
-            if hit and (caught_at is None or hit["leaves"] <= caught_at):
-                wins += 1
-            elif caught_at is not None:
-                caught += 1
-            else:
-                neither += 1
-        print(f"  {threshold:>10}{wins/trials:>10.0%}"
-              f"{caught/trials:>9.0%}{neither/trials:>9.0%}")
+
+def _wins(result: dict, threshold: int) -> bool:
+    hit = next((m for m in result["moves"]
+                if m["reputation"] >= threshold), None)
+    if hit is None:
+        return False
+    if result["outcome"] != "caught":
+        return True
+    return hit["leaves"] <= result["hours"]
 
 
 if __name__ == "__main__":

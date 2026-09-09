@@ -1873,7 +1873,15 @@ true. Neither error was visible in the output; both were visible the moment
 the quantity was asserted in a test rather than reasoned about, which is
 `test_the_follower_closes_only_by_what_she_steals`.
 
-### `REPUTATION_TO_WIN = 600` was unreachable, and the open question is answered
+### `REPUTATION_TO_WIN = 600` was unreachable, and the open question is *not* answered
+
+> **Superseded within the hour, by Gal: "You don't know who chases you. She
+> does not know who chases her."** The table below answers "does the
+> threshold scale with how many are hunting" with *yes, here is the curve*.
+> The right answer is that **the question is not available**: see "She opens
+> a campaign and whoever turns up, turns up", below. The measurement is kept
+> because it is correct and is what shows the fixed threshold's cost; the
+> conclusion drawn from it was wrong.
 
 This document left it open: *"the values, the threshold, and whether the
 threshold is fixed or scales with how many are hunting. Those are numbers to
@@ -1913,6 +1921,93 @@ can never trigger it.
 python3 games/hue-and-cry/carmel.py             # watch a chase
 python3 games/hue-and-cry/carmel.py --calibrate # the tables above
 ```
+
+## She opens a campaign, and whoever turns up, turns up
+
+*Gal, 2026-09-09, correcting the section above the same hour it was written:
+"You don't know who chases you. She does not know who chases her. So she
+would start a new campaign for stealing things. Then once she goes to the
+first room, she also posts a note in some lobby. And then whoever wants to
+join the hunt, just join the hunt. That's it."*
+
+Three things, and the third undoes a table this document had just committed.
+
+**A campaign is hers to start.** Nobody convenes a match. She decides to go
+stealing, and the game is that decision plus whatever happens next.
+
+**The lobby is how it becomes findable.** She posts a notice on her way out
+of the opening landmark. It has to exist: with a thousand rooms and nothing
+broadcast, a searcher with no lead never finds her, and an unfindable
+fugitive is not a game. The notice carries the opening room's address and
+nothing else.
+
+**Joining is not a move.** There is no `JOIN` line and nothing to approve --
+"knowing a landmark's name is what admits you", and this game deleted its
+permission model on purpose. Going to the room is the whole of joining. That
+is a smaller lobby than the island's, which settles `OPEN`, `JOIN` and
+`MANAGE`; here only the first is a line and the other two are somebody
+walking in.
+
+```
+posted in the lobby
+  OPEN <workspace>       Carmel, a campaign has begun and here is where
+```
+
+*The line format is a proposal, not a decision -- Gal said "I'm not sure how
+exactly". What is decided is that a notice exists, that it is in a lobby,
+and that joining needs no permission.*
+
+### Which deletes the threshold table one section up
+
+That table set the winning score per number of searchers, so each field size
+came out near even. **Nobody at the table can evaluate it.** She never
+learns who came, so she cannot know what she is playing to; and it cannot be
+fixed at setup either, because **the field is not closed at setup** -- a
+tenth searcher can read the lobby an hour in.
+
+So the threshold is one number and the turnout is weather. What that costs
+is now a measured property of the design rather than a knob:
+
+```
+turnout   her budget   she reaches   she wins
+    1        24h          291           70%
+    2        16h          211           48%
+    3        13h          184           35%
+    5        11h          149           25%
+   10         8h          134           17%
+```
+
+**A fixed threshold cannot be fair to every turnout, and it should not try
+to be.** She is not playing a balanced match against a known field; she is
+stealing until somebody arrives. A solo hunt is a real contest, a crowd is a
+hard game, and the difference is the point rather than an imbalance.
+
+### The lobby's latency is the lever the design did not know it had
+
+Her whole budget is how long before the nearest searcher is behind her, and
+**the hours before anybody has read the notice are hours nobody is behind
+her at all**:
+
+```
+join window   her budget   she reaches   she wins
+        0h        7h           113          22%
+        6h       10h           146          28%
+       12h       13h           184          35%
+       24h       18h           232          50%
+       48h       25h           307          65%
+```
+
+Three searchers throughout. This is the only lever that moves her odds
+without changing what a theft is worth or how far apart the rooms are, and
+it is a lever about **attention** rather than about the map -- which is what
+this document said the scarce thing had become, three sections before it had
+a lobby to spend it in.
+
+Everything here is measured against the reference searcher, which follows
+the exact address in each room and never reads a hint, never cooperates and
+never guesses ahead. It is a floor. A searcher that guessed *ahead* would
+break the arithmetic outright, since the gap only holds while it walks her
+legs.
 
 ## What would have to be built, in order
 
