@@ -176,7 +176,32 @@ ASSUMED_LAG = 12.0
 #:     WHIM  = 1     straight proportional to score
 #:     WHIM -> inf   uniform, and she is not playing at all
 #:
-#: 0.35 is A GUESS, swept in `--calibrate`.
+#: **What it costs her and what it buys**, 24 campaigns per row:
+#:
+#:     WHIM    c@1    c@3   c@10   med hop km   rep@40
+#:     0.00     8%     8%    21%          694      2,999
+#:     0.20     0%     0%     4%        1,637      2,565
+#:     0.35     0%     4%     8%        2,982      2,323
+#:     0.60     0%     0%     4%        4,821      2,083
+#:     1.00     0%     0%     0%        5,752      1,905
+#:
+#: **She trades reputation for safety, and the exchange rate is steep**:
+#: at 0.35 she is caught a third as often and banks 23% less. Two things
+#: are going on, and neither is that the randomness confuses the searcher
+#: directly. She stops hugging (694 km -> 2,982), so prep costs her more
+#: and she robs poorer rooms; and the near-first probe order stops fitting
+#: her, because it was only ever fitting her *preference* for near.
+#:
+#: **A searcher cannot recover this by modelling her better.** Her score
+#: has three terms and two of them are sealed until the reveal -- the
+#: treasure's reputation and the seed-derived live hints that set cover.
+#: Only the prep term is public, so "she prefers near" is the whole of
+#: what a searcher can know about where she is going, and softening the
+#: argmax is exactly what makes that one term a weaker predictor. `pursue`
+#: reads no sealed field and a test holds that.
+#:
+#: 0.35 is A GUESS. It is also the row where she is still caught sometimes
+#: at every turnout, which the rows either side of it are not.
 WHIM = 0.35
 
 #: How often she walks past a treasure she could have taken.

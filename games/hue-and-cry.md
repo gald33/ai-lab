@@ -3377,6 +3377,53 @@ with probability proportional to `score ** (1 / WHIM)`:
 
 `WHIM = 0.35`, a guess, swept in `--calibrate`.
 
+### What it costs her, which is a lot
+
+```
+ WHIM    c@1    c@3   c@10   med hop km   rep@40
+ 0.00     8%     8%    21%          694      2,999
+ 0.20     0%     0%     4%        1,637      2,565
+ 0.35     0%     4%     8%        2,982      2,323
+ 0.60     0%     0%     4%        4,821      2,083
+ 1.00     0%     0%     0%        5,752      1,905
+```
+
+**She trades reputation for safety at a steep rate.** At 0.35 she is caught
+a third as often and banks 23% less; by 1.00 she is never caught and has
+lost a third of her takings.
+
+Two things are doing that, and neither is the randomness confusing a
+searcher directly. She stops hugging — median hop 694 km → 2,982 — so prep
+costs her more and she robs poorer rooms. And the nearest-first probe order
+stops fitting her, because it was only ever fitting her *preference* for
+near.
+
+**Which means the prep dial and this one pull against each other.** `PREP`
+buys capture by making her stand still where she has announced; `WHIM` sells
+it back by making the one public term of her policy a weaker predictor. They
+are not redundant — one moves how exposed she is, the other how guessable —
+but a campaign's capture rate is set by the pair and neither can be read
+alone.
+
+### A searcher cannot answer it by modelling her better
+
+The obvious reply is that she is a stated control, so a searcher should just
+compute her distribution and probe in that order. **It cannot.** Her score
+has three terms and two are sealed until the reveal:
+
+| term | public? |
+|---|---|
+| `reputation(X)` | no — `treasures.enc`, and `absurd.tsv` is not committed |
+| `cover(X)` | no — the live three are `hints_for(seed, …)` |
+| `prep(here → X)` | **yes** — gazetteer, `PREP`, and the stamp on her line |
+
+So *"she prefers near"* is the whole of what a searcher can know about where
+she is going, and softening the argmax is precisely what makes that one term
+a weaker predictor. `pursue` reads no sealed field, and a test holds it
+there. This is the sealing doing the work it was built for — it was put in
+to stop the hints and treasures being looked up, and it turns out to also be
+what stops her policy being replayed.
+
 The third decision has no score to soften, only a coin: `SKIP_CHANCE = 0.15`
 of walking past a treasure she could have taken. The argument for it is
 different from the other two and is about the clock rather than the map — a

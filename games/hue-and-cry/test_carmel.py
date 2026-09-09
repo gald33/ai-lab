@@ -240,6 +240,37 @@ def test_her_randomness_comes_out_of_the_seed_and_not_out_of_random():
     assert C._draw(SEED, 3, "where") != C._draw(SEED, 4, "where")
 
 
+def test_the_searcher_reads_nothing_that_is_sealed():
+    """What a searcher can know about where she is going is one term of
+    three, and that is what makes her randomness worth anything.
+
+    Her score is `reputation x cover / (1 + prep / ASSUMED_LAG)`.
+    `reputation` is sealed in `treasures.enc` and `cover` comes from the
+    seed-derived live hints; only `prep` is public. So *"she prefers
+    near"* is the whole of what a pursuer can model, and softening the
+    argmax is exactly what makes that one term a weaker predictor.
+
+    If `pursue` ever reads a treasure or a live hint, that argument is
+    void and the model is measuring a searcher nobody could be.
+    """
+    import inspect
+
+    body = inspect.getsource(C.pursue)
+    for sealed in ("treasure", "live_hints", ".cover"):
+        assert sealed not in body, f"pursue reads {sealed}, which is sealed"
+
+    # And it goes red if that ever changes: a Map whose sealed fields
+    # raise on access still runs a whole pursuit.
+    class Sealed(dict):
+        def __getitem__(self, key):
+            raise AssertionError("the searcher opened a sealed table")
+
+    world = C.Map(SEED)
+    trail = C.itinerary(SEED, START, world, 6)
+    world.treasure, world.cover = Sealed(), Sealed()
+    C.pursue(world, START, "Uluru", trail)
+
+
 def test_nothing_she_decides_can_see_the_searchers():
     """She is the control, and a control that reacts to the field is not
     one. Her three decisions take the world, where she is and what she has
