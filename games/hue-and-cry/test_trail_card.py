@@ -89,18 +89,21 @@ def test_the_card_and_the_scoreboard_agree_on_every_outcome():
     fixed for one and broken for another -- and it does not care which
     treasure table the checkout can build.
     """
-    seen = set()
+    # No assertion that the outcomes differ. There was one, and it went
+    # red when Carmel's decisions gained their randomness on 2026-09-09 --
+    # all four seeds started escaping. It was guarding that `kept` gets
+    # exercised on a catch, and the test above does that directly, on a
+    # constructed result that no change to the chase can turn into a
+    # different outcome.
     for tag in ("22", "4b", "a3", "07"):
         seed = bytes.fromhex(tag * 32)
         world, result = run(seed)
-        seen.add(result["outcome"])
         legs = result["moves"]
         banked = sum(world.treasure[legs[i]["to"]]["reputation"]
                      for i in TC.kept(result))
         assert banked == result["reputation"], (
             f"{tag}: card banks {banked}, chase reports"
             f" {result['reputation']} on a {result['outcome']} campaign")
-    assert len(seen) > 1, f"all four seeds ended the same way: {seen}"
 
 
 def test_the_header_counts_what_the_map_marks():

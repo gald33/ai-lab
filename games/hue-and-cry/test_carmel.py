@@ -79,17 +79,37 @@ def test_every_hint_she_posts_is_true_of_where_she_went():
         assert leg["hint"] in WORLD.descriptors[leg["to"]]
 
 
-def test_she_posts_the_least_informative_hint_she_holds():
-    """Her whole stated strategy, and the thing the descriptor layer exists
-    to make possible. Anything else is a different control.
+def test_she_leans_hard_on_the_least_informative_hint_without_always_taking_it():
+    """Her stated strategy, softened on 2026-09-09 -- Gal: *"add some
+    randomness for all her decisions."*
 
-    Least informative is now measured against the map rather than against
-    a reachable set, because with no routes the map is what the reader
-    faces.
+    This used to assert `cover[hint] == max(cover)` on every single leg.
+    That is now false by design: she draws among her three live
+    descriptors weighted by `cover ** (1 / WHIM)`, so she usually says the
+    vaguest thing she holds and sometimes says a sharper one. The
+    superseded assertion is quoted here rather than deleted, because the
+    thing it was protecting still needs protecting -- a Carmel who picked
+    uniformly would have no strategy at all, and would pass a test that
+    only checked the hint was true.
+
+    So: over a long campaign she must take the vaguest available hint far
+    more often than the sharpest. Both bounds matter. The lower one fails
+    if `WHIM` is turned up until she is picking at random; the upper one
+    fails if the draw is quietly reverted to `max`.
     """
-    for leg in C.itinerary(SEED, START, WORLD):
-        covers = {w: WORLD.cover[w] for w in WORLD.live_hints(leg["to"])}
-        assert covers[leg["hint"]] == max(covers.values())
+    vaguest = sharpest = legs = 0
+    for seed_byte in range(1, 12):
+        seed = bytes.fromhex(f"{seed_byte:02x}" * 32)
+        for leg in C.itinerary(seed, START, WORLD, 20):
+            live = [WORLD.cover[w] for w in WORLD.live_hints(leg["to"])]
+            mine = WORLD.cover[leg["hint"]]
+            legs += 1
+            vaguest += mine == max(live)
+            sharpest += mine == min(live) and min(live) != max(live)
+    assert legs > 100, legs
+    assert 0.55 < vaguest / legs < 0.95, (
+        f"she took the vaguest hint on {vaguest / legs:.0%} of {legs} legs")
+    assert sharpest > 0, "she never once said the sharper thing"
 
 
 def test_she_never_robs_the_same_room_twice():
@@ -193,6 +213,31 @@ def test_what_she_needs_to_win_does_not_read_the_size_of_the_field():
     a = C.chase(SEED, START, searchers=1, world=WORLD)
     b = C.chase(SEED, START, searchers=9, world=WORLD)
     assert a["outcome"] != "caught" or b["outcome"] == "caught"
+
+
+def test_her_randomness_comes_out_of_the_seed_and_not_out_of_random():
+    """`close_campaign` publishes the seed so that anybody holding the
+    transcript can re-derive every choice she was entitled to make. A
+    Carmel who rolled real dice would be a Carmel whose campaign nobody
+    can check: the commit-reveal would still verify the hints and the
+    treasures and would say nothing at all about her play.
+
+    Determinism is asserted at the top of this file. This asserts the
+    mechanism, because determinism could also be got by seeding a global
+    RNG -- which would then be a shared, order-dependent global that any
+    other import could disturb.
+    """
+    import inspect
+
+    source = inspect.getsource(C)
+    assert "import random" not in source
+    assert "random." not in source.replace("os.urandom", "")
+
+    # Same seed, same leg, different decision -> different draw. If the
+    # three shared a stream, softening one would shift the others.
+    rolls = {kind: C._draw(SEED, 3, kind) for kind in ("where", "say", "steal")}
+    assert len(set(rolls.values())) == 3, rolls
+    assert C._draw(SEED, 3, "where") != C._draw(SEED, 4, "where")
 
 
 def test_nothing_she_decides_can_see_the_searchers():

@@ -3342,6 +3342,85 @@ page *does*, and the card only says. The first test in that file is the one
 that checks that claim is still true, since it is the premise the other ten
 rest on.
 
+## Randomness in all three of her decisions
+
+*Gal, 2026-09-09: "add some randomness for all her decisions."*
+
+All three: where to go, what to say, and whether to stop and rob the place.
+Each was an argmax and each is now a draw.
+
+### Why it is worth having, which is on the searchers' side of the board
+
+The measurement two sections up found that **her published preferences are
+the strongest thing a searcher can hold** — stronger than the timestamp,
+stronger than the gazetteer. Probing near candidates first took capture from
+0% to 50%, and it works because `carmel.py` is public and she always took
+her own argmax.
+
+That is a fair exploit and it should stay possible. What should not stay
+possible is *replaying* her: a policy that always takes the best-scoring
+option is a policy anybody who has read the file can compute exactly. So
+
+> **her preferences remain the way to bet on her and stop being the way to
+> know where she went.**
+
+### The mechanism, which is one temperature
+
+Each of the first two decisions draws from the options it already scored,
+with probability proportional to `score ** (1 / WHIM)`:
+
+| `WHIM` | what she is |
+|---|---|
+| → 0 | argmax — what she was before this |
+| 1 | straight proportional to score |
+| → ∞ | uniform, and not playing at all |
+
+`WHIM = 0.35`, a guess, swept in `--calibrate`.
+
+The third decision has no score to soften, only a coin: `SKIP_CHANCE = 0.15`
+of walking past a treasure she could have taken. The argument for it is
+different from the other two and is about the clock rather than the map — a
+theft is the only thing that makes her catchable, so **a Carmel who always
+stops is one whose next appearance is predictable in time as well as in
+place.** A searcher that knows she is always mid-theft knows exactly how
+long she will be standing there. Sometimes walking on costs her the prize
+and buys back the uncertainty.
+
+### It comes out of the seed, and that is not a style preference
+
+`close_campaign` publishes the seed so that anybody holding the transcript
+can re-derive every hint she was entitled to post and every treasure that
+was in every room. **A Carmel who rolled real dice would be a Carmel whose
+campaign nobody can check** — the commit–reveal would still verify the hints
+and the treasures, and would say nothing at all about her play, which is the
+half that a searcher's score depends on.
+
+So every draw is `HMAC(seed, "hue-and-cry/v1/whim" ‖ kind ‖ leg)`, the same
+construction the rest of the game derives from. `kind` separates the three
+decisions of a leg so that softening one does not shift the others, and the
+leg index separates the legs. A test asserts the module imports no `random`
+at all, because seeding a global RNG would give determinism too — and would
+give it as a shared, order-dependent global that any other import could
+disturb.
+
+### What it costs the test suite, recorded rather than quietly patched
+
+`test_she_posts_the_least_informative_hint_she_holds` asserted
+`cover[hint] == max(cover)` on **every** leg, and that is now false by
+design. It is replaced by a two-sided one — she must take the vaguest hint
+far more often than the sharpest, and not always. The lower bound fails if
+`WHIM` is turned up until she is picking at random; the upper bound fails if
+the draw is quietly reverted to `max`. The old assertion is quoted in the
+new test rather than deleted, because what it was protecting still needs
+protecting: **a Carmel who picked uniformly would have no strategy at all,
+and would pass a test that only checked her hint was true.**
+
+`test_the_card_and_the_scoreboard_agree_on_every_outcome` lost its
+"the four seeds did not all end the same way" guard, which went red because
+all four started escaping. That guard existed to make sure `kept` was
+exercised on a catch, and the constructed-result test does that directly on
+something no change to the chase can turn into a different outcome.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

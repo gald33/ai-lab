@@ -154,6 +154,56 @@ PREP = 0.5
 #: be reading something she cannot see.
 ASSUMED_LAG = 12.0
 
+#: How much she plays her own preferences and how much she plays a hunch.
+#:
+#: Gal, 2026-09-09: *"add some randomness for all her decisions."* All three
+#: of them, so all three sample rather than take the best: where to go,
+#: what to say, and whether to stop and rob the place.
+#:
+#: **The reason it is worth having is on the searchers' side of the board.**
+#: `carmel.py` is public, because she is a stated control -- and the last
+#: measurement in this file found that her published preferences, not the
+#: timestamp and not the gazetteer, are the strongest thing a searcher can
+#: hold: probing near candidates first took capture from 0% to 50%. A
+#: policy that always takes its own argmax is a policy that can be replayed
+#: by anybody who has read it. Sampling means her preferences remain the
+#: way to bet and stop being the way to *know*.
+#:
+#: The knob is a temperature over the score she already computes. Each
+#: option is drawn with probability proportional to `score ** (1 / WHIM)`:
+#:
+#:     WHIM -> 0     argmax, which is what she was
+#:     WHIM  = 1     straight proportional to score
+#:     WHIM -> inf   uniform, and she is not playing at all
+#:
+#: 0.35 is A GUESS, swept in `--calibrate`.
+WHIM = 0.35
+
+#: How often she walks past a treasure she could have taken.
+#:
+#: The third decision, and the one where "random" means something different
+#: from the other two: there is no score to soften, only a coin. A theft is
+#: the only thing that makes her catchable, so a Carmel who *always* stops
+#: is one whose next appearance is predictable in time as well as in place
+#: -- a searcher that knows she is always mid-theft knows exactly how long
+#: she will be there. Sometimes walking past costs her the prize and buys
+#: back the uncertainty.
+#:
+#: A GUESS, and deliberately small: she is a thief, and one who mostly does
+#: not steal is a different control.
+SKIP_CHANCE = 0.15
+
+#: The PRF label for every one of those draws.
+#:
+#: **Her randomness comes out of the campaign seed and never out of
+#: `random`**, and that is not a style preference. `close_campaign`
+#: publishes the seed precisely so anybody holding the transcript can
+#: re-derive every choice she was entitled to make and check that she made
+#: them. A Carmel who rolled real dice would be a Carmel whose campaign
+#: nobody can check -- the commit-reveal would still verify the hints and
+#: the treasures, and would say nothing at all about her play.
+WHIM_INFO = b"hue-and-cry/v1/whim"
+
 #: What she needs to win. ONE NUMBER, and **currently uncalibrated** -- see
 #: the warning at the end of this comment.
 #:
@@ -266,6 +316,42 @@ def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
     return PREP * travel_hours(a, b) * difficulty
 
 
+def _draw(seed: bytes, leg: int, kind: str) -> float:
+    """A number in [0, 1) for one decision, from the seed and nothing else.
+
+    `kind` separates the three decisions of a single leg so that softening
+    one does not shift the others, and `leg` separates the legs. Both go
+    through the same HMAC the rest of this game derives from, so a reader
+    holding the published seed can reproduce every draw.
+    """
+    digest = _prf(seed, WHIM_INFO, kind, min(leg, 255))
+    return int.from_bytes(digest[:8], "big") / 2 ** 64
+
+
+def _sample(options: list, weights: list[float], roll: float):
+    """One of `options`, with probability proportional to `weight ** (1 /
+    WHIM)`. `roll` is the [0, 1) draw that decides it.
+
+    At `WHIM -> 0` this is `max`, which is what all three decisions were
+    before 2026-09-09.
+    """
+    if not options:
+        return None
+    if WHIM <= 0:
+        return max(zip(weights, options))[1]
+    scale = max(weights) or 1.0
+    sharp = [(max(w, 0.0) / scale) ** (1.0 / WHIM) for w in weights]
+    total = sum(sharp)
+    if total <= 0:
+        return options[int(roll * len(options)) % len(options)]
+    mark = roll * total
+    for option, weight in zip(options, sharp):
+        mark -= weight
+        if mark <= 0:
+            return option
+    return options[-1]
+
+
 class Map:
     """The gazetteer as one game sees it: a thousand places, the treasures
     and descriptors that were fixed before the game started, and the three
@@ -322,6 +408,10 @@ class Carmel:
         self.reputation = 0
         self.emptied: set[str] = set()
         self.clock = 0.0
+        #: Which hop she is on. It indexes her draws, so that the same seed
+        #: replays the same campaign and two legs are not handed the same
+        #: coin. `itinerary` advances it; nothing else may.
+        self.leg = 0
         #: Scales what standing still costs her. She does not know it and
         #: cannot: it is set from campaigns she has already lost or won, and
         #: nothing she can read says what it is.
@@ -347,9 +437,17 @@ class Carmel:
         prep does not cancel at all** -- it is hers alone -- so the sentence
         was true of a game without prep and is false of this one.
 
-        So she divides the prize by the risk the journey buys:
+        So she scores a room by the prize divided by the risk the journey
+        buys, and then **draws** rather than taking the best:
 
             score = reputation * cover / (1 + prep / ASSUMED_LAG)
+            P(X)  = score(X) ** (1 / WHIM), normalised
+
+        Gal, 2026-09-09: *"add some randomness for all her decisions."* The
+        argument is under `WHIM`, and the short form is that this file is
+        public: a policy that always takes its own argmax can be replayed
+        by anybody who has read it, and her preferences had become the way
+        to *know* where she went rather than the way to bet on it.
 
         She cannot do better than a fixed risk preference, because pricing
         the bet needs `e` -- how far behind her nearest pursuer is -- and
@@ -359,17 +457,17 @@ class Carmel:
         prep hours` made her stop using the map, and a Carmel who never
         travels is one nobody can overtake.
         """
-        best, best_score = None, -1.0
+        rooms, scores = [], []
         for destination, prize in self.world.treasure.items():
             if destination in self.emptied or destination == self.at:
                 continue
             prep = prep_hours(self.world.places[self.at],
                               self.world.places[destination], self.difficulty)
-            score = (prize["reputation"] * self.best_cover(destination)
-                     / (1.0 + prep / ASSUMED_LAG))
-            if score > best_score:
-                best, best_score = destination, score
-        return best
+            rooms.append(destination)
+            scores.append(prize["reputation"] * self.best_cover(destination)
+                          / (1.0 + prep / ASSUMED_LAG))
+        return _sample(rooms, scores,
+                       _draw(self.world.seed, self.leg, "where"))
 
     def best_cover(self, destination: str) -> int:
         """How much of the map the most ambiguous live hint leaves standing.
@@ -390,15 +488,31 @@ class Carmel:
         stateable: post the least informative true fact, which is a real
         optimisation against a real posterior."* Least informative means
         covering the most of the set a reader can narrow her to -- and with
-        no routes that set is the map, so this is the commonest of her
-        three live descriptors.
+        no routes that set is the map, so the commonest of her three live
+        descriptors is the one she wants.
+
+        **She draws among the three rather than taking it**, weighted the
+        same way as the room (`WHIM`). So she usually says the vaguest
+        thing she holds and sometimes says a sharper one, which is the
+        difference between a searcher knowing what she said and knowing
+        only what she tends to say. Every draw is still one of the three
+        the seed made live, so she is never posting something untrue: *she
+        may lie in prose, she may not lie in a clue.*
         """
-        return max(self.world.live_hints(destination),
-                   key=lambda w: (self.world.cover[w], w))
+        live = sorted(self.world.live_hints(destination))
+        return _sample(live, [float(self.world.cover[w]) for w in live],
+                       _draw(self.world.seed, self.leg, "say"))
 
     # --- 3. whether to stand still ----------------------------------------
     def will_steal(self, destination: str) -> bool:
-        """She steals wherever she has not already.
+        """She steals wherever she has not already, and sometimes walks on.
+
+        The third of Gal's *"randomness for all her decisions"*, and the
+        one where random means something other than a softened argmax:
+        there is no score here, only a coin. `SKIP_CHANCE` carries the
+        argument -- a theft is the only thing that makes her catchable, so
+        a Carmel who always stops is one whose next appearance is
+        predictable in time as well as in place.
 
         **The `seen` argument is gone, and with it the abort rule.** It read
         the board on arrival and did not start if a searcher had posted
@@ -417,7 +531,9 @@ class Carmel:
         searcher who gets there early -- it waits, which is what arriving
         early is *for*.
         """
-        return destination not in self.emptied
+        if destination in self.emptied:
+            return False
+        return _draw(self.world.seed, self.leg, "steal") >= SKIP_CHANCE
 
     def take(self, destination: str) -> float:
         prize = self.world.treasure[destination]
@@ -638,7 +754,8 @@ def itinerary(seed: bytes, start: str, world: Map,
     """
     her = Carmel(world, start, difficulty)
     out, posted = [], 0.0
-    for _ in range(limit):
+    for leg in range(limit):
+        her.leg = leg
         destination = her.choose_destination()
         hint = her.choose_hint(destination)
         leaves_from = her.at
