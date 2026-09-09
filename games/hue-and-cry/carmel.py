@@ -51,6 +51,7 @@ weaker and is the most that exists.
 """
 
 import argparse
+import hashlib
 import math
 import os
 import sys
@@ -155,15 +156,33 @@ class Map:
         return self._near[landmark]
 
     def exits(self, landmark: str) -> list[str]:
-        """Her five, drawn from the seed. Public knowledge in principle --
-        the gazetteer and the band rule are both published -- so a searcher
-        who works out where she is can work out where she may go."""
+        """Her five, drawn from the PUBLISHED SALT and not from the seed.
+
+        The docstring here used to say "drawn from the seed... public
+        knowledge in principle", which was false against its own next line:
+        a searcher cannot compute anything from a secret only she holds.
+
+        It is the same bug as the room addresses had, in the same file, and
+        it is worse, because the exits are what make a hint mean anything.
+        `games/hue-and-cry.md` settled this long ago -- each landmark has
+        "a small fixed set of exits... committed with the rest of the table
+        and **public**" -- and a clue is read "against her *reachable* set
+        rather than the whole map". Derived from the seed, the reachable set
+        is unknowable and the hint narrows nothing.
+
+        So: salt. The gazetteer is public, the neighbourhood rule is public,
+        the salt is published when she opens the campaign, and a searcher
+        who works out where she is can work out where she may go.
+        """
         if landmark not in self._exits:
             pool = self.band(landmark)
             out: list[str] = []
             i = 0
             while len(out) < EXITS and i < 400:
-                digest = _prf(self.seed, EXIT_INFO, landmark, i)
+                digest = hashlib.sha256(
+                    EXIT_INFO + b"\x00" + salt_for(self.seed) + b"\x00"
+                    + landmark.encode("utf-8") + b"\x00" + bytes([i])
+                ).digest()
                 pick = pool[int.from_bytes(digest[:8], "big") % len(pool)]
                 if pick not in out:
                     out.append(pick)

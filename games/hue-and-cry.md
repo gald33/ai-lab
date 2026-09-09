@@ -2376,6 +2376,97 @@ than a surprise somebody meets at the moment they try to be clever.
 the answer and not a wrapper — CLAUDE.md refuses a second surface, and a
 digest tool on the one surface is not one.*
 
+## The token she hands over, which she should not, and what that invalidates
+
+*Gal, 2026-09-09, on being told the direct route needs no hashing: **"you say
+she hands the player the token, I don't think she does."***
+
+He is right about the code, and the code is worse than one mistake.
+
+### What she was doing
+
+`open_campaign` posts `room_token(start, salt)` — the **joinable
+credential**. Hand it to `join_room` and you are in the room, with no name
+worked out and nothing deduced. The simulated trail-follower does exactly
+that at every step.
+
+### And the exits were secret too, which is the part that matters
+
+`Map.exits()` derived her five from **the seed**, under a docstring that
+said *"public knowledge in principle — the gazetteer and the band rule are
+both published"*. False against its own next line: a searcher cannot compute
+anything from a secret only she holds.
+
+That is the same bug as the room addresses had, in the same file, and it is
+the more serious of the two, because **the exits are what make a hint mean
+anything**. This document settled it long ago — exits are "committed with
+the rest of the table and **public**", and a clue is read "against her
+*reachable* set rather than the whole map". Derived from the seed, the
+reachable set is unknowable and the hint narrows nothing at all.
+
+Fixed: exits come from the published salt now, so anybody who works out
+where she is can work out where she may go.
+
+```
+exits of Stonehenge, computable by anyone holding the salt:
+    Alcobaça Monastery
+    Eiffel Tower
+    Bahla Fort
+    Independence Hall
+    Church of the Nativity
+```
+
+### Which means the game I measured had no deduction in it
+
+Put the two together: the only route to her was the credential she handed
+out, and the only thing a hint could have narrowed was a set nobody could
+compute. **There was no deduction path in the game at all.**
+
+So a result reported two sections up needs its interpretation withdrawn,
+though not its number:
+
+> Honest notes are worth almost nothing and one liar is worth a great deal.
+> Nobody talking at all catches her 92% of the time; everybody talking
+> honestly, also 92%. *The channel is worth more to a liar than to a
+> truthteller*, which is a fact about this game's information structure and
+> not a moral one.
+
+**The 92% stands. The reading of it does not.** Talking added nothing
+because every searcher was already being handed the exact next room for
+free; that is not a fact about information structure, it is a fact about a
+game with no information problem. The liar's advantage may well survive —
+misdirection costs travel whatever the routing is — but it was measured
+against a truthteller who had nothing to offer, and it has to be measured
+again.
+
+### What she should post instead, and the reading that makes every sentence true
+
+Three candidates, and the document's own words decide between them.
+
+1. **The token.** What the code does. Hands over the room; deduction is
+   optional and therefore dead.
+2. **Nothing but the hint.** Then standing where she stood buys the hint
+   early and nothing else, and the document's *"the hash beside the hint is
+   the address of the room she left for"* is simply gone.
+3. **The workspace identifier** — `w_…`, the wire address the hub routes on,
+   which is `sha256(token)` and cannot be inverted.
+
+**Three fits every sentence at once**, and is what "the hash" most likely
+always meant: `workspace_token` is the credential and `workspace` is the
+address, and the document says *address*. It is a hash, it is posted beside
+the hint, and it is not a key. What it buys is a **verification oracle**:
+guess a name, derive its token, hash it, compare. One SHA-256 per candidate,
+no travel, and you know before you move.
+
+That preserves the affordance the document draws — *"being in the right
+place buys immediacy; being clever buys a way in without it"* — because the
+person standing in the room she left can check the five exits against a
+known answer, while everyone else is guessing at a set they must first work
+out. Immediacy, without a free ride.
+
+*Not implemented. This is Gal's call to make, and the numbers get re-measured
+after it, not before.*
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
