@@ -1,0 +1,782 @@
+"""Gates on the board, the message protocol and the manager. Offline, no models.
+
+These test the three things the design says the system may do -- timing, format
+and scoring -- and one thing it must never do: repair a malformed message into
+a plausible one.
+"""
+
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                       / "which-part-of-a-convention-works" / "experiment"))
+
+from barter.economy import draw_island  # noqa: E402
+from island.dealer import Dealer  # noqa: E402
+from island.manager import MANAGER, Manager  # noqa: E402
+from island.protocol import (Approve, Decline, Malformed,  # noqa: E402
+                             Produce, Propose, parse)
+from island.score import score, trajectory_from  # noqa: E402
+
+
+class FakeHub:
+    """A stand-in for the Switchboard client, so the gates stay offline.
+
+    It implements exactly the two calls the manager makes -- ``post`` and
+    ``history`` -- and returns rows shaped like the hub's. Testing the manager
+    against the real hub would be testing Switchboard, which is not this
+    experiment's code and has its own tests.
+    """
+
+    def __init__(self) -> None:
+        self.rows: list[dict] = []
+
+    def post(self, channel: str, body: str) -> None:
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": channel, "from": MANAGER, "body": body})
+
+    def envelope(self, who: str, text: str) -> None:
+        """A `say` that carried a timing forecast: the body is an envelope."""
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who,
+                          "body": {"text": text,
+                                   "timing_forecast": {"p50": "2026-01-01T00:00:00Z"}}})
+
+    def as_(self, who: str, body: str) -> None:
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who, "body": body})
+
+    def signed(self, who: str, body: str, key: str | None,
+               status: str = "verified") -> None:
+        """A line from a peer, carrying the hub's reading of its signature."""
+        self.rows.append({"id": f"msg-{len(self.rows)}", "seq": len(self.rows),
+                          "channel": "c", "from": who, "body": body,
+                          "signature": {"status": status, "key": key}})
+
+    def agents(self) -> list[dict]:
+        """The roster read the manager does before checking signatures. Empty
+        here: these tests hand it the verdicts directly."""
+        return []
+
+    def said(self) -> list[str]:
+        return [r["body"] for r in self.rows if r["from"] == MANAGER]
+
+    def history(self, channel: str, *, limit: int = 50, **kw) -> list[dict]:
+        return list(self.rows)
+
+ISLAND = draw_island(2, 4, seed=1)
+GOODS = ("bread", "cloth", "iron", "salt")
+EVEN = "PRODUCE bread=0.25 cloth=0.25 iron=0.25 salt=0.25"
+
+
+def fresh() -> Manager:
+    hub = FakeHub()
+    m = Manager(capacity=Dealer.draw(seed=1, agents=2).capacity,
+                client=hub, channel="c")
+    for n in m.names:
+        m.bind(n, n)
+    m.hub = hub  # type: ignore[attr-defined]
+    # An episode starts shut, so the acknowledgement window cannot become part
+    # of episode 1. Every test below acts inside an open episode; the ones
+    # about the bell shut it themselves.
+    m.open_episode()
+    return m
+
+
+# --- format -------------------------------------------------------------
+
+def test_talk_is_not_an_action():
+    assert parse("shall we each take two goods?") is None
+    assert parse("") is None
+
+
+def test_the_three_shapes_parse():
+    assert parse("PRODUCE bread=0.5 iron=0.5") == Produce({"bread": .5, "iron": .5})
+    assert parse("PROPOSE to=T2 give=iron:0.4 want=salt:0.3") == Propose(
+        "T2", {"iron": 0.4}, {"salt": 0.3})
+    assert parse("APPROVE p3") == Approve("p3")
+    assert parse("DECLINE p3") == Decline("p3")
+    assert parse("decline p3") == Decline("p3"), "the verb is case-insensitive"
+
+
+@pytest.mark.parametrize("bad", [
+    "PRODUCE bread", "PRODUCE", "PRODUCE bread=", "PRODUCE bread=-0.5",
+    "PROPOSE to=T2 give=iron:0.4",
+    "PROPOSE to=T2 give=bread:0.02 cloth:0.15 want=salt:0.4", "PROPOSE give=iron:0.4 want=salt:0.3",
+    "PROPOSE to=T2 give=iron want=salt:0.3",
+    "PROPOSE to=T2 give=iron:0 want=salt:0.3",
+    "APPROVE", "APPROVE p1 p2", "DECLINE", "DECLINE p1 p2",
+])
+def test_a_near_miss_is_malformed_and_never_guessed(bad):
+    with pytest.raises(Malformed):
+        parse(bad)
+
+
+def test_the_manager_says_why_rather_than_repairing():
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread")
+    m.drain()
+    assert m.refused == 1 and m.settled == 0
+    assert not m.holders["T1"].produced, "nothing was invented on the agent's behalf"
+    assert any(r["from"] == MANAGER and "not settled" in r["body"]
+               for r in m.hub.history("c"))
+
+
+# --- timing -------------------------------------------------------------
+
+def test_nothing_from_a_closed_episode_settles():
+    m = fresh()
+    m.episode_open = False
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
+    m.drain()
+    assert m.refused == 2 and not m.holders["T1"].produced
+
+
+def test_an_episode_has_no_stages_inside_it():
+    """Producing and dealing settle in the same window, in either order.
+
+    The clock divides episodes from each other and nothing else. An earlier
+    version split each episode into a production window and a market window,
+    and agents in every arm spent their first offers being refused for
+    proposing "too early" -- a rule they had been told and still read as the
+    episode simply having begun.
+    """
+    m = fresh()
+    for n in m.names:
+        m.hub.as_(n, EVEN)
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 0
+    assert m.settled == 4
+    assert m.proposals["p1"].status == "settled"
+
+
+def test_producing_twice_in_one_episode_is_refused():
+    m = fresh()
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.settled == 1 and m.refused == 1
+
+
+def test_the_labour_budget_is_enforced():
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread=0.7 iron=0.7")
+    m.drain()
+    assert m.refused == 1
+
+
+# --- exchange -----------------------------------------------------------
+
+def stocked() -> Manager:
+    m = fresh()
+    for n in m.names:
+        m.hub.as_(n, EVEN)
+    m.drain()
+    return m
+
+
+def test_an_open_proposal_commits_the_goods_it_offers():
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=salt:0.1")
+    m.drain()
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=iron:0.1")
+    m.drain()
+    assert m.refused == 1, "the same goods cannot back two open proposals"
+
+
+def test_a_trader_cannot_approve_its_own_proposal():
+    """The mistake that cost two arms a whole round.
+
+    T1 offered to T2 and then approved its own offer, twice, in different
+    episodes, while T2's genuine offers sat open and lapsed at the bell. Making
+    an offer and taking it yourself is not a trade, and the refusal has to say
+    so rather than quietly doing nothing.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open", "and it stays takeable by T2"
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "settled"
+
+
+def test_your_own_open_proposal_can_leave_you_short_to_approve():
+    """The other half of that round: escrow blindness.
+
+    T1 tried to approve an offer it could not pay for, because its own open
+    proposal was holding the goods. The refusal names the shortfall, which is
+    the only way an agent can tell this apart from having produced too little.
+    """
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=cloth:0.01")
+    m.drain()
+    m.hub.as_("T2", "PROPOSE to=T1 give=cloth:0.02 want=bread:0.02")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.refused == 1
+    said = [r["body"] for r in m.hub.history("c") if "uncommitted" in r["body"]]
+    assert said, "the refusal must name the shortfall"
+
+
+def test_only_the_addressee_can_approve():
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open"
+
+
+def test_approving_moves_goods_both_ways_and_settles_once():
+    m = stocked()
+    b1 = m._free("T1", "bread")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.04")
+    m.drain()
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "settled"
+    assert m._free("T1", "bread") == pytest.approx(b1 - 0.05)
+    assert m._free("T1", "salt") > 0
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 1
+
+
+# --- declining ----------------------------------------------------------
+
+def test_declining_frees_what_the_offer_was_holding():
+    """The point of DECLINE, and the reason it is a command at all.
+
+    An offer escrows the maker's goods for as long as it is open, and the maker
+    cannot take it back -- that commitment is what makes an offer worth
+    anything. So before this, an offer the other trader plainly did not want
+    still held those goods hostage until the bell. The trader it was addressed
+    to is the one party who can honestly end it.
+    """
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    assert m._free("T1", "bread") == pytest.approx(free - 0.05), "escrowed"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "declined"
+    assert m.declined == 1
+    assert m._free("T1", "bread") == pytest.approx(free), "and handed back"
+    # Nothing moved between shelves: the escrow was never a pile somewhere
+    # else, only goods the maker was not allowed to spend twice.
+    assert m.holders["T1"].holdings[m._good("bread")] == pytest.approx(free)
+
+
+def test_a_decline_is_said_on_the_board():
+    """Announced, as a settlement is, because it changes what a maker may do.
+
+    A maker that had to infer from silence that its goods were free again would
+    be sizing its next offer blind.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    said = [r["body"] for r in m.hub.history("c") if r["body"].startswith("p1 declined")]
+    assert said, "a decline the board does not carry is one no maker can act on"
+
+
+def test_only_the_addressee_can_decline_and_only_once():
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    # Not the maker's to end: committing is the whole point of an offer.
+    m.hub.as_("T1", "DECLINE p1")
+    m.drain()
+    assert m.refused == 1
+    assert m.proposals["p1"].status == "open"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    assert m.proposals["p1"].status == "declined"
+    # And a declined offer is not takeable afterwards, by anybody.
+    m.hub.as_("T2", "APPROVE p1")
+    m.drain()
+    assert m.refused == 2
+    assert m.proposals["p1"].status == "declined"
+
+
+def test_the_episode_ledger_tells_a_decline_from_a_lapse():
+    """Two ways an offer dies without a trade, and they are not the same fact.
+
+    A lapse is nobody acting; a decline is somebody deciding. A round where
+    every offer was declined and one where every offer was ignored look
+    identical in `settled`, and they are not the same game.
+    """
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=cloth:0.05")
+    m.drain()
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    m.close_episode()
+    log = m.episode_log[-1]
+    assert log["declined"] == ["p1"]
+    assert log["lapsed"] == ["p2"], "the one nobody answered"
+
+
+def test_a_declined_offer_stops_being_the_reason_you_are_short():
+    """The escrow being freed is a thing the *next* command can use."""
+    m = stocked()
+    free = m._free("T1", "bread")
+    m.hub.as_("T1", f"PROPOSE to=T2 give=bread:{free:.4f} want=cloth:0.01")
+    m.drain()
+    m.hub.as_("T2", "PROPOSE to=T1 give=cloth:0.02 want=bread:0.02")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.refused == 1, "short, because p1 is holding the bread"
+    m.hub.as_("T2", "DECLINE p1")
+    m.drain()
+    m.hub.as_("T1", "APPROVE p2")
+    m.drain()
+    assert m.proposals["p2"].status == "settled"
+
+
+# --- the bell -----------------------------------------------------------
+
+def test_open_proposals_lapse_at_the_bell_and_holdings_are_eaten():
+    m = stocked()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.05 want=salt:0.05")
+    m.drain()
+    m.close_episode()
+    assert m.proposals["p1"].status == "lapsed"
+    assert all(sum(h.holdings) == 0 for h in m.holders.values())
+    assert all(not h.produced for h in m.holders.values())
+    assert len(m.episode_log) == 1
+
+
+def test_a_good_nobody_makes_zeroes_everyone():
+    """Cobb-Douglas: hold none of one good and utility is zero, however much
+    of everything else you hold. The manager cannot say so itself -- it has no
+    tastes -- so the bell records the holdings and the rebuild reads them."""
+    m = fresh()
+    for n in m.names:
+        m.hub.as_(n, "PRODUCE bread=0.34 cloth=0.33 iron=0.33")
+    m.drain()
+    held = m.close_episode()
+
+    assert all(h["salt"] == 0.0 for h in held.values()), "nobody made salt"
+    (utils,) = trajectory_from(ISLAND, m.episode_log, list(m.names), list(m.goods))
+    assert all(u == 0.0 for u in utils)
+
+
+def test_a_message_carrying_a_timing_forecast_is_still_read():
+    """Switchboard wraps a `say` that carries a forecast; the text is inside.
+
+    Two rounds reported 1/2 acknowledged because a trader's ACK arrived as an
+    envelope and the manager stringified the whole dict. Every match against it
+    failed silently -- an action that never settled and never refused.
+    """
+    m = fresh()
+    m.hub.envelope("T1", "ACK ready")
+    m.hub.envelope("T2", EVEN)
+    m.drain()
+    assert m.acknowledged == {"T1"}
+    assert m.holders["T2"].produced, "a wrapped PRODUCE must settle like a bare one"
+    assert m.refused == 0
+
+
+def test_an_acknowledgement_is_just_a_board_line():
+    m = fresh()
+    m.hub.as_("T1", "ACK — schedule understood")
+    m.drain()
+    assert m.acknowledged == {"T1"}
+    assert m.settled == 0, "acknowledging is not an economic action"
+
+
+# --- scoring ------------------------------------------------------------
+
+def test_scoring_reads_settled_state_not_what_anyone_claimed():
+    m = fresh()
+    m.hub.as_("T1", EVEN)
+    m.hub.as_("T2", "I produced a huge amount of everything")
+    m.drain()
+    held = m.close_episode()
+
+    assert sum(held["T1"].values()) > 0
+    assert sum(held["T2"].values()) == 0.0, "a self-report produces nothing"
+    (utils,) = trajectory_from(ISLAND, m.episode_log, list(m.names), list(m.goods))
+    assert utils[0] > 0 and utils[1] == 0.0
+    s = score(ISLAND, [utils])
+    assert s.eff_episode == [0.0], "a self-report earns nothing"
+
+
+def test_k_identical_episodes_score_exactly_one_episode():
+    from barter.economy import autarky
+    _, auto = autarky(ISLAND)
+    one = score(ISLAND, [list(auto)]).eff_round
+    for k in (2, 3, 5, 8):
+        assert score(ISLAND, [list(auto)] * k).eff_round == pytest.approx(
+            one, abs=1e-6)
+
+
+# --- what the record has to be able to answer later ----------------------
+
+def test_nothing_settles_before_the_episode_is_rung_in() -> None:
+    """The acknowledgement window is not part of episode 1.
+
+    It was, for the whole ten-arm screen: production settled while the manager
+    was still waiting for ACKs, so episode 1 ran longer than episodes 2 and 3,
+    and longer for a trader who produced early than for one who waited. An
+    episode that is not the same length as its siblings is not a repeat of it.
+    """
+    m = fresh()
+    m.episode_open = False
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.settled == 0
+    assert any("closed" in str(r["body"]) for r in m.hub.rows
+               if r["from"] == MANAGER)
+
+
+def test_the_bell_leaves_the_next_episode_shut() -> None:
+    m = fresh()
+    m.close_episode()
+    assert m.episode_open is False
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.settled == 0
+
+
+def test_a_refusal_keeps_the_reason_it_gave() -> None:
+    """A count says how often the manager said no; only the reason says what
+    the traders could not manage to express."""
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread")
+    m.drain()
+    assert m.refused == 1
+    (r,) = m.refusals
+    assert r["trader"] == "T1"
+    assert r["kind"] == "malformed"
+    assert r["line"] == "PRODUCE bread"
+    assert r["reason"]
+
+
+def test_the_bell_records_who_went_without_and_in_what() -> None:
+    """A zero episode is one trader holding none of one good, and the utility
+    vector cannot say which trader or which good. That is the question every
+    post-mortem of the screen turned out to ask, and boards expire in an hour.
+    """
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    m.close_episode()
+    (log,) = m.episode_log
+    assert log["episode"] == 1
+    assert log["produced"] == ["T1"]
+    assert set(log["starved"]["T1"]) == {"cloth", "iron", "salt"}
+    assert set(log["starved"]["T2"]) == {"bread", "cloth", "iron", "salt"}
+    assert log["holdings"]["T1"]["bread"] > 0
+    # No utility here: the manager holds no tastes and cannot compute one.
+    # `starved` is the same fact in the form a manager can actually record --
+    # a trader holding none of a good has zero utility by construction.
+    assert "utilities" not in log
+
+
+def test_the_bell_records_which_proposals_lapsed() -> None:
+    m = fresh()
+    m.hub.as_("T1", "PRODUCE bread=1.0")
+    m.drain()
+    m.hub.as_("T1", "PROPOSE to=T2 give=bread:0.1 want=salt:0.1")
+    m.drain()
+    m.close_episode()
+    (log,) = m.episode_log
+    assert log["lapsed"] == ["p1"]
+    assert log["settled"] == 2
+
+
+# --- the threshold ladder ------------------------------------------------
+
+def _round(effs: list[float], floor: float, seed: int = 1) -> dict:
+    return {"seed": seed, "score": {"eff_episode": effs, "autarky_floor": floor}}
+
+
+def test_time_to_clear_cannot_fall_as_the_bar_rises() -> None:
+    """Anything clearing x clears every y < x, so the curve is monotone per
+    round by construction. If this ever fails the estimator is broken, not the
+    agents."""
+    from analysis.ladder import check_monotone  # noqa: PLC0415
+
+    rounds = [_round([0.0, 0.7, 0.75], 0.5), _round([0.9, 0.0, 0.0], 0.5),
+              _round([0.5, 0.5, 0.5], 0.5)]
+    assert check_monotone(rounds) == 0
+
+
+def test_rounds_that_never_cleared_stay_in_the_denominator() -> None:
+    """The trap this ladder exists to avoid: averaging over only the rounds
+    that cleared drops the slowest ones as the bar rises, so the mean improves
+    while performance worsens."""
+    from analysis.ladder import ladder  # noqa: PLC0415
+
+    # One fast round that clears everything; one that never clears at all.
+    rounds = [_round([1.0, 1.0, 1.0], 0.0), _round([0.0, 0.0, 0.0], 0.0)]
+    high = next(r for r in ladder(rounds, k=3, grid=[0.9]) if True)
+    assert high.cleared == 1
+    assert high.n == 2                      # never dropped from the denominator
+    assert high.mean_cleared_only == 1.0    # the selected mean flatters
+    assert high.mean_censored == 2.5        # (1 + 4) / 2, censored at k + 1
+
+
+def test_the_exchange_rung_is_per_seed_and_may_sit_below_autarky() -> None:
+    """On seed 3 the autarky and exchange sandwiches overlap, so the exchange
+    rung lands below zero on the capture scale. Pooling the seeds into one line
+    would put the rung where no island has it."""
+    from analysis.ladder import exchange_rungs  # noqa: PLC0415
+    from island.score import score  # noqa: PLC0415
+
+    floors = {}
+    for seed in (1, 3):
+        island = draw_island(2, 4, seed=seed)
+        floors[seed] = score(island, [[0.0, 0.0]]).floor
+    rungs = exchange_rungs(2, 4, [1, 3], floors)
+    assert rungs[1] > 0
+    assert rungs[3] < 0
+    assert rungs[1] != rungs[3]
+
+
+# --- the persistence check's hidden horizon ------------------------------
+
+def test_a_hidden_horizon_never_states_the_round_length() -> None:
+    """Run 002's sessions all ended reasoning about "the remaining 27
+    episodes". This arm exists to remove that number, so it must be absent
+    from every place the agent can read it: the instructions, the schedule the
+    manager posts, and every episode-open announcement."""
+    import run_v3  # noqa: PLC0415
+
+    text = run_v3.instructions("persist-nocount", "You are T1.", 30)
+    assert "30 episodes" not in text
+    assert "scheduled next" in text
+
+    # The clock time in the announcement is an absolute UTC stamp, so it may
+    # contain any digits at all. The horizon is what must be absent from what
+    # is left once the stamp is removed.
+    opens_at = 1_700_000_000.0
+    posted = run_v3.schedule_text(30, ("T1", "T2"), hide=True, opens_at=opens_at)
+    assert "30" not in posted.replace(run_v3.stamp(opens_at), "")
+
+    shown = run_v3.schedule_text(30, ("T1", "T2"), hide=False, opens_at=opens_at)
+    assert "30 episodes" in shown
+
+
+def test_the_schedule_states_an_absolute_time_not_a_countdown() -> None:
+    """A trader acknowledged run 005's schedule with "Episode 1 in 120s" long
+    after the announcement, when episode 1 was about thirty seconds away. A
+    relative deadline is only true at the instant it is posted, and nobody here
+    is prompted to read one promptly. So the announcement names a clock time,
+    and points at the `now` every tool result carries."""
+    import run_v3  # noqa: PLC0415
+
+    opens_at = 1_700_000_000.0
+    posted = run_v3.schedule_text(3, ("T1", "T2"), opens_at=opens_at)
+    assert run_v3.stamp(opens_at) in posted
+    assert f"in {run_v3.ACK_SECONDS}s" not in posted
+    assert "`now`" in posted
+    assert run_v3.stamp(opens_at).endswith("Z")
+
+
+def test_the_other_persistence_arms_still_state_it() -> None:
+    """Only the one arm hides it — otherwise the comparison measures two
+    things at once."""
+    import run_v3  # noqa: PLC0415
+
+    for arm in ("persist-bare", "persist-improve"):
+        assert "30 episodes" in run_v3.instructions(arm, "You are T1.", 30)
+    assert run_v3.HIDE_HORIZON == {"persist-nocount"}
+
+
+# --- the idle check ------------------------------------------------------
+
+def test_only_the_ticking_arm_ticks() -> None:
+    import run_v3  # noqa: PLC0415
+
+    assert run_v3.TICKING == {"idle-tick"}
+    for arm in ("idle-long", "idle-short", "persist-bare", "bare"):
+        assert arm not in run_v3.TICKING
+
+
+def test_a_tick_announces_time_and_nothing_else() -> None:
+    """The line the standing decisions draw: the manager may enforce timing,
+    and must never tell an agent to do anything or ask it for anything. A tick
+    is addressed to nobody and names only the clock."""
+    import run_v3  # noqa: PLC0415
+
+    tick = f"{90}s remain in this episode."
+    assert "@" not in tick
+    for verb in ("produce", "propose", "approve", "should", "must", "please"):
+        assert verb not in tick.lower()
+
+
+def test_the_manager_records_who_it_has_heard_from_at_all() -> None:
+    """A session that exits without ever appearing on the board never joined
+    the round — a different event from a trader who acted and then stopped,
+    which is what the persistence runs measure."""
+    m = fresh()
+    assert m.spoke == set()
+    m.hub.as_("T1", "ACK ready")
+    m.drain()
+    assert m.spoke == {"T1"}
+    m.hub.as_("T2", "PRODUCE bread=1.0")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}
+    # A malformed line is still the trader reaching the board.
+    m.hub.as_("T2", "PRODUCE bread")
+    m.drain()
+    assert m.spoke == {"T1", "T2"}
+
+
+def _lone_manager(seed=1):
+    """A manager with a stub client, for settlement rules that need no board."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]
+                           / "which-part-of-a-convention-works" / "experiment"))
+    from island.dealer import Dealer
+    from island.manager import Manager
+
+    class _Stub:
+        def __init__(self): self.said = []
+        def post(self, channel, text): self.said.append(text)
+        def history(self, channel, limit=500): return []
+    dealer = Dealer.draw(seed, 4)
+    mgr = Manager(capacity=dealer.capacity, goods=dealer.goods, client=_Stub())
+    mgr.open_episode()
+    return mgr
+
+
+def test_split_labour_off_refuses_a_second_production():
+    from island import manager as M
+    from island.protocol import Produce
+    mgr = _lone_manager()
+    assert M.SPLIT_LABOUR is False, "the default must stay off"
+    mgr._produce("T1", Produce(plan={"bread": 0.5}))
+    try:
+        mgr._produce("T1", Produce(plan={"cloth": 0.5}))
+    except M.Refused as exc:
+        assert "already produced" in str(exc)
+    else:
+        raise AssertionError("a second production should be refused by default")
+
+
+def test_split_labour_on_allows_pieces_that_sum_to_the_budget():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.5}))
+        mgr._produce("T1", Produce(plan={"cloth": 0.3}))
+        assert abs(mgr.holders["T1"].spent - 0.8) < 1e-9
+        # ...and refuses the piece that would take it over.
+        try:
+            mgr._produce("T1", Produce(plan={"iron": 0.3}))
+        except M.Refused as exc:
+            assert "already spent" in str(exc)
+        else:
+            raise AssertionError("over-budget across pieces should be refused")
+        assert abs(mgr.holders["T1"].spent - 0.8) < 1e-9
+    finally:
+        M.SPLIT_LABOUR = False
+
+
+def test_split_labour_leaves_one_full_production_behaving_as_before():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.6, "cloth": 0.4}))
+        assert abs(mgr.holders["T1"].spent - 1.0) < 1e-9
+        assert "0.0 labour unspent" in mgr.client.said[-1]
+    finally:
+        M.SPLIT_LABOUR = False
+
+
+def test_the_bell_returns_all_the_labour():
+    from island import manager as M
+    from island.protocol import Produce
+    M.SPLIT_LABOUR = True
+    try:
+        mgr = _lone_manager()
+        mgr._produce("T1", Produce(plan={"bread": 0.5}))
+        mgr.close_episode()
+        assert mgr.holders["T1"].spent == 0.0
+        mgr.open_episode()
+        mgr._produce("T1", Produce(plan={"bread": 1.0}))  # a full budget again
+        assert abs(mgr.holders["T1"].spent - 1.0) < 1e-9
+    finally:
+        M.SPLIT_LABOUR = False
+
+
+def test_a_line_from_a_key_that_took_no_seat_is_recorded_not_ignored() -> None:
+    """A room key can be handed on. What the record must do is notice."""
+    m = fresh()
+    m.keys["T1"] = "key-one"
+    m.client.signed("stranger", "PRODUCE bread=0.5", "key-three")
+
+    m.drain()
+
+    assert len(m.intrusions) == 1
+    entry = m.intrusions[0]
+    assert entry["key"] == "key-three" and "PRODUCE" in entry["line"]
+    assert m.intruders == {"key-three"}
+    assert any("took no seat" in line and "not ranked" in line
+               for line in m.client.said())
+
+
+def test_the_manager_says_it_once_per_key_however_many_lines_there_are() -> None:
+    m = fresh()
+    for i in range(4):
+        m.client.signed("stranger", f"noise {i}", "key-three")
+
+    m.drain()
+
+    assert len(m.intrusions) == 4
+    assert sum("took no seat" in line for line in m.client.said()) == 1
+
+
+def test_a_seat_not_yet_bound_is_not_mistaken_for_an_intruder() -> None:
+    """A trader whose registration this manager has not read yet binds on a
+    later drain -- it is not a stranger, and the witnessed key says so."""
+    m = fresh()
+    m.keys["T1"] = "key-one"
+    m.client.signed("peer-not-yet-aliased", "ACK ready", "key-one")
+
+    m.drain()
+
+    assert m.intrusions == []
+
+
+def test_an_unsigned_line_from_a_stranger_is_recorded_too() -> None:
+    """Unsigned is not a way to be invisible: the peer id stands in for a key
+    that was never offered."""
+    m = fresh()
+    m.client.signed("stranger", "hello", None, status="unsigned")
+
+    m.drain()
+
+    assert len(m.intrusions) == 1
+    assert m.intrusions[0]["status"] == "unsigned"
+    assert m.intruders == {"unsigned:stranger"}

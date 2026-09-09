@@ -4,9 +4,9 @@ arc: deliberation-protocol
 priority: now
 status: ready
 refs:
-  - experiments/005-deliberation-protocol/viewer/README.md
-  - experiments/005-deliberation-protocol/viewer/web/index.html
-  - experiments/005-deliberation-protocol/viewer/web/scene.js
+  - experiments/does-a-content-free-protocol-help/viewer/README.md
+  - experiments/does-a-content-free-protocol-help/viewer/web/index.html
+  - experiments/does-a-content-free-protocol-help/viewer/web/scene.js
 evidence: |
   Reported 2026-08-26, watching the viewer cold: "there's currently a lot of
   information competing for attention. On first viewing I don't know whether I

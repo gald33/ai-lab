@@ -132,5 +132,5 @@ the design needs a ratchet and this spec does not propose one.
 ## Contact
 
 Raised from `gald33/ai-lab`, experiment 007. The motivating design is in
-`experiments/007-execution-ceiling/`; the private state in question is built by
+`experiments/do-they-take-a-handed-over-answer/`; the private state in question is built by
 `island/manager.py:private_state`.

@@ -8,7 +8,7 @@ state_evidence: |
   solutions a model wrote — stays unasked. Tier 1, the scripted tier, is
   complete and reported and unaffected.
 refs:
-  - experiments/003-promotion-rules/README.md
+  - experiments/which-promotion-rule-beats-luck/README.md
   - reports/2026-08-20-003-promotion-rules.md
 narrative: |
   Tier 1, the scripted tier, is complete and reported. Tier 2 — the same

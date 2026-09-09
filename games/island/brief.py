@@ -30,7 +30,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "005-deliberation-protocol"
+_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "does-a-content-free-protocol-help"
 
 #: The rules, frozen, in the experiment that wrote them. Read, never written.
 BASE = _ISLAND / "stimuli" / "v3" / "base.md"

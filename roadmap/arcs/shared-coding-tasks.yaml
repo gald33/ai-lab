@@ -1,7 +1,7 @@
 id: shared-coding-tasks
 title: 008 — do conventions help agents who share a codebase and do not share permissions, knowledge or context?
 refs:
-  - experiments/001-switchboard-coordination/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
   - reports/2026-08-24-hypothesis-ledger.md
   - reports/2026-08-24-lessons-for-a-paper.md
 narrative: |

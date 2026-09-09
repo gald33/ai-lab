@@ -55,6 +55,7 @@ So, explicitly:
 | Timing | **the island** |
 | Vocabulary | **the island** |
 | Switchboard is the only interface | **the lab** |
+| A check is green for the reason it names | **the lab** |
 | A page's behaviour is checked in a browser | **the lab** |
 | Metrics | **the island** |
 | Process | **the lab** |
@@ -199,6 +200,50 @@ frozen stimulus still says episode, and `eff_episode` keeps its name — renamin
 those would change what agents read and what the ledger records. So the
 transcript quotes the manager's word and the metric panel names the metric;
 everywhere the game speaks in its own voice it says day.
+
+## An experiment is named by its question, and is not numbered
+
+Decided by Gal, 2026-09-09: *"I never remember what the experiment is by its
+code."* The directory name **is the question** —
+`experiments/is-ruin-the-convention-or-the-commitment/`, not
+`experiments/004-stock-and-flow/`. A directory listing is then a list of what
+this lab has asked.
+
+**Name the question, never the answer and never the mechanism.**
+`does-a-content-free-protocol-help` is still an accurate name after that
+question came back null, because it records what was asked. An answer-shaped
+name is wrong the moment the answer is, and it is wrong in the filename;
+a mechanism-shaped name (`deliberation-protocol`) names the apparatus, which is
+what the reader is trying to look past.
+
+**The number was retired because it was never an identifier**, and three
+measurements say so rather than a preference:
+
+- there were **two `006` directories** — `006-agent-standby` and
+  `006-ratio-disclosure` — and had been for weeks;
+- `002` names an experiment, a run *inside* an experiment, and a game, all
+  three of which appear in this repo and often on one page;
+- **seven of the eight** slugs were already byte-identical to an arc `id:` in
+  `roadmap/arcs/`, so the number was the only thing keeping two naming systems
+  apart.
+
+**Retired numbers keep resolving, and the record keeps its own words.** The
+~1,200 citations of "005" in `reports/` and the run records were **not**
+rewritten — those documents are what was thought at the time, and editing them
+to read as though they always said something else is what the first standing
+decision above forbids. The map from number to name lives in
+[`experiments/README.md`](experiments/README.md) and in `tools/ground.py` as
+`RETIRED_NUMBERS`, permanently. `tools/ground.py 004` works and prints the name
+it is now; `tools/ground.py ruin` works too, because nobody types a whole
+question. An ambiguous fragment is an error, never a first match — grounding an
+agent in the wrong experiment is the contamination `experiments/GROUNDING.md`
+exists to prevent.
+
+**What was deliberately not renamed**: recorded run artifacts. 911 files under
+`results/`, `recordings/`, `replays/` and `*.log` still carry the old paths,
+because those sessions really did run from them. 54 live files — code, CI,
+roadmap, docs — were rewritten. A record that is edited to match today's
+filenames is a record you can no longer check.
 
 ## Switchboard is the only interface, and its agents are not helpless
 
@@ -352,6 +397,48 @@ constraint is written into
 example. What it unblocks — ranked games, deleting `island/sealed.py`, dropping
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.
+
+## A check is green for the reason it names, or it is not a check
+
+**Six instances, one disease**, and the browser rule below is the first of
+them rather than a separate lesson. Written 2026-09-09, when the fourth and
+fifth turned up in one afternoon and it stopped being a run of bad luck.
+
+| # | what was green | what it was actually checking |
+|---|---|---|
+| 1 | the lobby's countdown assertions | markup that was all present, in the wrong order — `querySelectorAll('.cd')` matched nothing, every clock frozen |
+| 2 | the whole suite | a path list that omitted `viewer/tests` — 194 tests nothing ran |
+| 3 | every browser check on #220 | nothing: they were skipped behind somebody else's red render |
+| 4 | the suite again | **eight of thirteen** test directories in no path list, `island/tests` among them, with two tests failing unseen for weeks |
+| 5 | a `paths:` filter | a directory that no longer existed, so the job it gated could never fire — reported as neither pass nor fail |
+| 6 | the `overhead` render check | whichever board `stat()` mtime handed it. Red on one commit and green on the next with the viewer byte-identical between them |
+
+**The rule.** A check must be able to fail for the reason it is named after,
+and that must be *demonstrated* rather than assumed. Break the thing on
+purpose, watch the check go red, put it back. A check nobody has seen fail is
+a check nobody has seen work.
+
+**And derive the list rather than maintaining it.** Four of the six are a
+hand-written inventory drifting from the tree: a path list, a filter, a
+listing order. Every one was correct when written. So where a check has to
+know what exists — which directories hold tests, which paths a job depends on
+— it computes that from the repository and fails on what it finds, instead of
+being told. `tools/tests/test_workflows.py` is where that lives for CI, and it
+carries an exemption list whose entries must each state a reason, because
+*"not run"* and *"forgotten"* are indistinguishable from the outside.
+
+**The three shapes to watch for**, since they are what the six reduce to:
+
+- a **skip** drawn as a pass — the reason `--require` and
+  `ISLAND_REQUIRE_BROWSER=1` exist;
+- an **absence** drawn as a pass — a suite, a path or a job that nothing
+  names, which reports nothing rather than failing;
+- a **coincidence** drawn as a pass — a check whose verdict depends on
+  something it does not control, like file mtimes or which board a listing
+  offered first.
+
+Reproduce the sixth, which is the subtlest:
+`python experiments/does-a-content-free-protocol-help/viewer/tests/render.py --require --only overhead`.
 
 ## A page's behaviour is checked in a browser, or it is not checked
 

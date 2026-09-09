@@ -9,7 +9,7 @@ state_evidence: |
   remains the accurate description, and closing the arc does not turn it into
   one.
 refs:
-  - experiments/001-switchboard-coordination/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
 narrative: |
   Run, not published, and now closed with that still true. The design and the
   one preserved negative result are in the experiment directory; the numbers

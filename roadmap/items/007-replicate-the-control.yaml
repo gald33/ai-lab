@@ -5,7 +5,7 @@ priority: next
 status: ready
 refs:
   - reports/2026-08-24-hypothesis-ledger.md
-  - experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md
+  - experiments/do-they-take-a-handed-over-answer/runs/003-how-much-does-the-instrument-move.md
 evidence: |
   Row 14 of the hypothesis ledger is the strongest difference this lab has:
   handed the full plan, four independent replicates of the plan cell all beat

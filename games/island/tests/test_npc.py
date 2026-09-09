@@ -25,7 +25,7 @@ def _manager_parser():
     import sys
     from pathlib import Path
     root = Path(__file__).resolve().parents[3]
-    sys.path.insert(0, str(root / "experiments" / "005-deliberation-protocol"))
+    sys.path.insert(0, str(root / "experiments" / "does-a-content-free-protocol-help"))
     from island.protocol import parse
     return parse
 

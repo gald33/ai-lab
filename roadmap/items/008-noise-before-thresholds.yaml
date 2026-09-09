@@ -7,8 +7,8 @@ blocked_on:
   - 008-coding-task-with-an-answer-key
 refs:
   - reports/2026-08-24-hypothesis-ledger.md
-  - experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md
-  - experiments/006-ratio-disclosure/FINDING-run-level-variance.md
+  - experiments/do-they-take-a-handed-over-answer/runs/003-how-much-does-the-instrument-move.md
+  - experiments/does-telling-traders-what-to-disclose-help/FINDING-run-level-variance.md
   - CLAUDE.md
 evidence: |
   This is the single most expensive lesson the lab has bought. 005 and 006 ran

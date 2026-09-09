@@ -1,0 +1,37 @@
+id: premium-rung3-the-delta-sweep
+title: Sweep delta on the common arms and put a number on the coordination premium
+arc: coordination-premium
+priority: later
+status: blocked
+blocked_on:
+  - premium-rung2-common-against-private
+refs:
+  - experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md
+evidence: |
+  Where the headline number is. Sweep the content error on the common arms and
+  find the error at which wrong-but-shared stops beating correct-but-private --
+  how wrong a convention may be and still be worth holding, purely because
+  everyone holds it. That is "conventions are important" as an exchange rate
+  rather than a slogan.
+
+  The pre-registered shape is carried over verbatim from the Tier 3 design,
+  **including its own mistake**: it predicted the common-arm curve would cliff
+  rather than slope, and the calibration then found exactly that cliff -- 23,
+  19, 18, 7, then zero, with non-overlapping intervals across the drop -- in
+  survival, while predicting it in efficiency, where there is no signal at all.
+  The shape claim survives; the variable is now the zero-episode share.
+
+  Both perturbation directions run and are reported separately, because they
+  are not the same mistake. At a matched realised error of 0.019 the scripted
+  curve left 19/48 islands alive when flattening and 7/48 when sharpening,
+  intervals barely touching: overstating how much better the best good is
+  destroys islands at a perturbation an agent would struggle to notice, while
+  understating the spread degrades them gracefully over an order of magnitude
+  more error. Whether that asymmetry survives with model agents, and whether
+  sharedness protects against the sharpen cliff, is the interesting half.
+
+  The most expensive rung, and the last, and it is only worth running if rung 2
+  moved. Done when the sweep is recorded, the premium is stated with the
+  interval its seed count actually supports, and the disposition curve --
+  adoption against delta, restricted to traders whose own capacities contradict
+  the announced vector -- is reported beside it.

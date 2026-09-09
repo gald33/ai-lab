@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """Print the grounding bundle for exactly one experiment.
 
-    tools/ground.py 004              # what an agent working on 004 may carry
-    tools/ground.py 004 --paths      # just the paths, one per line
-    tools/ground.py 004 --preflight  # just the gates, before spending
-    tools/ground.py 004 --new-run "consumption sweep"
+    tools/ground.py ruin              # what an agent working on it may carry
+    tools/ground.py ruin --paths      # just the paths, one per line
+    tools/ground.py ruin --preflight  # just the gates, before spending
+    tools/ground.py ruin --new-run "consumption sweep"
+
+An experiment is named by its question, so any distinctive part of that
+question finds it: `ruin`, `stock`, and the full
+`is-ruin-the-convention-or-the-commitment` all reach the same directory.
+
+**Retired numbers still resolve, and say so.** Every experiment was numbered
+once, those numbers are cited in reports and run records that are not being
+rewritten, and a lookup that failed on `004` would send the reader to grep. So
+`004` works and prints the name it is now, on stderr, where it does not
+pollute a `--paths` pipe. See experiments/README.md.
 
 The point is the *exactly one* part. An agent running an experiment is grounded
 in the repo-root standing decisions, the general grounding, and that
@@ -27,14 +37,59 @@ TEMPLATE = ROOT / "templates" / "experiment" / "runs" / "RUN-TEMPLATE.md"
 # from its CLAUDE.md; nothing outside it is in scope.
 GENERAL = ["CLAUDE.md", "experiments/GROUNDING.md"]
 
+#: The number each experiment used to carry, and the directory it is now. Kept
+#: because ~1,200 citations in reports and run records still say "005", and
+#: those documents are the record and are not being rewritten to look as though
+#: they always said something else. Two entries share `006`, which is the
+#: measured reason the number was never an identifier: see experiments/README.md.
+RETIRED_NUMBERS = {
+    "001": "is-coordination-less-to-reason-about",
+    "002": "which-part-of-a-convention-works",
+    "003": "which-promotion-rule-beats-luck",
+    "004": "is-ruin-the-convention-or-the-commitment",
+    "005": "does-a-content-free-protocol-help",
+    "007": "do-they-take-a-handed-over-answer",
+}
+
+#: `006` was two experiments at once. It resolves to neither, and says both.
+AMBIGUOUS_NUMBERS = {
+    "006": ("can-an-agent-hold-availability",
+            "does-telling-traders-what-to-disclose-help"),
+}
+
 
 def find(ident: str) -> Path:
-    matches = sorted(
-        d for d in EXPERIMENTS.iterdir()
-        if d.is_dir() and (d.name == ident or d.name.startswith(f"{ident}-"))
-    )
+    """The one experiment `ident` names, by name, by fragment, or by old number.
+
+    Fragment matching is deliberate: an experiment is named by its question, and
+    nobody types `is-ruin-the-convention-or-the-commitment`. Ambiguity is an
+    error rather than a first match, because silently grounding an agent in the
+    wrong experiment is the contamination GROUNDING.md exists to prevent.
+    """
+    if ident in AMBIGUOUS_NUMBERS:
+        names = AMBIGUOUS_NUMBERS[ident]
+        sys.exit(
+            f"{ident!r} was two experiments at once, which is why experiments "
+            f"are no longer numbered. Name one: {', '.join(names)}"
+        )
+
+    if ident in RETIRED_NUMBERS:
+        name = RETIRED_NUMBERS[ident]
+        print(f"{ident} is now {name}", file=sys.stderr)
+        ident = name
+
+    directories = sorted(d for d in EXPERIMENTS.iterdir() if d.is_dir())
+
+    exact = [d for d in directories if d.name == ident]
+    if exact:
+        return exact[0]
+
+    matches = [d for d in directories if ident in d.name]
     if not matches:
-        sys.exit(f"no experiment matches {ident!r} in {EXPERIMENTS}")
+        sys.exit(
+            f"no experiment matches {ident!r} in {EXPERIMENTS}\n"
+            + "\n".join(f"  {d.name}" for d in directories)
+        )
     if len(matches) > 1:
         sys.exit(f"{ident!r} is ambiguous: {', '.join(d.name for d in matches)}")
     return matches[0]
@@ -78,7 +133,9 @@ def new_run(exp: Path, name: str) -> Path:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("experiment", help="number or directory name, e.g. 004")
+    ap.add_argument("experiment",
+                    help="any distinctive part of the experiment's question, "
+                         "e.g. 'ruin'. A retired number still resolves.")
     ap.add_argument("--paths", action="store_true", help="print paths only")
     ap.add_argument("--new-run", metavar="NAME", help="open a run record from the template")
     ap.add_argument("--preflight", action="store_true",

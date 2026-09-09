@@ -54,7 +54,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "005-deliberation-protocol"
+_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "does-a-content-free-protocol-help"
 sys.path.insert(0, str(_ISLAND / "viewer"))
 
 import scores  # noqa: E402

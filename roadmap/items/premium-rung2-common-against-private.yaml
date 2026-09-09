@@ -1,0 +1,44 @@
+id: premium-rung2-common-against-private
+title: Run the claim — common against private, with the content byte-identical
+arc: coordination-premium
+priority: next
+status: blocked
+blocked_on:
+  - premium-rung1-does-a-correct-shared-convention-beat-silence
+refs:
+  - experiments/how-wrong-can-a-shared-convention-be/README.md
+  - experiments/which-part-of-a-convention-works/tier3-design.md
+evidence: |
+  The rung the experiment exists for, and the one the paper is written from.
+  CS against CP at delta 0, plus WP as the obedience control.
+
+  **The two arms differ in one sentence.** The announced vector is
+  byte-identical; what changes is whether the brief states that every trader
+  received it. That is the whole treatment, and it is what makes the contrast
+  clean enough to report either way.
+
+  This axis is why the tier costs money at all. A scripted trader has no
+  beliefs about other agents, so announcing a vector to the island and handing
+  the same vector privately produce byte-identical behaviour at every delta.
+  The scripted rungs calibrate the content axis and the adherence axis; the
+  distribution axis **does not exist in them**. The paid tier is not a more
+  realistic version of the free one -- it is the only place one of the three
+  axes exists.
+
+  Both outcomes are worth the run:
+
+  - CS > CP gives an exchange rate for sharedness on LLM agents, against an
+    answer key nobody else has.
+  - CS ~ CP kills the strong form of the claim that opened this line of work:
+    what a newborn agent needs would be the right answer, not the same answer.
+
+  Confounded rather than refused if WP ~ WS -- agents were following
+  instructions and the sharedness never entered. Check the transcripts for
+  whether agents acted on the sharedness at all before concluding it is
+  worthless, because CS measures *believed* common knowledge.
+
+  Done when both arms are run paired on identical seeds at the pre-registered
+  count, the adoption ledger is reported beside the outcome ledger and never
+  added to it, and every arm is placed in the adopted-by-moved quadrant. No arm
+  of any previous experiment here can be placed in that table, which is the
+  sharpest statement of what has been missing.

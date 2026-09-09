@@ -6,7 +6,7 @@ status: ready
 refs:
   - reports/2026-08-24-hypothesis-ledger.md
   - reports/2026-08-24-lessons-for-a-paper.md
-  - experiments/001-switchboard-coordination/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
   - CLAUDE.md
 evidence: |
   The lab is about to move from the island to shared coding tasks, and the
@@ -48,7 +48,7 @@ evidence: |
   claims needing separate metrics; reported as one number a working mechanism
   and a flat outcome are indistinguishable.
 
-  Done when this list is a document under `experiments/008-*/` (or a report
+  Done when this list is a document under the `shared-coding-tasks` experiment directory (or a report
   linked from it) that 008's design cites by row, each entry carrying its
   evidence and its strength grade, and each marked *assumed* or *under test* in
   008. Not done by pointing at the ledger: the ledger grades the island's

@@ -6,8 +6,8 @@ status: ready
 blocks:
   - 005-rerun-at-twenty-one-rounds
 refs:
-  - experiments/005-deliberation-protocol/INSTRUMENT-REVIEW.md
-  - experiments/005-deliberation-protocol/experiment/agents/prompt.py
+  - experiments/does-a-content-free-protocol-help/INSTRUMENT-REVIEW.md
+  - experiments/does-a-content-free-protocol-help/experiment/agents/prompt.py
 evidence: |
   Opened 2026-08-22 by the instrument review that closed
   `005-display-precision-artifact`. That item asked whether the renderer

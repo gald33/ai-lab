@@ -6,7 +6,7 @@ utility against the sum of solo optima — as the headline reading, justifies
 summing utilities in this economy specifically, shows what it does to the runs
 already on disk, and says exactly what it cannot support.
 
-Written 2026-08-24. Script: `experiments/007-execution-ceiling/analysis/utility_gain.py`.
+Written 2026-08-24. Script: `experiments/do-they-take-a-handed-over-answer/analysis/utility_gain.py`.
 
 ## 1. What the existing scores answer, and what they miss
 

@@ -17,9 +17,9 @@ related_to:
       be chosen and its estimator settled before that pre-registration is
       written — not after the numbers are in.
 refs:
-  - experiments/005-deliberation-protocol/island/score.py
-  - experiments/005-deliberation-protocol/results/v3/v3.json
-  - experiments/002-barter-conventions/experiment/barter/economy.py
+  - experiments/does-a-content-free-protocol-help/island/score.py
+  - experiments/does-a-content-free-protocol-help/results/v3/v3.json
+  - experiments/which-part-of-a-convention-works/experiment/barter/economy.py
   - CLAUDE.md
 evidence: |
   `eff_round` is a level: how good the accumulated bundle got. It cannot say
