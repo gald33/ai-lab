@@ -642,8 +642,8 @@ def itinerary(seed: bytes, start: str, world: Map,
 
 
 def pursue(world: Map, start: str, home: str, trail: list[dict],
-           joined_at: float = 0.0, share: tuple[int, int] = (0, 1)
-           ) -> tuple[int | None, float]:
+           joined_at: float = 0.0, share: tuple[int, int] = (0, 1),
+           order: str = "beatable") -> tuple[int | None, float]:
     """Run one searcher, deducing. Returns (the move it reaches her on, its
     head start).
 
@@ -693,12 +693,18 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
         def beatable(x: str) -> bool:
             return elapsed <= prep_hours(world.places[here], world.places[x])
 
+        def rank(x: str) -> tuple:
+            near = travel_hours(world.places[here], world.places[x])
+            # "beatable": chase the guaranteed interception first, however
+            # far. "near": probe cheaply first, and let beatability break
+            # ties. Which is better is a measurement, not a preference --
+            # see `--calibrate`.
+            return ((not beatable(x), near, x) if order == "beatable"
+                    else (near, not beatable(x), x))
+
         candidates = sorted(
             (x for x in world.descriptors
-             if leg["hint"] in world.descriptors[x] and x != here),
-            key=lambda x: (not beatable(x),
-                           travel_hours(world.places[here],
-                                        world.places[x]), x))
+             if leg["hint"] in world.descriptors[x] and x != here), key=rank)
         # `share` is (which searcher, how many). A field that divides the
         # candidates checks them in parallel instead of everybody walking
         # the same wrong rooms in the same order. Nothing enforces it and
@@ -732,7 +738,7 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
           threshold: int = REPUTATION_TO_WIN,
           join_window: float = JOIN_WINDOW_HOURS,
           difficulty: float = DIFFICULTY,
-          cooperate: bool = False) -> dict:
+          cooperate: bool = False, order: str = "beatable") -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
     **One rule, where this used to have two.** It said:
@@ -770,7 +776,8 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
         joined = join_window * (
             int.from_bytes(digest[8:16], "big") / 2 ** 64)
         move, lag = pursue(world, start, home, trail, joined_at=joined,
-                           share=(i, searchers) if cooperate else (0, 1))
+                           share=(i, searchers) if cooperate else (0, 1),
+                           order=order)
         lags.append(lag)
         if move is not None and (caught_on is None or move < caught_on):
             caught_on = move
@@ -792,14 +799,14 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
 
 def _run(world: Map, seed: bytes, names: list[str], searchers: int,
          join_window: float = JOIN_WINDOW_HOURS,
-         cooperate: bool = False) -> dict:
+         cooperate: bool = False, order: str = "beatable") -> dict:
     w = Map(seed)
     w.descriptors, w.places, w.treasure = (
         world.descriptors, world.places, world.treasure)
     # Every campaign sets out from the lobby, which is a place on the map.
     return chase(seed, LOBBY_LANDMARK, searchers=searchers, world=w,
                  threshold=10 ** 9, limit=40, join_window=join_window,
-                 cooperate=cooperate)
+                 cooperate=cooperate, order=order)
 
 
 def main() -> None:
