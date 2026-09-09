@@ -6,41 +6,75 @@ report/sighting/rumor, and such, so we get a whole sentence"*, and *"we
 'sell' on human interacting about it in social media, it must evoke
 feelings"*.
 
-    python3 games/hue-and-cry/hints.py --build     # writes hints.tsv
-    python3 games/hue-and-cry/hints.py             # read some
+    python3 games/hue-and-cry/hints.py --seed <64 hex>            # read some
+    python3 games/hue-and-cry/hints.py --seed <64 hex> --backup   # write the blob
 
-WHY SIX AND NOT THREE. A landmark carries six candidate descriptors and the
-game seed makes **three of them live**, so three is what any one game shows
-and six is what has to exist for the seed to have a choice. Writing only
-three would be deciding in the gazetteer what the seed is supposed to
-decide. So: six sentences per landmark, 6,000 in the file, three of them
-live in front of you.
+THIS FILE WAS WRONG, AND THE CORRECTION IS THE POINT OF IT
+==========================================================
+
+The first version built a committed `hints.tsv`: 5,963 lines of
+`landmark <TAB> descriptor <TAB> sentence`, in the repository, in plain
+text. Gal, 2026-09-09: *"I hope you remembered the table is secret"*.
+
+**It destroyed the game.** Every sentence is unique to a landmark -- that
+is what he asked for and it is the right ask -- so a published table turns
+each one into a lookup key. Carmel posts a sentence; a searcher greps the
+file; the room is named exactly. No descriptor reasoning, no ambiguity, no
+chase. Twelve thousand lines of careful collision work, and one committed
+file routed around all of it.
+
+It is worse than the `Reykjavik: desert` failure, because that one was
+visible in the output. This one measured perfectly: `test_hints.py` proved
+every sentence distinct and every descriptor shared by sixteen or more
+landmarks, and both facts stayed true while the game stopped working. **A
+property measured on the mechanism says nothing about a leak beside it.**
+
+AND ENCRYPTING IT WOULD HAVE BEEN THEATRE
+-----------------------------------------
+
+Gal's instruction was *"you can commit an encrypted backup but no more
+than that"*. Taken literally against the old builder, that buys nothing:
+the assignment was `sha256(landmark, descriptor)`, a pure function of
+`clauses.py` and `descriptors.py`, both public and both staying public.
+Anyone could re-run the builder and reproduce the table byte for byte.
+**Encrypting the output of a deterministic function of public inputs
+protects nothing.**
+
+So the rendering is drawn from the **game seed**, like everything else
+here (`secret_matrix.py`). The clause bank is public -- it is the
+authorship and it should be read -- and which clause, which witness and
+which frame carry a given landmark's descriptor is not knowable until the
+seed is.
+
+WHAT THE ENCRYPTED BACKUP IS FOR, THEN
+--------------------------------------
+
+Not secrecy -- the seed already does that. It is a **commitment**. The
+blob is written before play from a seed nobody has, and the key is derived
+from that same seed, so publishing the seed at the reveal lets anybody
+decrypt the blob and check that the sentences Carmel actually posted are
+the ones the seed says she was entitled to post. That is the island's
+commit-play-reveal pattern, and it is the thing `games/hue-and-cry.md`
+means by "a manager nobody has to trust".
+
+WHY SIX AND NOT THREE. A landmark carries six candidate descriptors and
+the seed makes three live, so three is what any one game shows and six is
+what has to exist for the seed to have a choice.
 
 HOW UNIQUENESS AND COLLISION BOTH HOLD, which sounded like a contradiction
-and is not. Gal asked for sentences **unique per landmark**; this game's
-oldest measured lesson is that a hint true of exactly one landmark ends the
-chase. Both are satisfied because they are about different things:
+and is not:
 
-- **The words are unique.** No two landmarks in the file carry the same
-  sentence. Asserted by `test_hints.py`, not hoped for.
-- **What the words assert is shared.** Every sentence is a rendering of one
+- **The words are unique.** No two landmarks carry the same sentence.
+- **What the words assert is shared.** Every sentence renders one
   descriptor, and every descriptor is true of at least sixteen landmarks.
-  Two places that share `traffic_keeps_left` get two different sentences
-  about stepping off a kerb the wrong way.
 
-So a reader who has seen a sentence before learns the descriptor, not the
-room -- which is what a clue is supposed to do -- while nobody ever reads
-the same line twice. The prose carries the feeling and the descriptor
-carries the ambiguity.
-
-**Nothing here is generated at run time and no model is in the loop.** The
-clauses in `clauses.py` are written by a person; this file is the
-deterministic assignment of one clause, one witness and one frame to each
-(landmark, descriptor) pair, which is arithmetic.
+So a reader who has seen a sentence learns the descriptor, not the room --
+*provided the mapping is not lying around in the repository*, which is the
+whole of the correction above.
 """
 
 import argparse
-import hashlib
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -49,8 +83,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from clauses import CLAUSES  # noqa: E402
 from descriptors import all_descriptors  # noqa: E402
+from secret_matrix import _prf  # noqa: E402
 
-DATA = Path(__file__).with_name("hints.tsv")
+#: The encrypted commitment. There is deliberately no plaintext counterpart
+#: and `.gitignore` refuses one.
+BACKUP = Path(__file__).with_name("hints.enc")
+
+RENDER_INFO = b"hue-and-cry/v1/hint-rendering"
+BACKUP_INFO = b"hue-and-cry/v1/hints-backup"
 
 #: Who saw her. Deliberately small people in transit trades -- the ones who
 #: notice a stranger and remember a face, and whose word is worth exactly
@@ -100,27 +140,22 @@ def compose(clause: str, witness: str, frame: str) -> str:
     return frame.format(w=witness, W=_cap(witness), c=clause, C=_cap(clause))
 
 
-def _index(landmark: str, descriptor: str, salt: int) -> int:
-    """A stable number for this pair, so a rebuild does not reshuffle the
-    file and a diff shows only what actually changed."""
-    key = f"{landmark}\0{descriptor}\0{salt}".encode()
-    return int.from_bytes(hashlib.sha256(key).digest()[:8], "big")
+def build(seed: bytes) -> list[tuple[str, str, str]]:
+    """(landmark, descriptor, sentence) for every candidate pair, this game.
 
-
-def build() -> list[tuple[str, str, str]]:
-    """(landmark, descriptor, sentence) for every candidate pair.
-
-    Distinctness is enforced rather than assumed. The hash picks a clause, a
-    witness and a frame; if that sentence is already used -- and it will be,
-    because a descriptor carried by 189 landmarks is drawing from one clause
-    and 624 witness-frame pairs -- the salt is bumped and it draws again.
+    Distinctness is enforced rather than assumed: a descriptor carried by
+    189 landmarks draws 189 sentences from one clause bank crossed with 52
+    witnesses and 12 frames, so collisions happen and the counter is bumped
+    until the sentence is unused.
     """
     rows, seen = [], set()
     for landmark, words in sorted(all_descriptors().items()):
         for descriptor in sorted(words):
             bank = CLAUSES[descriptor]
-            for salt in range(4096):
-                n = _index(landmark, descriptor, salt)
+            for counter in range(4096):
+                digest = _prf(seed, RENDER_INFO,
+                              f"{landmark}\0{descriptor}", counter)
+                n = int.from_bytes(digest[:8], "big")
                 sentence = compose(
                     bank[n % len(bank)],
                     WITNESSES[(n // 8) % len(WITNESSES)],
@@ -138,22 +173,37 @@ def build() -> list[tuple[str, str, str]]:
     return rows
 
 
-def write(rows, out) -> None:
-    out.write("# Three of these six are live in any one game -- the seed\n"
-              "# decides which. Written by hints.py from clauses.py; see\n"
-              "# hints.py on why the sentences are unique and what they\n"
-              "# assert is not.\n"
-              "# landmark\tdescriptor\tsentence\n")
-    for landmark, descriptor, sentence in rows:
-        assert "\t" not in sentence
-        out.write(f"{landmark}\t{descriptor}\t{sentence}\n")
+def _key(seed: bytes) -> bytes:
+    return _prf(seed, BACKUP_INFO, "", 0)
 
 
-def load() -> list[dict]:
+def _serialise(rows) -> bytes:
+    return "\n".join("\t".join(r) for r in rows).encode("utf-8")
+
+
+def write_backup(seed: bytes, path: Path = BACKUP) -> int:
+    """Seal this game's renderings under a key only the seed yields.
+
+    AES-256-GCM, nonce prepended. The point is not that the bytes are
+    unreadable -- the seed already keeps them unknowable -- but that they
+    were fixed BEFORE play and can be opened at the reveal.
+    """
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    rows = build(seed)
+    nonce = os.urandom(12)
+    blob = AESGCM(_key(seed)).encrypt(nonce, _serialise(rows), None)
+    path.write_bytes(nonce + blob)
+    return len(rows)
+
+
+def read_backup(seed: bytes, path: Path = BACKUP) -> list[dict]:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    raw = path.read_bytes()
+    plain = AESGCM(_key(seed)).decrypt(raw[:12], raw[12:], None)
     out = []
-    for line in DATA.read_text(encoding="utf-8").splitlines():
-        if line.startswith("#") or not line.strip():
-            continue
+    for line in plain.decode("utf-8").splitlines():
         landmark, descriptor, sentence = line.split("\t")
         out.append({"landmark": landmark, "descriptor": descriptor,
                     "sentence": sentence})
@@ -162,35 +212,41 @@ def load() -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--build", action="store_true", help="rewrite hints.tsv")
+    ap.add_argument("--seed", required=True,
+                    help="the game seed, 64 hex characters")
+    ap.add_argument("--backup", action="store_true",
+                    help=f"seal this game's renderings into {BACKUP.name}")
     args = ap.parse_args()
+    seed = bytes.fromhex(args.seed)
 
-    if args.build:
-        rows = build()
-        with open(DATA, "w", encoding="utf-8") as fh:
-            write(rows, fh)
-        print(f"{len(rows):,} sentences, {len(set(r[2] for r in rows)):,} distinct")
+    if args.backup:
+        n = write_backup(seed)
+        print(f"{n:,} sentences sealed into {BACKUP.name}"
+              " -- open it with the same seed")
         return
 
-    rows = load()
-    by_landmark: dict[str, list[dict]] = {}
-    for r in rows:
-        by_landmark.setdefault(r["landmark"], []).append(r)
-    print(f"{len(rows):,} sentences over {len(by_landmark):,} landmarks\n")
+    rows = build(seed)
+    by_landmark: dict[str, list[tuple]] = {}
+    for row in rows:
+        by_landmark.setdefault(row[0], []).append(row)
+    print(f"{len(rows):,} sentences over {len(by_landmark):,} landmarks,"
+          " for this seed only\n")
 
     for name in ("Stonehenge", "Uluru", "Area 51"):
         print(f"  {name}")
-        for r in by_landmark[name][:3]:
-            print(f"    {r['sentence']}")
+        for _, _, sentence in by_landmark[name][:3]:
+            print(f"    {sentence}")
         print()
 
-    counts = Counter(r["descriptor"] for r in rows)
+    counts = Counter(d for _, d, _ in rows)
     word, n = counts.most_common(1)[0]
-    same = [r for r in rows if r["descriptor"] == word][:3]
     print(f"  and the collision, which is the point -- {n} landmarks carry"
           f" {word}:")
-    for r in same:
-        print(f"    {r['landmark']}: {r['sentence']}")
+    for landmark, descriptor, sentence in rows:
+        if descriptor == word:
+            print(f"    {landmark}: {sentence}")
+            if landmark > "Ag":
+                break
 
 
 if __name__ == "__main__":

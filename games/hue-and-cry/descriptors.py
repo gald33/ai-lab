@@ -172,7 +172,9 @@ ORGS = {
     "in_the_african_union": ["African Union"],
     "in_the_american_states": ["Organization of American States"],
     "in_the_council_of_europe": ["Council of Europe"],
-    "french_is_spoken_at_the_top": ["Francophonie"],
+    # Both names are the same body; Wikidata records either.
+    "french_is_spoken_at_the_top": ["Francophonie",
+                                    "Organisation internationale de la Francophonie"],
     "in_the_islamic_conference": ["Organisation of Islamic Cooperation"],
     "one_of_the_twenty": ["G20"],
 }
@@ -339,6 +341,28 @@ def _by_word(table: dict, haystack: str) -> set:
             if any(w in haystack for w in words)}
 
 
+def _by_name(table: dict, names: list[str]) -> set:
+    """Exact membership, not a substring search.
+
+    `ORGS` was matched with `_by_word` and it was wrong in a way that is
+    worth keeping written down, because it is the same failure as
+    `Reykjavik: desert` arriving through a different door. "African Union"
+    is a substring of **"United Nations-African Union Hybrid Operation in
+    Darfur"**, a peacekeeping mission, so 19 countries that merely
+    contribute troops -- China, Germany, Bangladesh, Ecuador, Jamaica --
+    were reported as sitting in the African Union. "European Union" is a
+    substring of "potential enlargement of the European Union", so Georgia
+    flew the ring of stars on its number plates.
+
+    A substring test is fine for `P31` type labels, where "cathedral"
+    inside "Catholic cathedral" is exactly the generalisation wanted. It is
+    wrong for the name of a body you are either in or not in.
+    """
+    have = set(names)
+    return {key for key, wanted in table.items()
+            if any(w in have for w in wanted)}
+
+
 def describe(place: dict, fact: dict, country: dict) -> set:
     """Everything truthfully sayable about one landmark."""
     out = _by_word(TYPES, " | ".join(fact["types"]).lower())
@@ -359,7 +383,7 @@ def describe(place: dict, fact: dict, country: dict) -> set:
         out.add("no_coast_in_this_country")
     if "left" in country["drive"]:
         out.add("traffic_keeps_left")
-    out |= _by_word(ORGS, " | ".join(country["org"]))
+    out |= _by_name(ORGS, country["org"])
     out |= _by_word(GOVERNMENT, " | ".join(country["gov"]).lower())
 
     if fact["elev"] is not None:

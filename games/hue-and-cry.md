@@ -1588,6 +1588,106 @@ python3 games/hue-and-cry/hints.py            # read some
 python3 games/hue-and-cry/hints.py --build    # rewrite hints.tsv
 ```
 
+## The committed table that destroyed the game
+
+*2026-09-09. Gal, on reading the merged branch: "I hope you remembered the
+table is secret." I had not.*
+
+The sentence layer shipped as **`hints.tsv`, 5,963 lines of `landmark →
+descriptor → sentence`, committed in plain text**. Every sentence is unique
+to a landmark -- that is what was asked for and it is the right ask -- so a
+published table turns each one into a lookup key. Carmel posts a sentence;
+a searcher greps the file; the room is named exactly. No descriptor
+reasoning, no ambiguity, no chase.
+
+**Everything else in the design still worked.** The collision floor held,
+the pin rate was 12.2%, no descriptor was carried by fewer than sixteen
+landmarks. Twelve thousand lines of careful work, and one committed file
+routed around all of it.
+
+### Why the tests did not catch it, which is the part worth keeping
+
+`test_hints.py` asserted every sentence distinct and every descriptor
+shared by sixteen or more landmarks. Both were true. Both stayed true. The
+game was broken anyway, because **a property measured on the mechanism says
+nothing about a leak beside it** -- the tests were looking at the matrix
+and the answer key was in the next file along.
+
+This is a different failure from `Reykjavik: desert`, and worse. That one
+was visible in the output; anybody reading a hint saw it. This one is
+invisible from inside the artifact and only shows up when you ask *who else
+can read this*.
+
+The test that exists now does not measure a property of the sentences at
+all. It runs `git ls-files` and fails if a plaintext rendering is tracked.
+
+### And encrypting it would have been theatre
+
+Gal's remedy was *"you can commit an encrypted backup but no more than
+that"*. Taken literally against the old builder, that buys **nothing**: the
+assignment was `sha256(landmark, descriptor)`, a pure function of
+`clauses.py` and `descriptors.py`, both public and both staying public.
+Anyone could re-run the builder and reproduce the table byte for byte.
+**Encrypting the output of a deterministic function of public inputs
+protects nothing.**
+
+So the rendering is drawn from the **game seed**, like everything else here.
+The clause bank stays public -- it is the authorship and it should be read
+-- and which clause, which witness and which frame carry a given landmark's
+descriptor is not knowable until the seed is. `test_hints.py` pins that
+too: fewer than 5% of sentences survive a change of seed.
+
+### What the encrypted blob is for, then
+
+Not secrecy; the seed already does that. It is a **commitment**.
+`hints.enc` is sealed before play under a key derived from the seed, so
+publishing the seed at the reveal lets anybody decrypt it and check that
+the sentences Carmel posted were the ones she was entitled to post. The
+island's commit-play-reveal, at the size of a game.
+
+```
+python3 games/hue-and-cry/hints.py --seed <64 hex>            # read some
+python3 games/hue-and-cry/hints.py --seed <64 hex> --backup   # seal it
+```
+
+### The gazetteer is still public, and that is a decision rather than an oversight
+
+"One seed per game" already settled this: *"the table itself can be public
+-- these are facts about places, and a public one is half the fun, since a
+reader can play along -- while which of Cairo's eight are in play today
+stays sealed until the reveal."* `landmarks.tsv`, `facts.tsv`,
+`countries.tsv` and the descriptor derivation stay in the open. What was
+never covered by that decision, and what broke, is a table mapping a
+**unique string** to a landmark.
+
+**`treasures.tsv` is the same shape and is still committed.** It maps each
+landmark to what she takes there, and eighty of those are hand-written for
+Stonehenge and nothing else. It leaks nothing while a treasure is only ever
+readable on the room's own board, and it leaks the room the moment any
+public line names what was taken. That is an open question and it is
+flagged here rather than decided, because the eighty are also the best
+reading in the repository and hiding them has a cost that is not the
+game's.
+
+## And a false descriptor that shipped with it
+
+`in_the_african_union` was matched by substring against Wikidata's `P463`
+membership list, and **"African Union" is a substring of "United
+Nations-African Union Hybrid Operation in Darfur"** -- a peacekeeping
+mission. Nineteen countries that merely contribute troops, China and
+Germany and Bangladesh and Ecuador and Jamaica among them, were reported as
+sitting in the African Union. "European Union" is likewise a substring of
+"potential enlargement of the European Union", so Georgia flew the ring of
+stars on its number plates.
+
+This is the fourth false descriptor in this document and the third distinct
+mechanism, after the currencies and the elevation units. A substring test
+is right for `P31` type labels, where "cathedral" inside "Catholic
+cathedral" is exactly the generalisation wanted. It is wrong for the name
+of a body you are either in or not in. Membership is matched exactly now.
+
+The operating point did not move: 2.71 posted, 12.30% pinned.
+
 ## The treasures, where a joke turned out to be the mechanic
 
 *Step three, 2026-09-08: "add coordinates, treasures, and other stats",

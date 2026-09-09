@@ -61,3 +61,8 @@ experiments/007-execution-ceiling/recordings/island-replay.html
 # repo; only the generated state is ignored.
 .repoctx/
 .claude/*.local.json
+
+# The hint matrix is the game secret. Only the encrypted commitment
+# (games/hue-and-cry/hints.enc) may be committed -- never a plaintext
+# rendering. See games/hue-and-cry/hints.py.
+games/hue-and-cry/hints.tsv
