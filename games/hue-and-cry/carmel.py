@@ -18,7 +18,7 @@ WHAT SHE DECIDES, WHICH IS THREE THINGS
 
 Per move, and no more than this:
 
-1. **Where to go**, out of the exits her current landmark has.
+1. **Where to go**, which is anywhere on the map.
 2. **Whether to stand still and steal**, which is the only way she is ever
    catchable and the only way she ever wins.
 3. **Which true hint to post** about where she has gone.
@@ -60,13 +60,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import treasures as T  # noqa: E402
-from descriptors import NEIGHBOURHOOD, all_descriptors  # noqa: E402
-from gazetteer import EXITS, kinship  # noqa: E402
+from descriptors import all_descriptors  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
 from secret_matrix import (RECIPE, _prf, hints_for,  # noqa: E402
                            room_token, salt_for)
-
-EXIT_INFO = b"hue-and-cry/v1/exits"
 
 #: How fast she travels, in km/h, averaged over everything -- the flight, the
 #: waiting, the bus at the other end. A GUESS, and the one that decides
@@ -98,8 +95,10 @@ TRAVEL_KMH = 400
 #: a searcher that was handed the address of every room she went to. Gal
 #: removed the addresses on 2026-09-09 -- *"I will not be giving you any
 #: addresses"* -- and a searcher that has to deduce the landmark from the
-#: hint is a different and much weaker animal: she now runs out the move
-#: limit at about 2,600 reputation rather than being caught at 162.
+#: hint is a different and much weaker animal. Gal then removed the routes
+#: too -- *"we have no routes"* -- and she now runs out the forty-move
+#: limit at about **3,626** reputation rather than being caught at 162,
+#: winning 88% of campaigns against ten searchers and 98% against one.
 #:
 #: It is left at 140 rather than replaced with a fresh guess, because the
 #: honest blocker is that **the multi-searcher model is not trustworthy
@@ -116,24 +115,26 @@ REPUTATION_TO_WIN = 140
 #: could never be found at all.
 LOBBY = "hue-and-cry"
 
-#: And the lobby is also a place ON the map, which is a separate fact and
-#: the one that makes the opening playable.
+#: And the lobby is also a place ON the map, which is a separate fact.
 #:
 #: Gal, 2026-09-09: *"we should either place the lobby on the map, or hand
-#: out where the hint was heard from on the map."* Those are the same
-#: problem: **a hint means nothing without knowing where it was heard.** The
-#: candidates are the exits of a landmark, so a hint read with no anchor is
-#: read against all thousand.
+#: out where the hint was heard from on the map."*
 #:
-#: Measured, on the hint the opening notice actually carried: `older than
-#: the records` is true of **45 of the 1000**. Anchored, it is read against
-#: five. The opening was a ninefold harder problem than every step after it,
-#: and for no reason anybody chose.
+#: **The reason that was given for this has since been withdrawn, and the
+#: decision has not.** The argument was that a hint means nothing without
+#: knowing where it was heard, because the candidates were the *exits* of a
+#: landmark: `older than the records` was true of 45 of the 1000 unanchored
+#: and of five when anchored, so the opening was a ninefold harder problem
+#: than every step after it. Gal then removed the routes -- *"we have no
+#: routes"* -- and every hint is now read against the whole map, so the
+#: anchor narrows nothing and the opening is no longer a special case in
+#: either direction.
 #:
-#: So she sets out FROM the lobby, and says so. Every hint in the game is
-#: then read the same way -- against the exits of a landmark the reader
-#: knows -- and the first one is not a special case. Grand-Place because a
-#: lobby that is literally a public square is the joke worth having.
+#: What is left is still worth having and is a different thing: it is where
+#: she is, so it is where a searcher's first journey starts and what its
+#: first leg costs. A campaign whose origin was nowhere would have no
+#: clock. Grand-Place because a lobby that is literally a public square is
+#: the joke worth having.
 LOBBY_LANDMARK = "Grand-Place"
 
 #: How long people take to notice the notice and set off. A GUESS, and the
@@ -166,62 +167,43 @@ def travel_hours(a: dict, b: dict) -> float:
 
 
 class Map:
-    """The gazetteer as one game sees it: exits drawn from the seed, and the
-    treasures and descriptors that were fixed before it started."""
+    """The gazetteer as one game sees it: a thousand places, the treasures
+    and descriptors that were fixed before the game started, and the three
+    descriptors per place that this seed makes postable.
+
+    THERE ARE NO ROUTES. Gal, 2026-09-09: *"we have no routes."* This class
+    held `band()` and `exits()` -- a five-place reachable set per landmark,
+    drawn from the published salt out of the 200 nearest look-alikes -- and
+    both are gone. Nothing constrains where she goes next. See
+    `games/hue-and-cry.md`, "There are no routes", for what that costs and
+    what it buys; the short version is the measurement that preceded the
+    decision:
+
+        a hint alone, against the whole map   median 115 candidates
+        the same hint, against her 5 exits    median   2
+
+    and, now that a hint is read against the map, the one she actually
+    posts is the commonest of her three: median 152, worst case 27.
+
+    The second row was only ever available to a searcher who had cloned
+    352 KB of tables and reimplemented three modules exactly. The first row
+    is available to anybody who can read a sentence and run one SHA-256,
+    which is who this game is for.
+    """
 
     def __init__(self, seed: bytes):
         self.seed = seed
         self.places = {p["name"]: p for p in load_landmarks()}
         self.descriptors = {k: sorted(v) for k, v in all_descriptors().items()}
         self.treasure = {t["landmark"]: t for t in T.build()}
-        self._near: dict[str, list[str]] = {}
-        self._exits: dict[str, list[str]] = {}
-
-    def band(self, landmark: str) -> list[str]:
-        """The look-alikes a game draws exits from. Computed once and kept:
-        it is O(places) per landmark and the chase asks repeatedly."""
-        if landmark not in self._near:
-            gaz = self.descriptors
-            self._near[landmark] = [
-                x for _, x in sorted((-kinship(landmark, x, gaz), x)
-                                     for x in gaz if x != landmark)
-            ][:NEIGHBOURHOOD]
-        return self._near[landmark]
-
-    def exits(self, landmark: str) -> list[str]:
-        """Her five, drawn from the PUBLISHED SALT and not from the seed.
-
-        The docstring here used to say "drawn from the seed... public
-        knowledge in principle", which was false against its own next line:
-        a searcher cannot compute anything from a secret only she holds.
-
-        It is the same bug as the room addresses had, in the same file, and
-        it is worse, because the exits are what make a hint mean anything.
-        `games/hue-and-cry.md` settled this long ago -- each landmark has
-        "a small fixed set of exits... committed with the rest of the table
-        and **public**" -- and a clue is read "against her *reachable* set
-        rather than the whole map". Derived from the seed, the reachable set
-        is unknowable and the hint narrows nothing.
-
-        So: salt. The gazetteer is public, the neighbourhood rule is public,
-        the salt is published when she opens the campaign, and a searcher
-        who works out where she is can work out where she may go.
-        """
-        if landmark not in self._exits:
-            pool = self.band(landmark)
-            out: list[str] = []
-            i = 0
-            while len(out) < EXITS and i < 400:
-                digest = hashlib.sha256(
-                    EXIT_INFO + b"\x00" + salt_for(self.seed) + b"\x00"
-                    + landmark.encode("utf-8") + b"\x00" + bytes([i])
-                ).digest()
-                pick = pool[int.from_bytes(digest[:8], "big") % len(pool)]
-                if pick not in out:
-                    out.append(pick)
-                i += 1
-            self._exits[landmark] = out
-        return self._exits[landmark]
+        #: How many landmarks each descriptor is true of. With no routes
+        #: this IS the size of the candidate set a hint leaves, so it is
+        #: the whole of what "cover" means now -- one pass over the map
+        #: instead of a per-landmark band computed on demand.
+        self.cover: dict[str, int] = {}
+        for words in self.descriptors.values():
+            for word in words:
+                self.cover[word] = self.cover.get(word, 0) + 1
 
     def live_hints(self, landmark: str) -> list[str]:
         """The three descriptors the seed makes postable at this landmark."""
@@ -252,35 +234,42 @@ class Carmel:
         Two things pull. A rich room is the point -- she wins on reputation
         and nothing else -- but the hint she will have to post about it is
         drawn from that room's descriptors, and a room whose live three are
-        shared with none of her other exits announces her.
+        all rare announces her.
 
-        So she scores a destination by what it pays and by the cover it will
-        buy, and takes the best. She does NOT take the richest: the richest
+        So she scores a room by what it pays and by the cover it will buy,
+        and takes the best. She does NOT take the richest: the richest
         rooms are systematically the most exposed (`treasures.py`,
         `correlation(cover, reputation) = -0.28`), so a value-only Carmel
-        walks into the most legible room on the map every time, which is
-        the failure `--calibrate` shows as a low catch time.
+        walks into the most legible room on the map every time.
+
+        **The range is the whole map**, since there are no routes. Two
+        things follow and both are deliberate. Distance costs her nothing
+        that it does not cost her pursuer -- their travel cancels exactly
+        (`test_the_follower_closes_only_by_what_she_steals`) -- so she does
+        not read it, and a policy that did would hand the searcher an
+        ordering it could exploit. And with pay and cover both global
+        properties, her preference order over unrobbed rooms is fixed for a
+        seed: what varies from game to game is which three descriptors the
+        seed makes live, which is what moves the cover term.
         """
-        reachable = self.world.exits(self.at)
-        best, best_score = reachable[0], -1.0
-        for destination in reachable:
-            if destination in self.emptied:
+        best, best_score = None, -1.0
+        for destination, prize in self.world.treasure.items():
+            if destination in self.emptied or destination == self.at:
                 continue
-            pay = self.world.treasure[destination]["reputation"]
-            cover = self.best_cover(destination, reachable)
-            score = pay * cover
+            score = prize["reputation"] * self.best_cover(destination)
             if score > best_score:
                 best, best_score = destination, score
         return best
 
-    def best_cover(self, destination: str, reachable: list[str]) -> int:
-        """How many of her exits the most ambiguous live hint covers.
+    def best_cover(self, destination: str) -> int:
+        """How much of the map the most ambiguous live hint leaves standing.
 
-        This is the quantity the whole descriptor layer was built to keep
-        above one, measured here from her side rather than over drawn maps.
+        This is the quantity the descriptor layer was built to keep above
+        one. It used to be counted against her five exits; with no routes
+        it is counted against all thousand landmarks, which is the set the
+        reader actually faces.
         """
-        gaz = self.world.descriptors
-        return max(len([x for x in reachable if word in gaz[x]])
+        return max(self.world.cover[word]
                    for word in self.world.live_hints(destination))
 
     # --- 2. what to say ---------------------------------------------------
@@ -290,14 +279,12 @@ class Carmel:
         `games/hue-and-cry.md`: *"the Fugitive's strategy is now sharp and
         stateable: post the least informative true fact, which is a real
         optimisation against a real posterior."* Least informative means
-        covering the most of the set a reader can narrow her to, which is
-        her reachable set -- not the whole map, which is the mistake the
-        gate itself made twice.
+        covering the most of the set a reader can narrow her to -- and with
+        no routes that set is the map, so this is the commonest of her
+        three live descriptors.
         """
-        gaz = self.world.descriptors
-        reachable = self.world.exits(self.at)
         return max(self.world.live_hints(destination),
-                   key=lambda w: (len([x for x in reachable if w in gaz[x]]), w))
+                   key=lambda w: (self.world.cover[w], w))
 
     # --- 3. whether to stand still ----------------------------------------
     def will_steal(self, destination: str, seen: bool) -> bool:
@@ -317,35 +304,6 @@ class Carmel:
         self.emptied.add(destination)
         self.reputation += prize["reputation"]
         return prize["dwell"] * self.difficulty
-
-
-class Searcher:
-    """The reference searcher: run to the last place she was seen, then
-    follow the trail room by room.
-
-    Deliberately the simplest thing that uses the mechanism. The hash beside
-    the hint is the exact address, so a searcher standing where she stood
-    needs no deduction at all -- it never reads a hint, never reasons about
-    a descriptor, and never cooperates. It is a floor for the searchers'
-    score, not a good player, and every cleverer thing has to beat it.
-
-    It is always behind, and by exactly how much is the whole game: it loses
-    her travel time on every hop and gains only what she spends standing
-    still.
-    """
-
-    def __init__(self, world: Map, start: str):
-        self.world = world
-        self.at = start
-        self.clock = 0.0
-
-    def next_room(self, trail: dict) -> str | None:
-        """`trail` is what a room's board says: where she went from here.
-
-        Read only from the room it is standing in, because that is the only
-        place it can be read. Nothing is broadcast.
-        """
-        return trail.get(self.at)
 
 
 #: What the controller aims at, and the widest it may move. The target is a
@@ -486,9 +444,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "Find me while I am standing still and you have me. Let me stand",
         "still often enough and I retire on what I take.",
         "",
-        f"I set out from {start}, which is where you are reading this. Work",
-        "from there: I can only have gone to a place that resembles it, and",
-        "you can work out which places those are as easily as I can.",
+        f"I set out from {start}, which is where you are reading this.",
+        "There is nowhere I cannot have gone from here. A thousand places,",
+        "and the only thing narrowing them is what I choose to tell you.",
         "",
         "I will not be giving you any addresses. The first thing I have to",
         "say about where I have gone is this:",
@@ -567,43 +525,43 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
     """Run one searcher, deducing. Returns (the move it catches her on, its
     head start).
 
-    THE SEARCHER'S ACTUAL PROBLEM, which this file did not model until now.
     Gal, 2026-09-09: *"a player guesses the landmark from the hint, plugs in
     the algorithm, gets the workspace, go to the workspace, looks for her or
-    at least her next hint."*
+    at least her next hint."* And then: *"we have no routes."*
 
-    So there is no address anywhere. Standing in the room she was in, it
-    reads the one thing she said on her way out, and has to work out which
-    place she meant:
+    So there is no address anywhere and no reachable set either. Standing in
+    the room she was in, it reads the one thing she said on her way out, and
+    the candidates are **every landmark on the map the hint is true of** --
+    a median of **152** of the 1000, since she posts the commonest of her
+    three live descriptors, where the exit band made it 2. It picks
+    them nearest-first, because with the routes gone geography is the only
+    structure left to a searcher and travel is what a wrong guess costs.
 
-    1. The room it is in is a landmark it named, so it knows her exits --
-       the gazetteer is public and the exits come from the published salt.
-    2. Her hint is true of where she went, so the candidates are the exits
-       the hint is true of. Measured at about **2.7 of her 5**.
-    3. It picks one and travels. If she was never there the room is empty
-       and it has learned only that, at the price of the journey; it tries
-       the next candidate from the same hint.
-
-    A wrong guess costs a leg and buys one bit. That is the whole game, and
-    it is what the descriptor layer was built for -- every number in "The
-    map is a thousand landmarks now" is about the size of this candidate
-    set, and until this function existed none of them was load-bearing.
+    A wrong guess costs a leg and buys one bit, and there are now about
+    seven bits to buy per room instead of one. That is the price of an
+    entry requirement that is a sentence and a SHA-256 rather than 352 KB
+    of tables; `games/hue-and-cry.md`, "There are no routes", is where the
+    trade is written down.
     """
     clock = joined_at + travel_hours(world.places[home], world.places[start])
     lag = clock
 
     here, hint = start, trail[0]["hint"]
     for i, leg in enumerate(trail):
-        # Which of her exits is the hint true of? She is in one of these.
-        candidates = [x for x in world.exits(here)
-                      if hint in world.descriptors[x]] or world.exits(here)
+        # Where can she be? Everywhere the hint is true of.
+        candidates = sorted(
+            (x for x in world.descriptors if hint in world.descriptors[x]
+             and x != here),
+            key=lambda x: (travel_hours(world.places[here],
+                                        world.places[x]), x))
         # `share` is (which searcher, how many). A field that divides the
         # candidates checks them in parallel instead of everybody walking
         # the same wrong rooms in the same order. Nothing enforces it and
         # nothing settles it -- it is talk, and it is the whole reason the
-        # lobby is worth having.
+        # lobby is worth having. With no routes it is worth far more than
+        # it was: the set being divided is a hundred rooms, not five.
         mine, of = share
-        rota = [c for i, c in enumerate(candidates) if i % of == mine] \
+        rota = [c for j, c in enumerate(candidates) if j % of == mine] \
             or candidates
         for guess in rota:
             clock += travel_hours(world.places[here], world.places[guess])
@@ -615,7 +573,10 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
                 break
             # Empty room. It knows only that she is not here.
         else:
-            return None, lag          # the hint fitted nothing she took
+            # Her room fell in somebody else's share of the rota, and
+            # nothing in this model carries what they found back. The
+            # channel that would is the notes in the lobby, unmodelled.
+            return None, lag
     return None, lag
 
 
@@ -758,13 +719,13 @@ def calibrate(world: Map, trials: int = 60) -> None:
         print(f"  {window:>11}h{budget[len(budget) // 2]:>10.0f}h"
               f"{got[len(got) // 2]:>13,.0f}{wins / trials:>10.0%}")
     print("\n  Three searchers throughout, each deducing alone: it reads her"
-          " hint, computes\n  the exits of the room it is standing in, keeps"
-          " the ones the hint is true of\n  (about 2.7 of 5) and tries them."
-          " A wrong guess costs a leg and buys one bit.\n")
-    print("  So a lone searcher spends about 1.9 legs per room and she"
-          " spends 1: the gap\n  GROWS on every hop. That is the opposite of"
-          " the handed-address game this file\n  measured until the"
-          " addresses were removed, where the gap shrank by her dwell.\n")
+          " hint and keeps\n  every landmark on the map the hint is true of"
+          " -- a median of 152 of the\n  1000, since there are no routes --"
+          " then walks them nearest-first.\n")
+    print("  A wrong guess costs a leg and buys one bit, and there are"
+          " about seven bits\n  to buy per room. She is not caught by a"
+          " searcher walking that alone; the\n  field has to divide the"
+          " candidates, which is talk, which is the lobby.\n")
 
 
 def _wins(result: dict, threshold: int) -> bool:

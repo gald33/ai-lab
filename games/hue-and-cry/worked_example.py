@@ -1,5 +1,14 @@
 """The worked example that found the hole, kept so the numbers can be re-checked.
 
+SUPERSEDED IN PLAY, 2026-09-09: Gal, *"we have no routes."* The right-hand
+half of what this file prints -- "with routes" -- is the game as it was
+designed and is no longer the game. It is kept because it is the clearest
+statement of what the routes were worth, which is the thing the decision
+was made against; `games/hue-and-cry.md`, "There are no routes", carries
+the decision and the numbers at 1000 landmarks. The left-hand half,
+"without routes -- she may go anywhere", is now simply the game.
+
+
 `games/hue-and-cry.md` claims, in "The map has routes, and without them there
 is no game", that a fugitive free to move anywhere leaves a searcher 5 or 6 of
 8 candidates while one confined to three exits leaves 2 or 3 of 3. That claim

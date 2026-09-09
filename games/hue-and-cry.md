@@ -279,6 +279,10 @@ structure is computable, which is what gives this game a **frontier** rather
 than a leaderboard — see "Scoring".
 
 ### The map has routes, and without them there is no game
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Added 2026-09-07, hours after the rest of this document was written and
 merged, because Gal asked for a worked example and the example did not
@@ -428,6 +432,10 @@ landmarks she cannot hide from: none
 ```
 
 ### Routes run between places that resemble each other
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Added 2026-09-07 after running a chase on the authored gazetteer, which
 found the collision gate measuring the wrong population — for the second
@@ -2559,6 +2567,13 @@ measured as worthless because the game had no information problem in it.**
 
 ## The lobby is a place on the map, because a hint with no anchor is read against a thousand
 
+> **THE REASON BELOW IS SUPERSEDED 2026-09-09 — "we have no routes" —
+> and the decision is not.** A hint is now read against all thousand
+> wherever it was heard, so the anchor narrows nothing; the lobby stays on
+> the map because it is where she is, and so where a searcher's first leg
+> starts. See "There are no routes".
+
+
 *Gal, 2026-09-09: "I think that we should either place the lobby on the map,
 or hand out where the hint was heard from on the map."*
 
@@ -2608,6 +2623,10 @@ to compute exits of a room she was never in. When the field model is rebuilt
 notes have to take.
 
 ## Why five exits? For a reason that no longer exists — it is a field-size dial now
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Gal, 2026-09-09: "why 5 candidates?"*
 
@@ -2757,6 +2776,131 @@ first is the one every measurement in this document was taken on.
 352 KB entry requirement and a fifty-person search game with none, and that
 is Gal's to make rather than mine to assume — which is what I did by
 carrying `EXITS = 5` forward without noticing what it now meant.
+
+**Decided the same day: the second column.** See "There are no routes"
+below.
+
+## There are no routes
+
+*Gal, 2026-09-09, on being shown the table above: **"we have no routes."***
+
+The right-hand column. Every route mechanic in this document and in the code
+is superseded by that sentence, and the sections that describe one are
+listed at the end of this one so a reader knows to stop believing them.
+
+### What was removed
+
+`Map.band()` and `Map.exits()` in `carmel.py`, and with them `EXIT_INFO` and
+the salted draw `sha256(EXIT_INFO ‖ salt ‖ name ‖ i)`. A landmark no longer
+has five exits, or any. **Her next room is any of the thousand**, and a
+searcher standing where she stood reads her hint against the whole map.
+
+Three things followed, none of them optional:
+
+- **`choose_destination` ranges over the map**, scoring `reputation × cover`
+  as before. It does *not* read distance, and that is deliberate rather than
+  an omission: their travel cancels exactly — the follower closes only by
+  what she steals, which `test_the_follower_closes_only_by_what_she_steals`
+  has asserted since before this change — so distance costs her nothing it
+  does not also cost her pursuer, while a policy that preferred near rooms
+  would hand the searcher an ordering to exploit.
+- **`cover` is now a property of a descriptor, not of a landmark's
+  neighbourhood.** One pass over the map counts how many landmarks each
+  descriptor is true of, and that count *is* the size of the candidate set a
+  hint leaves. It used to be "how many of her five exits does this word also
+  fit", which was a question about a set that no longer exists.
+- **`pursue` walks the candidates nearest-first.** With the routes gone,
+  geography is the only structure a searcher has left, and a wrong guess
+  costs exactly a leg.
+
+Also deleted: the `Searcher` class, unused and describing a mechanism —
+an exact address posted beside every hint — that Gal removed on
+2026-09-09 and that nothing has had since.
+
+### What it costs, measured rather than asserted
+
+```
+median candidates left by the hint she actually posts   152 of 1000
+worst case (her least common live descriptor is forced)  27
+best case for her                                       184
+```
+
+152 rather than the 115 in the table above, because 115 was a *random* live
+descriptor and she posts the **commonest** of her three. The change makes
+her strictly harder to find than the pre-decision measurement suggested.
+
+So a lone searcher deducing alone essentially never catches her: it buys
+about seven bits per room where she pays one. Measured, 40 campaigns per
+row, a 40-move limit and no reputation threshold, so "caught" means caught
+inside forty rooms:
+
+```
+ turnout   alone  dividing
+       1      8%        8%
+       3      8%        8%
+```
+
+`carmel.py --calibrate`, 60 campaigns per row, says the same thing from her
+side — how far she gets before anybody is standing where she is:
+
+```
+ turnout   her budget   she reaches   she wins
+       1          16h         3,626        98%
+       3          11h         3,626        97%
+      10           5h         3,625        88%
+```
+
+Against the routes she was caught at 162 reputation. She now takes **3,626**
+and wins nine times in ten against ten searchers, and adding searchers moves
+almost nothing — which is what a candidate set of 152 does to a field that
+cannot pool what it has ruled out.
+
+**That is not a bug to tune out**, and the "dividing" column above is a
+finding about the model rather than about the game. It is the arithmetic of
+the column Gal chose, and the thing it makes load-bearing is what this game
+was started for:
+
+> **The field has to divide the candidates, and dividing them is talk.**
+
+A hundred and fifty rooms split between fifty searchers is three legs each;
+the same hundred and fifty walked by fifty searchers who never spoke is
+fifty searchers walking the same wrong rooms in the same order. Nothing
+enforces a rota, nothing settles one, and no component could — there is no
+manager here. The lobby stops being a nicety and becomes the mechanism,
+which is what *"looking for 'the right' agent within the switchboard space"*
+asked for in the first place.
+
+**And the `cooperate` flag in `chase` does not model that, which the table
+above says out loud.** Dividing the candidates buys nothing because a
+searcher whose share happens to miss her room gives up entirely: `pursue`
+returns `None` and nothing carries what the others found back to it. Real
+cooperation is a rota *plus* a channel — "not here" is the message, and the
+lobby is where it would go — and the channel is exactly the part not built.
+So the flag currently measures a field that divides the work and then
+refuses to speak, which is worse than not dividing it. It is left in, and
+labelled, rather than deleted: it is the shape of the thing to build, and a
+`cooperate=True` number must not be quoted as a cooperation result until
+the channel exists.
+
+### What this invalidates, explicitly
+
+Rather than editing them to look as though they always said this — CLAUDE.md
+forbids that, and the superseded reasoning is what stops the circle being
+walked again — these sections are **left standing and marked wrong**:
+
+| section | what is dead in it |
+|---|---|
+| "Why five exits? For a reason that no longer exists" | all of it: `EXITS`, the branching factor, the minimum-field-size reading |
+| "The map has routes" / "Routes run between places that resemble each other" (in "The map, and why a clue is not free text") | the reachable set, and every number about candidates per hint |
+| "The lobby is a place on the map, because a hint with no anchor is read against a thousand" | **the reason, not the decision.** A hint is now read against a thousand *wherever* it was heard, so the anchor narrows nothing. The lobby stays on the map because it is where she is, so it is where a searcher's first leg starts and what it costs. |
+| `gazetteer.py`'s `EXITS`, `NEIGHBOURHOOD`, `MAX_PINNED`, `pin_rate`, `playable` | they simulate drawn maps with exits. Kept as the record of a measurement, used by nothing in play. |
+| `descriptors.NEIGHBOURHOOD = 200` | the band it sized is gone. `MIN_SHARED = 16` and `CANDIDATES = 6` survive, and matter *more*: a descriptor true of too few places is now identifying against the whole map. |
+| `REPUTATION_TO_WIN = 140` | was already marked stale; it is now stale for a second reason. She passes it in two moves on the test seed and reaches 3,626 over forty. |
+
+The multi-searcher model was already the blocker on recalibrating that
+threshold ("its catch rate falls as searchers are added, which is backwards
+and is the model rather than the game"). It still is, and the rota above is
+now the first thing a rebuilt one has to get right.
 
 ## What would have to be built, in order
 

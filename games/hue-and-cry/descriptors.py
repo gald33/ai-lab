@@ -272,6 +272,11 @@ CANDIDATES = 6
 #: exits standing says nothing, and one that leaves a single exit hands over
 #: her position. Reproduce with `python3 games/hue-and-cry/descriptors.py
 #: --sweep`.
+#: SUPERSEDED IN PLAY, 2026-09-09 ("we have no routes"): the band this
+#: sized no longer exists, and `sweep` below is the record of how it was
+#: chosen rather than a live parameter. `MIN_SHARED` and `CANDIDATES` are
+#: not superseded and matter more -- a descriptor true of too few places is
+#: now identifying against the whole map, not merely against five exits.
 NEIGHBOURHOOD = 200
 
 

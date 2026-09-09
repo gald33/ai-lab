@@ -31,14 +31,44 @@ def test_she_is_deterministic_given_the_seed():
         == [(x["to"], x["dwell"], x["hint"]) for x in b]
 
 
-def test_she_only_ever_moves_along_an_exit():
-    """She has five exits and no teleport. If this fails the routes have
-    stopped constraining her and the hint stops meaning anything, because a
-    hint is read against her REACHABLE set."""
-    at = START
-    for leg in C.itinerary(SEED, START, WORLD):
-        assert leg["to"] in WORLD.exits(at), f"{at} -> {leg['to']}"
+def test_there_are_no_routes():
+    """Gal, 2026-09-09: *"we have no routes."*
+
+    Written so it can fail for the reason it is named after, which the
+    absence of `Map.exits` alone cannot: reintroduce a reachable set and
+    this goes red, because she would stop leaving the kinship band. It
+    asserts she reaches somewhere that is NOT among the 200 nearest
+    look-alikes of where she stood -- the exact pool the deleted `band()`
+    drew her five exits from.
+    """
+    import gazetteer
+
+    assert not hasattr(WORLD, "exits") and not hasattr(WORLD, "band")
+
+    gaz = WORLD.descriptors
+    at, escaped = START, False
+    for leg in C.itinerary(SEED, START, WORLD, 6):
+        band = [x for _, x in sorted((-gazetteer.kinship(at, x, gaz), x)
+                                     for x in gaz if x != at)][:200]
+        escaped = escaped or leg["to"] not in band
         at = leg["to"]
+    assert escaped, "every hop stayed inside a look-alike band"
+    # Demonstrated rather than assumed, per CLAUDE.md: on this seed 2 of her
+    # first 6 hops land outside the band, so restoring a reachable set of
+    # any kind turns this red.
+
+
+def test_a_hint_leaves_the_reader_a_hundred_places_not_five():
+    """The number the decision was made on, pinned so it cannot drift back.
+
+    With no routes a hint is read against the whole map, and the hint she
+    chooses is the commonest of her three live descriptors -- so the
+    candidate set is large by construction and that is the point. If this
+    falls to single figures somebody has quietly re-narrowed the game.
+    """
+    sizes = sorted(WORLD.cover[max(WORLD.live_hints(n), key=WORLD.cover.get)]
+                   for n in WORLD.descriptors)
+    assert sizes[len(sizes) // 2] > 100, sizes[len(sizes) // 2]
 
 
 def test_every_hint_she_posts_is_true_of_where_she_went():
@@ -51,15 +81,15 @@ def test_every_hint_she_posts_is_true_of_where_she_went():
 
 def test_she_posts_the_least_informative_hint_she_holds():
     """Her whole stated strategy, and the thing the descriptor layer exists
-    to make possible. Anything else is a different control."""
-    at = START
+    to make possible. Anything else is a different control.
+
+    Least informative is now measured against the map rather than against
+    a reachable set, because with no routes the map is what the reader
+    faces.
+    """
     for leg in C.itinerary(SEED, START, WORLD):
-        reachable = WORLD.exits(at)
-        live = WORLD.live_hints(leg["to"])
-        covers = {w: len([x for x in reachable if w in WORLD.descriptors[x]])
-                  for w in live}
+        covers = {w: WORLD.cover[w] for w in WORLD.live_hints(leg["to"])}
         assert covers[leg["hint"]] == max(covers.values())
-        at = leg["to"]
 
 
 def test_she_never_robs_the_same_room_twice():
