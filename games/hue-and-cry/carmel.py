@@ -643,7 +643,7 @@ def itinerary(seed: bytes, start: str, world: Map,
 
 def pursue(world: Map, start: str, home: str, trail: list[dict],
            joined_at: float = 0.0, share: tuple[int, int] = (0, 1),
-           order: str = "beatable") -> tuple[int | None, float]:
+           order: str = "near") -> tuple[int | None, float]:
     """Run one searcher, deducing. Returns (the move it reaches her on, its
     head start).
 
@@ -695,10 +695,28 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
 
         def rank(x: str) -> tuple:
             near = travel_hours(world.places[here], world.places[x])
-            # "beatable": chase the guaranteed interception first, however
-            # far. "near": probe cheaply first, and let beatability break
-            # ties. Which is better is a measurement, not a preference --
-            # see `--calibrate`.
+            # "near" is the default and "beatable" is kept only because
+            # deleting it would delete the measurement that chose between
+            # them. See `--calibrate`; the short version is that chasing the
+            # guaranteed interception first is a TRAP, and an expensive one:
+            #
+            #     PREP  order       caught@3  caught@10
+            #     0.50  beatable          0%         6%
+            #     0.50  near              6%        19%
+            #     1.00  beatable          0%         0%
+            #     1.00  near             38%        50%
+            #
+            # Beatability and probability point opposite ways. The
+            # candidates it can beat her to are the FAR ones, by
+            # construction -- and she prefers near ones, by policy. So an
+            # ordering that chases guarantees walks to the wrong end of the
+            # map first, every time, and the prep factor that was supposed
+            # to expose her instead hides her.
+            #
+            # What is worth reading the stamp for is therefore not "where
+            # do I go first" but "will this journey be worth making at
+            # all". It stays as the tiebreak, which is what a certainty
+            # that is rarely relevant is worth.
             return ((not beatable(x), near, x) if order == "beatable"
                     else (near, not beatable(x), x))
 
@@ -738,7 +756,7 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
           threshold: int = REPUTATION_TO_WIN,
           join_window: float = JOIN_WINDOW_HOURS,
           difficulty: float = DIFFICULTY,
-          cooperate: bool = False, order: str = "beatable") -> dict:
+          cooperate: bool = False, order: str = "near") -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
     **One rule, where this used to have two.** It said:
@@ -799,7 +817,7 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
 
 def _run(world: Map, seed: bytes, names: list[str], searchers: int,
          join_window: float = JOIN_WINDOW_HOURS,
-         cooperate: bool = False, order: str = "beatable") -> dict:
+         cooperate: bool = False, order: str = "near") -> dict:
     w = Map(seed)
     w.descriptors, w.places, w.treasure = (
         world.descriptors, world.places, world.treasure)

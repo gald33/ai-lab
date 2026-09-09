@@ -2964,11 +2964,13 @@ of her preference for near ones. The hint says which places are possible;
 the timestamp says which of those are interceptable; the play is the
 intersection.
 
-So `pursue` sorts the candidates the hint allows into beatable and not, and
-walks the beatable ones nearest-first. It computes prep at difficulty 1.0
-because it cannot see the dial — conservative above 1.0, optimistic below —
-and that asymmetry is left rather than fixed, because a dial only one side
-can see is what the dial is.
+`pursue` computes prep at difficulty 1.0 because it cannot see the dial —
+conservative above 1.0, optimistic below — and that asymmetry is left rather
+than fixed, because a dial only one side can see is what the dial is.
+
+**And acting on this deduction greedily is a trap, which is the part nobody
+would have guessed.** See "The deduction is real and chasing it first is a
+trap" below.
 
 ### It corrects a claim made two commits ago in this document
 
@@ -3001,12 +3003,54 @@ her loot with enough reputation and you lose."* **Sharing a room with her is
 the win, however you came to be in it.** Arriving early is not a wasted
 journey — it is the good outcome, and you wait.
 
+### The deduction is real and chasing it first is a trap
+
+The obvious way to use `e ≤ PREP × t(here, X)` is to go to the beatable
+candidates first: those are guaranteed interceptions, and the rest are
+gambles. That is what `pursue` did when it was written, and it is wrong —
+measured, 16 campaigns per row:
+
+```
+ PREP  order       caught@3  caught@10
+ 0.50  beatable          0%         6%
+ 0.50  near              6%        19%
+ 1.00  beatable          0%         0%
+ 1.00  near             38%        50%
+```
+
+**Zero against fifty.** Beatability and probability point in opposite
+directions. The candidates it can beat her to are the far ones *by
+construction* — that is what the inequality says — and she prefers near ones
+*by policy*, which is the whole reason prep exists. So an ordering that
+chases guarantees walks to the wrong end of the map first, every time, and a
+prep factor meant to expose her instead hides her.
+
+So the default is nearest-first, with beatability as the tiebreak. What the
+stamp is worth reading for is not *"where do I go first"* but *"is this
+journey worth making at all"*, and a certainty about a place she is rarely
+in is worth exactly a tiebreak.
+
+**The searcher's real weapon is that her policy is published.** She is a
+stated control — `carmel.py` is in this repository, and `games/hue-and-cry.md`
+says she is held constant precisely so a searcher's score means something.
+A searcher that probes near candidates first is exploiting `ASSUMED_LAG`,
+not the timestamp. That is legitimate and it is worth saying out loud,
+because it means **the strongest thing an entrant can hold is not the
+gazetteer and not the algorithm, but her published preferences** — and that
+is a third entry requirement this document had not noticed it was creating.
+
+*Which is also why `beatable` is kept in the code rather than deleted.* The
+next person to read `e ≤ PREP × t` will reach for it, as I did. The table
+above is there so they reach for the measurement instead.
+
 ### The first shape of her policy was wrong, and the measurement said so
 
 Her side of the bet is that she cannot price it: pricing needs `e`. The
 first version simply divided the prize by the hours:
 `reputation × cover / (1 + prep)`. That is unboundedly distance-averse, and
-measured over 24 campaigns per row:
+measured over 24 campaigns per row (under the `beatable` ordering, which the
+section above shows was itself costing the searchers most of their catches —
+the shape of the collapse is unaffected, the absolute rates are not):
 
 ```
  PREP  caught 1  caught 3  caught 10  median hop km  rep at 40
@@ -3038,6 +3082,26 @@ is. At `→ 0` she is the hugger above; at `→ ∞` she ignores distance, which
 is the pre-prep game. **12 hours is a guess, and deliberately a guess she
 can be wrong about** — a Carmel who priced this correctly would be reading
 something she cannot see.
+
+It restored her travel, and — under the `beatable` ordering it was measured
+with — it changed nothing else at all:
+
+```
+ PREP   LAG   c@1   c@3  c@10  med hop km   rep@40
+ 0.00    12    4%    8%   33%       4,727    3,506
+ 0.00    48    4%    8%   33%       4,727    3,506
+ 0.50    12    4%    8%   17%         971    3,464
+ 0.50    48    4%    8%   17%       1,358    3,501
+ 1.00    12    0%    0%    4%         577    3,297
+ 1.00    48    0%    0%    4%         986    3,462
+ 2.00    12    0%    0%    4%         420    3,246
+ 2.00    48    0%    0%    4%         971    3,464
+```
+
+Every capture column is identical across a fourfold change in `ASSUMED_LAG`,
+on hops differing by more than twofold. **Her distance preference made no
+difference to whether she was caught** — which was the clue that the problem
+was not on her side of the board at all, and led to the trap above.
 
 ### Difficulty scales prep too
 
