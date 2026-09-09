@@ -79,37 +79,55 @@ def test_every_hint_she_posts_is_true_of_where_she_went():
         assert leg["hint"] in WORLD.descriptors[leg["to"]]
 
 
-def test_she_leans_hard_on_the_least_informative_hint_without_always_taking_it():
+def test_she_leans_on_the_least_informative_hint_by_exactly_as_much_as_WHIM_says():
     """Her stated strategy, softened on 2026-09-09 -- Gal: *"add some
     randomness for all her decisions."*
 
-    This used to assert `cover[hint] == max(cover)` on every single leg.
-    That is now false by design: she draws among her three live
-    descriptors weighted by `cover ** (1 / WHIM)`, so she usually says the
-    vaguest thing she holds and sometimes says a sharper one. The
-    superseded assertion is quoted here rather than deleted, because the
-    thing it was protecting still needs protecting -- a Carmel who picked
-    uniformly would have no strategy at all, and would pass a test that
-    only checked the hint was true.
+    This used to assert `cover[hint] == max(cover)` on every leg, which is
+    now false by design: she draws among her three live descriptors
+    weighted by `cover ** (1 / WHIM)`.
 
-    So: over a long campaign she must take the vaguest available hint far
-    more often than the sharpest. Both bounds matter. The lower one fails
-    if `WHIM` is turned up until she is picking at random; the upper one
-    fails if the draw is quietly reverted to `max`.
+    **The replacement asserted `rate > 0.55` and that was the wrong shape
+    of test twice over.** It went red in CI at exactly 0.550, and it was
+    only ever a number somebody had watched once: the rate depends on the
+    treasure table, because the table decides which rooms she goes to and
+    therefore which live hints she is choosing between -- and `absurd.tsv`
+    is gitignored, so a checkout with `HUE_TREASURE_KEY` and CI compute
+    different ones (50% here, 55% there). Calibrating a constant against
+    one of them is the same defect as the seeds in `test_trail_card.py`.
+
+    So it derives its own target instead. The sampler's definition gives
+    an exact per-leg probability of taking the vaguest hint; the mean of
+    those is what the run should produce, and the assertion is that it
+    does. Then two bounds that no longer need calibrating: the expectation
+    must sit well clear of the 1/3 a coin would give -- turn `WHIM` up to
+    uniform and it fails -- and the observed rate must not be 100%, which
+    is what reverting the draw to `max` would give.
     """
-    vaguest = sharpest = legs = 0
+    def vaguest_odds(landmark: str) -> float:
+        live = [WORLD.cover[w] for w in WORLD.live_hints(landmark)]
+        top = max(live)
+        weights = [(c / top) ** (1 / C.WHIM) for c in live]
+        return max(weights) / sum(weights)
+
+    took, expected, legs = 0, [], 0
     for seed_byte in range(1, 12):
         seed = bytes.fromhex(f"{seed_byte:02x}" * 32)
         for leg in C.itinerary(seed, START, WORLD, 20):
             live = [WORLD.cover[w] for w in WORLD.live_hints(leg["to"])]
-            mine = WORLD.cover[leg["hint"]]
+            took += WORLD.cover[leg["hint"]] == max(live)
+            expected.append(vaguest_odds(leg["to"]))
             legs += 1
-            vaguest += mine == max(live)
-            sharpest += mine == min(live) and min(live) != max(live)
+
     assert legs > 100, legs
-    assert 0.55 < vaguest / legs < 0.95, (
-        f"she took the vaguest hint on {vaguest / legs:.0%} of {legs} legs")
-    assert sharpest > 0, "she never once said the sharper thing"
+    rate, target = took / legs, sum(expected) / len(expected)
+    assert abs(rate - target) < 0.12, (
+        f"she took the vaguest hint on {rate:.1%} of {legs} legs, and"
+        f" WHIM={C.WHIM} predicts {target:.1%}")
+    assert target > 0.45, (
+        f"WHIM={C.WHIM} leaves her only a {target:.1%} lean on the vaguest"
+        f" hint, against {1 / 3:.1%} for a coin: that is not a strategy")
+    assert rate < 0.95, "the draw has been reverted to max"
 
 
 def test_she_never_robs_the_same_room_twice():

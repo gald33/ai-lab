@@ -3413,6 +3413,19 @@ with probability proportional to `score ** (1 / WHIM)`:
 
 `WHIM = 0.35`, a guess, swept in `--calibrate`.
 
+**On the hint it is a much weaker knob than it looks**, and that had to be
+computed rather than eyeballed. Her three live descriptors usually have
+*similar* cover — the median ratio between the widest and the narrowest of
+them is 1.97 — so a temperature that would be sharp against spread-out
+options is mild against these. At 0.35 the exact probability she takes the
+vaguest of the three is **59% mean, 55% median**, against 33% for a coin.
+
+That is a real lean and not much of one, and it is a fact about the
+*vocabulary* rather than about the temperature: `MIN_SHARED = 16` and the
+"six rarest" candidate rule were built to stop any descriptor being rare,
+which also stops the three at a landmark being far apart. Sharpening her
+hint materially means 0.12 or lower (77%), not a nudge from 0.35.
+
 ### What it costs her, which is a lot
 
 ```
@@ -3503,6 +3516,26 @@ and would pass a test that only checked her hint was true.**
 all four started escaping. That guard existed to make sure `kept` was
 exercised on a catch, and the constructed-result test does that directly on
 something no change to the chase can turn into a different outcome.
+
+**And the replacement for the first one was wrong in the same way as the
+thing it replaced.** It asserted `rate > 0.55`, went red in CI at exactly
+0.550, and was only ever a number somebody had watched once — the rate
+depends on the treasure table, since the table decides which rooms she goes
+to and therefore which live hints she is choosing between. With
+`absurd.tsv` present it is 50%, without it 55%. That is the *third* check in
+this game calibrated against a checkout that can decrypt the treasures, and
+the pattern is worth naming:
+
+> **A hue-and-cry test that hard-codes a number measured from a run is a
+> test with two answers**, because half the inputs are sealed. Derive the
+> expectation, or assert a shape.
+
+So it derives it: the sampler's own definition gives an exact per-leg
+probability of taking the vaguest hint, the run must match the mean of
+those, and the two bounds either side need no calibrating — the expectation
+must sit clear of the ⅓ a coin gives (turn `WHIM` up and it fails, which was
+run), and the observed rate must not be 100% (revert the draw to `max` and
+it fails).
 ## The map is the real one now, and it moves
 
 *Gal, 2026-09-09, three asks in one line: "can we overlay it on the real
