@@ -472,6 +472,24 @@ class Manager:
         self.refusals.append({"episode": self.episode + 1, "trader": author,
                               "kind": kind, "reason": reason,
                               "line": kept})
+        # **An imposture is the one refusal the board must carry**, and the
+        # private path below is wrong for it twice over.
+        #
+        # `CLAUDE.md`: "a line from any other key is recorded, said out loud
+        # once, and costs the game its ranking." Visibility *is* the mechanism
+        # here -- interference is not prevented, it is made visible -- so a
+        # whispered imposture is the mechanism not running.
+        #
+        # And the reason is not the author's private business, because there is
+        # no author: the line did not come from the seat it names. Sending it
+        # privately reaches whoever holds that seat legitimately, who did not
+        # write the line, while the public pointer left behind reads "@T2
+        # something you sent did not settle" -- telling the room that T2's own
+        # message failed, for a message T2 never sent. Measured: that was the
+        # entire public record of an imposture, and it named the victim.
+        if kind == "imposture":
+            self.say(f"@{author} not settled: {reason}")
+            return
         if self._whisper_to(author, f"not settled: {reason}"):
             self._point_at_inbox(author)
             return

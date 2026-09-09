@@ -34,12 +34,32 @@ jobs:
       # test file nothing runs -- the same shape as the `viewer/tests`
       # omission above, found the same way and worth only one paragraph
       # because the fix is the same: name the directory.
+      #
+      # **Eight of the repo's thirteen test directories were missing from this
+      # line**, surveyed 2026-09-09: `island/tests` (which had two failing
+      # tests nobody could see), `experiment/tests`, and every other
+      # experiment's suite -- 321 tests in 52s, none of them behind a tick.
+      # Two of those omissions are described above as one-offs; four is not a
+      # run of bad luck, it is a hand-maintained list drifting from the tree.
+      #
+      # So `tools/tests/test_workflows.py` now derives the answer instead:
+      # every directory holding a `test_*.py` must be named here, and an
+      # exception has to be written down with its reason. That test is what
+      # keeps this list honest; this list is no longer what keeps itself
+      # honest.
       - run: >
           python -m pytest
           games/island/tests
           games/hue-and-cry
           experiments/does-a-content-free-protocol-help/tests
           experiments/does-a-content-free-protocol-help/viewer/tests
+          experiments/does-a-content-free-protocol-help/experiment/tests
+          experiments/does-a-content-free-protocol-help/island/tests
+          experiments/do-they-take-a-handed-over-answer/tests
+          experiments/does-telling-traders-what-to-disclose-help/tests
+          experiments/how-wrong-can-a-shared-convention-be/tests
+          experiments/which-part-of-a-convention-works/experiment/tests
+          experiments/which-promotion-rule-beats-luck/experiment/tests
           tools/tests
           -q
 
