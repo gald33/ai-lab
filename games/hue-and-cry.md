@@ -2303,6 +2303,79 @@ settler to score a game as a loss, and there is no settler. What is left is
 weaker and honest: **a campaign nobody can check is a campaign nobody
 counts.**
 
+## Should Switchboard grow a hash tool? Not yet, and here is the shape of it
+
+*Gal, 2026-09-09: "when we derive the workspace is the hash a module of what's
+being done? that is, can we add a tool with small refactoring without really
+adding anything? should we?"*
+
+### It is not a module, so a tool would be new surface and not exposure
+
+Read against the installed 2.2.1 wheel. SHA-256 appears three times in three
+different preimage shapes, none of them factored out:
+
+```
+rooms.workspace_for   ordinary token   sha256(token.utf8)              no domain separation
+rooms.workspace_for   write token      sha256(info ‖ version ‖ pubkey)
+rendezvous            cadence phase    sha256(token ‖ 0x00 ‖ topic)
+```
+
+There is no helper to expose. And "small" is misleading in a second way: a
+generic hash tool has to decide what its input *is* — one string, a list of
+parts, which separators, hex or utf-8 — and that decision is the entire
+design. `sha256(utf8)` would not serve this game's three-part preimage; a
+tool general enough to serve it is a small encoding language.
+
+### The obvious way out does not work, and it is worth writing down why
+
+If the token were plain text — `hue-and-cry/v1/<salt>/<name>` — nobody would
+hash anything. The agent builds a string, hands it to `join_room`, and the
+library does the hashing it already does. The security property survives
+intact: *"an ordinary token is a secret somebody minted, and knowing it is
+what admits you"*, and the hub only ever sees the workspace.
+
+**It fails on the one thing the address must do: not say where it is.** She
+posts an address in the room she leaves. A plaintext token names the
+landmark, so the direct route would hand over the map a few rooms in. The
+token has to be a hash *because it is published*.
+
+### Which maps the tool gap exactly onto the design's two affordances
+
+This document already splits them: *"the hash is the direct route, usable at
+once by whoever is standing where she stood; the hint is the indirect one,
+for everyone else, who must work a name out and derive the room themselves.
+Being in the right place buys immediacy. Being clever buys a way in without
+it."*
+
+- **The direct route needs no hashing.** She hands you the token; you hand it
+  to `join_room`. An agent holding only Switchboard can do this.
+- **The indirect route is exactly one SHA-256.** Think of a name, derive the
+  room, get ahead of her.
+
+So an MCP-only agent is not locked out — **it is restricted to following the
+chain and cannot get ahead**, which is the strategy the whole game is about.
+That is a sharper statement of the cost than "it cannot play", and it is the
+reason this is a real question rather than a formality.
+
+### The recommendation is no, for now
+
+- It is new surface in a coordination library, with a genuine design question
+  attached, for a need one game invented. Switchboard did not ask for it.
+- The exclusion is partial and the excluded population is currently empty:
+  every agent in this lab is a session with a shell, and one line of
+  `hashlib` closes it.
+- If it turns out to matter it will be visible — a campaign where entrants
+  can only follow and never intercept looks different from one where they
+  can, and that is measurable rather than arguable.
+
+**What goes in the brief instead**: playing the deduction strategy needs one
+SHA-256 outside Switchboard. That is an entry requirement, stated, rather
+than a surprise somebody meets at the moment they try to be clever.
+
+*Open, and deliberately: if bare-MCP entrants ever matter here, the tool is
+the answer and not a wrapper — CLAUDE.md refuses a second surface, and a
+digest tool on the one surface is not one.*
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
