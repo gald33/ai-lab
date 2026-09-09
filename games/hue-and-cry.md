@@ -2009,6 +2009,120 @@ never guesses ahead. It is a floor. A searcher that guessed *ahead* would
 break the arithmetic outright, since the gap only holds while it walks her
 legs.
 
+## Difficulty from recent campaigns, and the measurement it would quietly eat
+
+*Gal, 2026-09-09: "We could take her time values and use them with a factor
+for difficulty so we can balance the next game based on recent ones."*
+
+It is the right knob. Her dwell is the only thing that closes the gap
+between her and a follower, so scaling it scales the whole contest — and it
+does so without touching the map, the treasures, or what anything is worth.
+`carmel.py` carries it as `DIFFICULTY`, a multiplier on the hours a theft
+costs her, and `next_difficulty()` is the controller.
+
+**And it must be fenced, because a controller that holds an outcome constant
+destroys the outcome as a measurement.** Suppose the searchers get better —
+better coordination, a note-reading policy instead of a trail-walker. Their
+win rate rises, the controller lowers the difficulty, the win rate returns
+to 50%. *The improvement is absorbed and the metric never moves.* A field
+that improved and a field that never did produce the same number.
+
+This lab has that result already, in a different costume: 001's timing
+predictor became well calibrated and bought no completion time at all.
+
+The sweep makes it arithmetic rather than a worry. Over 120 campaigns at
+three searchers, discarding the first third:
+
+```
+gain  window   win rate   mean factor   factor swing
+1.20      10       51%        0.85           0.27
+1.20      20       51%        1.19           0.55
+1.10      20       51%        0.94           0.18
+1.05      20       44%        0.94           0.15
+1.02      20       48%        0.91           0.03   <- committed
+1.02      40       52%        0.91           0.04
+```
+
+**Every row hits the target.** A controller aimed at 50% produces 50%
+whatever its gain — the same number for a well-damped loop and for one
+swinging between 0.4 and 1.5. The column that discriminates is the factor,
+by a factor of twenty.
+
+So three rules, and they are the same rule three times:
+
+- **A ranked campaign runs at a fixed, published factor.** Adaptive
+  difficulty is for play. A game whose factor moved between the campaigns
+  being compared is kept, counted, and **never ranked** — CLAUDE.md's rule
+  for the weaker thing, applied verbatim.
+- **The factor is part of the level key**, recorded with every campaign
+  beside the branching factor and the exit count, so a pooled result can be
+  split by it afterwards rather than discovered to be unsplittable.
+- **The difficulty curve is the finding**, not the win rate. How much slower
+  she has to be made, over time, to stay level is a number that moves when
+  the field improves — which is exactly what the win rate stops doing.
+
+## Notes in the lobby, and what one liar is worth
+
+*Gal, same conversation: "The players can also write notes to help or to
+confuse others."*
+
+The first thing to work out is what a note can even say. **Not "she went
+from here to X"** — the `CLUE` line in the room she left carries the exact
+workspace, so anybody standing there reads the truth and a note contradicting
+it is ignored. *The hash beats the note, always.*
+
+What a note carries is **position further along the trail than the reader has
+walked**. A searcher four rooms behind cannot know room seven exists; a note
+naming it lets them skip the chain instead of walking it. That is the only
+thing in this game that beats the arithmetic in "Carmel, built", where a
+trail-follower's gap can never close by more than what she steals.
+
+Which makes the trade sharp on both sides. A true note converts somebody
+else's walking into your position. A false one costs a whole leg of travel
+in the wrong direction, and **the reader cannot tell which until they
+arrive**.
+
+They go in the lobby, which is public and which nobody has to leave to read:
+rooms here cannot forbid multi-membership, so a searcher watches the lobby
+while travelling. The property that made the omnipresence problem real is
+being used on purpose — notes are broadcast, and so is the lie.
+
+### Measured, over 120 campaigns with four searchers
+
+```
+liars of 4   believes anyone   stops believing a liar
+        0          92%                  92%
+        1          73%                  82%
+        2          42%                  52%
+        3          33%                  38%
+```
+
+**Honest notes are worth almost nothing and one liar is worth a great deal.**
+Nobody talking at all catches her 92% of the time; everybody talking
+honestly, also 92%. The trail-walk is already close to the best a follower
+can do, so truth adds nothing to it — while a single liar in four takes
+nineteen points off the field. *The channel is worth more to a liar than to
+a truthteller*, which is a fact about this game's information structure and
+not a moral one.
+
+The second column is the cheapest defence there is: act on a note, find
+nothing where it said, never believe that author again. One bit per person,
+no reputation system, no voting, no gossip. It recovers nine of the nineteen
+points at one liar and **stops working when the liars are half the field** —
+by the time you have burned one you have already followed the other. That
+boundary is where the interesting play is, and it is the reason notes are
+worth having in the game rather than an argument against them.
+
+`test_field.py` asserts the mechanism rather than the statistic: an honest
+field wastes exactly zero legs, and a field with one bit of memory wastes at
+most `searchers × liars` however long the campaign runs. Twenty-five
+campaigns cannot tell nine points from noise, so the catch rates live in
+`python3 games/hue-and-cry/field.py` and not in a test.
+
+**Nothing here settles anything.** The manager does not read the lobby, no
+score depends on who said what, and a liar is therefore playing the game
+rather than cheating at it.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

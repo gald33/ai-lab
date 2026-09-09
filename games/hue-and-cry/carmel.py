@@ -106,6 +106,20 @@ LOBBY = "hue-and-cry"
 #: hunting her until somebody reads the lobby.
 JOIN_WINDOW_HOURS = 12
 
+#: What a theft costs her, as a multiplier on the hours. 1.0 is the
+#: treasure's own dwell.
+#:
+#: Gal, 2026-09-09: *"We could take her time values and use them with a
+#: factor for difficulty so we can balance the next game based on recent
+#: ones."* It is the right knob -- her dwell is the only thing that closes
+#: the gap, so scaling it scales the whole contest, and it does so without
+#: touching the map, the treasures or what anything is worth.
+#:
+#: **A campaign run at a factor other than 1.0 is not comparable to one run
+#: at 1.0, and must not be pooled with it.** See `next_difficulty` for why
+#: that is a rule and not a caution.
+DIFFICULTY = 1.0
+
 
 def travel_hours(a: dict, b: dict) -> float:
     lat1, lon1, lat2, lon2 = map(
@@ -167,12 +181,16 @@ class Carmel:
     """A fixed, stated policy. Held constant so a searcher's score means
     something."""
 
-    def __init__(self, world: Map, start: str):
+    def __init__(self, world: Map, start: str, difficulty: float = DIFFICULTY):
         self.world = world
         self.at = start
         self.reputation = 0
         self.emptied: set[str] = set()
         self.clock = 0.0
+        #: Scales what standing still costs her. She does not know it and
+        #: cannot: it is set from campaigns she has already lost or won, and
+        #: nothing she can read says what it is.
+        self.difficulty = difficulty
 
     # --- 1. where to go ---------------------------------------------------
     def choose_destination(self) -> str:
@@ -241,11 +259,11 @@ class Carmel:
         """
         return not seen and destination not in self.emptied
 
-    def take(self, destination: str) -> int:
+    def take(self, destination: str) -> float:
         prize = self.world.treasure[destination]
         self.emptied.add(destination)
         self.reputation += prize["reputation"]
-        return prize["dwell"]
+        return prize["dwell"] * self.difficulty
 
 
 class Searcher:
@@ -275,6 +293,88 @@ class Searcher:
         place it can be read. Nothing is broadcast.
         """
         return trail.get(self.at)
+
+
+#: What the controller aims at, and the widest it may move. The target is a
+#: guess; the bounds are a safety rail.
+TARGET_WIN_RATE = 0.5
+DIFFICULTY_BOUNDS = (0.4, 3.0)
+
+#: How hard it corrects, and over how many campaigns. MEASURED, and the
+#: measurement makes the point this whole function is fenced with.
+#:
+#: Swept over 120 campaigns at three searchers, discarding the first third:
+#:
+#:     gain  window   win rate   mean factor   factor swing
+#:     1.20      10       51%        0.85           0.27
+#:     1.20      20       51%        1.19           0.55
+#:     1.10      20       51%        0.94           0.18
+#:     1.05      20       44%        0.94           0.15
+#:     1.02      20       48%        0.91           0.03   <- here
+#:     1.02      40       52%        0.91           0.04
+#:
+#: **Every row hits the target.** A controller aimed at 50% produces 50%
+#: whatever its gain, which is what a controller is for and is exactly why
+#: the win rate cannot be read as a result: it is the same number for a
+#: well-damped loop and for one swinging between 0.4 and 1.5. The column
+#: that discriminates is the factor, and the factor is therefore the only
+#: thing here worth reporting.
+DIFFICULTY_GAIN = 1.02
+DIFFICULTY_WINDOW = 20
+
+
+def next_difficulty(recent: list[bool], current: float = DIFFICULTY,
+                    target: float = TARGET_WIN_RATE) -> float:
+    """The factor for the next campaign, from how the last few went.
+
+    `recent` is oldest-first, one boolean per finished campaign: did she
+    win. Above target she gets slower thefts, below it faster ones, by a
+    proportional step that is bounded at both ends -- a controller that can
+    reach any factor can make the game trivially easy or unwinnable, and the
+    numbers either side of that would still be recorded as results.
+
+    WHAT THIS COSTS, AND IT IS NOT SMALL
+    ------------------------------------
+
+    **An adaptive difficulty erases the thing the experiment measures.**
+    Suppose the searchers get better -- new tools, better coordination, a
+    real note-reading policy instead of a trail-walker. Their win rate goes
+    up, the controller lowers the difficulty, and the win rate comes back to
+    50%. *The improvement is absorbed and the metric never moves.* A
+    controller holding an outcome constant is indistinguishable from a field
+    that never improved, and this lab already has that result written down
+    in a different costume: 001's timing predictor became well calibrated
+    and bought no completion time at all.
+
+    So:
+
+    - **A ranked campaign runs at a fixed, published factor.** Adaptive
+      difficulty is for play, not for measurement, and a game whose factor
+      moved during or between the campaigns being compared is kept and
+      counted and **never ranked**, which is CLAUDE.md's rule for the weaker
+      thing verbatim.
+    - **The factor is part of the level key**, recorded with every campaign
+      beside the branching factor and the exit count, so a pooled result can
+      be split by it afterwards rather than discovered to be unsplittable.
+    - **What the controller produces is a difficulty curve, and that is the
+      finding it can honestly support** -- how much slower she has to be
+      made, over time, to stay at 50%. That number moves when the field
+      improves, which is exactly what the win rate stops doing. The sweep
+      under `DIFFICULTY_GAIN` shows this is not a worry but an arithmetic
+      fact: four settings, four win rates within a point of each other, and
+      factor swings differing by twentyfold.
+
+    There is no ledger here yet. This is a pure function of outcomes somebody
+    else keeps, deliberately: where campaign records live is a decision about
+    the manager, and the manager is not built.
+    """
+    if not recent:
+        return current
+    recent = recent[-DIFFICULTY_WINDOW:]
+    rate = sum(recent) / len(recent)
+    lo, hi = DIFFICULTY_BOUNDS
+    factor = current * (DIFFICULTY_GAIN ** ((rate - target) / max(target, 1e-9)))
+    return round(min(hi, max(lo, factor)), 3)
 
 
 def open_campaign(seed: bytes, start: str) -> str:
@@ -307,7 +407,7 @@ def open_campaign(seed: bytes, start: str) -> str:
 
 
 def itinerary(seed: bytes, start: str, world: Map,
-              limit: int = 40) -> list[dict]:
+              limit: int = 40, difficulty: float = DIFFICULTY) -> list[dict]:
     """Where she goes and how long she stands still, ignoring the searchers.
 
     She can be simulated on her own because **the reference searcher never
@@ -318,7 +418,7 @@ def itinerary(seed: bytes, start: str, world: Map,
     simulated together; that is a reason to keep `seen` in her policy, not a
     reason to model it here.
     """
-    her = Carmel(world, start)
+    her = Carmel(world, start, difficulty)
     out = []
     for _ in range(limit):
         destination = her.choose_destination()
@@ -372,7 +472,8 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
 def chase(seed: bytes, start: str, searchers: int = 2,
           limit: int = 40, world: Map | None = None,
           threshold: int = REPUTATION_TO_WIN,
-          join_window: float = JOIN_WINDOW_HOURS) -> dict:
+          join_window: float = JOIN_WINDOW_HOURS,
+          difficulty: float = DIFFICULTY) -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
     Two rules that look like one and are not, both from
@@ -386,7 +487,7 @@ def chase(seed: bytes, start: str, searchers: int = 2,
       is no other.*
     """
     world = world or Map(seed)
-    trail = itinerary(seed, start, world, limit)
+    trail = itinerary(seed, start, world, limit, difficulty)
 
     names = sorted(world.descriptors)
     caught_on, lags = None, []
