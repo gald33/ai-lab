@@ -2886,6 +2886,157 @@ first is the one every measurement in this document was taken on.
 is Gal's to make rather than mine to assume — which is what I did by
 carrying `EXITS = 5` forward without noticing what it now meant.
 
+## Three maps, and only one of them is the map
+
+*Gal, 2026-09-09: "I wonder if we want to show the map visually."*
+
+Yes -- and the answer has to say **which** map, because there are three of
+them behind that word and they are not interchangeable. One is free, one
+turned out to be a finding, and one is the open question in the section
+above being decided by whoever draws the picture.
+
+| | what it draws | what publishing it costs |
+|---|---|---|
+| **the world** | the 1,000 landmarks at their real coordinates | nothing. `landmarks.tsv` is committed and public |
+| **the trail** | where she actually went, after the reveal | nothing. `close_campaign` publishes the seed, and the seed yields all of it |
+| **the routes** | her five exits from every room | the routes-public question, decided |
+
+Built: `games/hue-and-cry/trail_card.py`, which draws the first two and
+refuses the third.
+
+    python3 games/hue-and-cry/trail_card.py --out /tmp/trail.svg
+
+### The routes are the decision, and a picture makes it without saying so
+
+"Which makes the exit count a choice about how big a game this is" leaves
+open whether a searcher is handed the routes -- *"that is Gal's to make
+rather than mine to assume"* -- and prices both games: 2.6 candidates a
+hint with a 352 KB entry requirement, 115 without one and none.
+
+**A drawing of the routes is that choice, made by whoever drew it.** It
+hands the derivation to anybody who can see the card, and it does so in a
+form nobody reads as an entry requirement, which is the worst way to settle
+it: the routes-public game arrives without the sentence that says the game
+changed. So the card has no route layer and **no flag for one**. The flag
+is the part that is deliberate -- an off-by-default switch is the same
+decision left lying where somebody who does not know it is a decision can
+flip it.
+
+Two tests hold it, and they are independent on purpose: one monkeypatches
+`Map.exits` to raise, so the card cannot compute a route; the other asserts
+that no landmark but the trail's own is *named* on the card, so it cannot
+leak one by another road. Break the refusal and both go red -- which was
+run, per "a check is green for the reason it names".
+
+### Geography is not the map that decides play, and that is worth drawing carefully
+
+Routes are drawn from descriptor kinship, not from distance ("Routes run
+between places that resemble each other"). `python3
+games/hue-and-cry/trail_card.py --survey`, over 150 landmarks and every
+exit of each:
+
+```
+median distance along one of her exits            4,183 km
+median distance between two landmarks at random   6,897 km
+her exits among the  5 geographically nearest         3.1%   (chance: 0.5%)
+her exits among the 50 geographically nearest        15.1%   (chance: 5.0%)
+```
+
+**The survey is seeded** (`SURVEY_ROOT`), because these numbers were first
+quoted from an unseeded run and did not come back the same -- which makes
+them an anecdote rather than a measurement, and `CLAUDE.md` asks for the
+command that re-checks. `--seed` varies the root, and the honest report of
+what moves when it does is: the two medians and the fifty-nearest row are
+stable to within a few percent, the **five-nearest row is not** (3.1% on
+one root, 1.9% on another -- it is counting a handful of hits), so the
+claim rests on the fifty.
+
+Kinship leans geographic -- about 3x enrichment in the fifty nearest -- and
+is nothing like geographic. **So a reader who takes adjacency on a world map
+for adjacency in the game has it exactly backwards**, and would conclude
+she moves to nearby places when what she does is move to places that sound
+alike. That is an argument for drawing the trail, which is a fact about
+where she went, and against ever drawing a route network on a geographic
+projection, which would be a false picture of what is next to what. If the
+routes are ever published, the honest drawing of them is a kinship graph
+and not a map.
+
+### Framing it found the thing the numbers had not said
+
+Nobody had asked how big a campaign is, because nothing needed to know
+until something had to be framed. Over 200 campaigns, two searchers
+(`--survey`):
+
+```
+legs per campaign   median  3          min     1   max      4
+span                median  2,761 km   min   406   max 18,259
+countries visited   median  4          min     2   max      5
+```
+
+**A campaign happens inside a box a couple of thousand kilometres across,
+on a map 40,075 km around** -- 2,761 km on this root and 2,111 km on
+another, so the number to carry is the order of magnitude and not the
+digits. A whole-world drawing renders the entire chase as a smudge three
+pixels wide, which is why the card is the box at a readable scale with the
+world as a locator inset.
+
+It also qualifies the sentence the section above is named after. *"There
+are 1000 landmarks, every one of them is a possibility"* is true of the map
+and false of any single campaign, which touches four countries and never
+leaves one corner of it. The 57x is a claim about what a hint is worth
+against the map; it is not a claim that she is ever plausibly anywhere.
+**Whether that is a defect is not settled here** -- trail length is set by
+`REPUTATION_TO_WIN`, which "was wrong by a factor of six" already has open,
+and three legs may simply be what 140 buys. It is recorded because the
+measurement did not exist an hour ago and the argument about field size was
+being made without it.
+
+### The basemap is the gazetteer, which is not a saving on a dependency
+
+There are no coastlines on the card and no shapefile behind it. The faint
+dots are the thousand landmarks, and they read as continents because that
+is where landmarks are. This is the honest picture rather than the cheap
+one: **the world of this game is those thousand places**, and a searcher
+choosing where to wait chooses among dots on that field and not among
+countries. A borrowed coastline would draw a world with places in it that
+this game does not have.
+
+### And drawing it found a bug in the accounting, which is the argument for drawing it
+
+The first card credited her with the treasure in the room she was caught
+in. It should not have, and `carmel.chase` never did: the catch is walking
+in **while she is still standing there**, so the final room of a caught
+campaign is always one she was mid-theft in, and `chase` returns
+`trail[caught_on - 1]["reputation"]` -- her total *before* it. The card
+printed that number in its header beside a map claiming she had emptied the
+room the number excludes. Two numbers on one picture, disagreeing, which is
+a thing a table of results will let you get away with for a long time.
+
+`kept()` in `trail_card.py` is the fix and `test_trail_card.py` holds it.
+
+**`close_campaign` has the same bug and is deliberately not fixed here.**
+It computes `took = [leg["to"] for leg in trail if leg["dwell"]]` and
+posts *"N rooms, len(took) of them emptied"*, so a caught campaign
+overstates her by one -- and `test_carmel.py` only ever exercises it on a
+trail she survived, which is why nobody had seen it. It is left because
+**that post is hers**: what Carmel says when a campaign closes is a design
+question this document has a section about, not a rounding error, and
+correcting her arithmetic in passing is the drift `CLAUDE.md` opens with.
+
+### What the card is, and what it is not
+
+It is a **post-reveal artifact**. Everything on it -- the trail, the hints,
+the treasures -- is already published by the closing post, which carries
+the seed; handed out mid-campaign it would give searchers the trail they
+were supposed to be deducing. Nothing enforces that, exactly as nothing
+enforces that she posts the seed at all.
+
+It is **static SVG with no script in it**, which is why `test_trail_card.py`
+is allowed to assert on markup: `CLAUDE.md`'s browser rule governs what a
+page *does*, and the card only says. The first test in that file is the one
+that checks that claim is still true, since it is the premise the other ten
+rest on.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
