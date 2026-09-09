@@ -3280,21 +3280,43 @@ and three legs may simply be what 140 buys. It is recorded because the
 measurement did not exist an hour ago and the argument about field size was
 being made without it.
 
-**Re-measured after the prep clock, and it got smaller rather than
-larger:**
+**Re-measured twice the same day, and it moved both ways.** After the prep
+clock:
 
 ```
 legs per campaign   median  2        min   1   max     2
 span                median  653 km   min 266   max 1,174
-countries visited   median  3        min   2   max     3
 ```
 
-Two legs and 653 km. Prep makes distance cost her, so she hugs; the
-threshold is still two thefts, so it ends before she has to stop hugging.
-**The two numbers compound in the same direction and the campaign shrinks
-to a city and its neighbours.** That makes the case for recalibrating
-`REPUTATION_TO_WIN` sharper than it was — a chase that is over in two rooms
-is not a chase — and it is the one number now holding the game small.
+Two legs and 653 km — prep makes distance cost her, so she hugged, and the
+threshold still ended it in two thefts, so the campaign shrank to a city and
+its neighbours.
+
+Then her decisions gained their randomness, and it went back out:
+
+```
+legs per campaign   median  3
+span                median  4,619 km
+countries visited   median  3
+```
+
+60 seeded campaigns, two searchers. She travels again because she is no
+longer taking the cheapest hop every time, so the campaign is a continent
+rather than a city — and #250's original 2,761 km turns out to have been
+nearer the truth than the number that replaced it.
+
+**The lesson is about the measurement, not the number.** Campaign shape is
+downstream of every parameter in `carmel.py`, so it is not a fact about the
+game that can be quoted once. It has been measured three times in one day
+and given three answers, each correct for the policy in force that hour.
+Anything that depends on it — the flight page's weight, the "a campaign
+stays in Europe" premise in `test_trail_flight.py` — has to **derive** it
+rather than cite it, which is why that test now picks its local campaign by
+span instead of by name.
+
+What survives all three: **`REPUTATION_TO_WIN` still ends a campaign in two
+or three thefts**, which is the one number holding the game small, and the
+case for recalibrating it is unchanged.
 
 ### ~~The basemap is the gazetteer, which is not a saving on a dependency~~
 
