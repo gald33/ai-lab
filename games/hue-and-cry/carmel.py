@@ -378,32 +378,37 @@ def next_difficulty(recent: list[bool], current: float = DIFFICULTY,
 
 
 def open_campaign(seed: bytes, start: str) -> str:
-    """The notice she posts in the lobby when she starts stealing.
+    """The notice she leaves in the lobby when she starts stealing.
 
     Gal, 2026-09-09: *"she would start a new campaign for stealing things.
     Then once she goes to the first room, she also posts a note in some
     lobby. And then whoever wants to join the hunt, just join the hunt."*
 
-    Two things follow, and they are the reason this function exists at all
-    rather than the game simply beginning.
+    **It is not a command, because there are none.** Gal, the same day: *"we
+    have no commands here, either Carmel sees you in the room and you win,
+    or she goes to hiding with her loot with enough reputation and you
+    lose."* Nothing parses this. There is no verb, no manager to recognise
+    one, and no settlement to trigger. It is a line of text with a room
+    address in it, and what makes the address useful is that a person can
+    read it and go there.
+
+    Two things still follow from it existing at all.
 
     **She starts it.** Nobody convenes a match. A campaign is a thing she
     does, and the field assembles around it or does not.
 
-    **Joining is not a move.** There is no `JOIN` line and nothing to
-    approve, because "knowing a landmark's name is what admits you" and this
-    game has no permission model to ask. The notice carries the room she is
-    starting from; going there is the whole of joining. That is a smaller
-    lobby than the island's, which settles `OPEN`, `JOIN` and `MANAGE` --
-    here only the first is a line, and the other two are somebody walking in.
+    **Joining is not a move.** There is nothing to approve, because "knowing
+    a landmark's name is what admits you" and this game has no permission
+    model to ask. Going to the room is the whole of joining.
 
-    The address is the opening landmark's, not her current one. She posts it
-    on the way out, so by the time anybody reads it she has gone -- which is
-    the same one-room head start the trail gives everybody afterwards, and
-    the reason the game is findable at all: with a thousand rooms and nothing
-    broadcast, a searcher with no lead never finds her.
+    The address is the opening landmark's, and she leaves it on the way out,
+    so by the time anybody reads it she has gone. That is the same one-room
+    head start the trail gives everybody afterwards, and the reason the game
+    is findable at all: with a thousand rooms and nothing broadcast, a
+    searcher with no lead never finds her.
     """
-    return f"OPEN {token_for(seed, start)}"
+    return (f"She has begun. She was last in {token_for(seed, start)}"
+            " and she is not there now.")
 
 
 def itinerary(seed: bytes, start: str, world: Map,

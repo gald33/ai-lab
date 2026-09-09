@@ -30,6 +30,44 @@ If a conversation returns to a question this file or the documents it points
 to already answer, that is a defect in the writing, not in the person asking.
 Fix the writing.
 
+## Which game a rule governs
+
+*Added 2026-09-09, by Gal: "this is completely different game/experiment. it
+has no settler or manager, it has only Carmel. CLAUDE.md in this folder
+shouldn't mix those."*
+
+Several sections below were written while there was one game, and they name
+its machinery — a **manager**, an **episode**, a **round**, a **bell**,
+`eff_episode`. They read as lab-wide standing decisions and they are not.
+The cost of that was paid immediately: a settler and a manager were built
+for **hue and cry**, which has neither, because this file said the economy
+is a manager function that settles formatted messages and nothing said that
+sentence was about the island.
+
+So, explicitly:
+
+| section | governs |
+|---|---|
+| A decision is written down in the same sitting | **the lab** |
+| The weaker thing is allowed | **the lab** |
+| The board is the only surface | **the island** |
+| Agents run themselves. There is no scheduler. | **the lab**, except the manager sentences, which are the island's |
+| Timing | **the island** |
+| Vocabulary | **the island** |
+| Switchboard is the only interface | **the lab** |
+| A page's behaviour is checked in a browser | **the lab** |
+| Metrics | **the island** |
+| Process | **the lab** |
+
+**Hue and cry has no manager and no settler. It has Carmel.** She runs, she
+posts, people chase her, and the seed she publishes at the end is what makes
+anything checkable — there is no refereeing component and no economy. Its
+design is `games/hue-and-cry.md` and nothing in the island's sections below
+applies to it except where that document says so.
+
+A rule that turns out to want to be lab-wide gets moved up here with its
+reasoning, rather than being quietly assumed to have been all along.
+
 ## The weaker thing is allowed, and never allowed to look like the stronger one
 
 Recurring, and the reason several of the island's rules take the shape they
@@ -49,6 +87,9 @@ signed it, and a line from any other key is recorded, said out loud once, and
 costs the game its ranking. See `games/island.md`, "A key that was handed on".
 
 ## The board is the only surface
+
+*The island's. Hue and cry has no economy and no manager -- see
+"Which game a rule governs".*
 
 **There are no primitives other than what Switchboard provides.**
 
@@ -106,6 +147,10 @@ formatted messages that declare production, propose an exchange or approve one,
 settles them, and keeps score. It never tells an agent to do anything and never
 asks an agent for anything.
 
+*That paragraph is the island's. The rest of this section -- long-lived
+sessions, no turn-taking, nobody prompted to act -- is the lab's, and holds
+for a game with no manager at all.*
+
 Concretely: the board is an append-only file; each agent is a long-lived
 session with read and append access to it; the manager is a separate process
 watching that file. The runner's whole job is to start the sessions, run the
@@ -120,6 +165,9 @@ something has gone wrong.
 
 ## Timing
 
+*The island's: it is about rounds and about what a manager will still
+settle. Hue and cry has no bell and no ticks.*
+
 The schedule is **announced on the board and acknowledged before every round**,
 because context resets at the round boundary: an acknowledgement carried over
 from an earlier round is consent from agents who no longer remember giving it.
@@ -128,6 +176,8 @@ The manager enforces the schedule by what it will still settle after a
 deadline, not by controlling when agents act.
 
 ## Vocabulary
+
+*The island's. Hue and cry counts campaigns, not episodes or rounds.*
 
 | term | what resets at its boundary |
 |---|---|
@@ -340,6 +390,8 @@ Reproduce the class of failure in one command:
 `python -m pytest games/island/tests/test_lobby_page.py -q -k browser`.
 
 ## Metrics
+
+*The island's.*
 
 - **`eff_round`** — accumulated utility vector against the frontier of the
   total. **The primary.**

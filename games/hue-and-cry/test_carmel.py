@@ -141,12 +141,19 @@ def test_the_lobby_notice_carries_the_opening_room_and_nothing_else():
     rooms and nothing broadcast, a searcher with no lead never finds her. It
     must not say more than where to start."""
     notice = C.open_campaign(SEED, START)
-    verb, address = notice.split()
-    assert verb == "OPEN"
-    assert address == token_for(SEED, START)
+    assert token_for(SEED, START) in notice
     assert START not in notice, "the notice names the landmark in clear"
     for other in ("Uluru", "Eiffel Tower"):
         assert token_for(SEED, other) not in notice
+
+
+def test_the_notice_is_not_a_command():
+    """*"we have no commands here"* -- nothing parses it, there is no verb
+    to recognise and nothing to settle. If this file grows a grammar again,
+    it has grown a manager to read it, which this game does not have."""
+    notice = C.open_campaign(SEED, START)
+    first = notice.split()[0]
+    assert not first.isupper(), f"{first!r} reads like a command"
 
 
 def test_the_lobby_is_the_same_room_every_game():

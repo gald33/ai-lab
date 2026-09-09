@@ -2123,14 +2123,102 @@ campaigns cannot tell nine points from noise, so the catch rates live in
 score depends on who said what, and a liar is therefore playing the game
 rather than cheating at it.
 
+## There is no manager and no settler. There is Carmel.
+
+*Gal, 2026-09-09, on being shown a settler: "no man, this is completely
+different game/experiment. it has no settler or manager, it has only Carmel.
+CLAUDE.md in this folder shouldn't mix those."*
+
+**Both were built, and both are deleted.** `settle.py` and its thirteen
+tests took a transcript and a revealed seed and pronounced on the game:
+were the clues live, were the moves on routes, was a room emptied twice,
+who won. It worked. It was the wrong shape for this game entirely.
+
+### Where it came from, which is worth more than the code was
+
+Not from this document — from the root `CLAUDE.md`, which says the economy
+exists *"only as a manager function that reads the board, recognises
+particular formatted messages, and settles them"*, and which nowhere says
+that sentence is about the island. Read as a lab-wide standing decision it
+licenses exactly what was built: a board, formatted lines, a component that
+settles them.
+
+**The fix is in `CLAUDE.md`, not here.** It now carries a table of which
+game each of its sections governs, because five of them name a manager, an
+episode, a round, a bell or `eff_episode`, and every one of those is the
+island's. That is the actual defect: a file of standing decisions that does
+not say what it is standing over will be applied to the next thing by
+default, and the next thing was this.
+
+### What this game has instead
+
+She runs. She posts a clue and a room address on her way out of each room,
+she stands still to steal, and she publishes the seed at the end. Everything
+anybody wants to check is arithmetic they can do themselves from the
+transcript and that seed — **which is not a component, and giving it a name
+and a module made it into one.**
+
+This supersedes, in this document:
+
+- **"The grammar"**, which says "the manager recognises two formatted lines".
+  Nothing recognises them. They are what she writes and what a reader reads.
+- **"A manager nobody has to trust"** and every other use of "the manager"
+  here. The document had already got most of the way there — *"what is
+  genuinely left of a manager is close to nothing"*, *"everything else in
+  this document that says 'the manager' is arithmetic anyone holding the
+  transcript can do"* — and then kept the word, which kept the thing.
+- **Build-order item 1**, which asks for "the gazetteer and the settler".
+  The gazetteer is built. The settler is struck.
+
+### And then the grammar went too
+
+Writing the settler surfaced that this document's grammar section lists two
+formatted lines while its own arguments require five more — a commitment, a
+reveal, her report of her own capture, a searcher's refutable claim of one,
+her refutation. That was recorded here as a contradiction for Gal to
+resolve. He resolved it by deleting the category:
+
+> **"we have no commands here, either Carmel sees you in the room and you
+> win, or she goes to hiding with her loot with enough reputation and you
+> lose."**
+
+**There is no grammar.** Not two lines, not seven. Nothing is formatted for
+recognition because nothing recognises anything. What she writes is prose
+with a room address in it, and what makes the address useful is that a
+person reads it and goes there.
+
+Which leaves exactly two facts that decide a campaign, and both are
+physical:
+
+- **She sees you in the room.** The searchers win. Nothing is declared,
+  claimed, refuted or settled; she is looking at a roster with somebody
+  else's name on it.
+- **She reaches enough reputation and goes into hiding with it.** She wins.
+
+Everything the document built around those — `CLUE`, `TAKE`, `CAUGHT`,
+`CLAIM`, `REFUTE`, `COMMIT`, `SEED`, the manager that recognised them, the
+settler that judged them — was apparatus for making the two facts
+adjudicable, and neither fact needs adjudicating. **The whole of "The
+grammar" is superseded**, along with the capture-reporting machinery in
+"Which makes the adversary the referee": there is nothing to report,
+because being seen is not a claim.
+
+*What this leaves genuinely open*: the seed. "No seed, no win" made the
+reveal decide a game, and a reveal is a thing she publishes rather than a
+thing anybody enforces. If nothing settles, the seed is for readers who want
+to check the trail afterwards and is not part of the outcome. That is a
+smaller and more honest job for it, and it is flagged rather than decided.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
 to be wrong is the piece built first, which is why the island built its
 grammar before its pages.
 
-1. **The gazetteer and the settler.** A committed table of attributes *and
-   exits*, and a pure function from a board transcript to a settled outcome:
+1. **~~The gazetteer and the settler.~~** *The gazetteer is built; the
+   settler is struck — see "There is no manager and no settler".* A
+   committed table of attributes *and exits*, and a pure function from a
+   board transcript to a settled outcome:
    were the clues true, did she move along a route she had, did the
    commitments open, was the arrest right, what was taken. No hub, no
    network, no model, no cost — and it makes this document's central claim
