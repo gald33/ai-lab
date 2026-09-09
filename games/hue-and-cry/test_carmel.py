@@ -136,18 +136,6 @@ def test_nothing_she_decides_can_see_the_searchers():
             f"{method.__name__} can see the field")
 
 
-def test_the_lobby_notice_carries_the_opening_room_and_nothing_else():
-    """The notice is how a campaign becomes findable at all: with a thousand
-    rooms and nothing broadcast, a searcher with no lead never finds her. It
-    must not say more than where to start."""
-    notice = C.open_campaign(SEED, START)
-    salt = salt_for(SEED)
-    assert room_token(START, salt) in notice
-    assert START not in notice, "the notice names the landmark in clear"
-    for other in ("Uluru", "Eiffel Tower"):
-        assert room_token(other, salt) not in notice
-
-
 def test_a_reader_can_derive_a_room_from_the_notice_alone():
     """THE ONE THE NOTICE EXISTS FOR. Nothing is worth publishing a recipe
     for if the recipe cannot be followed, so this follows it: pull the salt
@@ -165,7 +153,7 @@ def test_a_reader_can_derive_a_room_from_the_notice_alone():
     salt = bytes.fromhex(salt_line.split("=")[1].strip())
 
     # Written from the recipe as printed, importing nothing of ours.
-    derived = hashlib.sha256(
+    derived = "w_" + hashlib.sha256(
         b"hue-and-cry/v1/landmark" + b"\x00" + salt + b"\x00"
         + "Uluru".encode("utf-8")).hexdigest()
     assert derived == room_token("Uluru", salt_for(SEED))

@@ -2467,6 +2467,96 @@ out. Immediacy, without a free ride.
 *Not implemented. This is Gal's call to make, and the numbers get re-measured
 after it, not before.*
 
+## No addresses at all, which is the game, and it broke everything measured
+
+*Gal, 2026-09-09, giving it exactly:*
+
+> *she hands me on her first message the algorithm which is:*
+> `"w_"+hash(landmark, <salt>)` *where `<salt>` is the salt value for this
+> game. in addition every message she give is a hint for the landmark.
+> that's it. a player guesses the landmark from the hint, plugs in the
+> algorithm, gets the workspace, go to the workspace, looks for her or at
+> least her next hint.*
+
+So: **one algorithm, published once, and after that nothing but hints.** No
+token beside the clue, no workspace beside it, no address of any kind. The
+`w_` is part of the string you hand to `join_room` — one name, one line, one
+room, and a player never sees two steps.
+
+Her opening message therefore carries the recipe, the salt, and **one true
+hint about where she is starting** — the last of those because the algorithm
+turns a name into a room and nothing turns a blank into a name.
+
+### What a searcher now has to do, which is the thing this game is for
+
+Standing in a room she was in, it reads the one thing she said on her way
+out, and:
+
+1. it knows this landmark, so it can compute her five exits — the gazetteer
+   is public and the exits come from the published salt;
+2. her hint is true of where she went, so the candidates are the exits the
+   hint is true of, **about 2.7 of the 5**;
+3. it picks one and travels. Wrong, and the room is empty: it has bought one
+   bit for a leg of travel, and tries the next candidate.
+
+**Every number in "The map is a thousand landmarks now" is about the size of
+that candidate set, and until now not one of them was load-bearing.** The
+descriptor layer, the collision floor, the exit band, the 2.69-of-5 — all of
+it was tuning a quantity nothing consumed.
+
+### Which flips the arithmetic that decided the chase
+
+The handed-address game had a follower losing nothing and gaining her dwell,
+so the gap shrank by everything she stole. A deducer spends about **1.9 legs
+per room to her 1**, so *the gap grows on every hop*. A solo hunt is lost
+from the first wrong guess, and the measurement agrees: one searcher catches
+her 19–31% of the campaigns, and she runs the move limit out at about 2,600
+reputation instead of being caught at 162.
+
+**So `REPUTATION_TO_WIN = 140` is stale**, and is left stale rather than
+replaced with a fresh guess — see below for why.
+
+### Two things deleted, and the second one is the honest part
+
+**`field.py` and its tests are gone.** They modelled a field that shares
+findings, and every line of them assumed she posts an address. Rebuilt on
+deduction, the model produced this:
+
+```
+searchers    campaigns caught (of 12)
+    1              12
+    2               2
+    4               1
+```
+
+**More searchers cannot be worse.** That is the model and not the game — the
+frontier logic picks whichever searcher's clock is earliest and then travels
+from wherever that one happens to be, which is meaningless. A simulation
+that says something impossible has to be deleted rather than tuned until it
+says something plausible, because the second thing is indistinguishable from
+fitting it to what I expected.
+
+**And the threshold stays uncalibrated.** The obvious move is to re-fit it
+against the deduction game, and the blocker is that the only multi-searcher
+model available is the one just deleted. A number calibrated against a
+pursuit nobody believes is worse than an obviously stale one, so 140 keeps a
+loud comment instead of a quiet replacement.
+
+### What survives, and it is the part worth keeping
+
+- **The candidate set is 2.7 of 5.** Measured on the descriptor layer, not
+  on any pursuit model, so the deletions do not touch it.
+- **A lone deducer falls behind at about 0.9 legs per room.** Arithmetic,
+  and the single-searcher measurement matches it.
+- **Splitting the work without sharing the results is worse than not
+  splitting** — 28% → 9% at two searchers, 32% → 16% at three — because a
+  searcher whose share does not contain her is off the trail for good, while
+  one checking every candidate in order at least stays on it.
+
+That last one is the argument for the lobby, and it is a far better one than
+this document had an hour ago, when notes measured as worthless. **They
+measured as worthless because the game had no information problem in it.**
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

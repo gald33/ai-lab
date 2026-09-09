@@ -80,35 +80,31 @@ def hints_for(seed: bytes, landmark: str, vocabulary: int,
 
 SALT_INFO = b"hue-and-cry/v1/salt"
 
-#: The recipe a searcher runs, and **it is the technique Switchboard already
-#: uses, one step earlier.** Gal, 2026-09-09: *"it does use the same
-#: technique as working out a room token from its name does it not?"* --
-#: yes, and checked against the installed wheel rather than agreed to:
-#: `rooms.workspace_for` is `sha256(info || version || token)`, truncated
-#: and prefixed. Ours is `sha256(info || salt || name)`. Same primitive,
-#: same shape, one link further back in the chain:
+#: The algorithm she hands out in her first message. Gal, 2026-09-09, gave
+#: it in this exact form:
 #:
-#:     name + salt  --sha256-->  token  --sha256-->  workspace
-#:     (ours)                            (the library's)
+#:     "w_" + hash(landmark, <salt>)
 #:
-#: Which settles what a searcher actually has to be able to do, and it is
-#: narrower than it first looks:
+#: and the `w_` is part of the string you hand to `join_room`, not the hub's
+#: own identifier. Any string is a legal Switchboard token -- the client
+#: hashes whatever you give it to get the wire address -- so a player never
+#: sees two steps. One name, one line, one room.
 #:
-#: - **Joining a room given a token needs no hashing at all.** The client
-#:   does that second step. An agent hands `join_room` a token and is in.
-#: - **Turning a landmark's name into that token is the one hash it must do
-#:   itself**, and Switchboard's MCP surface gives it no way to: 27 tools --
-#:   `say`, `dm`, `whisper`, `inbox`, `history`, `roster`, `whoami`,
-#:   `checkin`, `claim`, `renew`, `release`, `claims`, `join_room`,
-#:   `keygen`, `subscribe`, `unsubscribe`, `leave`, `rendezvous`, `help`,
-#:   `switchboard`, `session_*`, `board_*` -- and **not one of them hashes**.
+#: It is the technique Switchboard already uses, one link earlier: checked
+#: against the installed wheel, `rooms.workspace_for` is
+#: `sha256(info || version || token)` truncated and prefixed. Ours is
+#: `sha256(info || salt || name)`. Same primitive, same shape.
 #:
-#: So the gap is exactly one SHA-256, which any agent with a shell or code
-#: execution closes in a line and an agent holding only Switchboard cannot
-#: close at all. That is the whole reason the recipe is a bare digest over a
-#: byte string, with no HMAC and no KDF parameters: **the game must not
-#: require a tool nobody was given.**
-RECIPE = 'sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)'
+#: A bare digest with no HMAC and no KDF parameters, because that is what a
+#: player can actually compute: Switchboard's MCP surface is 27 tools --
+#: `say`, `dm`, `whisper`, `inbox`, `history`, `roster`, `whoami`,
+#: `checkin`, `claim`, `renew`, `release`, `claims`, `join_room`, `keygen`,
+#: `subscribe`, `unsubscribe`, `leave`, `rendezvous`, `help`, `switchboard`,
+#: `session_*`, `board_*` -- and **not one of them hashes**. The game must
+#: not require a tool nobody was given.
+RECIPE = 'room = "w_" + sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)'
+
+ROOM_PREFIX = "w_"
 
 
 def salt_for(seed: bytes) -> bytes:
@@ -137,7 +133,7 @@ def room_token(landmark: str, salt: bytes) -> str:
     infeasible to guess without the name, and that both sides derive the
     same one. `rooms_from_names.py` checks it against the installed wheel.
     """
-    return hashlib.sha256(
+    return ROOM_PREFIX + hashlib.sha256(
         ROOM_INFO + b"\x00" + salt + b"\x00" + landmark.encode("utf-8")
     ).hexdigest()
 

@@ -77,8 +77,8 @@ EXIT_INFO = b"hue-and-cry/v1/exits"
 #: costs trade against each other instead of one dominating.
 TRAVEL_KMH = 400
 
-#: What she needs to win. ONE NUMBER, and the correction that made it one is
-#: the whole shape of the game.
+#: What she needs to win. ONE NUMBER, and **currently uncalibrated** -- see
+#: the warning at the end of this comment.
 #:
 #: This was a table keyed by how many searchers were hunting, calibrated so
 #: each size came out near even. Gal, 2026-09-09: *"You don't know who
@@ -91,9 +91,21 @@ TRAVEL_KMH = 400
 #:
 #: So the number is fixed and the turnout is the weather. She is not playing
 #: a balanced match against a known field; she is stealing until somebody
-#: arrives. 140 is what a chase against a single searcher comes out even at,
-#: which makes a solo hunt a contest and a crowd a hard game -- and that
-#: asymmetry is now a property of the design rather than a bug in it.
+#: arrives. A solo hunt is a contest and a crowd is a hard game, and that
+#: asymmetry is a property of the design rather than a bug in it.
+#:
+#: **140 IS STALE AND IS NOT A CALIBRATED NUMBER.** It was measured against
+#: a searcher that was handed the address of every room she went to. Gal
+#: removed the addresses on 2026-09-09 -- *"I will not be giving you any
+#: addresses"* -- and a searcher that has to deduce the landmark from the
+#: hint is a different and much weaker animal: she now runs out the move
+#: limit at about 2,600 reputation rather than being caught at 162.
+#:
+#: It is left at 140 rather than replaced with a fresh guess, because the
+#: honest blocker is that **the multi-searcher model is not trustworthy
+#: yet**: its catch rate falls as searchers are added, which is backwards
+#: and is the model rather than the game. A threshold calibrated against a
+#: pursuit nobody believes is worse than an obviously stale one.
 REPUTATION_TO_WIN = 140
 
 #: The lobby is a public room whose key is published -- the island's shape
@@ -432,30 +444,31 @@ def open_campaign(seed: bytes, start: str) -> str:
     the end, so the hints and the treasures stay sealed.
     """
     salt = salt_for(seed)
+    world = Map(seed)
+    first = world.live_hints(start)[0]
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
         "The rules, since you will want them. I am somewhere on a map of a",
-        "thousand famous places. Leaving a room I leave a note behind me: one",
-        "true thing about where I have gone, and the address of it. Both are",
-        "for you. Find me while I am standing still and you have me. Let me",
-        "stand still often enough and I retire on what I take.",
-        "",
-        "Any landmark's room, this game -- the same hashing your client",
-        "already does to turn a token into a workspace, one step earlier:",
+        "thousand famous places. Every message I leave is one true thing",
+        "about the place I am in. Work out which place that is, and you can",
+        "work out the room:",
         "",
         f"    {RECIPE}",
         f"    salt = {salt.hex()}",
         "",
-        "Hand what comes out to join_room. You will not need the salt for",
-        "anything else and I will not be giving you another.",
+        "Hand what comes out to join_room. That is the whole of it -- guess",
+        "the landmark from what I say, compute the room, come and stand in",
+        "it. You will find me there or you will find what I said next.",
         "",
-        "So you need nothing from me but the right name, and I am not going",
-        "to tell you which names. There are a thousand of them and I am at",
-        "one.",
+        "Find me while I am standing still and you have me. Let me stand",
+        "still often enough and I retire on what I take.",
         "",
-        f"I was last at {room_token(start, salt)}.",
-        "I am not there now.",
+        "I will not be giving you any addresses. There are a thousand names",
+        "and I am at one of them, and the first thing I have to say about it",
+        "is this:",
+        "",
+        f"    {first.replace('_', ' ')}",
     ])
 
 
@@ -524,34 +537,60 @@ def itinerary(seed: bytes, start: str, world: Map,
 
 
 def pursue(world: Map, start: str, home: str, trail: list[dict],
-           joined_at: float = 0.0) -> tuple[int | None, float]:
-    """Run one searcher along the trail. Returns (move it catches her on,
-    the lag it settles at).
+           joined_at: float = 0.0, share: tuple[int, int] = (0, 1)
+           ) -> tuple[int | None, float]:
+    """Run one searcher, deducing. Returns (the move it catches her on, its
+    head start).
 
-    The arithmetic that decides the game, and it is short -- and it is the
-    opposite of what this docstring said first, which was that the gap never
-    changes. It changes constantly, in one direction:
+    THE SEARCHER'S ACTUAL PROBLEM, which this file did not model until now.
+    Gal, 2026-09-09: *"a player guesses the landmark from the hint, plugs in
+    the algorithm, gets the workspace, go to the workspace, looks for her or
+    at least her next hint."*
 
-        gap at her room i  =  initial lag  -  everything she has stolen so far
+    So there is no address anywhere. Standing in the room she was in, it
+    reads the one thing she said on her way out, and has to work out which
+    place she meant:
 
-    A searcher walks the same legs she does, so their travel cancels exactly.
-    **The only asymmetry is that she stands still and it does not.** So every
-    theft she makes hands the follower precisely the hours she spent on it,
-    and it catches her on the first room where her cumulative dwell has eaten
-    the head start she began with.
+    1. The room it is in is a landmark it named, so it knows her exits --
+       the gazetteer is public and the exits come from the published salt.
+    2. Her hint is true of where she went, so the candidates are the exits
+       the hint is true of. Measured at about **2.7 of her 5**.
+    3. It picks one and travels. If she was never there the room is empty
+       and it has learned only that, at the price of the journey; it tries
+       the next candidate from the same hint.
 
-    Which turns her win condition into a budget rather than a race: she has
-    `initial lag` hours of standing still in her, total, and has to be worth
-    `REPUTATION_TO_WIN` before she spends them.
+    A wrong guess costs a leg and buys one bit. That is the whole game, and
+    it is what the descriptor layer was built for -- every number in "The
+    map is a thousand landmarks now" is about the size of this candidate
+    set, and until this function existed none of them was load-bearing.
     """
     clock = joined_at + travel_hours(world.places[home], world.places[start])
-    lag = clock  # she left `start` at t=0
+    lag = clock
+
+    here, hint = start, trail[0]["hint"]
     for i, leg in enumerate(trail):
-        # It is standing where she stood, so it reads the address and goes.
-        clock += travel_hours(world.places[leg["from"]],
-                              world.places[leg["to"]])
-        if leg["arrived"] < clock <= leg["leaves"]:
-            return i, lag
+        # Which of her exits is the hint true of? She is in one of these.
+        candidates = [x for x in world.exits(here)
+                      if hint in world.descriptors[x]] or world.exits(here)
+        # `share` is (which searcher, how many). A field that divides the
+        # candidates checks them in parallel instead of everybody walking
+        # the same wrong rooms in the same order. Nothing enforces it and
+        # nothing settles it -- it is talk, and it is the whole reason the
+        # lobby is worth having.
+        mine, of = share
+        rota = [c for i, c in enumerate(candidates) if i % of == mine] \
+            or candidates
+        for guess in rota:
+            clock += travel_hours(world.places[here], world.places[guess])
+            if guess == leg["to"]:
+                if leg["arrived"] < clock <= leg["leaves"]:
+                    return i, lag
+                here, hint = guess, (trail[i + 1]["hint"]
+                                     if i + 1 < len(trail) else hint)
+                break
+            # Empty room. It knows only that she is not here.
+        else:
+            return None, lag          # the hint fitted nothing she took
     return None, lag
 
 
@@ -559,7 +598,8 @@ def chase(seed: bytes, start: str, searchers: int = 2,
           limit: int = 40, world: Map | None = None,
           threshold: int = REPUTATION_TO_WIN,
           join_window: float = JOIN_WINDOW_HOURS,
-          difficulty: float = DIFFICULTY) -> dict:
+          difficulty: float = DIFFICULTY,
+          cooperate: bool = False) -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
     Two rules that look like one and are not, both from
@@ -585,7 +625,8 @@ def chase(seed: bytes, start: str, searchers: int = 2,
         # start is not a property of the field's size.
         joined = join_window * (
             int.from_bytes(digest[8:16], "big") / 2 ** 64)
-        move, lag = pursue(world, start, home, trail, joined_at=joined)
+        move, lag = pursue(world, start, home, trail, joined_at=joined,
+                           share=(i, searchers) if cooperate else (0, 1))
         lags.append(lag)
         if move is not None and (caught_on is None or move < caught_on):
             caught_on = move
@@ -606,13 +647,15 @@ def chase(seed: bytes, start: str, searchers: int = 2,
 
 
 def _run(world: Map, seed: bytes, names: list[str], searchers: int,
-         join_window: float = JOIN_WINDOW_HOURS) -> dict:
+         join_window: float = JOIN_WINDOW_HOURS,
+         cooperate: bool = False) -> dict:
     w = Map(seed)
     w.descriptors, w.places, w.treasure = (
         world.descriptors, world.places, world.treasure)
     start = names[int.from_bytes(seed[:4], "big") % len(names)]
     return chase(seed, start, searchers=searchers, world=w,
-                 threshold=10 ** 9, limit=40, join_window=join_window)
+                 threshold=10 ** 9, limit=40, join_window=join_window,
+                 cooperate=cooperate)
 
 
 def main() -> None:
@@ -688,11 +731,14 @@ def calibrate(world: Map, trials: int = 60) -> None:
         wins = sum(1 for r in rs if _wins(r, REPUTATION_TO_WIN))
         print(f"  {window:>11}h{budget[len(budget) // 2]:>10.0f}h"
               f"{got[len(got) // 2]:>13,.0f}{wins / trials:>10.0%}")
-    print("\n  Three searchers throughout. Everything above is measured"
-          " against the reference\n  searcher, which follows the exact"
-          " address in each room and never reads a hint,\n  never cooperates"
-          " and never guesses ahead. It is a floor, and a real searcher\n"
-          "  moves every number here.\n")
+    print("\n  Three searchers throughout, each deducing alone: it reads her"
+          " hint, computes\n  the exits of the room it is standing in, keeps"
+          " the ones the hint is true of\n  (about 2.7 of 5) and tries them."
+          " A wrong guess costs a leg and buys one bit.\n")
+    print("  So a lone searcher spends about 1.9 legs per room and she"
+          " spends 1: the gap\n  GROWS on every hop. That is the opposite of"
+          " the handed-address game this file\n  measured until the"
+          " addresses were removed, where the gap shrank by her dwell.\n")
 
 
 def _wins(result: dict, threshold: int) -> bool:
