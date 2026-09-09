@@ -6,7 +6,7 @@ status: ready
 blocked_on:
   - 008-coding-task-with-an-answer-key
 refs:
-  - experiments/001-switchboard-coordination/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
   - games/switchboard-what-an-entrant-already-holds.md
   - CLAUDE.md
 evidence: |

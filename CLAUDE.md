@@ -150,6 +150,50 @@ those would change what agents read and what the ledger records. So the
 transcript quotes the manager's word and the metric panel names the metric;
 everywhere the game speaks in its own voice it says day.
 
+## An experiment is named by its question, and is not numbered
+
+Decided by Gal, 2026-09-09: *"I never remember what the experiment is by its
+code."* The directory name **is the question** —
+`experiments/is-ruin-the-convention-or-the-commitment/`, not
+`experiments/004-stock-and-flow/`. A directory listing is then a list of what
+this lab has asked.
+
+**Name the question, never the answer and never the mechanism.**
+`does-a-content-free-protocol-help` is still an accurate name after that
+question came back null, because it records what was asked. An answer-shaped
+name is wrong the moment the answer is, and it is wrong in the filename;
+a mechanism-shaped name (`deliberation-protocol`) names the apparatus, which is
+what the reader is trying to look past.
+
+**The number was retired because it was never an identifier**, and three
+measurements say so rather than a preference:
+
+- there were **two `006` directories** — `006-agent-standby` and
+  `006-ratio-disclosure` — and had been for weeks;
+- `002` names an experiment, a run *inside* an experiment, and a game, all
+  three of which appear in this repo and often on one page;
+- **seven of the eight** slugs were already byte-identical to an arc `id:` in
+  `roadmap/arcs/`, so the number was the only thing keeping two naming systems
+  apart.
+
+**Retired numbers keep resolving, and the record keeps its own words.** The
+~1,200 citations of "005" in `reports/` and the run records were **not**
+rewritten — those documents are what was thought at the time, and editing them
+to read as though they always said something else is what the first standing
+decision above forbids. The map from number to name lives in
+[`experiments/README.md`](experiments/README.md) and in `tools/ground.py` as
+`RETIRED_NUMBERS`, permanently. `tools/ground.py 004` works and prints the name
+it is now; `tools/ground.py ruin` works too, because nobody types a whole
+question. An ambiguous fragment is an error, never a first match — grounding an
+agent in the wrong experiment is the contamination `experiments/GROUNDING.md`
+exists to prevent.
+
+**What was deliberately not renamed**: recorded run artifacts. 911 files under
+`results/`, `recordings/`, `replays/` and `*.log` still carry the old paths,
+because those sessions really did run from them. 54 live files — code, CI,
+roadmap, docs — were rewritten. A record that is edited to match today's
+filenames is a record you can no longer check.
+
 ## Switchboard is the only interface, and its agents are not helpless
 
 **An agent's tools do the cryptography. The model does none of it.** Through

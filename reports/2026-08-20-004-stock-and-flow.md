@@ -1,8 +1,8 @@
 # 004 — stock and flow
 
 **Date:** 2026-08-20 · **Status:** run, reported · **Cost:** none (no model calls)
-**Records:** [`stock_and_flow.json`](../experiments/004-stock-and-flow/results/stock_and_flow.json) (well-fed discovery) ·
-[`stock_and_flow_starved.json`](../experiments/004-stock-and-flow/results/stock_and_flow_starved.json) (one talking round per period)
+**Records:** [`stock_and_flow.json`](../experiments/is-ruin-the-convention-or-the-commitment/results/stock_and_flow.json) (well-fed discovery) ·
+[`stock_and_flow_starved.json`](../experiments/is-ruin-the-convention-or-the-commitment/results/stock_and_flow_starved.json) (one talking round per period)
 
 ## Origin
 
@@ -204,7 +204,7 @@ them. Two gates added.
 ## Reproduction
 
 ```bash
-cd experiments/004-stock-and-flow/experiment
+cd experiments/is-ruin-the-convention-or-the-commitment/experiment
 pip install -r ../../002-barter-conventions/experiment/requirements.txt
 python flow_experiment.py --islands 24 --periods 6 --rounds 60 \
     --json ../results/stock_and_flow.json

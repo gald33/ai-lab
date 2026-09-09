@@ -15,7 +15,8 @@ other's.**
 
 Each experiment directory carries its own `CLAUDE.md`. Claude Code loads a
 directory-scoped `CLAUDE.md` when work happens in that directory, so an agent
-started against `experiments/004-stock-and-flow/` is grounded in 004 and is
+started against `experiments/is-ruin-the-convention-or-the-commitment/` is grounded in that
+experiment and is
 not carrying 002's design decisions, 005's pre-registration, or anyone else's
 frozen metric.
 
@@ -26,10 +27,10 @@ harness assumption that was frozen for a different question. A number produced
 under another experiment's assumptions is not a weak result — it is an
 unattributable one.
 
-So, concretely, for an agent running experiment N:
+So, concretely, for an agent running one experiment:
 
 - **In scope, always:** repo-root `CLAUDE.md`, this file,
-  `experiments/N-*/CLAUDE.md`, and everything that file points at.
+  that experiment's own `CLAUDE.md`, and everything that file points at.
 - **Out of scope:** every other `experiments/*/` directory. Do not read them
   for a pattern to copy, a metric to reuse, or a harness to borrow. If you
   want something from a sibling experiment, say so and get it lifted into
@@ -37,14 +38,14 @@ So, concretely, for an agent running experiment N:
 - **Reports** (`reports/`) are readable, but they are session narrative, not
   grounding. The experiment's own documents remain authoritative.
 
-`tools/ground.py N` prints exactly one experiment's grounding bundle and
+`tools/ground.py <fragment>` prints exactly one experiment's grounding bundle and
 nothing else. Use it to open a run; it is also the check that the bundle is
 complete before anything is spent.
 
 ## What a run must have written down before it runs
 
 A **run** is one execution of a configuration whose result you intend to keep.
-Every run gets a record under `experiments/N-*/runs/`, created from
+Every run gets a record under that experiment's `runs/`, created from
 [`templates/experiment/runs/RUN-TEMPLATE.md`](../templates/experiment/runs/RUN-TEMPLATE.md)
 and committed **before** the run starts. Three things carry the weight:
 
@@ -148,7 +149,7 @@ only the pass, is how a harness bug becomes a result.
 
 Each experiment declares its own gates in its `PREFLIGHT.md`: the actual
 commands, what each proves, roughly how long it takes, and what a failure
-means for that experiment. `tools/ground.py N --preflight` prints them.
+means for that experiment. `tools/ground.py <fragment> --preflight` prints them.
 
 They are declared per experiment and **not shared**, for the same reason there
 is no shared framework: a common gate runner would end up shaping experiments

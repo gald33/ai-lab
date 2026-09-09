@@ -31,7 +31,7 @@ from games.island.hand.declaration import declaration
 from games.island.lobby import Lobby, Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
-                       / "experiments" / "005-deliberation-protocol" / "viewer"))
+                       / "experiments" / "does-a-content-free-protocol-help" / "viewer"))
 
 WORKSPACE = "w_game-test"
 

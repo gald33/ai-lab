@@ -2,9 +2,9 @@
 
 **Date:** 2026-08-21 · **Status:** four cells run, reported
 **Cost:** 1,920 model calls (Haiku 4.5), ~3h50m wall-clock. The lab's first paid run.
-**Record:** [`results/agents.json`](../experiments/005-deliberation-protocol/results/agents.json)
-**Pre-registration:** [`PREREGISTRATION.md`](../experiments/005-deliberation-protocol/PREREGISTRATION.md) ·
-**Deviations, declared before the run:** [`DEVIATIONS.md`](../experiments/005-deliberation-protocol/DEVIATIONS.md)
+**Record:** [`results/agents.json`](../experiments/does-a-content-free-protocol-help/results/agents.json)
+**Pre-registration:** [`PREREGISTRATION.md`](../experiments/does-a-content-free-protocol-help/PREREGISTRATION.md) ·
+**Deviations, declared before the run:** [`DEVIATIONS.md`](../experiments/does-a-content-free-protocol-help/DEVIATIONS.md)
 
 ## Question
 
@@ -158,7 +158,7 @@ deliberation protocols. Until then it is a result about five rounds of Haiku.
 ## Reproduction
 
 ```bash
-cd experiments/005-deliberation-protocol/experiment
+cd experiments/does-a-content-free-protocol-help/experiment
 python agent_experiment.py --worlds 12 --rounds 4 --concurrency 1 \
     --json ../results/agents.json
 python ../analysis/paired.py ../results/agents.json

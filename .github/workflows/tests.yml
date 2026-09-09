@@ -38,8 +38,8 @@ jobs:
           python -m pytest
           games/island/tests
           games/hue-and-cry
-          experiments/005-deliberation-protocol/tests
-          experiments/005-deliberation-protocol/viewer/tests
+          experiments/does-a-content-free-protocol-help/tests
+          experiments/does-a-content-free-protocol-help/viewer/tests
           -q
 
   # The viewer's own tests, which are node's and were never run by anything
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs
+      - run: node --test experiments/does-a-content-free-protocol-help/viewer/tests/*.test.mjs
 
 
   # What the island *draws*, in a real browser. `render.py` is the only check
@@ -251,7 +251,7 @@ jobs:
       # one the board was actually in the day the door opened.
       - run: >
           python -m pytest
-          experiments/005-deliberation-protocol/viewer/tests/test_scores_page.py -q
+          experiments/does-a-content-free-protocol-help/viewer/tests/test_scores_page.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
       # The per-game result pages. Most of what matters here is still a text
@@ -267,7 +267,7 @@ jobs:
       # public surface as everything above.
       - run: >
           python -m pytest
-          experiments/005-deliberation-protocol/viewer/tests/test_results.py -q
+          experiments/does-a-content-free-protocol-help/viewer/tests/test_results.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
 
@@ -313,7 +313,7 @@ jobs:
       - run: pip install playwright
       - run: python -m playwright install --with-deps chromium
       - run: >
-          python experiments/005-deliberation-protocol/viewer/tests/render.py
+          python experiments/does-a-content-free-protocol-help/viewer/tests/render.py
           --require --group quick --out "$RUNNER_TEMP/island-shots"
       # The pictures the run measured, kept whether it passed or failed: a
       # threshold on a rendered image is not arguable without the image.
@@ -355,7 +355,7 @@ jobs:
       - run: pip install playwright
       - run: python -m playwright install --with-deps chromium
       - run: >
-          python experiments/005-deliberation-protocol/viewer/tests/render.py
+          python experiments/does-a-content-free-protocol-help/viewer/tests/render.py
           --require --group slow --out "$RUNNER_TEMP/island-shots"
       - if: always()
         uses: actions/upload-artifact@v4

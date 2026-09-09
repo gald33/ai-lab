@@ -2,7 +2,7 @@
 
 *Opened from [`templates/experiment/runs/RUN-TEMPLATE.md`](../../templates/experiment/runs/RUN-TEMPLATE.md)
 and committed **before** the run, per
-[`experiments/005-deliberation-protocol/CLAUDE.md`](../../experiments/005-deliberation-protocol/CLAUDE.md).*
+[`experiments/does-a-content-free-protocol-help/CLAUDE.md`](../../experiments/does-a-content-free-protocol-help/CLAUDE.md).*
 
 ## Why this run
 

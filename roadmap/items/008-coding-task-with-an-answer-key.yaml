@@ -4,8 +4,8 @@ arc: shared-coding-tasks
 priority: now
 status: ready
 refs:
-  - experiments/001-switchboard-coordination/README.md
-  - experiments/002-barter-conventions/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
+  - experiments/which-part-of-a-convention-works/README.md
   - reports/2026-08-24-lessons-for-a-paper.md
   - CLAUDE.md
 evidence: |

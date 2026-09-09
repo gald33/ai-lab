@@ -4,8 +4,8 @@ arc: deliberation-protocol
 priority: next
 status: ready
 refs:
-  - experiments/005-deliberation-protocol/viewer/web/stage.js
-  - experiments/005-deliberation-protocol/viewer/web/island-life.js
+  - experiments/does-a-content-free-protocol-help/viewer/web/stage.js
+  - experiments/does-a-content-free-protocol-help/viewer/web/island-life.js
 evidence: |
   Reported 2026-08-26, from a screenshot of the 3D island: a dark, soft-edged
   rectangular patch sitting in the middle of the scene, distinct from any

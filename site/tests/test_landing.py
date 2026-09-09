@@ -37,7 +37,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 SITE = pathlib.Path(__file__).resolve().parents[1]
-WEB = SITE.parent / "experiments" / "005-deliberation-protocol" / "viewer" / "web"
+WEB = SITE.parent / "experiments" / "does-a-content-free-protocol-help" / "viewer" / "web"
 
 DOOR = "https://island.lucille-ai.com/"
 

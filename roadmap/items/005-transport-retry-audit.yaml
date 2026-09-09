@@ -5,7 +5,7 @@ priority: next
 status: done
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
-  - experiments/005-deliberation-protocol/experiment
+  - experiments/does-a-content-free-protocol-help/experiment
 evidence: |
   Review target 3: `agents/runner.py` has two retry paths. Content retries are
   counted; transport retries (non-zero exit, timeout) are silent and uncounted.

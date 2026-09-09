@@ -20,7 +20,7 @@
 > for under "Tests we would find convincing".
 >
 > What follows is the ask as sent, unedited. Downstream: delete
-> `experiments/005-deliberation-protocol/island/sealed.py` and deal through
+> `experiments/does-a-content-free-protocol-help/island/sealed.py` and deal through
 > `ask` once a release carries it; `JOIN`'s `box=` becomes unnecessary, since
 > the exchange key is on the roster where the lobby already reads keys.
 
@@ -58,7 +58,7 @@ length-prefixed padding (the exact bug noted below, avoided), and "fails
 usefully when the peer's key hasn't been seen yet" (`UnknownPeerExchangeKey`)
 are all there.
 
-**Follow-up, not yet done:** `experiments/005-deliberation-protocol/island/sealed.py`
+**Follow-up, not yet done:** `experiments/does-a-content-free-protocol-help/island/sealed.py`
 is still the stopgap this doc said we'd rather delete than keep. Migrating
 the island manager and `run_v3.py` onto the real `ask()` — the private
 manager↔seat handoff `island.md`'s item 2c calls for — is open work; see
@@ -107,7 +107,7 @@ about. What is missing is the sealing counterpart to the verifying one.
 ## What we learned by building a stopgap
 
 Since writing this we built a minimal version downstream --
-`experiments/005-deliberation-protocol/island/sealed.py` -- because a ranked
+`experiments/does-a-content-free-protocol-help/island/sealed.py` -- because a ranked
 game could not exist without one. It is marked as a stopgap and we would
 still rather delete it than keep it. Two findings, offered as data rather
 than as a recommendation:

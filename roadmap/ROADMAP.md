@@ -105,7 +105,7 @@ graph TD
   - `005-word-cap-fits-the-protocol` — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
-  - `experiments/005-deliberation-protocol/experiment`
+  - `experiments/does-a-content-free-protocol-help/experiment`
 
 <details><summary>evidence</summary>
 
@@ -150,9 +150,9 @@ graph TD
   - `005-paired-statistic-choice` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
   - `005-rerun-at-twenty-one-rounds` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - **refs:**
-  - `experiments/005-deliberation-protocol/island/score.py`
-  - `experiments/005-deliberation-protocol/results/v3/v3.json`
-  - `experiments/002-barter-conventions/experiment/barter/economy.py`
+  - `experiments/does-a-content-free-protocol-help/island/score.py`
+  - `experiments/does-a-content-free-protocol-help/results/v3/v3.json`
+  - `experiments/which-part-of-a-convention-works/experiment/barter/economy.py`
   - `CLAUDE.md`
 
 <details><summary>evidence</summary>
@@ -266,7 +266,7 @@ graph TD
   - `005-episodes-to-threshold` — Both decide what the next pre-registration freezes as its metric, and both must be settled before it is written. Decide them together — a speed-to-quality curve and a paired statistic on the same record are one analysis pass, and freezing one without the other means amending.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
-  - `experiments/005-deliberation-protocol/analysis`
+  - `experiments/does-a-content-free-protocol-help/analysis`
 
 <details><summary>evidence</summary>
 
@@ -290,8 +290,8 @@ graph TD
 - **priority:** now
 - **blocks:** `005-rerun-at-twenty-one-rounds`
 - **refs:**
-  - `experiments/005-deliberation-protocol/INSTRUMENT-REVIEW.md`
-  - `experiments/005-deliberation-protocol/experiment/agents/prompt.py`
+  - `experiments/does-a-content-free-protocol-help/INSTRUMENT-REVIEW.md`
+  - `experiments/does-a-content-free-protocol-help/experiment/agents/prompt.py`
 
 <details><summary>evidence</summary>
 
@@ -331,8 +331,8 @@ graph TD
   - `005-episodes-to-threshold` — This is the metric that re-run would be read with. CLAUDE.md requires metrics and thresholds pre-registered before a run, so the ladder has to be chosen and its estimator settled before that pre-registration is written — not after the numbers are in.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
-  - `experiments/005-deliberation-protocol/PREREGISTRATION.md`
-  - `experiments/005-deliberation-protocol/DEVIATIONS.md`
+  - `experiments/does-a-content-free-protocol-help/PREREGISTRATION.md`
+  - `experiments/does-a-content-free-protocol-help/DEVIATIONS.md`
 
 <details><summary>evidence</summary>
 
@@ -370,7 +370,7 @@ graph TD
 - **priority:** next
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
-  - `experiments/005-deliberation-protocol/experiment`
+  - `experiments/does-a-content-free-protocol-help/experiment`
 
 <details><summary>evidence</summary>
 
@@ -407,9 +407,9 @@ graph TD
 - **arc:** deliberation-protocol
 - **priority:** now
 - **refs:**
-  - `experiments/005-deliberation-protocol/viewer/README.md`
-  - `experiments/005-deliberation-protocol/viewer/web/index.html`
-  - `experiments/005-deliberation-protocol/viewer/web/scene.js`
+  - `experiments/does-a-content-free-protocol-help/viewer/README.md`
+  - `experiments/does-a-content-free-protocol-help/viewer/web/index.html`
+  - `experiments/does-a-content-free-protocol-help/viewer/web/scene.js`
 
 <details><summary>evidence</summary>
 
@@ -466,8 +466,8 @@ graph TD
 - **arc:** deliberation-protocol
 - **priority:** next
 - **refs:**
-  - `experiments/005-deliberation-protocol/viewer/web/stage.js`
-  - `experiments/005-deliberation-protocol/viewer/web/island-life.js`
+  - `experiments/does-a-content-free-protocol-help/viewer/web/stage.js`
+  - `experiments/does-a-content-free-protocol-help/viewer/web/island-life.js`
 
 <details><summary>evidence</summary>
 
@@ -513,7 +513,7 @@ graph TD
   - `005-display-precision-artifact` — Both are instrument reviews of the same run, and both bear on whether the null measured the manipulation or the format. Read the message stream once for both rather than twice.
 - **refs:**
   - `reports/2026-08-21-005-deliberation-protocol.md`
-  - `experiments/005-deliberation-protocol/stimuli/protocol.md`
+  - `experiments/does-a-content-free-protocol-help/stimuli/protocol.md`
 
 <details><summary>evidence</summary>
 
@@ -632,7 +632,7 @@ graph TD
 > ruled out deliberately at the start rather than overlooked.
 >
 > MEASURED 2026-08-26, one substrate, n = 1
-> (`experiments/006-agent-standby/`). A Claude Code remote session, left quiet
+> (`experiments/can-an-agent-hold-availability/`). A Claude Code remote session, left quiet
 > for 5h59m with nothing running in it, and read by a server trigger: the
 > container was GONE. boot_id changed, uptime 25s, and pid 1 started four
 > seconds after the trigger fired — the wake did not resume a machine, it
@@ -666,7 +666,7 @@ graph TD
 - **priority:** next
 - **refs:**
   - `reports/2026-08-24-hypothesis-ledger.md`
-  - `experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md`
+  - `experiments/do-they-take-a-handed-over-answer/runs/003-how-much-does-the-instrument-move.md`
 
 <details><summary>evidence</summary>
 
@@ -703,8 +703,8 @@ graph TD
 - **priority:** next
 - **refs:**
   - `reports/2026-08-24-hypothesis-ledger.md`
-  - `experiments/007-execution-ceiling/runs/005-the-ladder-pass-b.md`
-  - `experiments/007-execution-ceiling/PREREGISTRATION-v3.md`
+  - `experiments/do-they-take-a-handed-over-answer/runs/005-the-ladder-pass-b.md`
+  - `experiments/do-they-take-a-handed-over-answer/PREREGISTRATION-v3.md`
 
 <details><summary>evidence</summary>
 
@@ -743,7 +743,7 @@ graph TD
 - **priority:** next
 - **blocked on:** `008-coding-task-with-an-answer-key`
 - **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
   - `reports/2026-08-24-hypothesis-ledger.md`
   - `games/switchboard-what-an-entrant-already-holds.md`
 
@@ -794,7 +794,7 @@ graph TD
 - **refs:**
   - `reports/2026-08-24-hypothesis-ledger.md`
   - `reports/2026-08-24-lessons-for-a-paper.md`
-  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
   - `CLAUDE.md`
 
 <details><summary>evidence</summary>
@@ -838,7 +838,7 @@ graph TD
 > claims needing separate metrics; reported as one number a working mechanism
 > and a flat outcome are indistinguishable.
 >
-> Done when this list is a document under `experiments/008-*/` (or a report
+> Done when this list is a document under the `shared-coding-tasks` experiment directory (or a report
 > linked from it) that 008's design cites by row, each entry carrying its
 > evidence and its strength grade, and each marked *assumed* or *under test* in
 > 008. Not done by pointing at the ledger: the ledger grades the island's
@@ -855,8 +855,8 @@ graph TD
 - **priority:** now
 - **blocks:** `008-asymmetry-is-the-design-factor`, `008-noise-before-thresholds`, `008-timing-tool-mechanism-and-outcome`
 - **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
-  - `experiments/002-barter-conventions/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
+  - `experiments/which-part-of-a-convention-works/README.md`
   - `reports/2026-08-24-lessons-for-a-paper.md`
   - `CLAUDE.md`
 
@@ -913,9 +913,9 @@ graph TD
 - **blocked on:** `008-carry-forward-what-survives`, `008-noise-before-thresholds`
 - **blocks:** `008-helper-tools-after-conventions`
 - **refs:**
-  - `experiments/007-execution-ceiling/README.md`
+  - `experiments/do-they-take-a-handed-over-answer/README.md`
   - `reports/2026-08-24-hypothesis-ledger.md`
-  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
 
 <details><summary>evidence</summary>
 
@@ -966,7 +966,7 @@ graph TD
 - **priority:** later
 - **blocked on:** `008-convention-ladder-start-at-the-end`
 - **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
   - `reports/2026-08-24-hypothesis-ledger.md`
   - `CLAUDE.md`
 
@@ -1020,8 +1020,8 @@ graph TD
 - **blocks:** `008-convention-ladder-start-at-the-end`
 - **refs:**
   - `reports/2026-08-24-hypothesis-ledger.md`
-  - `experiments/007-execution-ceiling/runs/003-how-much-does-the-instrument-move.md`
-  - `experiments/006-ratio-disclosure/FINDING-run-level-variance.md`
+  - `experiments/do-they-take-a-handed-over-answer/runs/003-how-much-does-the-instrument-move.md`
+  - `experiments/does-telling-traders-what-to-disclose-help/FINDING-run-level-variance.md`
   - `CLAUDE.md`
 
 <details><summary>evidence</summary>
@@ -1063,7 +1063,7 @@ graph TD
 - **priority:** next
 - **blocked on:** `008-coding-task-with-an-answer-key`
 - **refs:**
-  - `experiments/001-switchboard-coordination/README.md`
+  - `experiments/is-coordination-less-to-reason-about/README.md`
   - `games/switchboard-what-an-entrant-already-holds.md`
   - `CLAUDE.md`
 

@@ -7,9 +7,9 @@ blocked_on:
   - 008-carry-forward-what-survives
   - 008-noise-before-thresholds
 refs:
-  - experiments/007-execution-ceiling/README.md
+  - experiments/do-they-take-a-handed-over-answer/README.md
   - reports/2026-08-24-hypothesis-ledger.md
-  - experiments/001-switchboard-coordination/README.md
+  - experiments/is-coordination-less-to-reason-about/README.md
 evidence: |
   The hypothesis is that conventions — strategies and protocols agreed in
   advance — help coordination. The island tested subtle versions of that first

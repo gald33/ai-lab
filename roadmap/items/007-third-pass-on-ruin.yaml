@@ -5,8 +5,8 @@ priority: next
 status: ready
 refs:
   - reports/2026-08-24-hypothesis-ledger.md
-  - experiments/007-execution-ceiling/runs/005-the-ladder-pass-b.md
-  - experiments/007-execution-ceiling/PREREGISTRATION-v3.md
+  - experiments/do-they-take-a-handed-over-answer/runs/005-the-ladder-pass-b.md
+  - experiments/do-they-take-a-handed-over-answer/PREREGISTRATION-v3.md
 evidence: |
   With the cheat removed, the protocol and hint blocks did not move the primary:
   no cell met "≥ +0.15 on 8 of 12 seeds" in either pass, and `l-protocol`

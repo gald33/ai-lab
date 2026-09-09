@@ -40,7 +40,7 @@ from games.island.hand.declaration import hands_on_board
 HAND = pathlib.Path(__file__).resolve().parent.parent / "hand"
 #: The viewer's own web assets, which `kids-island.html` imports over `../`.
 VIEWER = (pathlib.Path(__file__).resolve().parents[3] / "experiments"
-          / "005-deliberation-protocol" / "viewer" / "web")
+          / "does-a-content-free-protocol-help" / "viewer" / "web")
 WORKSPACE = "island-hand-test"
 #: The kids' page gets a room of its own, because `Room._findManager` takes
 #: the first roster row called `manager` and this file registers several. A
@@ -1110,7 +1110,7 @@ def _a_day_in_play(*, episodes=8, seconds=90):
     import time
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import schedule
@@ -1338,7 +1338,7 @@ def _real_offer_line(to="T1", maker="T2"):
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island.dealer import Dealer
@@ -1406,7 +1406,7 @@ def test_the_sliders_compose_a_plan_and_seal_it_to_the_manager(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import protocol as economy
@@ -1462,7 +1462,7 @@ def test_a_swap_built_from_dropdowns_is_read_by_the_real_parser(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import protocol as economy
@@ -1635,7 +1635,7 @@ def test_the_private_half_is_shown_as_bars_and_never_posted(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island.dealer import Dealer
@@ -1717,7 +1717,7 @@ def test_a_seat_the_manager_disagrees_with_is_said_out_loud(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island.dealer import Dealer
@@ -1789,7 +1789,7 @@ def _played_board(manager, channel, *, seats=("T1", "T2")):
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import schedule
@@ -1877,7 +1877,7 @@ def test_the_island_is_there_before_anybody_has_produced(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import schedule
@@ -2016,7 +2016,7 @@ def test_the_sliders_still_seal_a_plan_to_the_manager_from_the_island(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island import protocol as economy
@@ -2112,7 +2112,7 @@ def _half_and_notes(browser, site, cors_hub, room, channel, page, name):
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island.dealer import Dealer
@@ -2192,7 +2192,7 @@ def test_a_note_that_could_not_be_opened_is_said_in_words(
     import sys
 
     island = (pathlib.Path(__file__).resolve().parents[3]
-              / "experiments" / "005-deliberation-protocol")
+              / "experiments" / "does-a-content-free-protocol-help")
     if str(island) not in sys.path:
         sys.path.insert(0, str(island))
     from island.dealer import Dealer

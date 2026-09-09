@@ -7,7 +7,7 @@ and committed **before** the game is played. Specification, assumptions and
 hypothesis are written before and not edited after; only the Outcome section is
 filled in later.
 
-**Separate from `experiments/005-deliberation-protocol/runs/` on purpose.**
+**Separate from `experiments/does-a-content-free-protocol-help/runs/` on purpose.**
 Those records answer 005's question, which has a recorded null and is not being
 revisited. A game runs on the same island and much of the same code, but it is
 not an experimental cell: nothing here is pre-registered against 005's metric,

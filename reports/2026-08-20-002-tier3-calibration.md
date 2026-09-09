@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-20 · **Status:** calibration half run; model half designed, unrun
 **Cost:** none (no model calls)
-**Records:** [`tier3_calibration_wide.json`](../experiments/002-barter-conventions/results/tier3_calibration_wide.json) (48 islands, the reported run) ·
-[`tier3_calibration.json`](../experiments/002-barter-conventions/results/tier3_calibration.json) (12 islands, superseded — kept because its intervals are why it was re-run wide)
+**Records:** [`tier3_calibration_wide.json`](../experiments/which-part-of-a-convention-works/results/tier3_calibration_wide.json) (48 islands, the reported run) ·
+[`tier3_calibration.json`](../experiments/which-part-of-a-convention-works/results/tier3_calibration.json) (12 islands, superseded — kept because its intervals are why it was re-run wide)
 
 ## Why the tier exists
 
@@ -178,7 +178,7 @@ code. With it installed, the suite passes.
 ## Reproduction
 
 ```bash
-cd experiments/002-barter-conventions/experiment
+cd experiments/which-part-of-a-convention-works/experiment
 pip install -r requirements.txt
 python calibrate_experiment.py --islands 48 --agents 12 --goods 5 \
     --adherences 1.0 --json ../results/tier3_calibration_wide.json

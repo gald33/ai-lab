@@ -2,7 +2,7 @@
 
 The kids' page composes the manager's forms from sliders and dropdowns rather
 than from a keyboard, which makes it a **second implementation** of
-`experiments/005-deliberation-protocol/island/protocol.py`. It could not be
+`experiments/does-a-content-free-protocol-help/island/protocol.py`. It could not be
 anything else: the page is served from a static origin and cannot call Python.
 `test_hand_lobby_lines.py` settled the shape of the answer for the lobby's two
 lines, and this is the same arrangement for the island's four -- the JS
@@ -46,7 +46,7 @@ HAND = pathlib.Path(__file__).resolve().parent.parent / "hand"
 # The economy's own tree, as `run_game.py` reaches it: the package is `island`
 # while this one is `games.island`, so the two names do not collide.
 _ISLAND = (pathlib.Path(__file__).resolve().parents[3]
-           / "experiments" / "005-deliberation-protocol")
+           / "experiments" / "does-a-content-free-protocol-help")
 if str(_ISLAND) not in sys.path:
     sys.path.insert(0, str(_ISLAND))
 

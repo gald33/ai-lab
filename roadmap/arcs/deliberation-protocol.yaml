@@ -1,7 +1,7 @@
 id: deliberation-protocol
 title: 005 — does a content-free deliberation protocol help agents coordinate?
 refs:
-  - experiments/005-deliberation-protocol/README.md
+  - experiments/does-a-content-free-protocol-help/README.md
   - reports/2026-08-21-005-deliberation-protocol.md
 narrative: |
   Four cells run with agents; the headline is a null. The protocol moved

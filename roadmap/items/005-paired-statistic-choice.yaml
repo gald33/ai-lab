@@ -5,7 +5,7 @@ priority: later
 status: ready
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
-  - experiments/005-deliberation-protocol/analysis
+  - experiments/does-a-content-free-protocol-help/analysis
 evidence: |
   Review target 5: a world can dip below threshold once and diverge again, and
   `min_r D(r)` scores that as a success. The statistic was pre-specified in

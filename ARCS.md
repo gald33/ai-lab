@@ -60,7 +60,7 @@ its runtime can lend it, is the arc.
 
 `deliberation-protocol` · 9 item(s), 5 startable
 
-`experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
+`experiments/does-a-content-free-protocol-help/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
 
 Four cells run with agents; the headline is a null. The protocol moved
 nothing on top of a matched placebo, and nothing at all on top of a common
@@ -87,7 +87,7 @@ five rounds of Haiku.
 
 `execution-ceiling` · 2 item(s), 2 startable
 
-`experiments/007-execution-ceiling/README.md` · `reports/2026-08-24-hypothesis-ledger.md`
+`experiments/do-they-take-a-handed-over-answer/README.md` · `reports/2026-08-24-hypothesis-ledger.md`
 
 Opened to answer a feasibility question the earlier nulls could not: is a
 good outcome reachable on this island at all? Handed the competitive
@@ -135,7 +135,7 @@ utility moves in when a second experiment needs it, not in anticipation).
 
 `shared-coding-tasks` · 6 item(s), 1 startable
 
-`experiments/001-switchboard-coordination/README.md` · `reports/2026-08-24-hypothesis-ledger.md` · `reports/2026-08-24-lessons-for-a-paper.md`
+`experiments/is-coordination-less-to-reason-about/README.md` · `reports/2026-08-24-hypothesis-ledger.md` · `reports/2026-08-24-lessons-for-a-paper.md`
 
 The lab's question started here and left. 001 asked whether coordination
 improves because agents reason harder about each other or because good
@@ -178,7 +178,7 @@ WITHDRAWN, not finished: `002-tier3-run` was deleted unstarted. Tier 1 stands
 as a result; Tier 2's numbers stay recorded as measuring the harness; Tier 3
 stays designed, calibrated and unrun.
 
-`experiments/002-barter-conventions/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
+`experiments/which-part-of-a-convention-works/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
 
 Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
 it, so most of its numbers measure the harness. Tier 3 is designed,
@@ -195,7 +195,7 @@ question the experiment is actually about — a promoter choosing among
 solutions a model wrote — stays unasked. Tier 1, the scripted tier, is
 complete and reported and unaffected.
 
-`experiments/003-promotion-rules/README.md` · `reports/2026-08-20-003-promotion-rules.md`
+`experiments/which-promotion-rule-beats-luck/README.md` · `reports/2026-08-20-003-promotion-rules.md`
 
 Tier 1, the scripted tier, is complete and reported. Tier 2 — the same
 promoter over real instincts — is neither designed nor run, and is now closed
@@ -206,12 +206,12 @@ an item.
 
 `stock-and-flow` · 0 item(s), 0 startable
 
-**Declared `closed`.** Run and reported: experiments/004-stock-and-flow/README.md carries results,
+**Declared `closed`.** Run and reported: experiments/is-ruin-the-convention-or-the-commitment/README.md carries results,
 and reports/2026-08-20-004-stock-and-flow.md is the write-up. No unfinished
 items are filed against it as of 2026-08-22. Declared rather than derived
 because an arc with no items and a finished arc are the same empty set.
 
-`experiments/004-stock-and-flow/README.md` · `reports/2026-08-20-004-stock-and-flow.md`
+`experiments/is-ruin-the-convention-or-the-commitment/README.md` · `reports/2026-08-20-004-stock-and-flow.md`
 
 Answered: whether ruin survives per-period consumption decides whether 002's
 finding is about conventions or about a world where a production commitment
@@ -228,7 +228,7 @@ directory's own status line — run, not published, nothing below is a result �
 remains the accurate description, and closing the arc does not turn it into
 one.
 
-`experiments/001-switchboard-coordination/README.md`
+`experiments/is-coordination-less-to-reason-about/README.md`
 
 Run, not published, and now closed with that still true. The design and the
 one preserved negative result are in the experiment directory; the numbers

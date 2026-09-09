@@ -44,7 +44,7 @@ import pytest
 
 WEB = pathlib.Path(__file__).resolve().parent.parent / "lobby-web"
 VIEWER = (pathlib.Path(__file__).resolve().parents[3] / "experiments"
-          / "005-deliberation-protocol" / "viewer" / "web")
+          / "does-a-content-free-protocol-help" / "viewer" / "web")
 
 #: The board the page reads, exactly as `landing.js` writes it.
 SCORES = "https://gald33.github.io/ai-lab/island/api/scores"
@@ -355,5 +355,5 @@ def test_the_palette_here_is_the_palette_everywhere():
     colours, which nobody notices and nobody can explain later."""
     assert (WEB / "tokens.css").read_bytes() == (VIEWER / "tokens.css").read_bytes(), \
         ("lobby-web/tokens.css has drifted from the viewer's. Re-copy it: "
-         "cp experiments/005-deliberation-protocol/viewer/web/tokens.css "
+         "cp experiments/does-a-content-free-protocol-help/viewer/web/tokens.css "
          "games/island/lobby-web/tokens.css")
