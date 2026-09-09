@@ -31,13 +31,12 @@ import carmel as C  # noqa: E402
 import trail_card as TC  # noqa: E402
 
 #: A seed whose campaign ends in an arrest, and one where she gets away.
-# A seed whose campaign ends in a catch, and one whose campaign does not.
-# **They are chosen for their outcome, so they are re-picked whenever the
-# chase dynamics change** -- "22" was the caught seed until the prep clock
-# landed on 2026-09-09 and it started escaping. If a test below fails on
-# `outcome`, that is what happened, and the fix is a new seed rather than a
-# weakened assertion.
-CAUGHT = bytes.fromhex("4b" * 32)
+# Two campaigns to draw. **Nothing below asserts what either seed's outcome
+# is**, and that is deliberate: `absurd.tsv` is gitignored, so a checkout
+# holding `HUE_TREASURE_KEY` builds 80 absurd treasures and CI builds none,
+# and the same seed is caught in one and escapes in the other. The name is
+# kept for the diff's sake and now means only "the first campaign".
+CAUGHT = bytes.fromhex("22" * 32)
 ESCAPED = bytes.fromhex("a3" * 32)
 
 
@@ -60,29 +59,48 @@ def texts(svg: str) -> list[str]:
 # --- the arithmetic the drawing found -------------------------------------
 
 def test_the_room_she_is_caught_in_is_not_credited():
-    """The catch is walking in while she is still standing there, so the
-    final room of a caught campaign is always one she was mid-theft in.
-    Counting it puts the card's header at odds with `chase`'s own total."""
-    world, result = run(CAUGHT)
-    assert result["outcome"] == "caught"
-    legs = result["moves"]
-    assert legs[-1]["dwell"], "this seed no longer catches her mid-theft"
-    assert len(legs) - 1 not in TC.kept(result)
+    """The catch is being in the room with her, and she is only in a room
+    she has not finished robbing -- so the final room of a caught campaign
+    is always a theft interrupted. Counting it puts the card's header at
+    odds with `chase`'s own total.
 
-    banked = sum(world.treasure[legs[i]["to"]]["reputation"]
-                 for i in TC.kept(result))
-    assert banked == result["reputation"]
+    **Asserted against a constructed result rather than a seeded chase**,
+    because the outcome of any particular seed is not stable across
+    checkouts. `absurd.tsv` is gitignored, so a checkout holding
+    `HUE_TREASURE_KEY` builds 80 absurd treasures at the reputation floor
+    and CI builds none -- different prizes, different dwells, different
+    chase. `CAUGHT = "22"` was caught on CI and escaped here; `"4b"` was
+    the other way round. A test that needs a named seed to lose is a test
+    that goes red on somebody's laptop for a reason that is not a bug.
+    """
+    legs = [{"to": "Uluru", "dwell": 6.0}, {"to": "Stonehenge", "dwell": 11.0}]
+    caught = {"outcome": "caught", "moves": legs}
+    assert TC.kept(caught) == {0}, "the interrupted theft was credited"
+    assert TC.kept({"outcome": "she wins", "moves": legs}) == {0, 1}
 
 
-def test_a_campaign_she_wins_banks_every_room_she_dwelt_in():
-    """The other side of it, so the fix above cannot be 'never credit the
-    last room'."""
-    world, result = run(ESCAPED)
-    assert result["outcome"] != "caught"
-    legs = result["moves"]
-    assert TC.kept(result) == {i for i, leg in enumerate(legs) if leg["dwell"]}
-    assert sum(world.treasure[legs[i]["to"]]["reputation"]
-               for i in TC.kept(result)) == result["reputation"]
+def test_the_card_and_the_scoreboard_agree_on_every_outcome():
+    """The invariant the fix above exists for, and the one worth pinning:
+    what the card banks is what `chase` reports, whatever happened.
+
+    This replaces a pair of tests that each needed a seed with a particular
+    outcome. It is stronger than both -- it holds for a catch, for a win
+    and for a campaign that simply ran out of moves, so `kept` cannot be
+    fixed for one and broken for another -- and it does not care which
+    treasure table the checkout can build.
+    """
+    seen = set()
+    for tag in ("22", "4b", "a3", "07"):
+        seed = bytes.fromhex(tag * 32)
+        world, result = run(seed)
+        seen.add(result["outcome"])
+        legs = result["moves"]
+        banked = sum(world.treasure[legs[i]["to"]]["reputation"]
+                     for i in TC.kept(result))
+        assert banked == result["reputation"], (
+            f"{tag}: card banks {banked}, chase reports"
+            f" {result['reputation']} on a {result['outcome']} campaign")
+    assert len(seen) > 1, f"all four seeds ended the same way: {seen}"
 
 
 def test_the_header_counts_what_the_map_marks():
