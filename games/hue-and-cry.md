@@ -2340,8 +2340,18 @@ Cave, worth 61, was the interrupted theft.
 > 2 rooms, 1 of them emptied, 38 reputation.
 >
 > You walked in on me in Chauvet Cave, and I was still working when you
-> did, so that room is not among the emptied ones. It is 61 reputation I
-> had my hands on and do not get to count.
+> did, so it is not one of the emptied rooms. It is 61 reputation I had
+> my hands on and do not get to count.
+
+**She calls them rooms**, because that is what she calls them everywhere
+else in the same post — "2 rooms", "which rooms I could have gone to",
+"what was in each room before I got there". The first draft ended the
+clause with "not among the emptied *ones*", which was the only place in
+either post that reached for a pronoun instead (Gal, 2026-09-09: *"she
+probably would call the rooms 'rooms'"*). A *place* is a landmark, which is
+why the opening post says "a map of a thousand famous places" and keeps
+saying it; a **room** is what you get by hashing one, and it is what she
+walks into and what she is caught in.
 
 Three reasons, in the order they decided it.
 

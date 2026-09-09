@@ -566,9 +566,9 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
         # whose whole job is to be believed.
         lines += textwrap.wrap(
             f"You walked in on me in {trail[caught_in]['to']}, and I was"
-            " still working when you did, so that room is not among the"
-            f" emptied ones. It is {lost} reputation I had my hands on and"
-            " do not get to count.", width=68) + [""]
+            " still working when you did, so it is not one of the emptied"
+            f" rooms. It is {lost} reputation I had my hands on and do not"
+            " get to count.", width=68) + [""]
     lines += [
         "The seed, so you can check every word of it -- which rooms I could",
         "have gone to, which hints I was allowed to post, and what was in",
