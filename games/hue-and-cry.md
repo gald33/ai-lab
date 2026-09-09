@@ -2409,13 +2409,22 @@ artifact. It would be a leak mid-campaign and is not one here.
 
 **Where the predicate lives.** `carmel.interrupted_theft(outcome, trail)`,
 with the argument for why it may take the last leg without searching for it.
-It is not `close_campaign`'s private business: `trail_card.kept(result)`
-(on the branch of [#250](https://github.com/gald33/ai-lab/pull/250), not yet
-merged) is the same rule over the whole result dict, and it is where the bug
-was found — drawing the trail put the map and the scoreboard on one page and
-made the disagreement visible. When that lands, `kept` should be derived
-from `interrupted_theft` rather than restating it, because two copies of
-this rule is how the count drifts back.
+It is not `close_campaign`'s private business: it is where the bug was
+found, by [#250](https://github.com/gald33/ai-lab/pull/250) drawing the
+trail — putting the map and the scoreboard on one page made the
+disagreement visible, and `trail_card.kept(result)` was the fix on the card
+while the post kept the bug.
+
+**`kept` is derived from it rather than restating it**, which was written
+here as future work and then done in the same change: #250 merged twelve
+minutes before this branch opened its pull request, so the two copies
+existed at once and the reconciliation stopped being hypothetical. `kept`
+is now the shape the card wants — indices, out of a whole result dict —
+over the one predicate, and nothing more. **The check that it is really
+shared is that breaking `interrupted_theft` turns #250's
+`test_the_room_she_is_caught_in_is_not_credited` red along with this
+section's tests**, which was run. Two copies of this rule is how the card
+and the closing post drift back into disagreeing about the same campaign.
 
 **What the tests hold**, all five made to fail on purpose before being kept
 (`test_carmel.py`): the caught post's arithmetic on seed `22…22`; the
