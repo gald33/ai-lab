@@ -2557,6 +2557,56 @@ That last one is the argument for the lobby, and it is a far better one than
 this document had an hour ago, when notes measured as worthless. **They
 measured as worthless because the game had no information problem in it.**
 
+## The lobby is a place on the map, because a hint with no anchor is read against a thousand
+
+*Gal, 2026-09-09: "I think that we should either place the lobby on the map,
+or hand out where the hint was heard from on the map."*
+
+Those are two spellings of one problem, and it is a real one. **The
+candidates are the exits of a landmark.** A searcher standing in a room she
+was in knows which landmark that is, so it can compute her five exits and
+keep the ones the hint fits. A searcher who has only *heard* the hint knows
+nothing to compute exits from, and reads it against the whole map instead.
+
+Measured, on the hint the opening notice was actually carrying:
+
+```
+older than the records    true of  45 of the 1000 landmarks
+the same hint, anchored   true of   2 of her 5 exits
+```
+
+**The opening was a ninefold harder problem than every step after it**, and
+nobody chose that — it fell out of the lobby being nowhere.
+
+### So she sets out from the lobby, and says so
+
+`LOBBY_LANDMARK = "Grand-Place"`, because a lobby that is literally a public
+square is the joke worth having. The lobby *room* stays a fixed, salt-free
+token — the salt is inside the notice, so a salted lobby could never be
+found at all — and the lobby's *position* is a separate fact that exists
+only to anchor the first hint.
+
+> I set out from Grand-Place, which is where you are reading this. Work
+> from there: I can only have gone to a place that resembles it, and you can
+> work out which places those are as easily as I can.
+
+Every hint in the game is now read the same way, against the exits of a
+landmark the reader knows, and the first one stops being a special case.
+
+### The general rule it is an instance of
+
+Gal's other spelling is the one that matters once anybody relays anything:
+**a hint only travels with the place it was heard.** "She said *thin air*"
+is worth nothing; "at Petra she said *thin air*" is worth five candidates.
+
+That has a consequence for the notes this document keeps promising to
+measure. A note carries a **pair**, and both halves can be false
+independently — a liar can name a real anchor with a false hint, or a false
+anchor with a real hint, and the second is worse because it sends the reader
+to compute exits of a room she was never in. When the field model is rebuilt
+(it was deleted for saying more searchers are worse), that is the shape the
+notes have to take.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

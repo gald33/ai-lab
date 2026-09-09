@@ -112,8 +112,29 @@ REPUTATION_TO_WIN = 140
 #: (`games/island/lobby.py`) and for its reason: a room nobody can find is
 #: not an announcement. Its name is fixed and salt-free, because a lobby
 #: that moved with the game salt could not be found by anybody who was not
-#: already playing.
+#: already playing -- and the salt is *inside* the notice, so a salted lobby
+#: could never be found at all.
 LOBBY = "hue-and-cry"
+
+#: And the lobby is also a place ON the map, which is a separate fact and
+#: the one that makes the opening playable.
+#:
+#: Gal, 2026-09-09: *"we should either place the lobby on the map, or hand
+#: out where the hint was heard from on the map."* Those are the same
+#: problem: **a hint means nothing without knowing where it was heard.** The
+#: candidates are the exits of a landmark, so a hint read with no anchor is
+#: read against all thousand.
+#:
+#: Measured, on the hint the opening notice actually carried: `older than
+#: the records` is true of **45 of the 1000**. Anchored, it is read against
+#: five. The opening was a ninefold harder problem than every step after it,
+#: and for no reason anybody chose.
+#:
+#: So she sets out FROM the lobby, and says so. Every hint in the game is
+#: then read the same way -- against the exits of a landmark the reader
+#: knows -- and the first one is not a special case. Grand-Place because a
+#: lobby that is literally a public square is the joke worth having.
+LOBBY_LANDMARK = "Grand-Place"
 
 #: How long people take to notice the notice and set off. A GUESS, and the
 #: parameter that decides how much of a head start she gets: nobody is
@@ -409,7 +430,7 @@ def next_difficulty(recent: list[bool], current: float = DIFFICULTY,
     return round(min(hi, max(lo, factor)), 3)
 
 
-def open_campaign(seed: bytes, start: str) -> str:
+def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     """What she leaves in the lobby when she starts stealing.
 
     Gal, 2026-09-09, in three passes: *"she needs to post a note in some
@@ -445,7 +466,8 @@ def open_campaign(seed: bytes, start: str) -> str:
     """
     salt = salt_for(seed)
     world = Map(seed)
-    first = world.live_hints(start)[0]
+    gone_to = itinerary(seed, start, world, 1)[0]
+    first = gone_to["hint"]
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
@@ -464,9 +486,12 @@ def open_campaign(seed: bytes, start: str) -> str:
         "Find me while I am standing still and you have me. Let me stand",
         "still often enough and I retire on what I take.",
         "",
-        "I will not be giving you any addresses. There are a thousand names",
-        "and I am at one of them, and the first thing I have to say about it",
-        "is this:",
+        f"I set out from {start}, which is where you are reading this. Work",
+        "from there: I can only have gone to a place that resembles it, and",
+        "you can work out which places those are as easily as I can.",
+        "",
+        "I will not be giving you any addresses. The first thing I have to",
+        "say about where I have gone is this:",
         "",
         f"    {first.replace('_', ' ')}",
     ])
@@ -594,7 +619,7 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
     return None, lag
 
 
-def chase(seed: bytes, start: str, searchers: int = 2,
+def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
           limit: int = 40, world: Map | None = None,
           threshold: int = REPUTATION_TO_WIN,
           join_window: float = JOIN_WINDOW_HOURS,
@@ -652,8 +677,8 @@ def _run(world: Map, seed: bytes, names: list[str], searchers: int,
     w = Map(seed)
     w.descriptors, w.places, w.treasure = (
         world.descriptors, world.places, world.treasure)
-    start = names[int.from_bytes(seed[:4], "big") % len(names)]
-    return chase(seed, start, searchers=searchers, world=w,
+    # Every campaign sets out from the lobby, which is a place on the map.
+    return chase(seed, LOBBY_LANDMARK, searchers=searchers, world=w,
                  threshold=10 ** 9, limit=40, join_window=join_window,
                  cooperate=cooperate)
 
@@ -673,8 +698,9 @@ def main() -> None:
         calibrate(world)
         return
 
-    result = chase(seed, "Stonehenge", world=world)
-    print(f"seed {seed.hex()[:16]}...  starting at Stonehenge\n")
+    result = chase(seed, world=world)
+    print(f"seed {seed.hex()[:16]}...  setting out from"
+          f" {LOBBY_LANDMARK}\n")
     for i, m in enumerate(result["moves"][:12], 1):
         print(f"  {i:2}. +{m['arrived']:6.1f}h  she is somewhere"
               f" {m['hint'].replace('_', ' ')}")

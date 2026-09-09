@@ -19,7 +19,7 @@ from secret_matrix import RECIPE, room_token, salt_for  # noqa: E402
 SEED = bytes.fromhex(
     "ca12e100000000000000000000000000000000000000000000000000d1e60000")
 WORLD = C.Map(SEED)
-START = "Stonehenge"
+START = C.LOBBY_LANDMARK
 
 
 def test_she_is_deterministic_given_the_seed():
