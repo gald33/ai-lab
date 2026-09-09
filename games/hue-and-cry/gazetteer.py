@@ -113,12 +113,14 @@ def holders() -> dict[str, list[str]]:
     return out
 
 
-def kinship(a: str, b: str) -> int:
+def kinship(a: str, b: str, gaz: dict | None = None) -> int:
     """How many descriptors two landmarks share. What makes them neighbours."""
-    return len(set(GAZETTEER[a]) & set(GAZETTEER[b]))
+    gaz = GAZETTEER if gaz is None else gaz
+    return len(set(gaz[a]) & set(gaz[b]))
 
 
-def neighbourhood(landmark: str, size: int = NEIGHBOURHOOD) -> list[str]:
+def neighbourhood(landmark: str, size: int = NEIGHBOURHOOD,
+                  gaz: dict | None = None) -> list[str]:
     """The places most like this one, which are the ones it connects to.
 
     Routes run between landmarks that RESEMBLE each other, and this does two
@@ -128,11 +130,13 @@ def neighbourhood(landmark: str, size: int = NEIGHBOURHOOD) -> list[str]:
     Reykjavik, Ushuaia and Valparaiso, which is the cold-port circuit;
     Cairo's are Fez, Marrakesh and Samarkand.
     """
-    return sorted((x for x in GAZETTEER if x != landmark),
-                  key=lambda x: (-kinship(landmark, x), x))[:size]
+    gaz = GAZETTEER if gaz is None else gaz
+    return sorted((x for x in gaz if x != landmark),
+                  key=lambda x: (-kinship(landmark, x, gaz), x))[:size]
 
 
-def pin_rate(trials: int = 200, exits: int = EXITS, seed_bytes: int = 32) -> float:
+def pin_rate(trials: int = 200, exits: int = EXITS, seed_bytes: int = 32,
+             gaz: dict | None = None) -> float:
     """Share of her moves where the trail names her position for free.
 
     THE GATE, and the third version of it. The first counted globally unique
@@ -151,7 +155,12 @@ def pin_rate(trials: int = 200, exits: int = EXITS, seed_bytes: int = 32) -> flo
     import hmac
     import os
 
-    places = list(GAZETTEER)
+    gaz = GAZETTEER if gaz is None else gaz
+    places = list(gaz)
+    # Neighbourhoods depend only on the map, and computing them inside the
+    # trial loop is O(trials x places^2): fine for twenty landmarks, and
+    # about four hours for a thousand.
+    near = {p: neighbourhood(p, gaz=gaz) for p in places}
     pinned = total = 0
     for _ in range(trials):
         seed = os.urandom(seed_bytes)
@@ -169,19 +178,19 @@ def pin_rate(trials: int = 200, exits: int = EXITS, seed_bytes: int = 32) -> flo
             return out
 
         for here in places:
-            reachable = draw(b"exit", neighbourhood(here), here, exits)
+            reachable = draw(b"exit", near[here], here, exits)
             for destination in reachable:
-                live = draw(b"live", list(GAZETTEER[destination]), destination, 3)
-                best = max(len([x for x in reachable if w in GAZETTEER[x]])
+                live = draw(b"live", sorted(gaz[destination]), destination, 3)
+                best = max(len([x for x in reachable if w in gaz[x]])
                            for w in live)
                 total += 1
                 pinned += best == 1
     return pinned / total
 
 
-def playable(trials: int = 200) -> tuple[bool, float]:
+def playable(trials: int = 200, gaz: dict | None = None) -> tuple[bool, float]:
     """Does a drawn map leave her room to run? (passes, pin rate)."""
-    rate = pin_rate(trials)
+    rate = pin_rate(trials, gaz=gaz)
     return rate <= MAX_PINNED, rate
 
 
