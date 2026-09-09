@@ -106,10 +106,26 @@ TRAVEL_KMH = 400
 #: So distance is a bet she takes and cannot price, against a number they
 #: hold and she does not.
 #:
-#: **0.5 is a GUESS pending the sweep in `--calibrate`.** It is a dial and
-#: is meant to be -- Gal, same day: *"all the times can be factored to
-#: adjust the difficulty. So the percentage of capture is actually
-#: something we can tune."*
+#: **It is the capture dial, and it is monotone** -- Gal, same day: *"all
+#: the times can be factored to adjust the difficulty. So the percentage of
+#: capture is actually something we can tune. We do tune."* Measured, 24
+#: campaigns per row, nearest-first ordering:
+#:
+#:     PREP    c@1    c@3   c@10   med hop km
+#:     0.00     4%     4%    12%        3,943
+#:     0.50     8%    17%    38%          883
+#:     1.00    12%    33%    54%          429
+#:     2.00    33%    46%    83%          266
+#:     4.00    96%   100%   100%          226
+#:
+#: Every column rises at every turnout, 4% to 96% against a lone searcher.
+#: **The cost is in the last column**: past about 2.0 the game is a manhunt
+#: in one country, so the range is real and bounded. 0.5 is where it is
+#: left -- 38% at ten, hops still most of a continent, room both ways.
+#:
+#: This only reads as a dial under the nearest-first searcher. Under the
+#: "beatable" ordering the same parameter drove capture to ZERO; see
+#: `pursue`.
 PREP = 0.5
 
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
