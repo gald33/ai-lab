@@ -1830,6 +1830,90 @@ python3 games/hue-and-cry/treasures.py            # read some
 python3 games/hue-and-cry/treasures.py --build    # rewrite treasures.tsv
 ```
 
+## Carmel, built — and her win condition was wrong by a factor of six
+
+*Gal, 2026-09-09: "now let's build Carmel Taldiego herself."*
+`games/hue-and-cry/carmel.py` is her policy, stated, because that is what
+this document says she is for: *"With a person or an agent playing Carmel,
+ticks-to-arrest confounds how good the searchers were with how good she
+was; against a fixed, stated policy it does not."*
+
+She decides three things per move and no more: **where to go** out of her
+five exits, **whether to stand still and steal**, and **which true hint to
+post** about where she went. Each is a pure function of what she can see.
+The hint rule is the one this whole document has been building toward --
+post the live descriptor covering the most of her *reachable* set, which is
+the least informative true thing she can say.
+
+Her destination rule is the one worth arguing with. She scores a room by
+`reputation × cover` rather than by reputation, because
+`correlation(cover, reputation) = -0.28` means **a value-only Carmel walks
+into the most legible room on the map every time**. The anticorrelation that
+"The treasures" celebrates as free tension is, from her side, a trap she has
+to be written to avoid.
+
+### The arithmetic that decides the chase, which I got backwards twice
+
+A trail-following searcher walks exactly the legs she walks. Their travel
+cancels. **The only asymmetry is that she stands still and it does not.**
+
+```
+gap at her room i  =  head start  -  everything she has stolen so far
+```
+
+So every theft hands the follower precisely the hours she spent on it, and
+it catches her on the first room where the gap reaches zero. Her win
+condition is not a race but a **budget**: so many hours of standing still,
+total, to be spent on the best rooms she can reach.
+
+Written down because the file asserted the opposite first -- "the gap never
+changes" -- and before that had a timing loop that produced a lag of one
+hour beside a catch rate of eight per cent, two numbers that cannot both be
+true. Neither error was visible in the output; both were visible the moment
+the quantity was asserted in a test rather than reasoned about, which is
+`test_the_follower_closes_only_by_what_she_steals`.
+
+### `REPUTATION_TO_WIN = 600` was unreachable, and the open question is answered
+
+This document left it open: *"the values, the threshold, and whether the
+threshold is fixed or scales with how many are hunting. Those are numbers to
+calibrate against a played game, not decisions to invent now."* The number
+invented anyway was 600. Measured over sixty chases she reaches a median of
+**162** against two searchers and never once reaches 600.
+
+**And it cannot be fixed**, because her budget is the *nearer* searcher's
+head start, which falls as hunters are added:
+
+```
+searchers   her budget   she reaches   threshold for a contest
+    1          19h          229                140
+    2          11h          162                100
+    3           8h          134                 80
+    5           6h          101                 60
+```
+
+At two searchers and a threshold of 100 she wins 42% of chases. The
+committed table sits at about 60% of what she reaches, which is where the
+chase comes out near even.
+
+**Against the reference searcher, which is a floor and not a player.** It
+runs to the opening landmark and then follows the exact address in each
+room; it never reads a hint, never reasons from a descriptor, never
+cooperates and never guesses ahead. Every number above moves when a real
+searcher exists, and the honest reading is that these are a starting point
+for a played game rather than an answer to one.
+
+One consequence is already visible: a searcher that *guesses ahead* rather
+than following would break the arithmetic entirely, because the gap only
+holds while it walks her legs. That is where the interesting play is, and it
+is also why `seen` stays in her policy even though the reference searcher
+can never trigger it.
+
+```
+python3 games/hue-and-cry/carmel.py             # watch a chase
+python3 games/hue-and-cry/carmel.py --calibrate # the tables above
+```
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
