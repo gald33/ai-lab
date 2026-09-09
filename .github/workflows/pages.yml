@@ -29,7 +29,7 @@ name: Deploy the island viewer (GitHub Pages)
 # The site's replay trees mirror serve.py's ROOTS: `results/` is this
 # experiment's, `replays/` is games/replays -- replays kept on purpose so a
 # finished game has a link after its Switchboard room is gone -- and
-# `ceiling/` is 007's exported rounds.
+# `ceiling/` is the handover experiment's exported rounds.
 #
 # `web/` fetches "api/boards" and "api/scores" as relative paths; serve.py
 # answers those from a running process, and there is none here, so
@@ -97,10 +97,13 @@ jobs:
           if [ -d ../../games/replays ]; then
             cp -r ../../games/replays "$RUNNER_TEMP/site/island/replays"
           fi
-          # 007's exported rounds, under the prefix serve.py gives them.
-          if [ -d ../007-execution-ceiling/replays ]; then
-            cp -r ../007-execution-ceiling/replays "$RUNNER_TEMP/site/island/ceiling"
-          fi
+          # The handover experiment's exported rounds, under the prefix
+          # serve.py gives them. NOT guarded by `if [ -d ]`: api/boards
+          # advertises these to the page, so a missing directory is a broken
+          # site and has to fail here rather than deploy 144 dead links. The
+          # experiment rename in 43bbfb2 moved this path and left the old one
+          # behind a guard, which skipped silently and shipped green.
+          cp -r ../do-they-take-a-handed-over-answer/replays "$RUNNER_TEMP/site/island/ceiling"
           # The hand's lobby: play a seat yourself, from the page. Only the
           # web assets -- the .py files beside them are the generators these
           # were ported from and are referenced nowhere at runtime.
