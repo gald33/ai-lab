@@ -129,3 +129,53 @@ def test_the_tools_tests_are_actually_run_by_ci():
     assert "tools/tests" in runs, (
         "nothing in .github/workflows runs tools/tests, so these assertions "
         "are green only on somebody's laptop")
+
+
+# --- the list that stopped being hand-maintained -------------------------
+
+#: Directories holding `test_*.py` that CI deliberately does not run. Empty,
+#: and an entry has to carry its reason: "not run" and "forgotten" are
+#: indistinguishable from the outside, which is how eight suites went dark.
+UNRUN_ON_PURPOSE: dict[str, str] = {}
+
+
+def suites_on_disk() -> set[str]:
+    """Every directory in the repo holding a `test_*.py`, repo-relative."""
+    return {str(p.parent.relative_to(ROOT))
+            for p in ROOT.rglob("test_*.py")
+            if ".git" not in p.parts and "node_modules" not in p.parts}
+
+
+def test_every_test_directory_is_named_in_ci():
+    """The structural fix for four instances of one omission.
+
+    `viewer/tests`, `games/hue-and-cry`, `tools/tests` and then eight more
+    suites were each absent from a hand-maintained pytest path list, and each
+    absence was invisible: a directory nothing runs reports nothing, and the
+    tick stays green. Two of them are written up in `tests.yml` as one-offs.
+
+    This derives the list instead of trusting it. A new suite is covered the
+    moment it exists, or this fails and says which.
+    """
+    runs = " ".join(
+        step.get("run", "")
+        for name in every_workflow()
+        for job in (load(name).get("jobs") or {}).values()
+        for step in job["steps"])
+
+    missing = sorted(d for d in suites_on_disk()
+                     if d not in UNRUN_ON_PURPOSE and d not in runs)
+    assert not missing, (
+        "these directories hold tests that no CI job runs:\n  "
+        + "\n  ".join(missing)
+        + "\nAdd them to a pytest step, or to UNRUN_ON_PURPOSE with the "
+          "reason. A suite nothing runs is a suite that is already failing "
+          "and cannot say so.")
+
+
+def test_the_exemption_list_only_names_real_directories():
+    """An exemption for a directory that has moved is an exemption that
+    silently covers nothing -- the same shape as a stale `paths:` filter."""
+    for path, reason in UNRUN_ON_PURPOSE.items():
+        assert (ROOT / path).is_dir(), f"{path} is exempted but does not exist"
+        assert reason.strip(), f"{path} is exempted with no reason"

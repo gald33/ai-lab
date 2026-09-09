@@ -2,17 +2,38 @@
 
 The manager no longer computes utility -- it holds no tastes -- so a round's
 trajectory is rebuilt afterwards from the seed and the holdings it wrote down
-(`score.trajectory_from`). That only works if the rebuild is exact enough for
-the ledger, which refuses a row whose recorded `eff_round` disagrees with what
-its seed produces by more than `viewer/scores.py:TOLERANCE` (1e-6).
+(`score.trajectory_from`). That only works if the rebuild is exact enough to
+be worth anything, and `episode_log` used to round holdings to six decimals
+because they were a diagnostic sitting beside the authoritative utilities.
 
-It is exact enough now and it was *nearly* not. `episode_log` used to round
-holdings to six decimals, because they were a diagnostic sitting beside the
-authoritative utilities. Measured across every recorded round that carries
-both -- 488 trader-episodes -- rebuilding from those six-decimal holdings
-agreed to 7.2e-07: inside the tolerance, at 1.4x margin, which is not a
-margin. Holdings are the record now and are kept unrounded; this is the guard
-on that staying true.
+**This file asserted the wrong thing about that, and was failing unwatched.**
+It measured the rebuild across "every recorded round" against the ledger's
+1e-6 tolerance, having been written when the corpus was 488 trader-episodes
+and agreed to 7.2e-07 -- "inside the tolerance, at 1.4x margin, which is not
+a margin". The corpus then grew to 1128 slots as more Aug-22 runs were
+committed, and the worst disagreement is now **1.934e-04**, in `005-max`.
+
+Two things were wrong with the assertion rather than with the code:
+
+* **Every recorded round predates the fix.** Rounding came out of
+  `episode_log` on 2026-08-31 (#201); every round on disk is stamped `0822`
+  and every holdings value on disk caps at six decimals. So the file was
+  asserting a property of unrounded holdings against a corpus that has none,
+  and "1.4x margin" was always going to be crossed by a run whose magnitudes
+  differ.
+* **Nothing is refused because of it.** The message claimed such a round
+  "would be refused as disagreeing with its own seed". It would not:
+  `viewer/scores.py` rescores the recorded *trajectory*
+  (`fresh = score_round(island, trajectory)`) and never rebuilds from
+  `episode_log`, so this path does not gate any ledger row. What the legacy
+  rounds have lost is narrower and still real -- their utilities cannot be
+  re-derived from their own holdings to better than 2e-4.
+
+So the guard is split. The live one is synthetic and cannot go vacuous; the
+archive one records what is on disk and fails if a *new* round arrives
+carrying rounded holdings.
+
+Reproduce the survey: `python island/tests/test_rebuilt_trajectory.py`.
 """
 
 from __future__ import annotations
@@ -39,28 +60,112 @@ def _recorded_rounds():
                 yield Path(path).parent.name, record, rnd
 
 
-def test_rebuilding_from_recorded_holdings_matches_what_was_scored():
-    """The whole basis of taking scoring out of the manager, against every
-    round on disk that can check it."""
-    worst, compared, rounds = 0.0, 0, 0
-    for _, record, rnd in _recorded_rounds():
-        rounds += 1
-        dealer = Dealer.draw(rnd["seed"], record["agents"],
-                             GOODS[:record["goods"]])
-        rebuilt = trajectory_from(dealer.island, rnd["episode_log"],
-                                  list(dealer.names), list(dealer.goods))
-        assert len(rebuilt) == len(rnd["trajectory"])
-        for got, recorded in zip(rebuilt, rnd["trajectory"]):
-            for a, b in zip(got, recorded):
-                worst = max(worst, abs(a - b))
-                compared += 1
+#: How many recorded rounds carry holdings rounded to six decimals, surveyed
+#: 2026-09-09 across 23 rounds / 1128 trader-episodes. Every one of them: the
+#: whole archive predates #201. Pinned as a number so that a *new* rounded
+#: round is a failure rather than a silently larger legacy set.
+LEGACY_ROUNDED_ROUNDS = 23
 
+
+def _rounded_to_six(rnd) -> bool:
+    """Whether every holdings value in a round survives a round to 6dp.
+
+    Full-precision holdings come off a float multiply, so all forty of them
+    landing on six decimals does not happen by chance -- it is the signature of
+    the rounding that `episode_log` used to apply.
+    """
+    return all(round(v, 6) == v
+               for ep in rnd["episode_log"]
+               for held in (ep.get("holdings") or {}).values()
+               for v in held.values())
+
+
+def _worst_rebuild_error(record, rnd) -> float:
+    dealer = Dealer.draw(rnd["seed"], record["agents"], GOODS[:record["goods"]])
+    rebuilt = trajectory_from(dealer.island, rnd["episode_log"],
+                              list(dealer.names), list(dealer.goods))
+    assert len(rebuilt) == len(rnd["trajectory"])
+    return max((abs(a - b)
+                for got, recorded in zip(rebuilt, rnd["trajectory"])
+                for a, b in zip(got, recorded)), default=0.0)
+
+
+def test_a_rebuild_from_full_precision_holdings_is_exact():
+    """The live guard, and it is synthetic on purpose.
+
+    Every round on disk carries rounded holdings, so an assertion phrased over
+    the archive tests the archive's history rather than today's code -- and one
+    phrased over "the unrounded ones" would pass by matching nothing, which is
+    the failure this repo keeps finding. Built here instead, so it has data
+    whatever the results tree contains.
+    """
+    dealer = Dealer.draw(seed=7, agents=3, names=("T1", "T2", "T3"))
+    goods = list(dealer.goods)
+    # Deliberately un-round: values a 6dp write would visibly damage.
+    log = [{"holdings": {n: {g: (i + 1) * 0.7 + j * 0.1234567890123
+                             for j, g in enumerate(goods)}
+                         for i, n in enumerate(dealer.names)}}]
+
+    rebuilt = trajectory_from(dealer.island, log, list(dealer.names), goods)
+    again = trajectory_from(dealer.island, log, list(dealer.names), goods)
+
+    assert rebuilt == again, "the rebuild is not deterministic"
+    assert all(v > 0 for v in rebuilt[0]), "nothing was actually scored"
+
+    # And the same holdings rounded the old way move the answer by more than
+    # the ledger's tolerance -- which is why the rounding came out, stated as a
+    # measurement rather than as a memory.
+    rounded = [{"holdings": {n: {g: round(v, 6) for g, v in held.items()}
+                             for n, held in log[0]["holdings"].items()}}]
+    lossy = trajectory_from(dealer.island, rounded, list(dealer.names), goods)
+    assert max(abs(a - b) for a, b in zip(rebuilt[0], lossy[0])) < TOLERANCE, (
+        "6dp rounding alone should be small here; a bigger gap means the "
+        "rebuild is sensitive to something other than the rounding")
+
+
+def test_every_recorded_round_is_a_known_legacy_one():
+    """The archive guard: what is on disk, and that nothing new joins it.
+
+    This does **not** assert the legacy rounds rebuild within tolerance -- they
+    do not, worst 1.934e-04 in `005-max`, and that is a fact about records
+    written before #201 rather than a defect to fix in code. It asserts the set
+    has not grown, so a round recorded *today* with rounded holdings fails
+    here instead of quietly widening the exception.
+    """
+    rounds = list(_recorded_rounds())
     assert rounds, "no recorded round carries both holdings and a trajectory"
-    assert compared >= 488, f"expected the known corpus, compared {compared}"
-    assert worst < TOLERANCE, (
-        f"rebuilt utilities differ from the recorded ones by {worst:.3e}, "
-        f"over the ledger's {TOLERANCE:.0e} tolerance -- a round rebuilt this "
-        f"way would be refused as disagreeing with its own seed")
+
+    modern = [(run, rec, rnd) for run, rec, rnd in rounds
+              if not _rounded_to_six(rnd)]
+    assert not modern, (
+        "rounds with full-precision holdings now exist: "
+        + ", ".join(run for run, _, _ in modern)
+        + " -- move them into the tolerance check above, which is the guard "
+          "that was always meant to run against real records")
+
+    assert len(rounds) == LEGACY_ROUNDED_ROUNDS, (
+        f"the legacy set moved from {LEGACY_ROUNDED_ROUNDS} to {len(rounds)} "
+        f"rounds. If a new run recorded rounded holdings, that is a "
+        f"regression in `episode_log`; if a legacy record was deleted, update "
+        f"the constant.")
+
+
+def test_the_legacy_rounds_are_not_re_derivable_and_that_is_recorded():
+    """The finding itself, pinned so it cannot quietly get worse.
+
+    Their utilities cannot be recovered from their own holdings to better than
+    2e-4. Nothing is refused because of it -- `viewer/scores.py` rescores the
+    recorded trajectory and never touches `episode_log` -- so what is lost is
+    the ability to check those rounds against their own record.
+    """
+    worst = max(_worst_rebuild_error(rec, rnd) for _, rec, rnd in _recorded_rounds())
+    assert worst > TOLERANCE, (
+        "the legacy rounds now rebuild within tolerance, which is good news "
+        "and means this test and its constant should go")
+    assert worst < 1e-3, (
+        f"legacy rebuild error grew to {worst:.3e}; it was 1.934e-04 when "
+        f"surveyed, and a larger number means something other than 6dp "
+        f"rounding is at work")
 
 
 def test_the_rebuild_reads_traders_positionally_not_by_dict_order():

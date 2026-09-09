@@ -1421,18 +1421,45 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
     #: printed either way: a check that quietly examined one of the two kinds
     #: and said nothing would read as having examined both.
     def elsewhere():
-        """The first board this page serves that has a plain remark on it."""
+        """Boards this page serves that carry a plain remark, in a fixed order.
+
+        **Sorted by URL rather than taken from the listing.**
+        `serve.py:boards()` orders by file mtime, and in a fresh CI checkout
+        every file is written at about the same moment -- so the order is
+        whatever order the tree happened to be written in, and a directory
+        rename reshuffles it. Measured on gald33/ai-lab#246: this check was red
+        on one commit and green on the next with `render.py`, `serve.py` and
+        every file under `viewer/web/` byte-identical between them. The only
+        difference was which board the listing handed over, and the one it
+        handed over first on the red run draws no bubble.
+
+        A check whose verdict rides on `stat()` timestamps is not measuring the
+        thing it is named after. Ordering here is the check choosing its own
+        subject; the cap stays at 60 because each candidate costs a fetch and a
+        reduce.
+        """
         return page.evaluate("""async (m) => {
           const list = await (await fetch('api/boards', {cache: 'no-store'})).json();
           const look = new Function('url', 'return (' + m + ')(url)');
-          for (const b of (list.boards || []).slice(0, 60)) {
+          const urls = (list.boards || []).map(b => b.board).sort().slice(0, 60);
+          const out = [];
+          for (const url of urls) {
             try {
-              const at = await look(b.board);
-              if (at.talk !== undefined) return { board: b.board, at: at.talk };
+              const at = await look(url);
+              if (at.talk !== undefined) out.push({ board: url, at: at.talk });
             } catch { /* a board this page cannot read is not this check's business */ }
+            if (out.length >= 6) break;
           }
-          return null;
+          return out;
         }""", marks)
+
+    def show(index):
+        """Put the page on the frame before `index`, then step onto it."""
+        page.evaluate("""(i) => { const s = document.getElementById('scrub');
+          s.value = String(i); s.dispatchEvent(new Event('input')); }""", index - 1)
+        page.wait_for_timeout(900)
+        page.click("#fwd")
+        page.wait_for_timeout(250)
 
     #: The refusal first, on the board this was opened with, and only then the
     #: search for a remark -- which navigates. The other way round left the
@@ -1446,25 +1473,43 @@ def overhead(browser, base: str, board: Path, out: Path) -> list[str]:
     for kind in ("bad", "talk"):
         at = found.get(kind)
         where = f"{stem} overhead {kind}"
+        seen = None
         if at is None and kind == "talk":
-            other = elsewhere()
-            if other:
-                page.goto(f"{base}/?board={other['board']}")
+            #: **Keep going until one of them actually draws a bubble.** Not
+            #: every board with a remark on it draws one, so committing to the
+            #: first candidate makes this check a lottery over which board the
+            #: listing offered. Trying them in turn keeps what the check is
+            #: for -- bubble *placement* -- and stops it failing over which
+            #: board it got. It still fails when none of them draws one, which
+            #: is the regression actually being guarded.
+            tried = []
+            for cand in elsewhere():
+                page.goto(f"{base}/?board={cand['board']}")
                 page.wait_for_selector(".hut", timeout=MOUNT_MS)
                 page.wait_for_timeout(1800)
-                at = other["at"]
-                print(f"NOTE {where}: driven from {other['board']}")
+                show(cand["at"])
+                probe = page.evaluate(OVERHEAD, kind)
+                if not probe.get("error"):
+                    at, seen = cand["at"], probe
+                    print(f"NOTE {where}: driven from {cand['board']}")
+                    break
+                tried.append(cand["board"])
+                print(f"NOTE {where}: {cand['board']} carries a remark but "
+                      f"drew no bubble; trying the next")
+            else:
+                if tried:
+                    bad.append(f"{where}: no bubble was drawn on any of the "
+                               f"{len(tried)} boards that carry a remark "
+                               f"({', '.join(tried)})")
+                    continue
         if at is None:
             # Said out loud rather than skipped in silence: no board this page
             # can see has a frame of that kind.
             print(f"NOTE {where}: no board served here has one; not checked")
             continue
-        page.evaluate("""(i) => { const s = document.getElementById('scrub');
-          s.value = String(i); s.dispatchEvent(new Event('input')); }""", at - 1)
-        page.wait_for_timeout(900)
-        page.click("#fwd")
-        page.wait_for_timeout(250)
-        seen = page.evaluate(OVERHEAD, kind)
+        if seen is None:
+            show(at)
+            seen = page.evaluate(OVERHEAD, kind)
         if kind == "bad":
             #: A real refusal, on a real board, driven through the page's own
             #: transport: nothing over the hut, and the offer it named -- when

@@ -55,6 +55,7 @@ So, explicitly:
 | Timing | **the island** |
 | Vocabulary | **the island** |
 | Switchboard is the only interface | **the lab** |
+| A check is green for the reason it names | **the lab** |
 | A page's behaviour is checked in a browser | **the lab** |
 | Metrics | **the island** |
 | Process | **the lab** |
@@ -396,6 +397,48 @@ constraint is written into
 example. What it unblocks — ranked games, deleting `island/sealed.py`, dropping
 `JOIN`'s `box=`, and sealing each seat's invite so the room holds only its
 seats — is in `games/island.md`.
+
+## A check is green for the reason it names, or it is not a check
+
+**Six instances, one disease**, and the browser rule below is the first of
+them rather than a separate lesson. Written 2026-09-09, when the fourth and
+fifth turned up in one afternoon and it stopped being a run of bad luck.
+
+| # | what was green | what it was actually checking |
+|---|---|---|
+| 1 | the lobby's countdown assertions | markup that was all present, in the wrong order — `querySelectorAll('.cd')` matched nothing, every clock frozen |
+| 2 | the whole suite | a path list that omitted `viewer/tests` — 194 tests nothing ran |
+| 3 | every browser check on #220 | nothing: they were skipped behind somebody else's red render |
+| 4 | the suite again | **eight of thirteen** test directories in no path list, `island/tests` among them, with two tests failing unseen for weeks |
+| 5 | a `paths:` filter | a directory that no longer existed, so the job it gated could never fire — reported as neither pass nor fail |
+| 6 | the `overhead` render check | whichever board `stat()` mtime handed it. Red on one commit and green on the next with the viewer byte-identical between them |
+
+**The rule.** A check must be able to fail for the reason it is named after,
+and that must be *demonstrated* rather than assumed. Break the thing on
+purpose, watch the check go red, put it back. A check nobody has seen fail is
+a check nobody has seen work.
+
+**And derive the list rather than maintaining it.** Four of the six are a
+hand-written inventory drifting from the tree: a path list, a filter, a
+listing order. Every one was correct when written. So where a check has to
+know what exists — which directories hold tests, which paths a job depends on
+— it computes that from the repository and fails on what it finds, instead of
+being told. `tools/tests/test_workflows.py` is where that lives for CI, and it
+carries an exemption list whose entries must each state a reason, because
+*"not run"* and *"forgotten"* are indistinguishable from the outside.
+
+**The three shapes to watch for**, since they are what the six reduce to:
+
+- a **skip** drawn as a pass — the reason `--require` and
+  `ISLAND_REQUIRE_BROWSER=1` exist;
+- an **absence** drawn as a pass — a suite, a path or a job that nothing
+  names, which reports nothing rather than failing;
+- a **coincidence** drawn as a pass — a check whose verdict depends on
+  something it does not control, like file mtimes or which board a listing
+  offered first.
+
+Reproduce the sixth, which is the subtlest:
+`python experiments/does-a-content-free-protocol-help/viewer/tests/render.py --require --only overhead`.
 
 ## A page's behaviour is checked in a browser, or it is not checked
 
