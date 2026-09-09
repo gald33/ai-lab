@@ -18,9 +18,11 @@ WHAT SHE DECIDES, WHICH IS THREE THINGS
 
 Per move, and no more than this:
 
-1. **Where to go**, which is anywhere on the map.
-2. **Whether to stand still and steal**, which is the only way she is ever
-   catchable and the only way she ever wins.
+1. **Where to go**, which is anywhere on the map -- but the farther,
+   the longer she must stand still first.
+2. **Whether to stand still and steal**, which is how she wins. It is no
+   longer the only way she is catchable: since a move costs her preparation
+   she can also be reached while getting ready, or overtaken outright.
 3. **Which true hint to post** about where she has gone.
 
 She posts `CLUE <hint> <workspace>` in the room she is **leaving** -- the
@@ -73,6 +75,68 @@ from secret_matrix import (RECIPE, _prf, hints_for,  # noqa: E402
 #: costs about ten hours -- the same order as the longest theft, so the two
 #: costs trade against each other instead of one dominating.
 TRAVEL_KMH = 400
+
+#: Hours of preparation per hour of travel. **The mechanic that gives the
+#: map a shape again**, and the one thing in this file a searcher can use
+#: the clock for.
+#:
+#: Gal, 2026-09-09: *"the farther she wants to move, the longer it takes her
+#: to prepare. So we can decide how much longer, but it is longer... she has
+#: more chance of running away to a close landmark."*
+#:
+#: The order matters and is the whole mechanic: **she posts, and then she
+#: prepares, and then she travels.** So the message is a bet. A searcher
+#: reading it knows when it was posted -- Switchboard stamps every line --
+#: and therefore knows its own lag `e`. She does not know `e` for anybody,
+#: and cannot: she never learns who came.
+#:
+#: The arithmetic, short enough to state completely. She leaves A for X,
+#: posting at time p. Her prep is `PREP x t(A,X)`, so she reaches X at
+#: `p + PREP*t + t`. A searcher reading at `p + e` reaches X at `p + e + t`.
+#: Subtract:
+#:
+#:     searcher arrival - her arrival = e - PREP * t(A,X)
+#:
+#: **A searcher with lag `e` gets to X before she does whenever
+#: `e <= PREP * t(A, X)`** -- and every term of that is public. That is what
+#: her pursuers can deduce, which is the half of Gal's message he was unsure
+#: about: not where she is, but *which of the places she might be they can
+#: beat her to*. The far candidates are the beatable ones.
+#:
+#: So distance is a bet she takes and cannot price, against a number they
+#: hold and she does not.
+#:
+#: **0.5 is a GUESS pending the sweep in `--calibrate`.** It is a dial and
+#: is meant to be -- Gal, same day: *"all the times can be factored to
+#: adjust the difficulty. So the percentage of capture is actually
+#: something we can tune."*
+PREP = 0.5
+
+#: The hours she guesses her nearest pursuer is behind her. **Her prior over
+#: `e`, and the only defence she has against a number she can never learn.**
+#:
+#: This exists because the first version of the prep policy divided the
+#: prize by `1 + prep hours` flat, and that is unboundedly distance-averse:
+#: measured, she stopped using the map. Her median hop fell from 5,807 km at
+#: `PREP = 0` to 246 km at 0.25 and 109 km at 1.0 -- she robbed one city
+#: block by block, never travelled, and therefore never paid a prep worth
+#: overtaking her during. **Raising the cost of distance made her safer**,
+#: and the capture rate at ten searchers went 25% -> 67% -> 0%, which is not
+#: a dial anybody can tune.
+#:
+#: The fix is to discount by the RISK the prep buys rather than by its
+#: hours. What a prep of `h` hours actually costs her is the chance somebody
+#: is within `h` of her, and that saturates: past the point where a pursuer
+#: could be anywhere, going farther adds nothing. So:
+#:
+#:     score = reputation * cover / (1 + prep / ASSUMED_LAG)
+#:
+#: At `ASSUMED_LAG -> 0` she is the hugger above. At `-> infinity` she
+#: ignores distance, which was the pre-prep game. 12 hours is A GUESS, and
+#: it is *deliberately* a guess she can be wrong about: she never learns
+#: what the field actually is, so a Carmel who priced this correctly would
+#: be reading something she cannot see.
+ASSUMED_LAG = 12.0
 
 #: What she needs to win. ONE NUMBER, and **currently uncalibrated** -- see
 #: the warning at the end of this comment.
@@ -142,8 +206,15 @@ LOBBY_LANDMARK = "Grand-Place"
 #: hunting her until somebody reads the lobby.
 JOIN_WINDOW_HOURS = 12
 
-#: What a theft costs her, as a multiplier on the hours. 1.0 is the
-#: treasure's own dwell.
+#: What standing still costs her, as a multiplier on the hours. 1.0 is the
+#: treasure's own dwell and the nominal prep.
+#:
+#: **It scales prep as well as dwell**, since 2026-09-09. Gal: *"all the
+#: times can be factored to adjust the difficulty. So the percentage of
+#: capture is actually something we can tune. We do tune."* Both are time
+#: she spends not travelling, both are time her pursuers spend closing, and
+#: a factor that moved only one of them would change what kind of game it
+#: is rather than how hard it is.
 #:
 #: Gal, 2026-09-09: *"We could take her time values and use them with a
 #: factor for difficulty so we can balance the next game based on recent
@@ -164,6 +235,19 @@ def travel_hours(a: dict, b: dict) -> float:
         math.sin((lat2 - lat1) / 2) ** 2
         + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2))
     return km / TRAVEL_KMH
+
+
+def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
+    """What it costs her to get ready to make that hop.
+
+    Scaled by `difficulty` with everything else of hers, because Gal's dial
+    is *all* her times and not just the thefts: prep and dwell are the two
+    things she does standing still, and the gap closes by both.
+
+    A searcher pays none of this. It is her papers, her route and her
+    luggage, and the asymmetry is the point.
+    """
+    return PREP * travel_hours(a, b) * difficulty
 
 
 class Map:
@@ -229,34 +313,44 @@ class Carmel:
 
     # --- 1. where to go ---------------------------------------------------
     def choose_destination(self) -> str:
-        """Worth going to, and describable once she gets there.
+        """Worth going to, describable once she gets there, and near enough
+        that she is gone before anybody arrives.
 
-        Two things pull. A rich room is the point -- she wins on reputation
-        and nothing else -- but the hint she will have to post about it is
-        drawn from that room's descriptors, and a room whose live three are
-        all rare announces her.
+        Three things pull now. A rich room is the point -- she wins on
+        reputation and nothing else. The hint she will have to post about it
+        is drawn from that room's descriptors, and a room whose live three
+        are all rare announces her. And **distance is a bet**: she posts
+        before she prepares, so the farther she goes the longer she stands
+        in the room she has just advertised, and the wider the band of
+        searchers who reach the destination before she does.
 
-        So she scores a room by what it pays and by the cover it will buy,
-        and takes the best. She does NOT take the richest: the richest
-        rooms are systematically the most exposed (`treasures.py`,
-        `correlation(cover, reputation) = -0.28`), so a value-only Carmel
-        walks into the most legible room on the map every time.
+        The correction this makes, in the file that made it: two commits
+        ago this docstring said she does *not* read distance, "deliberately:
+        their travel cancels exactly, so distance costs her nothing it does
+        not also cost her pursuer". The travel still cancels exactly. **The
+        prep does not cancel at all** -- it is hers alone -- so the sentence
+        was true of a game without prep and is false of this one.
 
-        **The range is the whole map**, since there are no routes. Two
-        things follow and both are deliberate. Distance costs her nothing
-        that it does not cost her pursuer -- their travel cancels exactly
-        (`test_the_follower_closes_only_by_what_she_steals`) -- so she does
-        not read it, and a policy that did would hand the searcher an
-        ordering it could exploit. And with pay and cover both global
-        properties, her preference order over unrobbed rooms is fixed for a
-        seed: what varies from game to game is which three descriptors the
-        seed makes live, which is what moves the cover term.
+        So she divides the prize by the risk the journey buys:
+
+            score = reputation * cover / (1 + prep / ASSUMED_LAG)
+
+        She cannot do better than a fixed risk preference, because pricing
+        the bet needs `e` -- how far behind her nearest pursuer is -- and
+        she never learns who came, let alone from where. `ASSUMED_LAG` is
+        her standing guess at it, and the reason the discount saturates
+        rather than growing without bound is written there: a flat `1 +
+        prep hours` made her stop using the map, and a Carmel who never
+        travels is one nobody can overtake.
         """
         best, best_score = None, -1.0
         for destination, prize in self.world.treasure.items():
             if destination in self.emptied or destination == self.at:
                 continue
-            score = prize["reputation"] * self.best_cover(destination)
+            prep = prep_hours(self.world.places[self.at],
+                              self.world.places[destination], self.difficulty)
+            score = (prize["reputation"] * self.best_cover(destination)
+                     / (1.0 + prep / ASSUMED_LAG))
             if score > best_score:
                 best, best_score = destination, score
         return best
@@ -287,17 +381,27 @@ class Carmel:
                    key=lambda w: (self.world.cover[w], w))
 
     # --- 3. whether to stand still ----------------------------------------
-    def will_steal(self, destination: str, seen: bool) -> bool:
-        """Standing still is the only way she is caught and the only way she
-        wins, so the rule is short: steal unless somebody showed themselves.
+    def will_steal(self, destination: str) -> bool:
+        """She steals wherever she has not already.
 
-        Being seen aborts the theft by the settled definition -- a searcher
-        posted in that room -- and she does not re-attempt a room she has
-        emptied. There is no cleverness here on purpose: a Carmel who
-        skipped cheap thefts to stay safe would win more slowly and be
-        harder to hold constant, and holding her constant is her whole job.
+        **The `seen` argument is gone, and with it the abort rule.** It read
+        the board on arrival and did not start if a searcher had posted
+        there, which made being-seen an interruption rather than an ending.
+        That cannot survive the prep clock: a searcher who overtakes her
+        once is standing where she lands, reads her next hint the instant
+        she posts it with a lag of nearly zero, and overtakes her again
+        forever -- so an aborting Carmel is frozen rather than caught, and
+        the game has no end.
+
+        Gal's own statement of the outcomes settles it and is simpler than
+        what this file had built: *"either Carmel sees you in the room and
+        you win, or she goes to hiding with her loot with enough reputation
+        and you lose."* **Being in the room with her is the win.** It does
+        not matter who arrived first, and there is no third outcome for a
+        searcher who gets there early -- it waits, which is what arriving
+        early is *for*.
         """
-        return not seen and destination not in self.emptied
+        return destination not in self.emptied
 
     def take(self, destination: str) -> float:
         prize = self.world.treasure[destination]
@@ -444,6 +548,15 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "Find me while I am standing still and you have me. Let me stand",
         "still often enough and I retire on what I take.",
         "",
+        "One kindness, because it costs me nothing you could not work out.",
+        "I post before I pack, and the farther I mean to go the longer the",
+        f"packing takes -- {PREP} hours of it for every hour of the journey.",
+        "My line is stamped with the hour I wrote it. Subtract, and you know",
+        "how far behind me you are; and for any place you think I have gone,",
+        "you know whether you can be standing in it before I get there.",
+        "",
+        "You cannot do that for everywhere. You can do it for the far ones.",
+        "",
         f"I set out from {start}, which is where you are reading this.",
         "There is nowhere I cannot have gone from here. A thousand places,",
         "and the only thing narrowing them is what I choose to tell you.",
@@ -490,86 +603,120 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
 
 def itinerary(seed: bytes, start: str, world: Map,
               limit: int = 40, difficulty: float = DIFFICULTY) -> list[dict]:
-    """Where she goes and how long she stands still, ignoring the searchers.
+    """Where she goes, when she says so, and how long she stands still.
 
-    She can be simulated on her own because **the reference searcher never
-    gets ahead of her**. It follows the trail, and the trail only exists
-    behind her, so it can never be in a room before she arrives -- which is
-    the one thing that would change her behaviour (`will_steal`, seen). A
-    searcher that guessed ahead would break this and would need the two
-    simulated together; that is a reason to keep `seen` in her policy, not a
-    reason to model it here.
+    Each leg is one hop and reads in the order she lives it:
+
+        posted   she puts the hint up in the room she is leaving
+        prep     she gets ready, still standing in that room
+        arrived  posted + prep + travel
+        leaves   arrived + dwell, and is when she posts the next one
+
+    **She is still simulated on her own, and the reason changed.** It used
+    to be that the searcher could never get ahead of her, so it could never
+    change her behaviour. Under the prep clock it certainly can get ahead of
+    her -- that is the whole mechanic -- but with the abort rule gone
+    (`will_steal`), being reached is the end of the game rather than a
+    change to her plan. Nothing a searcher does alters a leg she would
+    otherwise have flown, so the trail is still a pure function of the seed.
     """
     her = Carmel(world, start, difficulty)
-    out = []
+    out, posted = [], 0.0
     for _ in range(limit):
         destination = her.choose_destination()
         hint = her.choose_hint(destination)
         leaves_from = her.at
-        her.clock += travel_hours(world.places[her.at],
-                                  world.places[destination])
+        prep = prep_hours(world.places[leaves_from],
+                          world.places[destination], difficulty)
+        travel = travel_hours(world.places[leaves_from],
+                              world.places[destination])
         her.at = destination
-        arrived = her.clock
-        dwell = her.take(destination) if her.will_steal(destination, False) \
-            else 0
-        her.clock += dwell
+        arrived = posted + prep + travel
+        dwell = her.take(destination) if her.will_steal(destination) else 0
         out.append({"from": leaves_from, "to": destination, "hint": hint,
+                    "posted": posted, "prep": prep, "travel": travel,
                     "arrived": arrived, "leaves": arrived + dwell,
                     "dwell": dwell, "reputation": her.reputation})
+        posted = arrived + dwell
     return out
 
 
 def pursue(world: Map, start: str, home: str, trail: list[dict],
            joined_at: float = 0.0, share: tuple[int, int] = (0, 1)
            ) -> tuple[int | None, float]:
-    """Run one searcher, deducing. Returns (the move it catches her on, its
+    """Run one searcher, deducing. Returns (the move it reaches her on, its
     head start).
 
-    Gal, 2026-09-09: *"a player guesses the landmark from the hint, plugs in
-    the algorithm, gets the workspace, go to the workspace, looks for her or
-    at least her next hint."* And then: *"we have no routes."*
+    WHAT IT READS, WHICH IS TWO THINGS
+    ----------------------------------
 
-    So there is no address anywhere and no reachable set either. Standing in
-    the room she was in, it reads the one thing she said on her way out, and
-    the candidates are **every landmark on the map the hint is true of** --
-    a median of **152** of the 1000, since she posts the commonest of her
-    three live descriptors, where the exit band made it 2. It picks
-    them nearest-first, because with the routes gone geography is the only
-    structure left to a searcher and travel is what a wrong guess costs.
+    A line and a timestamp. The hint says something true of where she went;
+    the timestamp says when she said it, and therefore -- against its own
+    clock -- what its lag `e` is. Gal, 2026-09-09: *"she does not know how
+    close her pursuers are, but they do know when she left the message. So
+    they know how close they are."*
 
-    A wrong guess costs a leg and buys one bit, and there are now about
-    seven bits to buy per room instead of one. That is the price of an
-    entry requirement that is a sentence and a SHA-256 rather than 352 KB
-    of tables; `games/hue-and-cry.md`, "There are no routes", is where the
-    trade is written down.
+    WHAT IT CAN DEDUCE FROM THEM, WHICH IS THE PART THAT WAS UNKNOWN
+    ---------------------------------------------------------------
+
+    Not where she is. **Which of the places she might be it can beat her
+    to.** She posts before she prepares, so for a candidate X she does not
+    reach X until `PREP * t(here, X)` after posting, while the searcher
+    needs only `e`. So:
+
+        it arrives before her   <=>   e <= PREP * t(here, X)
+
+    Every term is public: the gazetteer, `PREP`, and the stamp on her line.
+    **The far candidates are the ones it can guarantee**, which is the exact
+    complement of her preference for near ones. So it sorts the candidates
+    the hint allows into the ones it can beat her to and the ones it cannot,
+    and walks the beatable ones nearest-first, since a wrong guess still
+    costs a leg and the cheapest wrong guess is the near one.
+
+    It computes prep at difficulty 1.0 because it does not know the dial.
+    Above 1.0 that makes it conservative -- she is slower than it assumed,
+    so more candidates are beatable than it thinks -- and below 1.0 it is
+    optimistic and loses journeys it expected to win. That asymmetry is a
+    property of a dial only one side can see, and is left rather than fixed.
     """
     clock = joined_at + travel_hours(world.places[home], world.places[start])
     lag = clock
 
-    here, hint = start, trail[0]["hint"]
+    here = start
     for i, leg in enumerate(trail):
-        # Where can she be? Everywhere the hint is true of.
+        if clock < leg["posted"]:
+            # It got here before she had even posted. It waits for the line
+            # rather than guessing from one she has not written.
+            clock = leg["posted"]
+        elapsed = clock - leg["posted"]
+
+        def beatable(x: str) -> bool:
+            return elapsed <= prep_hours(world.places[here], world.places[x])
+
         candidates = sorted(
-            (x for x in world.descriptors if hint in world.descriptors[x]
-             and x != here),
-            key=lambda x: (travel_hours(world.places[here],
+            (x for x in world.descriptors
+             if leg["hint"] in world.descriptors[x] and x != here),
+            key=lambda x: (not beatable(x),
+                           travel_hours(world.places[here],
                                         world.places[x]), x))
         # `share` is (which searcher, how many). A field that divides the
         # candidates checks them in parallel instead of everybody walking
         # the same wrong rooms in the same order. Nothing enforces it and
         # nothing settles it -- it is talk, and it is the whole reason the
-        # lobby is worth having. With no routes it is worth far more than
-        # it was: the set being divided is a hundred rooms, not five.
+        # lobby is worth having.
         mine, of = share
         rota = [c for j, c in enumerate(candidates) if j % of == mine] \
             or candidates
         for guess in rota:
-            clock += travel_hours(world.places[here], world.places[guess])
+            clock += travel_hours(world.places[here],
+                                  world.places[guess])
             if guess == leg["to"]:
-                if leg["arrived"] < clock <= leg["leaves"]:
+                # In the room with her -- whether it beat her there and
+                # waited, or walked in while she was still stealing. Gal:
+                # "either Carmel sees you in the room and you win".
+                if clock <= leg["leaves"]:
                     return i, lag
-                here, hint = guess, (trail[i + 1]["hint"]
-                                     if i + 1 < len(trail) else hint)
+                here = guess
                 break
             # Empty room. It knows only that she is not here.
         else:
@@ -588,15 +735,26 @@ def chase(seed: bytes, start: str = LOBBY_LANDMARK, searchers: int = 2,
           cooperate: bool = False) -> dict:
     """One game. NOT THE RUNTIME -- see the module head.
 
-    Two rules that look like one and are not, both from
-    `games/hue-and-cry.md`:
+    **One rule, where this used to have two.** It said:
 
-    - **Being seen aborts the theft.** When she arrives she reads the board;
-      if a searcher has posted there she does not start, and leaves at once,
-      so she is not standing there to be caught.
-    - **The catch is walking in while she is still there.** She is only
-      still there while she is stealing. *The dwell is the window and there
-      is no other.*
+    > - *Being seen aborts the theft.* When she arrives she reads the board;
+    >   if a searcher has posted there she does not start, and leaves at
+    >   once, so she is not standing there to be caught.
+    > - *The catch is walking in while she is still there.* She is only
+    >   still there while she is stealing. The dwell is the window and there
+    >   is no other.
+
+    The prep clock makes that pair unplayable: a searcher who overtakes her
+    once stands where she lands, so under the first rule she aborts, posts
+    from that room with the searcher reading over her shoulder, and is
+    overtaken again for ever -- never caught, never scoring, no end. See
+    `Carmel.will_steal`.
+
+    So it is Gal's rule instead, which was always the simpler statement:
+    *"either Carmel sees you in the room and you win, or she goes to hiding
+    with her loot with enough reputation and you lose."* **Sharing a room
+    with her is the win**, however you came to be in it. Arriving early is
+    not a wasted journey, it is the good outcome: you wait.
     """
     world = world or Map(seed)
     trail = itinerary(seed, start, world, limit, difficulty)
@@ -718,14 +876,36 @@ def calibrate(world: Map, trials: int = 60) -> None:
         wins = sum(1 for r in rs if _wins(r, REPUTATION_TO_WIN))
         print(f"  {window:>11}h{budget[len(budget) // 2]:>10.0f}h"
               f"{got[len(got) // 2]:>13,.0f}{wins / trials:>10.0%}")
-    print("\n  Three searchers throughout, each deducing alone: it reads her"
+    print("\n  Three searchers throughout, each deducing alone. It reads her"
           " hint and keeps\n  every landmark on the map the hint is true of"
-          " -- a median of 152 of the\n  1000, since there are no routes --"
-          " then walks them nearest-first.\n")
-    print("  A wrong guess costs a leg and buys one bit, and there are"
-          " about seven bits\n  to buy per room. She is not caught by a"
-          " searcher walking that alone; the\n  field has to divide the"
-          " candidates, which is talk, which is the lobby.\n")
+          " -- a median of 152 of the\n  1000, since there are no routes."
+          " Then it reads the STAMP on her line.\n")
+    print("  She posts before she packs, and packing takes"
+          f" {PREP} hours per hour of\n  journey, so a searcher whose lag is"
+          " e reaches X before she does whenever\n  e <= PREP * t(here, X)."
+          " Every term of that is public. It cannot deduce\n  where she is;"
+          " it can deduce which of the places she might be it can beat\n"
+          "  her to, and those are the far ones.\n")
+
+    print("  What the prep factor buys, which is not monotonic and is the"
+          " reason\n  ASSUMED_LAG exists. Raise it far enough and she stops"
+          " using the map:\n")
+    print(f"  {'PREP':>6}{'median hop':>13}{'she reaches':>13}"
+          f"{'caught, 10':>12}")
+    was = globals()["PREP"]
+    for factor in (0.0, 0.5, 1.0, 2.0):
+        globals()["PREP"] = factor
+        rs = [_run(world, sd, names, searchers=10) for sd in seeds[:24]]
+        trail = itinerary(seeds[0], LOBBY_LANDMARK, world, 40)
+        hops = sorted(leg["travel"] * TRAVEL_KMH for leg in trail)
+        caught = sum(1 for r in rs if r["outcome"] == "caught") / len(rs)
+        print(f"  {factor:>6.2f}{hops[len(hops) // 2]:>11,.0f}km"
+              f"{trail[-1]['reputation']:>13,}{caught:>12.0%}")
+    globals()["PREP"] = was
+    print("\n  A Carmel who never travels pays no prep, and a prep nobody"
+          " pays is a clock\n  nobody can read. The dial that tunes capture"
+          " is DIFFICULTY, which scales\n  every hour she spends standing"
+          " still -- both the packing and the theft.\n")
 
 
 def _wins(result: dict, threshold: int) -> bool:

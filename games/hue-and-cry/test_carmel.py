@@ -107,25 +107,67 @@ def test_a_theft_always_costs_her_time():
         assert (leg["dwell"] > 0) == (leg["leaves"] > leg["arrived"])
 
 
-def test_the_follower_closes_only_by_what_she_steals():
-    """The arithmetic the whole chase turns on, and the one this file got
-    backwards at first: their travel cancels exactly, so the gap is her head
-    start minus everything she has stolen. Asserted rather than reasoned,
-    because reasoning about it produced the wrong answer twice.
+def test_the_follower_closes_by_everything_she_does_standing_still():
+    """The arithmetic the whole chase turns on, and the one this file has
+    now got wrong twice.
+
+    Their travel still cancels exactly. What does not cancel is anything she
+    does while not travelling, and since 2026-09-09 that is two things and
+    not one: the dwell she spends stealing, and **the prep she spends
+    getting ready to move**, which is hers alone -- Gal: *"prep time is only
+    for her, not the player."* So the gap is her head start minus everything
+    she has stolen AND everything she has packed.
+
+    Asserted rather than reasoned, because reasoning about it produced the
+    wrong answer twice: once when this said travel closed the gap, and once
+    when the previous version of this test named the dwell as the only term.
     """
     trail = C.itinerary(SEED, START, WORLD)
     home = "Uluru"
     lag0 = C.travel_hours(WORLD.places[home], WORLD.places[START])
-    clock = lag0
-    stolen = 0.0
-    for leg in trail[:8]:
-        clock += C.travel_hours(WORLD.places[leg["from"]],
-                                WORLD.places[leg["to"]])
+    clock, standing = lag0, 0.0
+    for i, leg in enumerate(trail[:8]):
+        clock += leg["travel"]
+        standing += leg["prep"]
         gap = clock - leg["arrived"]
-        assert abs(gap - (lag0 - stolen)) < 1e-6, (
-            f"gap {gap:.2f} is not head start {lag0:.2f} minus"
-            f" {stolen:.2f} stolen")
-        stolen += leg["dwell"]
+        assert abs(gap - (lag0 - standing)) < 1e-6, (
+            f"leg {i}: gap {gap:.2f} is not head start {lag0:.2f} minus"
+            f" {standing:.2f} spent standing still")
+        standing += leg["dwell"]
+
+
+def test_a_far_move_costs_her_and_costs_the_searcher_nothing():
+    """Gal, 2026-09-09: *"prep time is only for her, not the player."*
+
+    The asymmetry the whole mechanic rests on. If a searcher ever pays prep,
+    the far candidates stop being the beatable ones and the timestamp stops
+    being worth reading.
+    """
+    import inspect
+
+    a, b = WORLD.places["Eiffel Tower"], WORLD.places["Uluru"]
+    near = WORLD.places["Bastille"]
+
+    assert C.prep_hours(a, b) > C.prep_hours(a, near), "prep must grow with distance"
+    assert C.prep_hours(a, b) == C.PREP * C.travel_hours(a, b)
+
+    # And nothing in the searcher's own leg arithmetic calls it: `pursue`
+    # uses prep only to rank candidates by what SHE will pay.
+    body = inspect.getsource(C.pursue)
+    for line in body.splitlines():
+        if "clock +=" in line:
+            assert "prep_hours" not in line, line
+
+
+def test_she_can_be_overtaken_to_a_far_place_and_not_to_a_near_one():
+    """What her pursuers can deduce, which is the half Gal was unsure of:
+    not where she is, but which of the places she might be they can beat
+    her to. `e <= PREP * t(here, X)` -- so it is the far ones."""
+    here = WORLD.places["Eiffel Tower"]
+    far, near = WORLD.places["Uluru"], WORLD.places["Bastille"]
+    lag = 6.0
+    assert C.prep_hours(here, far) > lag, "a far hop must be beatable"
+    assert C.prep_hours(here, near) < lag, "a near hop must not be"
 
 
 def test_more_hunters_leave_her_a_smaller_budget():

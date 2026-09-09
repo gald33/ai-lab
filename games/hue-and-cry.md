@@ -2918,6 +2918,135 @@ recalibration now is a different and smaller thing, which is that she passes
 rota-plus-channel above is the first thing a rebuilt field has to get
 right.
 
+## A move has to be prepared for, and the farther it is the longer that takes
+
+*Gal, 2026-09-09: "the farther she wants to move, the longer it takes her to
+prepare. So we can decide how much longer, but it is longer... she does not
+know how close her pursuers are, but they do know when she left the message.
+So they know how close they are... I'm not sure what they can deduce, but I
+do know she has more chance of running away to a close landmark."*
+
+And, the same day: *"prep time is only for her, not the player."*
+
+This gives the map back the shape that removing the routes took off it, and
+it does it without a reachable set: **every landmark is still reachable, and
+they are not equally cheap.**
+
+### The order is the mechanic
+
+She **posts, then prepares, then travels.** The message goes up in the room
+she is leaving *before* she starts packing, so the line is a bet: she is
+advertising a departure she has not made yet.
+
+Switchboard stamps every line, so a searcher reading it knows when it was
+written, and therefore knows its own lag `e`. She knows nobody's `e` and
+cannot — she never learns who came.
+
+### What they can deduce, which is the half that was open
+
+Not where she is. **Which of the places she might be they can beat her to.**
+
+She leaves A for X, posting at time `p`. Her prep is `PREP × t(A,X)`, so she
+reaches X at `p + PREP·t + t`. A searcher reading at `p + e` reaches X at
+`p + e + t`. Subtract, and the travel cancels as it always did:
+
+```
+searcher arrival − her arrival  =  e − PREP × t(A, X)
+```
+
+> **A searcher with lag `e` arrives before she does whenever
+> `e ≤ PREP × t(here, X)`.**
+
+Every term is public — the gazetteer, `PREP`, and the stamp on her line — so
+this is arithmetic any entrant can do, and it needs nothing but the notice.
+**The far candidates are the beatable ones**, which is the exact complement
+of her preference for near ones. The hint says which places are possible;
+the timestamp says which of those are interceptable; the play is the
+intersection.
+
+So `pursue` sorts the candidates the hint allows into beatable and not, and
+walks the beatable ones nearest-first. It computes prep at difficulty 1.0
+because it cannot see the dial — conservative above 1.0, optimistic below —
+and that asymmetry is left rather than fixed, because a dial only one side
+can see is what the dial is.
+
+### It corrects a claim made two commits ago in this document
+
+"There are no routes" said she does not read distance, *"deliberately: their
+travel cancels exactly, so distance costs her nothing it does not also cost
+her pursuer."* The travel still cancels exactly. **The prep does not cancel
+at all**, because it is hers alone. The sentence was true of a game without
+prep and is false of this one, and the test that pinned it —
+`test_the_follower_closes_only_by_what_she_steals` — is now
+`test_the_follower_closes_by_everything_she_does_standing_still`: the gap
+closes by dwell *and* prep, which are the two things she does while not
+moving.
+
+### It also kills the abort rule, which could not survive it
+
+The design had two rules where Gal has always had one:
+
+> - *Being seen aborts the theft.* When she arrives she reads the board; if
+>   a searcher has posted there she does not start, and leaves at once.
+> - *The catch is walking in while she is still there.*
+
+Under the prep clock that pair has no ending. A searcher who overtakes her
+once is standing where she lands; she aborts, posts her next hint with it
+reading over her shoulder at a lag of nearly zero, and is overtaken again
+for ever — never caught, never scoring, no end to the campaign.
+
+So it is Gal's own formulation instead, which was always the simpler one:
+*"either Carmel sees you in the room and you win, or she goes to hiding with
+her loot with enough reputation and you lose."* **Sharing a room with her is
+the win, however you came to be in it.** Arriving early is not a wasted
+journey — it is the good outcome, and you wait.
+
+### The first shape of her policy was wrong, and the measurement said so
+
+Her side of the bet is that she cannot price it: pricing needs `e`. The
+first version simply divided the prize by the hours:
+`reputation × cover / (1 + prep)`. That is unboundedly distance-averse, and
+measured over 24 campaigns per row:
+
+```
+ PREP  caught 1  caught 3  caught 10  median hop km  rep at 40
+ 0.00        0%        4%        25%          5,807      3,588
+ 0.25        4%       25%        67%            246      2,961
+ 0.50        4%        4%        17%            122      2,863
+ 1.00        0%        0%         0%            109      2,878
+ 2.00        0%        0%         0%             82      2,638
+ 4.00        0%        0%         0%             73      2,405
+```
+
+**She stopped using the map.** Her median hop fell from 5,807 km to 109, she
+robbed one city block by block, and because she never travelled she never
+paid a prep worth overtaking her during. Raising the cost of distance made
+her *safer*, and the capture rate at ten searchers went 25% → 67% → 0%.
+
+That is not a dial anybody can tune, and Gal's second sentence — *"the
+percentage of capture is actually something we can tune. We do tune"* —
+requires that it be one. So the discount is by the **risk** the prep buys
+rather than by its hours, and risk saturates: past the point where a pursuer
+could be anywhere, going farther adds nothing.
+
+```
+score = reputation × cover / (1 + prep / ASSUMED_LAG)
+```
+
+`ASSUMED_LAG` is her standing guess at how far behind her nearest pursuer
+is. At `→ 0` she is the hugger above; at `→ ∞` she ignores distance, which
+is the pre-prep game. **12 hours is a guess, and deliberately a guess she
+can be wrong about** — a Carmel who priced this correctly would be reading
+something she cannot see.
+
+### Difficulty scales prep too
+
+`DIFFICULTY` multiplied the dwell. It multiplies the prep as well now, for
+the reason Gal gave: *"all the times can be factored to adjust the
+difficulty."* Both are time she spends not travelling and both are time her
+pursuers spend closing, so a factor that moved only one would change what
+kind of game it is rather than how hard it is.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
