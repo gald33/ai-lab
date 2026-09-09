@@ -1,0 +1,34 @@
+id: premium-rung1-does-a-correct-shared-convention-beat-silence
+title: Run the feasibility rung — a correct, common convention against no convention
+arc: coordination-premium
+priority: next
+status: blocked
+blocked_on:
+  - premium-rung0-noise-before-thresholds
+  - premium-rung0b-recalibrate-the-content-axis
+refs:
+  - experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md
+  - experiments/do-they-take-a-handed-over-answer/README.md
+evidence: |
+  CS at delta 0 against `silent`, paired on identical seeded rounds. The
+  cheapest rung that can kill the arc, which is why it is first among the paid
+  ones: if a correct shared convention does not beat nothing, no distribution
+  question is worth asking, because the content the distribution is
+  distributing does nothing.
+
+  This is `do-they-take-a-handed-over-answer`'s method imported rather than
+  rediscovered. That experiment inverted the order after five experiments spent
+  on subtle treatments and got answers immediately by starting at the most
+  informative instruction possible; a rung is only run if the rung above it
+  worked, so a dead arm costs one rung rather than five.
+
+  What must not be reported as a result: the manipulation check. Instruction
+  reliably changes behaviour here -- 214/214 settled productions matched a
+  handed plan against 0/215 in control, and a capability nobody mentions is
+  used 0 times out of 20. The agents will adopt the announced vector. That is
+  assumed, cited by row in PREREGISTRATION.md, and is not a finding.
+
+  Done when the cell is run at the seed count rung 0's sd actually supports,
+  against a **replicated** control rather than a single draw -- the lab's
+  best-supported difference to date rests on four treated draws against one
+  control draw, and that is the only reason it is still "probably".

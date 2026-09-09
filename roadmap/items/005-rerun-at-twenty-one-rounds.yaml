@@ -7,8 +7,8 @@ blocked_on:
   - 005-render-precision-fix
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
-  - experiments/005-deliberation-protocol/PREREGISTRATION.md
-  - experiments/005-deliberation-protocol/DEVIATIONS.md
+  - experiments/does-a-content-free-protocol-help/PREREGISTRATION.md
+  - experiments/does-a-content-free-protocol-help/DEVIATIONS.md
 evidence: |
   "What would change the answer", verbatim: run the same four cells at
   twenty-one rounds, which is what the pilot accepted and what the protocol is

@@ -11,7 +11,7 @@ related_to:
       once for both rather than twice.
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
-  - experiments/005-deliberation-protocol/stimuli/protocol.md
+  - experiments/does-a-content-free-protocol-help/stimuli/protocol.md
 evidence: |
   Threat to validity 4: the protocol asks for a proposal, a falsifier, an
   accept-or-object and a convergence check, and the harness caps a message at

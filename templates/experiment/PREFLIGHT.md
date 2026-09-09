@@ -1,10 +1,10 @@
-# <NNN> — preflight gates
+# <the question this experiment asks> — preflight gates
 
 *The checks that stand between a specified run and a spent one. Declared here,
-per experiment, with the real commands. `tools/ground.py <NNN> --preflight`
+per experiment, with the real commands. `tools/ground.py <fragment> --preflight`
 prints this file. Nothing runs them for you — deliberately; see
 `experiments/GROUNDING.md`. The relative links below resolve from
-`experiments/<NNN>-<name>/`, not from here.*
+`experiments/<the-question-it-asks>/`, not from here.*
 
 Run in order. Each is free. Record every result, with its commit, in the run
 record.

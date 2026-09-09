@@ -38,8 +38,9 @@ jobs:
           python -m pytest
           games/island/tests
           games/hue-and-cry
-          experiments/005-deliberation-protocol/tests
-          experiments/005-deliberation-protocol/viewer/tests
+          experiments/does-a-content-free-protocol-help/tests
+          experiments/does-a-content-free-protocol-help/viewer/tests
+          tools/tests
           -q
 
   # The viewer's own tests, which are node's and were never run by anything
@@ -54,7 +55,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: node --test experiments/005-deliberation-protocol/viewer/tests/*.test.mjs
+      - run: node --test experiments/does-a-content-free-protocol-help/viewer/tests/*.test.mjs
 
 
   # What the island *draws*, in a real browser. `render.py` is the only check
@@ -251,7 +252,7 @@ jobs:
       # one the board was actually in the day the door opened.
       - run: >
           python -m pytest
-          experiments/005-deliberation-protocol/viewer/tests/test_scores_page.py -q
+          experiments/does-a-content-free-protocol-help/viewer/tests/test_scores_page.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
       # The per-game result pages. Most of what matters here is still a text
@@ -267,99 +268,21 @@ jobs:
       # public surface as everything above.
       - run: >
           python -m pytest
-          experiments/005-deliberation-protocol/viewer/tests/test_results.py -q
+          experiments/does-a-content-free-protocol-help/viewer/tests/test_results.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
 
-  drawing-quick:
-    runs-on: ubuntu-latest
-    # **A job that cannot skip silently must not be able to hang silently
-    # either.** That is the same failure mode wearing a different hat: a run
-    # that never ends reports nothing, exactly like a run that checked nothing,
-    # and GitHub's own default would let it sit for six hours first.
-    #
-    # The number is set from measurement, not taste. A run that finishes under
-    # the limit was slow, and one that trips it was stuck -- which is the only
-    # thing that can be known about a job whose logs arrive when it ends.
-    #
-    # **22 against a measured 16m55s**, which is this job's own green run on a
-    # runner rather than a number carried over from the suite it was split out
-    # of. It stood at 40 for one push -- inherited from the whole suite's
-    # 32m04s, because the rule above is an honest measured number or nothing
-    # and this job had never run -- and it is measured now, so it is set:
-    # 16m55s for the job, 16m10s of that in `render.py` itself.
-    #
-    # **The 45s between those two numbers left with the `pages` job** on
-    # 2026-09-04, so this job is `render.py` and nothing else now. The limit
-    # stays where it is: what it is set against is the render, which has not
-    # changed, and moving a limit down by less than a minute buys nothing and
-    # spends the margin the paragraph above is careful about.
-    #
-    # A quarter in hand, the same margin 40 was to 32m04s. Four green runs land
-    # between 14m24s and 17m39s, worst case 80% of this limit.
-    #
-    # A range, and not a spread figure, because this comment has carried three
-    # of those and every one was moved by the next run. What the limit is set
-    # against is the worst seen. Raise it if a green run ever comes in near it
-    # -- past 19 minutes, not merely past the last number written here -- and
-    # never to get past a hang. `viewer/README.md` has the four runs, and what
-    # believing three of them cost.
-    timeout-minutes: 22
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install playwright
-      - run: python -m playwright install --with-deps chromium
-      - run: >
-          python experiments/005-deliberation-protocol/viewer/tests/render.py
-          --require --group quick --out "$RUNNER_TEMP/island-shots"
-      # The pictures the run measured, kept whether it passed or failed: a
-      # threshold on a rendered image is not arguable without the image.
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: island-shots-quick
-          path: ${{ runner.temp }}/island-shots
-          if-no-files-found: warn
-
-  # The four checks the clock singles out. `palette` is 318s of it on its own:
-  # it plays a 162-frame game through and every frame is held for as long as
-  # its animation draws, so that is the game being played rather than the
-  # harness waiting, and it is the floor under any split of this suite.
-  drawing-slow:
-    runs-on: ubuntu-latest
-    # 22 for the reasoning spelled out on `drawing-quick` above. Four green
-    # runs land between 14m49s and 17m24s, worst case 79% of this limit -- so
-    # on a runner this job and `quick` cover much the same range, and which of
-    # the two is the gate varies from run to run.
-    #
-    # **This comment used to claim the two scale differently, and that claim is
-    # retracted.** `palette` is bound by wall-clock animation dwells rather
-    # than by the CPU, so a job that is mostly `palette` should vary less --
-    # and after three runs this one had moved 2.1% against `quick`'s 17.5%,
-    # which read as the mechanism proving itself. The fourth run came in at
-    # 14m49s and the eight-fold difference was gone.
-    #
-    # The arithmetic that should have stopped the claim was there all along:
-    # `palette` is 318s of this job's 589s, so **46% of it is CPU-bound like
-    # everything in `quick`**. The honest prediction was "somewhat less
-    # variable", never "barely varies". See `viewer/README.md`.
-    timeout-minutes: 22
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install playwright
-      - run: python -m playwright install --with-deps chromium
-      - run: >
-          python experiments/005-deliberation-protocol/viewer/tests/render.py
-          --require --group slow --out "$RUNNER_TEMP/island-shots"
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: island-shots-slow
-          path: ${{ runner.temp }}/island-shots
-          if-no-files-found: warn
+  # `drawing-quick` and `drawing-slow` moved to `.github/workflows/drawing.yml`
+  # on 2026-09-09, so they run only when the drawing changed (Gal: "drawing CI
+  # is relevant only when some folders have changes, not any repo change").
+  #
+  # They are two browsers at ~16 minutes each and they ran here on every push
+  # and every pull request, including ones whose whole diff was a roadmap item.
+  # A 16-minute render gating a change that cannot have affected it makes a red
+  # tick mean nothing, which is the same disease as a green tick that checked
+  # nothing -- and that one already has three entries in `CLAUDE.md`.
+  #
+  # Nothing was turned off. The jobs keep their names, their commands, their
+  # `--require` flags and their measured 22-minute limits; only what triggers
+  # them changed. `paths:` is a workflow-level trigger, which is why they are a
+  # workflow of their own rather than an `if` on a job.

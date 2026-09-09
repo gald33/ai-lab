@@ -1,6 +1,6 @@
 name: Deploy the island viewer (GitHub Pages)
 
-# Publishes experiments/005-deliberation-protocol/viewer -- the spectator
+# Publishes experiments/does-a-content-free-protocol-help/viewer -- the spectator
 # page, its saved replays, and its scoreboard -- to
 # https://gald33.github.io/ai-lab/island/.
 #
@@ -22,7 +22,7 @@ name: Deploy the island viewer (GitHub Pages)
 # SWITCHBOARD_CORS_ORIGINS (https://gald33.github.io in switchboard's
 # docker-compose.yml) already covers this page for the live-against-the-hub
 # feed: no change needed on that side. See
-# experiments/005-deliberation-protocol/viewer/web/feeds.js and
+# experiments/does-a-content-free-protocol-help/viewer/web/feeds.js and
 # games/island.md ("the wrapper stays a separate project that plugs into the
 # published viewer for its data stream").
 #
@@ -46,8 +46,8 @@ on:
   push:
     branches: [main]
     paths:
-      - experiments/005-deliberation-protocol/viewer/**
-      - experiments/007-execution-ceiling/replays/**
+      - experiments/does-a-content-free-protocol-help/viewer/**
+      - experiments/do-they-take-a-handed-over-answer/replays/**
       - games/replays/**
       # The hand's lobby, which the island lobby has linked to since it was
       # written and which this workflow never published -- so the link 404'd
@@ -78,7 +78,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     defaults:
       run:
-        working-directory: experiments/005-deliberation-protocol
+        working-directory: experiments/does-a-content-free-protocol-help
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

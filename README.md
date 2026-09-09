@@ -78,17 +78,26 @@ Most experiments stop at Publish. That's fine.
 
 ## Experiments
 
-| # | Experiment | Question | Status |
-|---|---|---|---|
-| 001 | [Switchboard coordination](experiments/001-switchboard-coordination/) | Does coordination improve because agents reason harder about each other, or because they have less to reason about? | Run; results not yet published |
-| 002 | [Barter conventions](experiments/002-barter-conventions/) | Does a shared convention for talking about value make agents better off — and is it the words, the machinery, or the disposition that does the work? | Running; Tier 1 complete, Tier 3 designed |
-| 003 | [Promotion rules](experiments/003-promotion-rules/) | When solutions to a task compete and the winner is promoted automatically, what rule converges on the good solution rather than the lucky one — and does a solution whose value depends on being shared need a different rule? | Tier 1 complete |
-| 004 | [Stock and flow](experiments/004-stock-and-flow/) | Is 002's ruin a fact about the convention, or about a world where a production commitment can never be taken back? | Run |
+Each is named by its question, because the question is the part worth
+remembering. The full list, the status of each, and the map from the retired
+numbers are in [experiments/README.md](experiments/README.md).
+
+| Experiment | Question | Status |
+|---|---|---|
+| [`is-coordination-less-to-reason-about`](experiments/is-coordination-less-to-reason-about/) | Does coordination improve because agents reason harder about each other, or because good primitives leave them less to reason about? | Run; results not yet published |
+| [`which-part-of-a-convention-works`](experiments/which-part-of-a-convention-works/) | Does a shared convention for talking about value make agents better off — and is it the words, the machinery, or the disposition that does the work? | Tier 1 a result; Tier 3 designed, calibrated, unrun |
+| [`which-promotion-rule-beats-luck`](experiments/which-promotion-rule-beats-luck/) | When solutions compete and the winner is promoted automatically, which rule converges on the good solution rather than the lucky one? | Tier 1 complete |
+| [`is-ruin-the-convention-or-the-commitment`](experiments/is-ruin-the-convention-or-the-commitment/) | Is the ruin a fact about the convention, or about a world where a production commitment can never be taken back? | Run and reported |
+| [`does-a-content-free-protocol-help`](experiments/does-a-content-free-protocol-help/) | Does a content-free deliberation protocol improve coordination? | Run; null |
+| [`does-telling-traders-what-to-disclose-help`](experiments/does-telling-traders-what-to-disclose-help/) | Does telling traders what to disclose improve coordination? | Run; unresolved |
+| [`do-they-take-a-handed-over-answer`](experiments/do-they-take-a-handed-over-answer/) | If the answer is handed to them, do they take it — and what survives when it is taken away? | Run; open tail |
+| [`can-an-agent-hold-availability`](experiments/can-an-agent-hold-availability/) | Can an agent hold availability across time, and what is actually holding it? | Probes only |
+| [`how-wrong-can-a-shared-convention-be`](experiments/how-wrong-can-a-shared-convention-be/) | How wrong may a convention be and still be worth holding, purely because everyone holds it? | Designed, nothing run |
 
 ## Layout
 
 ```
-experiments/     one directory per experiment; number-prefixed, ordered by start
+experiments/     one directory per experiment, named by its question; never numbered
 games/           experiments opened for participation — direction only, nothing playable
 reports/         session reports: what was run, what it supports, where it is weakest
 roadmap/         what is still open, as a graph: arcs, items, and what is startable
@@ -122,8 +131,10 @@ the standing decisions in [CLAUDE.md](CLAUDE.md), the general
 sibling experiment arrives looking authoritative and silently imports a metric
 or an assumption frozen for a different question.
 
-`tools/ground.py <n>` prints exactly that bundle, and
-`tools/ground.py <n> --new-run "<name>"` opens a run record.
+`tools/ground.py <fragment>` prints exactly that bundle, and
+`tools/ground.py <fragment> --new-run "<name>"` opens a run record. Any
+distinctive part of the question finds it — `ground.py ruin`. A retired number
+still resolves and prints the name it is now.
 
 ### Before anything is spent
 
@@ -142,7 +153,7 @@ one says nothing about the others:
   cost per unit to extrapolate.
 
 Each experiment declares its own gates, with real commands, in its
-`PREFLIGHT.md`; `tools/ground.py <n> --preflight` prints them. There is no
+`PREFLIGHT.md`; `tools/ground.py <fragment> --preflight` prints them. There is no
 shared gate runner, for the same reason there is no shared framework. A failed
 gate is a finding and goes in the run record — quietly fixing the harness until
 it passes, and recording only the pass, is how a harness bug becomes a result.

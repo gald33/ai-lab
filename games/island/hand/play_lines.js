@@ -4,7 +4,7 @@
 // Two halves, kept apart on purpose, because only one of them can lose a game.
 //
 // **Composing** is a second implementation of
-// `experiments/005-deliberation-protocol/island/protocol.py`'s grammar, and it
+// `experiments/does-a-content-free-protocol-help/island/protocol.py`'s grammar, and it
 // exists for `lobby_lines.js`'s reason: a page served from a static origin
 // cannot call Python. `games/island.md` once required a composer to emit
 // through the real parser; on a static origin that was never buildable, and

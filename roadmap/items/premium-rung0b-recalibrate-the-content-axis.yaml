@@ -1,0 +1,38 @@
+id: premium-rung0b-recalibrate-the-content-axis
+title: Recalibrate the delta curve at this island's table shape and accumulation rule
+arc: coordination-premium
+priority: now
+status: ready
+refs:
+  - experiments/which-part-of-a-convention-works/tier3-design.md
+  - experiments/is-ruin-the-convention-or-the-commitment/README.md
+  - experiments/how-wrong-can-a-shared-convention-be/README.md
+evidence: |
+  The correction most likely to be skipped, because the curve already exists
+  and looks usable. It is not.
+
+  The published calibration in `tier3-design.md` was measured on 002's
+  **accumulating** island at 12 agents over 24-48 islands. This experiment runs
+  on the **flow** island at 2-4 traders. Those differ in the one rule that
+  `is-ruin-the-convention-or-the-commitment` showed dominates the outcome:
+  permanent ruin goes 14/24 to 1/24 and 18/24 to 0/24 between them. A model
+  tier compared against a curve from a different accumulation rule and a
+  different table shape is compared against nothing.
+
+  It is also the calibration gate in the ordinary sense -- does the instrument
+  read? The published curve's own finding was that **efficiency carries no
+  signal about delta**: across every delta, both directions, 121 surviving
+  islands, survivor efficiency has median 0.972 and range 0.741-1.000, and it
+  is 0.978 at delta 0 against 0.998 at delta 0.3. The whole effect was on
+  whether an island survived at all. So the recalibration is run on the
+  zero-episode share, and the old curve's variable is not reused.
+
+  Done when the sweep is recorded at this island's shape, both perturbation
+  directions reported separately, the endpoint shown off both its floor and its
+  ceiling with those printed, and the realised error recorded beside each delta
+  -- delta is a knob, not a distance, and the same value means different things
+  in the two directions.
+
+  If the curve is flat here, stop and do not spend: with no content axis there
+  is nothing for the distribution axis to hold constant, and rungs 1-3 are
+  unrunnable whatever the distribution does.

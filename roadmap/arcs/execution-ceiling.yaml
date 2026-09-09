@@ -1,7 +1,7 @@
 id: execution-ceiling
 title: 007 — if the answer is handed over, do they take it, and what survives when it is taken away?
 refs:
-  - experiments/007-execution-ceiling/README.md
+  - experiments/do-they-take-a-handed-over-answer/README.md
   - reports/2026-08-24-hypothesis-ledger.md
 narrative: |
   Opened to answer a feasibility question the earlier nulls could not: is a

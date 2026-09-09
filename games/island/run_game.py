@@ -85,7 +85,7 @@ from .npc import npcs_on_board as _npcs_on_board
 # grounding -- 005's own CLAUDE.md says exactly that about its import of 002 --
 # and the package is `island` while this one is `games.island`, so the two
 # names do not collide.
-_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "005-deliberation-protocol"
+_ISLAND = Path(__file__).resolve().parents[2] / "experiments" / "does-a-content-free-protocol-help"
 sys.path.insert(0, str(_ISLAND))
 
 sys.path.insert(0, str(_ISLAND / "viewer"))

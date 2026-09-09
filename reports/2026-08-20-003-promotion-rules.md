@@ -1,7 +1,7 @@
 # 003 Tier 1 — promotion rules
 
 **Date:** 2026-08-20 · **Status:** run, reported · **Cost:** none (no model calls)
-**Record:** [`experiments/003-promotion-rules/results/tier1.json`](../experiments/003-promotion-rules/results/tier1.json)
+**Record:** [`experiments/which-promotion-rule-beats-luck/results/tier1.json`](../experiments/which-promotion-rule-beats-luck/results/tier1.json)
 
 The experiment was designed and run in the same session. Design and prediction
 were committed before the run — see commit `cce3e73` (design, PR #4) preceding
@@ -184,7 +184,7 @@ Ranked. Start at the top.
 ## Reproduction
 
 ```bash
-cd experiments/003-promotion-rules/experiment
+cd experiments/which-promotion-rule-beats-luck/experiment
 pip install -r requirements.txt
 python promotion_experiment.py --replications 40 --steps 400 --json ../results/tier1.json
 python -m pytest tests -q     # 42 gates, offline

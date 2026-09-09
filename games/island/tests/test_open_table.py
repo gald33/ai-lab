@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]
-                       / "experiments" / "005-deliberation-protocol" / "viewer"))
+                       / "experiments" / "does-a-content-free-protocol-help" / "viewer"))
 
 import scores  # noqa: E402
 

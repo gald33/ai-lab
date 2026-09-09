@@ -56,11 +56,60 @@ its runtime can lend it, is the arc.
 |---|---|---|
 | `006-standby-alarm-has-never-rung` | ready | next |
 
+### 🟠 how wrong can a shared convention be and still beat a private correct one?
+
+`coordination-premium` · 5 item(s), 2 startable
+
+`experiments/how-wrong-can-a-shared-convention-be/README.md` · `experiments/how-wrong-can-a-shared-convention-be/PREREGISTRATION.md` · `experiments/which-part-of-a-convention-works/tier3-design.md`
+
+The one question this island can ask that no deployed system can. Because
+`economy.walras()` returns the competitive equilibrium, a convention can be
+manufactured to a known content-quality -- so "shared" and "correct" become
+two independent dials, where everywhere else they arrive together and cannot
+be separated. The headline quantity is the error at which wrong-but-shared
+stops beating correct-but-private.
+
+The design is Tier 3 of `which-part-of-a-convention-works`, pre-registered in
+August, scripted half run, model half never started. It was shelved because
+its instrument could not resolve it: at a perfectly correct convention, fully
+adopted, half the islands were ruined before the perturbation began, and the
+whole curve ran from 48% survival to 0%.
+
+Three things have since removed that. `is-ruin-the-convention-or-the-commitment`
+showed the cliff was the accumulation rule and not the convention -- under
+flow, permanent ruin goes 14/24 to 1/24 -- and the island the game runs on is
+already a flow island. The endpoint that survives this lab's noise already
+exists in the ledger as a per-trader count. And the noise measurement that
+should precede every threshold is free here, because the island has NPCs.
+
+What makes it worth an arc rather than a run is that it is the first design
+in this lab where a null is a result. Every previous null was unresolvable:
+the thresholds were 0.10-0.15 against instrument movement later measured at
+0.229 and 1.03, so "we did not find it" was the strongest available sentence.
+Here the manipulation check is a count, the noise floor is measured before
+the threshold is named, and the two arms differ in one sentence of
+byte-identical content -- which makes "it is not there, to within this bound"
+sayable, and that is a different object.
+
+The ladder is deliberately top-down, the method
+`do-they-take-a-handed-over-answer` arrived at after five experiments spent
+learning that subtle treatments could not be resolved: a rung runs only on
+evidence that the rung above it moved, so a dead arm is found on the first
+rung rather than the fifth. Two free rungs gate every paid one.
+
+| item | status | priority |
+|---|---|---|
+| `premium-rung0-noise-before-thresholds` | ready | now |
+| `premium-rung0b-recalibrate-the-content-axis` | ready | now |
+| `premium-rung1-does-a-correct-shared-convention-beat-silence` | blocked | next |
+| `premium-rung2-common-against-private` | blocked | next |
+| `premium-rung3-the-delta-sweep` | blocked | later |
+
 ### 🟠 005 — does a content-free deliberation protocol help agents coordinate?
 
 `deliberation-protocol` · 9 item(s), 5 startable
 
-`experiments/005-deliberation-protocol/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
+`experiments/does-a-content-free-protocol-help/README.md` · `reports/2026-08-21-005-deliberation-protocol.md`
 
 Four cells run with agents; the headline is a null. The protocol moved
 nothing on top of a matched placebo, and nothing at all on top of a common
@@ -87,7 +136,7 @@ five rounds of Haiku.
 
 `execution-ceiling` · 2 item(s), 2 startable
 
-`experiments/007-execution-ceiling/README.md` · `reports/2026-08-24-hypothesis-ledger.md`
+`experiments/do-they-take-a-handed-over-answer/README.md` · `reports/2026-08-24-hypothesis-ledger.md`
 
 Opened to answer a feasibility question the earlier nulls could not: is a
 good outcome reachable on this island at all? Handed the competitive
@@ -135,7 +184,7 @@ utility moves in when a second experiment needs it, not in anticipation).
 
 `shared-coding-tasks` · 6 item(s), 1 startable
 
-`experiments/001-switchboard-coordination/README.md` · `reports/2026-08-24-hypothesis-ledger.md` · `reports/2026-08-24-lessons-for-a-paper.md`
+`experiments/is-coordination-less-to-reason-about/README.md` · `reports/2026-08-24-hypothesis-ledger.md` · `reports/2026-08-24-lessons-for-a-paper.md`
 
 The lab's question started here and left. 001 asked whether coordination
 improves because agents reason harder about each other or because good
@@ -178,7 +227,7 @@ WITHDRAWN, not finished: `002-tier3-run` was deleted unstarted. Tier 1 stands
 as a result; Tier 2's numbers stay recorded as measuring the harness; Tier 3
 stays designed, calibrated and unrun.
 
-`experiments/002-barter-conventions/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
+`experiments/which-part-of-a-convention-works/README.md` · `reports/2026-08-20-002-tier3-calibration.md`
 
 Tier 1 is a result. Tier 2 is mid-flight with the harness still moving under
 it, so most of its numbers measure the harness. Tier 3 is designed,
@@ -195,7 +244,7 @@ question the experiment is actually about — a promoter choosing among
 solutions a model wrote — stays unasked. Tier 1, the scripted tier, is
 complete and reported and unaffected.
 
-`experiments/003-promotion-rules/README.md` · `reports/2026-08-20-003-promotion-rules.md`
+`experiments/which-promotion-rule-beats-luck/README.md` · `reports/2026-08-20-003-promotion-rules.md`
 
 Tier 1, the scripted tier, is complete and reported. Tier 2 — the same
 promoter over real instincts — is neither designed nor run, and is now closed
@@ -206,12 +255,12 @@ an item.
 
 `stock-and-flow` · 0 item(s), 0 startable
 
-**Declared `closed`.** Run and reported: experiments/004-stock-and-flow/README.md carries results,
+**Declared `closed`.** Run and reported: experiments/is-ruin-the-convention-or-the-commitment/README.md carries results,
 and reports/2026-08-20-004-stock-and-flow.md is the write-up. No unfinished
 items are filed against it as of 2026-08-22. Declared rather than derived
 because an arc with no items and a finished arc are the same empty set.
 
-`experiments/004-stock-and-flow/README.md` · `reports/2026-08-20-004-stock-and-flow.md`
+`experiments/is-ruin-the-convention-or-the-commitment/README.md` · `reports/2026-08-20-004-stock-and-flow.md`
 
 Answered: whether ruin survives per-period consumption decides whether 002's
 finding is about conventions or about a world where a production commitment
@@ -228,7 +277,7 @@ directory's own status line — run, not published, nothing below is a result �
 remains the accurate description, and closing the arc does not turn it into
 one.
 
-`experiments/001-switchboard-coordination/README.md`
+`experiments/is-coordination-less-to-reason-about/README.md`
 
 Run, not published, and now closed with that still true. The design and the
 one preserved negative result are in the experiment directory; the numbers

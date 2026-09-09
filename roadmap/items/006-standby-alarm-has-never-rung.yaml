@@ -85,7 +85,7 @@ evidence: |
   ruled out deliberately at the start rather than overlooked.
 
   MEASURED 2026-08-26, one substrate, n = 1
-  (`experiments/006-agent-standby/`). A Claude Code remote session, left quiet
+  (`experiments/can-an-agent-hold-availability/`). A Claude Code remote session, left quiet
   for 5h59m with nothing running in it, and read by a server trigger: the
   container was GONE. boot_id changed, uptime 25s, and pid 1 started four
   seconds after the trigger fired — the wake did not resume a machine, it

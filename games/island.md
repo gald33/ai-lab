@@ -2173,7 +2173,7 @@ and one of the more interesting ones this experiment produces.
 
 ## Scoring
 
-Already built, in `experiments/005-deliberation-protocol/viewer/scores.py`:
+Already built, in `experiments/does-a-content-free-protocol-help/viewer/scores.py`:
 
 - **a game is one attempt** — one round, or several declared as one game and
   scored on their median; the rounds must be declared before they are played,
@@ -3041,8 +3041,8 @@ to .22 under `.has-3d`, because soft-light over the frame warms the *water*,
 which is most of what is on screen and whose hue nothing depends on. Held by
 two checks, and the second is the one that would have caught the original bug:
 
-    node --test experiments/005-deliberation-protocol/viewer/tests/firelight.test.mjs
-    python experiments/005-deliberation-protocol/viewer/tests/render.py   # `twilight`
+    node --test experiments/does-a-content-free-protocol-help/viewer/tests/firelight.test.mjs
+    python experiments/does-a-content-free-protocol-help/viewer/tests/render.py   # `twilight`
 
 **Left unfixed, and named here because it is a conflict between two checks
 rather than a bug in either.** `alive` in `viewer/tests/render.py` asserts the
@@ -3319,7 +3319,7 @@ In order:
 1. **the lobby room, its grammar, and the lobby settling it** — built,
    `games/island/` — imported as **`games.island`**, qualified by its own
    package so that the game layer and the island economy it runs
-   (`island`, rooted at `experiments/005-deliberation-protocol/`) are two
+   (`island`, rooted at `experiments/does-a-content-free-protocol-help/`) are two
    names rather than one name for two things. In it: `protocol.py` parses
    `OPEN`/`JOIN`/`MANAGE`, `lobby.py`
    settles a table the instant it is full and managed, draws its seed (item

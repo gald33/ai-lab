@@ -5,7 +5,7 @@ priority: now
 status: done
 refs:
   - reports/2026-08-21-005-deliberation-protocol.md
-  - experiments/005-deliberation-protocol/experiment
+  - experiments/does-a-content-free-protocol-help/experiment
 evidence: |
   The run report's claim 3: `content-only` and `both` reach dispersion exactly
   0.000 at round 0, before anyone has spoken, and 0 of 96 round-0 submissions

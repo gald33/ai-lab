@@ -234,15 +234,15 @@ ratio, and the noise swamps them. An instrument with a run-to-run movement of
 
 ## 6. Where the material lives
 
-- Economy and closed forms: `experiments/002-barter-conventions/experiment/barter/economy.py`
+- Economy and closed forms: `experiments/which-part-of-a-convention-works/experiment/barter/economy.py`
 - The shared instrument (runner, manager, stimuli delivery):
-  `experiments/005-deliberation-protocol/run_v3.py`, `island/manager.py`
-- Ratio disclosure: `experiments/006-ratio-disclosure/`
-- The plan, the ladder, the noise measurement: `experiments/007-execution-ceiling/`
+  `experiments/does-a-content-free-protocol-help/run_v3.py`, `island/manager.py`
+- Ratio disclosure: `experiments/does-telling-traders-what-to-disclose-help/`
+- The plan, the ladder, the noise measurement: `experiments/do-they-take-a-handed-over-answer/`
   (`plan.py`, `stimuli/decomposed/`, `results/003-stability-*`)
 - Per-hypothesis grading with evidence: `reports/2026-08-24-hypothesis-ledger.md`
 - Narrative report: `reports/2026-08-23-instruction-and-the-cost-of-coordination.md`
-- Utility-magnitude scoring: `experiments/007-execution-ceiling/analysis/utility_gain.py`
+- Utility-magnitude scoring: `experiments/do-they-take-a-handed-over-answer/analysis/utility_gain.py`
 
 Two runs are on the roadmap and have no go: replicating the control
 (`007-replicate-the-control`, 96 sessions) and a third pass on ruin
