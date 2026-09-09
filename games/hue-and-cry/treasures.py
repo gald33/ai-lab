@@ -5,7 +5,41 @@ stats"), and the steer that shapes it: *"the treasure can be absurdly
 impossible to steal like Carmen likes in some places"*.
 
     python3 games/hue-and-cry/treasures.py            # read some
-    python3 games/hue-and-cry/treasures.py --build    # rewrite treasures.tsv
+    python3 games/hue-and-cry/treasures.py --open     # unseal, to edit them
+    python3 games/hue-and-cry/treasures.py --seal     # re-encrypt
+
+WHY THIS IS SEALED
+==================
+
+*Gal, 2026-09-09, after the same mistake was found in the hint layer:
+"seal the treasures too".*
+
+This table maps each landmark to what she takes there, so publishing it
+does what the committed `hints.tsv` did: any public line naming what was
+taken names the room. **Encrypting `treasures.tsv` would not have been
+enough**, because the eighty hand-written ones were a dict in this file's
+source, keyed by landmark -- the leak for the best eighty was the code, not
+the data file.
+
+And they cannot be published as an unordered list either, the way
+`clauses.py` publishes the hint bank. A hint clause is written to name
+nothing; **a hand-written treasure names its place implicitly**. Each one
+is about a specific landmark and reads like it, so an unordered list is a
+puzzle with eighty answers and no difficulty. There is no form of that
+prose that is both readable and safe, which is why it goes behind the key
+whole -- and this docstring names none of them for the same reason.
+
+WHAT STAYS PUBLIC, and it is most of the reasoning. The scoring parameters,
+the dwell rule, the generic per-descriptor bank, and the balance finding
+below are all here in the open. What is behind the key is only the mapping:
+which landmark, which treasure.
+
+WHAT IT COSTS. A fresh clone cannot rebuild the eighty, and the tests
+cannot check them. `build()` therefore returns a complete table without
+them -- 920 derived treasures and 80 placeholders -- so the invariants and
+the balance check still run in CI with no secret present. That is a real
+loss of coverage on the best writing in the repository, and it is the price
+of the mapping not being readable.
 
 THE JOKE IS LOAD-BEARING. "Absurdly impossible to steal" could have been
 flavour text. Instead it is the mechanic, because the theft is a **dwell**:
@@ -32,12 +66,18 @@ other"). Re-check with `python3 games/hue-and-cry/treasures.py`.
 WHY THE NAMES MAY SAY WHERE SHE IS, when a hint may not. A treasure is not
 a clue. It is written on the room's own board at setup and settles into the
 record when a `TAKE` is recognised, so a searcher who can read the treasure
-is already standing in the room and has won. The hint is the thing that
-must name nothing.
+is already standing in the room and has won.
+
+That argument is sound and it is exactly what made the file feel safe to
+commit. It is also conditional -- it holds *while* a treasure is only ever
+readable in its own room -- and a committed table does not care about the
+condition. The lesson from the hint matrix, restated: **the reasoning that
+makes a secret safe to hold is not a reason to publish it.**
 """
 
 import argparse
 import hashlib
+import os
 import sys
 from pathlib import Path
 
@@ -46,7 +86,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from descriptors import all_descriptors  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
 
-DATA = Path(__file__).with_name("treasures.tsv")
+ABSURD_HEADER = (
+    "# The hand-written treasures, one per place famous enough that a\n"
+    "# person has a picture of it in their head. THIS FILE IS THE GAME\n"
+    "# SECRET and is gitignored: the prose names the place implicitly --\n"
+    "# mapping cannot be published even as an unordered list: each line\n"
+    "# reads like the place it belongs to.\n"
+    "# Only games/hue-and-cry/treasures.enc may be committed.\n"
+    "# landmark\ttreasure\n")
 
 #: Reputation runs 5..80 by fame rank, and an impossible treasure adds 20 on
 #: top and is floored at ABSURD_FLOOR -- so the ceiling is reserved for them
@@ -71,92 +118,35 @@ def dwell_for(reputation: int, absurd: bool) -> int:
     return max(1, round(reputation / 12) + (3 if absurd else 0))
 
 
-#: Hand-written, and the reason this file is not entirely arithmetic. If a
-#: place is famous enough that a person has a picture of it in their head,
-#: the thing she takes should be the thing in the picture -- and it should
-#: be the one thing that could not possibly be carried away.
-ABSURD = {
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    "Vatican City": "the keys",
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    "Sydney Opera House": "the sails",
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    "Lake Baikal": "the depth",
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    # (redacted)
-    "Blue Mosque of Mazar-i-Sharif": "the blue",
-    "Lhasa": "the altitude",
-    # (redacted)
-}
+#: Where the hand-written treasures live when they are unsealed. Gitignored,
+#: and the seal is the only form of them that may be committed.
+ABSURD_SOURCE = Path(__file__).with_name("absurd.tsv")
+
+#: The sealed table -- the whole mapping, every landmark to what she takes
+#: there. See `WHY THIS IS SEALED` at the top of the file.
+SEALED = Path(__file__).with_name("treasures.enc")
+
+#: The key lives with the person running the game, never in the repository.
+KEY_ENV = "HUE_TREASURE_KEY"
+
+
+def load_absurd(path: Path = ABSURD_SOURCE) -> dict:
+    """The hand-written treasures, if this checkout has them unsealed.
+
+    Absent on a fresh clone, and that is the point: `--open` with the key
+    puts them back. Everything else in this file works without them, which
+    is what lets the tests and the balance check run in CI with no secret.
+    """
+    if not path.exists():
+        return {}
+    out = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+        landmark, treasure = line.split("\t")
+        out[landmark] = treasure
+    return out
+
 
 #: For everywhere else, the thing she took is drawn from what the place is.
 #: Several per descriptor so a thousand landmarks do not all lose a plaque.
@@ -241,7 +231,11 @@ def _pick(options, landmark, salt=b"treasure"):
     return options[n % len(options)]
 
 
-def build() -> list[dict]:
+def build(absurd_map: dict | None = None) -> list[dict]:
+    """Every landmark's treasure. Without the hand-written ones this still
+    returns a complete table -- 920 derived treasures and 80 placeholders --
+    so a checkout with no key can still be tested and balanced."""
+    absurd_map = load_absurd() if absurd_map is None else absurd_map
     places = load_landmarks()
     per = all_descriptors()
 
@@ -260,9 +254,9 @@ def build() -> list[dict]:
     rows = []
     for p in places:
         name = p["name"]
-        absurd = name in ABSURD
+        absurd = name in absurd_map
         if absurd:
-            what = ABSURD[name]
+            what = absurd_map[name]
         else:
             banks = [BY_DESCRIPTOR[d] for d in sorted(per[name])
                      if d in BY_DESCRIPTOR]
@@ -277,22 +271,45 @@ def build() -> list[dict]:
     return rows
 
 
-def write(rows, out) -> None:
-    out.write("# What she takes at each landmark, what it is worth, and the\n"
-              "# hours of standing still it costs her. Written by\n"
-              "# treasures.py; the impossible ones are hand-authored there.\n"
-              "# landmark\ttreasure\treputation\tdwell_hours\tabsurd\n")
-    for r in rows:
-        assert "\t" not in r["treasure"]
-        out.write(f"{r['landmark']}\t{r['treasure']}\t{r['reputation']}"
-                  f"\t{r['dwell']}\t{'1' if r['absurd'] else '0'}\n")
+def _key() -> bytes:
+    raw = os.environ.get(KEY_ENV)
+    if not raw:
+        raise SystemExit(
+            f"set {KEY_ENV} to the 64-hex-character treasure key. It is not"
+            " in the repository and it is not derivable from anything that"
+            " is -- that is the whole point of it.")
+    key = bytes.fromhex(raw)
+    if len(key) != 32:
+        raise SystemExit(f"{KEY_ENV} must be 32 bytes as 64 hex characters")
+    return key
 
 
-def load() -> list[dict]:
+def _serialise(rows) -> bytes:
+    body = "\n".join(
+        "\t".join([r["landmark"], r["treasure"], str(r["reputation"]),
+                    str(r["dwell"]), "1" if r["absurd"] else "0"])
+        for r in rows)
+    return body.encode("utf-8")
+
+
+def seal(rows, path: Path = SEALED) -> int:
+    """AES-256-GCM, nonce prepended. The bytes are the only form of this
+    table that may exist in the repository."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    nonce = os.urandom(12)
+    path.write_bytes(nonce + AESGCM(_key()).encrypt(nonce, _serialise(rows),
+                                                    None))
+    return len(rows)
+
+
+def unseal(path: Path = SEALED) -> list[dict]:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    raw = path.read_bytes()
+    plain = AESGCM(_key()).decrypt(raw[:12], raw[12:], None)
     out = []
-    for line in DATA.read_text(encoding="utf-8").splitlines():
-        if line.startswith("#") or not line.strip():
-            continue
+    for line in plain.decode("utf-8").splitlines():
         landmark, treasure, reputation, dwell, absurd = line.split("\t")
         out.append({"landmark": landmark, "treasure": treasure,
                     "reputation": int(reputation), "dwell": int(dwell),
@@ -319,18 +336,37 @@ def correlation(xs, ys) -> float:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--build", action="store_true")
+    ap.add_argument("--seal", action="store_true",
+                    help=f"build and encrypt into {SEALED.name}")
+    ap.add_argument("--open", action="store_true",
+                    help=f"decrypt the hand-written ones into"
+                         f" {ABSURD_SOURCE.name}")
     args = ap.parse_args()
 
-    if args.build:
+    if args.seal:
         rows = build()
-        with open(DATA, "w", encoding="utf-8") as fh:
-            write(rows, fh)
-        print(f"{len(rows):,} treasures, {sum(r['absurd'] for r in rows)}"
-              " of them impossible")
+        n = sum(r["absurd"] for r in rows)
+        if n == 0:
+            raise SystemExit(
+                f"{ABSURD_SOURCE.name} is missing, so there is nothing"
+                " hand-written to seal. Run --open first.")
+        seal(rows)
+        print(f"{len(rows):,} treasures sealed into {SEALED.name},"
+              f" {n} of them impossible")
         return
 
-    rows = load()
+    if args.open:
+        rows = unseal()
+        with open(ABSURD_SOURCE, "w", encoding="utf-8") as fh:
+            fh.write(ABSURD_HEADER)
+            for r in rows:
+                if r["absurd"]:
+                    fh.write(f"{r['landmark']}\t{r['treasure']}\n")
+        print(f"{sum(r['absurd'] for r in rows)} hand-written treasures"
+              f" written to {ABSURD_SOURCE.name} (gitignored)")
+        return
+
+    rows = unseal() if SEALED.exists() and os.environ.get(KEY_ENV) else build()
     c = cover()
     print(f"{len(rows):,} treasures, {sum(r['absurd'] for r in rows)}"
           " impossible\n")

@@ -1660,14 +1660,75 @@ stays sealed until the reveal."* `landmarks.tsv`, `facts.tsv`,
 never covered by that decision, and what broke, is a table mapping a
 **unique string** to a landmark.
 
-**`treasures.tsv` is the same shape and is still committed.** It maps each
-landmark to what she takes there, and eighty of those are hand-written for
-Stonehenge and nothing else. It leaks nothing while a treasure is only ever
-readable on the room's own board, and it leaks the room the moment any
-public line names what was taken. That is an open question and it is
-flagged here rather than decided, because the eighty are also the best
-reading in the repository and hiding them has a cost that is not the
-game's.
+**`treasures.tsv` was the same shape.** It mapped each landmark to what she
+takes there, and eighty of those are hand-written for a named place. It
+leaks nothing while a treasure is only ever readable on the room's own
+board, and it leaks the room the moment any public line names what was
+taken. That was flagged here as open; Gal closed it the same day -- *"seal
+the treasures too"* -- and the section below is what that took.
+
+## Sealing the treasures, where encrypting the file would not have been enough
+
+*Gal, 2026-09-09: "seal the treasures too."*
+
+The obvious move is to encrypt `treasures.tsv` and stop. That leaves the
+leak in place, because **the eighty hand-written treasures were a dict in
+`treasures.py`, keyed by landmark**. The data file was the smaller half;
+the source was the answer key for the best eighty places on the map.
+
+Nor can they be published as an unordered list, the way `clauses.py`
+publishes the hint bank. A hint clause is written to name nothing -- that
+is the rule the whole clause bank is authored under. **A hand-written
+treasure names its place implicitly**: each one is about a specific
+landmark and reads like it, so an unordered list is a puzzle with eighty
+answers and no difficulty. There is no form of that prose that is both
+readable and safe.
+
+So the mapping goes behind a key whole. What stays in the open is the
+reasoning, which is most of it: the scoring parameters, the dwell rule, the
+generic per-descriptor bank, and the balance finding.
+
+### The cost, stated rather than absorbed
+
+A fresh clone cannot rebuild the eighty and the tests cannot check them.
+`build()` therefore returns a complete table without them -- 920 derived
+treasures and 80 placeholders -- so the invariants and the balance check
+still run in CI with no secret present. **The finding survives the
+placeholders**, which is the only reason this is affordable:
+
+```
+correlation(cover, reputation)  -0.282  with the hand-written eighty
+                                -0.253  without them
+```
+
+That is a real loss of coverage on the best writing in the repository, and
+it is the price of the mapping not being readable.
+
+### The test named the secrets it was protecting
+
+The first version of the guard was a list of forbidden phrases -- three
+hand-written treasures, quoted in the test file, to check they were not in
+the source. **A test that quotes what it protects is the leak it is testing
+for.** It is structural now: it parses every module in the directory and
+fails on any dict literal mapping more than a handful of landmark names to
+prose.
+
+It also found that this document was carrying a table of five landmarks
+against their treasures, three sections above. That table is gone, and the
+note where it stood says why rather than showing it.
+
+### What is now committed, and what is not
+
+| in the repository | behind a key |
+|---|---|
+| `clauses.py` -- the hint bank, written to name nothing | `hints.enc` -- which clause renders which landmark, per seed |
+| `treasures.py` -- parameters, dwell rule, generic bank | `treasures.enc` -- every landmark to what she takes |
+| `landmarks.tsv`, `facts.tsv`, `countries.tsv` | |
+
+The gazetteer stays public by the decision in "One seed per game": *the
+table itself can be public -- these are facts about places, and a public
+one is half the fun*. What may not be published is anything mapping a
+**string unique to one landmark** back to it.
 
 ## And a false descriptor that shipped with it
 
@@ -1701,10 +1762,11 @@ the only reason she is catchable at all. So the impossible treasures are
 worth the most and take the longest, and going after one is a bet that
 nobody reads the room in time.
 
-```
-100  11h  Vatican City    the keys
-  5   1h  Cheyenne Mountain Complex   the signboard at the gate
-```
+*The table that stood here, five landmarks against what she takes from
+them, was deleted on 2026-09-09 along with the file it was drawn from. It
+is the leak this section now describes, and quoting it to illustrate the
+leak would have been the same mistake in a smaller font.*
+
 
 Eighty are hand-written, one per place famous enough that a person has a
 picture of it in their head; the other 920 are drawn from what the place
