@@ -88,6 +88,17 @@ GAZETTEER: dict[str, tuple[str, ...]] = {
 NEIGHBOURHOOD = 6
 
 #: Exits per landmark in a game.
+#:
+#: Chosen from the pin-rate sweep in `games/hue-and-cry.md` -- five was what
+#: got her below `MAX_PINNED` -- and **that is not what it controls any
+#: more**. With no addresses posted, the exit count is the searcher's
+#: branching factor: a hint leaves about `0.6 x exits` candidates, and a
+#: lone deducer trying `k` of them spends `(k+1)/2` legs to her 1.
+#:
+#: So it is a MINIMUM FIELD SIZE dial. Covering `k` candidates in parallel
+#: takes about `(k+1)/2` searchers, which at five exits is 2.1 and at twelve
+#: is 4.0. Five means "this game wants about two searchers". See
+#: `games/hue-and-cry.md`, "Why five exits?".
 EXITS = 5
 
 #: The gate. Over many drawn maps, the share of her moves where every hint in

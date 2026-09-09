@@ -2607,6 +2607,82 @@ to compute exits of a room she was never in. When the field model is rebuilt
 (it was deleted for saying more searchers are worse), that is the shape the
 notes have to take.
 
+## Why five exits? For a reason that no longer exists — it is a field-size dial now
+
+*Gal, 2026-09-09: "why 5 candidates?"*
+
+**It was chosen to protect her**, and it is now doing the opposite job. The
+sweep that set it is above, in "Routes run between places that resemble each
+other":
+
+```
+random exits, 3 each          pinned 49.7% of moves
+neighbourhood exits, 5 each   pinned 12.8%
+```
+
+The objective was **pin rate** — how often her hint names exactly one
+reachable place and gives her away — measured on the twenty-landmark map, in
+the game where she handed out the address of every room she entered. Five
+was the number that got pinning under `MAX_PINNED = 0.20`.
+
+None of that is what it controls now. With no addresses, the exit count is
+**the searcher's branching factor**, and nothing else.
+
+### What it actually sets, measured
+
+For each exit count: how many candidates a hint leaves, how many legs that
+costs a lone deducer per room, and how often it catches her.
+
+```
+exits   candidates   legs/room she spends   a deducer spends   solo catch
+    2       1.58              1.0                 1.29             97%
+    3       2.18              1.0                 1.59             53%
+    5       3.27              1.0                 2.13             50%
+    8       5.02              1.0                 3.01             23%
+   12       7.03              1.0                 4.02              7%
+   20      11.52              1.0                 6.26              7%
+```
+
+A deducer trying `k` equally likely candidates spends `(k+1)/2` legs to her
+1, so **it falls behind by `(k−1)/2` legs per room, forever.**
+
+### Which puts the pin-rate gate in direct opposition to the game
+
+A lone searcher keeps up only when `k = 1` — when the hint names exactly one
+reachable place. **That is a pin, and `MAX_PINNED` exists to prevent it.**
+
+So the gate that protects her from being given away is precisely the thing
+that makes a solo hunt unwinnable. They are not in tension by accident;
+they are the same quantity read from the two ends. And it means the only two
+ways a field ever closes the gap are the two the design already has:
+
+- **she stands still** — the dwell hands back exactly the hours it costs
+  her, which is the theft mechanic;
+- **the field divides the candidates** — `k` searchers cover `k` candidates
+  in one leg each, and nobody falls behind at all.
+
+**Cooperation is therefore not a strategy in this game, it is the entry
+fee.** A lone searcher is playing a game that cannot be won except by her
+mistakes, at any exit count above two.
+
+### So five means "this game wants about two searchers"
+
+Covering `k` candidates in parallel needs about `(k+1)/2` of them. At five
+exits that is **2.1**; at eight, 3.0; at twelve, 4.0. The exit count is a
+**minimum field size** dial and should be named as one — it says how many
+people have to turn up before the hunt is winnable at all, which is a
+strange thing to have been setting from a pin-rate table.
+
+*Not changed.* Five gives a two-person minimum, which is a reasonable game
+and is the one every other number here was measured against. What is wrong
+is that it was justified by the wrong quantity, and that is now written
+down.
+
+*And `MAX_PINNED` wants revisiting on the same grounds*: it is a ceiling on
+the one event that lets a searcher keep up. Under the handed-address game it
+protected her; under this one it may be capping the wrong side. Flagged
+rather than moved, because it needs the field model that was deleted.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
