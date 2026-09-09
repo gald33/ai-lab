@@ -2832,16 +2832,20 @@ her strictly harder to find than the pre-decision measurement suggested.
 So a lone searcher deducing alone essentially never catches her: it buys
 about seven bits per room where she pays one. Measured, 40 campaigns per
 row, a 40-move limit and no reputation threshold, so "caught" means caught
-inside forty rooms:
+standing still inside forty rooms:
 
 ```
  turnout   alone  dividing
        1      8%        8%
        3      8%        8%
+      10     30%       22%
+      25     52%       22%
+      50     62%        8%
 ```
 
-`carmel.py --calibrate`, 60 campaigns per row, says the same thing from her
-side — how far she gets before anybody is standing where she is:
+`carmel.py --calibrate`, 60 campaigns per row, says the other half from her
+side — how far she gets, and how often she passes the threshold before
+anybody is standing where she is:
 
 ```
  turnout   her budget   she reaches   she wins
@@ -2850,37 +2854,45 @@ side — how far she gets before anybody is standing where she is:
       10           5h         3,625        88%
 ```
 
-Against the routes she was caught at 162 reputation. She now takes **3,626**
-and wins nine times in ten against ten searchers, and adding searchers moves
-almost nothing — which is what a candidate set of 152 does to a field that
-cannot pool what it has ruled out.
+Against the routes she was caught at 162 reputation. She now runs the forty
+moves out at **3,626** and takes the campaign nine times in ten against ten
+searchers, because she passes 140 on her second theft and a catch after that
+is a catch too late. **The two tables are not in tension**: the field does
+get better with turnout — a catch inside forty rooms goes 8% → 62% — and it
+gets better nowhere near fast enough to arrive before she has won.
 
-**That is not a bug to tune out**, and the "dividing" column above is a
-finding about the model rather than about the game. It is the arithmetic of
-the column Gal chose, and the thing it makes load-bearing is what this game
-was started for:
+**Which fixes a defect that was the stated blocker on recalibrating
+`REPUTATION_TO_WIN`.** With the routes, the model's catch rate *fell* as
+searchers were added, which was backwards and was recorded as a reason not
+to trust any threshold measured on it. Against the whole map it rises
+monotonically. Removing the routes removed that, and the threshold is now
+recalibratable in a way it has not been — against a game where two thefts
+are a win, which is the next thing to fix rather than this one.
+
+**The `cooperate` column is worse than useless and gets worse with
+turnout**: 62% → 8% at fifty searchers. That is a finding about the model,
+not the game. Dividing the candidates buys nothing because a searcher whose
+share happens to miss her room gives up entirely — `pursue` returns `None`
+and nothing carries what the others ruled out back to it — so the more
+finely the field divides, the more likely every individual searcher is to
+be looking at a share she was never in.
+
+Which is the shape of the real thing, stated by its absence:
 
 > **The field has to divide the candidates, and dividing them is talk.**
 
-A hundred and fifty rooms split between fifty searchers is three legs each;
-the same hundred and fifty walked by fifty searchers who never spoke is
-fifty searchers walking the same wrong rooms in the same order. Nothing
-enforces a rota, nothing settles one, and no component could — there is no
-manager here. The lobby stops being a nicety and becomes the mechanism,
-which is what *"looking for 'the right' agent within the switchboard space"*
-asked for in the first place.
+A hundred and fifty rooms split between fifty searchers is three legs each,
+and the table above shows what that split is worth without a way to say
+"not here". Real cooperation is a rota **plus a channel**, the channel is
+the lobby, and the channel is exactly the part not built. Nothing enforces a
+rota, nothing settles one, and no component could — there is no manager
+here. So the lobby stops being a nicety and becomes the mechanism, which is
+what *"looking for 'the right' agent within the switchboard space"* asked
+for in the first place.
 
-**And the `cooperate` flag in `chase` does not model that, which the table
-above says out loud.** Dividing the candidates buys nothing because a
-searcher whose share happens to miss her room gives up entirely: `pursue`
-returns `None` and nothing carries what the others found back to it. Real
-cooperation is a rota *plus* a channel — "not here" is the message, and the
-lobby is where it would go — and the channel is exactly the part not built.
-So the flag currently measures a field that divides the work and then
-refuses to speak, which is worse than not dividing it. It is left in, and
-labelled, rather than deleted: it is the shape of the thing to build, and a
-`cooperate=True` number must not be quoted as a cooperation result until
-the channel exists.
+`cooperate=True` is left in and labelled rather than deleted: it is the
+shape of the thing to build, and **no number taken with it may be quoted as
+a cooperation result** until the channel exists.
 
 ### What this invalidates, explicitly
 
@@ -2897,10 +2909,14 @@ walked again — these sections are **left standing and marked wrong**:
 | `descriptors.NEIGHBOURHOOD = 200` | the band it sized is gone. `MIN_SHARED = 16` and `CANDIDATES = 6` survive, and matter *more*: a descriptor true of too few places is now identifying against the whole map. |
 | `REPUTATION_TO_WIN = 140` | was already marked stale; it is now stale for a second reason. She passes it in two moves on the test seed and reaches 3,626 over forty. |
 
-The multi-searcher model was already the blocker on recalibrating that
-threshold ("its catch rate falls as searchers are added, which is backwards
-and is the model rather than the game"). It still is, and the rota above is
-now the first thing a rebuilt one has to get right.
+The multi-searcher model was the stated blocker on recalibrating that
+threshold — *"its catch rate falls as searchers are added, which is
+backwards and is the model rather than the game"*. **That is no longer
+true**: against the whole map it rises monotonically, 8% → 62%. What blocks
+recalibration now is a different and smaller thing, which is that she passes
+140 on her second theft, so the threshold is measuring almost nothing. The
+rota-plus-channel above is the first thing a rebuilt field has to get
+right.
 
 ## What would have to be built, in order
 
