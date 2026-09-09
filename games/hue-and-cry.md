@@ -2303,6 +2303,134 @@ settler to score a game as a loss, and there is no settler. What is left is
 weaker and honest: **a campaign nobody can check is a campaign nobody
 counts.**
 
+### The room she was caught in is counted apart and named
+
+*Decided 2026-09-09. The post used to say "2 rooms, 2 of them emptied, 38
+reputation" on a campaign where 38 is the first room alone.*
+
+**On a caught campaign the last room is always a theft she was in the middle
+of**, and that is the mechanism rather than an edge case: a searcher catches
+her only by walking in while she is still standing there, and she is only
+still there while she is stealing — *the dwell is the window and there is no
+other* ("The theft is a dwell, and being seen aborts it"). So `chase`
+returns `trail[caught_on - 1]["reputation"]`, her total **before** that room,
+while the leg itself records a `dwell` and a running total for a theft she
+*started*. Both numbers are right about different things.
+
+`close_campaign` counted rooms from `leg["dwell"]` and printed the figure
+from `chase` beside it, so the two halves of one sentence disagreed: it
+claimed a room the number next to it excludes. The campaign is seed
+`22…22`; this prints the post, and printed the broken one before this
+commit (`git stash` the change, or run it at `ce6e01a`):
+
+```
+cd games/hue-and-cry && python3 -c "
+import sys; sys.path.insert(0,'.')
+import carmel as C
+seed = bytes.fromhex('22'*32)
+w = C.Map(seed); r = C.chase(seed, C.LOBBY_LANDMARK, searchers=2, world=w)
+print(C.close_campaign(seed, r['outcome'], r['reputation'], r['moves']))"
+```
+
+— two rooms against 38 reputation, which is Linderhof Palace alone; Chauvet
+Cave, worth 61, was the interrupted theft.
+
+**She counts it apart and names it**, rather than dropping it:
+
+> 2 rooms, 1 of them emptied, 38 reputation.
+>
+> You walked in on me in Chauvet Cave, and I was still working when you
+> did, so that room is not among the emptied ones. It is 61 reputation I
+> had my hands on and do not get to count.
+
+Three reasons, in the order they decided it.
+
+**Dropping it silently would have made the post consistent and left the
+reader unable to check it.** The seed is published in the same message, and
+the whole point of publishing it is that anybody can re-derive the trail —
+which yields 99 taken across two rooms. A post saying "1 room, 38
+reputation" agrees with itself and disagrees with what the seed yields, and
+gives a reader no way to tell whether the room count or the figure is the
+wrong one. Naming the 61 is what closes that gap. This is *print
+denominators everywhere*: the campaign that went wrong for her stays in the
+count.
+
+**It is `CLAUDE.md`'s "the weaker thing is allowed, and never allowed to
+look like the stronger one", exactly.** An interrupted theft is the weaker
+outcome. It is **kept** (the room is still in the room total — she was
+there, and the searchers' journey to it was real), **counted apart** (never
+folded into the emptied count), and **never ranked** (it earns her nothing).
+Folding it in would have dressed the weaker thing as the stronger one;
+deleting the room from the total would have chosen the denominator after
+seeing the result.
+
+**And it is the best sentence in the post.** She is a fugitive who publishes
+the recipe for chasing her because *"it is no fun otherwise"* — the one room
+she was standing in when somebody walked in on her is the part of the
+campaign worth reading, and on a campaign caught on arrival it is the only
+part there is. That is common rather than exotic: **16 of the 129 caught
+campaigns** in a 300-seed survey were caught on the first move, where the
+post is one room, nothing emptied and no reputation:
+
+```
+cd games/hue-and-cry && python3 -c "
+import sys; sys.path.insert(0,'.')
+import carmel as C
+caught = first = 0
+for i in range(300):
+    seed = C._prf(b'survey', b'hue', str(i), 0)[:32]
+    r = C.chase(seed, C.LOBBY_LANDMARK, searchers=2, world=C.Map(seed),
+                threshold=10**9)
+    if r['outcome'] != 'caught': continue
+    caught += 1
+    first += len(r['moves']) == 1
+print(f'{first} of {caught} caught campaigns were caught on the first move')"
+```
+
+The same survey is where the caught-on-arrival seed in `test_carmel.py`
+comes from, and it found **no caught campaign whose last leg had no dwell**.
+
+**That survey is not what checks the invariant, and the difference is worth
+keeping.** It was written as the test first — sample seeds, assert every
+caught campaign ended in a dwell — and it stayed green when the catch was
+broken on purpose to ignore the dwell window entirely, because a leg she
+did not steal in is rarely the *first* room a searcher guesses right. A
+check that cannot go red for the reason it is named after is
+`CLAUDE.md`'s third shape, **a coincidence drawn as a pass**, and it was
+thrown away rather than kept for its reassuring colour. What replaced it
+asks `pursue` directly and two-sidedly: the same searcher over the same
+rooms in the same order, once with her dwells and once with every dwell
+zeroed, which must catch her in the first case and miss her in the second.
+That one goes red both ways on demand.
+
+**Naming the landmark costs nothing.** Everything on the closing post is
+already derivable from the seed printed below it; the post is a post-reveal
+artifact. It would be a leak mid-campaign and is not one here.
+
+**Where the predicate lives.** `carmel.interrupted_theft(outcome, trail)`,
+with the argument for why it may take the last leg without searching for it.
+It is not `close_campaign`'s private business: `trail_card.kept(result)`
+(on the branch of [#250](https://github.com/gald33/ai-lab/pull/250), not yet
+merged) is the same rule over the whole result dict, and it is where the bug
+was found — drawing the trail put the map and the scoreboard on one page and
+made the disagreement visible. When that lands, `kept` should be derived
+from `interrupted_theft` rather than restating it, because two copies of
+this rule is how the count drifts back.
+
+**What the tests hold**, all five made to fail on purpose before being kept
+(`test_carmel.py`): the caught post's arithmetic on seed `22…22`; the
+caught-on-arrival post, which is also where `"1 rooms"` was found; that a
+campaign she was *not* caught in names no interrupted room; that the dwell
+really is the window, two-sided — the same searcher, the same world, the
+same rooms in the same order, catching her when she stands still and missing
+her when she does not; and that the clause never reads as a command whatever
+the room is called, asked of the gazetteer rather than of one seed, because
+three of the thousand names carry an all-caps word (`UNESCO`, `VLF`).
+
+Before this, `test_carmel.py` only ever ran `close_campaign` on a trail she
+survived. **That is why nobody had seen it** — the bug was not subtle, it
+was simply in the half of the function no test entered.
+
 ## Should Switchboard grow a hash tool? Not yet, and here is the shape of it
 
 *Gal, 2026-09-09: "when we derive the workspace is the hash a module of what's

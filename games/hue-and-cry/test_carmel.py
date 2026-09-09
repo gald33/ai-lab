@@ -9,11 +9,13 @@ her decisions rather than any particular chase.
 """
 
 import sys
+import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import carmel as C  # noqa: E402
+from landmarks import load as load_landmarks  # noqa: E402
 from secret_matrix import RECIPE, room_token, salt_for  # noqa: E402
 
 SEED = bytes.fromhex(
@@ -176,6 +178,125 @@ def test_the_closing_post_publishes_the_seed():
     trail = C.itinerary(SEED, START, WORLD, 5)
     post = C.close_campaign(SEED, "You did not find me", 200, trail)
     assert SEED.hex() in post
+
+
+# --- the room she was caught in ------------------------------------------
+#
+# `test_the_closing_post_publishes_the_seed` above only ever ran
+# `close_campaign` on a trail she survived, which is why the post spent its
+# whole life crediting her with a theft she was interrupted in. These are
+# the caught-campaign half. The decision they pin is
+# `games/hue-and-cry.md`, "The room she was caught in is counted apart and
+# named".
+
+CAUGHT_SEED = bytes.fromhex("22" * 32)
+# She is caught on her very first move here, which is not exotic: it is 16
+# of the 129 caught campaigns in the 300-seed survey quoted in the document.
+CAUGHT_ON_ARRIVAL_SEED = bytes.fromhex(
+    "d36f1c000cdbdf544d2f65f0cae55eac7623550bc0df42b8460f08b7e6760ebd")
+
+
+def _flat(post):
+    """The clause is wrapped, so line breaks fall wherever the room's name
+    pushes them. Assert on what it says, not on where it broke."""
+    return " ".join(post.split())
+
+
+def _caught(seed):
+    result = C.chase(seed, START, searchers=2, world=C.Map(seed),
+                     threshold=10 ** 9)
+    assert result["outcome"] == "caught", result["outcome"]
+    return result
+
+
+def test_the_closing_post_does_not_credit_the_theft_she_was_caught_in():
+    """The bug this file could not see. Her post said "2 rooms, 2 of them
+    emptied, 38 reputation" -- and 38 is Linderhof Palace alone, because
+    `chase` returns her total BEFORE the room she was caught in. The count
+    claimed a room the figure beside it excludes."""
+    r = _caught(CAUGHT_SEED)
+    post = C.close_campaign(CAUGHT_SEED, r["outcome"], r["reputation"],
+                            r["moves"])
+    assert "2 rooms, 1 of them emptied, 38 reputation." in _flat(post)
+    # Counted apart and named, rather than dropped: a reader who re-derives
+    # the trail from the published seed finds 99 taken and must be able to
+    # tell which of the two numbers is the one she keeps.
+    assert "in Chauvet Cave," in _flat(post)
+    assert "61 reputation I had my hands on" in _flat(post)
+
+
+def test_she_says_it_even_when_it_is_the_only_room_she_entered():
+    """Caught on arrival, so there is nothing to boast about and the whole
+    post is the room she lost. Nothing emptied, no reputation, and the
+    sentence still has to parse -- "1 rooms" was what it said before."""
+    r = _caught(CAUGHT_ON_ARRIVAL_SEED)
+    post = C.close_campaign(CAUGHT_ON_ARRIVAL_SEED, r["outcome"],
+                            r["reputation"], r["moves"])
+    assert "1 room, 0 of them emptied, 0 reputation." in _flat(post)
+    assert "in Lumbini," in _flat(post)
+    assert "69 reputation I had my hands on" in _flat(post)
+
+
+def test_a_campaign_she_was_not_caught_in_names_no_interrupted_room():
+    """The clause is about the catch and only the catch. On a campaign she
+    walked away from, the last room is a theft she finished, and saying she
+    was interrupted in it would be a lie in the one post that exists to be
+    checked."""
+    trail = C.itinerary(SEED, START, WORLD, 5)
+    for outcome in ("she wins", "unfinished", "You did not find me"):
+        post = C.close_campaign(SEED, outcome, 200, trail)
+        assert "walked in on me" not in _flat(post)
+        emptied = len([leg for leg in trail if leg["dwell"]])
+        assert f"5 rooms, {emptied} of them emptied," in _flat(post)
+
+
+def test_the_dwell_is_the_window_and_there_is_no_other():
+    """Why `interrupted_theft` may take the last leg without searching for
+    it. `pursue` catches her only inside `arrived < clock <= leaves`, and
+    `leaves == arrived + dwell`, so a leg she did not dwell in has an empty
+    window and can never be the catch -- which is what makes the last room
+    of a caught campaign always a theft she was in the middle of.
+
+    Two-sided on purpose, because either half alone is green for the wrong
+    reason: the same searcher, the same world and the same rooms in the
+    same order, with nothing changed but her standing still. It has to
+    catch her when she does and miss her when she does not."""
+    world = C.Map(CAUGHT_SEED)
+    trail = C.itinerary(CAUGHT_SEED, START, world)
+    names = sorted(world.descriptors)
+    digest = C._prf(CAUGHT_SEED, b"hue-and-cry/v1/searcher-start", "0", 0)
+    home = names[int.from_bytes(digest[:8], "big") % len(names)]
+    joined = C.JOIN_WINDOW_HOURS * (
+        int.from_bytes(digest[8:16], "big") / 2 ** 64)
+
+    caught_on, _ = C.pursue(world, START, home, trail, joined_at=joined)
+    assert caught_on is not None, "this searcher never catches her at all"
+
+    # She walks the identical route and never stops to steal.
+    never_still = [dict(leg, dwell=0, leaves=leg["arrived"]) for leg in trail]
+    missed, _ = C.pursue(world, START, home, never_still, joined_at=joined)
+    assert missed is None, f"caught on move {missed} in a room she left"
+
+
+def test_the_closing_post_is_not_command_shaped_whatever_the_room_is_named():
+    """The clause interpolates a landmark name into a post that
+    `test_the_notice_is_not_a_command` says must read as prose -- and three
+    of the thousand names carry an all-caps word (`UNESCO`, `VLF`), which
+    one seed cannot see. So ask the gazetteer rather than a sample, and ask
+    `close_campaign` for the post rather than restating its wording here:
+    a copy of the sentence would go green against a wording the game no
+    longer uses.
+    """
+    for place in load_landmarks():
+        name = place["name"]
+        for lost in (0, 7, 61, 1000, 26000):
+            trail = [{"from": START, "to": name, "hint": "x", "arrived": 0.0,
+                      "leaves": 3.0, "dwell": 3.0, "reputation": lost}]
+            post = C.close_campaign(SEED, "caught", 0, trail)
+            for line in post.splitlines():
+                head = line.split()[0] if line.split() else ""
+                assert not (len(head) > 2 and head.isupper()
+                            and head.isalpha()), f"{head!r} in {name!r}"
 
 
 def test_the_notice_is_not_a_command():

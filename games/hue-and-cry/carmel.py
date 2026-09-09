@@ -55,6 +55,7 @@ import hashlib
 import math
 import os
 import sys
+import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -497,6 +498,29 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     ])
 
 
+def interrupted_theft(outcome: str, trail: list[dict]) -> int | None:
+    """The index of the leg she was caught mid-theft in, or None.
+
+    The last room of a caught campaign is ALWAYS a theft she was in the
+    middle of, and that is not a coincidence to be re-derived per caller.
+    `pursue` catches her only when `leg["arrived"] < clock <= leg["leaves"]`,
+    and `leaves == arrived + dwell`, so a leg with no dwell has an empty
+    window and cannot be the catch -- the dwell is the window and there is
+    no other (`games/hue-and-cry.md`, "The theft is a dwell").
+
+    So `chase` returns `trail[caught_on - 1]["reputation"]`, her total
+    BEFORE that room, while a leg's own `dwell` and `reputation` record a
+    theft she *started*. Anything counting rooms she emptied, or printing a
+    figure beside that count, must drop this index or it will disagree with
+    the scoreboard on the same page -- which is how the bug in
+    `close_campaign` was found, by drawing the trail
+    (https://github.com/gald33/ai-lab/pull/250).
+    """
+    if outcome != "caught" or not trail or not trail[-1]["dwell"]:
+        return None
+    return len(trail) - 1
+
+
 def close_campaign(seed: bytes, outcome: str, reputation: int,
                    trail: list[dict]) -> str:
     """What she leaves in the lobby when it is over.
@@ -513,14 +537,39 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
     instead is that a campaign nobody can check is a campaign nobody counts,
     which is a weaker guarantee than the design once claimed for it and an
     honest one.
+
+    WHAT SHE SAYS ABOUT THE ROOM SHE WAS CAUGHT IN, which is a design
+    question and not a rounding error -- `games/hue-and-cry.md`, "The room
+    she was caught in is counted apart and named". She counts it apart and
+    names it. The post used to fold it into the emptied count while the
+    reputation figure beside it excluded it, so the two halves of one
+    sentence disagreed; dropping it silently would have made them agree and
+    left a reader who re-derives the trail from the published seed unable to
+    tell which of the two counts was wrong.
     """
-    took = [leg["to"] for leg in trail if leg["dwell"]]
+    caught_in = interrupted_theft(outcome, trail)
+    took = [leg["to"] for i, leg in enumerate(trail)
+            if leg["dwell"] and i != caught_in]
     lines = [
         f"It is over. {outcome}.",
         "",
-        f"{len(trail)} rooms, {len(took)} of them emptied,"
+        f"{len(trail)} room{'' if len(trail) == 1 else 's'},"
+        f" {len(took)} of them emptied,"
         f" {reputation} reputation.",
         "",
+    ]
+    if caught_in is not None:
+        lost = trail[caught_in]["reputation"] - (
+            trail[caught_in - 1]["reputation"] if caught_in else 0)
+        # Wrapped rather than hand-broken because the landmark's name is as
+        # long as it is, and a ragged paragraph reads as a slip in a post
+        # whose whole job is to be believed.
+        lines += textwrap.wrap(
+            f"You walked in on me in {trail[caught_in]['to']}, and I was"
+            " still working when you did, so that room is not among the"
+            f" emptied ones. It is {lost} reputation I had my hands on and"
+            " do not get to count.", width=68) + [""]
+    lines += [
         "The seed, so you can check every word of it -- which rooms I could",
         "have gone to, which hints I was allowed to post, and what was in",
         "each room before I got there:",
