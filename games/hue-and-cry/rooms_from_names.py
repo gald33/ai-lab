@@ -34,17 +34,10 @@ from switchboard import rooms
 #: for another purpose from the same name and salt.
 INFO = b"hue-and-cry/v1/landmark"
 
-
-def token_for(landmark: str, salt: bytes) -> str:
-    """The secret that admits you to a landmark, from its name and the salt.
-
-    Any string is a legal Switchboard token -- the library hashes it to get
-    the wire identifier -- so the only requirements are that it is infeasible
-    to guess without the name, and that both sides derive the same one.
-    """
-    return hashlib.sha256(
-        INFO + b"\x00" + salt + b"\x00" + landmark.encode("utf-8")
-    ).hexdigest()
+# One implementation, in `secret_matrix`, because two would drift and the
+# whole point of the recipe is that everybody derives the same room. This
+# module's job is checking it against the installed wheel, not owning it.
+from secret_matrix import room_token as token_for  # noqa: E402
 
 
 def invite_for(landmark: str, salt: bytes, *, url: str, key: str) -> Invite:

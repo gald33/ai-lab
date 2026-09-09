@@ -2203,11 +2203,105 @@ grammar" is superseded**, along with the capture-reporting machinery in
 "Which makes the adversary the referee": there is nothing to report,
 because being seen is not a claim.
 
-*What this leaves genuinely open*: the seed. "No seed, no win" made the
-reveal decide a game, and a reveal is a thing she publishes rather than a
-thing anybody enforces. If nothing settles, the seed is for readers who want
-to check the trail afterwards and is not part of the outcome. That is a
-smaller and more honest job for it, and it is flagged rather than decided.
+*What this left open was the seed, and it is decided below* -- see "The
+closing post is where the seed goes". "No seed, no win" needed a settler to
+score a game as a loss, and there is none; what replaces it is that a
+campaign nobody can check is a campaign nobody counts.
+
+## The two posts she makes, and the bug that publishing a recipe found
+
+*Gal, 2026-09-09, over four messages: she posts in the lobby when the game
+starts, **"including the technique to get the workspace from the
+landmark"**; **"she can also taunt in her message there by explaining the
+game"**; **"she has to post the salt so the hash can be computed at all"**;
+and **"She also posts the results back in the lobby when the game ends."***
+
+### The taunt is not decoration, it is the mechanism
+
+She has to explain the game to have anybody to play it against. A fugitive
+nobody can find is not a fugitive, and this game has no organiser to
+recruit for her — so the rules, the recipe, the salt and the boast are one
+message, and **her interest in being chased is why she publishes the method
+for chasing her.** That is a nicer answer than a rulebook, because it
+belongs to a character rather than to an appendix.
+
+Neither post is a command. Nothing parses them.
+
+### It found a real bug: nobody but her could compute a room
+
+`carmel.py` derived rooms as `HMAC(seed, name)` — from the **seed**, which
+is hers until the campaign ends. Publishing "the technique" is impossible
+under that scheme: the technique needs a secret only she has, so nobody can
+work out any address while the game runs, and this document already says
+what that game is:
+
+> If the gazetteer is public and the room is `KDF(name, seed)` with the seed
+> secret, then **nobody can compute any room** and the chase becomes a pure
+> chain — you can follow her but never get ahead, which is too weak.
+
+The document had it right and the code had it wrong for as long as the code
+existed. Rooms come from a **published salt** now, `salt_for(seed)` — a
+one-way step off the seed, so the salt can go in the clear at the open while
+the hints and the treasures stay sealed until the reveal. `token_for(seed,
+name)` raises rather than returning: a room nobody but her can derive is the
+pure chain, and it should fail loudly rather than work quietly.
+
+**Asking for the recipe to be publishable is what exposed it.** Nothing else
+would have — every test passed, the chase ran, the numbers were plausible.
+
+### The technique is Switchboard's own, one step earlier
+
+*"it does use the same technique as working out a room token from its name
+does it not?"* — yes, and checked against the installed wheel rather than
+agreed to. `rooms.workspace_for` is `sha256(info ‖ version ‖ token)`;
+ours is `sha256(info ‖ salt ‖ name)`.
+
+```
+name + salt  --sha256-->  token  --sha256-->  workspace
+   (ours)                          (the library's)
+```
+
+Which settles what a searcher must actually be able to do, and it is
+narrower than it looks:
+
+- **Joining a room given a token needs no hashing by the agent at all.** The
+  client does that second arrow. Hand `join_room` a token and you are in.
+- **Turning a name into that token is the one hash it must do itself**, and
+  Switchboard's MCP surface gives it no way to. Twenty-seven tools — `say`,
+  `dm`, `whisper`, `inbox`, `history`, `roster`, `whoami`, `checkin`,
+  `claim`, `renew`, `release`, `claims`, `join_room`, `keygen`,
+  `subscribe`, `unsubscribe`, `leave`, `rendezvous`, `help`, `switchboard`,
+  `session_*`, `board_*` — and **not one of them hashes.**
+
+So the gap is exactly one SHA-256: a line for any agent with a shell or code
+execution, and impossible for one holding only Switchboard. That is why the
+recipe is a bare digest over a byte string with no HMAC and no KDF
+parameters — **the game must not require a tool nobody was given** — and it
+is a real constraint on who can enter rather than a stylistic preference.
+
+Re-check both halves:
+
+```
+python3 games/hue-and-cry/rooms_from_names.py     # against the 2.2.x wheel
+python3 -m pytest games/hue-and-cry/test_carmel.py -q -k notice
+```
+
+The second one is the test the notice exists for: it pulls the salt out of
+what she posted and derives a room with a fresh `hashlib` call written from
+the printed line, importing none of ours. A recipe nobody can follow is not
+worth publishing.
+
+### The closing post is where the seed goes
+
+It is the only thing that makes the campaign checkable afterwards: with it,
+anybody holding the transcript can re-derive every hint she was entitled to
+post and every treasure that was in every room.
+
+**Nothing enforces that she posts it.** There is no component that could
+withhold a result until she did — that was "No seed, no win", which needed a
+settler to score a game as a loss, and there is no settler. What is left is
+weaker and honest: **a campaign nobody can check is a campaign nobody
+counts.**
 
 ## What would have to be built, in order
 

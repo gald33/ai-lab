@@ -7,7 +7,8 @@ resolves a contradiction the design document had walked into.
 WHAT IT IS. A game draws one 32-byte seed. Everything comes from it:
 
     hints_for(seed, landmark)   the hints that landmark may post
-    token_for(seed, landmark)   the room it lives in this game
+    salt_for(seed)              the room salt, published at the open
+    room_token(name, salt)      the room a landmark lives in
     commitment(seed)            what is published before play
 
 Nothing is compiled, nothing is stored, and a hundred-thousand-landmark
@@ -43,7 +44,7 @@ import hmac
 #: Domain separators, so a digest minted for one purpose can never be
 #: mistaken for one minted for another.
 MATRIX_INFO = b"hue-and-cry/v1/matrix"
-ROOM_INFO = b"hue-and-cry/v1/landmark"
+ROOM_INFO = b"hue-and-cry/v1/landmark"  # matches rooms_from_names.INFO
 COMMIT_INFO = b"hue-and-cry/v1/commit"
 
 #: Hints selected per landmark -- the "3" in the N*3 of `scale.py`.
@@ -77,14 +78,79 @@ def hints_for(seed: bytes, landmark: str, vocabulary: int,
     return sorted(chosen)
 
 
-def token_for(seed: bytes, landmark: str) -> str:
-    """The room this landmark lives in, this game.
+SALT_INFO = b"hue-and-cry/v1/salt"
 
-    The same seed that mints the matrix mints the addresses, so a game has
-    exactly one secret. See `rooms_from_names.py` for why knowing a name is
-    what admits you, and for the check against the Switchboard wheel.
+#: The recipe a searcher runs, and **it is the technique Switchboard already
+#: uses, one step earlier.** Gal, 2026-09-09: *"it does use the same
+#: technique as working out a room token from its name does it not?"* --
+#: yes, and checked against the installed wheel rather than agreed to:
+#: `rooms.workspace_for` is `sha256(info || version || token)`, truncated
+#: and prefixed. Ours is `sha256(info || salt || name)`. Same primitive,
+#: same shape, one link further back in the chain:
+#:
+#:     name + salt  --sha256-->  token  --sha256-->  workspace
+#:     (ours)                            (the library's)
+#:
+#: Which settles what a searcher actually has to be able to do, and it is
+#: narrower than it first looks:
+#:
+#: - **Joining a room given a token needs no hashing at all.** The client
+#:   does that second step. An agent hands `join_room` a token and is in.
+#: - **Turning a landmark's name into that token is the one hash it must do
+#:   itself**, and Switchboard's MCP surface gives it no way to: 27 tools --
+#:   `say`, `dm`, `whisper`, `inbox`, `history`, `roster`, `whoami`,
+#:   `checkin`, `claim`, `renew`, `release`, `claims`, `join_room`,
+#:   `keygen`, `subscribe`, `unsubscribe`, `leave`, `rendezvous`, `help`,
+#:   `switchboard`, `session_*`, `board_*` -- and **not one of them hashes**.
+#:
+#: So the gap is exactly one SHA-256, which any agent with a shell or code
+#: execution closes in a line and an agent holding only Switchboard cannot
+#: close at all. That is the whole reason the recipe is a bare digest over a
+#: byte string, with no HMAC and no KDF parameters: **the game must not
+#: require a tool nobody was given.**
+RECIPE = 'sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)'
+
+
+def salt_for(seed: bytes) -> bytes:
+    """The room salt, published when a campaign opens.
+
+    A game still has exactly one secret -- everything comes from the seed --
+    but the salt is a one-way step off it, so publishing the salt says
+    nothing about the hints or the treasures, which stay sealed until the
+    reveal.
+
+    This exists because the alternative was measured against the design and
+    lost. Deriving rooms from the seed itself means nobody but her can
+    compute any address while the game runs, and `games/hue-and-cry.md` is
+    explicit that this "becomes a pure chain -- you can follow her but never
+    get ahead, which is too weak". The salt is what lets a searcher think of
+    a name and go there.
     """
-    return _prf(seed, ROOM_INFO, landmark).hex()
+    return hashlib.sha256(SALT_INFO + b"\x00" + seed).digest()
+
+
+def room_token(landmark: str, salt: bytes) -> str:
+    """The room a landmark lives in, given the published salt.
+
+    Any string is a legal Switchboard token -- the library hashes it to get
+    the wire identifier -- so the only requirements are that it is
+    infeasible to guess without the name, and that both sides derive the
+    same one. `rooms_from_names.py` checks it against the installed wheel.
+    """
+    return hashlib.sha256(
+        ROOM_INFO + b"\x00" + salt + b"\x00" + landmark.encode("utf-8")
+    ).hexdigest()
+
+
+def token_for(seed: bytes, landmark: str) -> str:
+    """Deprecated: the room from the SEED rather than the published salt.
+
+    Kept only so the failure is loud if anything still calls it. A room
+    nobody but her can derive is the "pure chain" the design rejects.
+    """
+    raise RuntimeError(
+        "rooms come from the published salt, not the seed: "
+        "room_token(landmark, salt_for(seed))")
 
 
 def commitment(seed: bytes) -> str:
@@ -104,7 +170,7 @@ def replays(published_seed: bytes, published_commitment: str) -> bool:
 
     What anybody runs after a game, on the seed the manager published. If
     this holds, every hint in the transcript can be re-derived and checked
-    against `hints_for`, and every room address against `token_for`.
+    against `hints_for`, and every room address against `room_token`.
     """
     return commitment(published_seed) == published_commitment
 
@@ -122,7 +188,7 @@ def main() -> None:
 
     for landmark in ("Reykjavik", "Cairo", "Quito"):
         print(f"  {landmark:<10} hints {hints_for(seed, landmark, vocabulary)}"
-              f"   room {token_for(seed, landmark)[:24]}...")
+              f"   room {room_token(landmark, salt_for(seed))[:24]}...")
 
     start = time.perf_counter()
     for i in range(20_000):
@@ -143,9 +209,9 @@ def main() -> None:
     print("\nand a second game is a different world:")
     for landmark in ("Cairo",):
         print(f"  {landmark} in game A   hints {hints_for(seed, landmark, vocabulary)}"
-              f"  room {token_for(seed, landmark)[:16]}...")
+              f"  room {room_token(landmark, salt_for(seed))[:16]}...")
         print(f"  {landmark} in game B   hints {hints_for(other, landmark, vocabulary)}"
-              f"  room {token_for(other, landmark)[:16]}...")
+              f"  room {room_token(landmark, salt_for(other))[:16]}...")
 
     print("""
 So there is nothing to harvest, and that is the point rather than a

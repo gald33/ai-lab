@@ -62,7 +62,8 @@ import treasures as T  # noqa: E402
 from descriptors import NEIGHBOURHOOD, all_descriptors  # noqa: E402
 from gazetteer import EXITS, kinship  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
-from secret_matrix import _prf, hints_for, token_for  # noqa: E402
+from secret_matrix import (RECIPE, _prf, hints_for,  # noqa: E402
+                           room_token, salt_for)
 
 EXIT_INFO = b"hue-and-cry/v1/exits"
 
@@ -378,37 +379,98 @@ def next_difficulty(recent: list[bool], current: float = DIFFICULTY,
 
 
 def open_campaign(seed: bytes, start: str) -> str:
-    """The notice she leaves in the lobby when she starts stealing.
+    """What she leaves in the lobby when she starts stealing.
 
-    Gal, 2026-09-09: *"she would start a new campaign for stealing things.
-    Then once she goes to the first room, she also posts a note in some
-    lobby. And then whoever wants to join the hunt, just join the hunt."*
+    Gal, 2026-09-09, in three passes: *"she needs to post a note in some
+    lobby... whoever wants to join the hunt, just join the hunt"*, then
+    *"including the technique to get the workspace from the landmark"*, then
+    *"she can also taunt in her message there by explaining the game"*.
 
-    **It is not a command, because there are none.** Gal, the same day: *"we
-    have no commands here, either Carmel sees you in the room and you win,
-    or she goes to hiding with her loot with enough reputation and you
-    lose."* Nothing parses this. There is no verb, no manager to recognise
-    one, and no settlement to trigger. It is a line of text with a room
-    address in it, and what makes the address useful is that a person can
-    read it and go there.
+    Those are the same post, and the taunt is what makes it work. **She has
+    to explain the game to have anybody to play it against** -- a fugitive
+    nobody can find is not a fugitive -- so the rules, the recipe and the
+    boast are one message, and her interest in being chased is why she
+    publishes the method for chasing her.
 
-    Two things still follow from it existing at all.
+    **It is not a command.** Nothing parses it, there is no verb to
+    recognise and nothing to settle: *"we have no commands here, either
+    Carmel sees you in the room and you win, or she goes to hiding with her
+    loot with enough reputation and you lose."*
 
-    **She starts it.** Nobody convenes a match. A campaign is a thing she
-    does, and the field assembles around it or does not.
+    WHAT THE RECIPE COSTS A READER, which had to be checked rather than
+    hoped. It is the technique Switchboard already uses, one step earlier --
+    `name + salt -sha256-> token -sha256-> workspace`, and the library owns
+    the second arrow. So joining a room given a token needs no hashing by
+    the agent at all; turning a landmark's *name* into that token is the one
+    hash it must do itself, and none of Switchboard's 27 MCP tools hashes.
+    The gap is exactly one SHA-256: a line for any agent with a shell, and
+    impossible for one holding only Switchboard. See `secret_matrix.RECIPE`.
 
-    **Joining is not a move.** There is nothing to approve, because "knowing
-    a landmark's name is what admits you" and this game has no permission
-    model to ask. Going to the room is the whole of joining.
-
-    The address is the opening landmark's, and she leaves it on the way out,
-    so by the time anybody reads it she has gone. That is the same one-room
-    head start the trail gives everybody afterwards, and the reason the game
-    is findable at all: with a thousand rooms and nothing broadcast, a
-    searcher with no lead never finds her.
+    The salt goes in the clear and the seed does not. Publishing the salt is
+    what lets a searcher think of a name and go to it, which
+    `games/hue-and-cry.md` says the game needs -- without it "you can follow
+    her but never get ahead, which is too weak". The seed stays hers until
+    the end, so the hints and the treasures stay sealed.
     """
-    return (f"She has begun. She was last in {token_for(seed, start)}"
-            " and she is not there now.")
+    salt = salt_for(seed)
+    return "\n".join([
+        "I have begun, and I am telling you because it is no fun otherwise.",
+        "",
+        "The rules, since you will want them. I am somewhere on a map of a",
+        "thousand famous places. Leaving a room I leave a note behind me: one",
+        "true thing about where I have gone, and the address of it. Both are",
+        "for you. Find me while I am standing still and you have me. Let me",
+        "stand still often enough and I retire on what I take.",
+        "",
+        "Any landmark's room, this game -- the same hashing your client",
+        "already does to turn a token into a workspace, one step earlier:",
+        "",
+        f"    {RECIPE}",
+        f"    salt = {salt.hex()}",
+        "",
+        "Hand what comes out to join_room. You will not need the salt for",
+        "anything else and I will not be giving you another.",
+        "",
+        "So you need nothing from me but the right name, and I am not going",
+        "to tell you which names. There are a thousand of them and I am at",
+        "one.",
+        "",
+        f"I was last at {room_token(start, salt)}.",
+        "I am not there now.",
+    ])
+
+
+def close_campaign(seed: bytes, outcome: str, reputation: int,
+                   trail: list[dict]) -> str:
+    """What she leaves in the lobby when it is over.
+
+    Gal: *"She also posts the results back in the lobby when the game
+    ends."* This is where the seed goes, and the seed is the only thing that
+    makes the rest of it checkable: with it, anybody holding the transcript
+    can re-derive every hint she was entitled to post and every treasure
+    that was in every room, and see whether she played the game she said
+    she was playing.
+
+    Nothing enforces that she posts it. She is not refereed and there is no
+    component that could withhold a result until she did. What there is
+    instead is that a campaign nobody can check is a campaign nobody counts,
+    which is a weaker guarantee than the design once claimed for it and an
+    honest one.
+    """
+    took = [leg["to"] for leg in trail if leg["dwell"]]
+    lines = [
+        f"It is over. {outcome}.",
+        "",
+        f"{len(trail)} rooms, {len(took)} of them emptied,"
+        f" {reputation} reputation.",
+        "",
+        "The seed, so you can check every word of it -- which rooms I could",
+        "have gone to, which hints I was allowed to post, and what was in",
+        "each room before I got there:",
+        "",
+        f"    seed = {seed.hex()}",
+    ]
+    return "\n".join(lines)
 
 
 def itinerary(seed: bytes, start: str, world: Map,

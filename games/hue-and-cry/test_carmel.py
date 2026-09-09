@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import carmel as C  # noqa: E402
-from secret_matrix import token_for  # noqa: E402
+from secret_matrix import RECIPE, room_token, salt_for  # noqa: E402
 
 SEED = bytes.fromhex(
     "ca12e100000000000000000000000000000000000000000000000000d1e60000")
@@ -141,19 +141,65 @@ def test_the_lobby_notice_carries_the_opening_room_and_nothing_else():
     rooms and nothing broadcast, a searcher with no lead never finds her. It
     must not say more than where to start."""
     notice = C.open_campaign(SEED, START)
-    assert token_for(SEED, START) in notice
+    salt = salt_for(SEED)
+    assert room_token(START, salt) in notice
     assert START not in notice, "the notice names the landmark in clear"
     for other in ("Uluru", "Eiffel Tower"):
-        assert token_for(SEED, other) not in notice
+        assert room_token(other, salt) not in notice
+
+
+def test_a_reader_can_derive_a_room_from_the_notice_alone():
+    """THE ONE THE NOTICE EXISTS FOR. Nothing is worth publishing a recipe
+    for if the recipe cannot be followed, so this follows it: pull the salt
+    out of what she posted, and derive a room with a fresh `hashlib` call
+    written from the printed line rather than by importing ours.
+
+    Switchboard's MCP surface has 27 tools and not one of them hashes, so
+    the reader here is any agent with a shell -- which is why the recipe is
+    a bare digest over a byte string and not an HMAC or a KDF.
+    """
+    import hashlib
+
+    notice = C.open_campaign(SEED, START)
+    salt_line = next(l for l in notice.splitlines() if "salt =" in l)
+    salt = bytes.fromhex(salt_line.split("=")[1].strip())
+
+    # Written from the recipe as printed, importing nothing of ours.
+    derived = hashlib.sha256(
+        b"hue-and-cry/v1/landmark" + b"\x00" + salt + b"\x00"
+        + "Uluru".encode("utf-8")).hexdigest()
+    assert derived == room_token("Uluru", salt_for(SEED))
+
+
+def test_the_notice_publishes_the_salt_and_never_the_seed():
+    """*"she has to post the salt so the hash can be computed at all"* --
+    and the seed is the other half of that sentence: it stays hers, because
+    it is what keeps the hints and the treasures sealed until the end."""
+    notice = C.open_campaign(SEED, START)
+    assert salt_for(SEED).hex() in notice
+    assert SEED.hex() not in notice
+    assert RECIPE in notice
+
+
+def test_the_closing_post_publishes_the_seed():
+    """It is the only thing that makes the campaign checkable afterwards.
+    Nothing enforces that she posts it -- there is no component that could
+    -- but a campaign nobody can check is a campaign nobody counts."""
+    trail = C.itinerary(SEED, START, WORLD, 5)
+    post = C.close_campaign(SEED, "You did not find me", 200, trail)
+    assert SEED.hex() in post
 
 
 def test_the_notice_is_not_a_command():
     """*"we have no commands here"* -- nothing parses it, there is no verb
     to recognise and nothing to settle. If this file grows a grammar again,
     it has grown a manager to read it, which this game does not have."""
-    notice = C.open_campaign(SEED, START)
-    first = notice.split()[0]
-    assert not first.isupper(), f"{first!r} reads like a command"
+    for post in (C.open_campaign(SEED, START),
+                 C.close_campaign(SEED, "caught", 0, [])):
+        for line in post.splitlines():
+            head = line.split()[0] if line.split() else ""
+            assert not (len(head) > 2 and head.isupper() and head.isalpha()), (
+                f"{head!r} reads like a command")
 
 
 def test_the_lobby_is_the_same_room_every_game():
