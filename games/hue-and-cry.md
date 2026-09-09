@@ -3295,15 +3295,22 @@ its neighbours.
 Then her decisions gained their randomness, and it went back out:
 
 ```
-legs per campaign   median  3
-span                median  4,619 km
-countries visited   median  3
+legs per campaign    median      3   min     1   max      6
+span                 median  3,724 km   min   266   max 17,002
+countries visited    median      4   min     2   max      7
 ```
 
-60 seeded campaigns, two searchers. She travels again because she is no
-longer taking the cheapest hop every time, so the campaign is a continent
-rather than a city — and #250's original 2,761 km turns out to have been
-nearer the truth than the number that replaced it.
+`trail_card.py --survey`, 200 campaigns from `SURVEY_ROOT`, two searchers.
+She travels again because she is no longer taking the cheapest hop every
+time, so the campaign is a continent rather than a city — and **#250's
+original 3 legs and 2,761 km turn out to have been nearer the truth than
+the numbers that replaced them.**
+
+*A fourth run is quoted nowhere, and that is the point of this paragraph.*
+An ad-hoc 60-campaign script written while waiting for the survey said
+4,619 km — 24% off the 200-campaign figure, from nothing but a smaller
+sample and a different root. The survey is the number because it is the one
+with a command beside it; the script was faster and is not evidence.
 
 **The lesson is about the measurement, not the number.** Campaign shape is
 downstream of every parameter in `carmel.py`, so it is not a fact about the
