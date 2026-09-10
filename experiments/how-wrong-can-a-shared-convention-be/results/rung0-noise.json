@@ -1,0 +1,1080 @@
+{
+  "cell": {
+    "traders": 4,
+    "goods": 5,
+    "episodes": 4,
+    "seconds": 60,
+    "mix": {
+      "autarky": 0.2,
+      "greedy": 0.5,
+      "price-taker": 0.3
+    }
+  },
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "attempted": 96,
+  "played": 96,
+  "harness_failures": [],
+  "workers": 8,
+  "seeds_identical_across_replicates": true,
+  "games_that_settled_nothing": 0,
+  "pinned_endpoints": [],
+  "every_replicate_identical": false,
+  "npc_seed_varied": false,
+  "replicates": [
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.13368924195932813,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.289882,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.10979914409771023,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.46708,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 41,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.05313449167091138,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.330118,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.25359148289822253,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.371107,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.03607644589077912,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.42947,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.1780889895481153,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.313901,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.5234092801541183,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.474925,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.19045331588001627,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.603485,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.16540644595734558,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.470881,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11394641051095991,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.52199,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.1388008598528499,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.588902,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.32692921634159744,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.467981,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 0
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.14283228338160028,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.284155,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11160882558127422,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.466211,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.0812282654492174,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.312248,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.1995821979656071,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.398202,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.024989830459227445,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.435575,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 42,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.3125,
+        "capture": -0.2321547847378787,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.282414,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.3125,
+        "capture": -0.6237861612958447,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.440328,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 33,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.23558975498305218,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.588451,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.16427213719189201,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.471396,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 33,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.18567793173841915,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.491209,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.12456785745944511,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.59404,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.31263281288970934,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.473713,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 1
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.1402699328520478,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.28576,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.10899322150376396,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.467467,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.002909993019789826,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.362065,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.20858806433672938,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.393684,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.03475258960091819,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.430199,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 41,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.1825534055767425,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.311301,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.520809699684627,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.475821,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.3125,
+        "capture": -0.37357503775380624,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.542491,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.15657205283456055,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.474892,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.19157613128446055,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.488678,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.20017064090062936,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.566748,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 2
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.34019055220232464,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.462664,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 2
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.140761648716909,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.285452,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.19197617634502634,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.427619,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.09325812314096887,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.304596,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.26130367789376746,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.367238,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.003582947132915902,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.447363,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 43,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.1802319092418563,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.312653,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.5233338458994231,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.474951,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.18012243341669698,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.606926,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.12397664425213813,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.489691,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11372735450253316,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.522084,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.11480586827408928,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.597564,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 3
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.3218212201326884,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.470029,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 3
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.137353163744576,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.287587,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11568217078478531,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.464255,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.008907628552203804,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.35825,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.20320607248147698,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.396384,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": 0.024292490520535157,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.462713,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 43,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.1796120422471123,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.313014,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.3125,
+        "capture": -0.6170434994531019,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.442652,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.2639493933871544,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.579005,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.16484700046914122,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.471135,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 33,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.1199611292104196,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.519409,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.11519368850279249,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.597424,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 4
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.3021848655659202,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.477902,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 4
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.1374425666290962,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.287531,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.19433771696914784,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.426485,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.07390218901906037,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.316908,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.19713638166694247,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.399429,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.034133337207444166,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.43054,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 41,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.17818686328412747,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.313844,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.5248860507556483,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.474416,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.21487695111369956,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.59535,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.25642646485514986,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.429556,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 33,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.1128860862148519,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.522445,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.12012731584079422,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.595643,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 5
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.31183967675961505,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.474031,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 5
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.1386127865282625,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.286798,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.10975957683857593,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.467099,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.036828469195892374,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.34049,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.20477283011045044,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.395598,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.05380231865529617,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.419709,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 41,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.1734133722996722,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.316624,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.5504988815421085,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.465588,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.15399049474749227,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.61563,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.16277661165452692,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.472075,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11655410916446453,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.520871,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.11315763230210095,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.598159,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 6
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.32086596498229175,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.470412,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 6
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.13733400598360737,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.287599,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 36,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.11325607305365519,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.46542,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 40,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.03575156740304741,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.341175,
+        "seed": 3,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.20526717602900701,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.39535,
+        "seed": 4,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.02180276902067325,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.43733,
+        "seed": 5,
+        "draw": "unverified",
+        "settled": 41,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.17462906712592924,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.315916,
+        "seed": 6,
+        "draw": "unverified",
+        "settled": 39,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.3125,
+        "capture": -0.6215521468298757,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.441098,
+        "seed": 7,
+        "draw": "unverified",
+        "settled": 35,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.2206053218605795,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.593442,
+        "seed": 8,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.25,
+        "capture": -0.26101656090797554,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.427472,
+        "seed": 9,
+        "draw": "unverified",
+        "settled": 32,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.125,
+        "capture": -0.12257115824699265,
+        "above_autarky_share": 0.25,
+        "eff_round": 0.518289,
+        "seed": 10,
+        "draw": "unverified",
+        "settled": 34,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.0625,
+        "capture": -0.09456442248027651,
+        "above_autarky_share": 0.75,
+        "eff_round": 0.604871,
+        "seed": 11,
+        "draw": "unverified",
+        "settled": 37,
+        "replicate": 7
+      },
+      {
+        "zero_episode_share": 0.1875,
+        "capture": -0.3203222427295856,
+        "above_autarky_share": 0.5,
+        "eff_round": 0.47063,
+        "seed": 12,
+        "draw": "unverified",
+        "settled": 38,
+        "replicate": 7
+      }
+    ]
+  ],
+  "summary": {
+    "zero_episode_share": {
+      "replicate_means": [
+        0.177083,
+        0.192708,
+        0.192708,
+        0.182292,
+        0.182292,
+        0.1875,
+        0.166667,
+        0.182292
+      ],
+      "between_replicate_sd": 0.008553,
+      "replicates": 8,
+      "games": 96,
+      "per_game_sd": 0.058941
+    },
+    "capture": {
+      "replicate_means": [
+        -0.185277,
+        -0.203244,
+        -0.20508,
+        -0.187408,
+        -0.183637,
+        -0.196348,
+        -0.177919,
+        -0.194056
+      ],
+      "between_replicate_sd": 0.009666,
+      "replicates": 8,
+      "games": 96,
+      "per_game_sd": 0.140096
+    },
+    "above_autarky_share": {
+      "replicate_means": [
+        0.375,
+        0.291667,
+        0.375,
+        0.375,
+        0.395833,
+        0.395833,
+        0.416667,
+        0.416667
+      ],
+      "between_replicate_sd": 0.039763,
+      "replicates": 8,
+      "games": 96,
+      "per_game_sd": 0.188412
+    },
+    "eff_round": {
+      "replicate_means": [
+        0.444144,
+        0.436495,
+        0.438481,
+        0.442181,
+        0.447477,
+        0.438848,
+        0.447421,
+        0.441549
+      ],
+      "between_replicate_sd": 0.004085,
+      "replicates": 8,
+      "games": 96,
+      "per_game_sd": 0.096432
+    }
+  }
+}

@@ -1,0 +1,241 @@
+=== rung 0a, nothing varied ===
+OPEN traders=4 episodes=4 rounds=1 goods=5 seconds=60   8 replicates x 12 games   workers=8
+nothing is varied between replicates; this is not a treatment
+
+    [1/96] replicate 6 seed 1  zero_episode_share=0.188  capture=-0.137  above_autarky_share=0.500  eff_round=0.288
+    [2/96] replicate 8 seed 1  zero_episode_share=0.188  capture=-0.137  above_autarky_share=0.500  eff_round=0.288
+    [3/96] replicate 1 seed 1  zero_episode_share=0.188  capture=-0.134  above_autarky_share=0.500  eff_round=0.290
+    [4/96] replicate 7 seed 1  zero_episode_share=0.188  capture=-0.139  above_autarky_share=0.500  eff_round=0.287
+    [5/96] replicate 5 seed 1  zero_episode_share=0.188  capture=-0.137  above_autarky_share=0.500  eff_round=0.288
+    [6/96] replicate 2 seed 1  zero_episode_share=0.188  capture=-0.143  above_autarky_share=0.250  eff_round=0.284
+    [7/96] replicate 3 seed 1  zero_episode_share=0.188  capture=-0.140  above_autarky_share=0.500  eff_round=0.286
+    [8/96] replicate 4 seed 1  zero_episode_share=0.188  capture=-0.141  above_autarky_share=0.500  eff_round=0.285
+    [9/96] replicate 1 seed 2  zero_episode_share=0.125  capture=-0.110  above_autarky_share=0.250  eff_round=0.467
+    [10/96] replicate 2 seed 2  zero_episode_share=0.125  capture=-0.112  above_autarky_share=0.000  eff_round=0.466
+    [11/96] replicate 4 seed 2  zero_episode_share=0.188  capture=-0.192  above_autarky_share=0.000  eff_round=0.428
+    [12/96] replicate 6 seed 2  zero_episode_share=0.188  capture=-0.194  above_autarky_share=0.250  eff_round=0.426
+    [13/96] replicate 5 seed 2  zero_episode_share=0.125  capture=-0.116  above_autarky_share=0.500  eff_round=0.464
+    [14/96] replicate 3 seed 2  zero_episode_share=0.125  capture=-0.109  above_autarky_share=0.500  eff_round=0.467
+    [15/96] replicate 8 seed 2  zero_episode_share=0.125  capture=-0.113  above_autarky_share=0.250  eff_round=0.465
+    [16/96] replicate 7 seed 2  zero_episode_share=0.125  capture=-0.110  above_autarky_share=0.250  eff_round=0.467
+    [17/96] replicate 1 seed 3  zero_episode_share=0.125  capture=-0.053  above_autarky_share=0.250  eff_round=0.330
+    [18/96] replicate 2 seed 3  zero_episode_share=0.188  capture=-0.081  above_autarky_share=0.250  eff_round=0.312
+    [19/96] replicate 3 seed 3  zero_episode_share=0.125  capture=-0.003  above_autarky_share=0.750  eff_round=0.362
+    [20/96] replicate 5 seed 3  zero_episode_share=0.125  capture=-0.009  above_autarky_share=0.500  eff_round=0.358
+    [21/96] replicate 4 seed 3  zero_episode_share=0.188  capture=-0.093  above_autarky_share=0.250  eff_round=0.305
+    [22/96] replicate 6 seed 3  zero_episode_share=0.188  capture=-0.074  above_autarky_share=0.250  eff_round=0.317
+    [23/96] replicate 7 seed 3  zero_episode_share=0.125  capture=-0.037  above_autarky_share=0.750  eff_round=0.340
+    [24/96] replicate 8 seed 3  zero_episode_share=0.125  capture=-0.036  above_autarky_share=0.750  eff_round=0.341
+    [25/96] replicate 1 seed 4  zero_episode_share=0.250  capture=-0.254  above_autarky_share=0.250  eff_round=0.371
+    [26/96] replicate 2 seed 4  zero_episode_share=0.188  capture=-0.200  above_autarky_share=0.500  eff_round=0.398
+    [27/96] replicate 3 seed 4  zero_episode_share=0.188  capture=-0.209  above_autarky_share=0.500  eff_round=0.394
+    [28/96] replicate 4 seed 4  zero_episode_share=0.250  capture=-0.261  above_autarky_share=0.250  eff_round=0.367
+    [29/96] replicate 5 seed 4  zero_episode_share=0.188  capture=-0.203  above_autarky_share=0.500  eff_round=0.396
+    [30/96] replicate 6 seed 4  zero_episode_share=0.188  capture=-0.197  above_autarky_share=0.500  eff_round=0.399
+    [31/96] replicate 8 seed 4  zero_episode_share=0.188  capture=-0.205  above_autarky_share=0.500  eff_round=0.395
+    [32/96] replicate 7 seed 4  zero_episode_share=0.188  capture=-0.205  above_autarky_share=0.500  eff_round=0.396
+    [33/96] replicate 1 seed 5  zero_episode_share=0.188  capture=-0.036  above_autarky_share=0.500  eff_round=0.429
+    [34/96] replicate 2 seed 5  zero_episode_share=0.188  capture=-0.025  above_autarky_share=0.500  eff_round=0.436
+    [35/96] replicate 3 seed 5  zero_episode_share=0.188  capture=-0.035  above_autarky_share=0.500  eff_round=0.430
+    [36/96] replicate 4 seed 5  zero_episode_share=0.188  capture=-0.004  above_autarky_share=0.500  eff_round=0.447
+    [37/96] replicate 5 seed 5  zero_episode_share=0.188  capture=0.024  above_autarky_share=0.500  eff_round=0.463
+    [38/96] replicate 6 seed 5  zero_episode_share=0.188  capture=-0.034  above_autarky_share=0.500  eff_round=0.431
+    [39/96] replicate 7 seed 5  zero_episode_share=0.188  capture=-0.054  above_autarky_share=0.500  eff_round=0.420
+    [40/96] replicate 8 seed 5  zero_episode_share=0.188  capture=-0.022  above_autarky_share=0.500  eff_round=0.437
+    [41/96] replicate 1 seed 6  zero_episode_share=0.250  capture=-0.178  above_autarky_share=0.250  eff_round=0.314
+    [42/96] replicate 2 seed 6  zero_episode_share=0.312  capture=-0.232  above_autarky_share=0.000  eff_round=0.282
+    [43/96] replicate 3 seed 6  zero_episode_share=0.250  capture=-0.183  above_autarky_share=0.250  eff_round=0.311
+    [44/96] replicate 4 seed 6  zero_episode_share=0.250  capture=-0.180  above_autarky_share=0.250  eff_round=0.313
+    [45/96] replicate 5 seed 6  zero_episode_share=0.250  capture=-0.180  above_autarky_share=0.000  eff_round=0.313
+    [46/96] replicate 6 seed 6  zero_episode_share=0.250  capture=-0.178  above_autarky_share=0.250  eff_round=0.314
+    [47/96] replicate 7 seed 6  zero_episode_share=0.250  capture=-0.173  above_autarky_share=0.250  eff_round=0.317
+    [48/96] replicate 8 seed 6  zero_episode_share=0.250  capture=-0.175  above_autarky_share=0.250  eff_round=0.316
+    [49/96] replicate 1 seed 7  zero_episode_share=0.250  capture=-0.523  above_autarky_share=0.250  eff_round=0.475
+    [50/96] replicate 2 seed 7  zero_episode_share=0.312  capture=-0.624  above_autarky_share=0.000  eff_round=0.440
+    [51/96] replicate 3 seed 7  zero_episode_share=0.250  capture=-0.521  above_autarky_share=0.250  eff_round=0.476
+    [52/96] replicate 4 seed 7  zero_episode_share=0.250  capture=-0.523  above_autarky_share=0.250  eff_round=0.475
+    [53/96] replicate 5 seed 7  zero_episode_share=0.312  capture=-0.617  above_autarky_share=0.250  eff_round=0.443
+    [54/96] replicate 6 seed 7  zero_episode_share=0.250  capture=-0.525  above_autarky_share=0.250  eff_round=0.474
+    [55/96] replicate 7 seed 7  zero_episode_share=0.250  capture=-0.550  above_autarky_share=0.250  eff_round=0.466
+    [56/96] replicate 8 seed 7  zero_episode_share=0.312  capture=-0.622  above_autarky_share=0.250  eff_round=0.441
+    [57/96] replicate 1 seed 8  zero_episode_share=0.188  capture=-0.190  above_autarky_share=0.500  eff_round=0.603
+    [58/96] replicate 2 seed 8  zero_episode_share=0.188  capture=-0.236  above_autarky_share=0.250  eff_round=0.588
+    [59/96] replicate 3 seed 8  zero_episode_share=0.312  capture=-0.374  above_autarky_share=0.000  eff_round=0.542
+    [60/96] replicate 4 seed 8  zero_episode_share=0.188  capture=-0.180  above_autarky_share=0.250  eff_round=0.607
+    [61/96] replicate 5 seed 8  zero_episode_share=0.250  capture=-0.264  above_autarky_share=0.500  eff_round=0.579
+    [62/96] replicate 6 seed 8  zero_episode_share=0.188  capture=-0.215  above_autarky_share=0.250  eff_round=0.595
+    [63/96] replicate 7 seed 8  zero_episode_share=0.125  capture=-0.154  above_autarky_share=0.250  eff_round=0.616
+    [64/96] replicate 8 seed 8  zero_episode_share=0.188  capture=-0.221  above_autarky_share=0.250  eff_round=0.593
+    [65/96] replicate 1 seed 9  zero_episode_share=0.188  capture=-0.165  above_autarky_share=0.250  eff_round=0.471
+    [66/96] replicate 2 seed 9  zero_episode_share=0.188  capture=-0.164  above_autarky_share=0.250  eff_round=0.471
+    [67/96] replicate 3 seed 9  zero_episode_share=0.188  capture=-0.157  above_autarky_share=0.250  eff_round=0.475
+    [68/96] replicate 4 seed 9  zero_episode_share=0.125  capture=-0.124  above_autarky_share=0.500  eff_round=0.490
+    [69/96] replicate 5 seed 9  zero_episode_share=0.188  capture=-0.165  above_autarky_share=0.500  eff_round=0.471
+    [70/96] replicate 6 seed 9  zero_episode_share=0.250  capture=-0.256  above_autarky_share=0.250  eff_round=0.430
+    [71/96] replicate 7 seed 9  zero_episode_share=0.188  capture=-0.163  above_autarky_share=0.500  eff_round=0.472
+    [72/96] replicate 8 seed 9  zero_episode_share=0.250  capture=-0.261  above_autarky_share=0.250  eff_round=0.427
+    [73/96] replicate 1 seed 10  zero_episode_share=0.125  capture=-0.114  above_autarky_share=0.750  eff_round=0.522
+    [74/96] replicate 2 seed 10  zero_episode_share=0.188  capture=-0.186  above_autarky_share=0.500  eff_round=0.491
+    [75/96] replicate 3 seed 10  zero_episode_share=0.188  capture=-0.192  above_autarky_share=0.250  eff_round=0.489
+    [76/96] replicate 4 seed 10  zero_episode_share=0.125  capture=-0.114  above_autarky_share=0.750  eff_round=0.522
+    [77/96] replicate 5 seed 10  zero_episode_share=0.125  capture=-0.120  above_autarky_share=0.250  eff_round=0.519
+    [78/96] replicate 6 seed 10  zero_episode_share=0.125  capture=-0.113  above_autarky_share=0.750  eff_round=0.522
+    [79/96] replicate 8 seed 10  zero_episode_share=0.125  capture=-0.123  above_autarky_share=0.250  eff_round=0.518
+    [80/96] replicate 7 seed 10  zero_episode_share=0.125  capture=-0.117  above_autarky_share=0.500  eff_round=0.521
+    [81/96] replicate 1 seed 11  zero_episode_share=0.062  capture=-0.139  above_autarky_share=0.500  eff_round=0.589
+    [82/96] replicate 2 seed 11  zero_episode_share=0.062  capture=-0.125  above_autarky_share=0.750  eff_round=0.594
+    [83/96] replicate 3 seed 11  zero_episode_share=0.125  capture=-0.200  above_autarky_share=0.500  eff_round=0.567
+    [84/96] replicate 4 seed 11  zero_episode_share=0.062  capture=-0.115  above_autarky_share=0.750  eff_round=0.598
+    [85/96] replicate 5 seed 11  zero_episode_share=0.062  capture=-0.115  above_autarky_share=0.500  eff_round=0.597
+    [86/96] replicate 6 seed 11  zero_episode_share=0.062  capture=-0.120  above_autarky_share=0.500  eff_round=0.596
+    [87/96] replicate 7 seed 11  zero_episode_share=0.062  capture=-0.113  above_autarky_share=0.250  eff_round=0.598
+    [88/96] replicate 8 seed 11  zero_episode_share=0.062  capture=-0.095  above_autarky_share=0.750  eff_round=0.605
+    [89/96] replicate 1 seed 12  zero_episode_share=0.188  capture=-0.327  above_autarky_share=0.250  eff_round=0.468
+    [90/96] replicate 2 seed 12  zero_episode_share=0.188  capture=-0.313  above_autarky_share=0.250  eff_round=0.474
+    [91/96] replicate 3 seed 12  zero_episode_share=0.188  capture=-0.340  above_autarky_share=0.250  eff_round=0.463
+    [92/96] replicate 4 seed 12  zero_episode_share=0.188  capture=-0.322  above_autarky_share=0.250  eff_round=0.470
+    [93/96] replicate 5 seed 12  zero_episode_share=0.188  capture=-0.302  above_autarky_share=0.250  eff_round=0.478
+    [94/96] replicate 6 seed 12  zero_episode_share=0.188  capture=-0.312  above_autarky_share=0.500  eff_round=0.474
+    [95/96] replicate 7 seed 12  zero_episode_share=0.188  capture=-0.321  above_autarky_share=0.500  eff_round=0.470
+    [96/96] replicate 8 seed 12  zero_episode_share=0.188  capture=-0.320  above_autarky_share=0.500  eff_round=0.471
+
+attempted 96, played 96, harness failures 0, games that settled nothing 0
+every complete replicate played the same seeds: True
+
+endpoint                between-replicate sd  per-game sd    n
+zero_episode_share                    0.0086       0.0589   96
+capture                               0.0097       0.1401   96
+above_autarky_share                   0.0398       0.1884   96
+eff_round                             0.0041       0.0964   96
+
+These numbers are the input to this experiment's thresholds and are not
+themselves a result. NPC seats are not models: a model cell moves at
+least this much.
+
+wrote experiments/how-wrong-can-a-shared-convention-be/results/rung0-noise.json
+
+real	74m16.957s
+user	53m10.134s
+sys	2m45.163s
+EXIT=0
+
+=== rung 0a, policy seed varied ===
+OPEN traders=4 episodes=4 rounds=1 goods=5 seconds=60   8 replicates x 12 games   workers=8
+nothing is varied between replicates; this is not a treatment
+
+    [1/96] replicate 8 seed 1  zero_episode_share=0.438  capture=-0.272  above_autarky_share=0.250  eff_round=0.203
+    [2/96] replicate 2 seed 1  zero_episode_share=0.250  capture=-0.170  above_autarky_share=0.250  eff_round=0.267
+    [3/96] replicate 6 seed 1  zero_episode_share=0.312  capture=-0.169  above_autarky_share=0.250  eff_round=0.268
+    [4/96] replicate 3 seed 1  zero_episode_share=0.312  capture=-0.115  above_autarky_share=0.500  eff_round=0.302
+    [5/96] replicate 4 seed 1  zero_episode_share=0.312  capture=-0.153  above_autarky_share=0.250  eff_round=0.278
+    [6/96] replicate 1 seed 1  zero_episode_share=0.312  capture=-0.197  above_autarky_share=0.000  eff_round=0.250
+    [7/96] replicate 7 seed 1  zero_episode_share=0.438  capture=-0.224  above_autarky_share=0.000  eff_round=0.233
+    [8/96] replicate 5 seed 1  zero_episode_share=0.312  capture=-0.130  above_autarky_share=0.250  eff_round=0.292
+    [9/96] replicate 1 seed 2  zero_episode_share=0.125  capture=-0.119  above_autarky_share=0.250  eff_round=0.463
+    [10/96] replicate 3 seed 2  zero_episode_share=0.375  capture=-0.493  above_autarky_share=0.250  eff_round=0.283
+    [11/96] replicate 2 seed 2  zero_episode_share=0.125  capture=-0.105  above_autarky_share=0.500  eff_round=0.469
+    [12/96] replicate 7 seed 2  zero_episode_share=0.375  capture=-0.442  above_autarky_share=0.000  eff_round=0.307
+    [13/96] replicate 6 seed 2  zero_episode_share=0.438  capture=-0.442  above_autarky_share=0.000  eff_round=0.307
+    [14/96] replicate 4 seed 2  zero_episode_share=0.250  capture=-0.341  above_autarky_share=0.250  eff_round=0.356
+    [15/96] replicate 8 seed 2  zero_episode_share=0.438  capture=-0.450  above_autarky_share=0.000  eff_round=0.304
+    [16/96] replicate 5 seed 2  zero_episode_share=0.438  capture=-0.587  above_autarky_share=0.000  eff_round=0.238
+    [17/96] replicate 1 seed 3  zero_episode_share=0.188  capture=-0.073  above_autarky_share=0.500  eff_round=0.317
+    [18/96] replicate 3 seed 3  zero_episode_share=0.500  capture=-0.290  above_autarky_share=0.000  eff_round=0.179
+    [19/96] replicate 2 seed 3  zero_episode_share=0.062  capture=0.033  above_autarky_share=0.500  eff_round=0.385
+    [20/96] replicate 5 seed 3  zero_episode_share=0.438  capture=-0.260  above_autarky_share=0.000  eff_round=0.199
+    [21/96] replicate 6 seed 3  zero_episode_share=0.438  capture=-0.255  above_autarky_share=0.000  eff_round=0.202
+    [22/96] replicate 8 seed 3  zero_episode_share=0.312  capture=-0.224  above_autarky_share=0.000  eff_round=0.221
+    [23/96] replicate 7 seed 3  zero_episode_share=0.438  capture=-0.228  above_autarky_share=0.000  eff_round=0.219
+    [24/96] replicate 4 seed 3  zero_episode_share=0.375  capture=-0.189  above_autarky_share=0.250  eff_round=0.244
+    [25/96] replicate 1 seed 4  zero_episode_share=0.188  capture=-0.195  above_autarky_share=0.500  eff_round=0.400
+    [26/96] replicate 2 seed 4  zero_episode_share=0.188  capture=-0.200  above_autarky_share=0.500  eff_round=0.398
+    [27/96] replicate 3 seed 4  zero_episode_share=0.250  capture=-0.199  above_autarky_share=0.000  eff_round=0.399
+    [28/96] replicate 4 seed 4  zero_episode_share=0.188  capture=-0.141  above_autarky_share=0.250  eff_round=0.427
+    [29/96] replicate 6 seed 4  zero_episode_share=0.312  capture=-0.295  above_autarky_share=0.000  eff_round=0.350
+    [30/96] replicate 5 seed 4  zero_episode_share=0.375  capture=-0.332  above_autarky_share=0.000  eff_round=0.332
+    [31/96] replicate 7 seed 4  zero_episode_share=0.250  capture=-0.198  above_autarky_share=0.250  eff_round=0.399
+    [32/96] replicate 8 seed 4  zero_episode_share=0.188  capture=-0.140  above_autarky_share=0.500  eff_round=0.428
+    [33/96] replicate 1 seed 5  zero_episode_share=0.188  capture=-0.017  above_autarky_share=0.500  eff_round=0.440
+    [34/96] replicate 2 seed 5  zero_episode_share=0.250  capture=-0.127  above_autarky_share=0.250  eff_round=0.379
+    [35/96] replicate 3 seed 5  zero_episode_share=0.250  capture=-0.148  above_autarky_share=0.250  eff_round=0.368
+    [36/96] replicate 4 seed 5  zero_episode_share=0.375  capture=-0.410  above_autarky_share=0.000  eff_round=0.224
+    [37/96] replicate 5 seed 5  zero_episode_share=0.312  capture=-0.251  above_autarky_share=0.250  eff_round=0.311
+    [38/96] replicate 6 seed 5  zero_episode_share=0.438  capture=-0.350  above_autarky_share=0.000  eff_round=0.257
+    [39/96] replicate 8 seed 5  zero_episode_share=0.188  capture=-0.002  above_autarky_share=0.250  eff_round=0.448
+    [40/96] replicate 7 seed 5  zero_episode_share=0.250  capture=-0.172  above_autarky_share=0.500  eff_round=0.355
+    [41/96] replicate 1 seed 6  zero_episode_share=0.312  capture=-0.232  above_autarky_share=0.250  eff_round=0.282
+    [42/96] replicate 2 seed 6  zero_episode_share=0.375  capture=-0.268  above_autarky_share=0.000  eff_round=0.262
+    [43/96] replicate 3 seed 6  zero_episode_share=0.250  capture=-0.141  above_autarky_share=0.250  eff_round=0.335
+    [44/96] replicate 4 seed 6  zero_episode_share=0.375  capture=-0.242  above_autarky_share=0.250  eff_round=0.276
+    [45/96] replicate 6 seed 6  zero_episode_share=0.312  capture=-0.218  above_autarky_share=0.250  eff_round=0.290
+    [46/96] replicate 5 seed 6  zero_episode_share=0.375  capture=-0.254  above_autarky_share=0.000  eff_round=0.269
+    [47/96] replicate 8 seed 6  zero_episode_share=0.250  capture=-0.156  above_autarky_share=0.250  eff_round=0.327
+    [48/96] replicate 7 seed 6  zero_episode_share=0.312  capture=-0.207  above_autarky_share=0.000  eff_round=0.297
+    [49/96] replicate 1 seed 7  zero_episode_share=0.312  capture=-0.644  above_autarky_share=0.250  eff_round=0.433
+    [50/96] replicate 2 seed 7  zero_episode_share=0.438  capture=-0.736  above_autarky_share=0.000  eff_round=0.402
+    [51/96] replicate 3 seed 7  zero_episode_share=0.188  capture=-0.377  above_autarky_share=0.250  eff_round=0.525
+    [52/96] replicate 4 seed 7  zero_episode_share=0.312  capture=-0.495  above_autarky_share=0.250  eff_round=0.485
+    [53/96] replicate 6 seed 7  zero_episode_share=0.375  capture=-0.546  above_autarky_share=0.000  eff_round=0.467
+    [54/96] replicate 5 seed 7  zero_episode_share=0.375  capture=-0.779  above_autarky_share=0.000  eff_round=0.387
+    [55/96] replicate 8 seed 7  zero_episode_share=0.250  capture=-0.548  above_autarky_share=0.000  eff_round=0.467
+    [56/96] replicate 7 seed 7  zero_episode_share=0.375  capture=-0.664  above_autarky_share=0.000  eff_round=0.427
+    [57/96] replicate 1 seed 8  zero_episode_share=0.250  capture=-0.270  above_autarky_share=0.500  eff_round=0.577
+    [58/96] replicate 2 seed 8  zero_episode_share=0.438  capture=-0.887  above_autarky_share=0.000  eff_round=0.372
+    [59/96] replicate 3 seed 8  zero_episode_share=0.250  capture=-0.481  above_autarky_share=0.000  eff_round=0.507
+    [60/96] replicate 4 seed 8  zero_episode_share=0.438  capture=-1.073  above_autarky_share=0.000  eff_round=0.310
+    [61/96] replicate 5 seed 8  zero_episode_share=0.375  capture=-0.892  above_autarky_share=0.000  eff_round=0.370
+    [62/96] replicate 6 seed 8  zero_episode_share=0.375  capture=-0.732  above_autarky_share=0.250  eff_round=0.423
+    [63/96] replicate 8 seed 8  zero_episode_share=0.312  capture=-0.623  above_autarky_share=0.250  eff_round=0.459
+    [64/96] replicate 7 seed 8  zero_episode_share=0.312  capture=-0.771  above_autarky_share=0.250  eff_round=0.410
+    [65/96] replicate 1 seed 9  zero_episode_share=0.188  capture=-0.168  above_autarky_share=0.250  eff_round=0.469
+    [66/96] replicate 2 seed 9  zero_episode_share=0.438  capture=-0.501  above_autarky_share=0.000  eff_round=0.319
+    [67/96] replicate 3 seed 9  zero_episode_share=0.250  capture=-0.286  above_autarky_share=0.000  eff_round=0.416
+    [68/96] replicate 4 seed 9  zero_episode_share=0.438  capture=-0.454  above_autarky_share=0.000  eff_round=0.340
+    [69/96] replicate 5 seed 9  zero_episode_share=0.312  capture=-0.383  above_autarky_share=0.250  eff_round=0.372
+    [70/96] replicate 6 seed 9  zero_episode_share=0.438  capture=-0.435  above_autarky_share=0.250  eff_round=0.348
+    [71/96] replicate 7 seed 9  zero_episode_share=0.438  capture=-1.203  above_autarky_share=0.250  eff_round=0.000
+    [72/96] replicate 8 seed 9  zero_episode_share=0.250  capture=-0.316  above_autarky_share=0.500  eff_round=0.402
+    [73/96] replicate 1 seed 10  zero_episode_share=0.125  capture=-0.122  above_autarky_share=0.250  eff_round=0.518
+    [74/96] replicate 2 seed 10  zero_episode_share=0.500  capture=-0.658  above_autarky_share=0.000  eff_round=0.289
+    [75/96] replicate 3 seed 10  zero_episode_share=0.312  capture=-0.401  above_autarky_share=0.000  eff_round=0.399
+    [76/96] replicate 4 seed 10  zero_episode_share=0.312  capture=-0.399  above_autarky_share=0.000  eff_round=0.399
+    [77/96] replicate 5 seed 10  zero_episode_share=0.250  capture=-0.382  above_autarky_share=0.250  eff_round=0.407
+    [78/96] replicate 6 seed 10  zero_episode_share=0.500  capture=-0.663  above_autarky_share=0.000  eff_round=0.286
+    [79/96] replicate 7 seed 10  zero_episode_share=0.375  capture=-1.330  above_autarky_share=0.250  eff_round=0.000
+    [80/96] replicate 8 seed 10  zero_episode_share=0.312  capture=-0.399  above_autarky_share=0.250  eff_round=0.400
+    [81/96] replicate 1 seed 11  zero_episode_share=0.125  capture=-0.167  above_autarky_share=0.500  eff_round=0.579
+    [82/96] replicate 2 seed 11  zero_episode_share=0.375  capture=-0.630  above_autarky_share=0.000  eff_round=0.412
+    [83/96] replicate 3 seed 11  zero_episode_share=0.312  capture=-0.526  above_autarky_share=0.250  eff_round=0.449
+    [84/96] replicate 4 seed 11  zero_episode_share=0.375  capture=-0.623  above_autarky_share=0.000  eff_round=0.414
+    [85/96] replicate 6 seed 11  zero_episode_share=0.375  capture=-0.622  above_autarky_share=0.000  eff_round=0.414
+    [86/96] replicate 5 seed 11  zero_episode_share=0.312  capture=-0.634  above_autarky_share=0.250  eff_round=0.410
+    [87/96] replicate 7 seed 11  zero_episode_share=0.438  capture=-1.770  above_autarky_share=0.000  eff_round=0.000
+    [88/96] replicate 8 seed 11  zero_episode_share=0.312  capture=-0.548  above_autarky_share=0.000  eff_round=0.441
+    [89/96] replicate 1 seed 12  zero_episode_share=0.188  capture=-0.312  above_autarky_share=0.500  eff_round=0.474
+    [90/96] replicate 2 seed 12  zero_episode_share=0.375  capture=-0.514  above_autarky_share=0.000  eff_round=0.393
+    [91/96] replicate 3 seed 12  zero_episode_share=0.250  capture=-0.268  above_autarky_share=0.000  eff_round=0.492
+    [92/96] replicate 4 seed 12  zero_episode_share=0.312  capture=-0.539  above_autarky_share=0.000  eff_round=0.383
+    [93/96] replicate 6 seed 12  zero_episode_share=0.375  capture=-0.501  above_autarky_share=0.000  eff_round=0.398
+    [94/96] replicate 5 seed 12  zero_episode_share=0.375  capture=-0.582  above_autarky_share=0.000  eff_round=0.366
+    [95/96] replicate 7 seed 12  zero_episode_share=0.562  capture=-1.494  above_autarky_share=0.000  eff_round=0.000
+    [96/96] replicate 8 seed 12  zero_episode_share=0.250  capture=-0.335  above_autarky_share=0.250  eff_round=0.465
+
+attempted 96, played 96, harness failures 0, games that settled nothing 0
+every complete replicate played the same seeds: True
+
+endpoint                between-replicate sd  per-game sd    n
+zero_episode_share                    0.0588       0.0989   96
+capture                               0.1503       0.3107   96
+above_autarky_share                   0.0859       0.1771   96
+eff_round                             0.0620       0.1139   96
+
+These numbers are the input to this experiment's thresholds and are not
+themselves a result. NPC seats are not models: a model cell moves at
+least this much.
+
+wrote experiments/how-wrong-can-a-shared-convention-be/results/rung0-noise-varied-policy.json
+
+real	74m10.364s
+user	53m36.204s
+sys	3m0.841s
+EXIT=0
