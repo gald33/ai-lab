@@ -409,21 +409,60 @@ WHIM_INFO = b"hue-and-cry/v1/whim"
 #: arrives. A solo hunt is a contest and a crowd is a hard game, and that
 #: asymmetry is a property of the design rather than a bug in it.
 #:
-#: **140 IS STALE AND IS NOT A CALIBRATED NUMBER.** It was measured against
-#: a searcher that was handed the address of every room she went to. Gal
-#: removed the addresses on 2026-09-09 -- *"I will not be giving you any
-#: addresses"* -- and a searcher that has to deduce the landmark from the
-#: hint is a different and much weaker animal. Gal then removed the routes
-#: too -- *"we have no routes"* -- and she now runs out the forty-move
-#: limit at about **3,626** reputation rather than being caught at 162,
-#: winning 88% of campaigns against ten searchers and 98% against one.
+#: **CALIBRATED 2026-09-10, at last.** It had been 140 since a measurement
+#: against a searcher that was handed the address of every room, and the
+#: blocker on replacing it was that the multi-searcher model was not
+#: trustworthy -- its catch rate fell as searchers were added, which is
+#: backwards. Removing the routes fixed that, and removing travel made the
+#: model something worth calibrating against at all.
 #:
-#: It is left at 140 rather than replaced with a fresh guess, because the
-#: honest blocker is that **the multi-searcher model is not trustworthy
-#: yet**: its catch rate falls as searchers are added, which is backwards
-#: and is the model rather than the game. A threshold calibrated against a
-#: pursuit nobody believes is worse than an obviously stale one.
-REPUTATION_TO_WIN = 140
+#: WHAT THE NUMBER IS FOR, WHICH IS NOT WHO WINS
+#: ---------------------------------------------
+#:
+#: Her reputation grows at about **60 a leg**, near enough linearly, so the
+#: threshold is a **campaign-length dial in disguise**: 140 buys two legs,
+#: 375 buys six, 1,100 buys nineteen. `WATCH` and `PREP` decide who wins;
+#: this decides how long they have to do it in. Keeping those two jobs
+#: apart is the whole reason this was left uncalibrated while the others
+#: moved.
+#:
+#: **140 was ending the game before the searchers got to play.** Catches
+#: land at a median of leg 6 and a p90 of leg 19; a campaign that stops at
+#: leg 2 forecloses nine in ten of them. Measured, 60 campaigns a cell,
+#: the searchers' win rate:
+#:
+#:     threshold  ~legs   solo  3 alone  3 split  10 alone  10 split  premium
+#:           140      2     3%       7%      15%        8%       38%      +30
+#:           300      5    15%      23%      28%       25%       60%      +35
+#:           500      8    20%      32%      40%       35%       77%      +42
+#:           750     12    25%      38%      48%       45%       90%      +45
+#:         1,000     17    32%      48%      55%       58%       92%      +33
+#:         1,400     23    38%      57%      70%       67%       95%      +28
+#:
+#: **750, on the criterion that chose `WATCH`** and for the same reason.
+#: The coordination premium -- the gap between a field that talks and one
+#: that does not, which is the only quantity this experiment measures --
+#: rises to 750 and falls after it: +30, +35, +42, **+45**, +33, +28. Past
+#: that point ten coordinated searchers are near-certain, and a column that
+#: cannot rise cannot show a better field getting better.
+#:
+#: At 750: nothing saturated (90% is the last row before it pins), a lone
+#: searcher an underdog at 25%, and a campaign that is **twelve legs
+#: instead of two**.
+#:
+#: WHAT IT STILL COSTS, STATED RATHER THAN HIDDEN
+#: ----------------------------------------------
+#:
+#: Catches land out to leg 19 at p90 and 750 ends the campaign around leg
+#: 12, so a tail of catches is still foreclosed. That is not an oversight:
+#: letting them all land means pushing to 1,400, where the top cell reaches
+#: 95% and the premium has fallen by a third. **The two cannot both be
+#: satisfied**, and the premium is the one the experiment needs.
+#:
+#: It reads the same for every turnout, which is still the design: she
+#: never learns who came, so the number cannot depend on it. A solo hunt is
+#: a contest and a crowd is a hard game.
+REPUTATION_TO_WIN = 750
 
 #: The lobby is a public room whose key is published -- the island's shape
 #: (`games/island/lobby.py`) and for its reason: a room nobody can find is

@@ -408,9 +408,15 @@ PAGE = """<!doctype html>
         add(pins, "circle", { cx: at[0], cy: at[1], r: 12, fill: "none",
           stroke: "__THEFT__", "stroke-width": 1.6 });
       }
+      // `data-stop` is what makes the count checkable. The group also
+      // holds a ring on the room she was caught in and, mid-leg, a dot for
+      // where she actually is, so `childNodes.length` is not the number of
+      // rooms reached and a test that read it as one went red the day
+      // catches became common (`carmel-taldiego.md`, "The catch ring that
+      // nothing had ever counted").
       add(pins, "circle", { cx: at[0], cy: at[1], r: j ? 6 : 5,
         fill: st.stole ? "__THEFT__" : "__SEA__", stroke: "__STOP__",
-        "stroke-width": 2 });
+        "stroke-width": 2, "data-stop": j });
     }
     if (f.phase === "flight") {
       // where she actually is. The camera centres on her, so this is
@@ -441,7 +447,9 @@ PAGE = """<!doctype html>
     scaleLabel.textContent = km.toLocaleString() + " KM ACROSS";
     window.flight = { clock: clock, scale: f.scale, x: f.x, y: f.y,
       phase: f.phase, stop: f.stop, leg: f.leg, progress: f.progress,
-      trail: trail.getAttribute("d").length, pins: pins.childNodes.length,
+      trail: trail.getAttribute("d").length,
+      pins: pins.querySelectorAll("[data-stop]").length,
+      marks: pins.childNodes.length,
       done: clock >= total - 1 };
   }
 
