@@ -4613,6 +4613,92 @@ campaigns and says nothing about a live one. That is a page change and a
 decision about whether this hub is the one she should live on, which is not
 a decision the runner should make on its own.
 
+## The size of the map is a secret, and saying it was the whole leak
+
+*2026-09-10, Gal: "We shouldn't publicize that there are thousand rooms, and
+we definitely shouldn't publicize where are the rooms. It's basically a hash
+function and could have endless possibilities. So any landmark in the world
+can fit."* And then, on whether to grow it instead: *"1000 is a good number,
+but it's a secret."*
+
+### What made this urgent, and how much of it was my own confusion
+
+Three claims were made in this conversation before one survived. Recorded in
+order, because the two that failed are the more instructive:
+
+1. **"A key holder can read every active workspace."** *False.* No endpoint
+   lists workspaces — all twenty take a `workspace` you must already name,
+   and `/stats` returns a count. A client holding the same key, sitting in a
+   different room, sees an empty roster and no channels. **The key is not
+   what hides her; the room id is** — so changing the key, or moving to
+   per-room invitations, buys no concealment at all.
+2. **"Anyone with the salt can sweep the map without a key."** *False as
+   stated.* Every hub read needs the bearer token — raw HTTP with none is
+   `401 invalid or missing bearer token` on `/agents` and `/channels`. The
+   sweep that "proved" it was silently authenticated by `SWITCHBOARD_TOKEN`
+   sitting in the container's environment. **A demonstration that runs in an
+   environment you did not audit is not a demonstration**, and this is the
+   same disease as a check that is green for the wrong reason.
+3. **"A *player* can sweep the map."** *True*, and it is the real one. Every
+   player holds the bearer token by definition, the salt arrives in the
+   notice, and the names were public. Measured: **227 ms per room on one
+   connection, 3.8 minutes for a thousand** — against a leg of about six.
+   The hints were decoration.
+
+### The measurement that reframes it
+
+There is **no membership oracle**. A landmark she is not at, a name in no
+gazetteer at all, and the right place under the wrong spelling are byte
+identical to a prober:
+
+    Stonehenge                       200, count 0, no channels
+    Gal's Kitchen Table              200, count 0, no channels
+    Uluru-Kata Tjuta National Park   200, count 0, no channels
+
+The hub has no notion of a room existing. So the candidate space is not a
+thousand — it is every string anyone can type, and a searcher cannot tell a
+wrong guess from a wrong *spelling*. **The only thing that collapsed that
+into a 3.8-minute sweep was us publishing the list**, which is Gal's point
+exactly and is why the fix is disclosure and not cryptography.
+
+This does not contradict "Presence in a room is public to that room" above —
+that is still the hue and is still not a leak to be plugged. What was a leak
+is publishing the set of rooms to sweep.
+
+### What was closed, and what was not
+
+**Closed**: the count is out of every player-facing surface — her notice
+(`carmel.open_campaign`) and the published site (`build_site.py`, the meta
+description and the lede). The notice now reads *"Every famous place on
+earth is a room already, waiting to be named"*, which is not a euphemism for
+the thousand — it is what the probe above actually shows.
+
+**Not closed, and not closable by us**: `landmarks.tsv` is 999 rows of exact
+spellings, committed, in a public repository. The roadmap item
+`hue-and-cry-purge-the-leaked-tables` already carries the sentence that
+governs this — *"a secret committed to a public repository is not
+recallable by the person who committed it"* — and PR refs survive a
+force-push.
+
+**Sealing the file now would be theatre**, and the distinction is worth
+keeping because it is not obvious: hints and treasures are re-derived from
+each game's seed, so sealing them protected every future game. **The names
+never change.** A `landmarks.enc` over the same 999 names protects nothing,
+and would put a sealed file where a reader would reasonably read secrecy.
+`CLAUDE.md`: the weaker thing is allowed, and never allowed to look like the
+stronger one.
+
+**What would work is redraw *and* seal**: a much larger pool from Wikidata
+(`build_landmarks.py` already builds from it, and the thousand is a cap this
+repo chose rather than what the data holds), the playing thousand selected
+under a key held outside the repository, plaintext gitignored, `.enc`
+committed, and a test that fails if a plaintext map is ever tracked again —
+the treasures pattern applied to the map. Its cost is stated rather than
+discovered later: **every calibration in this game was swept against this
+map** — `WATCH`, `PREP`, `NEAR_KM`, `REPUTATION_TO_WIN` — and the gazetteer
+is part of the level key by this document's own rule, so a redraw re-opens
+all of them. Not done here, and not started without a go.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
