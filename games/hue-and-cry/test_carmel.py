@@ -33,14 +33,44 @@ def test_she_is_deterministic_given_the_seed():
         == [(x["to"], x["dwell"], x["hint"]) for x in b]
 
 
-def test_she_only_ever_moves_along_an_exit():
-    """She has five exits and no teleport. If this fails the routes have
-    stopped constraining her and the hint stops meaning anything, because a
-    hint is read against her REACHABLE set."""
-    at = START
-    for leg in C.itinerary(SEED, START, WORLD):
-        assert leg["to"] in WORLD.exits(at), f"{at} -> {leg['to']}"
+def test_there_are_no_routes():
+    """Gal, 2026-09-09: *"we have no routes."*
+
+    Written so it can fail for the reason it is named after, which the
+    absence of `Map.exits` alone cannot: reintroduce a reachable set and
+    this goes red, because she would stop leaving the kinship band. It
+    asserts she reaches somewhere that is NOT among the 200 nearest
+    look-alikes of where she stood -- the exact pool the deleted `band()`
+    drew her five exits from.
+    """
+    import gazetteer
+
+    assert not hasattr(WORLD, "exits") and not hasattr(WORLD, "band")
+
+    gaz = WORLD.descriptors
+    at, escaped = START, False
+    for leg in C.itinerary(SEED, START, WORLD, 6):
+        band = [x for _, x in sorted((-gazetteer.kinship(at, x, gaz), x)
+                                     for x in gaz if x != at)][:200]
+        escaped = escaped or leg["to"] not in band
         at = leg["to"]
+    assert escaped, "every hop stayed inside a look-alike band"
+    # Demonstrated rather than assumed, per CLAUDE.md: on this seed 2 of her
+    # first 6 hops land outside the band, so restoring a reachable set of
+    # any kind turns this red.
+
+
+def test_a_hint_leaves_the_reader_a_hundred_places_not_five():
+    """The number the decision was made on, pinned so it cannot drift back.
+
+    With no routes a hint is read against the whole map, and the hint she
+    chooses is the commonest of her three live descriptors -- so the
+    candidate set is large by construction and that is the point. If this
+    falls to single figures somebody has quietly re-narrowed the game.
+    """
+    sizes = sorted(WORLD.cover[max(WORLD.live_hints(n), key=WORLD.cover.get)]
+                   for n in WORLD.descriptors)
+    assert sizes[len(sizes) // 2] > 100, sizes[len(sizes) // 2]
 
 
 def test_every_hint_she_posts_is_true_of_where_she_went():
@@ -51,17 +81,55 @@ def test_every_hint_she_posts_is_true_of_where_she_went():
         assert leg["hint"] in WORLD.descriptors[leg["to"]]
 
 
-def test_she_posts_the_least_informative_hint_she_holds():
-    """Her whole stated strategy, and the thing the descriptor layer exists
-    to make possible. Anything else is a different control."""
-    at = START
-    for leg in C.itinerary(SEED, START, WORLD):
-        reachable = WORLD.exits(at)
-        live = WORLD.live_hints(leg["to"])
-        covers = {w: len([x for x in reachable if w in WORLD.descriptors[x]])
-                  for w in live}
-        assert covers[leg["hint"]] == max(covers.values())
-        at = leg["to"]
+def test_she_leans_on_the_least_informative_hint_by_exactly_as_much_as_WHIM_says():
+    """Her stated strategy, softened on 2026-09-09 -- Gal: *"add some
+    randomness for all her decisions."*
+
+    This used to assert `cover[hint] == max(cover)` on every leg, which is
+    now false by design: she draws among her three live descriptors
+    weighted by `cover ** (1 / WHIM)`.
+
+    **The replacement asserted `rate > 0.55` and that was the wrong shape
+    of test twice over.** It went red in CI at exactly 0.550, and it was
+    only ever a number somebody had watched once: the rate depends on the
+    treasure table, because the table decides which rooms she goes to and
+    therefore which live hints she is choosing between -- and `absurd.tsv`
+    is gitignored, so a checkout with `HUE_TREASURE_KEY` and CI compute
+    different ones (50% here, 55% there). Calibrating a constant against
+    one of them is the same defect as the seeds in `test_trail_card.py`.
+
+    So it derives its own target instead. The sampler's definition gives
+    an exact per-leg probability of taking the vaguest hint; the mean of
+    those is what the run should produce, and the assertion is that it
+    does. Then two bounds that no longer need calibrating: the expectation
+    must sit well clear of the 1/3 a coin would give -- turn `WHIM` up to
+    uniform and it fails -- and the observed rate must not be 100%, which
+    is what reverting the draw to `max` would give.
+    """
+    def vaguest_odds(landmark: str) -> float:
+        live = [WORLD.cover[w] for w in WORLD.live_hints(landmark)]
+        top = max(live)
+        weights = [(c / top) ** (1 / C.WHIM) for c in live]
+        return max(weights) / sum(weights)
+
+    took, expected, legs = 0, [], 0
+    for seed_byte in range(1, 12):
+        seed = bytes.fromhex(f"{seed_byte:02x}" * 32)
+        for leg in C.itinerary(seed, START, WORLD, 20):
+            live = [WORLD.cover[w] for w in WORLD.live_hints(leg["to"])]
+            took += WORLD.cover[leg["hint"]] == max(live)
+            expected.append(vaguest_odds(leg["to"]))
+            legs += 1
+
+    assert legs > 100, legs
+    rate, target = took / legs, sum(expected) / len(expected)
+    assert abs(rate - target) < 0.12, (
+        f"she took the vaguest hint on {rate:.1%} of {legs} legs, and"
+        f" WHIM={C.WHIM} predicts {target:.1%}")
+    assert target > 0.45, (
+        f"WHIM={C.WHIM} leaves her only a {target:.1%} lean on the vaguest"
+        f" hint, against {1 / 3:.1%} for a coin: that is not a strategy")
+    assert rate < 0.95, "the draw has been reverted to max"
 
 
 def test_she_never_robs_the_same_room_twice():
@@ -79,25 +147,67 @@ def test_a_theft_always_costs_her_time():
         assert (leg["dwell"] > 0) == (leg["leaves"] > leg["arrived"])
 
 
-def test_the_follower_closes_only_by_what_she_steals():
-    """The arithmetic the whole chase turns on, and the one this file got
-    backwards at first: their travel cancels exactly, so the gap is her head
-    start minus everything she has stolen. Asserted rather than reasoned,
-    because reasoning about it produced the wrong answer twice.
+def test_the_follower_closes_by_everything_she_does_standing_still():
+    """The arithmetic the whole chase turns on, and the one this file has
+    now got wrong twice.
+
+    Their travel still cancels exactly. What does not cancel is anything she
+    does while not travelling, and since 2026-09-09 that is two things and
+    not one: the dwell she spends stealing, and **the prep she spends
+    getting ready to move**, which is hers alone -- Gal: *"prep time is only
+    for her, not the player."* So the gap is her head start minus everything
+    she has stolen AND everything she has packed.
+
+    Asserted rather than reasoned, because reasoning about it produced the
+    wrong answer twice: once when this said travel closed the gap, and once
+    when the previous version of this test named the dwell as the only term.
     """
     trail = C.itinerary(SEED, START, WORLD)
     home = "Uluru"
     lag0 = C.travel_hours(WORLD.places[home], WORLD.places[START])
-    clock = lag0
-    stolen = 0.0
-    for leg in trail[:8]:
-        clock += C.travel_hours(WORLD.places[leg["from"]],
-                                WORLD.places[leg["to"]])
+    clock, standing = lag0, 0.0
+    for i, leg in enumerate(trail[:8]):
+        clock += leg["travel"]
+        standing += leg["prep"]
         gap = clock - leg["arrived"]
-        assert abs(gap - (lag0 - stolen)) < 1e-6, (
-            f"gap {gap:.2f} is not head start {lag0:.2f} minus"
-            f" {stolen:.2f} stolen")
-        stolen += leg["dwell"]
+        assert abs(gap - (lag0 - standing)) < 1e-6, (
+            f"leg {i}: gap {gap:.2f} is not head start {lag0:.2f} minus"
+            f" {standing:.2f} spent standing still")
+        standing += leg["dwell"]
+
+
+def test_a_far_move_costs_her_and_costs_the_searcher_nothing():
+    """Gal, 2026-09-09: *"prep time is only for her, not the player."*
+
+    The asymmetry the whole mechanic rests on. If a searcher ever pays prep,
+    the far candidates stop being the beatable ones and the timestamp stops
+    being worth reading.
+    """
+    import inspect
+
+    a, b = WORLD.places["Eiffel Tower"], WORLD.places["Uluru"]
+    near = WORLD.places["Bastille"]
+
+    assert C.prep_hours(a, b) > C.prep_hours(a, near), "prep must grow with distance"
+    assert C.prep_hours(a, b) == C.PREP * C.travel_hours(a, b)
+
+    # And nothing in the searcher's own leg arithmetic calls it: `pursue`
+    # uses prep only to rank candidates by what SHE will pay.
+    body = inspect.getsource(C.pursue)
+    for line in body.splitlines():
+        if "clock +=" in line:
+            assert "prep_hours" not in line, line
+
+
+def test_she_can_be_overtaken_to_a_far_place_and_not_to_a_near_one():
+    """What her pursuers can deduce, which is the half Gal was unsure of:
+    not where she is, but which of the places she might be they can beat
+    her to. `e <= PREP * t(here, X)` -- so it is the far ones."""
+    here = WORLD.places["Eiffel Tower"]
+    far, near = WORLD.places["Uluru"], WORLD.places["Bastille"]
+    lag = 6.0
+    assert C.prep_hours(here, far) > lag, "a far hop must be beatable"
+    assert C.prep_hours(here, near) < lag, "a near hop must not be"
 
 
 def test_more_hunters_leave_her_a_smaller_budget():
@@ -123,6 +233,62 @@ def test_what_she_needs_to_win_does_not_read_the_size_of_the_field():
     a = C.chase(SEED, START, searchers=1, world=WORLD)
     b = C.chase(SEED, START, searchers=9, world=WORLD)
     assert a["outcome"] != "caught" or b["outcome"] == "caught"
+
+
+def test_her_randomness_comes_out_of_the_seed_and_not_out_of_random():
+    """`close_campaign` publishes the seed so that anybody holding the
+    transcript can re-derive every choice she was entitled to make. A
+    Carmel who rolled real dice would be a Carmel whose campaign nobody
+    can check: the commit-reveal would still verify the hints and the
+    treasures and would say nothing at all about her play.
+
+    Determinism is asserted at the top of this file. This asserts the
+    mechanism, because determinism could also be got by seeding a global
+    RNG -- which would then be a shared, order-dependent global that any
+    other import could disturb.
+    """
+    import inspect
+
+    source = inspect.getsource(C)
+    assert "import random" not in source
+    assert "random." not in source.replace("os.urandom", "")
+
+    # Same seed, same leg, different decision -> different draw. If the
+    # three shared a stream, softening one would shift the others.
+    rolls = {kind: C._draw(SEED, 3, kind) for kind in ("where", "say", "steal")}
+    assert len(set(rolls.values())) == 3, rolls
+    assert C._draw(SEED, 3, "where") != C._draw(SEED, 4, "where")
+
+
+def test_the_searcher_reads_nothing_that_is_sealed():
+    """What a searcher can know about where she is going is one term of
+    three, and that is what makes her randomness worth anything.
+
+    Her score is `reputation x cover / (1 + prep / ASSUMED_LAG)`.
+    `reputation` is sealed in `treasures.enc` and `cover` comes from the
+    seed-derived live hints; only `prep` is public. So *"she prefers
+    near"* is the whole of what a pursuer can model, and softening the
+    argmax is exactly what makes that one term a weaker predictor.
+
+    If `pursue` ever reads a treasure or a live hint, that argument is
+    void and the model is measuring a searcher nobody could be.
+    """
+    import inspect
+
+    body = inspect.getsource(C.pursue)
+    for sealed in ("treasure", "live_hints", ".cover"):
+        assert sealed not in body, f"pursue reads {sealed}, which is sealed"
+
+    # And it goes red if that ever changes: a Map whose sealed fields
+    # raise on access still runs a whole pursuit.
+    class Sealed(dict):
+        def __getitem__(self, key):
+            raise AssertionError("the searcher opened a sealed table")
+
+    world = C.Map(SEED)
+    trail = C.itinerary(SEED, START, world, 6)
+    world.treasure, world.cover = Sealed(), Sealed()
+    C.pursue(world, START, "Uluru", trail)
 
 
 def test_nothing_she_decides_can_see_the_searchers():

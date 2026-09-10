@@ -188,6 +188,19 @@ jobs:
       - run: python -m pytest games/island/tests/test_hand_crypto.py -q
         env:
           ISLAND_REQUIRE_BROWSER: "1"
+      # Carmel's flight, which is the only page in the repo whose whole
+      # point is motion: the camera pulls back while she is in the air and
+      # closes on the room she lands in. A markup assertion cannot see a
+      # camera move, and `games/hue-and-cry.md` ("Three maps") turns on the
+      # page disclosing no landmark but the ones she visited -- which a
+      # zoomed-out frame could break without a single tag changing.
+      #
+      # `HUE_REQUIRE_BROWSER` is `ISLAND_REQUIRE_BROWSER`'s counterpart for
+      # this game, and for the same reason: the `island` job collects these
+      # tests and skips them, and a skip and a pass are the same tick.
+      - run: python -m pytest games/hue-and-cry/test_trail_flight.py -q
+        env:
+          HUE_REQUIRE_BROWSER: "1"
       # The hand's two pages and the grammar its buttons compose. Both are
       # here for the reason the lobby's countdown test is: they check what a
       # page *does*, which no assertion on rendered markup can see.

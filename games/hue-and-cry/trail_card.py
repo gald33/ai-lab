@@ -17,7 +17,9 @@ with the seed a reader can re-derive all of it -- so **the card is a
 post-reveal artifact and nothing else**. Handed out mid-campaign it would
 publish the trail to searchers who had not earned it.
 
-**It does not draw her exits, and that is the point of the refusal.**
+**It did not draw her exits, and there are no longer exits to draw.** Gal,
+2026-09-09: *"we have no routes."* The refusal below was right and is now
+moot; what survives it is the reason it was a refusal rather than a flag.
 `games/hue-and-cry.md`, "Which makes the exit count a choice about how big
 a game this is", leaves open whether the routes are public: routes-public
 is a two-person deduction game with a 352 KB entry requirement, no-routes
@@ -43,12 +45,27 @@ corner of the map is a property the numbers in that document had not
 surfaced, and it was drawing it that surfaced it. Re-check both rows with
 `--survey`.
 
-THE BASEMAP IS THE GAZETTEER. There are no coastlines here and no
-shapefile: the faint dots are the thousand landmarks, and they read as
-continents because that is where landmarks are. This is not a saving on a
-dependency, it is the honest picture -- the world of this game *is* those
-thousand places, and a searcher choosing where to wait is choosing among
-dots on this field and not among countries.
+THE BASEMAP WAS THE GAZETTEER, AND THAT WAS A DISCLOSURE. The first
+version of this file drew the thousand landmarks as a field of faint dots
+and argued they were free, since `landmarks.tsv` is public. Gal,
+2026-09-09: *"don't disclose the potential landmarks"* -- and he is right
+against the argument, not merely overruling it. **A public table is not a
+plotted map.** The dots were the candidate set, positioned, which is the
+one piece of work a searcher reading a hint actually has to do; the card
+was doing it for them and calling it a background. Nothing was leaked that
+could not have been derived, and the card still handed it over.
+
+So the basemap is real geography now -- coastlines, borders and lakes from
+Natural Earth, committed in `basemap.json`, **with no place names on it at
+all**. That last part is what makes it safe rather than merely different:
+a labelled street map would have named Fez and Bergen and Ushuaia at this
+zoom, which discloses more than the dots ever did. `build_basemap.py` has
+the rest of that argument, including why not Google's tiles.
+
+The geography earns its place beyond looking real: the vocabulary a hint
+is drawn from is `coastal`, `landlocked`, `far_from_the_equator`,
+`no_passport_needed_next_door`. A coastline and a border are the picture of
+exactly those words.
 
 It emits static SVG with no script in it, so `CLAUDE.md`'s browser rule
 ("anything a page *does* is asserted in a real browser") does not apply:
@@ -67,6 +84,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import basemap as BM  # noqa: E402
 import carmel as C  # noqa: E402
 
 #: The card, in pixels. 2:1-ish, which is what a timeline crops to.
@@ -92,9 +110,10 @@ SURVEY_ROOT = bytes.fromhex("5e ed 00 00".replace(" ", "") * 8)
 INSET_W, INSET_H, INSET_PAD = 232, 116, 18
 
 INK = {
-    "ground": "#14110e",
-    "field": "#3a332b",      # the thousand landmarks
-    "near": "#6b6053",       # landmarks inside the frame
+    "ground": "#14110e",     # the card's chrome: title strip and footer
+    "sea": "#0d151b",        # water, and the plot area's floor
+    "land": "#312c24",       # the real world, Natural Earth
+    "border": "#544a3c",  # country borders, hairline
     "line": "#e0a34a",       # her trail
     "stop": "#f2e4cf",
     "text": "#f2e4cf",
@@ -104,101 +123,59 @@ INK = {
 }
 
 
-# --- projection -----------------------------------------------------------
+# --- the camera -----------------------------------------------------------
 
-def _unwrap(lons: list[float]) -> list[float]:
-    """Longitudes made continuous relative to the first, so a trail across
-    the antimeridian has a bounding box instead of a box the width of the
-    world. Reykjavik to Fiji is a short hop east, not a 340-degree one."""
-    out = [lons[0]]
-    for lon in lons[1:]:
+def unwrap(xs: list[float]) -> list[float]:
+    """Mercator x values made continuous, so a trail across the
+    antimeridian has a frame instead of one the width of the world.
+    Reykjavik to Fiji is a short hop east, not a 340-degree one."""
+    out = [xs[0]]
+    for x in xs[1:]:
         previous = out[-1]
-        best = min((lon + turn for turn in (-360.0, 0.0, 360.0)),
-                   key=lambda candidate: abs(candidate - previous))
-        out.append(best)
+        out.append(min((x + turn for turn in (-1.0, 0.0, 1.0)),
+                       key=lambda candidate: abs(candidate - previous)))
     return out
 
 
-def window(points: list[tuple[float, float]], aspect: float,
-           pad: float = PAD) -> tuple[float, float, float, float]:
-    """The (lat0, lon0, lat1, lon1) box to draw, padded and widened to the
-    viewport's aspect so nothing is squashed.
+class Camera:
+    """A viewport onto the Mercator unit square: a centre and one scale.
 
-    Longitude degrees are narrower than latitude degrees away from the
-    equator, by cos(lat). Ignoring that draws Reykjavik's neighbourhood
-    twice as wide as it is, which for a card whose whole job is "how far
-    apart are these places" would be a lie in the direction that matters.
+    Under Mercator zoom is a single number, which is what makes this a
+    class with three fields instead of the per-latitude correction the
+    equirectangular version needed (`basemap.py` says why).
     """
-    lats = [lat for lat, _ in points]
-    lons = _unwrap([lon for _, lon in points])
-    lat0, lat1 = min(lats), max(lats)
-    lon0, lon1 = min(lons), max(lons)
-    mid_lat, mid_lon = (lat0 + lat1) / 2, (lon0 + lon1) / 2
-    squeeze = max(math.cos(math.radians(mid_lat)), 0.2)
 
-    # in "equal-area-ish" units, where a longitude degree is cos(lat) wide
-    half_y = max((lat1 - lat0) / 2, 0.25)
-    half_x = max((lon1 - lon0) * squeeze / 2, 0.25)
-    half_y *= 1 + pad
-    half_x *= 1 + pad
-    if half_x / half_y < aspect:
-        half_x = half_y * aspect
-    else:
-        half_y = half_x / aspect
-    return (mid_lat - half_y, mid_lon - half_x / squeeze,
-            mid_lat + half_y, mid_lon + half_x / squeeze)
-
-
-class Frame:
-    """One geographic window mapped onto one rectangle of the card."""
-
-    def __init__(self, box, x, y, w, h):
-        self.lat0, self.lon0, self.lat1, self.lon1 = box
+    def __init__(self, cx, cy, scale, x, y, w, h):
+        self.cx, self.cy, self.scale = cx, cy, scale
         self.x, self.y, self.w, self.h = x, y, w, h
 
+    def unit(self, point) -> tuple[float, float]:
+        """A projected (x, y) in the unit square, to pixels."""
+        return (self.x + self.w / 2 + (point[0] - self.cx) * self.scale,
+                self.y + self.h / 2 + (point[1] - self.cy) * self.scale)
+
     def at(self, lat: float, lon: float) -> tuple[float, float]:
-        span = self.lon1 - self.lon0
-        # bring the longitude into this window's turn of the world
-        while lon < self.lon0 and lon + 360 <= self.lon1 + 1e-9:
-            lon += 360
-        while lon > self.lon1 and lon - 360 >= self.lon0 - 1e-9:
-            lon -= 360
-        px = self.x + (lon - self.lon0) / span * self.w
-        py = self.y + (self.lat1 - lat) / (self.lat1 - self.lat0) * self.h
-        return px, py
+        return self.unit(BM.mercator(lat, lon))
 
-    def holds(self, lat: float, lon: float) -> bool:
-        px, py = self.at(lat, lon)
-        return (self.x - 1 <= px <= self.x + self.w + 1
-                and self.y - 1 <= py <= self.y + self.h + 1)
+    def box(self) -> tuple[float, float, float, float]:
+        """What it can see, in unit-square coordinates."""
+        return (self.cx - self.w / 2 / self.scale,
+                self.cy - self.h / 2 / self.scale,
+                self.cx + self.w / 2 / self.scale,
+                self.cy + self.h / 2 / self.scale)
 
 
-def arc(a: dict, b: dict, steps: int = 40) -> list[tuple[float, float]]:
-    """The great circle between two places, sampled.
-
-    A straight line between two points on a flat map is not the way anybody
-    travels, and here it is not the way the game charges her either:
-    `carmel.travel_hours` bills her the great-circle kilometres. The line on
-    the card is the line she paid for.
-    """
-    lat1, lon1, lat2, lon2 = map(math.radians,
-                                 [a["lat"], a["lon"], b["lat"], b["lon"]])
-    d = 2 * math.asin(math.sqrt(
-        math.sin((lat2 - lat1) / 2) ** 2
-        + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2))
-    if d < 1e-9:
-        return [(a["lat"], a["lon"]), (b["lat"], b["lon"])]
-    out = []
-    for i in range(steps + 1):
-        f = i / steps
-        p = math.sin((1 - f) * d) / math.sin(d)
-        q = math.sin(f * d) / math.sin(d)
-        x = p * math.cos(lat1) * math.cos(lon1) + q * math.cos(lat2) * math.cos(lon2)
-        y = p * math.cos(lat1) * math.sin(lon1) + q * math.cos(lat2) * math.sin(lon2)
-        z = p * math.sin(lat1) + q * math.sin(lat2)
-        out.append((math.degrees(math.atan2(z, math.hypot(x, y))),
-                    math.degrees(math.atan2(y, x))))
-    return out
+def fit(points: list[tuple[float, float]], x, y, w, h,
+        pad: float = PAD) -> Camera:
+    """A camera holding every (lat, lon) in `points`, with room to label."""
+    projected = [BM.mercator(lat, lon) for lat, lon in points]
+    xs = unwrap([px for px, _ in projected])
+    ys = [py for _, py in projected]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    half_x = max((max(xs) - min(xs)) / 2, 1e-5) * (1 + pad)
+    half_y = max((max(ys) - min(ys)) / 2, 1e-5) * (1 + pad)
+    return Camera(cx, cy, min(w / (2 * half_x), h / (2 * half_y)),
+                  x, y, w, h)
 
 
 #: Rough width of a glyph as a fraction of the font size, for Georgia. Only
@@ -298,20 +275,26 @@ def _esc(text: str) -> str:
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def _path(frame: Frame, points) -> str:
-    """A polyline, broken where it would wrap the frame rather than drawn
-    straight across it. A trail that leaves the right edge and re-enters at
-    the left is two strokes, not one stroke through the middle."""
-    out, previous = [], None
-    for lat, lon in points:
-        px, py = frame.at(lat, lon)
-        if previous is not None and abs(px - previous) > frame.w * 0.5:
-            out.append(f"M{px:.1f},{py:.1f}")
-        else:
-            out.append(("M" if previous is None else "L")
-                       + f"{px:.1f},{py:.1f}")
-        previous = px
-    return " ".join(out)
+def geometry(camera: Camera, prefix: str = "") -> list[str]:
+    """The real world inside a camera's frame, as SVG.
+
+    Sea is the card's ground, so only land, lakes and borders are drawn.
+    `basemap.near` has already cut every shape to the frame, so this is a
+    few hundred points rather than the committed forty thousand.
+    """
+    cut = BM.near(camera.box())
+    out = []
+    for shape in cut["land"]:
+        out.append(f'<path d="{BM.path(shape, camera.unit, close=True)}"'
+                   f' fill="{INK["land"]}"/>')
+    for shape in cut["lakes"]:
+        out.append(f'<path d="{BM.path(shape, camera.unit, close=True)}"'
+                   f' fill="{INK["sea"]}"/>')
+    for shape in cut["borders"]:
+        out.append(f'<path d="{BM.path(shape, camera.unit)}" fill="none"'
+                   f' stroke="{INK["border"]}" stroke-width="0.8"'
+                   f' opacity="0.7"/>')
+    return out
 
 
 def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
@@ -322,36 +305,30 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
     points = [(p["lat"], p["lon"]) for p in places]
 
     plot_h = HEIGHT - TOP - BOTTOM
-    main = Frame(window(points, WIDTH / plot_h), 0, TOP, WIDTH, plot_h)
+    main = fit(points, 0, TOP, WIDTH, plot_h)
     pins = [main.at(lat, lon) for lat, lon in points]
-    inset = Frame((-90.0, -180.0, 90.0, 180.0),
-                  *_emptiest_corner(pins), INSET_W, INSET_H)
+    ix, iy = _emptiest_corner(pins)
+    inset = Camera(0.5, 0.5, INSET_W, ix, iy, INSET_W, INSET_H)
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}"'
            f' height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}"'
            f' font-family="Georgia, serif">',
-           f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{INK["ground"]}"/>']
-
-    # the basemap: every landmark, brighter where the frame holds it
-    far, near = [], []
-    for place in world.places.values():
-        target = near if main.holds(place["lat"], place["lon"]) else far
-        target.append(main.at(place["lat"], place["lon"]))
-    for dots, colour, r, opacity in ((far, INK["field"], 1.1, 0.55),
-                                     (near, INK["near"], 1.9, 0.9)):
-        body = " ".join(f'M{x:.1f},{y:.1f}m-{r},0a{r},{r} 0 1,0 {2*r},0'
-                        f'a{r},{r} 0 1,0 -{2*r},0' for x, y in dots)
-        svg.append(f'<path d="{body}" fill="{colour}"'
-                   f' opacity="{opacity}"/>')
-    svg.append(f'<rect y="0" width="{WIDTH}" height="{TOP}"'
-               f' fill="{INK["ground"]}"/>')
-    svg.append(f'<rect y="{HEIGHT - BOTTOM}" width="{WIDTH}"'
-               f' height="{BOTTOM}" fill="{INK["ground"]}"/>')
+           f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{INK["ground"]}"/>',
+           f'<clipPath id="plot"><rect y="{TOP}" width="{WIDTH}"'
+           f' height="{plot_h}"/></clipPath>',
+           f'<rect y="{TOP}" width="{WIDTH}" height="{plot_h}"'
+           f' fill="{INK["sea"]}"/>',
+           f'<g clip-path="url(#plot)">']
+    svg += geometry(main)
+    svg.append('</g>')
 
     # the trail
     emptied = kept(result)
     for index, (leg, a, b) in enumerate(zip(legs, places, places[1:])):
-        svg.append(f'<path d="{_path(main, arc(a, b))}" fill="none"'
+        line = BM.great_circle((a["lat"], a["lon"]), (b["lat"], b["lon"]))
+        drawn = BM.path([BM.mercator(lat, lon) for lat, lon in line],
+                        main.unit)
+        svg.append(f'<path d="{drawn}" fill="none"'
                    f' stroke="{INK["line"]}" stroke-width="2.2"'
                    f' stroke-linecap="round"'
                    f' opacity="{0.95 if index in emptied else 0.5}"'
@@ -396,29 +373,30 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
         for text, size in rows:
             if not text:
                 continue
-            last = text == rows[2][0] and rows[2][0]
+            final = text == rows[2][0] and rows[2][0]
             fill = (INK["stop"] if size == 17
-                    else INK["theft"] if last and stole else INK["dim"])
-            style = ' font-style="italic"' if last else ""
+                    else INK["theft"] if final and stole else INK["dim"])
+            style = ' font-style="italic"' if final else ""
             svg.append(f'<text x="{tx:.1f}" y="{ty + line * 18:.1f}"'
                        f' fill="{fill}" font-size="{size}"'
                        f' text-anchor="{anchor}"{style}>{_esc(text)}</text>')
             line += 1
 
-    # the inset: where on earth that was
+    # the inset: where on earth that was, on the coarse world
     svg.append(f'<rect x="{inset.x}" y="{inset.y}" width="{inset.w}"'
-               f' height="{inset.h}" fill="{INK["ground"]}"'
+               f' height="{inset.h}" fill="{INK["sea"]}"'
                f' stroke="{INK["rule"]}"/>')
-    dots = " ".join('M{:.1f},{:.1f}m-.7,0a.7,.7 0 1,0 1.4,0a.7,.7 0 1,0 -1.4,0'
-                    .format(*inset.at(p["lat"], p["lon"]))
-                    for p in world.places.values())
-    svg.append(f'<path d="{dots}" fill="{INK["field"]}"/>')
-    corners = [(main.lat0, main.lon0), (main.lat0, main.lon1),
-               (main.lat1, main.lon1), (main.lat1, main.lon0)]
-    cx = sum(inset.at(lat, lon)[0] for lat, lon in corners) / 4
-    cy = sum(inset.at(lat, lon)[1] for lat, lon in corners) / 4
-    svg.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="9" fill="none"'
+    svg.append(f'<clipPath id="inset"><rect x="{inset.x}" y="{inset.y}"'
+               f' width="{inset.w}" height="{inset.h}"/></clipPath>')
+    svg.append('<g clip-path="url(#inset)">')
+    for shape in BM.load()["land_coarse"]:
+        drawn = BM.path([BM.mercator(lat, lon) for lon, lat in shape],
+                        inset.unit, close=True)
+        svg.append(f'<path d="{drawn}" fill="{INK["land"]}"/>')
+    cx, cy = inset.unit((main.cx % 1.0, main.cy))
+    svg.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="7" fill="none"'
                f' stroke="{INK["line"]}" stroke-width="1.6"/>')
+    svg.append('</g>')
     # the caption is wider than the inset, so it hangs towards the middle of
     # the card rather than off whichever edge the inset was moved to
     left = inset.x < WIDTH / 2
@@ -507,29 +485,44 @@ def geography(sample: int = 150, root: bytes = SURVEY_ROOT) -> None:
     def km(a, b):
         return C.travel_hours(a, b) * C.TRAVEL_KMH
 
-    along = [km(world.places[n], world.places[e])
-             for n in picked for e in world.exits(n)]
+    # SUPERSEDED APPARATUS, KEPT FINDING. This measured her five exits
+    # against geography. Gal removed the exits the same afternoon -- "we
+    # have no routes" -- so the question is asked of the thing that
+    # replaced them: the candidates a hint leaves, which is what a searcher
+    # now walks. The claim under test is unchanged and so is its answer.
+    import gazetteer
+
+    gaz = world.descriptors
+    along = []
+    for n in picked:
+        hint = max(world.live_hints(n), key=world.cover.get)
+        along += [km(world.places[n], world.places[m])
+                  for m in gaz if m != n and hint in gaz[m]]
     apart = [km(world.places[a], world.places[b])
              for a, b in (random.sample(names, 2) for _ in range(3000))]
 
-    print(f"over {sample} landmarks, every exit\n")
-    print(f"  median distance along one of her exits          "
+    print(f"over {sample} landmarks, every candidate the hint allows\n")
+    print(f"  median distance to a place her hint also fits  "
           f"{statistics.median(along):7,.0f} km")
     print(f"  median distance between two landmarks at random "
           f"{statistics.median(apart):7,.0f} km")
     for near in (5, 50):
         hit = 0
         for n in picked:
+            hint = max(world.live_hints(n), key=world.cover.get)
             close = {m for _, m in sorted(
                 (km(world.places[n], world.places[m]), m)
                 for m in names if m != n)[:near]}
-            hit += len(close & set(world.exits(n)))
-        share = hit / (len(picked) * C.EXITS)
-        print(f"  her exits among the {near:>2} geographically nearest "
-              f"{'':>7}{share:6.1%}   (chance: {near / (len(names) - 1):.1%})")
+            kin = {m for _, m in sorted((-gazetteer.kinship(n, m, gaz), m)
+                                        for m in gaz if m != n)[:near]}
+            hit += len(close & kin)
+        share = hit / (len(picked) * near)
+        print(f"  her look-alikes among the {near:>2} geographically nearest"
+              f"{'':>1}{share:6.1%}   (chance: {near / (len(names) - 1):.1%})")
     print("\nKinship leans geographic and is nothing like geographic. A\n"
           "reader who takes adjacency on a world map for adjacency in the\n"
-          "game has it backwards: she moves to places that sound alike.")
+          "game has it backwards: she moves to places that sound alike --\n"
+          "and, since the prep clock, prefers the near ones among those.")
 
 
 def survey(trials: int = 200, searchers: int = 2,
