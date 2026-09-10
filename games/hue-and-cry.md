@@ -3686,7 +3686,7 @@ lands: not one of those is visible to a markup assertion, and the lobby's
 frozen countdowns are what happens when you try. So
 `test_trail_flight.py` drives a real Chromium, and it is in the `pages` CI
 job with **`HUE_REQUIRE_BROWSER=1`** -- the counterpart to
-`ISLAND_REQUIRE_BROWSER`, for the same reason: the `island` job collects
+`ISLAND_REQUIRE_BROWSER`, for the same reason: the `suite` job collects
 these tests and skips them, and a skip and a pass are the same green tick.
 There is a test on that guard itself, because the six instances in "A check
 is green for the reason it names" are all things somebody assumed.
