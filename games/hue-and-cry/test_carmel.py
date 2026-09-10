@@ -354,12 +354,21 @@ def test_the_closing_post_publishes_the_seed():
 # the caught-campaign half. The decision they pin is
 # `games/hue-and-cry.md`, "The room she was caught in is counted apart and
 # named".
+#
+# MOST OF THESE BUILD THEIR OWN TRAIL, and that is the lesson of #249
+# rather than laziness. The first version pinned two seeds that produced
+# caught campaigns; #249 changed how a searcher moves and both stopped
+# being catches, so tests of what the POST says went red over a change to
+# how the CHASE runs. `close_campaign` takes an outcome and a trail, so
+# that is what it is handed here. One test below still drives a real
+# campaign end to end, because a synthetic trail cannot show the two
+# agreeing.
 
-CAUGHT_SEED = bytes.fromhex("22" * 32)
-# She is caught on her very first move here, which is not exotic: it is 16
-# of the 129 caught campaigns in the 300-seed survey quoted in the document.
-CAUGHT_ON_ARRIVAL_SEED = bytes.fromhex(
-    "d36f1c000cdbdf544d2f65f0cae55eac7623550bc0df42b8460f08b7e6760ebd")
+# A real caught campaign under the current policy. Catches are scarce now
+# -- 3 of 200 seeds in the survey quoted in the document -- and all three
+# are on her first move, so this is also the caught-on-arrival case.
+CAUGHT_SEED = bytes.fromhex(
+    "cafd474f976b3f4ab566da2511fc1a656a28b9c241b98e3694971970e9791ab2")
 
 
 def _flat(post):
@@ -368,39 +377,66 @@ def _flat(post):
     return " ".join(post.split())
 
 
-def _caught(seed):
-    result = C.chase(seed, START, searchers=2, world=C.Map(seed),
-                     threshold=10 ** 9)
-    assert result["outcome"] == "caught", result["outcome"]
-    return result
+def _leg(to, dwell, reputation, arrived=0.0):
+    return {"from": START, "to": to, "hint": "x", "arrived": arrived,
+            "leaves": arrived + dwell, "dwell": dwell,
+            "reputation": reputation}
 
 
 def test_the_closing_post_does_not_credit_the_theft_she_was_caught_in():
-    """The bug this file could not see. Her post said "2 rooms, 2 of them
-    emptied, 38 reputation" -- and 38 is Linderhof Palace alone, because
-    `chase` returns her total BEFORE the room she was caught in. The count
-    claimed a room the figure beside it excludes."""
-    r = _caught(CAUGHT_SEED)
-    post = C.close_campaign(CAUGHT_SEED, r["outcome"], r["reputation"],
-                            r["moves"])
-    assert "2 rooms, 1 of them emptied, 38 reputation." in _flat(post)
+    """The bug this file could not see. The post counted every leg with a
+    `dwell` as emptied, including the room she was caught in -- while the
+    reputation figure beside it, which comes from `chase`, is her total
+    BEFORE that room. The count claimed a room the number next to it
+    excludes."""
+    trail = [_leg("Linderhof Palace", 3.0, 38),
+             _leg("Chauvet Cave", 5.0, 99, arrived=9.0)]
+    post = _flat(C.close_campaign(SEED, "caught", 38, trail))
+    assert "2 rooms, 1 of them emptied, 38 reputation." in post
     # Counted apart and named, rather than dropped: a reader who re-derives
-    # the trail from the published seed finds 99 taken and must be able to
-    # tell which of the two numbers is the one she keeps.
-    assert "in Chauvet Cave," in _flat(post)
-    assert "61 reputation I had my hands on" in _flat(post)
+    # the trail from the published seed finds 99 taken across two rooms and
+    # must be able to tell which of the two numbers is the one she keeps.
+    assert "in Chauvet Cave with me" in post
+    assert "61 reputation I had my hands on" in post
 
 
-def test_she_says_it_even_when_it_is_the_only_room_she_entered():
-    """Caught on arrival, so there is nothing to boast about and the whole
-    post is the room she lost. Nothing emptied, no reputation, and the
-    sentence still has to parse -- "1 rooms" was what it said before."""
-    r = _caught(CAUGHT_ON_ARRIVAL_SEED)
-    post = C.close_campaign(CAUGHT_ON_ARRIVAL_SEED, r["outcome"],
-                            r["reputation"], r["moves"])
-    assert "1 room, 0 of them emptied, 0 reputation." in _flat(post)
-    assert "in Lumbini," in _flat(post)
-    assert "69 reputation I had my hands on" in _flat(post)
+def test_a_room_she_never_dwelt_in_is_a_catch_with_no_interrupted_theft():
+    """Since #249 a searcher may beat her to a room and wait -- *sharing a
+    room with her is the win, however you came to be in it* -- so a caught
+    campaign can end in a room she never started stealing in. There is
+    nothing interrupted there and nothing for her to name, and the room
+    must not be counted as emptied either.
+
+    The guard this pins was a no-op under the old rule, where the catch had
+    to fall inside the dwell. It is the whole behaviour now."""
+    dwelt = [_leg("Uluru", 4.0, 50)]
+    never = [_leg("Uluru", 0.0, 0)]
+    assert C.interrupted_theft("caught", dwelt) == 0
+    assert C.interrupted_theft("caught", never) is None
+    post = _flat(C.close_campaign(SEED, "caught", 0, never))
+    assert "1 room, 0 of them emptied, 0 reputation." in post
+    assert "with me while I was still working" not in post
+
+
+def test_a_real_caught_campaign_posts_what_the_chase_scored():
+    """The one end-to-end case, because the point of the whole fix is that
+    the post and the scoreboard agree, and a hand-built trail cannot show
+    two things agreeing. `chase` scores this campaign, `close_campaign`
+    writes it up, and the room she was caught in is named and not counted."""
+    r = C.chase(CAUGHT_SEED, START, searchers=2, world=C.Map(CAUGHT_SEED),
+                threshold=10 ** 9)
+    assert r["outcome"] == "caught", r["outcome"]
+    post = _flat(C.close_campaign(CAUGHT_SEED, r["outcome"], r["reputation"],
+                                  r["moves"]))
+    caught_in = C.interrupted_theft(r["outcome"], r["moves"])
+    assert caught_in is not None, "she was caught in a room she never worked"
+    room = r["moves"][caught_in]
+    assert f"in {room['to']} with me" in post
+    # Every room she entered is counted; the one she was caught in is not
+    # among the emptied, and her posted figure is the scoreboard's.
+    emptied = len([leg for leg in r["moves"] if leg["dwell"]]) - 1
+    assert f"{len(r['moves'])} room" in post
+    assert f"{emptied} of them emptied, {r['reputation']} reputation." in post
 
 
 def test_a_campaign_she_was_not_caught_in_names_no_interrupted_room():
@@ -408,40 +444,11 @@ def test_a_campaign_she_was_not_caught_in_names_no_interrupted_room():
     walked away from, the last room is a theft she finished, and saying she
     was interrupted in it would be a lie in the one post that exists to be
     checked."""
-    trail = C.itinerary(SEED, START, WORLD, 5)
+    trail = [_leg("Uluru", 3.0, 40), _leg("Petra", 2.0, 90, arrived=9.0)]
     for outcome in ("she wins", "unfinished", "You did not find me"):
-        post = C.close_campaign(SEED, outcome, 200, trail)
-        assert "walked in on me" not in _flat(post)
-        emptied = len([leg for leg in trail if leg["dwell"]])
-        assert f"5 rooms, {emptied} of them emptied," in _flat(post)
-
-
-def test_the_dwell_is_the_window_and_there_is_no_other():
-    """Why `interrupted_theft` may take the last leg without searching for
-    it. `pursue` catches her only inside `arrived < clock <= leaves`, and
-    `leaves == arrived + dwell`, so a leg she did not dwell in has an empty
-    window and can never be the catch -- which is what makes the last room
-    of a caught campaign always a theft she was in the middle of.
-
-    Two-sided on purpose, because either half alone is green for the wrong
-    reason: the same searcher, the same world and the same rooms in the
-    same order, with nothing changed but her standing still. It has to
-    catch her when she does and miss her when she does not."""
-    world = C.Map(CAUGHT_SEED)
-    trail = C.itinerary(CAUGHT_SEED, START, world)
-    names = sorted(world.descriptors)
-    digest = C._prf(CAUGHT_SEED, b"hue-and-cry/v1/searcher-start", "0", 0)
-    home = names[int.from_bytes(digest[:8], "big") % len(names)]
-    joined = C.JOIN_WINDOW_HOURS * (
-        int.from_bytes(digest[8:16], "big") / 2 ** 64)
-
-    caught_on, _ = C.pursue(world, START, home, trail, joined_at=joined)
-    assert caught_on is not None, "this searcher never catches her at all"
-
-    # She walks the identical route and never stops to steal.
-    never_still = [dict(leg, dwell=0, leaves=leg["arrived"]) for leg in trail]
-    missed, _ = C.pursue(world, START, home, never_still, joined_at=joined)
-    assert missed is None, f"caught on move {missed} in a room she left"
+        post = _flat(C.close_campaign(SEED, outcome, 90, trail))
+        assert "with me while I was still working" not in post
+        assert "2 rooms, 2 of them emptied," in post
 
 
 def test_the_closing_post_is_not_command_shaped_whatever_the_room_is_named():
