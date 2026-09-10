@@ -91,6 +91,20 @@ import carmel as C  # noqa: E402
 #: The card, in pixels. 2:1-ish, which is what a timeline crops to.
 WIDTH, HEIGHT = 1000, 640
 
+#: How tall the card grows when a campaign has more stops than 640 can
+#: label. **A longer campaign needs a taller card**, and campaigns got
+#: longer on 2026-09-10 when `REPUTATION_TO_WIN` was calibrated from 140 to
+#: 750 -- two legs became twelve, and the seeds this file draws run to
+#: seventeen stops needing 1,020px of label in 492px of plot.
+#:
+#: Two columns do not save it: the widest block on that card is 460px, so
+#: two fit across 1000px but stack to 984px, still short. Nothing about the
+#: layout was wrong -- the card was sized for the campaign the game used to
+#: have.
+def card_height(stops: int) -> int:
+    """Tall enough that every stop's label has somewhere to go."""
+    return max(HEIGHT, TOP + BOTTOM + 40 + 60 * ((stops + 1) // 2))
+
 #: Space kept clear for the title strip and the footer.
 TOP, BOTTOM = 92, 56
 
@@ -195,7 +209,8 @@ def _block(rows) -> tuple[float, float]:
     return width, height
 
 
-def lay_out(pins, blocks) -> list[tuple[float, float, str]]:
+def lay_out(pins, blocks, height: int = HEIGHT
+            ) -> list[tuple[float, float, str]]:
     """Where each stop's label goes: (x, y-of-first-line, text-anchor).
 
     THIS IS NOT DECORATION AND THE FIRST TWO VERSIONS WERE WRONG IN THE SAME
@@ -219,7 +234,7 @@ def lay_out(pins, blocks) -> list[tuple[float, float, str]]:
     placed: list[tuple[float, float, float, float]] = []
 
     def clear(x, y, w, h):
-        if x < 20 or x + w > WIDTH - 20 or y < TOP + 4 or y + h > HEIGHT - BOTTOM:
+        if x < 20 or x + w > WIDTH - 20 or y < TOP + 4 or y + h > height - BOTTOM:
             return False
         return all(not (x < ox + ow and ox < x + w
                         and y < oy + oh and oy < y + h)
@@ -238,10 +253,33 @@ def lay_out(pins, blocks) -> list[tuple[float, float, str]]:
                 chosen = (x, y)
                 break
         if chosen is None:
-            # nothing fits; stack it under the lowest block on its side
+            # THE TEN CANDIDATES ABOVE ARE A TWO-STOP CARD'S WORTH. This
+            # branch used to stack the block under the lowest one already
+            # placed and clamp it to the card, which does not check `clear`
+            # -- so the moment the clamp bit, two labels overlapped. It was
+            # unreachable while `REPUTATION_TO_WIN` ended a campaign in two
+            # legs, and the calibration to 750 made a campaign twelve legs
+            # and reached it on the first seed tried.
+            #
+            # So: scan properly before giving up. Down each margin, at the
+            # line spacing the blocks already use, first slot that clears.
+            for x in (min(max(px + 12, 20), WIDTH - 20 - w),
+                      20, WIDTH - 20 - w):
+                y = TOP + 8
+                while y + h <= height - BOTTOM:
+                    if clear(x, y, w, h):
+                        chosen = (x, y)
+                        break
+                    y += 8
+                if chosen:
+                    break
+        if chosen is None:
+            # The card is genuinely full. Overlapping is still wrong, so
+            # this is the one case the test above cannot hold, and it is
+            # left visible rather than papered over.
             x = min(max(px + 12, 20), WIDTH - 20 - w)
-            y = max([oy + oh + 4 for ox, oy, ow, oh in placed] or [TOP + 8])
-            y = min(y, HEIGHT - BOTTOM - h)
+            y = min(max([oy + oh + 4 for ox, oy, ow, oh in placed]
+                        or [TOP + 8]), height - BOTTOM - h)
             chosen = (x, y)
         placed.append((chosen[0], chosen[1], w, h))
         # the anchor sits on the edge of the block nearest its pin, so the
@@ -252,7 +290,7 @@ def lay_out(pins, blocks) -> list[tuple[float, float, str]]:
     return out
 
 
-def _emptiest_corner(pins) -> tuple[float, float]:
+def _emptiest_corner(pins, height: int = HEIGHT) -> tuple[float, float]:
     """Where to put the locator so it does not sit on the trail.
 
     Fixed at bottom-right until a trail ran through it. Four candidates,
@@ -261,8 +299,8 @@ def _emptiest_corner(pins) -> tuple[float, float]:
     candidates = [
         (INSET_PAD, TOP + INSET_PAD),
         (WIDTH - INSET_W - INSET_PAD, TOP + INSET_PAD),
-        (INSET_PAD, HEIGHT - BOTTOM - INSET_H - INSET_PAD),
-        (WIDTH - INSET_W - INSET_PAD, HEIGHT - BOTTOM - INSET_H - INSET_PAD),
+        (INSET_PAD, height - BOTTOM - INSET_H - INSET_PAD),
+        (WIDTH - INSET_W - INSET_PAD, height - BOTTOM - INSET_H - INSET_PAD),
     ]
     def clearance(corner):
         cx, cy = corner[0] + INSET_W / 2, corner[1] + INSET_H / 2
@@ -323,16 +361,17 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
     places = [world.places[name] for name in stops]
     points = [(p["lat"], p["lon"]) for p in places]
 
-    plot_h = HEIGHT - TOP - BOTTOM
+    height = card_height(len(stops))
+    plot_h = height - TOP - BOTTOM
     main = fit(points, 0, TOP, WIDTH, plot_h)
     pins = [main.at(lat, lon) for lat, lon in points]
-    ix, iy = _emptiest_corner(pins)
+    ix, iy = _emptiest_corner(pins, height)
     inset = Camera(0.5, 0.5, INSET_W, ix, iy, INSET_W, INSET_H)
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}"'
-           f' height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}"'
+           f' height="{height}" viewBox="0 0 {WIDTH} {height}"'
            f' font-family="Georgia, serif">',
-           f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{INK["ground"]}"/>',
+           f'<rect width="{WIDTH}" height="{height}" fill="{INK["ground"]}"/>',
            f'<clipPath id="plot"><rect y="{TOP}" width="{WIDTH}"'
            f' height="{plot_h}"/></clipPath>',
            f'<rect y="{TOP}" width="{WIDTH}" height="{plot_h}"'
@@ -385,7 +424,7 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
     halo = (' stroke="#0b0906" stroke-width="3" paint-order="stroke"'
             ' stroke-linejoin="round"') if imagery else ""
     for i, ((px, py), rows, (tx, ty, anchor)) in enumerate(
-            zip(pins, blocks, lay_out(pins, blocks))):
+            zip(pins, blocks, lay_out(pins, blocks, height))):
         stole = i - 1 in emptied if i else False
         # a leader, when the label had to move away from its pin
         if abs(tx - px) > 26 or not (py - 22 < ty < py + 30):
@@ -452,11 +491,11 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
                f'{len(legs)} rooms, {took} of them emptied,'
                f' {result["reputation"]} reputation,'
                f' {result["hours"]:.0f} hours</text>')
-    svg.append(f'<text x="34" y="{HEIGHT - 22}" fill="{INK["dim"]}"'
+    svg.append(f'<text x="34" y="{height - 22}" fill="{INK["dim"]}"'
                f' font-size="12" font-family="monospace">'
                f'seed {seed.hex()}</text>')
     if imagery:
-        svg.append(f'<text x="{WIDTH - 20}" y="{HEIGHT - 22}"'
+        svg.append(f'<text x="{WIDTH - 20}" y="{height - 22}"'
                    f' fill="{INK["rule"]}" font-size="10" text-anchor="end">'
                    f'{_esc(IM.CREDIT)}</text>')
     svg.append('</svg>')

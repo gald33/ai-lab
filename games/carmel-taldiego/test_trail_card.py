@@ -160,9 +160,13 @@ def test_it_is_well_formed():
 # --- the layout -----------------------------------------------------------
 
 def rects(pins, blocks):
+    # The card grows with the campaign (`trail_card.card_height`), so the
+    # layout has to be checked against the height actually drawn. Checking
+    # it against the 640 default was checking a card nobody renders.
+    height = TC.card_height(len(pins))
     out = []
     for (px, _), rows, (x, y, anchor) in zip(pins, blocks,
-                                             TC.lay_out(pins, blocks)):
+                                             TC.lay_out(pins, blocks, height)):
         w, h = TC._block(rows)
         out.append((x - w if anchor == "end" else x, y - 13, w, h))
     return out
@@ -195,9 +199,11 @@ def test_no_two_labels_overlap():
 
 def test_every_label_stays_on_the_card():
     for seed in (CAUGHT, ESCAPED, bytes.fromhex("55" * 32)):
-        for x, y, w, h in rects(*scene(seed)):
+        pins, blocks = scene(seed)
+        height = TC.card_height(len(pins))
+        for x, y, w, h in rects(pins, blocks):
             assert 0 <= x and x + w <= TC.WIDTH, seed.hex()[:4]
-            assert TC.TOP <= y and y + h <= TC.HEIGHT - TC.BOTTOM
+            assert TC.TOP <= y and y + h <= height - TC.BOTTOM
 
 
 # --- the projection -------------------------------------------------------
@@ -237,13 +243,23 @@ def test_the_card_draws_real_geography_and_not_the_gazetteer():
     a searcher reading a hint actually has."""
     world, result = run(ESCAPED)
     svg = TC.card(result, world, ESCAPED, C.LOBBY_LANDMARK)
-    walked = {C.LOBBY_LANDMARK} | {leg["to"] for leg in result["moves"]}
+    stops = [C.LOBBY_LANDMARK] + [leg["to"] for leg in result["moves"]]
 
-    # every stop she made is drawn, and there are only that many markers
+    # Every stop she made is drawn, and nothing else is, so the count is
+    # stated exactly rather than as a ceiling. It used to read
+    # `<= len(walked) + 2` against the *set* of rooms, and the slack was
+    # doing two jobs it never named: the inset's locator, and a ring on the
+    # room she is caught in. Both turned up at once when
+    # `REPUTATION_TO_WIN` moved to 750 -- longer campaigns revisit a room
+    # she did not empty, which shrinks the set below the trail, and catches
+    # stopped being rare. A ceiling that is met by a coincidence is
+    # `CLAUDE.md`'s third shape; this counts what is drawn.
+    extras = 1 + (1 if result["outcome"] == "caught" else 0)
     circles = [n for n in ET.fromstring(svg).iter()
                if n.tag.endswith("circle")]
-    stole = len(TC.kept(result))
-    assert len(circles) <= len(walked) + 2, len(circles)
+    assert len(circles) == len(stops) + extras, (
+        f"{len(circles)} circles for {len(stops)} stops"
+        f" on a {result['outcome']} campaign")
 
     # and the basemap that replaced them is real, and is there
     assert 'fill="' + TC.INK["land"] + '"' in svg

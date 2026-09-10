@@ -86,6 +86,32 @@ def built(seed: bytes):
     return world, result
 
 
+#: A campaign that ends in an arrest, found rather than named. Computed
+#: once; scanning costs a chase per seed.
+ARRESTED: bytes | None = None
+
+
+def arrested_seed() -> bytes:
+    """A seed whose campaign is caught, scanned for rather than written down.
+
+    Same reason as `_tightest` above and one more: an outcome is not stable
+    across checkouts either. `absurd.tsv` is gitignored, so a checkout
+    holding it builds 80 hand-written treasures and CI builds none, and the
+    same seed is caught in one and escapes in the other.
+    """
+    global ARRESTED
+    if ARRESTED is None:
+        for b in range(1, 60):
+            seed = bytes.fromhex(f"{b:02x}" * 32)
+            if built(seed)[1]["outcome"] == "caught":
+                ARRESTED = seed
+                break
+        else:
+            pytest.fail("no seed in 59 ends in an arrest:"
+                        " the catch is unreachable")
+    return ARRESTED
+
+
 def html(seed: bytes) -> str:
     world, result = built(seed)
     return F.page(result, world, seed, C.LOBBY_LANDMARK)
@@ -233,6 +259,27 @@ def test_a_pin_appears_for_each_room_as_she_reaches_it():
         holds = [s for s in flight.plan["segments"] if s["kind"] == "hold"]
         seen = [flight.seek(h["at"] + h["ms"] / 2)["pins"] for h in holds]
         assert seen == list(range(1, len(holds) + 1)), seen
+
+
+def test_the_room_she_is_caught_in_is_ringed():
+    """The marker nothing had ever counted.
+
+    `paint` has always drawn a ring on the caught room, and until
+    `REPUTATION_TO_WIN` moved to 750 no seed this file used was ever
+    caught -- so the branch ran in no test, and the two tests above read
+    `pins.childNodes.length` as "rooms reached", which it is not. Raising
+    the threshold made catches ordinary and both went red at once. They
+    count `[data-stop]` now, and the ring gets the assertion it never had.
+
+    Made to fail on purpose by dropping the `st.caught` branch: `marks`
+    then equals `pins` and this goes red while the two above stay green,
+    which is the split that was missing.
+    """
+    with flown(seed=arrested_seed()) as flight:
+        holds = [s for s in flight.plan["segments"] if s["kind"] == "hold"]
+        at = flight.seek(holds[-1]["at"] + holds[-1]["ms"] / 2)
+        assert at["pins"] == len(holds)
+        assert at["marks"] == at["pins"] + 1, "no ring on the room she fell in"
 
 
 def test_the_caption_says_where_she_is_and_then_that_she_is_flying():

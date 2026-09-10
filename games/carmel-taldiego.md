@@ -4341,6 +4341,102 @@ drew something else would look completely fine.
 
 Six campaigns with imagery is 3.3 MB.
 
+## The threshold, calibrated at last, and the marker nothing had ever counted
+
+*2026-09-10, Gal: "now recalibrate REPUTATION_TO_WIN".*
+
+`REPUTATION_TO_WIN` had been **140** since a measurement against a searcher
+that was handed the address of every room she went to. The reason it was
+left there rather than re-guessed is recorded above: the multi-searcher
+model's catch rate *fell* as searchers were added, which is backwards, and
+a threshold calibrated against a pursuit nobody believes is worse than an
+obviously stale one. Removing the routes fixed the model. Removing travel
+made it worth calibrating against.
+
+### It is a campaign-length dial, and that is not what it looks like
+
+She banks about **60 reputation a leg**, near enough linearly, so the
+threshold buys legs and nothing else: 140 buys two, 375 buys six, 1,100
+buys nineteen. `WATCH` and `PREP` decide *who wins*; this decides *how long
+they have to do it in*. The two jobs were being confused, which is why the
+number sat stale while the others moved.
+
+Put next to where catches actually land — pooled over 192 of them, p50 leg
+**6**, p90 leg **19**, max 24 — **140 was ending the game before the
+searchers got to play**. A campaign that stops at leg 2 forecloses nine
+catches in ten.
+
+### The sweep
+
+60 campaigns a cell, `WATCH=1 NEAR_KM=2500 PREP=0.5 WHIM=0.35`. The
+searchers' win rate — she is caught before reaching the threshold:
+
+| threshold | ~legs | solo | 3 alone | 3 split | 10 alone | 10 split | premium |
+|---|---|---|---|---|---|---|---|
+| 140 | 2 | 3% | 7% | 15% | 8% | 38% | +30 |
+| 300 | 5 | 15% | 23% | 28% | 25% | 60% | +35 |
+| 500 | 8 | 20% | 32% | 40% | 35% | 77% | +42 |
+| **750** | **12** | **25%** | **38%** | **48%** | **45%** | **90%** | **+45** |
+| 1,000 | 17 | 32% | 48% | 55% | 58% | 92% | +33 |
+| 1,400 | 23 | 38% | 57% | 70% | 67% | 95% | +28 |
+
+**750**, on the criterion that chose `WATCH` and for the same reason. The
+coordination premium — the gap between a field that splits the rooms and
+one that does not, which is the only quantity this experiment measures —
+rises to 750 and falls after it: +30, +35, +42, **+45**, +33, +28. Past
+that point ten coordinated searchers are near-certain, and *a column that
+cannot rise cannot show a better field getting better*. Nothing is
+saturated at 750 (90% is the last row before it pins), a lone searcher is
+an underdog at 25%, and the campaign is twelve legs instead of two.
+
+**What it still costs, stated rather than hidden**: catches land out to leg
+19 at p90 and 750 ends the campaign around leg 12, so a tail of catches is
+still foreclosed. Letting them all land means 1,400, where the top cell
+reaches 95% and the premium has fallen by a third. The two cannot both be
+satisfied and the premium is the one the experiment needs.
+
+### Then three checks went red, and they were right to
+
+Longer campaigns are a different page. Two things that had been unreachable
+became ordinary, and both had assertions standing on them that had never
+been true.
+
+**The card was not tall enough.** A twelve-to-seventeen stop campaign wants
+up to 1,020px of label in a 492px plot. `trail_card.card_height` grows the
+card with the campaign, and `lay_out` and `_emptiest_corner` take the
+height actually drawn rather than the 640 default — checking the layout
+against a card nobody renders was checking nothing.
+
+**The catch ring had never been counted.** `paint` has always drawn a ring
+on the room she is caught in, and the card has always drawn one too. At 140
+**no seed any of these tests used was ever caught**: the branch ran in no
+test, and three assertions counted markers as though there were exactly one
+per stop. Raising the threshold made catches ordinary and all three went
+red at once —
+
+- `window.flight.pins` was `pins.childNodes.length`, which also counts the
+  ring and, mid-leg, the dot for where she actually is. The stop circles
+  carry `data-stop` now and `pins` counts those; `marks` reports the raw
+  child count, so the decoration is still visible to a test.
+- the card asserted `circles <= len(walked) + 2` against the *set* of
+  rooms. The slack was doing two unnamed jobs — the inset's locator and the
+  catch ring — and a twelfth leg revisits a room she did not empty, which
+  drops the set below the trail. It counts `len(stops) + extras` exactly
+  now, with `extras` naming the locator and the ring.
+
+This is `CLAUDE.md`'s **"an absence drawn as a pass"** in its purest form:
+not a suite nothing ran, but a *branch no fixture could reach*, with three
+green checks resting on its absence. The fix is not only the counting —
+`test_the_room_she_is_caught_in_is_ringed` gives the ring the assertion it
+never had, and it is driven by a seed found by scanning for `outcome ==
+"caught"` rather than written down, because `absurd.tsv` is gitignored and
+the same seed is caught in one checkout and escapes in the other.
+
+Both new checks were made to fail on purpose, per the rule. Deleting the
+`st.caught` branch turns the ring test red while the two pin tests it was
+split from stay green, which is exactly the split that was missing; adding
+one stray marker to the card takes its count from 17 to 32.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
