@@ -3880,6 +3880,50 @@ twenty-five — because everybody watches the same nearest handful. **Divided,
 ten searchers never lose.** The whole distance between those columns is
 talk, and the lobby is where it happens.
 
+### `WATCH = 2`, and the sweep chose it on a criterion that is not balance
+
+```
+ WATCH   solo  3 alone  3 split  10 alone  10 split
+     1    28%      32%      50%       35%       85%
+     2    38%      50%      78%       55%       95%
+     3    48%      62%      82%       68%      100%
+     4    57%      72%      90%       80%      100%
+     6    70%      82%      98%       90%      100%
+    12    82%      92%     100%       95%      100%
+```
+
+The first guess was 6, and it is wrong in a way worth recording: **it does
+not make the game easy, it makes it unmeasurable.** The quantity this
+experiment exists to see is the distance between `alone` and `split` — what
+talking is worth — and that gap collapses as coverage stops being scarce:
+
+```
+ WATCH        1     2     3     4     6    12
+ premium    +50   +40   +32   +20   +10    +5      (at ten searchers)
+```
+
+A field that can watch everything has nothing to divide. So the conditions,
+in the order they bind:
+
+1. **No column pinned at 100%.** A saturated cell cannot show a better
+   field getting better — the ceiling version of the warning already
+   written under `next_difficulty`, that a number held constant by the
+   design is indistinguishable from a field that never improved. That
+   rules out 3 and up.
+2. **The coordination premium is the biggest thing on the board** — +40
+   points at ten searchers, against +5 at twelve.
+3. **A lone searcher is an underdog**, 38%, which is what a fugitive with
+   a thousand rooms should make of one person.
+
+1 satisfies all three and is rejected for a fourth reason: at one room
+there is no question of *how many* to watch, only which, and half the
+decision disappears.
+
+**This is the first parameter in this game chosen against the measurement
+rather than against a feeling about difficulty**, and the criterion
+generalises: a dial that pushes any cell to 0% or 100% has stopped being a
+dial and started being a wall.
+
 Compare what the same field bought under travel: 8% at ten searchers, and
 `cooperate` made it *worse* because a searcher whose share missed her room
 gave up. Both of those were artefacts of a journey nobody makes.

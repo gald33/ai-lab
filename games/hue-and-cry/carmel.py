@@ -190,8 +190,41 @@ PREP_PIVOT = 10.0
 #: the arithmetic of winning. Three sections of measurement have pointed
 #: here; this is the parameter they were pointing at.
 #:
-#: 6 is A GUESS, swept in `--calibrate`.
-WATCH = 6
+#: **2, and the sweep chose it on a criterion that is not balance.**
+#: 40 campaigns per cell:
+#:
+#:     WATCH   solo  3 alone  3 split  10 alone  10 split
+#:         1    28%      32%      50%       35%       85%
+#:         2    38%      50%      78%       55%       95%
+#:         3    48%      62%      82%       68%      100%
+#:         4    57%      72%      90%       80%      100%
+#:         6    70%      82%      98%       90%      100%
+#:        12    82%      92%     100%       95%      100%
+#:
+#: The first guess here was 6, and it is wrong in a way worth recording:
+#: it does not make the game *easy*, it makes it **unmeasurable**. The
+#: quantity this experiment exists to see is the distance between `alone`
+#: and `split` -- what talking is worth -- and that gap collapses as
+#: coverage stops being scarce: 50 points at `WATCH = 1`, 40 at 2, 32 at 3,
+#: 20 at 4, 10 at 6, 5 at 12. A field that can watch everything has nothing
+#: to divide.
+#:
+#: So the three conditions, in the order they bind:
+#:
+#: 1. **No column pinned at 100%.** A saturated cell cannot show a better
+#:    field getting better, which is the ceiling version of the warning
+#:    already written under `next_difficulty`: a number held constant by
+#:    the design is indistinguishable from a field that never improved.
+#:    That rules out 3 and up.
+#: 2. **The coordination premium is the biggest thing on the board.**
+#:    +40 points at ten searchers, against +5 at 12.
+#: 3. **A lone searcher is an underdog**, 38%, which is what a fugitive
+#:    with a thousand rooms should make of one person.
+#:
+#: 1 satisfies all three and is rejected for a fourth reason: at one room
+#: there is no question of *how many* to watch, only which, and half the
+#: decision disappears.
+WATCH = 2
 
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
