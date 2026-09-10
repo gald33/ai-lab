@@ -239,8 +239,15 @@ WATCH = 1
 #: How far away stops feeling near, in kilometres. **The scale of her bias
 #: towards near, and since 2026-09-10 the primary term in where she goes.**
 #:
-#: Gal said it three times before it was built, which is the measure of how
-#: badly it was being heard: *"she is biased towards near."*
+#: Gal, 2026-09-09: *"she is biased towards near."*
+#:
+#: *Corrected 2026-09-10.* This comment said he had asked three times "which
+#: is the measure of how badly it was being heard". He had not -- his client
+#: was stuck and resent the same message. **The repetition was noise and the
+#: inference drawn from it was wrong.**
+#:
+#: What is not wrong is the measurement it prompted, which nobody had taken
+#: and which should not have needed prompting.
 #:
 #: It was not true. Her destination's rank among the thousand rooms,
 #: nearest first, over 240 legs:
@@ -272,9 +279,9 @@ WATCH = 1
 #:       10000       208    35%       45%       92%       +48
 #:
 #: The premium is best where the bias is weakest -- and rank 208 is exactly
-#: where the old divisor left her, the version Gal rejected three times. So
-#: the experiment's optimum is the game he said was wrong, and that is
-#: recorded rather than obeyed: a coordination premium measured in a game
+#: where the old divisor left her -- the version Gal's instruction rules
+#: out. So the experiment's optimum is the game he said was wrong, and that
+#: is recorded rather than obeyed: a coordination premium measured in a game
 #: nobody would play is not worth having.
 #:
 #: 2,500 km is the strongest bias that keeps a lone searcher an underdog.

@@ -3959,13 +3959,22 @@ no travel term left to cancel.
 
 ## She is biased towards near, and the decision is a draw from a distribution
 
-*Gal, 2026-09-09 and twice on 2026-09-10: "so she is biased towards near",
-"let the final decision be a random from a distribution."*
+*Gal, 2026-09-09: "so she is biased towards near", "let the final decision
+be a random from a distribution."*
 
-**Three times, because the first two were answered with a claim instead of a
-measurement.** The mechanism was there both times — a distance term, and a
-sample rather than an argmax — so it was reported as done. Nobody had asked
-how *strong* the distance term was.
+**It was answered with a claim instead of a measurement.** The mechanism was
+there — a distance term, and a sample rather than an argmax — so it was
+reported as done. Nobody had asked how *strong* the distance term was.
+
+> *Corrected 2026-09-10.* This section first said Gal had asked three times,
+> "which is the measure of how badly it was being heard", and built an
+> argument on that. He had not: his client was stuck and resent the same
+> message. **The repetition was noise, and reading intent into it was a
+> mistake** — the sort that is easy to make because a tidy story about why
+> something was missed feels like understanding it.
+>
+> The measurement below is unaffected and is the part that mattered. It also
+> should not have taken a prompt at all, let alone an imagined third one.
 
 ### It was not a bias, it was a rounding error with a direction
 
@@ -4028,8 +4037,8 @@ does not, the only quantity this experiment measures. At `WATCH = 1`:
 ```
 
 **The premium is best where the bias is weakest** — and rank 208 is exactly
-where the old divisor left her, the version that was rejected three times.
-So the experiment's optimum is the game Gal said was wrong. That is
+where the old divisor left her, the version Gal's instruction rules out. So
+the experiment's optimum is the game he said was wrong. That is
 recorded rather than obeyed: a coordination premium measured in a game
 nobody would play is not worth having.
 
