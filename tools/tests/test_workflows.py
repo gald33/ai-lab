@@ -146,6 +146,37 @@ def suites_on_disk() -> set[str]:
             if ".git" not in p.parts and "node_modules" not in p.parts}
 
 
+def test_no_two_test_files_share_a_basename():
+    """A collision here is a collection error, not a silent omission, and it
+    is derived for the same reason the list below is.
+
+    None of these directories carries an `__init__.py`, so pytest imports a
+    test module under its bare basename. Two `test_live.py` in one invocation
+    -- which the `suite` job is, it names thirteen directories in one command
+    -- and the second is refused with `import file mismatch`, taking the run
+    down with it. `games/carmel-taldiego/test_live.py` was written, collided
+    with `games/island/tests/test_live.py`, and is `test_at_large.py` now.
+
+    Found by hand before it reached CI, which is exactly the argument for
+    deriving it: the next one will not be. Written 2026-09-10.
+    """
+    seen: dict[str, str] = {}
+    clashes = []
+    for path in sorted(ROOT.rglob("test_*.py")):
+        if ".git" in path.parts or "node_modules" in path.parts:
+            continue
+        if (path.parent / "__init__.py").exists():
+            continue        # imported by package path, so it cannot collide
+        here = str(path.relative_to(ROOT))
+        first = seen.setdefault(path.name, here)
+        if first != here:
+            clashes.append(f"{path.name}: {first} and {here}")
+    assert not clashes, (
+        "two test files share a basename and no `__init__.py` separates "
+        "them, so one invocation naming both fails to collect: "
+        + "; ".join(clashes))
+
+
 def test_every_test_directory_is_named_in_ci():
     """The structural fix for four instances of one omission.
 

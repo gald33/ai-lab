@@ -4437,6 +4437,182 @@ Both new checks were made to fail on purpose, per the rule. Deleting the
 split from stay green, which is exactly the split that was missing; adding
 one stray marker to the card takes its count from 17 to 32.
 
+## She is available to play, and the lobby holds one notice at a time
+
+*2026-09-10, Gal: "let's make her available to play. and we should let her
+start a new game every ~game_play_time, while making sure her lobby message
+is long gone before the game ends."*
+
+`games/carmel-taldiego/at_large.py`. Everything else in the directory *simulates*
+her; this performs her. It reads the same `itinerary` — still a pure function
+of the seed, still decided before the campaign opens — and posts it on a
+Switchboard hub in wall-clock time, so the searcher can be anybody.
+
+    python3 games/carmel-taldiego/at_large.py --dry-run   # the schedule, no hub
+    python3 games/carmel-taldiego/at_large.py --once      # one campaign, live
+    python3 games/carmel-taldiego/at_large.py             # campaign after campaign
+
+**Nothing was added that judges anything.** The catch is not adjudicated and
+no message is parsed: a searcher who is in the room while she is in it is on
+her roster, and she reads the roster. A searcher who never speaks catches her
+by standing there. That is `CLAUDE.md`'s "Carmel Taldiego has no manager and
+no settler" kept rather than quietly broken — if a test here ever needs the
+searcher to *say* something, the settler has arrived in new clothes.
+
+### The clock, which is the only genuinely new number
+
+`HOUR_SECONDS = 60` — one of her game hours is one real minute. A campaign is
+then about **80 minutes** and a leg about **six**.
+
+The floor is that a leg must be long enough for an agent to read a hint,
+think of a landmark, hash it and join the room: minutes, not seconds. The
+ceiling is that a campaign should be one sitting, so somebody who reads the
+notice can still be playing when it ends. It is a guess in the sense that
+nobody has watched a real searcher yet, and it is the one number to re-tune
+after somebody has. Everything else here is derived from it.
+
+### "Long gone before the game ends", which is a parameter that already existed
+
+The notice lives `JOIN_WINDOW_HOURS` — **12 game hours, 12 real minutes**.
+That is not a margin chosen to satisfy the constraint; it is the parameter
+that already meant the right thing: *"how long people take to notice the
+notice and set off"*, the head start her capture rates are calibrated
+against. After it, the notice has done its job, and a latecomer joins a game
+in flight off the hints in the rooms.
+
+Measured over 60 campaigns at `REPUTATION_TO_WIN = 750`: a campaign runs a
+median of **82 game hours**, p10 28, shortest 6.4. So the notice is gone
+about a seventh of the way in — `python3 games/carmel-taldiego/at_large.py
+--dry-run`.
+
+**What the measurement then said, which a margin alone would have missed:
+one campaign in sixty ends inside its own notice.** An early arrest is over
+in a few game hours and its notice is not. `CLAUDE.md`'s weaker-thing rule
+says that campaign is played out and counted, and what it may not do is put
+two salts on one screen — a reader following an address from a game that is
+over would look exactly like playing. So `plan()` carries a floor:
+
+    next_opens = max(closes, notice_gone) + intermission
+
+The next campaign never opens while the last one's notice can still be read,
+whatever happened to the campaign. One in sixty is exactly the rate at which
+an unenforced rule gets believed anyway.
+
+### The cadence is the play time, not a timer
+
+*"every ~game_play_time"* — the tilde is honoured by construction: **the next
+campaign opens when the last one closes**, so the cadence *is* the play time
+and two campaigns can never be live at once. A fixed period would have to be
+set to the worst case and would leave her idle through every campaign that
+was not it.
+
+### What "available" reduces to: three publishable strings
+
+    url    https://switchboard.lucille-ai.com
+    token  w_de4db0f397d0c549c97e3dd480759cb498fa0957b6f0ea4957737a03a99560ce
+    key    w2RF4T4lQxMGH6Sf9XX_GD4n4HFocxZvDDwlbrfMLTU
+
+None is a credential. The token is `room_token("hue-and-cry", b"")` — the
+lobby is salt-free for the reason `carmel.LOBBY` gives. **The key is derived
+from a constant on purpose.** `rooms_from_names.py` is explicit that knowing
+a landmark's name plus the salt is *exactly* what admits you, and that only
+holds if the workspace key is not a second secret — so all of the game's
+secrecy is in the token and none of it is in the key.
+
+It is deliberately **not** `SWITCHBOARD_KEY` from the environment, which was
+the easy mistake: it is right there, it works, and publishing the resulting
+address would publish somebody's credential. A room whose key must be handed
+over is an invite, and the invite is the mechanism this whole construction
+replaces. `test_the_lobby_is_publishable_in_full_and_borrows_no_credential`
+sweeps the environment for any `*KEY*`/`*TOKEN*`/`*SECRET*` value appearing
+in the printed address, because that is the failure that would not look like
+one.
+
+The salt is *not* in the address. The lobby is a place to stand before she
+has begun, not a bookmark that plays the game for you.
+
+### The tests drive a real hub, and one of them caught the others lying
+
+`switchboard.testing.hub` is the FastAPI app over the real store, in the test
+process, with a settable clock — not a fake room. A message that expires
+there expires for the reason it expires in production, which matters here
+because *the expiry is the thing under test*.
+
+**She caught herself on leg one of every campaign, and the catch test was
+green on it.** `_stranger` compared `agent.get("id")` — not a key the roster
+has — against `room.peer_id`, which is a method and so never equals anything.
+Every agent read as a stranger. `test_a_stranger_standing_in_the_room_is_the_whole_catch`
+passed the whole time, on her arresting herself. What found it was
+`test_an_empty_room_is_not_a_catch`, written only so the first test would not
+be vacuous. **The complement is the check** — the identity now compares
+`public_key`, which is on the client before she registers and on the roster
+row for everybody else, and is neither a name a searcher can choose nor an id
+she does not yet have.
+
+**And a deliberate break found a test overclaiming in its own name.**
+Setting `NOTICE_TTL_HOURS = 500` — a notice outliving every campaign — left
+`test_the_notice_is_gone_while_the_campaign_is_still_running` green, because
+it advanced the clock by whatever the constant said. It could never fail on a
+badly chosen TTL; it only ever checked that the constant reached the wire.
+It is `test_the_notice_really_carries_the_ttl_the_constant_names` now, and
+its docstring says what it cannot catch. The constraint itself is checked by
+the margin test, which does go red at 500.
+
+**A third break found a test that could not reach the thing it named.**
+`test_she_keeps_going_and_never_shows_two_notices` runs two campaigns
+through `forever` and samples the lobby at each open — and deleting the
+floor left it green, because at the shipped twelve hours a campaign outlives
+its notice sevenfold and the floor never fires. A loop test that cannot see
+the loop's one hard case is decoration. It sets `NOTICE_TTL_HOURS = 500` now
+so every campaign ends inside its notice, which is the case the floor exists
+for; without the floor it reports `[1, 2]` — two salts on one screen. That
+also made `plan()` read its constants off the module instead of freezing
+them into its signature's defaults, since a constant nothing can turn is a
+constant nothing can test against.
+
+**And one more that the runner needed rather than the tests.**
+`test_an_uncontested_campaign_is_the_one_the_simulation_predicted` runs a
+seed on the hub with nobody standing anywhere and requires every number to
+match `carmel.chase(searchers=0)` — outcome, reputation, legs, the hour it
+ended on. The module's central claim is that it adds a clock and nothing
+else, and a docstring saying so cannot fail. Skipping one leg in the live
+path reddens it.
+
+Five breaks, five demonstrations, per `CLAUDE.md`: no `ttl=` on the notice
+reddens the wire test; removing the floor reddens the schedule test and the
+loop test; a 500-hour notice reddens the margin test; ignoring the roster
+reddens the catch test; a dropped leg reddens the agreement test.
+
+### It is `at_large.py` because `live.py` would have taken CI down
+
+Not a naming preference. `games/island/tests/test_live.py` already exists,
+none of these directories carries an `__init__.py`, and the `suite` job names
+thirteen directories in **one** pytest command — so pytest imports both test
+modules under the bare basename `test_live` and refuses the second with
+`import file mismatch`, taking the whole run with it.
+
+Loud rather than silent, so it would not have hidden. But it was found by
+hand, before the push, and the next one will not be — so it is derived now:
+`tools/tests/test_no_two_test_files_share_a_basename` walks the tree, skips
+directories that have an `__init__.py` (those import by package path and
+cannot collide), and fails on any remaining pair. Recreating
+`games/carmel-taldiego/test_live.py` turns it red, naming both paths.
+
+That is the same treatment CI's directory list already gets, for the same
+reason `CLAUDE.md` gives: **derive what exists rather than remembering it.**
+
+### What is still missing before anybody can actually play
+
+**Where she runs.** This repo publishes a static site; a standing invitation
+needs a process that stays up, and nothing here provides one. Until it does,
+`--once` from a shell is the whole of her availability.
+
+**Where the address is published.** The three strings above are publishable
+and are not yet published — the site (`build_site.py`) shows six simulated
+campaigns and says nothing about a live one. That is a page change and a
+decision about whether this hub is the one she should live on, which is not
+a decision the runner should make on its own.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
