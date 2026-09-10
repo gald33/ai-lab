@@ -128,6 +128,45 @@ TRAVEL_KMH = 400
 #: `pursue`.
 PREP = 0.5
 
+#: How the packing grows with the length of the journey. **Superlinear**,
+#: since 2026-09-10 -- Gal: *"make her distance to time super linear."*
+#:
+#: It was linear: twice as far, twice the packing. That made distance a
+#: cost she could pay in instalments, and it is not what a fugitive's
+#: distance costs. Papers for the next country over are an afternoon;
+#: papers for the other side of the planet are a different kind of problem.
+#:
+#: The shape, with `t` the hours of travel:
+#:
+#:     prep = PREP * PIVOT * (t / PIVOT) ** PREP_EXPONENT
+#:
+#: `PREP_PIVOT` is the hop at which this equals what the linear rule
+#: charged, so the exponent is the only thing that changed and the middle
+#: of the range did not move. Below the pivot she gets a discount, above it
+#: a penalty that grows without bound -- which is the point, because
+#: **her randomness had her taking long hops for free**: with `WHIM = 0.35`
+#: her median hop is about 3,000 km and the linear rule charged her the
+#: same per kilometre for it as for a taxi across town.
+#:
+#: WHICH MAPPING THIS IS, BECAUSE THE OTHER READING BREAKS THE CHASE. It is
+#: the *prep* that is superlinear, not the travel. Travel is shared physics
+#: -- the searcher flies the same distance in the same time, which is why
+#: it cancels exactly (`test_the_follower_closes_by_everything_she_does_
+#: standing_still`), and a Carmel whose *travel* were superlinear while her
+#: pursuers' stayed linear would be outrun on every long leg by an
+#: arithmetic nobody could state. Prep is hers alone by construction, so
+#: bending it bends only her side and the cancelling survives.
+#:
+#: 1.6 and a 10-hour pivot are GUESSES, swept in `--calibrate`.
+PREP_EXPONENT = 1.6
+
+#: The journey length at which the superlinear rule charges exactly what
+#: the linear one did: 10 hours, which is 4,000 km at `TRAVEL_KMH`. Chosen
+#: as roughly a long-haul flight, so "a continent away" is the hinge and
+#: the two sides of it read as discount and penalty rather than as a
+#: wholesale reprice.
+PREP_PIVOT = 10.0
+
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
 #:
@@ -337,8 +376,15 @@ def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
 
     A searcher pays none of this. It is her papers, her route and her
     luggage, and the asymmetry is the point.
+
+    **Superlinear in the distance** since 2026-09-10 -- see `PREP_EXPONENT`
+    for the shape and for why it is the prep that bends and not the travel.
     """
-    return PREP * travel_hours(a, b) * difficulty
+    hours = travel_hours(a, b)
+    if hours <= 0:
+        return 0.0
+    return (PREP * PREP_PIVOT * (hours / PREP_PIVOT) ** PREP_EXPONENT
+            * difficulty)
 
 
 def _draw(seed: bytes, leg: int, kind: str) -> float:
@@ -707,7 +753,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "",
         "One kindness, because it costs me nothing you could not work out.",
         "I post before I pack, and the farther I mean to go the longer the",
-        f"packing takes -- {PREP} hours of it for every hour of the journey.",
+        "packing takes -- and worse than in proportion. A journey of t hours",
+        f"costs me {PREP} x {PREP_PIVOT:.0f} x (t/{PREP_PIVOT:.0f})^"
+        f"{PREP_EXPONENT} hours of packing before I can start it.",
         "My line is stamped with the hour I wrote it. Subtract, and you know",
         "how far behind me you are; and for any place you think I have gone,",
         "you know whether you can be standing in it before I get there.",

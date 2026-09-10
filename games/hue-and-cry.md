@@ -3713,6 +3713,69 @@ the *data*: the page embeds only the stops she made and coastlines, and a
 test walks every string in the embedded JSON to prove it. A reader who
 opens the source finds geography, not a gazetteer.
 
+## Her packing grows faster than her journey
+
+*Gal, 2026-09-10: "make her distance to time super linear."*
+
+### Which mapping, because the other reading breaks the chase
+
+**The prep, not the travel.** Travel is shared physics: the searcher flies
+the same distance in the same time, which is why it cancels exactly and why
+the gap closes only by what she does standing still. A Carmel whose
+*travel* were superlinear while her pursuers' stayed linear would be outrun
+on every long leg by an arithmetic nobody at the table could state, and
+`test_the_follower_closes_by_everything_she_does_standing_still` would have
+to go. Prep is hers alone by construction, so bending it bends only her
+side and the cancelling survives untouched.
+
+### The shape
+
+```
+prep = PREP × PIVOT × (t / PIVOT) ** PREP_EXPONENT
+```
+
+`PREP_PIVOT` (10 hours, about 4,000 km) is the hop at which this charges
+exactly what the linear rule charged, so **the exponent is the only thing
+that changed and the middle of the range did not move**:
+
+```
+   200 km   travel  0.5h   linear prep  0.2h   superlinear  0.0h
+ 1,000 km   travel  2.5h   linear prep  1.2h   superlinear  0.5h
+ 4,000 km   travel 10.0h   linear prep  5.0h   superlinear  5.0h   ← pivot
+ 8,000 km   travel 20.0h   linear prep 10.0h   superlinear 15.2h
+16,000 km   travel 40.0h   linear prep 20.0h   superlinear 45.9h
+```
+
+Below the pivot she gets a discount; above it a penalty that grows without
+bound. `PREP_EXPONENT = 1.6` and the 10-hour pivot are guesses.
+
+### What it was fixing, which the previous section had not measured
+
+**`PREP` and `WHIM` shipped a day apart and were never measured together.**
+Each sweep held the other at its pre-change value, so the composition was
+never looked at. Looked at (40 campaigns per row, 20-leg limit, linear
+prep):
+
+```
+ PREP  WHIM    c@1    c@3   c@10
+  0.5  0.35     0%     0%     2%
+  1.0  0.35     2%     2%     8%
+  2.0  0.35     5%    10%    15%
+```
+
+At the shipped defaults **the searchers essentially never win** — 1 catch
+in 60 against ten of them — and even quadrupling `PREP` only reaches 15%.
+The `PREP` table that reported 38% at ten searchers was measured against an
+argmax Carmel; the `WHIM` table that reported the collapse was measured at
+`PREP = 0.5`. Both were honest and neither described the game that shipped.
+
+The mechanism is the one the linear rule left open: her randomness has her
+taking ~3,000 km hops, and **linear prep charged the same per kilometre for
+a hop across the planet as for a taxi across town.** Distance became a cost
+she paid in instalments, which is not what a fugitive's distance costs —
+papers for the next country over are an afternoon and papers for the far
+side of the world are a different kind of problem.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

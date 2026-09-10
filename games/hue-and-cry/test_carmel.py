@@ -187,7 +187,9 @@ def test_a_far_move_costs_her_and_costs_the_searcher_nothing():
     near = WORLD.places["Bastille"]
 
     assert C.prep_hours(a, b) > C.prep_hours(a, near), "prep must grow with distance"
-    assert C.prep_hours(a, b) == C.PREP * C.travel_hours(a, b)
+    assert C.prep_hours(a, b) == (
+        C.PREP * C.PREP_PIVOT
+        * (C.travel_hours(a, b) / C.PREP_PIVOT) ** C.PREP_EXPONENT)
 
     # And nothing in the searcher's own leg arithmetic calls it: `pursue`
     # uses prep only to rank candidates by what SHE will pay.
@@ -195,6 +197,40 @@ def test_a_far_move_costs_her_and_costs_the_searcher_nothing():
     for line in body.splitlines():
         if "clock +=" in line:
             assert "prep_hours" not in line, line
+
+
+def test_the_packing_grows_faster_than_the_journey():
+    """Gal, 2026-09-10: *"make her distance to time super linear."*
+
+    Twice as far must cost **more** than twice the packing, at every
+    scale. Asserted as a ratio rather than against a constant, so it holds
+    whatever `PREP`, the pivot and the exponent are set to -- and fails the
+    moment somebody flattens the exponent back to 1.
+    """
+    here = WORLD.places["Eiffel Tower"]
+
+    def prep_at(km: float) -> float:
+        # A synthetic point due east, so the only thing varying is distance.
+        far = {"lat": here["lat"], "lon": here["lon"] + km / 111.0
+               / max(0.2, __import__("math").cos(
+                   __import__("math").radians(here["lat"])))}
+        return C.prep_hours(here, far)
+
+    for km in (500, 1000, 2000, 4000):
+        single, double = prep_at(km), prep_at(2 * km)
+        assert double > 2 * single * 1.05, (
+            f"{km} km -> {2 * km} km only took prep from {single:.2f}h to"
+            f" {double:.2f}h, which is not superlinear")
+
+    # And the pivot is where it agrees with the linear rule it replaced,
+    # which is what keeps the exponent the only thing that changed.
+    at_pivot = C.PREP * C.PREP_PIVOT
+    far = {"lat": 0.0, "lon": 0.0}
+    origin = {"lat": 0.0, "lon": 0.0}
+    hours = C.PREP_PIVOT
+    assert abs(C.PREP * C.PREP_PIVOT
+               * (hours / C.PREP_PIVOT) ** C.PREP_EXPONENT
+               - at_pivot) < 1e-9
 
 
 def test_she_can_be_overtaken_to_a_far_place_and_not_to_a_near_one():
