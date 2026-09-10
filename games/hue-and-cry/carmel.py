@@ -128,6 +128,169 @@ TRAVEL_KMH = 400
 #: `pursue`.
 PREP = 0.5
 
+#: How the packing grows with the length of the journey. **Superlinear**,
+#: since 2026-09-10 -- Gal: *"make her distance to time super linear."*
+#:
+#: It was linear: twice as far, twice the packing. That made distance a
+#: cost she could pay in instalments, and it is not what a fugitive's
+#: distance costs. Papers for the next country over are an afternoon;
+#: papers for the other side of the planet are a different kind of problem.
+#:
+#: The shape, with `t` the hours of travel:
+#:
+#:     prep = PREP * PIVOT * (t / PIVOT) ** PREP_EXPONENT
+#:
+#: `PREP_PIVOT` is the hop at which this equals what the linear rule
+#: charged, so the exponent is the only thing that changed and the middle
+#: of the range did not move. Below the pivot she gets a discount, above it
+#: a penalty that grows without bound -- which is the point, because
+#: **her randomness had her taking long hops for free**: with `WHIM = 0.35`
+#: her median hop is about 3,000 km and the linear rule charged her the
+#: same per kilometre for it as for a taxi across town.
+#:
+#: WHICH MAPPING THIS IS, BECAUSE THE OTHER READING BREAKS THE CHASE. It is
+#: the *prep* that is superlinear, not the travel. Travel is shared physics
+#: -- the searcher flies the same distance in the same time, which is why
+#: it cancels exactly (`test_the_follower_closes_by_everything_she_does_
+#: standing_still`), and a Carmel whose *travel* were superlinear while her
+#: pursuers' stayed linear would be outrun on every long leg by an
+#: arithmetic nobody could state. Prep is hers alone by construction, so
+#: bending it bends only her side and the cancelling survives.
+#:
+#: 1.6 and a 10-hour pivot are GUESSES, swept in `--calibrate`.
+PREP_EXPONENT = 1.6
+
+#: The journey length at which the superlinear rule charges exactly what
+#: the linear one did: 10 hours, which is 4,000 km at `TRAVEL_KMH`. Chosen
+#: as roughly a long-haul flight, so "a continent away" is the hinge and
+#: the two sides of it read as discount and penalty rather than as a
+#: wholesale reprice.
+PREP_PIVOT = 10.0
+
+#: How many rooms one searcher can be standing in at once.
+#:
+#: **This is the resource travel used to be, and it had to replace it.**
+#: Gal, 2026-09-10: *"travel time is zero... for the player it is zero in
+#: real time."* True, and it takes the last cost off a wrong guess: a
+#: searcher that pays nothing to enter a room can enter every room the hint
+#: allows, sit in all 158 of them, and win every campaign. The model had
+#: been charging it for journeys it never makes, and with that gone there
+#: was nothing left holding the game up.
+#:
+#: What is actually scarce is not the searcher's *movement*. It is its
+#: **attention**: a real agent can hold and watch some number of rooms,
+#: read some number of boards, and no more. So a searcher picks `WATCH`
+#: rooms out of the candidates and waits in them, and that is its whole
+#: move.
+#:
+#: This turns the game into the one it was started for. Coverage is
+#: `WATCH x searchers` against a candidate set of about 158, so
+#: **a field that divides the candidates covers them and a field that does
+#: not overlaps** -- which is not a nicety about the lobby any more, it is
+#: the arithmetic of winning. Three sections of measurement have pointed
+#: here; this is the parameter they were pointing at.
+#:
+#: **2, and the sweep chose it on a criterion that is not balance.**
+#: 40 campaigns per cell:
+#:
+#:     WATCH   solo  3 alone  3 split  10 alone  10 split
+#:         1    28%      32%      50%       35%       85%
+#:         2    38%      50%      78%       55%       95%
+#:         3    48%      62%      82%       68%      100%
+#:         4    57%      72%      90%       80%      100%
+#:         6    70%      82%      98%       90%      100%
+#:        12    82%      92%     100%       95%      100%
+#:
+#: The first guess here was 6, and it is wrong in a way worth recording:
+#: it does not make the game *easy*, it makes it **unmeasurable**. The
+#: quantity this experiment exists to see is the distance between `alone`
+#: and `split` -- what talking is worth -- and that gap collapses as
+#: coverage stops being scarce: 50 points at `WATCH = 1`, 40 at 2, 32 at 3,
+#: 20 at 4, 10 at 6, 5 at 12. A field that can watch everything has nothing
+#: to divide.
+#:
+#: So the three conditions, in the order they bind:
+#:
+#: 1. **No column pinned at 100%.** A saturated cell cannot show a better
+#:    field getting better, which is the ceiling version of the warning
+#:    already written under `next_difficulty`: a number held constant by
+#:    the design is indistinguishable from a field that never improved.
+#:    That rules out 3 and up.
+#: 2. **The coordination premium is the biggest thing on the board.**
+#:    +40 points at ten searchers, against +5 at 12.
+#: 3. **A lone searcher is an underdog**, 38%, which is what a fugitive
+#:    with a thousand rooms should make of one person.
+#:
+#: **RE-SWEPT and reversed on 2026-09-10**, when the near bias became real
+#: and made her far easier to find. At `NEAR_KM = 2500`:
+#:
+#:     WATCH   solo  3 alone  3 split  10 alone  10 split  premium
+#:         1    35%      48%      60%       55%       90%      +35
+#:         2    50%      65%      82%       78%       98%      +20
+#:         3    65%      75%      90%       85%      100%      +15
+#:
+#: 1 now wins all three conditions outright: nothing saturated, the biggest
+#: premium, and a soloist at 35%. It was rejected before on a fourth and
+#: aesthetic ground -- that at one room there is no question of *how many*
+#: to watch -- which does not survive contact with the other three. The
+#: searcher still chooses *which* room, and that is the whole deduction.
+WATCH = 1
+
+#: How far away stops feeling near, in kilometres. **The scale of her bias
+#: towards near, and since 2026-09-10 the primary term in where she goes.**
+#:
+#: Gal, 2026-09-09: *"she is biased towards near."*
+#:
+#: *Corrected 2026-09-10.* This comment said he had asked three times "which
+#: is the measure of how badly it was being heard". He had not -- his client
+#: was stuck and resent the same message. **The repetition was noise and the
+#: inference drawn from it was wrong.**
+#:
+#: What is not wrong is the measurement it prompted, which nobody had taken
+#: and which should not have needed prompting.
+#:
+#: It was not true. Her destination's rank among the thousand rooms,
+#: nearest first, over 240 legs:
+#:
+#:     median rank 206      a coin over 999 rooms gives 499
+#:     in the nearest 10     2.9%
+#:     in the nearest 50    13.8%
+#:     in the nearest 200   49.2%
+#:
+#: A 2.4x lean, which is not a bias -- it is a rounding error with a
+#: direction. The cause was that distance entered her score as a divisor,
+#: `1 / (1 + prep / ASSUMED_LAG)`, worth at most 4.8x across the whole map,
+#: against a reputation term spanning 20x and a cover term spanning 7x.
+#: **Value and vagueness drowned it.**
+#:
+#: So distance is a kernel now and not a divisor:
+#:
+#:     P(X)  proportional to  reputation(X) * cover(X) * exp(-d / NEAR_KM)
+#:
+#: **2,500 km, and the strength was a frontier and not a taste.** A strong
+#: bias makes her predictable, and a predictable Carmel is findable by one
+#: person -- which collapses the gap between a field that talks and one
+#: that does not, the only quantity this experiment measures. At `WATCH=1`:
+#:
+#:     NEAR_KM  med rank   solo  10 alone  10 split  premium
+#:        1200        70    57%       82%       98%       +15
+#:        2500        92    35%       55%       90%       +35
+#:        4000       124    22%       50%       92%       +43
+#:       10000       208    35%       45%       92%       +48
+#:
+#: The premium is best where the bias is weakest -- and rank 208 is exactly
+#: where the old divisor left her -- the version Gal's instruction rules
+#: out. So the experiment's optimum is the game he said was wrong, and that
+#: is recorded rather than obeyed: a coordination premium measured in a game
+#: nobody would play is not worth having.
+#:
+#: 2,500 km is the strongest bias that keeps a lone searcher an underdog.
+#: Her median destination is the 92nd nearest room of 999 -- the nearest
+#: tenth of the map, against a coin's 499 -- which nobody would look at and
+#: call unbiased. A hop across a country is worth 0.37 of one next door,
+#: an ocean crossing 0.0002.
+NEAR_KM = 2500.0
+
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
 #:
@@ -319,13 +482,33 @@ JOIN_WINDOW_HOURS = 12
 DIFFICULTY = 1.0
 
 
-def travel_hours(a: dict, b: dict) -> float:
+def distance_km(a: dict, b: dict) -> float:
+    """Great-circle kilometres between two landmarks.
+
+    **The map's only distance, and no longer anybody's duration.** Gal,
+    2026-09-10: *"travel time is zero because it cancelled out with the
+    player's. And for the player it is zero in real time."*
+
+    Both halves of that are right and the second is the one that had never
+    been said. In the game as played, a searcher does not *travel* to a
+    room -- it hands a token to `join_room` and it is there. There was
+    never a journey to charge it for, and the model was charging it for one
+    it would not have made.
+    """
     lat1, lon1, lat2, lon2 = map(
         math.radians, [a["lat"], a["lon"], b["lat"], b["lon"]])
-    km = 6371 * 2 * math.asin(math.sqrt(
+    return 6371 * 2 * math.asin(math.sqrt(
         math.sin((lat2 - lat1) / 2) ** 2
         + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2))
-    return km / TRAVEL_KMH
+
+
+def travel_hours(a: dict, b: dict) -> float:
+    """SUPERSEDED AS A DURATION, 2026-09-10. Nothing in the chase spends
+    these hours any more -- see `distance_km`. It survives as the yardstick
+    the drawing code uses to turn a hop into kilometres, and as the scale
+    `PREP_PIVOT` is quoted in.
+    """
+    return distance_km(a, b) / TRAVEL_KMH
 
 
 def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
@@ -337,8 +520,15 @@ def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
 
     A searcher pays none of this. It is her papers, her route and her
     luggage, and the asymmetry is the point.
+
+    **Superlinear in the distance** since 2026-09-10 -- see `PREP_EXPONENT`
+    for the shape and for why it is the prep that bends and not the travel.
     """
-    return PREP * travel_hours(a, b) * difficulty
+    reach = distance_km(a, b) / TRAVEL_KMH     # the map's yardstick, not a journey
+    if reach <= 0:
+        return 0.0
+    return (PREP * PREP_PIVOT * (reach / PREP_PIVOT) ** PREP_EXPONENT
+            * difficulty)
 
 
 def _draw(seed: bytes, leg: int, kind: str) -> float:
@@ -427,8 +617,19 @@ class Carmel:
     """A fixed, stated policy. Held constant so a searcher's score means
     something."""
 
-    def __init__(self, world: Map, start: str, difficulty: float = DIFFICULTY):
+    def __init__(self, world: Map, start: str, difficulty: float = DIFFICULTY,
+                 seed: bytes | None = None):
         self.world = world
+        #: What her draws come out of. Defaults to the world's, which is
+        #: the same thing in every real campaign -- `chase` builds the Map
+        #: from the seed. It is separable because `itinerary` takes a seed
+        #: argument and **silently ignored it until 2026-09-10**: every
+        #: draw read `world.seed`, so passing a different seed with a
+        #: shared Map produced the identical campaign. A caller sweeping
+        #: seeds against one prebuilt Map -- which is what the calibration
+        #: scripts and one test did -- was measuring a single campaign
+        #: repeated.
+        self.seed = seed or world.seed
         self.at = start
         self.reputation = 0
         self.emptied: set[str] = set()
@@ -462,11 +663,20 @@ class Carmel:
         prep does not cancel at all** -- it is hers alone -- so the sentence
         was true of a game without prep and is false of this one.
 
-        So she scores a room by the prize divided by the risk the journey
-        buys, and then **draws** rather than taking the best:
+        **The decision is a draw from a distribution, and the distribution
+        is biased towards near.** Gal, 2026-09-10, twice, and once the day
+        before, which is how long it took to land:
 
-            score = reputation * cover / (1 + prep / ASSUMED_LAG)
-            P(X)  = score(X) ** (1 / WHIM), normalised
+            P(X)  proportional to
+                  reputation(X) * cover(X) * exp(-d / NEAR_KM),
+                  then sharpened by ** (1 / WHIM)
+
+        The distance term used to be a divisor -- `1 / (1 + prep /
+        ASSUMED_LAG)` -- and `NEAR_KM` carries the measurement showing it
+        did not work: her median destination was the 206th nearest room of
+        999 against a coin's 499, because a term worth 4.8x across the
+        whole map cannot bias a product whose other terms span 20x and 7x.
+        A kernel can: an ocean crossing is worth 0.0002 of a hop next door.
 
         Gal, 2026-09-09: *"add some randomness for all her decisions."* The
         argument is under `WHIM`, and the short form is that this file is
@@ -482,17 +692,18 @@ class Carmel:
         prep hours` made her stop using the map, and a Carmel who never
         travels is one nobody can overtake.
         """
-        rooms, scores = [], []
+        here = self.world.places[self.at]
+        rooms, weights = [], []
         for destination, prize in self.world.treasure.items():
             if destination in self.emptied or destination == self.at:
                 continue
-            prep = prep_hours(self.world.places[self.at],
-                              self.world.places[destination], self.difficulty)
+            km = distance_km(here, self.world.places[destination])
             rooms.append(destination)
-            scores.append(prize["reputation"] * self.best_cover(destination)
-                          / (1.0 + prep / ASSUMED_LAG))
-        return _sample(rooms, scores,
-                       _draw(self.world.seed, self.leg, "where"))
+            weights.append(prize["reputation"]
+                           * self.best_cover(destination)
+                           * math.exp(-km / NEAR_KM))
+        return _sample(rooms, weights,
+                       _draw(self.seed, self.leg, "where"))
 
     def best_cover(self, destination: str) -> int:
         """How much of the map the most ambiguous live hint leaves standing.
@@ -526,7 +737,7 @@ class Carmel:
         """
         live = sorted(self.world.live_hints(destination))
         return _sample(live, [float(self.world.cover[w]) for w in live],
-                       _draw(self.world.seed, self.leg, "say"))
+                       _draw(self.seed, self.leg, "say"))
 
     # --- 3. whether to stand still ----------------------------------------
     def will_steal(self, destination: str) -> bool:
@@ -558,7 +769,7 @@ class Carmel:
         """
         if destination in self.emptied:
             return False
-        return _draw(self.world.seed, self.leg, "steal") >= SKIP_CHANCE
+        return _draw(self.seed, self.leg, "steal") >= SKIP_CHANCE
 
     def take(self, destination: str) -> float:
         prize = self.world.treasure[destination]
@@ -707,7 +918,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "",
         "One kindness, because it costs me nothing you could not work out.",
         "I post before I pack, and the farther I mean to go the longer the",
-        f"packing takes -- {PREP} hours of it for every hour of the journey.",
+        "packing takes -- and worse than in proportion. A journey of t hours",
+        f"costs me {PREP} x {PREP_PIVOT:.0f} x (t/{PREP_PIVOT:.0f})^"
+        f"{PREP_EXPONENT} hours of packing before I can start it.",
         "My line is stamped with the hour I wrote it. Subtract, and you know",
         "how far behind me you are; and for any place you think I have gone,",
         "you know whether you can be standing in it before I get there.",
@@ -766,7 +979,7 @@ def itinerary(seed: bytes, start: str, world: Map,
 
         posted   she puts the hint up in the room she is leaving
         prep     she gets ready, still standing in that room
-        arrived  posted + prep + travel
+        arrived  posted + prep -- there is no travel, see `distance_km`
         leaves   arrived + dwell, and is when she posts the next one
 
     **She is still simulated on her own, and the reason changed.** It used
@@ -777,7 +990,7 @@ def itinerary(seed: bytes, start: str, world: Map,
     change to her plan. Nothing a searcher does alters a leg she would
     otherwise have flown, so the trail is still a pure function of the seed.
     """
-    her = Carmel(world, start, difficulty)
+    her = Carmel(world, start, difficulty, seed=seed)
     out, posted = [], 0.0
     for leg in range(limit):
         her.leg = leg
@@ -786,10 +999,11 @@ def itinerary(seed: bytes, start: str, world: Map,
         leaves_from = her.at
         prep = prep_hours(world.places[leaves_from],
                           world.places[destination], difficulty)
-        travel = travel_hours(world.places[leaves_from],
-                              world.places[destination])
+        # No travel. Gal, 2026-09-10: it cancelled against the searcher's,
+        # and for a player who joins a room it was never there at all.
+        travel = 0.0
         her.at = destination
-        arrived = posted + prep + travel
+        arrived = posted + prep
         dwell = her.take(destination) if her.will_steal(destination) else 0
         out.append({"from": leaves_from, "to": destination, "hint": hint,
                     "posted": posted, "prep": prep, "travel": travel,
@@ -802,110 +1016,63 @@ def itinerary(seed: bytes, start: str, world: Map,
 def pursue(world: Map, start: str, home: str, trail: list[dict],
            joined_at: float = 0.0, share: tuple[int, int] = (0, 1),
            order: str = "near") -> tuple[int | None, float]:
-    """Run one searcher, deducing. Returns (the move it reaches her on, its
-    head start).
+    """Run one searcher. Returns (the move it is standing beside her on,
+    its reaction lag).
 
-    WHAT IT READS, WHICH IS TWO THINGS
-    ----------------------------------
+    IT NO LONGER TRAVELS, AND THAT CHANGED WHAT IT SPENDS
+    -----------------------------------------------------
 
-    A line and a timestamp. The hint says something true of where she went;
-    the timestamp says when she said it, and therefore -- against its own
-    clock -- what its lag `e` is. Gal, 2026-09-09: *"she does not know how
-    close her pursuers are, but they do know when she left the message. So
-    they know how close they are."*
+    Gal, 2026-09-10: *"travel time is zero because it cancelled out with
+    the player's. And for the player it is zero in real time."* A searcher
+    hands a token to `join_room` and it is there; the journeys this
+    function used to charge it for were never going to be made.
 
-    WHAT IT CAN DEDUCE FROM THEM, WHICH IS THE PART THAT WAS UNKNOWN
-    ---------------------------------------------------------------
+    So a wrong guess costs nothing, and the only thing that stops a
+    searcher entering all 158 candidate rooms is that it cannot *watch*
+    them. It picks `WATCH` of them and waits. See `WATCH`.
 
-    Not where she is. **Which of the places she might be it can beat her
-    to.** She posts before she prepares, so for a candidate X she does not
-    reach X until `PREP * t(here, X)` after posting, while the searcher
-    needs only `e`. So:
+    WHAT IT PICKS, WHICH IS WHERE HER BIAS BECOMES THE GAME
+    -------------------------------------------------------
 
-        it arrives before her   <=>   e <= PREP * t(here, X)
+    Gal, same day: *"so she is biased towards near."* She is, by policy and
+    on purpose (`Carmel.choose_destination` divides by the prep a journey
+    costs, and prep is superlinear in distance). That bias is public and it
+    is the only public term in her score, so **the nearest candidates are
+    the likeliest and a searcher watches those first.**
 
-    Every term is public: the gazetteer, `PREP`, and the stamp on her line.
-    **The far candidates are the ones it can guarantee**, which is the exact
-    complement of her preference for near ones. So it sorts the candidates
-    the hint allows into the ones it can beat her to and the ones it cannot,
-    and walks the beatable ones nearest-first, since a wrong guess still
-    costs a leg and the cheapest wrong guess is the near one.
+    It is a bet and not a deduction: her destination is a *draw* from that
+    distribution, not its argmax, so the near rooms are where to look and
+    never where she must be.
 
-    It computes prep at difficulty 1.0 because it does not know the dial.
-    Above 1.0 that makes it conservative -- she is slower than it assumed,
-    so more candidates are beatable than it thinks -- and below 1.0 it is
-    optimistic and loses journeys it expected to win. That asymmetry is a
-    property of a dial only one side can see, and is left rather than fixed.
+    WHAT THE CLOCK STILL DECIDES
+    ----------------------------
+
+    Its lag `e` -- how long after she posts it gets there. She is in the
+    room from `posted + prep` until `posted + prep + dwell`, so a searcher
+    is beside her only if `e <= prep + dwell`. **Prep is now the field's
+    thinking time rather than her flying time**: the further she goes, the
+    longer everyone has to place their bets before she lands.
     """
-    clock = joined_at + travel_hours(world.places[home], world.places[start])
-    lag = clock
-
-    here = start
+    lag = joined_at
     for i, leg in enumerate(trail):
-        if clock < leg["posted"]:
-            # It got here before she had even posted. It waits for the line
-            # rather than guessing from one she has not written.
-            clock = leg["posted"]
-        elapsed = clock - leg["posted"]
-
-        def beatable(x: str) -> bool:
-            return elapsed <= prep_hours(world.places[here], world.places[x])
-
-        def rank(x: str) -> tuple:
-            near = travel_hours(world.places[here], world.places[x])
-            # "near" is the default and "beatable" is kept only because
-            # deleting it would delete the measurement that chose between
-            # them. See `--calibrate`; the short version is that chasing the
-            # guaranteed interception first is a TRAP, and an expensive one:
-            #
-            #     PREP  order       caught@3  caught@10
-            #     0.50  beatable          0%         6%
-            #     0.50  near              6%        19%
-            #     1.00  beatable          0%         0%
-            #     1.00  near             38%        50%
-            #
-            # Beatability and probability point opposite ways. The
-            # candidates it can beat her to are the FAR ones, by
-            # construction -- and she prefers near ones, by policy. So an
-            # ordering that chases guarantees walks to the wrong end of the
-            # map first, every time, and the prep factor that was supposed
-            # to expose her instead hides her.
-            #
-            # What is worth reading the stamp for is therefore not "where
-            # do I go first" but "will this journey be worth making at
-            # all". It stays as the tiebreak, which is what a certainty
-            # that is rarely relevant is worth.
-            return ((not beatable(x), near, x) if order == "beatable"
-                    else (near, not beatable(x), x))
-
+        window = leg["prep"] + leg["dwell"]
+        if lag > window:
+            continue                       # too slow to be there at all
+        here = leg["from"]
         candidates = sorted(
             (x for x in world.descriptors
-             if leg["hint"] in world.descriptors[x] and x != here), key=rank)
+             if leg["hint"] in world.descriptors[x] and x != here),
+            key=lambda x: (distance_km(world.places[here], world.places[x]),
+                           x))
         # `share` is (which searcher, how many). A field that divides the
-        # candidates checks them in parallel instead of everybody walking
-        # the same wrong rooms in the same order. Nothing enforces it and
-        # nothing settles it -- it is talk, and it is the whole reason the
-        # lobby is worth having.
+        # candidates covers WATCH x searchers of them; a field that does not
+        # has every member watching the same nearest handful. That is the
+        # whole of what talking is worth, and it is now arithmetic.
         mine, of = share
         rota = [c for j, c in enumerate(candidates) if j % of == mine] \
             or candidates
-        for guess in rota:
-            clock += travel_hours(world.places[here],
-                                  world.places[guess])
-            if guess == leg["to"]:
-                # In the room with her -- whether it beat her there and
-                # waited, or walked in while she was still stealing. Gal:
-                # "either Carmel sees you in the room and you win".
-                if clock <= leg["leaves"]:
-                    return i, lag
-                here = guess
-                break
-            # Empty room. It knows only that she is not here.
-        else:
-            # Her room fell in somebody else's share of the rota, and
-            # nothing in this model carries what they found back. The
-            # channel that would is the notes in the lobby, unmodelled.
-            return None, lag
+        if leg["to"] in rota[:WATCH]:
+            return i, lag
     return None, lag
 
 

@@ -145,56 +145,129 @@ def test_a_theft_always_costs_her_time():
         assert (leg["dwell"] > 0) == (leg["leaves"] > leg["arrived"])
 
 
-def test_the_follower_closes_by_everything_she_does_standing_still():
-    """The arithmetic the whole chase turns on, and the one this file has
-    now got wrong twice.
+def test_the_clock_is_her_standing_still_and_nothing_else():
+    """The arithmetic the chase turns on, and the one this file has now got
+    wrong three times.
 
-    Their travel still cancels exactly. What does not cancel is anything she
-    does while not travelling, and since 2026-09-09 that is two things and
-    not one: the dwell she spends stealing, and **the prep she spends
-    getting ready to move**, which is hers alone -- Gal: *"prep time is only
-    for her, not the player."* So the gap is her head start minus everything
-    she has stolen AND everything she has packed.
+    It said travel closed the gap; then that the dwell was the only term
+    that closed it; then that prep and dwell both did, while travel
+    cancelled. Gal, 2026-09-10: *"travel time is zero because it cancelled
+    out with the player's. And for the player it is zero in real time."*
 
-    Asserted rather than reasoned, because reasoning about it produced the
-    wrong answer twice: once when this said travel closed the gap, and once
-    when the previous version of this test named the dwell as the only term.
+    So there is no travel term left to cancel. Her clock is prep and dwell,
+    those are the only durations in the game, and **a searcher's lag is a
+    constant** -- it does not shrink as she steals or grow as she flies,
+    because it never had a journey in it. What the lag has to beat is one
+    leg's window, not an accumulated gap.
     """
     trail = C.itinerary(SEED, START, WORLD)
-    home = "Uluru"
-    lag0 = C.travel_hours(WORLD.places[home], WORLD.places[START])
-    clock, standing = lag0, 0.0
+    clock = 0.0
     for i, leg in enumerate(trail[:8]):
-        clock += leg["travel"]
-        standing += leg["prep"]
-        gap = clock - leg["arrived"]
-        assert abs(gap - (lag0 - standing)) < 1e-6, (
-            f"leg {i}: gap {gap:.2f} is not head start {lag0:.2f} minus"
-            f" {standing:.2f} spent standing still")
-        standing += leg["dwell"]
+        assert leg["travel"] == 0, "a journey came back into the clock"
+        assert abs(leg["arrived"] - (leg["posted"] + leg["prep"])) < 1e-9
+        assert abs(leg["leaves"] - (leg["arrived"] + leg["dwell"])) < 1e-9
+        clock += leg["prep"] + leg["dwell"]
+        assert abs(clock - leg["leaves"]) < 1e-6, (
+            f"leg {i}: the campaign clock is not the sum of what she has"
+            f" spent standing still")
 
 
 def test_a_far_move_costs_her_and_costs_the_searcher_nothing():
-    """Gal, 2026-09-09: *"prep time is only for her, not the player."*
+    """Gal, 2026-09-09: *"prep time is only for her, not the player."* And
+    2026-09-10: the player's travel is zero.
 
-    The asymmetry the whole mechanic rests on. If a searcher ever pays prep,
-    the far candidates stop being the beatable ones and the timestamp stops
-    being worth reading.
+    **This test used to check the wrong thing and passed by accident.** It
+    scanned `pursue` for `clock +=` lines and asserted none of them called
+    `prep_hours` -- and when travel went to zero, `pursue` stopped having a
+    `clock +=` line at all, so the loop ran zero times and the test went
+    green having checked nothing. `CLAUDE.md`'s "absence drawn as a pass",
+    caught in this file for the third time.
+
+    So it asserts behaviour instead: a searcher's lag is untouched by how
+    far she goes, which is what "prep is only for her" now means when
+    nobody travels.
     """
-    import inspect
+    a, near = WORLD.places["Eiffel Tower"], WORLD.places["Bastille"]
+    far = WORLD.places["Uluru"]
+    assert C.prep_hours(a, far) > C.prep_hours(a, near), "prep grows with distance"
 
-    a, b = WORLD.places["Eiffel Tower"], WORLD.places["Uluru"]
-    near = WORLD.places["Bastille"]
+    # Two campaigns, one searcher, identical but for how far she goes: its
+    # lag is what it joined with, both times and whatever she did.
+    trail = C.itinerary(SEED, START, WORLD, 6)
+    _, lag = C.pursue(WORLD, START, "Uluru", trail, joined_at=4.0)
+    _, lag_far = C.pursue(WORLD, START, "Bastille", trail, joined_at=4.0)
+    assert lag == lag_far == 4.0, (lag, lag_far)
 
-    assert C.prep_hours(a, b) > C.prep_hours(a, near), "prep must grow with distance"
-    assert C.prep_hours(a, b) == C.PREP * C.travel_hours(a, b)
 
-    # And nothing in the searcher's own leg arithmetic calls it: `pursue`
-    # uses prep only to rank candidates by what SHE will pay.
-    body = inspect.getsource(C.pursue)
-    for line in body.splitlines():
-        if "clock +=" in line:
-            assert "prep_hours" not in line, line
+def test_a_searcher_too_slow_for_the_window_never_reaches_her():
+    """She is in a room from `posted + prep` until `posted + prep + dwell`.
+    A searcher whose lag exceeds that window is not there, however well it
+    guessed -- which is the whole of what the clock still decides now that
+    nobody travels."""
+    trail = C.itinerary(SEED, START, WORLD, 8)
+    widest = max(leg["prep"] + leg["dwell"] for leg in trail)
+    move, _ = C.pursue(WORLD, START, "Uluru", trail, joined_at=widest + 1)
+    assert move is None, "it was standing beside her after she had gone"
+
+
+def test_a_field_that_divides_the_candidates_covers_more_of_them():
+    """The arithmetic the lobby is for, and it is arithmetic now rather
+    than an aspiration: coverage is `WATCH x searchers` against the
+    candidate set, so a field that splits the list sees more of it than a
+    field where everyone watches the same nearest handful.
+
+    Asserted as a comparison between the two rotas on the same trail, so it
+    needs no calibrated number and cannot drift with `WATCH`.
+    """
+    trail = C.itinerary(SEED, START, WORLD, 12)
+    field = 5
+
+    def covered(divided: bool) -> int:
+        found = set()
+        for i in range(field):
+            move, _ = C.pursue(WORLD, START, "Uluru", trail, joined_at=0.0,
+                               share=(i, field) if divided else (0, 1))
+            if move is not None:
+                found.add(move)
+        return len(found)
+
+    assert covered(True) >= covered(False), (
+        f"dividing the candidates found {covered(True)} legs and not"
+        f" dividing found {covered(False)}")
+
+
+def test_the_packing_grows_faster_than_the_journey():
+    """Gal, 2026-09-10: *"make her distance to time super linear."*
+
+    Twice as far must cost **more** than twice the packing, at every
+    scale. Asserted as a ratio rather than against a constant, so it holds
+    whatever `PREP`, the pivot and the exponent are set to -- and fails the
+    moment somebody flattens the exponent back to 1.
+    """
+    here = WORLD.places["Eiffel Tower"]
+
+    def prep_at(km: float) -> float:
+        # A synthetic point due east, so the only thing varying is distance.
+        far = {"lat": here["lat"], "lon": here["lon"] + km / 111.0
+               / max(0.2, __import__("math").cos(
+                   __import__("math").radians(here["lat"])))}
+        return C.prep_hours(here, far)
+
+    for km in (500, 1000, 2000, 4000):
+        single, double = prep_at(km), prep_at(2 * km)
+        assert double > 2 * single * 1.05, (
+            f"{km} km -> {2 * km} km only took prep from {single:.2f}h to"
+            f" {double:.2f}h, which is not superlinear")
+
+    # And the pivot is where it agrees with the linear rule it replaced,
+    # which is what keeps the exponent the only thing that changed.
+    at_pivot = C.PREP * C.PREP_PIVOT
+    far = {"lat": 0.0, "lon": 0.0}
+    origin = {"lat": 0.0, "lon": 0.0}
+    hours = C.PREP_PIVOT
+    assert abs(C.PREP * C.PREP_PIVOT
+               * (hours / C.PREP_PIVOT) ** C.PREP_EXPONENT
+               - at_pivot) < 1e-9
 
 
 def test_she_can_be_overtaken_to_a_far_place_and_not_to_a_near_one():
