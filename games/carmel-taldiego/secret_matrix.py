@@ -28,14 +28,14 @@ the seed is 256 bits of blinding over the whole matrix at once.
 WHAT IT COSTS, AND WHY THAT IS A GAIN. Nothing accumulates across games, so
 the cross-game map-building this document had called "the most interesting
 technique available" cannot happen. It should not have been called that.
-`games/hue-and-cry.md` had already decided the map is drawn rather than
+`games/carmel-taldiego.md` had already decided the map is drawn rather than
 authored, on the grounds that *a memorisable map means the instrument has
 quietly stopped measuring search* -- and harvesting a durable matrix is
 memorising the map. The two positions contradicted each other and this is
 the one that survives: navigation is measured inside a game, and every game
 starts from a map nobody has seen.
 
-    python3 games/hue-and-cry/secret_matrix.py
+    python3 games/carmel-taldiego/secret_matrix.py
 """
 
 import hashlib
@@ -117,7 +117,7 @@ def salt_for(seed: bytes) -> bytes:
 
     This exists because the alternative was measured against the design and
     lost. Deriving rooms from the seed itself means nobody but her can
-    compute any address while the game runs, and `games/hue-and-cry.md` is
+    compute any address while the game runs, and `games/carmel-taldiego.md` is
     explicit that this "becomes a pure chain -- you can follow her but never
     get ahead, which is too weak". The salt is what lets a searcher think of
     a name and go there.

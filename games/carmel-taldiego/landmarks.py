@@ -71,9 +71,9 @@ for: the Pentagon and Three Mile Island had coordinates in Brussels and in
 New Hampshire, and five countries were defunct (the Berlin Wall in East
 Germany) or merely the first of several (the Amazon in France).
 
-    python3 games/hue-and-cry/landmarks.py           # read the committed file
-    python3 games/hue-and-cry/build_landmarks.py \
-        --out games/hue-and-cry/landmarks.tsv        # rebuild it from Wikidata
+    python3 games/carmel-taldiego/landmarks.py           # read the committed file
+    python3 games/carmel-taldiego/build_landmarks.py \
+        --out games/carmel-taldiego/landmarks.tsv        # rebuild it from Wikidata
 """
 
 from pathlib import Path

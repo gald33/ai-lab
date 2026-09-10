@@ -1,9 +1,9 @@
 """The trail she left, drawn, for the post that closes a campaign.
 
-    python3 games/hue-and-cry/trail_card.py --out /tmp/trail.svg
+    python3 games/carmel-taldiego/trail_card.py --out /tmp/trail.svg
 
 Gal, 2026-09-09: *"I wonder if we want to show the map visually"*. The
-answer this file is the buildable half of is in `games/hue-and-cry.md`,
+answer this file is the buildable half of is in `games/carmel-taldiego.md`,
 "Three maps, and only one of them is the map" -- which says that there are
 three different pictures hiding behind the word "map", that two of them are
 safe and one of them decides an open question, and that this is the one
@@ -20,7 +20,7 @@ publish the trail to searchers who had not earned it.
 **It did not draw her exits, and there are no longer exits to draw.** Gal,
 2026-09-09: *"we have no routes."* The refusal below was right and is now
 moot; what survives it is the reason it was a refusal rather than a flag.
-`games/hue-and-cry.md`, "Which makes the exit count a choice about how big
+`games/carmel-taldiego.md`, "Which makes the exit count a choice about how big
 a game this is", leaves open whether the routes are public: routes-public
 is a two-person deduction game with a 352 KB entry requirement, no-routes
 is a fifty-person search game with none, and *"that is Gal's to make rather
@@ -100,7 +100,7 @@ TOP, BOTTOM = 92, 56
 PAD = 0.28
 
 #: The root the surveys draw their seeds from, so a number quoted in
-#: `games/hue-and-cry.md` is one the command reproduces rather than one it
+#: `games/carmel-taldiego.md` is one the command reproduces rather than one it
 #: resembles. The maps are still drawn -- 200 of them -- this only fixes
 #: *which* 200, which is the difference between a measurement and an
 #: anecdote. `--seed` varies it, and a number that moves much when it does
@@ -501,7 +501,7 @@ def geography(sample: int = 150, root: bytes = SURVEY_ROOT) -> None:
     """How much of the map's structure a geographic drawing would show.
 
     The answer decides what may honestly be drawn on a world projection.
-    Routes are drawn from descriptor kinship (`games/hue-and-cry.md`,
+    Routes are drawn from descriptor kinship (`games/carmel-taldiego.md`,
     "Routes run between places that resemble each other"), and kinship
     leans geographic without being geographic -- so a route network on a
     map would be a false picture of what is next to what, while a trail on

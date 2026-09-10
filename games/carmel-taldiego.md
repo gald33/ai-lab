@@ -1,4 +1,4 @@
-# Hue and cry
+# Carmel Taldiego
 
 Carmel Taldiego moves between rooms along routes anyone can read, leaving a
 hint and an address behind her at each one and taking what she finds. Searchers move
@@ -22,6 +22,51 @@ starts where that one started.*
 
 ## The name, and why it is not Carmen Sandiego
 
+*Renamed 2026-09-10, by Gal: "rename the name everywhere to Carmel
+Taldiego." The game was called **hue and cry** until then and the reasoning
+below is kept rather than edited, because it is the argument the new name
+has to answer, not a mistake.*
+
+**The game is named after her now.** She arrived as "the Fugitive", was
+given a name on 2026-09-08, and has been the only thing on every card and
+every flight since — a picture of this game is a picture of Carmel
+Taldiego, and it was odd that the file it came out of was called something
+else.
+
+**What that costs, stated rather than skipped.** The section below chose
+"hue and cry" partly to sit further from an active trademark, and a title
+that is one consonant from *Carmen Sandiego* sits closer to it than a
+common-law phrase does. The mechanic was never the exposure; the name
+always was. That is Gal's call to make and he has made it, and it is
+written here so the next person does not re-derive the trade-off from
+scratch — but it is a trade-off, and this paragraph is the record that it
+was seen.
+
+**The searchers are still the Hue**, and the phrase still means what it
+means: `the Hue` is not a leftover, it is the name of the people chasing
+her.
+
+**Two identifiers keep the old name, and they are identifiers rather than
+names.** The roadmap item `hue-and-cry-purge-the-leaked-tables` is one: it
+records an incident that happened under that name, other generated files
+key off it, and an id that moves is an id that stops resolving. The other
+is the wire.
+
+**And the wire keeps the old name, on purpose.** `hue-and-cry/v1/landmark`,
+`hue-and-cry/v1/matrix`, `hue-and-cry/v1/salt` and the rest are
+domain-separation strings bound into HKDF and the room hash. Renaming them
+changes every room address, every hint draw and every commitment, and would
+make a searcher built against yesterday's published `RECIPE` compute rooms
+nobody is standing in. This repo has already learned that exact lesson once
+— `CLAUDE.md`, on Switchboard's `ask` to `whisper` rename: *"those strings
+are bound into the cryptography, so renaming them makes every release on
+one side of the rename refuse every envelope from the other, for a name
+only humans ever read."* So: **the humans get the new name and the
+cryptography keeps the old one**, and `RECIPE` still says what it has
+always said.
+
+
+
 The idea arrived as "let's build Carmen Sandiego" and the shape is hers: a
 thief who is always one landmark ahead, a trail of attribute clues, a
 warrant you have to ask for. **The name is not.** *Carmen Sandiego* is an
@@ -29,7 +74,7 @@ active trademark, this repo is public, and a game published under it is a
 liability with no upside — the mechanic is what was wanted and the mechanic
 is not owned by anybody.
 
-**Hue and cry** is the English common-law name for the thing this game
+**Hue and cry** was the English common-law name for the thing this game
 actually is: the obligation, on anyone who saw a thief flee, to raise a
 shout that every person within earshot was bound to join. It is public
 pursuit, it is loud, and *being heard coming* is the whole texture of a game
@@ -156,7 +201,7 @@ correct answer. If the outcome ledger comes out flat there, "the tool is
 useless" and "the task did not need it" both fit, and nothing separates
 them.
 
-**Hue and cry is timing-bound by construction.** The Fugitive's entire
+**Carmel Taldiego is timing-bound by construction.** The Fugitive's entire
 advantage is temporal — she moves *before you look*, and a searcher reading
 a room one tick late is reading a true fact about where she was. There is no
 version of this game in which knowing when your adversary next looks, and
@@ -299,7 +344,7 @@ with routes:    her best true clue leaves 2 or 3 of the 3 she could reach
 ```
 
 Re-check, and it is the one thing here that is built:
-`python3 games/hue-and-cry/worked_example.py`. It carries the eight-landmark
+`python3 games/carmel-taldiego/worked_example.py`. It carries the eight-landmark
 gazetteer, the routes, both bounds and the three-tick game below.
 
 Weak, and then worse than weak. **Clues from different ticks describe
@@ -423,7 +468,7 @@ wrong. It counted globally unique descriptors and demanded zero, which fails
 a gazetteer that plays perfectly well: a rare word is harmless as long as
 she is never *forced* to post it. What matters is the chance that a random
 live-three leaves her at least one place to hide behind, per room, and it is
-`playable()` in `games/hue-and-cry/gazetteer.py`. Run it before shipping a
+`playable()` in `games/carmel-taldiego/gazetteer.py`. Run it before shipping a
 map:
 
 ```
@@ -490,7 +535,7 @@ reads as a random walk is not worth posting.
 **The gate is distributional now**, and it has to be: routes are drawn per
 game, so playability is a property of `(gazetteer, neighbourhood size, exit
 count)` rather than of the word list. `pin_rate()` in
-`games/hue-and-cry/gazetteer.py` measures it over many drawn maps;
+`games/carmel-taldiego/gazetteer.py` measures it over many drawn maps;
 `MAX_PINNED = 0.20` is a guess and is flagged as one.
 
 ### One consequence for the addresses
@@ -576,7 +621,7 @@ N=    100  M=    100    dense     10,000   sparse    300       33x cheaper
 N=100,000  M=100,000    dense 10,000,000,000   sparse 300,000  33,333x cheaper
 ```
 
-Re-check: `python3 games/hue-and-cry/scale.py`. The saving is `M/3` and `M`
+Re-check: `python3 games/carmel-taldiego/scale.py`. The saving is `M/3` and `M`
 grows, which is the whole of "linear versus superlinear": **the dense matrix
 cannot be made large and the sparse one can.**
 
@@ -673,7 +718,7 @@ which retires this document's worry, filed under the branching factor, that
 the two moved together and in opposite directions. On this parameter they
 do not.
 
-Re-check both tables: `python3 games/hue-and-cry/scale.py`.
+Re-check both tables: `python3 games/carmel-taldiego/scale.py`.
 
 **What is still open** is not the mechanism but the number: nobody has said
 what `N` has to be for a given expected number of games, and the floor
@@ -765,7 +810,7 @@ published after play:   seed           32 bytes
 published when it ends, so anybody holding the transcript re-derives every
 hint and every room address and checks them. The island's commit–reveal, at
 the size of a game. Asserted rather than claimed in
-`games/hue-and-cry/secret_matrix.py`: the committed seed replays, a
+`games/carmel-taldiego/secret_matrix.py`: the committed seed replays, a
 different one does not.
 
 It also means **a game has exactly one secret**, since the same seed mints
@@ -1084,7 +1129,7 @@ and says why in its own docstring:
 
 So the whole of the idea is choosing what mints the token. Verified against
 the installed 2.2.2 wheel rather than assumed —
-`python3 games/hue-and-cry/rooms_from_names.py` derives a token from a name
+`python3 games/carmel-taldiego/rooms_from_names.py` derives a token from a name
 and a salt, confirms `workspace == rooms.workspace_for(token)`, constructs
 an `Invite` locally and hands it to `Client.from_invite`, which performs no
 I/O at all. The same landmark under two salts is two rooms.
@@ -1372,7 +1417,7 @@ At a thousand it is eight thousand, and an afternoon is not what it costs;
 worse, a person writing eight thousand descriptors from memory will write
 false ones, which is the single thing the hints may not be.
 
-So they are **derived from fetched facts** -- `games/hue-and-cry/descriptors.py`,
+So they are **derived from fetched facts** -- `games/carmel-taldiego/descriptors.py`,
 reading `facts.tsv` and `countries.tsv`, which `build_facts.py` fetches from
 Wikidata. Seventy-two descriptors, every one a function of a coordinate or a
 checkable statement about the place.
@@ -1436,8 +1481,8 @@ behaviour -- 2.60 posted, 12.8% pinned, which is the `neighbourhood exits, 5
 each` row this document already records. Re-check both:
 
 ```
-python3 games/hue-and-cry/descriptors.py --sweep
-python3 games/hue-and-cry/gazetteer.py
+python3 games/carmel-taldiego/descriptors.py --sweep
+python3 games/carmel-taldiego/gazetteer.py
 ```
 
 **Both numbers are the gate now.** A hint that leaves every exit standing
@@ -1592,8 +1637,8 @@ against: they are Carmel, who is the one thing every clause may assume.
 with Orion exempted on the grounds that he is a constellation.
 
 ```
-python3 games/hue-and-cry/hints.py            # read some
-python3 games/hue-and-cry/hints.py --build    # rewrite hints.tsv
+python3 games/carmel-taldiego/hints.py            # read some
+python3 games/carmel-taldiego/hints.py --build    # rewrite hints.tsv
 ```
 
 ## The committed table that destroyed the game
@@ -1654,8 +1699,8 @@ the sentences Carmel posted were the ones she was entitled to post. The
 island's commit-play-reveal, at the size of a game.
 
 ```
-python3 games/hue-and-cry/hints.py --seed <64 hex>            # read some
-python3 games/hue-and-cry/hints.py --seed <64 hex> --backup   # seal it
+python3 games/carmel-taldiego/hints.py --seed <64 hex>            # read some
+python3 games/carmel-taldiego/hints.py --seed <64 hex> --backup   # seal it
 ```
 
 ### The gazetteer is still public, and that is a decision rather than an oversight
@@ -1834,14 +1879,14 @@ into Red Square by the kilometre rule and `Iguazu Falls` is spelled
 silently never used. Nothing else in the repository would have noticed.
 
 ```
-python3 games/hue-and-cry/treasures.py            # read some
-python3 games/hue-and-cry/treasures.py --build    # rewrite treasures.tsv
+python3 games/carmel-taldiego/treasures.py            # read some
+python3 games/carmel-taldiego/treasures.py --build    # rewrite treasures.tsv
 ```
 
 ## Carmel, built — and her win condition was wrong by a factor of six
 
 *Gal, 2026-09-09: "now let's build Carmel Taldiego herself."*
-`games/hue-and-cry/carmel.py` is her policy, stated, because that is what
+`games/carmel-taldiego/carmel.py` is her policy, stated, because that is what
 this document says she is for: *"With a person or an agent playing Carmel,
 ticks-to-arrest confounds how good the searchers were with how good she
 was; against a fixed, stated policy it does not."*
@@ -1926,8 +1971,8 @@ is also why `seen` stays in her policy even though the reference searcher
 can never trigger it.
 
 ```
-python3 games/hue-and-cry/carmel.py             # watch a chase
-python3 games/hue-and-cry/carmel.py --calibrate # the tables above
+python3 games/carmel-taldiego/carmel.py             # watch a chase
+python3 games/carmel-taldiego/carmel.py --calibrate # the tables above
 ```
 
 ## She opens a campaign, and whoever turns up, turns up
@@ -2125,7 +2170,7 @@ worth having in the game rather than an argument against them.
 field wastes exactly zero legs, and a field with one bit of memory wastes at
 most `searchers × liars` however long the campaign runs. Twenty-five
 campaigns cannot tell nine points from noise, so the catch rates live in
-`python3 games/hue-and-cry/field.py` and not in a test.
+`python3 games/carmel-taldiego/field.py` and not in a test.
 
 **Nothing here settles anything.** The manager does not read the lobby, no
 score depends on who said what, and a liar is therefore playing the game
@@ -2290,8 +2335,8 @@ is a real constraint on who can enter rather than a stylistic preference.
 Re-check both halves:
 
 ```
-python3 games/hue-and-cry/rooms_from_names.py     # against the 2.2.x wheel
-python3 -m pytest games/hue-and-cry/test_carmel.py -q -k notice
+python3 games/carmel-taldiego/rooms_from_names.py     # against the 2.2.x wheel
+python3 -m pytest games/carmel-taldiego/test_carmel.py -q -k notice
 ```
 
 The second one is the test the notice exists for: it pulls the salt out of
@@ -3031,7 +3076,7 @@ journey worth making at all"*, and a certainty about a place she is rarely
 in is worth exactly a tiebreak.
 
 **The searcher's real weapon is that her policy is published.** She is a
-stated control — `carmel.py` is in this repository, and `games/hue-and-cry.md`
+stated control — `carmel.py` is in this repository, and `games/carmel-taldiego.md`
 says she is held constant precisely so a searcher's score means something.
 A searcher that probes near candidates first is exploiting `ASSUMED_LAG`,
 not the timestamp. That is legitimate and it is worth saying out loud,
@@ -3158,10 +3203,10 @@ above being decided by whoever draws the picture.
 | **the trail** | where she actually went, after the reveal | nothing. `close_campaign` publishes the seed, and the seed yields all of it |
 | **the routes** | her five exits from every room | the routes-public question, decided |
 
-Built: `games/hue-and-cry/trail_card.py`, which draws the first two and
+Built: `games/carmel-taldiego/trail_card.py`, which draws the first two and
 refuses the third.
 
-    python3 games/hue-and-cry/trail_card.py --out /tmp/trail.svg
+    python3 games/carmel-taldiego/trail_card.py --out /tmp/trail.svg
 
 ### The routes are the decision, and a picture makes it without saying so
 
@@ -3204,7 +3249,7 @@ run, per "a check is green for the reason it names".
 
 Routes are drawn from descriptor kinship, not from distance ("Routes run
 between places that resemble each other"). `python3
-games/hue-and-cry/trail_card.py --survey`, over 150 landmarks and every
+games/carmel-taldiego/trail_card.py --survey`, over 150 landmarks and every
 exit of each:
 
 ```
@@ -3265,7 +3310,34 @@ countries visited   median  4          min     2   max      5
 **A campaign happens inside a box a couple of thousand kilometres across,
 on a map 40,075 km around** -- 2,761 km on this root and 2,111 km on
 another, so the number to carry is the order of magnitude and not the
-digits. A whole-world drawing renders the entire chase as a smudge three
+digits.
+
+*Re-measured 2026-09-10, after "nobody travels, attention is what runs
+out".* Removing the travel clock and making her near-bias a kernel moved
+the distribution, as it was meant to:
+
+```
+                   before #254      after #254
+legs per campaign  median 3 (max 4) median 3 (max 7)
+span               median 2,761 km  median 1,608 km  (max 18,259 -> 6,578)
+countries          median 4 (max 5) median 4 (max 8)
+```
+
+**She is tighter and wanders longer**, and no campaign in 200 now crosses
+a hemisphere. The flight was calibrated against the old numbers, so it was
+worth checking rather than assuming, and it still reads: over 196 legs the
+camera pulls back a median **2.56x**, minimum 2.40x, maximum 16.5x.
+
+The interesting part is where that minimum comes from. `MIN_PULL = 2.4` is
+now the binding constraint on **48%** of legs, against a median leg of 709
+km and a 500 km hold -- so half the flights would show a camera that barely
+moved if that floor were not there. It was added because one 170 km leg
+widened by 1.1x and read as nothing; it is now carrying half the film. A
+floor put in for an edge case became the common case when the policy
+underneath it changed, which is the argument for having written down *why*
+the number exists rather than just what it is.
+
+Re-check: `python3 games/carmel-taldiego/trail_card.py --survey`. A whole-world drawing renders the entire chase as a smudge three
 pixels wide, which is why the card is the box at a readable scale with the
 world as a locator inset.
 
@@ -3547,8 +3619,8 @@ All three are done. The first two turned out to be one question with a
 sharp edge, and the third turns the card into a page, which changes which
 of `CLAUDE.md`'s rules govern it.
 
-    python3 games/hue-and-cry/trail_flight.py --out /tmp/flight.html
-    python3 games/hue-and-cry/trail_card.py   --out /tmp/trail.svg
+    python3 games/carmel-taldiego/trail_flight.py --out /tmp/flight.html
+    python3 games/carmel-taldiego/trail_card.py   --out /tmp/trail.svg
 
 ### A public table is not a plotted map
 
@@ -4098,7 +4170,7 @@ supposed to cause it.
 *Gal, 2026-09-09: "I was actually thinking about actually seeing the real
 map or satelite, not a must."*
 
-    python3 games/hue-and-cry/trail_card.py --imagery relief --out /tmp/t.svg
+    python3 games/carmel-taldiego/trail_card.py --imagery relief --out /tmp/t.svg
 
 **The disclosure argument that ruled out tiles was an argument about
 labels wearing an argument about tiles.** "A real map that names places
@@ -4224,6 +4296,51 @@ this document should not make on its own:
 
 Not decided.
 
+## It is online, and it publishes the first six campaigns rather than the best six
+
+*Gal, 2026-09-10: "make it available online as a github page."*
+
+    https://gald33.github.io/ai-lab/carmel-taldiego/
+
+`build_site.py` writes the tree and `pages.yml` stages it on every push
+that touches this game. Six campaigns, each as a still card and a flight
+you can watch.
+
+### The sample is fixed and the page says so
+
+The seeds are `sha256(SEED_ROOT || i)` for i in 0..6, and **whatever those
+produce is what goes up** -- the two-room arrest, the six-room wander, the
+dull ones. Publishing the six prettiest would be choosing a population
+after seeing the results, which is the thing "Process" forbids for a
+measurement and which is no more honest on a page than in a table. Every
+seed is printed under its card so a reader can re-run it and get the same
+trail.
+
+Three tests hold that, and all three were made to fail first: one pins the
+seeds to the hash so there is nowhere for a thumb to go, one fails if any
+campaign that ran is missing from the index, and one fails if an outcome is
+relabelled. Dropping the caught campaign turns two of them red.
+
+### Why `/carmel-taldiego/` and not the root
+
+The root of that site redirects to the island, decided 2026-09-07, and
+`pages.yml` records the reason: the root is cited in run records as the
+island's address, and a record is not edited to match a later decision.
+"One game owning the whole site is a site that has to be rearranged the
+first time a second game wants a page" is exactly this situation arriving,
+so this game takes its own path and the island's door is untouched.
+
+### The published cards carry imagery, and a failure to fetch it fails the deploy
+
+NASA GIBS is public domain, so redistributing tiles inside a published page
+is what they are for -- and a page whose whole point is *look at the real
+world* should not ship the schematic one. If GIBS is unreachable the build
+stops rather than quietly publishing vector cards, which is
+`imagery.Unavailable` doing the job it exists for: a page that silently
+drew something else would look completely fine.
+
+Six campaigns with imagery is 3.3 MB.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
@@ -4238,7 +4355,7 @@ grammar before its pages.
    commitments open, was the arrest right, what was taken. No hub, no
    network, no model, no cost — and it makes this document's central claim
    (deterministic judging) something you can run instead of something I
-   asserted. **Started**: `games/hue-and-cry/worked_example.py` holds an
+   asserted. **Started**: `games/carmel-taldiego/worked_example.py` holds an
    eight-landmark gazetteer with routes and the bounds computed off it. The
    settler itself is not written.
 2. **The reference searcher**, against the settler, on seeded gazetteers.

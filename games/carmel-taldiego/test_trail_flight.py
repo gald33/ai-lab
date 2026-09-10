@@ -1,6 +1,6 @@
 """What the flight must do, watched in a real browser.
 
-    python3 -m pytest games/hue-and-cry/test_trail_flight.py -q
+    python3 -m pytest games/carmel-taldiego/test_trail_flight.py -q
 
 `CLAUDE.md`: *"A page's behaviour is checked in a browser, or it is not
 checked"* -- and everything this page is for is behaviour. A camera that
@@ -51,7 +51,7 @@ def _tightest(seeds: list[bytes]) -> bytes:
     **Chosen by span rather than named**, because a seed's campaign shape
     is not stable. `CAUGHT` was the local campaign when this file was
     written; Carmel's decisions gained their randomness the same day
-    (`games/hue-and-cry.md`, "Randomness in all three of her decisions")
+    (`games/carmel-taldiego.md`, "Randomness in all three of her decisions")
     and her median hop went from 653 km to 2,982, so the seed that used to
     stay in Europe now crosses the planet. The claim under test is about a
     campaign that covers little ground, so the test asks for one of those

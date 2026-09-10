@@ -58,6 +58,11 @@ on:
       # accident, on somebody else's push -- the same silent-dead-link
       # failure the hand's pages had above.
       - site/**
+      # Carmel Taldiego's pages, generated at deploy time from six fixed
+      # seeds. Without this line the game's page deploys only when somebody
+      # else's push happens to trigger the workflow -- the same silent
+      # staleness the front door had above.
+      - games/carmel-taldiego/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -168,6 +173,22 @@ jobs:
       # workflow is a page no test can load and no browser check can drive.
       # `site/tests/` drives this one. Its stylesheet is `island/tokens.css`,
       # already staged above, so there is nothing else to copy.
+      # Carmel Taldiego, under a path of its own: the root of this site
+      # redirects to the island and is cited in run records as the island's
+      # address, so a second game takes `/carmel-taldiego/` rather than
+      # rearranging what those records point at.
+      #
+      # `--imagery` fetches NASA GIBS tiles at build time and embeds them.
+      # They are public domain, so redistributing them inside the page is
+      # what they are for -- and a page whose point is "look at the real
+      # world" should not ship the schematic one. If GIBS is unreachable the
+      # build FAILS here rather than quietly publishing vector cards, which
+      # is `imagery.Unavailable` doing its job: a page that silently drew
+      # something else would look completely fine.
+      - name: Stage Carmel Taldiego
+        run: python ../../games/carmel-taldiego/build_site.py
+             --out "$RUNNER_TEMP/site/carmel-taldiego" --imagery
+
       - name: Stage the front door
         run: cp ../../site/index.html "$RUNNER_TEMP/site/"
 

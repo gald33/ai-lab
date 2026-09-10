@@ -12,9 +12,9 @@ The consequence, which is this file's reason for existing: harvesting cost
 is also linear in N, so the defence against a reconstructed matrix is simply
 a bigger one -- and a bigger one is exactly what linear generation buys. The
 permutation trick this document previously floated is withdrawn; see
-`games/hue-and-cry.md`, "The harvesting gap".
+`games/carmel-taldiego.md`, "The harvesting gap".
 
-    python3 games/hue-and-cry/scale.py
+    python3 games/carmel-taldiego/scale.py
 """
 
 #: Hints selected per landmark. The "3" in Gal's "N*3".

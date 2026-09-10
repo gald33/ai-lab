@@ -4,7 +4,7 @@
 the committed file and is. What it guards is not "the data is nice" but the
 four properties the game would silently misbehave without.
 
-    python3 -m pytest games/hue-and-cry/test_landmarks.py -q
+    python3 -m pytest games/carmel-taldiego/test_landmarks.py -q
 """
 
 import math

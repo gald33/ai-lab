@@ -1,6 +1,6 @@
 """Rebuild `basemap.json` -- the real world, at the size a card can carry.
 
-    python3 games/hue-and-cry/build_basemap.py
+    python3 games/carmel-taldiego/build_basemap.py
 
 Gal, 2026-09-09: *"can we overlay it on the real world map? maybe from
 google maps or a free service?"* -- and, in the same breath, *"don't

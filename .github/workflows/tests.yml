@@ -29,7 +29,7 @@ jobs:
       # real failure for long enough to be found by accident: a test asserting
       # every recorded round was four-good, against a ledger that had since
       # grown four five-good rounds.
-      # `games/hue-and-cry` joined this line with its first test and not
+      # `games/carmel-taldiego` joined this line with its first test and not
       # afterwards, because a test file outside every path listed here is a
       # test file nothing runs -- the same shape as the `viewer/tests`
       # omission above, found the same way and worth only one paragraph
@@ -50,7 +50,7 @@ jobs:
       - run: >
           python -m pytest
           games/island/tests
-          games/hue-and-cry
+          games/carmel-taldiego
           experiments/does-a-content-free-protocol-help/tests
           experiments/does-a-content-free-protocol-help/viewer/tests
           experiments/does-a-content-free-protocol-help/experiment/tests
@@ -191,14 +191,14 @@ jobs:
       # Carmel's flight, which is the only page in the repo whose whole
       # point is motion: the camera pulls back while she is in the air and
       # closes on the room she lands in. A markup assertion cannot see a
-      # camera move, and `games/hue-and-cry.md` ("Three maps") turns on the
+      # camera move, and `games/carmel-taldiego.md` ("Three maps") turns on the
       # page disclosing no landmark but the ones she visited -- which a
       # zoomed-out frame could break without a single tag changing.
       #
       # `HUE_REQUIRE_BROWSER` is `ISLAND_REQUIRE_BROWSER`'s counterpart for
       # this game, and for the same reason: the `island` job collects these
       # tests and skips them, and a skip and a pass are the same tick.
-      - run: python -m pytest games/hue-and-cry/test_trail_flight.py -q
+      - run: python -m pytest games/carmel-taldiego/test_trail_flight.py -q
         env:
           HUE_REQUIRE_BROWSER: "1"
       # The hand's two pages and the grammar its buttons compose. Both are

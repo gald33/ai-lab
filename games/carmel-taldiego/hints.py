@@ -6,8 +6,8 @@ report/sighting/rumor, and such, so we get a whole sentence"*, and *"we
 'sell' on human interacting about it in social media, it must evoke
 feelings"*.
 
-    python3 games/hue-and-cry/hints.py --seed <64 hex>            # read some
-    python3 games/hue-and-cry/hints.py --seed <64 hex> --backup   # write the blob
+    python3 games/carmel-taldiego/hints.py --seed <64 hex>            # read some
+    python3 games/carmel-taldiego/hints.py --seed <64 hex> --backup   # write the blob
 
 THIS FILE WAS WRONG, AND THE CORRECTION IS THE POINT OF IT
 ==========================================================
@@ -54,7 +54,7 @@ blob is written before play from a seed nobody has, and the key is derived
 from that same seed, so publishing the seed at the reveal lets anybody
 decrypt the blob and check that the sentences Carmel actually posted are
 the ones the seed says she was entitled to post. That is the island's
-commit-play-reveal pattern, and it is the thing `games/hue-and-cry.md`
+commit-play-reveal pattern, and it is the thing `games/carmel-taldiego.md`
 means by "a manager nobody has to trust".
 
 WHY SIX AND NOT THREE. A landmark carries six candidate descriptors and

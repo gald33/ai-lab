@@ -4,7 +4,7 @@ A data file nobody can regenerate is a data file nobody can check, and this
 one carries three hand corrections that would otherwise live only in a
 commit message. Running this reproduces the thousand exactly:
 
-    python3 games/hue-and-cry/build_landmarks.py --out games/hue-and-cry/landmarks.tsv
+    python3 games/carmel-taldiego/build_landmarks.py --out games/carmel-taldiego/landmarks.tsv
 
 It needs the network (Wikidata's query service) and takes a couple of
 minutes. It is not run by CI; `landmarks.py` reads the committed file.
@@ -367,7 +367,7 @@ def write(kept: dict, out) -> None:
     out.write("# 1,000 known or interesting landmarks, from Wikidata (CC0) --\n"
               "# UNESCO World Heritage Sites (wdt:P1435 wd:Q9259), named icons,"
               " and\n# natural features. Selection and use:"
-              " games/hue-and-cry/landmarks.py\n"
+              " games/carmel-taldiego/landmarks.py\n"
               "# name\tcountry\tlat\tlon\tsource\tsitelinks\tqid\n")
     rows = sorted(kept.items(), key=lambda kv: (-kv[1]["sl"], kv[0]))
     for name, v in rows:

@@ -5,10 +5,10 @@ descriptor half: it reads `landmarks.tsv`, `facts.tsv` and `countries.tsv`
 and returns, for every landmark, the set of things a person standing there
 could truthfully say about it.
 
-    python3 games/hue-and-cry/descriptors.py
+    python3 games/carmel-taldiego/descriptors.py
 
 TWO RULES, AND THEY PULL AGAINST EACH OTHER. Both are already paid for in
-`games/hue-and-cry.md` and neither is negotiable:
+`games/carmel-taldiego.md` and neither is negotiable:
 
 1. **Every descriptor must be true of its landmark.** The scar is
    `Reykjavik: desert` from a uniformly drawn matrix -- the line somebody
@@ -267,10 +267,10 @@ CANDIDATES = 6
 #:
 #: 200 is chosen because it lands on the twenty-landmark map's own measured
 #: behaviour -- 2.60 posted and 12.8% pinned, which is the number
-#: `games/hue-and-cry.md` records for `neighbourhood exits, 5 each`. Both
+#: `games/carmel-taldiego.md` records for `neighbourhood exits, 5 each`. Both
 #: numbers matter and they pull opposite ways: a hint that leaves all five
 #: exits standing says nothing, and one that leaves a single exit hands over
-#: her position. Reproduce with `python3 games/hue-and-cry/descriptors.py
+#: her position. Reproduce with `python3 games/carmel-taldiego/descriptors.py
 #: --sweep`.
 #: SUPERSEDED IN PLAY, 2026-09-09 ("we have no routes"): the band this
 #: sized no longer exists, and `sweep` below is the record of how it was

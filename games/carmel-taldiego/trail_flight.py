@@ -1,6 +1,6 @@
 """The trail, flown: close on each room, wide while she is in the air.
 
-    python3 games/hue-and-cry/trail_flight.py --out /tmp/flight.html
+    python3 games/carmel-taldiego/trail_flight.py --out /tmp/flight.html
 
 Gal, 2026-09-09: *"zoom in when arrive and animate zoom out in flight"*.
 That is the oldest move in the genre and it is not decoration here -- it is
@@ -34,7 +34,7 @@ about.
 
 THE SAME REFUSALS AS THE STILL CARD, AND ONE MORE THAT MOTION ADDS.
 It draws no exits and names no landmark but the trail's own -- see
-`trail_card.py` and `games/hue-and-cry.md`, "Three maps". Motion adds a
+`trail_card.py` and `games/carmel-taldiego.md`, "Three maps". Motion adds a
 way to leak that a still cannot: a camera that pulls back far enough, or
 lingers, can show a searcher the neighbourhood to look in. So the basemap
 carries no place names at any zoom, and the geometry embedded in the page

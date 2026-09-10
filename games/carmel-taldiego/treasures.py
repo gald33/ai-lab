@@ -4,9 +4,9 @@ Step three (Gal, 2026-09-08: "add coordinates, treasures, and other
 stats"), and the steer that shapes it: *"the treasure can be absurdly
 impossible to steal like Carmen likes in some places"*.
 
-    python3 games/hue-and-cry/treasures.py            # read some
-    python3 games/hue-and-cry/treasures.py --open     # unseal, to edit them
-    python3 games/hue-and-cry/treasures.py --seal     # re-encrypt
+    python3 games/carmel-taldiego/treasures.py            # read some
+    python3 games/carmel-taldiego/treasures.py --open     # unseal, to edit them
+    python3 games/carmel-taldiego/treasures.py --seal     # re-encrypt
 
 WHY THIS IS SEALED
 ==================
@@ -60,8 +60,8 @@ A famous landmark carries rarer descriptors, so the rooms worth the most
 are the rooms where her hint hides her least. Nobody designed that; it
 falls out of a map of real places, which is the second time real geography
 has supplied a balance this game would otherwise have had to fake (see
-`games/hue-and-cry.md`, "Routes run between places that resemble each
-other"). Re-check with `python3 games/hue-and-cry/treasures.py`.
+`games/carmel-taldiego.md`, "Routes run between places that resemble each
+other"). Re-check with `python3 games/carmel-taldiego/treasures.py`.
 
 WHY THE NAMES MAY SAY WHERE SHE IS, when a hint may not. A treasure is not
 a clue. It is written on the room's own board at setup and settles into the
@@ -92,7 +92,7 @@ ABSURD_HEADER = (
     "# SECRET and is gitignored: the prose names the place implicitly --\n"
     "# mapping cannot be published even as an unordered list: each line\n"
     "# reads like the place it belongs to.\n"
-    "# Only games/hue-and-cry/treasures.enc may be committed.\n"
+    "# Only games/carmel-taldiego/treasures.enc may be committed.\n"
     "# landmark\ttreasure\n")
 
 #: Reputation runs 5..80 by fame rank, and an impossible treasure adds 20 on

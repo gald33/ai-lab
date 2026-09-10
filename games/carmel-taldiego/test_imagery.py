@@ -1,6 +1,6 @@
 """What the photograph must and must not do.
 
-    python3 -m pytest games/hue-and-cry/test_imagery.py -q
+    python3 -m pytest games/carmel-taldiego/test_imagery.py -q
 
 Nothing here touches the network, and that is **enforced rather than
 intended**. `no_network` below replaces `urllib.request.urlopen` for every
@@ -107,7 +107,7 @@ def test_no_layer_carries_a_name():
     """THE WHOLE REASON IMAGERY IS ALLOWED WHERE TILES WERE NOT. GIBS serves
     `Reference_Labels_15m` and `Reference_Features_15m` alongside the
     photographs, and either one would print the names of exactly the famous
-    places this game hides -- which is the objection `games/hue-and-cry.md`
+    places this game hides -- which is the objection `games/carmel-taldiego.md`
     raised against Google's tiles and that a photograph escapes.
 
     So the escape is asserted rather than assumed."""

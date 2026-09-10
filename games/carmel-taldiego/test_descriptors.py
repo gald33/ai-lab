@@ -3,7 +3,7 @@
 Four of these exist because something was already wrong and was invisible
 until it was measured. They are not style checks.
 
-    python3 -m pytest games/hue-and-cry/test_descriptors.py -q
+    python3 -m pytest games/carmel-taldiego/test_descriptors.py -q
 """
 
 import sys

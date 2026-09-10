@@ -1,6 +1,6 @@
 """Carmel Taldiego: where she goes, what she takes, and what she says about it.
 
-She is an NPC in her own process, and `games/hue-and-cry.md` is explicit
+She is an NPC in her own process, and `games/carmel-taldiego.md` is explicit
 about why that matters: *"With a person or an agent playing Carmel,
 ticks-to-arrest confounds how good the searchers were with how good she was;
 against a fixed, stated policy it does not. The adversary held constant is
@@ -10,8 +10,8 @@ the control the 008 measurement needs."*
 a pure function of what she can see, with the reasoning next to it, and none
 of it reads anything a searcher could not also read.
 
-    python3 games/hue-and-cry/carmel.py            # watch a chase
-    python3 games/hue-and-cry/carmel.py --calibrate
+    python3 games/carmel-taldiego/carmel.py            # watch a chase
+    python3 games/carmel-taldiego/carmel.py --calibrate
 
 WHAT SHE DECIDES, WHICH IS THREE THINGS
 =======================================
@@ -44,7 +44,7 @@ own clock, and there is no bell.
 THE NUMBERS BELOW ARE GUESSES AND ARE MARKED AS SUCH
 ====================================================
 
-`games/hue-and-cry.md` says of her win condition: *"What is not settled
+`games/carmel-taldiego.md` says of her win condition: *"What is not settled
 here: the values, the threshold, and whether the threshold is fixed or
 scales with how many are hunting. Those are numbers to calibrate against a
 played game, not decisions to invent now."* `--calibrate` is the beginning
@@ -576,7 +576,7 @@ class Map:
     held `band()` and `exits()` -- a five-place reachable set per landmark,
     drawn from the published salt out of the 200 nearest look-alikes -- and
     both are gone. Nothing constrains where she goes next. See
-    `games/hue-and-cry.md`, "There are no routes", for what that costs and
+    `games/carmel-taldiego.md`, "There are no routes", for what that costs and
     what it buys; the short version is the measurement that preceded the
     decision:
 
@@ -720,7 +720,7 @@ class Carmel:
     def choose_hint(self, destination: str) -> str:
         """The least informative true thing she can say about where she went.
 
-        `games/hue-and-cry.md`: *"the Fugitive's strategy is now sharp and
+        `games/carmel-taldiego.md`: *"the Fugitive's strategy is now sharp and
         stateable: post the least informative true fact, which is a real
         optimisation against a real posterior."* Least informative means
         covering the most of the set a reader can narrow her to -- and with
@@ -890,7 +890,7 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
 
     The salt goes in the clear and the seed does not. Publishing the salt is
     what lets a searcher think of a name and go to it, which
-    `games/hue-and-cry.md` says the game needs -- without it "you can follow
+    `games/carmel-taldiego.md` says the game needs -- without it "you can follow
     her but never get ahead, which is too weak". The seed stays hers until
     the end, so the hints and the treasures stay sealed.
     """
