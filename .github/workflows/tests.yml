@@ -4,7 +4,7 @@
 # checked when all changes are for a different game?"* -- which is the right
 # question and the name was the only reason to ask it. The job was called
 # `island` when the island was the only thing in the repo; it has since
-# collected `games/hue-and-cry`, four experiments' suites and the viewer's,
+# collected `games/carmel-taldiego`, four experiments' suites and the viewer's,
 # and it is what runs on a pull request that touches none of the island.
 #
 # **A job name is read far more often than a job.** This one appears on every
