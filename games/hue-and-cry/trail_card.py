@@ -435,9 +435,18 @@ def kept(result: dict) -> set[int]:
     claiming she had emptied the room it excludes.
 
     So the last room of a caught campaign is a theft interrupted.
+
+    THE RULE ITSELF NOW LIVES IN `carmel.interrupted_theft`, which is where
+    the argument for why it may take the last leg without searching for it
+    is written. It moved there when `close_campaign` was fixed to agree
+    with this file (`games/hue-and-cry.md`, "The room she was caught in is
+    counted apart and named"): the card and the closing post must count the
+    same rooms, and two copies of one rule is how they drift apart again.
+    This function is the shape the card wants -- indices, from a whole
+    result -- over that predicate, and nothing more.
     """
     legs = result["moves"]
-    interrupted = len(legs) - 1 if result["outcome"] == "caught" else -1
+    interrupted = C.interrupted_theft(result["outcome"], legs)
     return {i for i, leg in enumerate(legs)
             if leg["dwell"] and i != interrupted}
 

@@ -57,6 +57,7 @@ import hashlib
 import math
 import os
 import sys
+import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -725,6 +726,35 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     ])
 
 
+def interrupted_theft(outcome: str, trail: list[dict]) -> int | None:
+    """The index of the leg she was caught mid-theft in, or None.
+
+    `chase` returns `trail[caught_on - 1]["reputation"]`, her total BEFORE
+    the room she was caught in, while that leg's own `dwell` and
+    `reputation` record a theft she *started*. Anything counting rooms she
+    emptied, or printing a figure beside that count, must drop this index
+    or it will disagree with the scoreboard on the same page -- which is
+    how the bug in `close_campaign` was found, by drawing the trail
+    (https://github.com/gald33/ai-lab/pull/250).
+
+    WHY THE `dwell` GUARD IS LOAD-BEARING, which it did not used to be.
+    This first read "the last leg of a caught campaign, always", because
+    `pursue` then caught her only inside `arrived < clock <= leaves` and a
+    leg with no dwell had an empty window. #249 replaced that rule:
+    **sharing a room with her is the win, however you came to be in it**
+    (`games/hue-and-cry.md`, "Sharing a room with her is the win"), so the
+    test is now `clock <= leg["leaves"]` and a searcher that beats her to a
+    room and waits catches her there. A caught campaign can therefore end
+    in a room she never dwelt in -- she walked into somebody already
+    standing in it -- and that is a catch with **no interrupted theft**:
+    nothing was taken, nothing is owed to the count, and there is nothing
+    for her to name. Hence None, rather than the last index unconditionally.
+    """
+    if outcome != "caught" or not trail or not trail[-1]["dwell"]:
+        return None
+    return len(trail) - 1
+
+
 def close_campaign(seed: bytes, outcome: str, reputation: int,
                    trail: list[dict]) -> str:
     """What she leaves in the lobby when it is over.
@@ -741,14 +771,45 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
     instead is that a campaign nobody can check is a campaign nobody counts,
     which is a weaker guarantee than the design once claimed for it and an
     honest one.
+
+    WHAT SHE SAYS ABOUT THE ROOM SHE WAS CAUGHT IN, which is a design
+    question and not a rounding error -- `games/hue-and-cry.md`, "The room
+    she was caught in is counted apart and named". She counts it apart and
+    names it. The post used to fold it into the emptied count while the
+    reputation figure beside it excluded it, so the two halves of one
+    sentence disagreed; dropping it silently would have made them agree and
+    left a reader who re-derives the trail from the published seed unable to
+    tell which of the two counts was wrong.
+
+    She does NOT say who walked in on whom. Since #249 a searcher may beat
+    her to a room and wait, so "you walked in on me" -- which this sentence
+    said first -- is false exactly when the searcher played it best. What
+    the trail supports is that they shared the room while she was working,
+    and that is all she claims.
     """
-    took = [leg["to"] for leg in trail if leg["dwell"]]
+    caught_in = interrupted_theft(outcome, trail)
+    took = [leg["to"] for i, leg in enumerate(trail)
+            if leg["dwell"] and i != caught_in]
     lines = [
         f"It is over. {outcome}.",
         "",
-        f"{len(trail)} rooms, {len(took)} of them emptied,"
+        f"{len(trail)} room{'' if len(trail) == 1 else 's'},"
+        f" {len(took)} of them emptied,"
         f" {reputation} reputation.",
         "",
+    ]
+    if caught_in is not None:
+        lost = trail[caught_in]["reputation"] - (
+            trail[caught_in - 1]["reputation"] if caught_in else 0)
+        # Wrapped rather than hand-broken because the landmark's name is as
+        # long as it is, and a ragged paragraph reads as a slip in a post
+        # whose whole job is to be believed.
+        lines += textwrap.wrap(
+            f"You were in {trail[caught_in]['to']} with me while I was"
+            " still working, so it is not one of the emptied rooms. It is"
+            f" {lost} reputation I had my hands on and do not get to"
+            " count.", width=68) + [""]
+    lines += [
         "The seed, so you can check every word of it -- which rooms I could",
         "have gone to, which hints I was allowed to post, and what was in",
         "each room before I got there:",
