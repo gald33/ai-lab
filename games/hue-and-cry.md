@@ -3717,6 +3717,382 @@ the *data*: the page embeds only the stops she made and coastlines, and a
 test walks every string in the embedded JSON to prove it. A reader who
 opens the source finds geography, not a gazetteer.
 
+## Her packing grows faster than her journey
+
+*Gal, 2026-09-10: "make her distance to time super linear."*
+
+### Which mapping, because the other reading breaks the chase
+
+**The prep, not the travel.** Travel is shared physics: the searcher flies
+the same distance in the same time, which is why it cancels exactly and why
+the gap closes only by what she does standing still. A Carmel whose
+*travel* were superlinear while her pursuers' stayed linear would be outrun
+on every long leg by an arithmetic nobody at the table could state, and
+`test_the_follower_closes_by_everything_she_does_standing_still` would have
+to go. Prep is hers alone by construction, so bending it bends only her
+side and the cancelling survives untouched.
+
+### The shape
+
+```
+prep = PREP × PIVOT × (t / PIVOT) ** PREP_EXPONENT
+```
+
+`PREP_PIVOT` (10 hours, about 4,000 km) is the hop at which this charges
+exactly what the linear rule charged, so **the exponent is the only thing
+that changed and the middle of the range did not move**:
+
+```
+   200 km   travel  0.5h   linear prep  0.2h   superlinear  0.0h
+ 1,000 km   travel  2.5h   linear prep  1.2h   superlinear  0.5h
+ 4,000 km   travel 10.0h   linear prep  5.0h   superlinear  5.0h   ← pivot
+ 8,000 km   travel 20.0h   linear prep 10.0h   superlinear 15.2h
+16,000 km   travel 40.0h   linear prep 20.0h   superlinear 45.9h
+```
+
+Below the pivot she gets a discount; above it a penalty that grows without
+bound. `PREP_EXPONENT = 1.6` and the 10-hour pivot are guesses.
+
+### What it was fixing, which the previous section had not measured
+
+**`PREP` and `WHIM` shipped a day apart and were never measured together.**
+Each sweep held the other at its pre-change value, so the composition was
+never looked at. Looked at (40 campaigns per row, 20-leg limit, linear
+prep):
+
+```
+ PREP  WHIM    c@1    c@3   c@10
+  0.5  0.35     0%     0%     2%
+  1.0  0.35     2%     2%     8%
+  2.0  0.35     5%    10%    15%
+```
+
+At the shipped defaults **the searchers essentially never win** — 1 catch
+in 60 against ten of them — and even quadrupling `PREP` only reaches 15%.
+The `PREP` table that reported 38% at ten searchers was measured against an
+argmax Carmel; the `WHIM` table that reported the collapse was measured at
+`PREP = 0.5`. Both were honest and neither described the game that shipped.
+
+The mechanism is the one the linear rule left open: her randomness has her
+taking ~3,000 km hops, and **linear prep charged the same per kilometre for
+a hop across the planet as for a taxi across town.** Distance became a cost
+she paid in instalments, which is not what a fugitive's distance costs —
+papers for the next country over are an afternoon and papers for the far
+side of the world are a different kind of problem.
+
+### What the exponent bought, and what it did not
+
+```
+ exp    c@1    c@3   c@10   med hop km
+ 1.0     0%     0%     2%        2,665
+ 1.3     0%     0%     5%        2,133
+ 1.6     0%     2%     8%        2,187
+ 2.0     0%     2%     8%        2,022
+```
+
+**Four times the capture and still a rout.** 8% at ten searchers is not a
+contest, and the exponent is plainly not the thing standing between this
+game and one. So the next question is what is — and it is not the clock.
+
+### The game is deduction-bound, not clock-bound
+
+Measured over 240 legs: where does her actual room sit in the order a
+searcher probes?
+
+```
+candidates the hint allows        median 158
+her room's rank in the probe order  median  46      p10 7    p90 120
+found on the first probe                     2%
+found in the first five                      9%
+```
+
+Her hint is true of her room every time — the deduction is sound, and
+nearest-first genuinely helps (median rank 46 against the 79 a coin would
+give, which is the same finding as "chasing the guaranteed interception
+first is a trap", from the other side). **It helps nowhere near enough.**
+A searcher walks a median of 46 wrong rooms, each costing a leg of travel,
+while she needs one leg to move.
+
+That is why every timing dial has disappointed. `PREP`, `PREP_EXPONENT`,
+`DIFFICULTY` and the threshold all move *when* she is catchable; none of
+them moves whether anybody is standing in the right room. A dial that
+buys 2% → 8% is doing what it can with the 2%-of-first-probes it is
+handed.
+
+> **The binding constraint is the size of the candidate set, and the only
+> thing in this design that divides it is the lobby.**
+
+One searcher walks 46 rooms. Fifty searchers who split the 158 between them
+walk three each — and fifty who never speak walk the same 46 in the same
+order, which is exactly what the `cooperate` measurement found and what
+"There are no routes" recorded as needing *a rota plus a channel*. The
+channel is the unbuilt piece, and it is not one of several things worth
+doing next; it is the one that decides whether this is a game.
+
+**So the threshold recalibration is deferred, on purpose.** Setting a
+number that governs how long a campaign runs is premature while the
+campaign's outcome is decided before the clock matters. `REPUTATION_TO_WIN`
+stays at 140 and stays marked stale.
+
+## Nobody travels, and attention is the thing that runs out
+
+*Gal, 2026-09-10, three sentences that turn out to be one design: "so she
+is biased towards near"; "let the final decision be a random from a
+distribution"; "travel time is zero because it cancelled out with the
+player's. And for the player it is zero in real time."*
+
+### The third one is the correction, and its second half had never been said
+
+That travel cancels was already written down. **That a player does not
+travel at all was not.** In the game as played a searcher does not journey
+to a room — it hands a token to `join_room` and it is there. Every hour
+this model charged it for a flight was an hour it was never going to spend,
+and the whole "a wrong guess costs a leg" arithmetic was charging a cost
+that does not exist.
+
+So the clock now holds her prep and her dwell and nothing else, and
+`distance_km` is the map's only distance rather than anybody's duration.
+
+### Which took the last cost off a wrong guess, and needed replacing
+
+A searcher that pays nothing to enter a room can enter **every** room the
+hint allows — sit in all 158 and win every campaign. Removing travel does
+not make the game harder for her, it ends it.
+
+What is actually scarce is not the searcher's movement but its
+**attention**. A real agent can hold and watch some number of rooms, read
+some number of boards, and no more. So `WATCH = 6`: a searcher picks that
+many candidates and waits in them, and that is its whole move.
+
+**This is the parameter three sections of measurement were pointing at.**
+"The game is deduction-bound, not clock-bound" ended by saying the binding
+constraint was the size of the candidate set and the only thing that
+divides it is the lobby. Coverage is now literally `WATCH × searchers`
+against about 158 candidates, so that sentence stopped being a diagnosis
+and became the scoreboard:
+
+```
+ WATCH  turnout   alone  dividing
+     3        1     48%       48%
+     3        3     62%       82%
+     3       10     68%      100%
+     3       25     70%      100%
+```
+
+**Alone, turnout barely helps** — 48% to 70% from one searcher to
+twenty-five — because everybody watches the same nearest handful. **Divided,
+ten searchers never lose.** The whole distance between those columns is
+talk, and the lobby is where it happens.
+
+### `WATCH = 2`, and the sweep chose it on a criterion that is not balance
+
+```
+ WATCH   solo  3 alone  3 split  10 alone  10 split
+     1    28%      32%      50%       35%       85%
+     2    38%      50%      78%       55%       95%
+     3    48%      62%      82%       68%      100%
+     4    57%      72%      90%       80%      100%
+     6    70%      82%      98%       90%      100%
+    12    82%      92%     100%       95%      100%
+```
+
+The first guess was 6, and it is wrong in a way worth recording: **it does
+not make the game easy, it makes it unmeasurable.** The quantity this
+experiment exists to see is the distance between `alone` and `split` — what
+talking is worth — and that gap collapses as coverage stops being scarce:
+
+```
+ WATCH        1     2     3     4     6    12
+ premium    +50   +40   +32   +20   +10    +5      (at ten searchers)
+```
+
+A field that can watch everything has nothing to divide. So the conditions,
+in the order they bind:
+
+1. **No column pinned at 100%.** A saturated cell cannot show a better
+   field getting better — the ceiling version of the warning already
+   written under `next_difficulty`, that a number held constant by the
+   design is indistinguishable from a field that never improved. That
+   rules out 3 and up.
+2. **The coordination premium is the biggest thing on the board** — +40
+   points at ten searchers, against +5 at twelve.
+3. **A lone searcher is an underdog**, 38%, which is what a fugitive with
+   a thousand rooms should make of one person.
+
+1 satisfies all three and is rejected for a fourth reason: at one room
+there is no question of *how many* to watch, only which, and half the
+decision disappears.
+
+**This is the first parameter in this game chosen against the measurement
+rather than against a feeling about difficulty**, and the criterion
+generalises: a dial that pushes any cell to 0% or 100% has stopped being a
+dial and started being a wall.
+
+Compare what the same field bought under travel: 8% at ten searchers, and
+`cooperate` made it *worse* because a searcher whose share missed her room
+gave up. Both of those were artefacts of a journey nobody makes.
+
+### And the other two sentences are what make the watching a skill
+
+*"She is biased towards near"* — she is, by policy and on purpose:
+`choose_destination` divides by the prep a journey costs and prep is
+superlinear in distance. That bias is public, and it is the **only** public
+term in her score, since reputation and cover are sealed. So the nearest
+candidates are the likeliest and a searcher watches those first.
+
+*"Let the final decision be a random from a distribution"* — which keeps it
+a bet rather than a deduction. Her destination is a draw from that
+distribution, not its argmax, so near is where to look and never where she
+must be. Watching is a wager on a shape she publishes and a roll she does
+not.
+
+### Two tests went vacuous the moment travel hit zero
+
+`test_a_far_move_costs_her_and_costs_the_searcher_nothing` scanned
+`pursue` for `clock +=` lines and asserted none called `prep_hours`. With
+no travel there is no `clock +=` line, so the loop ran zero times and the
+test went green having checked nothing — `CLAUDE.md`'s "absence drawn as a
+pass", **the third time this file has produced it**. It asserts behaviour
+now: a searcher's lag is untouched by how far she goes.
+
+`test_the_follower_closes_by_everything_she_does_standing_still` became
+`test_the_clock_is_her_standing_still_and_nothing_else`, which is the third
+time this one assertion has been rewritten — travel closes the gap, then
+the dwell alone, then prep and dwell while travel cancels, and now there is
+no travel term left to cancel.
+
+## She is biased towards near, and the decision is a draw from a distribution
+
+*Gal, 2026-09-09: "so she is biased towards near", "let the final decision
+be a random from a distribution."*
+
+**It was answered with a claim instead of a measurement.** The mechanism was
+there — a distance term, and a sample rather than an argmax — so it was
+reported as done. Nobody had asked how *strong* the distance term was.
+
+> *Corrected 2026-09-10.* This section first said Gal had asked three times,
+> "which is the measure of how badly it was being heard", and built an
+> argument on that. He had not: his client was stuck and resent the same
+> message. **The repetition was noise, and reading intent into it was a
+> mistake** — the sort that is easy to make because a tidy story about why
+> something was missed feels like understanding it.
+>
+> The measurement below is unaffected and is the part that mattered. It also
+> should not have taken a prompt at all, let alone an imagined third one.
+
+### It was not a bias, it was a rounding error with a direction
+
+Her destination's rank among the thousand rooms, nearest first, over 240
+legs:
+
+```
+                     before      coin
+median rank             206       499
+in the nearest 10      2.9%
+in the nearest 50     13.8%
+in the nearest 200    49.2%
+median hop         1,977 km
+```
+
+A 2.4× lean. Half her destinations lay outside the two hundred nearest
+rooms.
+
+**The cause was the shape, not the constant.** Distance entered her score as
+a divisor, `1 / (1 + prep / ASSUMED_LAG)`, which spans at most 4.8× across
+the entire map — against a reputation term spanning 20× and a cover term
+spanning 7×. Value and vagueness drowned it, and no setting of
+`ASSUMED_LAG` could have fixed that, because a bounded divisor cannot bias
+a product of unbounded factors.
+
+### So distance is a kernel now
+
+```
+P(X)  ∝  reputation(X) × cover(X) × exp(−d / NEAR_KM),   then ** (1 / WHIM)
+```
+
+`NEAR_KM = 1200`. A hop across a country is worth 0.37 of one next door; an
+ocean crossing is worth 0.0002. Measured the same way:
+
+```
+                     before     after      coin
+median rank             206        58       499
+in the nearest 10      2.9%     17.5%
+in the nearest 50     13.8%     44.2%
+in the nearest 200    49.2%     90.8%
+median hop         1,977 km    520 km
+```
+
+`ASSUMED_LAG` leaves her policy with the divisor. It was a guess at how far
+behind her pursuers were, standing in for a preference she can state
+directly.
+
+### How strong, which turned out to be a frontier and not a taste
+
+A strong bias makes her predictable, and a predictable Carmel is findable by
+one person — which collapses the gap between a field that talks and one that
+does not, the only quantity this experiment measures. At `WATCH = 1`:
+
+```
+ NEAR_KM  med rank   solo  10 alone  10 split  premium
+    1200        70    57%       82%       98%       +15
+    2500        92    35%       55%       90%       +35
+    4000       124    22%       50%       92%       +43
+   10000       208    35%       45%       92%       +48
+```
+
+**The premium is best where the bias is weakest** — and rank 208 is exactly
+where the old divisor left her, the version Gal's instruction rules out. So
+the experiment's optimum is the game he said was wrong. That is
+recorded rather than obeyed: a coordination premium measured in a game
+nobody would play is not worth having.
+
+`NEAR_KM = 2500` is the strongest bias that keeps a lone searcher an
+underdog. Her median destination is the **92nd nearest room of 999** — the
+nearest tenth of the map, against a coin's 499.
+
+And it reverses `WATCH`, which was picked when she was much harder to find:
+
+```
+ WATCH   solo  3 alone  3 split  10 alone  10 split  premium
+     1    35%      48%      60%       55%       90%      +35
+     2    50%      65%      82%       78%       98%      +20
+     3    65%      75%      90%       85%      100%      +15
+```
+
+`WATCH = 1` now wins all three conditions outright. It had been rejected on
+a fourth and aesthetic ground — that at one room there is no question of
+*how many* to watch — which does not survive contact with the other three.
+
+### And a seed that was never read, found by the test that broke
+
+`test_she_leans_on_the_least_informative_hint...` went red in CI at 55%
+observed against its own 70% prediction — a five-sigma gap in a test built
+to be self-calibrating. The cause was not the test's arithmetic:
+
+> **`itinerary(seed, ...)` never read its `seed` argument.** Every draw
+> came from `world.seed`, so passing eleven seeds against one prebuilt Map
+> produced the *same campaign eleven times*.
+
+The test thought it had 220 legs and had 20, with eleven times the variance
+it displayed. The calibration sweeps were unaffected — they set the Map's
+own seed — which is why this survived a day of measurement without showing.
+`Carmel` takes an explicit `seed` now and `itinerary` passes it; with that
+the test's observed and predicted agree to 3.1% with the treasure table and
+0.7% without.
+
+**It is the same lesson as the section above, in code rather than in a
+constant**: a parameter's presence is not its effect, and the only way to
+know is to vary it and watch something move.
+
+### The lesson is about how the first two answers were given
+
+The mechanism was present and the magnitude was never checked, so "already
+done" was true of the code and false of the game. **A parameter's presence
+is not its effect**, and this document now has three instances of the same
+mistake in one day — a prep factor that made her safer, a `WHIM` that
+leaned 59% where 78% was assumed, and a near-bias worth 2.4×. Each was
+found by measuring the thing itself rather than reading the line that was
+supposed to cause it.
 ## The photograph has no names either, which the argument above did not notice
 
 *Gal, 2026-09-09: "I was actually thinking about actually seeing the real
