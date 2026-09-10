@@ -263,3 +263,50 @@ def test_a_pinned_run_says_whether_it_is_the_clock_or_the_seats(monkeypatch,
     printed = capsys.readouterr().out
     assert "seat population: these seats never" in printed
     assert "That is the clock" not in printed
+
+
+# --- the collision concurrency found ------------------------------------
+
+def test_two_games_running_at_once_do_not_share_a_signing_socket(tmp_path):
+    """The defect the first concurrent rung-0 run raised, asserted directly.
+
+    `signing.socket_path()` hashes the **agent id and nothing else**, and every
+    game here seats `t1`..`t4`. Eight games at once were binding four sockets
+    between them: one raised `no AF_UNIX signer available on this platform`,
+    and the ones that did not raise were free to reach a neighbour's signer and
+    sign as somebody the lobby never witnessed.
+    """
+    import os
+    from switchboard import signing
+
+    with noise.signer_namespace(tmp_path / "one"):
+        first = signing.socket_path("t1")
+    with noise.signer_namespace(tmp_path / "two"):
+        second = signing.socket_path("t1")
+
+    assert first != second
+    assert (tmp_path / "one") in first.parents
+    assert (tmp_path / "two") in second.parents
+
+    # And without the namespace they are the same path, which is the bug.
+    os.environ.pop("XDG_RUNTIME_DIR", None)
+    assert signing.socket_path("t1") == signing.socket_path("t1")
+
+
+def test_the_namespace_is_put_back_however_it_leaves(tmp_path, monkeypatch):
+    """A game that raises must not leave the next game pointed at its own
+    deleted temporary directory."""
+    import os
+
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+    try:
+        with noise.signer_namespace(tmp_path):
+            raise RuntimeError("the lobby settled without posting an invite")
+    except RuntimeError:
+        pass
+    assert os.environ["XDG_RUNTIME_DIR"] == "/run/user/1000"
+
+    monkeypatch.delenv("XDG_RUNTIME_DIR")
+    with noise.signer_namespace(tmp_path):
+        assert os.environ["XDG_RUNTIME_DIR"] == str(tmp_path)
+    assert "XDG_RUNTIME_DIR" not in os.environ

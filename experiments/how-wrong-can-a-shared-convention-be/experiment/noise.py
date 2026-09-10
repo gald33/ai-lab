@@ -66,6 +66,7 @@ import argparse
 import concurrent.futures
 import contextlib
 import json
+import os
 import socket
 import statistics
 import sys
@@ -137,6 +138,40 @@ def hub(tmp: Path):
         thread.join(timeout=5)
 
 
+@contextlib.contextmanager
+def signer_namespace(tmp: Path):
+    """A signing-socket namespace of this game's own.
+
+    `switchboard.signing.socket_path()` derives the path from the **agent id
+    alone**, under `XDG_RUNTIME_DIR` or the system temp dir. Every game here
+    seats `t1`..`t4`, so two games running at once bind the same four sockets:
+    the second `start()` unlinks the first's socket and binds over it, and a
+    client resolving that path afterwards reaches whichever signer owns it now
+    — **another game's identity**.
+
+    Measured on the first concurrent rung-0 run (run 002): `no AF_UNIX signer
+    available on this platform`, which is what the losing side of that race
+    raises, and exactly four sockets in `/tmp/switchboard` serving eight games.
+
+    The raised error is the loud half. The quiet half is worse: a seat signing
+    with a neighbour's key writes a line from a key the lobby never witnessed,
+    which `games/island.md` costs a game its ranking for — arriving silently,
+    inside the one measurement whose whole purpose is to say how far this
+    instrument moves on its own.
+
+    Nothing about identity changes here. Only where the socket for it lives.
+    """
+    before = os.environ.get("XDG_RUNTIME_DIR")
+    os.environ["XDG_RUNTIME_DIR"] = str(tmp)
+    try:
+        yield
+    finally:
+        if before is None:
+            os.environ.pop("XDG_RUNTIME_DIR", None)
+        else:
+            os.environ["XDG_RUNTIME_DIR"] = before
+
+
 @dataclass
 class Cell:
     """One cell of the design. Every field here is held fixed across replicates."""
@@ -189,96 +224,101 @@ def play_one(seed: int, cell: Cell, *, npc_seed: int, tmp: Path,
     agent_ids = [f"t{i + 1}" for i in range(cell.traders)]
 
     servers = []
-    for agent_id in agent_ids:
-        server = signing.SigningServer(signing.SigningIdentity.generate(), agent_id)
-        if not server.start():                        # pragma: no cover
-            raise RuntimeError("no AF_UNIX signer available on this platform")
-        servers.append(server)
+    # Entered around the whole game and not just around `start()`: the clients
+    # resolve the same path when they look their signer up.
+    with signer_namespace(tmp):
+        for agent_id in agent_ids:
+            server = signing.SigningServer(signing.SigningIdentity.generate(),
+                                           agent_id)
+            if not server.start():                    # pragma: no cover
+                raise RuntimeError(
+                    "no AF_UNIX signer available on this platform")
+            servers.append(server)
 
-    try:
-        with hub(tmp) as url:
-            key = generate_key()
+        try:
+            with hub(tmp) as url:
+                key = generate_key()
 
-            def client(agent_id: str) -> Client:
-                return Client(ClientConfig(url=url, url_source="explicit",
-                                           workspace="w_rung0", key=key),
-                              agent_id=agent_id)
+                def client(agent_id: str) -> Client:
+                    return Client(ClientConfig(url=url, url_source="explicit",
+                                               workspace="w_rung0", key=key),
+                                  agent_id=agent_id)
 
-            lobby = Lobby(client=client("lobby"))
-            # Pinned, so every replicate plays the same island. The draw is
-            # therefore `unverified` -- see this module's docstring.
-            lobby.draw_seed = lambda: seed
+                lobby = Lobby(client=client("lobby"))
+                # Pinned, so every replicate plays the same island. The draw is
+                # therefore `unverified` -- see this module's docstring.
+                lobby.draw_seed = lambda: seed
 
-            client("opener").post("lobby", cell.open_line())
-            lobby.drain()
+                client("opener").post("lobby", cell.open_line())
+                lobby.drain()
 
-            seats = {}
-            for name, agent_id in zip(names, agent_ids):
-                entrant = client(agent_id)
-                entrant.register(name=agent_id, kind="local", branch="main", task="")
-                entrant.post("lobby", f"JOIN g1 as {name}")
-                seats[name] = agent_id
+                seats = {}
+                for name, agent_id in zip(names, agent_ids):
+                    entrant = client(agent_id)
+                    entrant.register(name=agent_id, kind="local", branch="main", task="")
+                    entrant.post("lobby", f"JOIN g1 as {name}")
+                    seats[name] = agent_id
 
-            manager = client("m")
-            manager.register(name="rung0", kind="local", branch="main", task="")
-            manager.post("lobby", "MANAGE g1")
-            lobby.drain()
+                manager = client("m")
+                manager.register(name="rung0", kind="local", branch="main", task="")
+                manager.post("lobby", "MANAGE g1")
+                lobby.drain()
 
-            table = lobby.tables["g1"]
-            if not table.settled or table.seed is None:
-                raise RuntimeError(f"table did not settle: {len(table.seats)} seats")
+                table = lobby.tables["g1"]
+                if not table.settled or table.seed is None:
+                    raise RuntimeError(f"table did not settle: {len(table.seats)} seats")
 
-            invite = run_game.pending_invite(lobby, table)
-            if invite is None:
-                raise RuntimeError("the lobby settled without posting an invite")
+                invite = run_game.pending_invite(lobby, table)
+                if invite is None:
+                    raise RuntimeError("the lobby settled without posting an invite")
 
-            # Each seat moves to the table's room keeping the agent id, and so
-            # the signing key, it took its seat under.
-            deadline = time.time() + cell.ack_seconds + cell.episodes * cell.seconds + 60
-            threads = []
-            for i, (name, agent_id) in enumerate(seats.items()):
-                room = Client.from_invite(invite, agent_id=agent_id)
-                room.register(name=name, kind="local", branch="main", task="trading")
-                schedule = npc.PolicySchedule(mix=cell.mix, seed=npc_seed + i,
-                                              mean_seconds=max(2.0, cell.seconds / 6))
-                thread = threading.Thread(
-                    target=play_seat, args=(room, "island"),
-                    kwargs=dict(name=name, schedule=schedule, every=1.0,
-                                deadline=deadline, log=lambda *a, **k: None),
-                    daemon=True)
-                thread.start()
-                threads.append(thread)
+                # Each seat moves to the table's room keeping the agent id, and so
+                # the signing key, it took its seat under.
+                deadline = time.time() + cell.ack_seconds + cell.episodes * cell.seconds + 60
+                threads = []
+                for i, (name, agent_id) in enumerate(seats.items()):
+                    room = Client.from_invite(invite, agent_id=agent_id)
+                    room.register(name=name, kind="local", branch="main", task="trading")
+                    schedule = npc.PolicySchedule(mix=cell.mix, seed=npc_seed + i,
+                                                  mean_seconds=max(2.0, cell.seconds / 6))
+                    thread = threading.Thread(
+                        target=play_seat, args=(room, "island"),
+                        kwargs=dict(name=name, schedule=schedule, every=1.0,
+                                    deadline=deadline, log=lambda *a, **k: None),
+                        daemon=True)
+                    thread.start()
+                    threads.append(thread)
 
-            record = run_game.play(table, invite, episode_seconds=cell.seconds,
-                                   ack_seconds=cell.ack_seconds, out=tmp)
-            for thread in threads:
-                thread.join(timeout=10)
+                record = run_game.play(table, invite, episode_seconds=cell.seconds,
+                                       ack_seconds=cell.ack_seconds, out=tmp)
+                for thread in threads:
+                    thread.join(timeout=10)
 
-            if record is None:
-                raise RuntimeError("the game produced no record")
+                if record is None:
+                    raise RuntimeError("the game produced no record")
 
-            result = tmp / "g1.json"
-            result.write_text(json.dumps(record))
-            added, _ = scores.ingest(result, ledger=tmp / "ledger.jsonl",
-                                     players=record["players"])
-            if not added:
-                raise RuntimeError("the ledger took no row for this game")
+                result = tmp / "g1.json"
+                result.write_text(json.dumps(record))
+                added, _ = scores.ingest(result, ledger=tmp / "ledger.jsonl",
+                                         players=record["players"])
+                if not added:
+                    raise RuntimeError("the ledger took no row for this game")
 
-            row = added[0]
-            if row.get("status") == "unscored":
-                raise RuntimeError(f"unscored: {row.get('why')}")
+                row = added[0]
+                if row.get("status") == "unscored":
+                    raise RuntimeError(f"unscored: {row.get('why')}")
 
-            out = endpoints_from(row, cell.episodes)
-            out["seed"] = table.seed
-            out["draw"] = table.draw
-            out["settled"] = record["rounds"][0].get("settled")
-            log(f"    seed {table.seed}  "
-                + "  ".join(f"{k}={out[k]:.3f}" for k in ENDPOINTS
-                            if out.get(k) is not None))
-            return out
-    finally:
-        for server in servers:
-            server.close()
+                out = endpoints_from(row, cell.episodes)
+                out["seed"] = table.seed
+                out["draw"] = table.draw
+                out["settled"] = record["rounds"][0].get("settled")
+                log(f"    seed {table.seed}  "
+                    + "  ".join(f"{k}={out[k]:.3f}" for k in ENDPOINTS
+                                if out.get(k) is not None))
+                return out
+        finally:
+            for server in servers:
+                server.close()
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,30 @@
+OPEN traders=4 episodes=2 rounds=1 goods=5 seconds=45   2 replicates x 2 games   workers=4
+nothing is varied between replicates; this is not a treatment
+
+    [1/4] replicate 1 seed 2  zero_episode_share=0.500  capture=-0.533  above_autarky_share=0.000  eff_round=0.264
+    [2/4] replicate 2 seed 2  zero_episode_share=0.500  capture=-0.542  above_autarky_share=0.000  eff_round=0.259
+    [3/4] replicate 2 seed 1  zero_episode_share=0.500  capture=-0.293  above_autarky_share=0.000  eff_round=0.190
+    [4/4] replicate 1 seed 1  zero_episode_share=0.500  capture=-0.298  above_autarky_share=0.000  eff_round=0.187
+
+attempted 4, played 4, harness failures 0, games that settled nothing 0
+every complete replicate played the same seeds: True
+
+endpoint                between-replicate sd  per-game sd    n
+zero_episode_share                    0.0000       0.0000    4
+capture                               0.0017       0.1396    4
+above_autarky_share                   0.0000       0.0000    4
+eff_round                             0.0006       0.0424    4
+
+These numbers are the input to this experiment's thresholds and are not
+themselves a result. NPC seats are not models: a model cell moves at
+least this much.
+
+PINNED, AND THEREFORE UNUSABLE: above_autarky_share
+Every game left these endpoints on a bound, so the sd above is 0 because
+the instrument never moved -- not because it is precise. A threshold taken
+from this run would be a threshold of zero. Lengthen the episode or the
+ack window until games settle, and measure again. Do not spend against this.
+
+real	3m41.249s
+user	0m54.775s
+sys	0m3.307s

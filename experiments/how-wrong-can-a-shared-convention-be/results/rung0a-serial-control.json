@@ -1,0 +1,116 @@
+{
+  "cell": {
+    "traders": 4,
+    "goods": 5,
+    "episodes": 2,
+    "seconds": 45,
+    "mix": {
+      "autarky": 0.2,
+      "greedy": 0.5,
+      "price-taker": 0.3
+    }
+  },
+  "seeds": [
+    1,
+    2
+  ],
+  "attempted": 4,
+  "played": 4,
+  "harness_failures": [],
+  "workers": 1,
+  "seeds_identical_across_replicates": true,
+  "games_that_settled_nothing": 0,
+  "pinned_endpoints": [
+    "above_autarky_share"
+  ],
+  "every_replicate_identical": false,
+  "npc_seed_varied": false,
+  "replicates": [
+    [
+      {
+        "zero_episode_share": 0.5,
+        "capture": -0.2796250826178442,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.198471,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 12,
+        "replicate": 0
+      },
+      {
+        "zero_episode_share": 0.5,
+        "capture": -0.5422692864357187,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.25941,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 9,
+        "replicate": 0
+      }
+    ],
+    [
+      {
+        "zero_episode_share": 0.5,
+        "capture": -0.2836019144989128,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.19598,
+        "seed": 1,
+        "draw": "unverified",
+        "settled": 10,
+        "replicate": 1
+      },
+      {
+        "zero_episode_share": 0.5,
+        "capture": -0.5294953091973051,
+        "above_autarky_share": 0.0,
+        "eff_round": 0.265544,
+        "seed": 2,
+        "draw": "unverified",
+        "settled": 11,
+        "replicate": 1
+      }
+    ]
+  ],
+  "summary": {
+    "zero_episode_share": {
+      "replicate_means": [
+        0.5,
+        0.5
+      ],
+      "between_replicate_sd": 0.0,
+      "replicates": 2,
+      "games": 4,
+      "per_game_sd": 0.0
+    },
+    "capture": {
+      "replicate_means": [
+        -0.410947,
+        -0.406549
+      ],
+      "between_replicate_sd": 0.00311,
+      "replicates": 2,
+      "games": 4,
+      "per_game_sd": 0.146904
+    },
+    "above_autarky_share": {
+      "replicate_means": [
+        0.0,
+        0.0
+      ],
+      "between_replicate_sd": 0.0,
+      "replicates": 2,
+      "games": 4,
+      "per_game_sd": 0.0
+    },
+    "eff_round": {
+      "replicate_means": [
+        0.22894,
+        0.230762
+      ],
+      "between_replicate_sd": 0.001288,
+      "replicates": 2,
+      "games": 4,
+      "per_game_sd": 0.03777
+    }
+  }
+}
