@@ -4342,7 +4342,8 @@ nothing about 200 Python tests, and nothing at all about what the island draws.
 That is the same gap the workflow's own header describes closing for the node
 tests, left open for these two.
 
-**The first half is closed.** `viewer/tests/` is in the `island` job. It had
+**The first half is closed.** `viewer/tests/` is in the `suite` job (named
+`island` until 2026-09-10). It had
 already hidden a real failure long enough to be found by accident:
 `test_adding_a_five_good_level_leaves_the_recorded_ones_alone` asserted that
 every round on the ledger was played over four goods, and four five-good rounds
@@ -4801,7 +4802,8 @@ rules: anything **not** listed fails the run, and
 anything listed that **stops failing** also fails it, saying to delete the
 entry. The second is what keeps the list honest — entries that outlive their
 bugs make a list nobody trusts, and by then it will swallow a real regression.
-`tests/test_render_gate.py` holds both rules and runs in the `island` job.
+`tests/test_render_gate.py` holds both rules and runs in the `suite` job
+(named `island` until 2026-09-10).
 
 **The labour wheel is watched, not sampled.** It used to be read once, 620ms
 after the receipt, on naps accumulating from the sample site rather than from

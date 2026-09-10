@@ -1,4 +1,16 @@
-# The island's tests, on every change that touches them.
+# The repository's Python test suite, on every change.
+#
+# *Renamed 2026-09-10, from `island` to `suite`.* Gal: *"why is island being
+# checked when all changes are for a different game?"* -- which is the right
+# question and the name was the only reason to ask it. The job was called
+# `island` when the island was the only thing in the repo; it has since
+# collected `games/hue-and-cry`, four experiments' suites and the viewer's,
+# and it is what runs on a pull request that touches none of the island.
+#
+# **A job name is read far more often than a job.** This one appears on every
+# pull request in this repo, and for months it told every reader that the
+# island was being checked. Renaming it is not tidying: it is the same defect
+# as a check that is green for a reason it does not name, one level up.
 #
 # Until this existed, `roadmap` was the only check on a pull request -- it
 # checks the roadmap, installs no dependency of the game and runs no test. A
@@ -15,7 +27,7 @@ on:
     branches: [main]
 
 jobs:
-  island:
+  suite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +173,7 @@ jobs:
           python-version: "3.11"
       - run: pip install playwright
       - run: python -m playwright install --with-deps chromium
-      # The lobby's own browser check. The `island` job collects it and skips
+      # The lobby's own browser check. The `suite` job collects it and skips
       # it, and a skip and a pass look identical in a tick. It is the only
       # test that can see the failure it was written for: the countdown script
       # sat above the tables it drove, matched no elements, and every clock on
@@ -196,7 +208,7 @@ jobs:
       # zoomed-out frame could break without a single tag changing.
       #
       # `HUE_REQUIRE_BROWSER` is `ISLAND_REQUIRE_BROWSER`'s counterpart for
-      # this game, and for the same reason: the `island` job collects these
+      # this game, and for the same reason: the `suite` job collects these
       # tests and skips them, and a skip and a pass are the same tick.
       - run: python -m pytest games/carmel-taldiego/test_trail_flight.py -q
         env:
