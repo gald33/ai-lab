@@ -226,6 +226,34 @@ PREP_PIVOT = 10.0
 #: decision disappears.
 WATCH = 2
 
+#: How far away stops feeling near, in kilometres. **The scale of her bias
+#: towards near, and since 2026-09-10 the primary term in where she goes.**
+#:
+#: Gal said it three times before it was built, which is the measure of how
+#: badly it was being heard: *"she is biased towards near."*
+#:
+#: It was not true. Her destination's rank among the thousand rooms,
+#: nearest first, over 240 legs:
+#:
+#:     median rank 206      a coin over 999 rooms gives 499
+#:     in the nearest 10     2.9%
+#:     in the nearest 50    13.8%
+#:     in the nearest 200   49.2%
+#:
+#: A 2.4x lean, which is not a bias -- it is a rounding error with a
+#: direction. The cause was that distance entered her score as a divisor,
+#: `1 / (1 + prep / ASSUMED_LAG)`, worth at most 4.8x across the whole map,
+#: against a reputation term spanning 20x and a cover term spanning 7x.
+#: **Value and vagueness drowned it.**
+#:
+#: So distance is a kernel now and not a divisor:
+#:
+#:     P(X)  proportional to  reputation(X) * cover(X) * exp(-d / NEAR_KM)
+#:
+#: At 1,200 km a hop across a country is worth about 0.37 of one next
+#: door, and one across an ocean is worth 0.0002. That is a preference.
+NEAR_KM = 1200.0
+
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
 #:
@@ -587,11 +615,20 @@ class Carmel:
         prep does not cancel at all** -- it is hers alone -- so the sentence
         was true of a game without prep and is false of this one.
 
-        So she scores a room by the prize divided by the risk the journey
-        buys, and then **draws** rather than taking the best:
+        **The decision is a draw from a distribution, and the distribution
+        is biased towards near.** Gal, 2026-09-10, twice, and once the day
+        before, which is how long it took to land:
 
-            score = reputation * cover / (1 + prep / ASSUMED_LAG)
-            P(X)  = score(X) ** (1 / WHIM), normalised
+            P(X)  proportional to
+                  reputation(X) * cover(X) * exp(-d / NEAR_KM),
+                  then sharpened by ** (1 / WHIM)
+
+        The distance term used to be a divisor -- `1 / (1 + prep /
+        ASSUMED_LAG)` -- and `NEAR_KM` carries the measurement showing it
+        did not work: her median destination was the 206th nearest room of
+        999 against a coin's 499, because a term worth 4.8x across the
+        whole map cannot bias a product whose other terms span 20x and 7x.
+        A kernel can: an ocean crossing is worth 0.0002 of a hop next door.
 
         Gal, 2026-09-09: *"add some randomness for all her decisions."* The
         argument is under `WHIM`, and the short form is that this file is
@@ -607,16 +644,17 @@ class Carmel:
         prep hours` made her stop using the map, and a Carmel who never
         travels is one nobody can overtake.
         """
-        rooms, scores = [], []
+        here = self.world.places[self.at]
+        rooms, weights = [], []
         for destination, prize in self.world.treasure.items():
             if destination in self.emptied or destination == self.at:
                 continue
-            prep = prep_hours(self.world.places[self.at],
-                              self.world.places[destination], self.difficulty)
+            km = distance_km(here, self.world.places[destination])
             rooms.append(destination)
-            scores.append(prize["reputation"] * self.best_cover(destination)
-                          / (1.0 + prep / ASSUMED_LAG))
-        return _sample(rooms, scores,
+            weights.append(prize["reputation"]
+                           * self.best_cover(destination)
+                           * math.exp(-km / NEAR_KM))
+        return _sample(rooms, weights,
                        _draw(self.world.seed, self.leg, "where"))
 
     def best_cover(self, destination: str) -> int:

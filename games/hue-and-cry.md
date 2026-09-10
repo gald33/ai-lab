@@ -3957,6 +3957,72 @@ time this one assertion has been rewritten — travel closes the gap, then
 the dwell alone, then prep and dwell while travel cancels, and now there is
 no travel term left to cancel.
 
+## She is biased towards near, and the decision is a draw from a distribution
+
+*Gal, 2026-09-09 and twice on 2026-09-10: "so she is biased towards near",
+"let the final decision be a random from a distribution."*
+
+**Three times, because the first two were answered with a claim instead of a
+measurement.** The mechanism was there both times — a distance term, and a
+sample rather than an argmax — so it was reported as done. Nobody had asked
+how *strong* the distance term was.
+
+### It was not a bias, it was a rounding error with a direction
+
+Her destination's rank among the thousand rooms, nearest first, over 240
+legs:
+
+```
+                     before      coin
+median rank             206       499
+in the nearest 10      2.9%
+in the nearest 50     13.8%
+in the nearest 200    49.2%
+median hop         1,977 km
+```
+
+A 2.4× lean. Half her destinations lay outside the two hundred nearest
+rooms.
+
+**The cause was the shape, not the constant.** Distance entered her score as
+a divisor, `1 / (1 + prep / ASSUMED_LAG)`, which spans at most 4.8× across
+the entire map — against a reputation term spanning 20× and a cover term
+spanning 7×. Value and vagueness drowned it, and no setting of
+`ASSUMED_LAG` could have fixed that, because a bounded divisor cannot bias
+a product of unbounded factors.
+
+### So distance is a kernel now
+
+```
+P(X)  ∝  reputation(X) × cover(X) × exp(−d / NEAR_KM),   then ** (1 / WHIM)
+```
+
+`NEAR_KM = 1200`. A hop across a country is worth 0.37 of one next door; an
+ocean crossing is worth 0.0002. Measured the same way:
+
+```
+                     before     after      coin
+median rank             206        58       499
+in the nearest 10      2.9%     17.5%
+in the nearest 50     13.8%     44.2%
+in the nearest 200    49.2%     90.8%
+median hop         1,977 km    520 km
+```
+
+`ASSUMED_LAG` leaves her policy with the divisor. It was a guess at how far
+behind her pursuers were, standing in for a preference she can state
+directly.
+
+### The lesson is about how the first two answers were given
+
+The mechanism was present and the magnitude was never checked, so "already
+done" was true of the code and false of the game. **A parameter's presence
+is not its effect**, and this document now has three instances of the same
+mistake in one day — a prep factor that made her safer, a `WHIM` that
+leaned 59% where 78% was assumed, and a near-bias worth 2.4×. Each was
+found by measuring the thing itself rather than reading the line that was
+supposed to cause it.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
