@@ -85,6 +85,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import basemap as BM  # noqa: E402
+import imagery as IM  # noqa: E402
 import carmel as C  # noqa: E402
 
 #: The card, in pixels. 2:1-ish, which is what a timeline crops to.
@@ -114,6 +115,7 @@ INK = {
     "sea": "#0d151b",        # water, and the plot area's floor
     "land": "#312c24",       # the real world, Natural Earth
     "border": "#544a3c",  # country borders, hairline
+    "frontier": "#ffd9a0",   # the same, over a photograph
     "line": "#e0a34a",       # her trail
     "stop": "#f2e4cf",
     "text": "#f2e4cf",
@@ -275,15 +277,27 @@ def _esc(text: str) -> str:
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def geometry(camera: Camera, prefix: str = "") -> list[str]:
+def geometry(camera: Camera, over_imagery: bool = False) -> list[str]:
     """The real world inside a camera's frame, as SVG.
 
     Sea is the card's ground, so only land, lakes and borders are drawn.
     `basemap.near` has already cut every shape to the frame, so this is a
     few hundred points rather than the committed forty thousand.
+
+    Over a photograph only the borders are drawn, brighter: the imagery has
+    coastlines already and better ones, and a border is the single thing a
+    photograph cannot show. `no_passport_needed_next_door` is a hint in this
+    game's vocabulary, so it has to be visible.
     """
-    cut = BM.near(camera.box())
+    cut = BM.near(camera.box(), keys=("borders",) if over_imagery
+                  else ("land", "lakes", "borders"))
     out = []
+    if over_imagery:
+        for shape in cut["borders"]:
+            out.append(f'<path d="{BM.path(shape, camera.unit)}" fill="none"'
+                       f' stroke="{INK["frontier"]}" stroke-width="1"'
+                       f' opacity="0.55"/>')
+        return out
     for shape in cut["land"]:
         out.append(f'<path d="{BM.path(shape, camera.unit, close=True)}"'
                    f' fill="{INK["land"]}"/>')
@@ -297,8 +311,13 @@ def geometry(camera: Camera, prefix: str = "") -> list[str]:
     return out
 
 
-def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
-    """One finished campaign, drawn. `result` is `carmel.chase`'s."""
+def card(result: dict, world: C.Map, seed: bytes, start: str,
+         imagery: str | None = None) -> str:
+    """One finished campaign, drawn. `result` is `carmel.chase`'s.
+
+    `imagery` names a NASA GIBS layer to lay under it (see `imagery.py`);
+    without one the basemap is the committed vectors.
+    """
     legs = result["moves"]
     stops = [start] + [leg["to"] for leg in legs]
     places = [world.places[name] for name in stops]
@@ -319,7 +338,10 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
            f'<rect y="{TOP}" width="{WIDTH}" height="{plot_h}"'
            f' fill="{INK["sea"]}"/>',
            f'<g clip-path="url(#plot)">']
-    svg += geometry(main)
+    if imagery:
+        svg += IM.wrapper(WIDTH, plot_h, TOP,
+                          IM.background(main, imagery))
+    svg += geometry(main, over_imagery=bool(imagery))
     svg.append('</g>')
 
     # the trail
@@ -328,6 +350,10 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
         line = BM.great_circle((a["lat"], a["lon"]), (b["lat"], b["lon"]))
         drawn = BM.path([BM.mercator(lat, lon) for lat, lon in line],
                         main.unit)
+        if imagery:
+            svg.append(f'<path d="{drawn}" fill="none" stroke="#000"'
+                       f' stroke-width="4.6" opacity="0.4"'
+                       f' stroke-linecap="round"/>')
         svg.append(f'<path d="{drawn}" fill="none"'
                    f' stroke="{INK["line"]}" stroke-width="2.2"'
                    f' stroke-linecap="round"'
@@ -354,6 +380,10 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
             (last, 13),
         ])
 
+    # over a photograph the ink needs its own edge; over the vector basemap
+    # it would be a smudge round every letter for no reason
+    halo = (' stroke="#0b0906" stroke-width="3" paint-order="stroke"'
+            ' stroke-linejoin="round"') if imagery else ""
     for i, ((px, py), rows, (tx, ty, anchor)) in enumerate(
             zip(pins, blocks, lay_out(pins, blocks))):
         stole = i - 1 in emptied if i else False
@@ -379,7 +409,8 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
             style = ' font-style="italic"' if final else ""
             svg.append(f'<text x="{tx:.1f}" y="{ty + line * 18:.1f}"'
                        f' fill="{fill}" font-size="{size}"'
-                       f' text-anchor="{anchor}"{style}>{_esc(text)}</text>')
+                       f' text-anchor="{anchor}"{style}{halo}>'
+                       f'{_esc(text)}</text>')
             line += 1
 
     # the inset: where on earth that was, on the coarse world
@@ -389,10 +420,17 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
     svg.append(f'<clipPath id="inset"><rect x="{inset.x}" y="{inset.y}"'
                f' width="{inset.w}" height="{inset.h}"/></clipPath>')
     svg.append('<g clip-path="url(#inset)">')
-    for shape in BM.load()["land_coarse"]:
-        drawn = BM.path([BM.mercator(lat, lon) for lon, lat in shape],
-                        inset.unit, close=True)
-        svg.append(f'<path d="{drawn}" fill="{INK["land"]}"/>')
+    if imagery:
+        # the whole world is one tile at this size, so the locator costs a
+        # single fetch -- and a vector inset under a photographic map looks
+        # like a different card pasted into the corner
+        svg += IM.wrapper(inset.w, inset.h, inset.y,
+                          IM.background(inset, imagery))
+    else:
+        for shape in BM.load()["land_coarse"]:
+            drawn = BM.path([BM.mercator(lat, lon) for lon, lat in shape],
+                            inset.unit, close=True)
+            svg.append(f'<path d="{drawn}" fill="{INK["land"]}"/>')
     cx, cy = inset.unit((main.cx % 1.0, main.cy))
     svg.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="7" fill="none"'
                f' stroke="{INK["line"]}" stroke-width="1.6"/>')
@@ -403,7 +441,7 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
     svg.append(f'<text x="{inset.x if left else inset.x + inset.w}"'
                f' y="{inset.y - 8}" fill="{INK["dim"]}" font-size="11"'
                f' letter-spacing="1.2"'
-               f' text-anchor="{"start" if left else "end"}">'
+               f' text-anchor="{"start" if left else "end"}"{halo}>'
                f'{_esc(_span(places))}</text>')
 
     # title and footer
@@ -417,6 +455,10 @@ def card(result: dict, world: C.Map, seed: bytes, start: str) -> str:
     svg.append(f'<text x="34" y="{HEIGHT - 22}" fill="{INK["dim"]}"'
                f' font-size="12" font-family="monospace">'
                f'seed {seed.hex()}</text>')
+    if imagery:
+        svg.append(f'<text x="{WIDTH - 20}" y="{HEIGHT - 22}"'
+                   f' fill="{INK["rule"]}" font-size="10" text-anchor="end">'
+                   f'{_esc(IM.CREDIT)}</text>')
     svg.append('</svg>')
     return "\n".join(svg)
 
@@ -553,6 +595,12 @@ def main() -> None:
     ap.add_argument("--seed", help="hex; omitted means a fresh one")
     ap.add_argument("--out", default="trail.svg", help="where to write it")
     ap.add_argument("--searchers", type=int, default=2)
+    ap.add_argument("--imagery", nargs="?", const="relief", default=None,
+                    metavar="LAYER",
+                    help="lay NASA GIBS imagery under it: "
+                         + ", ".join(sorted(IM.LAYERS))
+                         + " (default relief). Needs the network once; "
+                           "tiles are cached forever after")
     ap.add_argument("--survey", action="store_true",
                     help="the measurement the card's shape rests on")
     args = ap.parse_args()
@@ -568,8 +616,9 @@ def main() -> None:
     world = C.Map(seed)
     result = C.chase(seed, C.LOBBY_LANDMARK, searchers=args.searchers,
                      world=world)
-    Path(args.out).write_text(card(result, world, seed, C.LOBBY_LANDMARK),
-                              encoding="utf-8")
+    Path(args.out).write_text(
+        card(result, world, seed, C.LOBBY_LANDMARK, imagery=args.imagery),
+        encoding="utf-8")
 
     print(f"{result['outcome']}: {len(result['moves'])} rooms,"
           f" {result['reputation']} reputation,"

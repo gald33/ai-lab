@@ -3576,6 +3576,10 @@ matters, so it goes here as a rule rather than a third instance:
 
 ### A real map that names places discloses more than the dots did
 
+*Narrowed 2026-09-09, later the same day. Every word below is true of a
+**street** map and none of it reaches a **photograph** -- see "The
+photograph has no names either, which the argument above did not notice".*
+
 Which is the trap in "maybe from google maps". The landmarks are famous
 places, and at the zoom this card sits at every raster style prints their
 names -- Fez, Bergen, Ushuaia, labelled, on the map she is being chased
@@ -4089,6 +4093,136 @@ mistake in one day — a prep factor that made her safer, a `WHIM` that
 leaned 59% where 78% was assumed, and a near-bias worth 2.4×. Each was
 found by measuring the thing itself rather than reading the line that was
 supposed to cause it.
+## The photograph has no names either, which the argument above did not notice
+
+*Gal, 2026-09-09: "I was actually thinking about actually seeing the real
+map or satelite, not a must."*
+
+    python3 games/hue-and-cry/trail_card.py --imagery relief --out /tmp/t.svg
+
+**The disclosure argument that ruled out tiles was an argument about
+labels wearing an argument about tiles.** "A real map that names places
+discloses more than the dots did" is exactly right about Google's street
+map and says nothing whatever about a satellite image, which carries no
+toponyms at all. The section above did not distinguish them and so ruled
+out both, which is the second time in this document a correct sentence has
+been applied one step too far.
+
+What survives of that section is everything that was not about names:
+Google's tiles still need an API key and a billing account and still forbid
+the caching a stimulus frozen by hash requires. So the imagery is NASA's.
+
+### NASA GIBS, which needs nothing
+
+No key, no account, no rate agreement, public domain. Three layers are
+wired up in `imagery.py` and the default is the middle one:
+
+| | | |
+|---|---|---|
+| `relief` | `BlueMarble_ShadedRelief_Bathymetry` | cloud-free, ocean depth |
+| `marble` | `BlueMarble_NextGeneration` | cloud-free, land only |
+| `modis` | `MODIS_Terra_CorrectedReflectance` | a real day, real clouds |
+
+`relief` is the default because `modis` is a photograph of one morning, and
+on any given morning half of Europe is under cloud. The clouds are not
+noise for a picture of a chase -- they are somebody else's weather sitting
+on the room she robbed.
+
+**The resolution is sufficient rather than lucky, and it is worth checking
+rather than hoping.** The closest the camera goes is 500 km across
+(`trail_flight.CLOSE_KM`, floored by what the vector basemap could honestly
+draw), which at 1000 px is 500 m per pixel. GIBS serves `relief` to zoom 8:
+610 m/px at the equator, and finer as `1/cos(lat)` carries it -- 385 m/px at
+51 degrees, where the lobby is. So the imagery is at or past the card's
+resolution everywhere a campaign has been measured to go, and the zoom is
+clamped to what the layer actually serves rather than asked to stretch.
+
+### The borders stay vector, and that is why both are kept
+
+A photograph has coastlines, and better ones than Natural Earth. **What it
+has not got is borders** -- and `no_passport_needed_next_door` is a hint in
+this game's own vocabulary. So with imagery on, the basemap draws exactly
+one layer: the frontiers, brighter, over the photograph. The coastlines are
+dropped because the picture already has them.
+
+That is the same argument as "the basemap is the game's vocabulary drawn",
+arriving at a different split of the same two files.
+
+### No image library, which is a decision
+
+The obvious build composites the tiles into one JPEG, and that wants
+Pillow -- a dependency this repo does not have, installed to do a job SVG
+already does. The tiles are placed as positioned `<image>` elements
+instead: nothing is resampled twice, nothing new is installed, and the same
+code will work unchanged inside the flight's camera transform if that ever
+happens.
+
+It costs about a third more bytes, because base64 inflates by four thirds
+and nothing is recompressed. A European card is 376 KB against the vector
+card's 56 KB; the intercontinental one is 808 KB.
+
+**And not recompressing is the part worth keeping**: the bytes in the card
+are the bytes NASA served, so a reader can check the imagery against NASA
+instead of against this repo. There is a test on that, because it is the
+kind of property a later convenience quietly breaks.
+
+### Toning is done in SVG, for the same reason
+
+A photograph is bright and busy and the trail has to sit on top of it, so
+the imagery is desaturated to 0.72 and dimmed by 0.36, and the labels get a
+dark halo. All of it is `feColorMatrix` and a `<rect>` and `paint-order`,
+none of it touches the pixels.
+
+### Asking for imagery and not getting it is an error
+
+`imagery.Unavailable`, not a quiet fall back to the vector basemap. A card
+that silently drew something else would look completely fine and be a
+different picture from the one that was asked for, which is `CLAUDE.md`'s
+"a skip drawn as a pass" wearing a hat. Tiles are cached forever -- a tile
+is a fixed layer, date and address -- so a re-render touches the network
+once and the offline path is the default.
+
+### And a test that was green because NASA was up
+
+Found by blocking the network on a branch CI had already passed.
+`test_a_card_on_imagery_names_no_landmark_but_the_trail` calls
+`trail_card.card(..., imagery="relief")`, which takes no opener -- so it
+went to GIBS for real, fetched fifteen tiles, and passed. It was named
+after disclosure and was **also** silently asserting that NASA is
+reachable, which is instance seven of "a check is green for the reason it
+names, or it is not a check".
+
+Blocking the network turned it red in 0.9 seconds. The fix is not the one
+test: `no_network` replaces `urllib.request.urlopen` for every test in the
+file, so the *next* one to forget an opener fails saying so rather than
+quietly going to Maryland. Guarding the class rather than the instance is
+what that section asks for, and the demonstration is kept in the file as a
+function one rename away from being a test.
+
+The suite also got eight seconds faster, which is the smaller half of it.
+
+### The guard, since the objection this escapes is a real one
+
+GIBS serves `Reference_Labels_15m` and `Reference_Features_15m` alongside
+the photographs. Either would print the names of exactly the famous places
+this game hides, and either is one line away in `LAYERS`. **So the escape
+is asserted rather than assumed**: a test refuses any layer whose id
+matches `label|reference|feature|place|boundar|coastline`, and it was made
+to fail by adding the labels layer before it was kept.
+
+### The flight is still vectors, and the choice it needs is not mine
+
+Imagery under a still frame is one zoom level. The flight crosses about
+eight, so it needs a tile pyramid, and that is a choice between two shapes
+this document should not make on its own:
+
+- **Embedded**, keeping the page self-contained (the property
+  `test_the_page_stands_alone` asserts, and the one that lets it open on a
+  plane): roughly 1-3 MB per campaign.
+- **Fetched live from GIBS**, which needs no key either: a far lighter page
+  that does not work offline, and that tells NASA who is watching.
+
+Not decided.
 
 ## What would have to be built, in order
 
