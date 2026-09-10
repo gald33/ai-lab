@@ -17,7 +17,9 @@ with the seed a reader can re-derive all of it -- so **the card is a
 post-reveal artifact and nothing else**. Handed out mid-campaign it would
 publish the trail to searchers who had not earned it.
 
-**It does not draw her exits, and that is the point of the refusal.**
+**It did not draw her exits, and there are no longer exits to draw.** Gal,
+2026-09-09: *"we have no routes."* The refusal below was right and is now
+moot; what survives it is the reason it was a refusal rather than a flag.
 `games/hue-and-cry.md`, "Which makes the exit count a choice about how big
 a game this is", leaves open whether the routes are public: routes-public
 is a two-person deduction game with a 352 KB entry requirement, no-routes
@@ -474,29 +476,44 @@ def geography(sample: int = 150, root: bytes = SURVEY_ROOT) -> None:
     def km(a, b):
         return C.travel_hours(a, b) * C.TRAVEL_KMH
 
-    along = [km(world.places[n], world.places[e])
-             for n in picked for e in world.exits(n)]
+    # SUPERSEDED APPARATUS, KEPT FINDING. This measured her five exits
+    # against geography. Gal removed the exits the same afternoon -- "we
+    # have no routes" -- so the question is asked of the thing that
+    # replaced them: the candidates a hint leaves, which is what a searcher
+    # now walks. The claim under test is unchanged and so is its answer.
+    import gazetteer
+
+    gaz = world.descriptors
+    along = []
+    for n in picked:
+        hint = max(world.live_hints(n), key=world.cover.get)
+        along += [km(world.places[n], world.places[m])
+                  for m in gaz if m != n and hint in gaz[m]]
     apart = [km(world.places[a], world.places[b])
              for a, b in (random.sample(names, 2) for _ in range(3000))]
 
-    print(f"over {sample} landmarks, every exit\n")
-    print(f"  median distance along one of her exits          "
+    print(f"over {sample} landmarks, every candidate the hint allows\n")
+    print(f"  median distance to a place her hint also fits  "
           f"{statistics.median(along):7,.0f} km")
     print(f"  median distance between two landmarks at random "
           f"{statistics.median(apart):7,.0f} km")
     for near in (5, 50):
         hit = 0
         for n in picked:
+            hint = max(world.live_hints(n), key=world.cover.get)
             close = {m for _, m in sorted(
                 (km(world.places[n], world.places[m]), m)
                 for m in names if m != n)[:near]}
-            hit += len(close & set(world.exits(n)))
-        share = hit / (len(picked) * C.EXITS)
-        print(f"  her exits among the {near:>2} geographically nearest "
-              f"{'':>7}{share:6.1%}   (chance: {near / (len(names) - 1):.1%})")
+            kin = {m for _, m in sorted((-gazetteer.kinship(n, m, gaz), m)
+                                        for m in gaz if m != n)[:near]}
+            hit += len(close & kin)
+        share = hit / (len(picked) * near)
+        print(f"  her look-alikes among the {near:>2} geographically nearest"
+              f"{'':>1}{share:6.1%}   (chance: {near / (len(names) - 1):.1%})")
     print("\nKinship leans geographic and is nothing like geographic. A\n"
           "reader who takes adjacency on a world map for adjacency in the\n"
-          "game has it backwards: she moves to places that sound alike.")
+          "game has it backwards: she moves to places that sound alike --\n"
+          "and, since the prep clock, prefers the near ones among those.")
 
 
 def survey(trials: int = 200, searchers: int = 2,

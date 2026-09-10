@@ -38,6 +38,48 @@ FLOWN = bytes.fromhex("55" * 32)
 CAUGHT = bytes.fromhex("22" * 32)
 
 
+def _span_km(result: dict, world) -> float:
+    """How far apart the two most distant rooms of a campaign are."""
+    stops = [world.places[leg["to"]] for leg in result["moves"]]
+    return max((C.travel_hours(a, b) * C.TRAVEL_KMH
+                for a in stops for b in stops), default=0.0)
+
+
+def _tightest(seeds: list[bytes]) -> bytes:
+    """The seed among these whose campaign covers the least ground.
+
+    **Chosen by span rather than named**, because a seed's campaign shape
+    is not stable. `CAUGHT` was the local campaign when this file was
+    written; Carmel's decisions gained their randomness the same day
+    (`games/hue-and-cry.md`, "Randomness in all three of her decisions")
+    and her median hop went from 653 km to 2,982, so the seed that used to
+    stay in Europe now crosses the planet. The claim under test is about a
+    campaign that covers little ground, so the test asks for one of those
+    instead of trusting a number written down before the policy changed.
+    """
+    def span(sd: bytes) -> float:
+        world, result = built(sd)
+        return _span_km(result, world)
+
+    # A campaign that never left one landmark is not the local case, it is
+    # a degenerate one, and it would pass this test by carrying nothing.
+    real = [sd for sd in seeds if span(sd) > 100] or seeds
+    return min(real, key=span)
+
+
+#: The local campaign, picked by span. Computed once: building a chase is
+#: not free and three tests want the same one.
+LOCAL: bytes | None = None
+
+
+def local_seed() -> bytes:
+    global LOCAL
+    if LOCAL is None:
+        LOCAL = _tightest([bytes.fromhex(f"{b:02x}" * 32)
+                           for b in range(1, 21)])
+    return LOCAL
+
+
 def built(seed: bytes):
     world = C.Map(seed)
     result = C.chase(seed, C.LOBBY_LANDMARK, searchers=2, world=world)
@@ -289,7 +331,7 @@ def test_the_geometry_is_cut_to_the_frame():
     """
     whole = sum(len(s) for k, v in F.BM.load().items() if k != "source"
                 for s in v)
-    carried = sum(len(s) for v in embedded(CAUGHT)["geometry"].values()
+    carried = sum(len(s) for v in embedded(local_seed())["geometry"].values()
                   for s in v)
     assert carried < whole * 0.1, (carried, whole)
 
@@ -306,7 +348,7 @@ def test_a_flight_across_continents_is_heavy_and_that_is_not_a_bug():
     """
     source = html(FLOWN)
     assert len(source) < 600_000, len(source)
-    local = html(CAUGHT)
+    local = html(local_seed())
     assert len(local) < 120_000, len(local)
 
 

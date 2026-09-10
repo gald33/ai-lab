@@ -42,6 +42,12 @@ def test_the_map_plays():
     pinned, posted = D._measure(gaz, ranked, D.NEIGHBOURHOOD, trials=1)
     assert pinned <= gazetteer.MAX_PINNED, f"pins {pinned:.1%} of her moves"
     # And the other side, which has no constant because it had never been
+    # SUPERSEDED IN PLAY, 2026-09-09 ("we have no routes"): there are no
+    # exits, so this measures a band that is not in the game. It is kept
+    # as an indirect guard on MIN_SHARED and CANDIDATES -- a vocabulary
+    # that fails it here is one whose descriptors have gone too coarse --
+    # and the live claim about candidate-set size is now
+    # test_carmel.test_a_hint_leaves_the_reader_a_hundred_places_not_five.
     # measured: a hint that leaves every exit standing has said nothing.
     assert posted <= 4.0, f"her hint leaves {posted:.2f} of 5 exits standing"
 

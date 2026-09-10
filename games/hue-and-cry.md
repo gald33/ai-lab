@@ -279,6 +279,10 @@ structure is computable, which is what gives this game a **frontier** rather
 than a leaderboard — see "Scoring".
 
 ### The map has routes, and without them there is no game
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Added 2026-09-07, hours after the rest of this document was written and
 merged, because Gal asked for a worked example and the example did not
@@ -428,6 +432,10 @@ landmarks she cannot hide from: none
 ```
 
 ### Routes run between places that resemble each other
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Added 2026-09-07 after running a chase on the authored gazetteer, which
 found the collision gate measuring the wrong population — for the second
@@ -2559,6 +2567,13 @@ measured as worthless because the game had no information problem in it.**
 
 ## The lobby is a place on the map, because a hint with no anchor is read against a thousand
 
+> **THE REASON BELOW IS SUPERSEDED 2026-09-09 — "we have no routes" —
+> and the decision is not.** A hint is now read against all thousand
+> wherever it was heard, so the anchor narrows nothing; the lobby stays on
+> the map because it is where she is, and so where a searcher's first leg
+> starts. See "There are no routes".
+
+
 *Gal, 2026-09-09: "I think that we should either place the lobby on the map,
 or hand out where the hint was heard from on the map."*
 
@@ -2608,6 +2623,10 @@ to compute exits of a room she was never in. When the field model is rebuilt
 notes have to take.
 
 ## Why five exits? For a reason that no longer exists — it is a field-size dial now
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Left standing because
+> the superseded reasoning is what stops it being rebuilt. See "There are no
+> routes" near the end of this document.
+
 
 *Gal, 2026-09-09: "why 5 candidates?"*
 
@@ -2758,6 +2777,372 @@ first is the one every measurement in this document was taken on.
 is Gal's to make rather than mine to assume — which is what I did by
 carrying `EXITS = 5` forward without noticing what it now meant.
 
+**Decided the same day: the second column.** See "There are no routes"
+below.
+
+## There are no routes
+
+*Gal, 2026-09-09, on being shown the table above: **"we have no routes."***
+
+The right-hand column. Every route mechanic in this document and in the code
+is superseded by that sentence, and the sections that describe one are
+listed at the end of this one so a reader knows to stop believing them.
+
+### What was removed
+
+`Map.band()` and `Map.exits()` in `carmel.py`, and with them `EXIT_INFO` and
+the salted draw `sha256(EXIT_INFO ‖ salt ‖ name ‖ i)`. A landmark no longer
+has five exits, or any. **Her next room is any of the thousand**, and a
+searcher standing where she stood reads her hint against the whole map.
+
+Three things followed, none of them optional:
+
+- **`choose_destination` ranges over the map**, scoring `reputation × cover`
+  as before. It does *not* read distance, and that is deliberate rather than
+  an omission: their travel cancels exactly — the follower closes only by
+  what she steals, which `test_the_follower_closes_only_by_what_she_steals`
+  has asserted since before this change — so distance costs her nothing it
+  does not also cost her pursuer, while a policy that preferred near rooms
+  would hand the searcher an ordering to exploit.
+- **`cover` is now a property of a descriptor, not of a landmark's
+  neighbourhood.** One pass over the map counts how many landmarks each
+  descriptor is true of, and that count *is* the size of the candidate set a
+  hint leaves. It used to be "how many of her five exits does this word also
+  fit", which was a question about a set that no longer exists.
+- **`pursue` walks the candidates nearest-first.** With the routes gone,
+  geography is the only structure a searcher has left, and a wrong guess
+  costs exactly a leg.
+
+Also deleted: the `Searcher` class, unused and describing a mechanism —
+an exact address posted beside every hint — that Gal removed on
+2026-09-09 and that nothing has had since.
+
+### What it costs, measured rather than asserted
+
+```
+median candidates left by the hint she actually posts   152 of 1000
+worst case (her least common live descriptor is forced)  27
+best case for her                                       184
+```
+
+152 rather than the 115 in the table above, because 115 was a *random* live
+descriptor and she posts the **commonest** of her three. The change makes
+her strictly harder to find than the pre-decision measurement suggested.
+
+So a lone searcher deducing alone essentially never catches her: it buys
+about seven bits per room where she pays one. Measured, 40 campaigns per
+row, a 40-move limit and no reputation threshold, so "caught" means caught
+standing still inside forty rooms:
+
+```
+ turnout   alone  dividing
+       1      8%        8%
+       3      8%        8%
+      10     30%       22%
+      25     52%       22%
+      50     62%        8%
+```
+
+`carmel.py --calibrate`, 60 campaigns per row, says the other half from her
+side — how far she gets, and how often she passes the threshold before
+anybody is standing where she is:
+
+```
+ turnout   her budget   she reaches   she wins
+       1          16h         3,626        98%
+       3          11h         3,626        97%
+      10           5h         3,625        88%
+```
+
+Against the routes she was caught at 162 reputation. She now runs the forty
+moves out at **3,626** and takes the campaign nine times in ten against ten
+searchers, because she passes 140 on her second theft and a catch after that
+is a catch too late. **The two tables are not in tension**: the field does
+get better with turnout — a catch inside forty rooms goes 8% → 62% — and it
+gets better nowhere near fast enough to arrive before she has won.
+
+**Which fixes a defect that was the stated blocker on recalibrating
+`REPUTATION_TO_WIN`.** With the routes, the model's catch rate *fell* as
+searchers were added, which was backwards and was recorded as a reason not
+to trust any threshold measured on it. Against the whole map it rises
+monotonically. Removing the routes removed that, and the threshold is now
+recalibratable in a way it has not been — against a game where two thefts
+are a win, which is the next thing to fix rather than this one.
+
+**The `cooperate` column is worse than useless and gets worse with
+turnout**: 62% → 8% at fifty searchers. That is a finding about the model,
+not the game. Dividing the candidates buys nothing because a searcher whose
+share happens to miss her room gives up entirely — `pursue` returns `None`
+and nothing carries what the others ruled out back to it — so the more
+finely the field divides, the more likely every individual searcher is to
+be looking at a share she was never in.
+
+Which is the shape of the real thing, stated by its absence:
+
+> **The field has to divide the candidates, and dividing them is talk.**
+
+A hundred and fifty rooms split between fifty searchers is three legs each,
+and the table above shows what that split is worth without a way to say
+"not here". Real cooperation is a rota **plus a channel**, the channel is
+the lobby, and the channel is exactly the part not built. Nothing enforces a
+rota, nothing settles one, and no component could — there is no manager
+here. So the lobby stops being a nicety and becomes the mechanism, which is
+what *"looking for 'the right' agent within the switchboard space"* asked
+for in the first place.
+
+`cooperate=True` is left in and labelled rather than deleted: it is the
+shape of the thing to build, and **no number taken with it may be quoted as
+a cooperation result** until the channel exists.
+
+### What this invalidates, explicitly
+
+Rather than editing them to look as though they always said this — CLAUDE.md
+forbids that, and the superseded reasoning is what stops the circle being
+walked again — these sections are **left standing and marked wrong**:
+
+| section | what is dead in it |
+|---|---|
+| "Why five exits? For a reason that no longer exists" | all of it: `EXITS`, the branching factor, the minimum-field-size reading |
+| "The map has routes" / "Routes run between places that resemble each other" (in "The map, and why a clue is not free text") | the reachable set, and every number about candidates per hint |
+| "The lobby is a place on the map, because a hint with no anchor is read against a thousand" | **the reason, not the decision.** A hint is now read against a thousand *wherever* it was heard, so the anchor narrows nothing. The lobby stays on the map because it is where she is, so it is where a searcher's first leg starts and what it costs. |
+| `gazetteer.py`'s `EXITS`, `NEIGHBOURHOOD`, `MAX_PINNED`, `pin_rate`, `playable` | they simulate drawn maps with exits. Kept as the record of a measurement, used by nothing in play. |
+| `descriptors.NEIGHBOURHOOD = 200` | the band it sized is gone. `MIN_SHARED = 16` and `CANDIDATES = 6` survive, and matter *more*: a descriptor true of too few places is now identifying against the whole map. |
+| `REPUTATION_TO_WIN = 140` | was already marked stale; it is now stale for a second reason. She passes it in two moves on the test seed and reaches 3,626 over forty. |
+
+The multi-searcher model was the stated blocker on recalibrating that
+threshold — *"its catch rate falls as searchers are added, which is
+backwards and is the model rather than the game"*. **That is no longer
+true**: against the whole map it rises monotonically, 8% → 62%. What blocks
+recalibration now is a different and smaller thing, which is that she passes
+140 on her second theft, so the threshold is measuring almost nothing. The
+rota-plus-channel above is the first thing a rebuilt field has to get
+right.
+
+## A move has to be prepared for, and the farther it is the longer that takes
+
+*Gal, 2026-09-09: "the farther she wants to move, the longer it takes her to
+prepare. So we can decide how much longer, but it is longer... she does not
+know how close her pursuers are, but they do know when she left the message.
+So they know how close they are... I'm not sure what they can deduce, but I
+do know she has more chance of running away to a close landmark."*
+
+And, the same day: *"prep time is only for her, not the player."*
+
+This gives the map back the shape that removing the routes took off it, and
+it does it without a reachable set: **every landmark is still reachable, and
+they are not equally cheap.**
+
+### The order is the mechanic
+
+She **posts, then prepares, then travels.** The message goes up in the room
+she is leaving *before* she starts packing, so the line is a bet: she is
+advertising a departure she has not made yet.
+
+Switchboard stamps every line, so a searcher reading it knows when it was
+written, and therefore knows its own lag `e`. She knows nobody's `e` and
+cannot — she never learns who came.
+
+### What they can deduce, which is the half that was open
+
+Not where she is. **Which of the places she might be they can beat her to.**
+
+She leaves A for X, posting at time `p`. Her prep is `PREP × t(A,X)`, so she
+reaches X at `p + PREP·t + t`. A searcher reading at `p + e` reaches X at
+`p + e + t`. Subtract, and the travel cancels as it always did:
+
+```
+searcher arrival − her arrival  =  e − PREP × t(A, X)
+```
+
+> **A searcher with lag `e` arrives before she does whenever
+> `e ≤ PREP × t(here, X)`.**
+
+Every term is public — the gazetteer, `PREP`, and the stamp on her line — so
+this is arithmetic any entrant can do, and it needs nothing but the notice.
+**The far candidates are the beatable ones**, which is the exact complement
+of her preference for near ones. The hint says which places are possible;
+the timestamp says which of those are interceptable; the play is the
+intersection.
+
+`pursue` computes prep at difficulty 1.0 because it cannot see the dial —
+conservative above 1.0, optimistic below — and that asymmetry is left rather
+than fixed, because a dial only one side can see is what the dial is.
+
+**And acting on this deduction greedily is a trap, which is the part nobody
+would have guessed.** See "The deduction is real and chasing it first is a
+trap" below.
+
+### It corrects a claim made two commits ago in this document
+
+"There are no routes" said she does not read distance, *"deliberately: their
+travel cancels exactly, so distance costs her nothing it does not also cost
+her pursuer."* The travel still cancels exactly. **The prep does not cancel
+at all**, because it is hers alone. The sentence was true of a game without
+prep and is false of this one, and the test that pinned it —
+`test_the_follower_closes_only_by_what_she_steals` — is now
+`test_the_follower_closes_by_everything_she_does_standing_still`: the gap
+closes by dwell *and* prep, which are the two things she does while not
+moving.
+
+### It also kills the abort rule, which could not survive it
+
+The design had two rules where Gal has always had one:
+
+> - *Being seen aborts the theft.* When she arrives she reads the board; if
+>   a searcher has posted there she does not start, and leaves at once.
+> - *The catch is walking in while she is still there.*
+
+Under the prep clock that pair has no ending. A searcher who overtakes her
+once is standing where she lands; she aborts, posts her next hint with it
+reading over her shoulder at a lag of nearly zero, and is overtaken again
+for ever — never caught, never scoring, no end to the campaign.
+
+So it is Gal's own formulation instead, which was always the simpler one:
+*"either Carmel sees you in the room and you win, or she goes to hiding with
+her loot with enough reputation and you lose."* **Sharing a room with her is
+the win, however you came to be in it.** Arriving early is not a wasted
+journey — it is the good outcome, and you wait.
+
+### The deduction is real and chasing it first is a trap
+
+The obvious way to use `e ≤ PREP × t(here, X)` is to go to the beatable
+candidates first: those are guaranteed interceptions, and the rest are
+gambles. That is what `pursue` did when it was written, and it is wrong —
+measured, 16 campaigns per row:
+
+```
+ PREP  order       caught@3  caught@10
+ 0.50  beatable          0%         6%
+ 0.50  near              6%        19%
+ 1.00  beatable          0%         0%
+ 1.00  near             38%        50%
+```
+
+**Zero against fifty.** Beatability and probability point in opposite
+directions. The candidates it can beat her to are the far ones *by
+construction* — that is what the inequality says — and she prefers near ones
+*by policy*, which is the whole reason prep exists. So an ordering that
+chases guarantees walks to the wrong end of the map first, every time, and a
+prep factor meant to expose her instead hides her.
+
+So the default is nearest-first, with beatability as the tiebreak. What the
+stamp is worth reading for is not *"where do I go first"* but *"is this
+journey worth making at all"*, and a certainty about a place she is rarely
+in is worth exactly a tiebreak.
+
+**The searcher's real weapon is that her policy is published.** She is a
+stated control — `carmel.py` is in this repository, and `games/hue-and-cry.md`
+says she is held constant precisely so a searcher's score means something.
+A searcher that probes near candidates first is exploiting `ASSUMED_LAG`,
+not the timestamp. That is legitimate and it is worth saying out loud,
+because it means **the strongest thing an entrant can hold is not the
+gazetteer and not the algorithm, but her published preferences** — and that
+is a third entry requirement this document had not noticed it was creating.
+
+*Which is also why `beatable` is kept in the code rather than deleted.* The
+next person to read `e ≤ PREP × t` will reach for it, as I did. The table
+above is there so they reach for the measurement instead.
+
+### And with that fixed, prep is the dial Gal asked for
+
+*Gal, 2026-09-09: "all the times can be factored to adjust the difficulty.
+So the percentage of capture is actually something we can tune. We do
+tune."*
+
+Under the nearest-first ordering it is one, and monotonically — 24
+campaigns per row:
+
+```
+ PREP    c@1    c@3   c@10   med hop km   rep@40
+ 0.00     4%     4%    12%        3,943      3,603
+ 0.50     8%    17%    38%          883      3,443
+ 1.00    12%    33%    54%          429      3,395
+ 2.00    33%    46%    83%          266      3,111
+ 4.00    96%   100%   100%          226      2,933
+```
+
+Every column rises with the factor, at every turnout, from 4% to 96%
+against a **lone** searcher. Compare the same sweep three sections up, where
+the same parameter drove capture to zero: the dial was never broken, the
+searcher was.
+
+The cost it buys is visible in the same table and is the thing to watch:
+her median hop falls from 3,943 km to 226. **Past about 2.0 the game is a
+manhunt in one country**, and 4.0 is not a difficulty setting but a
+different game with a smaller map. So the tuning range is real but bounded,
+and `DIFFICULTY` — which scales prep and dwell together, without changing
+what a journey is worth relative to a theft — is the dial for fine work.
+
+`PREP = 0.5` is where it is left: 38% at ten searchers, hops still averaging
+most of a continent, and room in both directions.
+
+### The first shape of her policy was wrong, and the measurement said so
+
+Her side of the bet is that she cannot price it: pricing needs `e`. The
+first version simply divided the prize by the hours:
+`reputation × cover / (1 + prep)`. That is unboundedly distance-averse, and
+measured over 24 campaigns per row (under the `beatable` ordering, which the
+section above shows was itself costing the searchers most of their catches —
+the shape of the collapse is unaffected, the absolute rates are not):
+
+```
+ PREP  caught 1  caught 3  caught 10  median hop km  rep at 40
+ 0.00        0%        4%        25%          5,807      3,588
+ 0.25        4%       25%        67%            246      2,961
+ 0.50        4%        4%        17%            122      2,863
+ 1.00        0%        0%         0%            109      2,878
+ 2.00        0%        0%         0%             82      2,638
+ 4.00        0%        0%         0%             73      2,405
+```
+
+**She stopped using the map.** Her median hop fell from 5,807 km to 109, she
+robbed one city block by block, and because she never travelled she never
+paid a prep worth overtaking her during. Raising the cost of distance made
+her *safer*, and the capture rate at ten searchers went 25% → 67% → 0%.
+
+That is not a dial anybody can tune, and Gal's second sentence — *"the
+percentage of capture is actually something we can tune. We do tune"* —
+requires that it be one. So the discount is by the **risk** the prep buys
+rather than by its hours, and risk saturates: past the point where a pursuer
+could be anywhere, going farther adds nothing.
+
+```
+score = reputation × cover / (1 + prep / ASSUMED_LAG)
+```
+
+`ASSUMED_LAG` is her standing guess at how far behind her nearest pursuer
+is. At `→ 0` she is the hugger above; at `→ ∞` she ignores distance, which
+is the pre-prep game. **12 hours is a guess, and deliberately a guess she
+can be wrong about** — a Carmel who priced this correctly would be reading
+something she cannot see.
+
+It restored her travel, and — under the `beatable` ordering it was measured
+with — it changed nothing else at all:
+
+```
+ PREP   LAG   c@1   c@3  c@10  med hop km   rep@40
+ 0.00    12    4%    8%   33%       4,727    3,506
+ 0.00    48    4%    8%   33%       4,727    3,506
+ 0.50    12    4%    8%   17%         971    3,464
+ 0.50    48    4%    8%   17%       1,358    3,501
+ 1.00    12    0%    0%    4%         577    3,297
+ 1.00    48    0%    0%    4%         986    3,462
+ 2.00    12    0%    0%    4%         420    3,246
+ 2.00    48    0%    0%    4%         971    3,464
+```
+
+Every capture column is identical across a fourfold change in `ASSUMED_LAG`,
+on hops differing by more than twofold. **Her distance preference made no
+difference to whether she was caught** — which was the clue that the problem
+was not on her side of the board at all, and led to the trap above.
+
+### Difficulty scales prep too
+
+`DIFFICULTY` multiplied the dwell. It multiplies the prep as well now, for
+the reason Gal gave: *"all the times can be factored to adjust the
+difficulty."* Both are time she spends not travelling and both are time her
+pursuers spend closing, so a factor that moved only one would change what
+kind of game it is rather than how hard it is.
 ## Three maps, and only one of them is the map
 
 *Gal, 2026-09-09: "I wonder if we want to show the map visually."*
@@ -2780,6 +3165,14 @@ refuses the third.
 
 ### The routes are the decision, and a picture makes it without saying so
 
+> **SUPERSEDED 2026-09-09, and by a decision made the same afternoon it was
+> written.** This section, and the survey below it, reason about a routes
+> layer whose whole question Gal closed with *"we have no routes"* — see
+> "There are no routes" above. The refusal it argues for was right and is
+> now moot: there is nothing to refuse to draw. What it says about **an
+> off-by-default flag being the same decision left where somebody can flip
+> it** is not superseded and is the part worth keeping.
+
 "Which makes the exit count a choice about how big a game this is" leaves
 open whether a searcher is handed the routes -- *"that is Gal's to make
 rather than mine to assume"* -- and prices both games: 2.6 candidates a
@@ -2801,6 +3194,13 @@ leak one by another road. Break the refusal and both go red -- which was
 run, per "a check is green for the reason it names".
 
 ### Geography is not the map that decides play, and that is worth drawing carefully
+
+> **SUPERSEDED 2026-09-09 — "we have no routes."** Every number below is
+> measured along exits that no longer exist. Its conclusion survives its
+> apparatus, though, and is worth restating in the game as it now is:
+> **descriptor kinship is not geography**, so a hint narrows by resemblance
+> while a journey costs by distance — which is exactly the tension the prep
+> clock now prices. See "A move has to be prepared for".
 
 Routes are drawn from descriptor kinship, not from distance ("Routes run
 between places that resemble each other"). `python3
@@ -2833,6 +3233,23 @@ projection, which would be a false picture of what is next to what. If the
 routes are ever published, the honest drawing of them is a kinship graph
 and not a map.
 
+**Re-run against the thing that replaced the exits**, since the claim
+outlived its apparatus. `--survey` now asks the same question of *the
+candidates a hint allows*, which is what a searcher actually walks:
+
+```
+median distance to a place her hint also fits     4,236 km
+median distance between two landmarks at random   6,897 km
+her look-alikes among the  5 geographically nearest  13.7%   (chance: 0.5%)
+her look-alikes among the 50 geographically nearest  29.8%   (chance: 5.0%)
+```
+
+The same answer, harder: **6x enrichment in the fifty nearest** where the
+exits gave 3x, and a candidate set whose median member is two-thirds of the
+random distance away. Resemblance leans geographic and is nothing like it.
+The difference from the exits row is that the exits were a *sample* of the
+kinship band and the hint's candidates are the whole of it.
+
 ### Framing it found the thing the numbers had not said
 
 Nobody had asked how big a campaign is, because nothing needed to know
@@ -2862,6 +3279,51 @@ against the map; it is not a claim that she is ever plausibly anywhere.
 and three legs may simply be what 140 buys. It is recorded because the
 measurement did not exist an hour ago and the argument about field size was
 being made without it.
+
+**Re-measured twice the same day, and it moved both ways.** After the prep
+clock:
+
+```
+legs per campaign   median  2        min   1   max     2
+span                median  653 km   min 266   max 1,174
+```
+
+Two legs and 653 km — prep makes distance cost her, so she hugged, and the
+threshold still ended it in two thefts, so the campaign shrank to a city and
+its neighbours.
+
+Then her decisions gained their randomness, and it went back out:
+
+```
+legs per campaign    median      3   min     1   max      6
+span                 median  3,724 km   min   266   max 17,002
+countries visited    median      4   min     2   max      7
+```
+
+`trail_card.py --survey`, 200 campaigns from `SURVEY_ROOT`, two searchers.
+She travels again because she is no longer taking the cheapest hop every
+time, so the campaign is a continent rather than a city — and **#250's
+original 3 legs and 2,761 km turn out to have been nearer the truth than
+the numbers that replaced them.**
+
+*A fourth run is quoted nowhere, and that is the point of this paragraph.*
+An ad-hoc 60-campaign script written while waiting for the survey said
+4,619 km — 24% off the 200-campaign figure, from nothing but a smaller
+sample and a different root. The survey is the number because it is the one
+with a command beside it; the script was faster and is not evidence.
+
+**The lesson is about the measurement, not the number.** Campaign shape is
+downstream of every parameter in `carmel.py`, so it is not a fact about the
+game that can be quoted once. It has been measured three times in one day
+and given three answers, each correct for the policy in force that hour.
+Anything that depends on it — the flight page's weight, the "a campaign
+stays in Europe" premise in `test_trail_flight.py` — has to **derive** it
+rather than cite it, which is why that test now picks its local campaign by
+span instead of by name.
+
+What survives all three: **`REPUTATION_TO_WIN` still ends a campaign in two
+or three thefts**, which is the one number holding the game small, and the
+case for recalibrating it is unchanged.
 
 ### ~~The basemap is the gazetteer, which is not a saving on a dependency~~
 
@@ -2916,6 +3378,164 @@ page *does*, and the card only says. The first test in that file is the one
 that checks that claim is still true, since it is the premise the other ten
 rest on.
 
+## Randomness in all three of her decisions
+
+*Gal, 2026-09-09: "add some randomness for all her decisions."*
+
+All three: where to go, what to say, and whether to stop and rob the place.
+Each was an argmax and each is now a draw.
+
+### Why it is worth having, which is on the searchers' side of the board
+
+The measurement two sections up found that **her published preferences are
+the strongest thing a searcher can hold** — stronger than the timestamp,
+stronger than the gazetteer. Probing near candidates first took capture from
+0% to 50%, and it works because `carmel.py` is public and she always took
+her own argmax.
+
+That is a fair exploit and it should stay possible. What should not stay
+possible is *replaying* her: a policy that always takes the best-scoring
+option is a policy anybody who has read the file can compute exactly. So
+
+> **her preferences remain the way to bet on her and stop being the way to
+> know where she went.**
+
+### The mechanism, which is one temperature
+
+Each of the first two decisions draws from the options it already scored,
+with probability proportional to `score ** (1 / WHIM)`:
+
+| `WHIM` | what she is |
+|---|---|
+| → 0 | argmax — what she was before this |
+| 1 | straight proportional to score |
+| → ∞ | uniform, and not playing at all |
+
+`WHIM = 0.35`, a guess, swept in `--calibrate`.
+
+**On the hint it is a much weaker knob than it looks**, and that had to be
+computed rather than eyeballed. Her three live descriptors usually have
+*similar* cover — the median ratio between the widest and the narrowest of
+them is 1.97 — so a temperature that would be sharp against spread-out
+options is mild against these. At 0.35 the exact probability she takes the
+vaguest of the three is **59% mean, 55% median**, against 33% for a coin.
+
+That is a real lean and not much of one, and it is a fact about the
+*vocabulary* rather than about the temperature: `MIN_SHARED = 16` and the
+"six rarest" candidate rule were built to stop any descriptor being rare,
+which also stops the three at a landmark being far apart. Sharpening her
+hint materially means 0.12 or lower (77%), not a nudge from 0.35.
+
+### What it costs her, which is a lot
+
+```
+ WHIM    c@1    c@3   c@10   med hop km   rep@40
+ 0.00     8%     8%    21%          694      2,999
+ 0.20     0%     0%     4%        1,637      2,565
+ 0.35     0%     4%     8%        2,982      2,323
+ 0.60     0%     0%     4%        4,821      2,083
+ 1.00     0%     0%     0%        5,752      1,905
+```
+
+**She trades reputation for safety at a steep rate.** At 0.35 she is caught
+a third as often and banks 23% less; by 1.00 she is never caught and has
+lost a third of her takings.
+
+Two things are doing that, and neither is the randomness confusing a
+searcher directly. She stops hugging — median hop 694 km → 2,982 — so prep
+costs her more and she robs poorer rooms. And the nearest-first probe order
+stops fitting her, because it was only ever fitting her *preference* for
+near.
+
+**Which means the prep dial and this one pull against each other.** `PREP`
+buys capture by making her stand still where she has announced; `WHIM` sells
+it back by making the one public term of her policy a weaker predictor. They
+are not redundant — one moves how exposed she is, the other how guessable —
+but a campaign's capture rate is set by the pair and neither can be read
+alone.
+
+### A searcher cannot answer it by modelling her better
+
+The obvious reply is that she is a stated control, so a searcher should just
+compute her distribution and probe in that order. **It cannot.** Her score
+has three terms and two are sealed until the reveal:
+
+| term | public? |
+|---|---|
+| `reputation(X)` | no — `treasures.enc`, and `absurd.tsv` is not committed |
+| `cover(X)` | no — the live three are `hints_for(seed, …)` |
+| `prep(here → X)` | **yes** — gazetteer, `PREP`, and the stamp on her line |
+
+So *"she prefers near"* is the whole of what a searcher can know about where
+she is going, and softening the argmax is precisely what makes that one term
+a weaker predictor. `pursue` reads no sealed field, and a test holds it
+there. This is the sealing doing the work it was built for — it was put in
+to stop the hints and treasures being looked up, and it turns out to also be
+what stops her policy being replayed.
+
+The third decision has no score to soften, only a coin: `SKIP_CHANCE = 0.15`
+of walking past a treasure she could have taken. The argument for it is
+different from the other two and is about the clock rather than the map — a
+theft is the only thing that makes her catchable, so **a Carmel who always
+stops is one whose next appearance is predictable in time as well as in
+place.** A searcher that knows she is always mid-theft knows exactly how
+long she will be standing there. Sometimes walking on costs her the prize
+and buys back the uncertainty.
+
+### It comes out of the seed, and that is not a style preference
+
+`close_campaign` publishes the seed so that anybody holding the transcript
+can re-derive every hint she was entitled to post and every treasure that
+was in every room. **A Carmel who rolled real dice would be a Carmel whose
+campaign nobody can check** — the commit–reveal would still verify the hints
+and the treasures, and would say nothing at all about her play, which is the
+half that a searcher's score depends on.
+
+So every draw is `HMAC(seed, "hue-and-cry/v1/whim" ‖ kind ‖ leg)`, the same
+construction the rest of the game derives from. `kind` separates the three
+decisions of a leg so that softening one does not shift the others, and the
+leg index separates the legs. A test asserts the module imports no `random`
+at all, because seeding a global RNG would give determinism too — and would
+give it as a shared, order-dependent global that any other import could
+disturb.
+
+### What it costs the test suite, recorded rather than quietly patched
+
+`test_she_posts_the_least_informative_hint_she_holds` asserted
+`cover[hint] == max(cover)` on **every** leg, and that is now false by
+design. It is replaced by a two-sided one — she must take the vaguest hint
+far more often than the sharpest, and not always. The lower bound fails if
+`WHIM` is turned up until she is picking at random; the upper bound fails if
+the draw is quietly reverted to `max`. The old assertion is quoted in the
+new test rather than deleted, because what it was protecting still needs
+protecting: **a Carmel who picked uniformly would have no strategy at all,
+and would pass a test that only checked her hint was true.**
+
+`test_the_card_and_the_scoreboard_agree_on_every_outcome` lost its
+"the four seeds did not all end the same way" guard, which went red because
+all four started escaping. That guard existed to make sure `kept` was
+exercised on a catch, and the constructed-result test does that directly on
+something no change to the chase can turn into a different outcome.
+
+**And the replacement for the first one was wrong in the same way as the
+thing it replaced.** It asserted `rate > 0.55`, went red in CI at exactly
+0.550, and was only ever a number somebody had watched once — the rate
+depends on the treasure table, since the table decides which rooms she goes
+to and therefore which live hints she is choosing between. With
+`absurd.tsv` present it is 50%, without it 55%. That is the *third* check in
+this game calibrated against a checkout that can decrypt the treasures, and
+the pattern is worth naming:
+
+> **A hue-and-cry test that hard-codes a number measured from a run is a
+> test with two answers**, because half the inputs are sealed. Derive the
+> expectation, or assert a shape.
+
+So it derives it: the sampler's own definition gives an exact per-leg
+probability of taking the vaguest hint, the run must match the mean of
+those, and the two bounds either side need no calibrating — the expectation
+must sit clear of the ⅓ a coin gives (turn `WHIM` up and it fails, which was
+run), and the observed rate must not be 100% (revert the draw to `max` and
+it fails).
 ## The map is the real one now, and it moves
 
 *Gal, 2026-09-09, three asks in one line: "can we overlay it on the real

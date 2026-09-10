@@ -1,5 +1,14 @@
 """Landmarks and the things that are true of them, in words a person feels.
 
+SUPERSEDED IN PLAY, 2026-09-09: Gal, *"we have no routes."* This file's
+`EXITS`, `NEIGHBOURHOOD`, `kinship`, `neighbourhood`, `pin_rate` and
+`playable` all simulate a map with a reachable set per landmark, and there
+is no longer one -- Carmel may go anywhere on the map and a hint is read
+against all thousand. Nothing in play imports them any more. It is kept
+because it is the record of the measurements that set them, which
+`games/hue-and-cry.md` ("There are no routes") points back to.
+
+
 Gal, 2026-09-07: *"that must be human readable. more than that, we 'sell' on
 human interacting about it in social media, it must evoke feelings"*.
 

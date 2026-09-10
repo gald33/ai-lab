@@ -4,15 +4,20 @@
 
 Two of these guard arithmetic and the rest guard a design decision, which
 is unusual for a test file and is the point of this one. `trail_card.py`
-refuses to draw her exits because `games/hue-and-cry.md` leaves the
-routes-public question open and a picture of the routes decides it. A
-refusal that only lives in a docstring is a refusal somebody adds a flag to
-on a quiet afternoon, so it is asserted here instead.
+names no landmark but the trail's own: a card that named the places around
+her would be handing over a shortlist she is supposed to be deduced from.
+A refusal that only lives in a docstring is a refusal somebody adds a flag
+to on a quiet afternoon, so it is asserted here instead.
+
+*This file was written while the map still had routes*, and one of its
+tests guarded against drawing them. Gal removed the routes the same
+afternoon -- *"we have no routes"* -- and that test is deleted rather than
+left passing, for the reason recorded where it stood.
 
 Every test below has been made to fail on purpose, per `CLAUDE.md`'s "a
 check is green for the reason it names": the accounting ones by reverting
 `kept` to `leg["dwell"]`, the layout ones by returning the naive
-right-of-the-pin position, and the refusal ones by drawing the exits.
+right-of-the-pin position, and the naming one by labelling the basemap.
 """
 
 import re
@@ -27,6 +32,11 @@ import basemap as BM  # noqa: E402
 import trail_card as TC  # noqa: E402
 
 #: A seed whose campaign ends in an arrest, and one where she gets away.
+# Two campaigns to draw. **Nothing below asserts what either seed's outcome
+# is**, and that is deliberate: `absurd.tsv` is gitignored, so a checkout
+# holding `HUE_TREASURE_KEY` builds 80 absurd treasures and CI builds none,
+# and the same seed is caught in one and escapes in the other. The name is
+# kept for the diff's sake and now means only "the first campaign".
 CAUGHT = bytes.fromhex("22" * 32)
 ESCAPED = bytes.fromhex("a3" * 32)
 
@@ -50,29 +60,51 @@ def texts(svg: str) -> list[str]:
 # --- the arithmetic the drawing found -------------------------------------
 
 def test_the_room_she_is_caught_in_is_not_credited():
-    """The catch is walking in while she is still standing there, so the
-    final room of a caught campaign is always one she was mid-theft in.
-    Counting it puts the card's header at odds with `chase`'s own total."""
-    world, result = run(CAUGHT)
-    assert result["outcome"] == "caught"
-    legs = result["moves"]
-    assert legs[-1]["dwell"], "this seed no longer catches her mid-theft"
-    assert len(legs) - 1 not in TC.kept(result)
+    """The catch is being in the room with her, and she is only in a room
+    she has not finished robbing -- so the final room of a caught campaign
+    is always a theft interrupted. Counting it puts the card's header at
+    odds with `chase`'s own total.
 
-    banked = sum(world.treasure[legs[i]["to"]]["reputation"]
-                 for i in TC.kept(result))
-    assert banked == result["reputation"]
+    **Asserted against a constructed result rather than a seeded chase**,
+    because the outcome of any particular seed is not stable across
+    checkouts. `absurd.tsv` is gitignored, so a checkout holding
+    `HUE_TREASURE_KEY` builds 80 absurd treasures at the reputation floor
+    and CI builds none -- different prizes, different dwells, different
+    chase. `CAUGHT = "22"` was caught on CI and escaped here; `"4b"` was
+    the other way round. A test that needs a named seed to lose is a test
+    that goes red on somebody's laptop for a reason that is not a bug.
+    """
+    legs = [{"to": "Uluru", "dwell": 6.0}, {"to": "Stonehenge", "dwell": 11.0}]
+    caught = {"outcome": "caught", "moves": legs}
+    assert TC.kept(caught) == {0}, "the interrupted theft was credited"
+    assert TC.kept({"outcome": "she wins", "moves": legs}) == {0, 1}
 
 
-def test_a_campaign_she_wins_banks_every_room_she_dwelt_in():
-    """The other side of it, so the fix above cannot be 'never credit the
-    last room'."""
-    world, result = run(ESCAPED)
-    assert result["outcome"] != "caught"
-    legs = result["moves"]
-    assert TC.kept(result) == {i for i, leg in enumerate(legs) if leg["dwell"]}
-    assert sum(world.treasure[legs[i]["to"]]["reputation"]
-               for i in TC.kept(result)) == result["reputation"]
+def test_the_card_and_the_scoreboard_agree_on_every_outcome():
+    """The invariant the fix above exists for, and the one worth pinning:
+    what the card banks is what `chase` reports, whatever happened.
+
+    This replaces a pair of tests that each needed a seed with a particular
+    outcome. It is stronger than both -- it holds for a catch, for a win
+    and for a campaign that simply ran out of moves, so `kept` cannot be
+    fixed for one and broken for another -- and it does not care which
+    treasure table the checkout can build.
+    """
+    # No assertion that the outcomes differ. There was one, and it went
+    # red when Carmel's decisions gained their randomness on 2026-09-09 --
+    # all four seeds started escaping. It was guarding that `kept` gets
+    # exercised on a catch, and the test above does that directly, on a
+    # constructed result that no change to the chase can turn into a
+    # different outcome.
+    for tag in ("22", "4b", "a3", "07"):
+        seed = bytes.fromhex(tag * 32)
+        world, result = run(seed)
+        legs = result["moves"]
+        banked = sum(world.treasure[legs[i]["to"]]["reputation"]
+                     for i in TC.kept(result))
+        assert banked == result["reputation"], (
+            f"{tag}: card banks {banked}, chase reports"
+            f" {result['reputation']} on a {result['outcome']} campaign")
 
 
 def test_the_header_counts_what_the_map_marks():
@@ -88,17 +120,16 @@ def test_the_header_counts_what_the_map_marks():
 
 # --- what it must not show ------------------------------------------------
 
-def test_it_never_asks_the_map_for_an_exit():
-    """The routes-public question is open (`games/hue-and-cry.md`, "Which
-    makes the exit count a choice about how big a game this is"). Drawing
-    them answers it, so the card does not have them to draw."""
-    world, result = run(ESCAPED)
-
-    def refuse(_landmark):
-        raise AssertionError("the card asked for an exit")
-
-    world.exits = refuse
-    TC.card(result, world, ESCAPED, C.LOBBY_LANDMARK)
+# `test_it_never_asks_the_map_for_an_exit` was here, and is deleted rather
+# than left passing. It monkeypatched `Map.exits` to raise, and Gal removed
+# the routes the same afternoon -- so on a Map with no `exits` at all the
+# patch just sets an unused attribute and the test passes without checking
+# anything. That is `CLAUDE.md`'s "absence drawn as a pass" exactly, and a
+# vacuous green test is worse than no test.
+#
+# What it was protecting is still protected, by the test below: the card
+# may name no landmark but the trail's own, so it cannot hand over a
+# shortlist by any road, route layer or not.
 
 
 def test_no_landmark_but_the_trail_is_named():
