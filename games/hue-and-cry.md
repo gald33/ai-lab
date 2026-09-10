@@ -3776,6 +3776,60 @@ she paid in instalments, which is not what a fugitive's distance costs —
 papers for the next country over are an afternoon and papers for the far
 side of the world are a different kind of problem.
 
+### What the exponent bought, and what it did not
+
+```
+ exp    c@1    c@3   c@10   med hop km
+ 1.0     0%     0%     2%        2,665
+ 1.3     0%     0%     5%        2,133
+ 1.6     0%     2%     8%        2,187
+ 2.0     0%     2%     8%        2,022
+```
+
+**Four times the capture and still a rout.** 8% at ten searchers is not a
+contest, and the exponent is plainly not the thing standing between this
+game and one. So the next question is what is — and it is not the clock.
+
+### The game is deduction-bound, not clock-bound
+
+Measured over 240 legs: where does her actual room sit in the order a
+searcher probes?
+
+```
+candidates the hint allows        median 158
+her room's rank in the probe order  median  46      p10 7    p90 120
+found on the first probe                     2%
+found in the first five                      9%
+```
+
+Her hint is true of her room every time — the deduction is sound, and
+nearest-first genuinely helps (median rank 46 against the 79 a coin would
+give, which is the same finding as "chasing the guaranteed interception
+first is a trap", from the other side). **It helps nowhere near enough.**
+A searcher walks a median of 46 wrong rooms, each costing a leg of travel,
+while she needs one leg to move.
+
+That is why every timing dial has disappointed. `PREP`, `PREP_EXPONENT`,
+`DIFFICULTY` and the threshold all move *when* she is catchable; none of
+them moves whether anybody is standing in the right room. A dial that
+buys 2% → 8% is doing what it can with the 2%-of-first-probes it is
+handed.
+
+> **The binding constraint is the size of the candidate set, and the only
+> thing in this design that divides it is the lobby.**
+
+One searcher walks 46 rooms. Fifty searchers who split the 158 between them
+walk three each — and fifty who never speak walk the same 46 in the same
+order, which is exactly what the `cooperate` measurement found and what
+"There are no routes" recorded as needing *a rota plus a channel*. The
+channel is the unbuilt piece, and it is not one of several things worth
+doing next; it is the one that decides whether this is a game.
+
+**So the threshold recalibration is deferred, on purpose.** Setting a
+number that governs how long a campaign runs is premature while the
+campaign's outcome is decided before the clock matters. `REPUTATION_TO_WIN`
+stays at 140 and stays marked stale.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely
