@@ -4013,6 +4013,64 @@ median hop         1,977 km    520 km
 behind her pursuers were, standing in for a preference she can state
 directly.
 
+### How strong, which turned out to be a frontier and not a taste
+
+A strong bias makes her predictable, and a predictable Carmel is findable by
+one person — which collapses the gap between a field that talks and one that
+does not, the only quantity this experiment measures. At `WATCH = 1`:
+
+```
+ NEAR_KM  med rank   solo  10 alone  10 split  premium
+    1200        70    57%       82%       98%       +15
+    2500        92    35%       55%       90%       +35
+    4000       124    22%       50%       92%       +43
+   10000       208    35%       45%       92%       +48
+```
+
+**The premium is best where the bias is weakest** — and rank 208 is exactly
+where the old divisor left her, the version that was rejected three times.
+So the experiment's optimum is the game Gal said was wrong. That is
+recorded rather than obeyed: a coordination premium measured in a game
+nobody would play is not worth having.
+
+`NEAR_KM = 2500` is the strongest bias that keeps a lone searcher an
+underdog. Her median destination is the **92nd nearest room of 999** — the
+nearest tenth of the map, against a coin's 499.
+
+And it reverses `WATCH`, which was picked when she was much harder to find:
+
+```
+ WATCH   solo  3 alone  3 split  10 alone  10 split  premium
+     1    35%      48%      60%       55%       90%      +35
+     2    50%      65%      82%       78%       98%      +20
+     3    65%      75%      90%       85%      100%      +15
+```
+
+`WATCH = 1` now wins all three conditions outright. It had been rejected on
+a fourth and aesthetic ground — that at one room there is no question of
+*how many* to watch — which does not survive contact with the other three.
+
+### And a seed that was never read, found by the test that broke
+
+`test_she_leans_on_the_least_informative_hint...` went red in CI at 55%
+observed against its own 70% prediction — a five-sigma gap in a test built
+to be self-calibrating. The cause was not the test's arithmetic:
+
+> **`itinerary(seed, ...)` never read its `seed` argument.** Every draw
+> came from `world.seed`, so passing eleven seeds against one prebuilt Map
+> produced the *same campaign eleven times*.
+
+The test thought it had 220 legs and had 20, with eleven times the variance
+it displayed. The calibration sweeps were unaffected — they set the Map's
+own seed — which is why this survived a day of measurement without showing.
+`Carmel` takes an explicit `seed` now and `itinerary` passes it; with that
+the test's observed and predicted agree to 3.1% with the treasure table and
+0.7% without.
+
+**It is the same lesson as the section above, in code rather than in a
+constant**: a parameter's presence is not its effect, and the only way to
+know is to vary it and watch something move.
+
 ### The lesson is about how the first two answers were given
 
 The mechanism was present and the magnitude was never checked, so "already

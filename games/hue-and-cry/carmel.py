@@ -221,10 +221,20 @@ PREP_PIVOT = 10.0
 #: 3. **A lone searcher is an underdog**, 38%, which is what a fugitive
 #:    with a thousand rooms should make of one person.
 #:
-#: 1 satisfies all three and is rejected for a fourth reason: at one room
-#: there is no question of *how many* to watch, only which, and half the
-#: decision disappears.
-WATCH = 2
+#: **RE-SWEPT and reversed on 2026-09-10**, when the near bias became real
+#: and made her far easier to find. At `NEAR_KM = 2500`:
+#:
+#:     WATCH   solo  3 alone  3 split  10 alone  10 split  premium
+#:         1    35%      48%      60%       55%       90%      +35
+#:         2    50%      65%      82%       78%       98%      +20
+#:         3    65%      75%      90%       85%      100%      +15
+#:
+#: 1 now wins all three conditions outright: nothing saturated, the biggest
+#: premium, and a soloist at 35%. It was rejected before on a fourth and
+#: aesthetic ground -- that at one room there is no question of *how many*
+#: to watch -- which does not survive contact with the other three. The
+#: searcher still chooses *which* room, and that is the whole deduction.
+WATCH = 1
 
 #: How far away stops feeling near, in kilometres. **The scale of her bias
 #: towards near, and since 2026-09-10 the primary term in where she goes.**
@@ -250,9 +260,29 @@ WATCH = 2
 #:
 #:     P(X)  proportional to  reputation(X) * cover(X) * exp(-d / NEAR_KM)
 #:
-#: At 1,200 km a hop across a country is worth about 0.37 of one next
-#: door, and one across an ocean is worth 0.0002. That is a preference.
-NEAR_KM = 1200.0
+#: **2,500 km, and the strength was a frontier and not a taste.** A strong
+#: bias makes her predictable, and a predictable Carmel is findable by one
+#: person -- which collapses the gap between a field that talks and one
+#: that does not, the only quantity this experiment measures. At `WATCH=1`:
+#:
+#:     NEAR_KM  med rank   solo  10 alone  10 split  premium
+#:        1200        70    57%       82%       98%       +15
+#:        2500        92    35%       55%       90%       +35
+#:        4000       124    22%       50%       92%       +43
+#:       10000       208    35%       45%       92%       +48
+#:
+#: The premium is best where the bias is weakest -- and rank 208 is exactly
+#: where the old divisor left her, the version Gal rejected three times. So
+#: the experiment's optimum is the game he said was wrong, and that is
+#: recorded rather than obeyed: a coordination premium measured in a game
+#: nobody would play is not worth having.
+#:
+#: 2,500 km is the strongest bias that keeps a lone searcher an underdog.
+#: Her median destination is the 92nd nearest room of 999 -- the nearest
+#: tenth of the map, against a coin's 499 -- which nobody would look at and
+#: call unbiased. A hop across a country is worth 0.37 of one next door,
+#: an ocean crossing 0.0002.
+NEAR_KM = 2500.0
 
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
@@ -580,8 +610,19 @@ class Carmel:
     """A fixed, stated policy. Held constant so a searcher's score means
     something."""
 
-    def __init__(self, world: Map, start: str, difficulty: float = DIFFICULTY):
+    def __init__(self, world: Map, start: str, difficulty: float = DIFFICULTY,
+                 seed: bytes | None = None):
         self.world = world
+        #: What her draws come out of. Defaults to the world's, which is
+        #: the same thing in every real campaign -- `chase` builds the Map
+        #: from the seed. It is separable because `itinerary` takes a seed
+        #: argument and **silently ignored it until 2026-09-10**: every
+        #: draw read `world.seed`, so passing a different seed with a
+        #: shared Map produced the identical campaign. A caller sweeping
+        #: seeds against one prebuilt Map -- which is what the calibration
+        #: scripts and one test did -- was measuring a single campaign
+        #: repeated.
+        self.seed = seed or world.seed
         self.at = start
         self.reputation = 0
         self.emptied: set[str] = set()
@@ -655,7 +696,7 @@ class Carmel:
                            * self.best_cover(destination)
                            * math.exp(-km / NEAR_KM))
         return _sample(rooms, weights,
-                       _draw(self.world.seed, self.leg, "where"))
+                       _draw(self.seed, self.leg, "where"))
 
     def best_cover(self, destination: str) -> int:
         """How much of the map the most ambiguous live hint leaves standing.
@@ -689,7 +730,7 @@ class Carmel:
         """
         live = sorted(self.world.live_hints(destination))
         return _sample(live, [float(self.world.cover[w]) for w in live],
-                       _draw(self.world.seed, self.leg, "say"))
+                       _draw(self.seed, self.leg, "say"))
 
     # --- 3. whether to stand still ----------------------------------------
     def will_steal(self, destination: str) -> bool:
@@ -721,7 +762,7 @@ class Carmel:
         """
         if destination in self.emptied:
             return False
-        return _draw(self.world.seed, self.leg, "steal") >= SKIP_CHANCE
+        return _draw(self.seed, self.leg, "steal") >= SKIP_CHANCE
 
     def take(self, destination: str) -> float:
         prize = self.world.treasure[destination]
@@ -942,7 +983,7 @@ def itinerary(seed: bytes, start: str, world: Map,
     change to her plan. Nothing a searcher does alters a leg she would
     otherwise have flown, so the trail is still a pure function of the seed.
     """
-    her = Carmel(world, start, difficulty)
+    her = Carmel(world, start, difficulty, seed=seed)
     out, posted = [], 0.0
     for leg in range(limit):
         her.leg = leg
