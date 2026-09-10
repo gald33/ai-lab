@@ -4,7 +4,7 @@ These build the table in memory from a fixed test seed. Nothing reads a
 committed rendering, because there is not one and there must not be --
 see the top of `hints.py`.
 
-    python3 -m pytest games/hue-and-cry/test_hints.py -q
+    python3 -m pytest games/carmel-taldiego/test_hints.py -q
 """
 
 import re
@@ -35,7 +35,7 @@ def test_no_plaintext_rendering_is_tracked_by_git():
     and the leak was beside it.
     """
     tracked = subprocess.run(
-        ["git", "ls-files", "games/hue-and-cry/"],
+        ["git", "ls-files", "games/carmel-taldiego/"],
         capture_output=True, text=True,
         cwd=Path(__file__).resolve().parents[2]).stdout.split()
     leaks = [f for f in tracked

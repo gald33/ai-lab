@@ -1,6 +1,6 @@
 # 1,000 known or interesting landmarks, from Wikidata (CC0) --
 # UNESCO World Heritage Sites (wdt:P1435 wd:Q9259), named icons, and
-# natural features. Selection and use: games/hue-and-cry/landmarks.py
+# natural features. Selection and use: games/carmel-taldiego/landmarks.py
 # name	country	lat	lon	source	sitelinks	qid
 Vatican City	Vatican City	41.90400	12.45300	unesco	342	Q237
 Mount Everest	Nepal	27.98806	86.92500	iconic	237	Q513

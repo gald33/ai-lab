@@ -5,7 +5,7 @@ complete table with placeholders where the hand-written eighty would be, so
 the invariants and the balance finding are checked in CI while the mapping
 stays sealed. See `WHY THIS IS SEALED` in `treasures.py`.
 
-    python3 -m pytest games/hue-and-cry/test_treasures.py -q
+    python3 -m pytest games/carmel-taldiego/test_treasures.py -q
 """
 
 import subprocess
@@ -34,7 +34,7 @@ def test_no_plaintext_treasure_mapping_is_tracked_by_git():
     worse than the data file -- they were a dict in the source, keyed by
     landmark."""
     tracked = subprocess.run(
-        ["git", "ls-files", "games/hue-and-cry/"],
+        ["git", "ls-files", "games/carmel-taldiego/"],
         capture_output=True, text=True, cwd=REPO).stdout.split()
     leaks = [f for f in tracked
              if Path(f).name in ("treasures.tsv", "absurd.tsv")]

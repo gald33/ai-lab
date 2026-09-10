@@ -63,11 +63,11 @@ experiments/do-they-take-a-handed-over-answer/recordings/island-replay.html
 .claude/*.local.json
 
 # The hint matrix is the game secret. Only the encrypted commitment
-# (games/hue-and-cry/hints.enc) may be committed -- never a plaintext
-# rendering. See games/hue-and-cry/hints.py.
-games/hue-and-cry/hints.tsv
+# (games/carmel-taldiego/hints.enc) may be committed -- never a plaintext
+# rendering. See games/carmel-taldiego/hints.py.
+games/carmel-taldiego/hints.tsv
 
 # The treasure mapping is the same shape: any public line naming what was
-# taken names the room. Only games/hue-and-cry/treasures.enc is committed.
-games/hue-and-cry/treasures.tsv
-games/hue-and-cry/absurd.tsv
+# taken names the room. Only games/carmel-taldiego/treasures.enc is committed.
+games/carmel-taldiego/treasures.tsv
+games/carmel-taldiego/absurd.tsv

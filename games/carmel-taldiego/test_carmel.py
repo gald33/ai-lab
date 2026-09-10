@@ -1,11 +1,11 @@
 """What has to stay true of Carmel's policy.
 
-She is the control: `games/hue-and-cry.md` keeps her an NPC precisely so a
+She is the control: `games/carmel-taldiego.md` keeps her an NPC precisely so a
 searcher's score is not confounded with how well she played. A policy that
 drifts is a control that has stopped controlling, so these pin the shape of
 her decisions rather than any particular chase.
 
-    python3 -m pytest games/hue-and-cry/test_carmel.py -q
+    python3 -m pytest games/carmel-taldiego/test_carmel.py -q
 """
 
 import sys

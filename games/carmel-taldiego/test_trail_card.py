@@ -1,6 +1,6 @@
 """What the card must not get wrong, and what it must not show.
 
-    python3 -m pytest games/hue-and-cry/test_trail_card.py -q
+    python3 -m pytest games/carmel-taldiego/test_trail_card.py -q
 
 Two of these guard arithmetic and the rest guard a design decision, which
 is unusual for a test file and is the point of this one. `trail_card.py`

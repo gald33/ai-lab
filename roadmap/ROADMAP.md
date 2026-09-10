@@ -1145,9 +1145,9 @@ graph TD
 - **arc:** lab-practice
 - **priority:** now
 - **refs:**
-  - `games/hue-and-cry.md`
-  - `games/hue-and-cry/hints.py`
-  - `games/hue-and-cry/treasures.py`
+  - `games/carmel-taldiego.md`
+  - `games/carmel-taldiego/hints.py`
+  - `games/carmel-taldiego/treasures.py`
 
 <details><summary>evidence</summary>
 
@@ -1162,7 +1162,7 @@ graph TD
 > under a key held outside the repository; `.gitignore` refuses the plaintext
 > names, and two tests fail if a plaintext mapping is ever tracked again. The
 > branch history was rewritten in three filter-branch passes — removing both
-> TSVs and redacting the quoted pairs from `games/hue-and-cry.md` and
+> TSVs and redacting the quoted pairs from `games/carmel-taldiego.md` and
 > `treasures.py` — and every rewritten commit was scanned against all 75
 > treasure strings and all 5,963 sentence renderings. `refs/heads/main` and the
 > feature branch are clean.
@@ -1170,14 +1170,14 @@ graph TD
 > **What is left is the one thing a force-push cannot reach.** GitHub keeps
 > `refs/pull/244/head` pointing at the pre-rewrite commits, and serves both
 > files from it: verified 2026-09-09 by fetching
-> `games/hue-and-cry/hints.tsv` at that ref and getting 982,752 characters of
+> `games/carmel-taldiego/hints.tsv` at that ref and getting 982,752 characters of
 > it back. Pull-request refs cannot be deleted through the API or by a push.
 > Only GitHub Support can purge the unreferenced objects.
 >
 > Done when a support request has been filed against gald33/ai-lab naming the
-> two paths and PR #244, and fetching `games/hue-and-cry/hints.tsv` at
+> two paths and PR #244, and fetching `games/carmel-taldiego/hints.tsv` at
 > `refs/pull/244/head` returns a 404. If Support declines, the fallback is to
-> decide in `games/hue-and-cry.md` whether the residual exposure is
+> decide in `games/carmel-taldiego.md` whether the residual exposure is
 > acceptable — the leaked sentence column is a rendering the seeded builder can
 > no longer reproduce, and the landmark-to-descriptor columns were already
 > public by the "one seed per game" decision, so the live exposure is the

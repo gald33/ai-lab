@@ -1,7 +1,7 @@
 """Fetch the facts a hint can be written from, into `facts.tsv` and
 `countries.tsv`.
 
-    python3 games/hue-and-cry/build_facts.py
+    python3 games/carmel-taldiego/build_facts.py
 
 Same shape as `build_landmarks.py` and for the same reason: the network is
 here, not in the game. It needs a minute or two and is not run by CI.

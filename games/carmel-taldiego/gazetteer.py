@@ -6,13 +6,13 @@ SUPERSEDED IN PLAY, 2026-09-09: Gal, *"we have no routes."* This file's
 is no longer one -- Carmel may go anywhere on the map and a hint is read
 against all thousand. Nothing in play imports them any more. It is kept
 because it is the record of the measurements that set them, which
-`games/hue-and-cry.md` ("There are no routes") points back to.
+`games/carmel-taldiego.md` ("There are no routes") points back to.
 
 
 Gal, 2026-09-07: *"that must be human readable. more than that, we 'sell' on
 human interacting about it in social media, it must evoke feelings"*.
 
-THIS CORRECTS A CLAIM MADE THE SAME DAY. `games/hue-and-cry.md` argued that
+THIS CORRECTS A CLAIM MADE THE SAME DAY. `games/carmel-taldiego.md` argued that
 because the matrix is a permission table rather than a truth table, the
 hints "need not be factually true of anywhere -- they are tokens", and that
 this freed the matrix to be drawn uniformly from a word list. Right about
@@ -42,7 +42,7 @@ supposed to do.
 The test to apply when adding a landmark is at the bottom of this file, and
 it fails a gazetteer whose descriptors are too rare.
 
-    python3 games/hue-and-cry/gazetteer.py
+    python3 games/carmel-taldiego/gazetteer.py
 """
 
 #: The shared palette. Every entry is meant to be true of the places listed
@@ -98,7 +98,7 @@ NEIGHBOURHOOD = 6
 
 #: Exits per landmark in a game.
 #:
-#: Chosen from the pin-rate sweep in `games/hue-and-cry.md` -- five was what
+#: Chosen from the pin-rate sweep in `games/carmel-taldiego.md` -- five was what
 #: got her below `MAX_PINNED` -- and **that is not what it controls any
 #: more**. With no addresses posted, the exit count is the searcher's
 #: branching factor: a hint leaves about `0.6 x exits` candidates, and a
@@ -107,7 +107,7 @@ NEIGHBOURHOOD = 6
 #: So it is a MINIMUM FIELD SIZE dial. Covering `k` candidates in parallel
 #: takes about `(k+1)/2` searchers, which at five exits is 2.1 and at twelve
 #: is 4.0. Five means "this game wants about two searchers". See
-#: `games/hue-and-cry.md`, "Why five exits?".
+#: `games/carmel-taldiego.md`, "Why five exits?".
 EXITS = 5
 
 #: The gate. Over many drawn maps, the share of her moves where every hint in

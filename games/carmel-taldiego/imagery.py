@@ -1,12 +1,12 @@
 """The real world photographed, from NASA, with no names on it.
 
-    python3 games/hue-and-cry/trail_card.py --imagery relief --out /tmp/t.svg
+    python3 games/carmel-taldiego/trail_card.py --imagery relief --out /tmp/t.svg
 
 Gal, 2026-09-09: *"I was actually thinking about actually seeing the real
 map or satelite, not a must."*
 
 THIS CORRECTS AN ARGUMENT MADE EARLIER THE SAME DAY, and the correction is
-narrow but it matters. `games/hue-and-cry.md` ruled out map tiles partly on
+narrow but it matters. `games/carmel-taldiego.md` ruled out map tiles partly on
 disclosure: *"every raster style prints their names at this zoom -- Fez,
 Bergen, Ushuaia, labelled, on the map she is being chased across."* True of
 a **street** map and false of a **photograph**. Satellite imagery has no

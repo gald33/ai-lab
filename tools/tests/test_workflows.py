@@ -149,7 +149,7 @@ def suites_on_disk() -> set[str]:
 def test_every_test_directory_is_named_in_ci():
     """The structural fix for four instances of one omission.
 
-    `viewer/tests`, `games/hue-and-cry`, `tools/tests` and then eight more
+    `viewer/tests`, `games/carmel-taldiego`, `tools/tests` and then eight more
     suites were each absent from a hand-maintained pytest path list, and each
     absence was invisible: a directory nothing runs reports nothing, and the
     tick stays green. Two of them are written up in `tests.yml` as one-offs.

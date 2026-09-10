@@ -40,7 +40,7 @@ Several sections below were written while there was one game, and they name
 its machinery — a **manager**, an **episode**, a **round**, a **bell**,
 `eff_episode`. They read as lab-wide standing decisions and they are not.
 The cost of that was paid immediately: a settler and a manager were built
-for **hue and cry**, which has neither, because this file said the economy
+for **Carmel Taldiego**, which has neither, because this file said the economy
 is a manager function that settles formatted messages and nothing said that
 sentence was about the island.
 
@@ -60,10 +60,10 @@ So, explicitly:
 | Metrics | **the island** |
 | Process | **the lab** |
 
-**Hue and cry has no manager and no settler. It has Carmel.** She runs, she
+**Carmel Taldiego has no manager and no settler. It has Carmel.** She runs, she
 posts, people chase her, and the seed she publishes at the end is what makes
 anything checkable — there is no refereeing component and no economy. Its
-design is `games/hue-and-cry.md` and nothing in the island's sections below
+design is `games/carmel-taldiego.md` and nothing in the island's sections below
 applies to it except where that document says so.
 
 A rule that turns out to want to be lab-wide gets moved up here with its
@@ -89,7 +89,7 @@ costs the game its ranking. See `games/island.md`, "A key that was handed on".
 
 ## The board is the only surface
 
-*The island's. Hue and cry has no economy and no manager -- see
+*The island's. Carmel Taldiego has no economy and no manager -- see
 "Which game a rule governs".*
 
 **There are no primitives other than what Switchboard provides.**
@@ -167,7 +167,7 @@ something has gone wrong.
 ## Timing
 
 *The island's: it is about rounds and about what a manager will still
-settle. Hue and cry has no bell and no ticks.*
+settle. Carmel Taldiego has no bell and no ticks.*
 
 The schedule is **announced on the board and acknowledged before every round**,
 because context resets at the round boundary: an acknowledgement carried over
@@ -178,7 +178,7 @@ deadline, not by controlling when agents act.
 
 ## Vocabulary
 
-*The island's. Hue and cry counts campaigns, not episodes or rounds.*
+*The island's. Carmel Taldiego counts campaigns, not episodes or rounds.*
 
 | term | what resets at its boundary |
 |---|---|

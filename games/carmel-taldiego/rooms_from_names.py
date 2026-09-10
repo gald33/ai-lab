@@ -14,7 +14,7 @@ So the whole of it is choosing what mints the token:
 Knowing a landmark's NAME, plus the game's salt, is then exactly what admits
 you to that landmark's room. Nobody issues an invite; there is nothing to
 distribute, revoke or leak. This replaces the whispered-warrant mechanism
-that earlier drafts needed -- see `games/hue-and-cry.md`, "The room is the
+that earlier drafts needed -- see `games/carmel-taldiego.md`, "The room is the
 hash".
 
 The salt is what stops a room being the same room in every game. Without it
@@ -22,7 +22,7 @@ The salt is what stops a room being the same room in every game. Without it
 into forever; with it, the same landmark is a different room each game and
 last week's addresses are worthless.
 
-    python3 games/hue-and-cry/rooms_from_names.py
+    python3 games/carmel-taldiego/rooms_from_names.py
 """
 
 import hashlib

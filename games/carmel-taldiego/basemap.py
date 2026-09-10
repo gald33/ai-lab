@@ -19,7 +19,7 @@ far enough for it to matter to a trail.
 
 NOTHING IN THIS FILE KNOWS A LANDMARK. That is deliberate -- see
 `build_basemap.py` for why the basemap carries no toponyms, and
-`games/hue-and-cry.md`, "A real map that names places discloses more than a
+`games/carmel-taldiego.md`, "A real map that names places discloses more than a
 field of dots did".
 """
 
