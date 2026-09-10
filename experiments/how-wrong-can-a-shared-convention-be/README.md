@@ -157,11 +157,17 @@ That is a genuinely useful floor, and it is **not** the number a threshold is
 written against. The 0.229 and 1.03 this lab measured before are **agent**
 variance — model sampling — and no NPC run contains any. So:
 
-| what moves | measured by | costs |
-|---|---|---|
-| the harness, clock and economy | NPC replicates, identical seeds | nothing |
-| the NPC policy draw | NPC replicates, `--vary-npc-seed` | nothing |
-| **the agents** | **model replicates of one cell** | **money** |
+| what moves | measured by | costs | measured, on the primary |
+|---|---|---|---|
+| the harness, clock and economy | NPC replicates, identical seeds | nothing | **0.0086** (run 002) |
+| the NPC policy draw | NPC replicates, `--vary-npc-seed` | nothing | **0.0588** (run 002) |
+| **the agents** | **model replicates of one cell** | **money** | **not measured** |
+
+Between-replicate sd of the replicate mean, 8 replicates × 12 seeds, 4 traders
+× 4 episodes × 60s. On `capture` the same two rows are 0.0097 and **0.1503** —
+against the 0.229 this lab measured *with models* at another table shape, which
+says most of that movement may never have been about the agents. Settling that
+is what H0b is for, and is a reason to run it rather than a substitute.
 
 The third is the one rung 1's threshold needs, and it has to be bought. What
 the free rungs buy is the guarantee that the harness is not adding to it.
