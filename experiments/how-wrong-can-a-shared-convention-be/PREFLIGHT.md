@@ -40,13 +40,23 @@ NPC runner could not reach.
 
 Same cell, same seeds, nothing varied, NPCs on every seat.
 
-**Expect exactly zero, and that is a pass.** NPC policies are deterministic
-given their seed, so replicates come back byte-identical — measured in run 001,
-`capture` agreeing to sixteen digits. What this gate bounds is the *harness*:
-how much the manager, clock and economy move on their own. Anything above zero
-here is a defect to find, not a noise budget to spend.
+**This gate bounds the *harness*: how much the manager, clock and economy move
+on their own.** Report a between-replicate sd per endpoint with its
+denominator.
 
-**It therefore cannot set a threshold, and this gate is not H0b.** The
+*It used to say "Expect exactly zero, and that is a pass … anything above zero
+here is a defect to find, not a noise budget to spend", on run 001's finding
+that NPC policies are deterministic given their seed. **That is false at four
+seats**, including serially, and the superseded sentence is left visible here
+because the number it licensed was zero. The policies are deterministic; the
+**island is a wall clock**, and how many moves land inside an episode is not.
+See [`DEVIATIONS.md`](DEVIATIONS.md) A3 and run 002. Run 001 measured two
+seats, and stands for two seats.*
+
+So this gate returns a real number, and it is still not the number a threshold
+is written against.
+
+**It still cannot set a threshold, and this gate is not H0b.** The
 threshold-setting measurement replicates a *model* cell and costs money,
 because agent sampling is the dominant term and no NPC run contains any of it.
 Add `--vary-npc-seed` for the policy-draw component — still free, still not

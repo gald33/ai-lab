@@ -18,7 +18,9 @@ one, and at what error does that stop being true. The headline quantity is
 content held byte-identical.
 
 [`README.md`](README.md) is the design. [`PREREGISTRATION.md`](PREREGISTRATION.md)
-is what is frozen. Read both before proposing anything.
+is what is frozen, and [`DEVIATIONS.md`](DEVIATIONS.md) is every departure from
+it, dated and written before the run it affects. Read all three before proposing
+anything.
 
 ## Where this came from, and what that means for scope
 

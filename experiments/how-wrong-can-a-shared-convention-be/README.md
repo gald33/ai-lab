@@ -136,6 +136,23 @@ free run reports a between-replicate sd of exactly zero, and zero is the honest
 answer to the question it asks — *how much does the harness move when nothing
 varies?* Not at all.
 
+> **Half of that is wrong too, and it is the half that says zero.** *Kept
+> visible for the same reason the sentence above it is: this paragraph has now
+> been corrected twice, and both corrections came from running the thing rather
+> than from thinking about it again.*
+>
+> The policies are deterministic. The **island is a wall clock**, and how many
+> moves land inside an episode is not. At **four** seats, replicates of one
+> identical cell differ — including at `--workers 1`, the serial path run 001
+> itself measured: `capture` −0.2796 against −0.2836 on one seed, 12 settled
+> moves against 10. Run 001 measured **two** seats and stands for two seats.
+>
+> So the free rung does produce a number, and that is better than the zero this
+> paragraph promised: a floor of zero cannot be exceeded by anything and tells
+> a later reader nothing. What has not changed is the sentence below — it is a
+> **harness** number, agent sampling is not in it, and H0b still has to be
+> bought. See [`DEVIATIONS.md`](DEVIATIONS.md) A3.
+
 That is a genuinely useful floor, and it is **not** the number a threshold is
 written against. The 0.229 and 1.03 this lab measured before are **agent**
 variance — model sampling — and no NPC run contains any. So:
