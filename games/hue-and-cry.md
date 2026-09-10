@@ -3830,6 +3830,89 @@ number that governs how long a campaign runs is premature while the
 campaign's outcome is decided before the clock matters. `REPUTATION_TO_WIN`
 stays at 140 and stays marked stale.
 
+## Nobody travels, and attention is the thing that runs out
+
+*Gal, 2026-09-10, three sentences that turn out to be one design: "so she
+is biased towards near"; "let the final decision be a random from a
+distribution"; "travel time is zero because it cancelled out with the
+player's. And for the player it is zero in real time."*
+
+### The third one is the correction, and its second half had never been said
+
+That travel cancels was already written down. **That a player does not
+travel at all was not.** In the game as played a searcher does not journey
+to a room — it hands a token to `join_room` and it is there. Every hour
+this model charged it for a flight was an hour it was never going to spend,
+and the whole "a wrong guess costs a leg" arithmetic was charging a cost
+that does not exist.
+
+So the clock now holds her prep and her dwell and nothing else, and
+`distance_km` is the map's only distance rather than anybody's duration.
+
+### Which took the last cost off a wrong guess, and needed replacing
+
+A searcher that pays nothing to enter a room can enter **every** room the
+hint allows — sit in all 158 and win every campaign. Removing travel does
+not make the game harder for her, it ends it.
+
+What is actually scarce is not the searcher's movement but its
+**attention**. A real agent can hold and watch some number of rooms, read
+some number of boards, and no more. So `WATCH = 6`: a searcher picks that
+many candidates and waits in them, and that is its whole move.
+
+**This is the parameter three sections of measurement were pointing at.**
+"The game is deduction-bound, not clock-bound" ended by saying the binding
+constraint was the size of the candidate set and the only thing that
+divides it is the lobby. Coverage is now literally `WATCH × searchers`
+against about 158 candidates, so that sentence stopped being a diagnosis
+and became the scoreboard:
+
+```
+ WATCH  turnout   alone  dividing
+     3        1     48%       48%
+     3        3     62%       82%
+     3       10     68%      100%
+     3       25     70%      100%
+```
+
+**Alone, turnout barely helps** — 48% to 70% from one searcher to
+twenty-five — because everybody watches the same nearest handful. **Divided,
+ten searchers never lose.** The whole distance between those columns is
+talk, and the lobby is where it happens.
+
+Compare what the same field bought under travel: 8% at ten searchers, and
+`cooperate` made it *worse* because a searcher whose share missed her room
+gave up. Both of those were artefacts of a journey nobody makes.
+
+### And the other two sentences are what make the watching a skill
+
+*"She is biased towards near"* — she is, by policy and on purpose:
+`choose_destination` divides by the prep a journey costs and prep is
+superlinear in distance. That bias is public, and it is the **only** public
+term in her score, since reputation and cover are sealed. So the nearest
+candidates are the likeliest and a searcher watches those first.
+
+*"Let the final decision be a random from a distribution"* — which keeps it
+a bet rather than a deduction. Her destination is a draw from that
+distribution, not its argmax, so near is where to look and never where she
+must be. Watching is a wager on a shape she publishes and a roll she does
+not.
+
+### Two tests went vacuous the moment travel hit zero
+
+`test_a_far_move_costs_her_and_costs_the_searcher_nothing` scanned
+`pursue` for `clock +=` lines and asserted none called `prep_hours`. With
+no travel there is no `clock +=` line, so the loop ran zero times and the
+test went green having checked nothing — `CLAUDE.md`'s "absence drawn as a
+pass", **the third time this file has produced it**. It asserts behaviour
+now: a searcher's lag is untouched by how far she goes.
+
+`test_the_follower_closes_by_everything_she_does_standing_still` became
+`test_the_clock_is_her_standing_still_and_nothing_else`, which is the third
+time this one assertion has been rewritten — travel closes the gap, then
+the dwell alone, then prep and dwell while travel cancels, and now there is
+no travel term left to cancel.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

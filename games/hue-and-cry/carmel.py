@@ -167,6 +167,32 @@ PREP_EXPONENT = 1.6
 #: wholesale reprice.
 PREP_PIVOT = 10.0
 
+#: How many rooms one searcher can be standing in at once.
+#:
+#: **This is the resource travel used to be, and it had to replace it.**
+#: Gal, 2026-09-10: *"travel time is zero... for the player it is zero in
+#: real time."* True, and it takes the last cost off a wrong guess: a
+#: searcher that pays nothing to enter a room can enter every room the hint
+#: allows, sit in all 158 of them, and win every campaign. The model had
+#: been charging it for journeys it never makes, and with that gone there
+#: was nothing left holding the game up.
+#:
+#: What is actually scarce is not the searcher's *movement*. It is its
+#: **attention**: a real agent can hold and watch some number of rooms,
+#: read some number of boards, and no more. So a searcher picks `WATCH`
+#: rooms out of the candidates and waits in them, and that is its whole
+#: move.
+#:
+#: This turns the game into the one it was started for. Coverage is
+#: `WATCH x searchers` against a candidate set of about 158, so
+#: **a field that divides the candidates covers them and a field that does
+#: not overlaps** -- which is not a nicety about the lobby any more, it is
+#: the arithmetic of winning. Three sections of measurement have pointed
+#: here; this is the parameter they were pointing at.
+#:
+#: 6 is A GUESS, swept in `--calibrate`.
+WATCH = 6
+
 #: The hours she guesses her nearest pursuer is behind her. **Her prior over
 #: `e`, and the only defence she has against a number she can never learn.**
 #:
@@ -358,13 +384,33 @@ JOIN_WINDOW_HOURS = 12
 DIFFICULTY = 1.0
 
 
-def travel_hours(a: dict, b: dict) -> float:
+def distance_km(a: dict, b: dict) -> float:
+    """Great-circle kilometres between two landmarks.
+
+    **The map's only distance, and no longer anybody's duration.** Gal,
+    2026-09-10: *"travel time is zero because it cancelled out with the
+    player's. And for the player it is zero in real time."*
+
+    Both halves of that are right and the second is the one that had never
+    been said. In the game as played, a searcher does not *travel* to a
+    room -- it hands a token to `join_room` and it is there. There was
+    never a journey to charge it for, and the model was charging it for one
+    it would not have made.
+    """
     lat1, lon1, lat2, lon2 = map(
         math.radians, [a["lat"], a["lon"], b["lat"], b["lon"]])
-    km = 6371 * 2 * math.asin(math.sqrt(
+    return 6371 * 2 * math.asin(math.sqrt(
         math.sin((lat2 - lat1) / 2) ** 2
         + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2))
-    return km / TRAVEL_KMH
+
+
+def travel_hours(a: dict, b: dict) -> float:
+    """SUPERSEDED AS A DURATION, 2026-09-10. Nothing in the chase spends
+    these hours any more -- see `distance_km`. It survives as the yardstick
+    the drawing code uses to turn a hop into kilometres, and as the scale
+    `PREP_PIVOT` is quoted in.
+    """
+    return distance_km(a, b) / TRAVEL_KMH
 
 
 def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
@@ -380,10 +426,10 @@ def prep_hours(a: dict, b: dict, difficulty: float = 1.0) -> float:
     **Superlinear in the distance** since 2026-09-10 -- see `PREP_EXPONENT`
     for the shape and for why it is the prep that bends and not the travel.
     """
-    hours = travel_hours(a, b)
-    if hours <= 0:
+    reach = distance_km(a, b) / TRAVEL_KMH     # the map's yardstick, not a journey
+    if reach <= 0:
         return 0.0
-    return (PREP * PREP_PIVOT * (hours / PREP_PIVOT) ** PREP_EXPONENT
+    return (PREP * PREP_PIVOT * (reach / PREP_PIVOT) ** PREP_EXPONENT
             * difficulty)
 
 
@@ -814,7 +860,7 @@ def itinerary(seed: bytes, start: str, world: Map,
 
         posted   she puts the hint up in the room she is leaving
         prep     she gets ready, still standing in that room
-        arrived  posted + prep + travel
+        arrived  posted + prep -- there is no travel, see `distance_km`
         leaves   arrived + dwell, and is when she posts the next one
 
     **She is still simulated on her own, and the reason changed.** It used
@@ -834,10 +880,11 @@ def itinerary(seed: bytes, start: str, world: Map,
         leaves_from = her.at
         prep = prep_hours(world.places[leaves_from],
                           world.places[destination], difficulty)
-        travel = travel_hours(world.places[leaves_from],
-                              world.places[destination])
+        # No travel. Gal, 2026-09-10: it cancelled against the searcher's,
+        # and for a player who joins a room it was never there at all.
+        travel = 0.0
         her.at = destination
-        arrived = posted + prep + travel
+        arrived = posted + prep
         dwell = her.take(destination) if her.will_steal(destination) else 0
         out.append({"from": leaves_from, "to": destination, "hint": hint,
                     "posted": posted, "prep": prep, "travel": travel,
@@ -850,110 +897,63 @@ def itinerary(seed: bytes, start: str, world: Map,
 def pursue(world: Map, start: str, home: str, trail: list[dict],
            joined_at: float = 0.0, share: tuple[int, int] = (0, 1),
            order: str = "near") -> tuple[int | None, float]:
-    """Run one searcher, deducing. Returns (the move it reaches her on, its
-    head start).
+    """Run one searcher. Returns (the move it is standing beside her on,
+    its reaction lag).
 
-    WHAT IT READS, WHICH IS TWO THINGS
-    ----------------------------------
+    IT NO LONGER TRAVELS, AND THAT CHANGED WHAT IT SPENDS
+    -----------------------------------------------------
 
-    A line and a timestamp. The hint says something true of where she went;
-    the timestamp says when she said it, and therefore -- against its own
-    clock -- what its lag `e` is. Gal, 2026-09-09: *"she does not know how
-    close her pursuers are, but they do know when she left the message. So
-    they know how close they are."*
+    Gal, 2026-09-10: *"travel time is zero because it cancelled out with
+    the player's. And for the player it is zero in real time."* A searcher
+    hands a token to `join_room` and it is there; the journeys this
+    function used to charge it for were never going to be made.
 
-    WHAT IT CAN DEDUCE FROM THEM, WHICH IS THE PART THAT WAS UNKNOWN
-    ---------------------------------------------------------------
+    So a wrong guess costs nothing, and the only thing that stops a
+    searcher entering all 158 candidate rooms is that it cannot *watch*
+    them. It picks `WATCH` of them and waits. See `WATCH`.
 
-    Not where she is. **Which of the places she might be it can beat her
-    to.** She posts before she prepares, so for a candidate X she does not
-    reach X until `PREP * t(here, X)` after posting, while the searcher
-    needs only `e`. So:
+    WHAT IT PICKS, WHICH IS WHERE HER BIAS BECOMES THE GAME
+    -------------------------------------------------------
 
-        it arrives before her   <=>   e <= PREP * t(here, X)
+    Gal, same day: *"so she is biased towards near."* She is, by policy and
+    on purpose (`Carmel.choose_destination` divides by the prep a journey
+    costs, and prep is superlinear in distance). That bias is public and it
+    is the only public term in her score, so **the nearest candidates are
+    the likeliest and a searcher watches those first.**
 
-    Every term is public: the gazetteer, `PREP`, and the stamp on her line.
-    **The far candidates are the ones it can guarantee**, which is the exact
-    complement of her preference for near ones. So it sorts the candidates
-    the hint allows into the ones it can beat her to and the ones it cannot,
-    and walks the beatable ones nearest-first, since a wrong guess still
-    costs a leg and the cheapest wrong guess is the near one.
+    It is a bet and not a deduction: her destination is a *draw* from that
+    distribution, not its argmax, so the near rooms are where to look and
+    never where she must be.
 
-    It computes prep at difficulty 1.0 because it does not know the dial.
-    Above 1.0 that makes it conservative -- she is slower than it assumed,
-    so more candidates are beatable than it thinks -- and below 1.0 it is
-    optimistic and loses journeys it expected to win. That asymmetry is a
-    property of a dial only one side can see, and is left rather than fixed.
+    WHAT THE CLOCK STILL DECIDES
+    ----------------------------
+
+    Its lag `e` -- how long after she posts it gets there. She is in the
+    room from `posted + prep` until `posted + prep + dwell`, so a searcher
+    is beside her only if `e <= prep + dwell`. **Prep is now the field's
+    thinking time rather than her flying time**: the further she goes, the
+    longer everyone has to place their bets before she lands.
     """
-    clock = joined_at + travel_hours(world.places[home], world.places[start])
-    lag = clock
-
-    here = start
+    lag = joined_at
     for i, leg in enumerate(trail):
-        if clock < leg["posted"]:
-            # It got here before she had even posted. It waits for the line
-            # rather than guessing from one she has not written.
-            clock = leg["posted"]
-        elapsed = clock - leg["posted"]
-
-        def beatable(x: str) -> bool:
-            return elapsed <= prep_hours(world.places[here], world.places[x])
-
-        def rank(x: str) -> tuple:
-            near = travel_hours(world.places[here], world.places[x])
-            # "near" is the default and "beatable" is kept only because
-            # deleting it would delete the measurement that chose between
-            # them. See `--calibrate`; the short version is that chasing the
-            # guaranteed interception first is a TRAP, and an expensive one:
-            #
-            #     PREP  order       caught@3  caught@10
-            #     0.50  beatable          0%         6%
-            #     0.50  near              6%        19%
-            #     1.00  beatable          0%         0%
-            #     1.00  near             38%        50%
-            #
-            # Beatability and probability point opposite ways. The
-            # candidates it can beat her to are the FAR ones, by
-            # construction -- and she prefers near ones, by policy. So an
-            # ordering that chases guarantees walks to the wrong end of the
-            # map first, every time, and the prep factor that was supposed
-            # to expose her instead hides her.
-            #
-            # What is worth reading the stamp for is therefore not "where
-            # do I go first" but "will this journey be worth making at
-            # all". It stays as the tiebreak, which is what a certainty
-            # that is rarely relevant is worth.
-            return ((not beatable(x), near, x) if order == "beatable"
-                    else (near, not beatable(x), x))
-
+        window = leg["prep"] + leg["dwell"]
+        if lag > window:
+            continue                       # too slow to be there at all
+        here = leg["from"]
         candidates = sorted(
             (x for x in world.descriptors
-             if leg["hint"] in world.descriptors[x] and x != here), key=rank)
+             if leg["hint"] in world.descriptors[x] and x != here),
+            key=lambda x: (distance_km(world.places[here], world.places[x]),
+                           x))
         # `share` is (which searcher, how many). A field that divides the
-        # candidates checks them in parallel instead of everybody walking
-        # the same wrong rooms in the same order. Nothing enforces it and
-        # nothing settles it -- it is talk, and it is the whole reason the
-        # lobby is worth having.
+        # candidates covers WATCH x searchers of them; a field that does not
+        # has every member watching the same nearest handful. That is the
+        # whole of what talking is worth, and it is now arithmetic.
         mine, of = share
         rota = [c for j, c in enumerate(candidates) if j % of == mine] \
             or candidates
-        for guess in rota:
-            clock += travel_hours(world.places[here],
-                                  world.places[guess])
-            if guess == leg["to"]:
-                # In the room with her -- whether it beat her there and
-                # waited, or walked in while she was still stealing. Gal:
-                # "either Carmel sees you in the room and you win".
-                if clock <= leg["leaves"]:
-                    return i, lag
-                here = guess
-                break
-            # Empty room. It knows only that she is not here.
-        else:
-            # Her room fell in somebody else's share of the rota, and
-            # nothing in this model carries what they found back. The
-            # channel that would is the notes in the lobby, unmodelled.
-            return None, lag
+        if leg["to"] in rota[:WATCH]:
+            return i, lag
     return None, lag
 
 
