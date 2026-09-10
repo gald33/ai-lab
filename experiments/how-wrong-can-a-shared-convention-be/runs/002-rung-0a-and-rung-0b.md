@@ -93,6 +93,19 @@ would make that curve unreproducible.
 command cannot run is the "absence drawn as a pass" shape from the root
 `CLAUDE.md`.
 
+**D3 — the pinned refusal keeps its verdict and gets its diagnosis split.**
+A probe at 4 traders × 5 goods × 2 episodes × 45s settled **every** game and
+still left `above_autarky_share` on 0.000 — NPC seats trade themselves below
+their own autarky (`capture` −0.29 to −0.54), so that endpoint sits on a bound
+for a reason no episode length can fix. `pinned()`'s message told the reader to
+lengthen the episode.
+
+The **exit code does not change**: a pinned endpoint is a failed gate, and
+weakening a refusal so that my own run passes is precisely the "quietly fixing
+the harness until it passes" this experiment's `CLAUDE.md` names. What changes
+is that the runner now says which of the two faults it is, using the `dead()`
+count it already had. Written here before the run that will trip it.
+
 ## Assumptions
 
 | # | assumption | how it would show up as false |

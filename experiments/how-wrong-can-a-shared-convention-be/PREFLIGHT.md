@@ -79,8 +79,8 @@ unreachable. Both are harness, both go in the run record classified as such.
 
 ## 3. Rung 0b — does the instrument read? Does content error move it *here*?
 
-    python experiments/which-part-of-a-convention-works/experiment/calibrate_experiment.py \
-      --traders 4 --goods 5 --flow --islands 48 \
+    python experiments/how-wrong-can-a-shared-convention-be/experiment/calibrate.py \
+      --islands 48 \
       --json experiments/how-wrong-can-a-shared-convention-be/results/rung0b-curve.json
 
 The scripted δ sweep, **recalibrated at this island's table shape and
@@ -89,9 +89,24 @@ accumulation rule**. The published curve in
 is a *stock* curve at 12 agents and does not transfer; see correction C2 in
 [`README.md`](README.md).
 
-Expect: the zero-episode share off both its floor and its ceiling, moving in δ,
-with both perturbation directions reported separately and the floor and ceiling
-printed.
+*This gate used to name `calibrate_experiment.py --traders 4 --goods 5 --flow
+--islands 48`, and **two of those flags do not exist**: that runner takes
+`--agents`, defaults to 12 of them, has no flow mode, and reports efficiency
+medians — the endpoint correction C1 retired. A gate whose command cannot run
+is the root `CLAUDE.md`'s "absence drawn as a pass", arriving in the gate that
+decides whether any money moves. Corrected in run 002, which also says why the
+published runner was left alone rather than extended.*
+
+**The table shape is swept, not fixed**, and that is the correction run 002
+found rather than predicted. Whether the primary can read at all depends on
+where in the game's allowed range (2–4 traders, 2–5 goods) the cell sits, and
+where goods outnumber traders the scripted arm is at total ruin for **every** δ
+including zero. Do not read that as "nothing happens there": the silent anchor
+is printed beside it, and it is not ruined.
+
+Expect: the zero-period share off both its floor and its ceiling, moving in δ,
+with both perturbation directions reported separately, the silent anchor and
+the efficiency bracket printed, and a verdict naming the shapes that read.
 
 If it fails — the curve is flat in δ — **stop and do not spend.** A metric
 pinned at either end returns a null that cannot be told apart from a real one,

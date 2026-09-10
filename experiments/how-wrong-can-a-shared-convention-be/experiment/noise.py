@@ -1,6 +1,7 @@
 """Rung 0 — how far does this instrument move when nothing is varied?
 
-    python noise.py --replicates 8 --games 12 --traders 4 --episodes 4 --seconds 60
+    python noise.py --replicates 8 --games 12 --traders 4 --episodes 4 --seconds 60 \
+      --workers 8
 
 Plays the same cell, on the same island seeds, with the same NPC policies,
 `--replicates` times, and reports a between-replicate sd per endpoint with its
@@ -46,16 +47,29 @@ measurement can lie and still look sane.
   policy-draw component while holding the island fixed. That is a third
   quantity again — not agent variance either, but a better lower bound than
   zero.
+
+- **Games run concurrently, and that is not outside the measurement.** A game
+  is a wall clock — episodes are real seconds and NPC seats act on a timer — so
+  machine load can in principle move when a seat reaches the board. Playing
+  8 × 12 games serially is about seven hours, which `PREFLIGHT.md` gate 2
+  budgets and offers concurrency as the alternative to; `--workers` is that
+  alternative. If concurrency does shift the play, replicates stop coming back
+  identical and the sd reported here is the variance concurrency injects —
+  which is the honest floor for any real run, because a real run is concurrent
+  too. Both outcomes are reported and neither is repaired into the other. See
+  `plan()` for why the job order is seed-major, and run 002.
 """
 
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import contextlib
 import json
 import socket
 import statistics
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
@@ -267,6 +281,108 @@ def play_one(seed: int, cell: Cell, *, npc_seed: int, tmp: Path,
             server.close()
 
 
+@dataclass(frozen=True)
+class Job:
+    """One game to play: which replicate it belongs to, and on what."""
+
+    replicate: int
+    seed: int
+    cell: Cell
+    npc_seed: int
+
+
+def run_job(job: Job) -> dict:
+    """Play one game and return its endpoints, tagged with its replicate.
+
+    Module level and picklable on purpose: this is what crosses into a worker
+    process. Its own temporary directory, its own hub, its own port -- a game
+    shares nothing with the game beside it except the machine.
+    """
+    with tempfile.TemporaryDirectory() as raw:
+        out = play_one(job.seed, job.cell, npc_seed=job.npc_seed,
+                       tmp=Path(raw), log=lambda *a, **k: None)
+    out["replicate"] = job.replicate
+    return out
+
+
+def plan(replicates: int, seeds: list[int], cell: Cell, *,
+         vary_npc_seed: bool) -> list[Job]:
+    """Every game this run will play, **seed-major**.
+
+    The order is part of the measurement rather than a detail of the loop. With
+    `--workers` equal to the replicate count, seed-major puts all replicates of
+    one seed in flight together, so they contend for the machine identically --
+    which is the paired shape `CLAUDE.md`'s Process section asks for, applied to
+    the one thing concurrency can vary here. Replicate-major would run each
+    replicate under its own load profile and then compare them.
+    """
+    return [Job(replicate=r, seed=seed, cell=cell,
+                npc_seed=1000 + seed + (10_000 * r if vary_npc_seed else 0))
+            for seed in seeds for r in range(replicates)]
+
+
+def play_all(jobs: list[Job], *, workers: int, run=None, pool=None,
+             log=print) -> tuple[list[dict], list[dict]]:
+    """Play every job, `workers` in flight, and return (results, failures).
+
+    Results are keyed back to their job rather than kept in completion order,
+    so **what this reports does not depend on which game finished first.** A
+    summary that changed with the scheduler would be the `overhead` render
+    check's disease -- a verdict riding on something the check does not control.
+
+    `workers=1` is a plain in-process loop and not a pool of one, because that
+    is the path run 001 measured and it must stay the same path.
+    """
+    # Looked up here rather than bound as a default, so a test can replace
+    # `run_job` on the module. The pool path pickles the callable by reference
+    # and a worker imports the real one, which is why the tests that stand in
+    # for a game use `workers=1`.
+    run = run or run_job
+    results: list[dict] = []
+    failures: list[dict] = []
+
+    def failed(job: Job, exc: BaseException) -> None:
+        # Classified as harness, counted, and never dropped from a
+        # denominator -- `CLAUDE.md`, "Process".
+        log(f"    replicate {job.replicate + 1} seed {job.seed}  "
+            f"HARNESS FAILURE: {exc}")
+        failures.append({"replicate": job.replicate, "seed": job.seed,
+                         "error": str(exc)})
+
+    if workers <= 1:
+        for job in jobs:
+            try:
+                results.append(run(job))
+                log(f"    replicate {job.replicate + 1} seed {job.seed}  done")
+            except Exception as exc:                  # noqa: BLE001
+                failed(job, exc)
+        return results, failures
+
+    factory = pool or concurrent.futures.ProcessPoolExecutor
+    with factory(max_workers=workers) as executor:
+        futures = {executor.submit(run, job): job for job in jobs}
+        for done, future in enumerate(
+                concurrent.futures.as_completed(futures), start=1):
+            job = futures[future]
+            try:
+                results.append(future.result())
+                log(f"    [{done}/{len(jobs)}] replicate {job.replicate + 1} "
+                    f"seed {job.seed}  "
+                    + "  ".join(f"{k}={results[-1][k]:.3f}" for k in ENDPOINTS
+                                if results[-1].get(k) is not None))
+            except Exception as exc:                  # noqa: BLE001
+                failed(job, exc)
+    return results, failures
+
+
+def by_replicate(results: list[dict], replicates: int) -> list[list[dict]]:
+    """Group finished games back into replicates, each sorted by seed."""
+    out: list[list[dict]] = [[] for _ in range(replicates)]
+    for game in results:
+        out[game["replicate"]].append(game)
+    return [sorted(games, key=lambda g: g["seed"]) for games in out]
+
+
 #: A bounded share sitting on 0.0 or 1.0 in every game is not a precise
 #: measurement, it is a pinned one -- and it reports sd 0.0000, which reads as
 #: the most precise instrument this lab has ever had. Found by running this at
@@ -364,6 +480,11 @@ def main(argv: list[str] | None = None) -> int:
                          "fixed. Still not agent variance.")
     ap.add_argument("--seed0", type=int, default=1,
                     help="the first island seed; games use seed0..seed0+games-1")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="games in flight at once. A game is mostly a wall "
+                         "clock, so this is not CPU-bound; 1 is the serial "
+                         "path run 001 measured. See `plan()` for why the job "
+                         "order is seed-major.")
     ap.add_argument("--json", type=Path, help="where to write the record")
     args = ap.parse_args(argv)
 
@@ -371,30 +492,14 @@ def main(argv: list[str] | None = None) -> int:
                 episodes=args.episodes, seconds=args.seconds)
     seeds = [args.seed0 + i for i in range(args.games)]
 
-    print(f"{cell.open_line()}   {args.replicates} replicates x {args.games} games")
+    print(f"{cell.open_line()}   {args.replicates} replicates x {args.games} games"
+          f"   workers={args.workers}")
     print("nothing is varied between replicates; this is not a treatment\n")
 
-    replicates: list[list[dict]] = []
-    failures: list[dict] = []
-    import tempfile
-
-    for r in range(args.replicates):
-        print(f"  replicate {r + 1}/{args.replicates}")
-        games = []
-        for seed in seeds:
-            with tempfile.TemporaryDirectory() as raw:
-                try:
-                    npc_seed = 1000 + seed + (10_000 * r if args.vary_npc_seed
-                                              else 0)
-                    games.append(play_one(seed, cell, npc_seed=npc_seed,
-                                          tmp=Path(raw)))
-                except Exception as exc:              # noqa: BLE001
-                    # Classified as harness, counted, and never dropped from a
-                    # denominator -- `CLAUDE.md`, "Process".
-                    print(f"    seed {seed}  HARNESS FAILURE: {exc}")
-                    failures.append({"replicate": r, "seed": seed,
-                                     "error": str(exc)})
-        replicates.append(games)
+    jobs = plan(args.replicates, seeds, cell,
+                vary_npc_seed=args.vary_npc_seed)
+    results, failures = play_all(jobs, workers=args.workers)
+    replicates = by_replicate(results, args.replicates)
 
     played = sum(len(g) for g in replicates)
     attempted = args.replicates * args.games
@@ -408,10 +513,18 @@ def main(argv: list[str] | None = None) -> int:
 
     # An "identical" cell that drew different islands would report seed
     # variance as instrument movement. Checked rather than assumed.
-    by_replicate = [sorted(g["seed"] for g in games) for games in replicates
+    #
+    # `same_seeds`, not `identical`: this was called `identical` and so shadowed
+    # the module function of that name, which made `main()` raise
+    # UnboundLocalError on the line that calls it -- every time, from the moment
+    # run 001 added the guard. `tests/test_noise.py` tested `identical()` and
+    # nothing ran `main()`, so a guard added *because* a run had misled somebody
+    # had itself never executed. `CLAUDE.md`: a check nobody has seen fail is a
+    # check nobody has seen work.
+    played_seeds = [sorted(g["seed"] for g in games) for games in replicates
                     if len(games) == args.games]
-    identical = len(set(map(tuple, by_replicate))) <= 1
-    print(f"every complete replicate played the same seeds: {identical}")
+    same_seeds = len(set(map(tuple, played_seeds))) <= 1
+    print(f"every complete replicate played the same seeds: {same_seeds}")
 
     print(f"\n{'endpoint':<22} {'between-replicate sd':>21} {'per-game sd':>12} "
           f"{'n':>4}")
@@ -443,8 +556,26 @@ def main(argv: list[str] | None = None) -> int:
         print("Every game left these endpoints on a bound, so the sd above is "
               "0 because\nthe instrument never moved -- not because it is "
               "precise. A threshold taken\nfrom this run would be a threshold "
-              "of zero. Lengthen the episode or the\nack window until games "
-              "settle, and measure again. Do not spend against this.")
+              "of zero. Do not spend against this.")
+        # Two different faults report the same 0.0000, and they have different
+        # remedies. Telling them apart needs `dead()`, which this run already
+        # counted, so the runner says which rather than leaving the reader to
+        # guess -- the verdict is the same either way and only the diagnosis
+        # changes. Added in run 002, where an NPC cell settled every game and
+        # still pinned `above_autarky_share` at zero, and the message as
+        # written told the reader to lengthen an episode that was already long
+        # enough.
+        if dead_games:
+            print(f"\n{dead_games} of {played} games settled nothing. That is "
+                  f"the clock:\nlengthen the episode or the ack window until "
+                  f"games settle, and measure again.")
+        else:
+            print(f"\nEvery one of {played} games settled. So this is not the "
+                  f"clock -- it is the\nseat population: these seats never "
+                  f"reach the other side of this bound.\nA longer episode "
+                  f"will not move it, and this endpoint cannot be calibrated "
+                  f"with\nthese seats at all. Which seats are on the table is "
+                  f"part of the cell.")
 
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
@@ -456,7 +587,8 @@ def main(argv: list[str] | None = None) -> int:
             "attempted": attempted,
             "played": played,
             "harness_failures": failures,
-            "seeds_identical_across_replicates": identical,
+            "workers": args.workers,
+            "seeds_identical_across_replicates": same_seeds,
             "games_that_settled_nothing": dead_games,
             "pinned_endpoints": pinned_endpoints,
             "every_replicate_identical": all_identical,
