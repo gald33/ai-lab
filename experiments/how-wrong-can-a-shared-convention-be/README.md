@@ -149,9 +149,13 @@ variance — model sampling — and no NPC run contains any. So:
 The third is the one rung 1's threshold needs, and it has to be bought. What
 the free rungs buy is the guarantee that the harness is not adding to it.
 
-## Three corrections to the Tier 3 design
+## Corrections to the Tier 3 design
 
-Written before any run, per CLAUDE.md's process rule.
+**This section was headed "Three corrections" and there are five.** C1–C3 were
+written before any run, per CLAUDE.md's process rule. C4 and C5 came out of
+running the two free rungs (run 002) and are kept in the same list rather than
+in an errata section, because a reader deciding what to run needs all five and
+does not care which were foreseen. Which were foreseen is said in each.
 
 ### C1 — The endpoint is a count. Efficiency carries no signal about δ.
 
@@ -189,6 +193,48 @@ So the replicated NPC control runs **first**, and the numbers it produces are
 what this experiment is allowed to pre-register. A threshold chosen without
 that arithmetic is a threshold chosen to be met.
 
+### C4 — The table shape decides whether the endpoint can read at all.
+
+*Not foreseen. Measured in run 002, rung 0b.*
+
+C2 says recalibrate at this island's table shape. What recalibration found is
+that "this island's table shape" is not one shape and the choice is not free:
+of the **12 cells the game allows** (2–4 traders × 2–5 goods), only **6 can
+read the primary at all**, and the six that cannot are exactly the six where
+**goods outnumber traders**.
+
+The reason is structural rather than statistical. Arm C's rule is full
+specialisation — a price-taker with linear technology and one unit of labour
+puts all of it into the good with the highest `price × capacity` — so at most
+`traders` distinct goods are ever produced, and Cobb-Douglas with a positive
+exponent on a good nobody made is zero for **every** agent in **every** period,
+whatever the announced vector said. The zero-period share is 1.000 at every δ
+including δ = 0.
+
+**Do not read that as "nothing happens there".** The silent anchor in the same
+cells is **0.000**: with no convention at all, nobody is ruined. So more goods
+than traders is where the convention is most violent and least informative —
+a maximal convention effect and no content-error effect in one row.
+
+| shape | silent | flatten span | sharpen span |
+|---|---|---|---|
+| 4 × 3 | 0.000 | 0.493 | **0.678** |
+| 3 × 3 | 0.000 | 0.340 | 0.484 |
+| 3 × 2 | 0.000 | 0.332 | 0.486 |
+| 4 × 2 | 0.000 | 0.303 | 0.456 |
+| 2 × 2 | 0.000 | 0.344 | 0.448 |
+| 4 × 4 | 0.000 | 0.217 | 0.259 |
+| any with goods > traders | 0.000 | **0.000** | **0.000** |
+
+**So rung 1 runs at 4 traders and 3 goods**, not at the game's default of 5
+goods. That is inside the allowed range and needs no change to the island.
+
+Two things this does **not** say. It is a property of the *scripted* trader,
+which fully specialises; the NPC seats on the real island do not, and at 4
+traders and 5 goods they return a zero-episode share of 0.5 rather than 1.0
+(run 002, rung 0a). And it explains, rather than excuses, why the published
+curve reads at all: 12 agents and 5 goods is a cell where 12 > 5.
+
 ## The ladder
 
 From [`do-they-take-a-handed-over-answer`](../do-they-take-a-handed-over-answer/):
@@ -196,15 +242,25 @@ start at the most informative rung and dismantle it, so a dead arm is found on
 the first rung rather than the fifth. **A rung is run only on evidence that the
 rung above it moved.**
 
-| rung | cell | cost | what it kills |
-|---|---|---|---|
-| **0** | NPC replication, nothing varied | free | nothing — it sets every threshold below |
-| **0b** | scripted δ sweep at this island's table shape | free | the tier, if the curve is flat here |
-| **1** | CS at δ = 0 vs `silent` | ~25 paired games | the tier, if a correct shared convention does not beat nothing |
-| **2** | CS vs CP at δ = 0, plus WP | ~75 games | the claim: CS ≈ CP means sharedness is decoration |
-| **3** | δ sweep, common arms only → δ\* | the expensive one | — |
+| rung | cell | cost | what it kills | state |
+|---|---|---|---|---|
+| **0a** | NPC replication, nothing varied | free | nothing — it bounds the harness | **run** (002) |
+| **0b** | scripted δ sweep, table shape swept | free | the tier, if the curve is flat here | **run, passed** (002) |
+| **0b′** | H0b: model replication of one cell | **money** | nothing — it sets every threshold below | not authorised |
+| **1** | CS at δ = 0 vs `silent`, 4 traders × 3 goods | ~25 paired games | the tier, if a correct shared convention does not beat nothing | blocked on 0b′ |
+| **2** | CS vs CP at δ = 0, plus WP | ~75 games | the claim: CS ≈ CP means sharedness is decoration | blocked on 1 |
+| **3** | δ sweep, common arms only → δ\* | the expensive one | — | blocked on 2 |
 
 Rung 2 is where the paper is. Rung 3 is where the number is.
+
+**Rung 1's cell is now specific**, which it was not when this table was
+written: **4 traders, 3 goods**, and the δ ladder for rung 3 runs on
+`flatten`. Both come from rung 0b — see C4 for the shape, and for the
+direction: `sharpen` moves 0.227 → 0.525 between δ = 0 and δ = 0.05, at a
+realised error of 0.021, and then crawls. It is a cliff detector and a terrible
+ladder; `flatten` spreads 0.227 → 0.720 across the whole range. That asymmetry
+is H3's prediction arriving early and in the scripted tier, where it costs
+nothing and claims nothing about agents.
 
 ## Metrics
 
