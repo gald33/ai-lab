@@ -457,12 +457,60 @@ def test_she_never_speaks_in_machinery():
     the word the code uses. Everything the machinery needs goes below the
     rule, where it is written about her in the third person.
     """
+    import at_large  # the runner is what puts words in her mouth
+
     trail = C.itinerary(SEED, START, WORLD, 5)
-    for post in (C.open_campaign(SEED, START),
-                 C.close_campaign(SEED, "You have me", 200, trail)):
+    posts = [C.open_campaign(SEED, START)]
+    # **Every** ending the runner actually uses, not one invented here. The
+    # first version of this test made up `"You have me"` and passed while
+    # the runner was closing an outage with `"The hub went dark on me"` --
+    # a fugitive naming a message broker, checked by a test that never
+    # looked at the real set. A sample is not an inventory.
+    posts += [C.close_campaign(SEED, ending, 200, trail)
+              for ending in at_large.OUTCOMES.values()]
+
+    for post in posts:
         hers = _her_half(post).lower()
-        found = [word for word in MACHINERY if word in hers]
-        assert not found, f"she said {found}: {hers[:160]!r}"
+        # The hint itself is exempt, and the exemption is narrow and
+        # reluctant: a descriptor is drawn from `descriptors.py`, whose
+        # vocabulary is a separate artifact with its own review, and two of
+        # its entries collide with this list by accident of English --
+        # `royal_rooms` is a palace and `a_span_or_a_channel` is a strait.
+        # Renaming them is **not** free: `Map.descriptors` sorts each
+        # landmark's list by name and `hints_for` selects by index, so a
+        # rename reshuffles which hint every landmark carrying it posts.
+        # That is a change to the stimulus, not to the prose, so it is not
+        # made here on a test's say-so.
+        prose = "\n".join(l for l in hers.splitlines()
+                           if not l.startswith("    "))
+        found = [word for word in MACHINERY if word in prose]
+        assert not found, f"she said {found}: {prose[:200]!r}"
+
+
+def test_she_never_prints_her_own_constants():
+    """Gal, 2026-09-11: *"she gives up too much, she shouldn't tell the
+    formula."*
+
+    Her notice used to print `0.5 x 10 x (t/10)^1.6` -- the packing cost,
+    exactly. That is not a taunt, it is a spec sheet: with it a searcher
+    inverts the delay and reads her distance off the clock, which is the
+    deduction the game is supposed to be about. She says the shape now
+    (*"it grows faster than the distance does"*) and not a number.
+
+    Asserted against the constants themselves rather than the old string,
+    so re-tuning `PREP` cannot quietly put the number back.
+    """
+    # Her half only: the recipe below the rule is full of digits, and a
+    # single character is not a leaked constant -- `f"{0.5:.0f}"` is "0",
+    # which matches the salt's hex. The first version of this test failed
+    # on exactly that and would have gone on failing for every value PREP
+    # could ever take.
+    hers = _her_half(C.open_campaign(SEED, START))
+    for constant in (C.PREP, C.PREP_EXPONENT, C.PREP_PIVOT):
+        for form in {str(constant), f"{constant:.0f}", f"{constant:g}"}:
+            if len(form) < 2:
+                continue
+            assert form not in hers, f"she printed {constant} as {form!r}"
 
 
 def test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase():

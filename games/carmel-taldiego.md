@@ -4758,6 +4758,27 @@ steps of the recipe, and that announcing is what makes a searcher visible —
 none of which she would ever say, and all of which a stranger needs before
 they can do anything at all.
 
+**She steals; she does not stand about.** *Gal, the same day: "more game
+lore, she isn't standing, she is stealing, you aren't standing, you catch
+her."* The first pass had swapped the machinery's nouns for plain English
+but kept its **verbs** — she was *standing still* and a searcher *stood in*
+a place, which is stage direction for a presence check rather than anything
+a robbery would involve. She is robbing the place now, a theft takes as
+long as it takes, and a searcher **comes for her** and has her *"while my
+hands are still full"*. The line the mechanic earned:
+
+> *and for anywhere you think I have gone, you know whether you can be
+> there waiting when I let myself in.*
+
+**A test that checked a sample instead of the set let one straight
+through.** The runner closes a campaign with words that print in her half,
+and the outage ending read *"The hub went dark on me"* — a fugitive naming
+a message broker. `test_she_never_speaks_in_machinery` passed anyway,
+because it invented `"You have me"` and checked that. The four endings are
+`at_large.OUTCOMES` now and the test reads the dict, so a fifth cannot be
+added in machinery. Same defect as a hand-maintained path list, in a test
+written the same week as the rule against them.
+
 **Both halves are asserted, because both will drift.**
 `test_she_never_speaks_in_machinery` holds her half against a word list
 (`room`, `hash`, `salt`, `token`, `roster`, `announce`, `workspace`,
@@ -4766,6 +4787,105 @@ a sentence to her notice will reach for the word the code uses.
 `test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase` holds the
 other half against what a newcomer needs, since the temptation there is the
 opposite one — to assume the reader already knows what this is.
+
+### Three states, named — and she stopped handing out her own spec sheet
+
+*2026-09-11, Gal: "she gives up too much, she shouldn't tell the formula",
+and then: "let's decide clearly on where she can be."*
+
+**The states, decided:**
+
+| where she is | what she is doing | has she written? |
+|---|---|---|
+| in a place | robbing it | **no** |
+| in a place | packing to leave | **yes** — the line is already up |
+| in transit | nowhere at all | — |
+
+Packing is what costs her time; the transit itself is instant, and for a
+searcher who joins a room it was never there at all.
+
+**The timeline already matched this exactly**, which is worth recording
+because it was not designed to and could easily not have. `itinerary` puts
+`posted` before `prep` and `arrived` after it, so a leg reads: write the
+line in the room she is in, pack there, cross in no time, then rob the new
+one until the next line goes up.
+
+**She no longer prints her own constants.** The notice used to carry
+`0.5 x 10 x (t/10)^1.6` — the packing cost exactly, which is not a taunt
+but a spec sheet: with it a searcher inverts the delay and reads her
+distance straight off the clock, which is the deduction the game exists to
+make hard. She gives the *shape* now — *"it grows faster than the distance
+does"* — and the *ordering*, which is the genuinely useful tell:
+
+> *I do not write until I have finished with a place. Then I write, and
+> only then do I pack — so a fresh line of mine means I am still there,
+> with my coat half on.*
+
+`test_she_never_prints_her_own_constants` asserts against the constants
+themselves rather than the old string, so re-tuning `PREP` cannot quietly
+put the number back. It is scoped to her half: the recipe below the rule is
+full of digits, and a one-character form is not a leak — the first version
+of the test failed because `f"{0.5:.0f}"` is `"0"`, which matches the
+salt's hex, and it would have gone on failing for every value `PREP` could
+ever take.
+
+**Naming the states exposed a gap between the fiction and the mechanic, and
+it is open.** Her notice now promises that a fresh line means she is still
+there — and nothing watches the room she wrote from. `carmel.pursue` and
+`at_large._stand` both watch only the *destination*, over a window of
+`prep + dwell`, so the packing minutes are spent in a room where she cannot
+be caught. A searcher who believes her and stays put finds nothing.
+
+*Closed the same day, by Gal: "she could be caught whenever she is in the
+room with a player, nevermind her state. You don't have to wait for her,
+you can usually catch her when you land in the room she's in."*
+
+**Co-presence is the catch.** Not a window, not a state, not a rule with
+cases — she is caught if a searcher is in the room she is in. That is one
+sentence where there were three, and it made both sides *simpler*:
+
+- `at_large._stand` watches `room if registered else (leaving or room)` —
+  wherever she actually is — instead of watching her destination through a
+  stretch she spends somewhere else;
+- `carmel.pursue`'s window gains `trail[i + 1]["prep"]`. A searcher who
+  reaches a place at any time before she leaves it is beside her, and she
+  does not leave until she has packed for the *next* leg. The old window
+  stopped the clock when the theft ended, which is the moment she writes,
+  not the moment she goes.
+
+**The lobby falls out rather than being special-cased.** `leaving` is
+`None` on leg one, so she is never watched there — which is correct and
+would otherwise be fatal, since the lobby is where every searcher is
+standing to read her notice.
+
+**What it cost, measured over 60 campaigns before deciding it was free:**
+
+| field | before | after |
+|---|---|---|
+| 1 alone | 21.7% | **33.3%** |
+| 3 alone | 41.7% | 45.0% |
+| 3 split | 46.7% | 53.3% |
+| 10 alone | 43.3% | 43.3% |
+| 10 split | 85.0% | 88.3% |
+
+**The coordination premium rose** — 3-searcher split-minus-alone from 5.0
+to 8.3, ten-searcher from 41.7 to 45.0 — which is the quantity this whole
+experiment measures, so the change helps the instrument rather than
+blunting it. Nothing saturates (88.3% is the top cell) and a soloist is
+still an underdog at 33%. So the criterion that chose `WATCH` and
+`REPUTATION_TO_WIN` still holds at their current values and **no
+recalibration is forced**.
+
+*The threshold table recorded under "The threshold, calibrated at last" was
+measured against the old window and is left as it was written* — the
+numbers moved by a few points and the shape did not, and editing a
+measurement to match a later one is the thing this file's first rule
+forbids.
+
+`test_she_is_caught_in_the_room_she_is_packing_in` drives `_stand`
+directly, because the window is one leg's packing minutes and a fake clock
+cannot drop a searcher into the middle of a campaign. Reverting `here` to
+the destination reddens it and leaves the other two catch tests green.
 
 ### What is still missing before anybody can actually play
 
