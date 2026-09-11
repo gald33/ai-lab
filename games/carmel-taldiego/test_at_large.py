@@ -52,21 +52,68 @@ def lengths(count: int = 40) -> list[float]:
 # --- the schedule ---------------------------------------------------------
 
 
-def test_the_notice_dies_long_before_the_campaign_it_announces():
-    """Gal, 2026-09-10: *"making sure her lobby message is long gone before
-    the game ends."*
+def test_a_riddle_is_worth_seconds_to_minutes_of_real_time():
+    """Gal, 2026-09-11: *"The game time is less important. First I'd make
+    the real world time seconds to minutes per riddle."*
 
-    "Long gone" is the claim, so the test is about the margin and not about
-    the ordering: a notice that expired one hour before the close would
-    satisfy an ordering assertion and would not satisfy Gal.
+    **This replaced the test that used to stand here**, and the superseded
+    one is quoted rather than deleted because it was right about a game
+    that no longer exists:
+
+        def test_the_notice_dies_long_before_the_campaign_it_announces():
+            ran = lengths()
+            assert st.median(ran) > 4 * L.NOTICE_TTL_HOURS
+            inside = [h for h in ran if h <= L.NOTICE_TTL_HOURS]
+            assert len(inside) / len(ran) < 0.10
+
+    That asserted a ratio between two *game*-time quantities, as a proxy
+    for Gal's *"making sure her lobby message is long gone before the game
+    ends"*. The proxy held while a campaign ran for days of game time. With
+    a riddle she is caught in a median of six game hours and a quarter of
+    campaigns end inside forty seconds, so no notice length satisfies it --
+    and the property it was standing in for is held by the floor in `plan`
+    anyway, which is tested immediately below and does not depend on this
+    number at all.
+
+    So this pins what Gal actually asked for, in the units he asked for it
+    in: **what one riddle is worth in real seconds.** The window is the
+    whole time a searcher has to read it, solve it, and be standing there
+    -- her packing, her theft, and her packing before the next leg, which
+    is the same three stretches `pursue` counts.
+
+    Made to fail on purpose by moving `HOUR_SECONDS`: at 6 the median
+    window falls to 40 real seconds and the lower bound goes red; at 600 it
+    is over an hour and the upper bound does.
     """
-    ran = lengths()
-    assert st.median(ran) > 4 * L.NOTICE_TTL_HOURS, (
-        f"median campaign {st.median(ran):.0f}h against a"
-        f" {L.NOTICE_TTL_HOURS:.0f}h notice: not 'long gone'")
-    inside = [h for h in ran if h <= L.NOTICE_TTL_HOURS]
-    assert len(inside) / len(ran) < 0.10, (
-        f"{len(inside)}/{len(ran)} campaigns end inside their own notice")
+    windows = []
+    for b in range(1, 21):
+        seed = bytes.fromhex(f"{b:02x}" * 32)
+        world = C.Map(seed)
+        trail = C.itinerary(seed, C.LOBBY_LANDMARK, world, 25)
+        for i, leg in enumerate(trail):
+            windows.append((leg["prep"] + leg["dwell"]
+                            + (trail[i + 1]["prep"]
+                               if i + 1 < len(trail) else 0.0))
+                           * L.HOUR_SECONDS)
+    windows.sort()
+    median = st.median(windows)
+    assert 60 <= median <= 600, (
+        f"a riddle is worth {median:.0f} real seconds: Gal asked for"
+        " seconds to minutes")
+    quick = windows[len(windows) // 10]
+    assert quick > 10, (
+        f"a tenth of riddles give under {quick:.0f} real seconds, which is"
+        " not time to read one")
+
+
+def test_the_notice_is_a_join_window_a_person_could_use():
+    """What `NOTICE_TTL_HOURS` means now that it is not a ratio: how long a
+    stranger has to find the lobby, read her, and join the room.
+
+    Minutes, because seconds is not a window and an hour outlives the game.
+    """
+    real = L.NOTICE_TTL_HOURS * L.HOUR_SECONDS
+    assert 60 <= real <= 600, f"a {real:.0f}s join window"
 
 
 def test_the_next_campaign_never_opens_while_the_old_notice_can_be_read():

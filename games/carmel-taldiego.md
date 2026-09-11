@@ -317,6 +317,16 @@ script, whether the room's treasure has already been taken. A clue is
 in the vocabulary's own words. The manager checks it against the table.
 Deterministic, one lookup, no judgement.
 
+> **Superseded 2026-09-11, and the sentence above still stands as what was
+> thought.** A clue is **three** attributes now, not one, and the reason is
+> measured: one attribute left a median of **156** landmarks of 1000
+> standing, which is not a riddle, it is a category. Gal: *"The hints are
+> terrible, I never could have guessed it."* See "One fact is a category;
+> three are a riddle" below for the numbers and for what it cost. The
+> paragraph's other claims -- gazetteer not prose, closed vocabulary, one
+> lookup, no judgement -- are all still true, and are exactly why three
+> attributes was a small change rather than a rewrite.
+
 Nothing is lost by this and something is gained. The Fugitive's strategy is
 now sharp and stateable: *post the least informative true fact*, which is a
 real optimisation against a real posterior. And the whole information
@@ -5220,3 +5230,161 @@ the tool.
 - **What happens with one searcher?** A solo Hue removes all coordination
   and leaves pure search under a clock, which may be the cleaner instrument
   for the timing question and a worse game. Both, probably; run both.
+
+
+## One fact is a category; three are a riddle
+
+*Decided by Gal, 2026-09-11, and this is the section the standing decision
+at the top of this file now points at.*
+
+The complaint came first and it was about a live game: *"The hints are
+terrible, I never could have guessed it."* The measurement agreed, and it
+was worse than the complaint.
+
+| what a searcher was handed | landmarks left standing, of 1000 |
+|---|---|
+| the detail she actually posted | **median 156** |
+| the sharpest of her three live details | median 77 |
+| a uniformly drawn detail | median 113 |
+
+She was posting the **vaguest** of the three by design -- `choose_hint`'s
+*"post the least informative true fact"*, which was a real optimisation
+against a real posterior when a candidate set meant her five exits, and
+which outlived its denominator when Gal deleted routes on 2026-09-09.
+Against a thousand landmarks, maximising vagueness picks 156 over 27. **A
+strategy calibrated in one world and left running in another is this
+repo's most reliable way to produce a number that is still computed, still
+tested, and no longer means anything.**
+
+### The specification, which is about reading and not counting
+
+> hint should fit a few locations only, not many. it should be hard not by
+> revealing one assertion, but from a few details that can relate in
+> different ways but when they do there are only a few results. that is,
+> the search is over possible meanings to the words of the riddle, not on
+> possible landmarks to a fact
+
+And, separately and firmly: *"don't tell the searchers anything, not even
+the bias. nothing. they only get one signal - the hint."*
+
+That second instruction corrected **the apparatus and not the game.** Her
+notice never disclosed the near bias -- it says the opposite, *"there is
+nowhere I cannot have gone from here"*. The bias leaked through the
+briefings the searchers were given by hand, which is the same class of
+error as the `carmel.log` left in their working directory: **the game was
+clean and the harness around it was not.**
+
+### What the vocabulary can do, measured before anything was built
+
+Intersecting details, over every combination each landmark carries:
+
+| details | median candidates | pins to exactly one |
+|---|---|---|
+| 1 | 156 | -- |
+| 2 | 16 | 2.5% |
+| **3** | **3** | 23.7% |
+| 4 | 1 | 53.8% |
+
+Three is the number, and the 23.7% is not a blocker because **she
+chooses**. `live_hints` already handed her exactly three per place, so she
+posts all three, and drops one when three would name her outright. Two
+seeds: that fires on 22% and 24% of moves and leaves **no pinned move at
+all** -- which is why `RIDDLE_FLOOR` is a rule she obeys per move rather
+than the statistic `MAX_PINNED` held over random draws. A stronger
+guarantee than the one it replaces, not a weaker one.
+
+End to end: **median 4 candidates, 89% of legs between 2 and 12, zero
+pins.**
+
+### The vagueness term was rebuilding the routes Gal deleted
+
+`choose_destination` weighted every candidate by `best_cover` -- how much
+of the map her hint there would leave standing. Harmless-looking, and with
+a riddle it sends her to places that **share descriptors** with where she
+stands, which is precisely the look-alike band `band()` drew her five exits
+from before routes were deleted. `test_there_are_no_routes` went red on it:
+every hop inside the band.
+
+That check was written in September to catch somebody reintroducing
+`exits()`. It caught a weighting term instead, in a change nobody wrote it
+for, which is the whole argument for a check that names a property rather
+than an implementation. The term is gone and `best_cover` with it; it was
+also costing the riddle most of its point (median 21 candidates with it, 4
+without).
+
+### The voice is Mixed, and a frame may never reword a clause
+
+Gal, choosing between a pure dossier and a pure note: **"Mixed"** -- her one
+line, then two reports from people who saw her.
+
+    One true thing, then: the place had been a town once and nobody has
+    lived in it since.
+    STATEMENT. A postal sorter, who has no reason to invent it, says the
+    wire came up through South America.
+    HEARSAY. A bookseller told it to somebody who told us. The moon was the
+    wrong way up.
+
+    -> Machu Picchu, Tiwanaku, Valongo Wharf
+
+Every frame quotes its clause **verbatim**, and that is a correctness rule
+rather than a style one: a frame that reworded a clause to fit her grammar
+would be the system inventing a sentence, and an invented sentence is one
+nobody checked for truth. *She may lie in prose. She may not lie in a
+clue.*
+
+Three of the 73 descriptors have no clause she can speak in the first
+person -- every clause in their bank describes her from outside -- so for
+those she speaks a different detail and lets a witness carry that one.
+Which clauses those are is **derived and not listed**, per `CLAUDE.md`: a
+hand-kept list would drift the first time somebody wrote a new clause.
+
+Two reports drawing the same frame read as one voice repeating itself, so
+the second steps to the next frame -- a walk as fixed by the seed as the
+draw was.
+
+### What it cost, and the invariant that had to go
+
+Every constant in this game was calibrated against a hint leaving 156
+candidates. At 4 she is caught on the first or second leg:
+
+| | median campaign |
+|---|---|
+| before | over 48 game hours |
+| searcher ranking candidates by distance | **6.2 game hours** |
+| searcher told nothing at all | **11.9 game hours** |
+
+`REPUTATION_TO_WIN` is **not** the lever -- swept at 750, 1500, 2500 and
+4000 it moves the median by nothing, because she never lives to spend it.
+
+Gal: *"10 minutes is great"*, and then the correction that settled it:
+*"The game time is less important. First I'd make the real world time
+seconds to minutes per riddle."*
+
+So the unit changed. `test_the_notice_dies_long_before_the_campaign_it_announces`
+asserted a **ratio between two game-time quantities** as a proxy for *"her
+lobby message is long gone before the game ends"*; the proxy held while a
+campaign ran for days of game time and cannot hold now, since a quarter of
+campaigns end inside forty seconds. What it was standing in for -- never
+two salts legible at once -- is held by the floor in `plan`, which does not
+depend on the notice length at all and is tested separately.
+
+It is replaced by the thing actually asked for, in the unit asked for:
+**what one riddle is worth in real seconds.** The window is her packing,
+her theft, and her packing before the next leg -- the same three stretches
+`pursue` counts -- and it measures **median 6.6 real minutes, range about
+2 to 12**. `NOTICE_TTL_HOURS` stops being a ratio and becomes a join
+window, sized in real minutes for a person who has to read a notice and
+join a room.
+
+Both new checks were made to fail on purpose: `HOUR_SECONDS = 6` reddens
+the lower bound, `600` the upper.
+
+### Still open
+
+**A searcher solves the riddle instantly, in the simulation.** It reads the
+details, intersects them and is standing in the room. That was harmless
+when enumeration dominated; with a riddle whose whole difficulty is
+*decoding*, a solver with no think-time is modelling something that does
+not exist -- and it means the quality Gal asked for is the one quantity the
+numbers cannot see. Every capture rate here is therefore a **floor**, and
+should be read as one until a solve time exists.

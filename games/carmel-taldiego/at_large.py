@@ -92,7 +92,20 @@ HOUR_SECONDS = 60.0
 #: Measured against 60 campaigns at `REPUTATION_TO_WIN = 750`: a campaign runs
 #: a median of **80 game hours** and a p10 of 28, so the notice is gone about
 #: a seventh of the way in. Reproduce with `--dry-run`.
-NOTICE_TTL_HOURS = float(C.JOIN_WINDOW_HOURS)
+#: **Sized in real minutes, not in game hours** (Gal, 2026-09-11: *"The game
+#: time is less important. First I'd make the real world time seconds to
+#: minutes per riddle."*). It was `C.JOIN_WINDOW_HOURS` -- twelve -- chosen
+#: when a campaign ran for days of game time, and a twelve-hour notice was
+#: comfortably inside one. With a riddle she is caught in a median of six
+#: game hours, so the old value outlived every campaign instead of dying
+#: long before it, and no value can do better while a quarter of campaigns
+#: end inside forty seconds.
+#:
+#: What stops two salts being legible at once was never this number: it is
+#: the floor in `plan`, which holds whatever the notice costs and is tested
+#: separately. This is a **join window** and nothing else, so it is set to
+#: what a person needs to read a notice and join a room.
+NOTICE_TTL_HOURS = 2.0
 
 #: The quiet between campaigns, in game hours. Two hours is two minutes: long
 #: enough that the close and the next open are not the same moment on a
