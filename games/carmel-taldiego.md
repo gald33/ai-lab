@@ -4987,6 +4987,32 @@ checkable where it lands. The notice also warns that silence is ambiguous
 between five states, for the searcher holding a room she never reached --
 the one case a broadcast cannot help.
 
+*Measured again the same day, larger and sharper, by the hunt that ran
+while the fix was being written.* The campaign closed at **10:36:39** --
+caught in Stonehenge by `near`, on **leg 1**, at 0 reputation. A third
+searcher, `nordic`, wrote its first target list at **10:45:33**, nine
+minutes after the game was already over, and was still holding **809
+rooms** when it was stopped at 11:54. Sixty-eight minutes of sweeping, four
+holder processes, zero clues found and zero sightings -- not because the
+search was bad but because there was nothing left to find, and nothing in
+the world could tell it so. Its own report reaches for the mechanism
+instead: *"the clue carries almost no discriminating information, so I did
+not solve it; I blanketed."*
+
+That is the first hole measured twice, and the second measurement is worse
+than the first in the way that matters: the twenty-minute sweep overlapped a
+game that ended partway through it, while this one **never overlapped a live
+game at all**. The running build was the lobby-only close (the broadcast
+landed at 11:49, an hour after the catch), so `nordic` had no line to read
+anywhere on the map. Under this change it would have been told at its first
+room on her trail -- though *leg 1* is the case that shows the limit
+honestly: a trail one leg long puts the news in one room out of a thousand,
+and a searcher who never held Stonehenge or the Grand-Place still learns
+nothing. **A broadcast reaches the rooms she robbed, and a short campaign
+robs few rooms.** The lobby copy is the only one every searcher can find,
+and a searcher deep in a hunt is exactly the one who has stopped looking
+there.
+
 **Posting is not announcing, and that is what makes it safe.** `post`
 leaves a message; `register` puts you on the roster; only the roster is the
 catch. She writes in each place without standing in it again. The tempting
