@@ -476,8 +476,9 @@ REPUTATION_TO_WIN = 750
 #: Both posts used to mix the two in one voice -- she said *"hand what
 #: comes out to join_room"* and *"14 rooms, 9 of them emptied"*, which is a
 #: fugitive reading out an API. She now says only what a person on the run
-#: would say: places, not rooms; the poorer for it, not emptied; standing
-#: still, not dwelling. Everything a chaser needs to work the machinery
+#: would say: places, not rooms; robbed, not emptied; a theft that takes as
+#: long as it takes, not a dwell. Everything a chaser needs to work the
+#: machinery
 #: lives below this rule and is written about her in the third person, so
 #: nobody has to guess which half is the game and which is the fiction.
 #:
@@ -967,15 +968,17 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
-        "I am somewhere famous. Not here -- I have already gone.",
+        "I am somewhere famous, and I am robbing it. Not here -- I am",
+        "already gone from here.",
         "",
-        "Every time I move I leave behind one true thing about where I have",
-        "gone, and it is the only true thing you will get out of me. Work",
-        "out the place and come and stand in it. You will find me there, or",
-        "you will find whatever I said on my way out of it.",
+        "Every time I move on I leave behind one true thing about where I",
+        "have gone, and it is the only true thing you will get out of me.",
+        "Work out the place and come for me. You will have me, or you will",
+        "have what I said on my way out.",
         "",
-        "Find me while I am still standing and you have me. Let me stand",
-        "long enough, often enough, and I retire on what I have taken.",
+        "A theft takes as long as it takes. Come while my hands are still",
+        "full and I am yours. Let me finish enough of them and I retire on",
+        "the proceeds, and you can read about me.",
         "",
         "One kindness, because it costs me nothing you could not work out",
         "for yourself. I write before I pack, and the farther I mean to go",
@@ -984,8 +987,8 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         f" (t/{PREP_PIVOT:.0f})^{PREP_EXPONENT} hours of packing",
         "before I can set off. My line is stamped with the hour I wrote it.",
         "Subtract, and you know how far behind me you are; and for anywhere",
-        "you think I have gone, you know whether you can be standing there",
-        "before I arrive.",
+        "you think I have gone, you know whether you can be there waiting",
+        "when I let myself in.",
         "",
         "You cannot do that for everywhere. You can do it for the far ones.",
         "",
@@ -1022,8 +1025,8 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "way she knows anyone is with her. A searcher who waits in silence",
         "is one she walks straight past.",
         "",
-        "There is nothing to send her and no move to declare. Standing",
-        "where she is standing is the whole of it.",
+        "There is nothing to send her and no move to declare. Being in the",
+        "room while she is in it is the whole of it.",
     ])
 
 
@@ -1048,8 +1051,8 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
     lines = [
         f"It is over. {outcome}.",
         "",
-        f"{len(trail)} places, {len(took)} of them the poorer for it, and"
-        f" {reputation} reputation to my name.",
+        f"{len(trail)} places. {len(took)} of them the poorer for it."
+        f" {reputation} to my name, and worth every hour.",
         "",
         PLUMBING_RULE,
         "",

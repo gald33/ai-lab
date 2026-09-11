@@ -457,12 +457,34 @@ def test_she_never_speaks_in_machinery():
     the word the code uses. Everything the machinery needs goes below the
     rule, where it is written about her in the third person.
     """
+    import at_large  # the runner is what puts words in her mouth
+
     trail = C.itinerary(SEED, START, WORLD, 5)
-    for post in (C.open_campaign(SEED, START),
-                 C.close_campaign(SEED, "You have me", 200, trail)):
+    posts = [C.open_campaign(SEED, START)]
+    # **Every** ending the runner actually uses, not one invented here. The
+    # first version of this test made up `"You have me"` and passed while
+    # the runner was closing an outage with `"The hub went dark on me"` --
+    # a fugitive naming a message broker, checked by a test that never
+    # looked at the real set. A sample is not an inventory.
+    posts += [C.close_campaign(SEED, ending, 200, trail)
+              for ending in at_large.OUTCOMES.values()]
+
+    for post in posts:
         hers = _her_half(post).lower()
-        found = [word for word in MACHINERY if word in hers]
-        assert not found, f"she said {found}: {hers[:160]!r}"
+        # The hint itself is exempt, and the exemption is narrow and
+        # reluctant: a descriptor is drawn from `descriptors.py`, whose
+        # vocabulary is a separate artifact with its own review, and two of
+        # its entries collide with this list by accident of English --
+        # `royal_rooms` is a palace and `a_span_or_a_channel` is a strait.
+        # Renaming them is **not** free: `Map.descriptors` sorts each
+        # landmark's list by name and `hints_for` selects by index, so a
+        # rename reshuffles which hint every landmark carrying it posts.
+        # That is a change to the stimulus, not to the prose, so it is not
+        # made here on a test's say-so.
+        prose = "\n".join(l for l in hers.splitlines()
+                           if not l.startswith("    "))
+        found = [word for word in MACHINERY if word in prose]
+        assert not found, f"she said {found}: {prose[:200]!r}"
 
 
 def test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase():

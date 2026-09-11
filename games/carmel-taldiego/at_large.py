@@ -134,6 +134,23 @@ POLL_SECONDS = 5.0
 OUTAGE_SECONDS = 90.0
 RETRY_SECONDS = 2.0
 
+#: The four ways a campaign ends, **in her voice**, because the runner puts
+#: these words in her mouth and `carmel.close_campaign` prints them above
+#: the rule where only she speaks.
+#:
+#: The outage line used to read *"The hub went dark on me"*, which is a
+#: fugitive naming a message broker. `test_she_never_speaks_in_machinery`
+#: did not catch it because it checked one outcome it made up itself rather
+#: than the ones the runner actually uses -- a sample instead of the set,
+#: which is the same defect as a hand-maintained path list. The test reads
+#: this dict now, so a fifth ending cannot be added in machinery.
+OUTCOMES = {
+    "caught": "You have me",
+    "wins": "I retire on the proceeds",
+    "spent": "I ran out of road",
+    "lost": "It ended badly, and not by your hand",
+}
+
 #: The lobby is salt-free -- `carmel.LOBBY`'s reasoning: a lobby that moved
 #: with the game salt could not be found by anybody who was not already
 #: playing, and the salt is *inside* the notice, so a salted lobby could never
@@ -356,7 +373,7 @@ class Fugitive:
         except Outage as gone:
             self.log(f"giving up: {gone}")
             try:
-                self.close_campaign(seed, "The hub went dark on me",
+                self.close_campaign(seed, OUTCOMES["lost"],
                                     self._banked, self._walked)
             except Outage:
                 self.log("could not even say so: the lobby is unreachable")
@@ -391,7 +408,8 @@ class Fugitive:
             caught_by = self._stand(seed, salt, leg, started, leaving)
             if caught_by:
                 self.log(f"caught in {leg['to']} by {caught_by}")
-                self.close_campaign(seed, "You have me", reputation, walked)
+                self.close_campaign(seed, OUTCOMES["caught"], reputation,
+                                    walked)
                 return {"outcome": "caught", "moves": walked,
                         "reputation": reputation, "by": caught_by,
                         "hours": leg["leaves"]}
@@ -399,11 +417,11 @@ class Fugitive:
             at = leg["to"]
             reputation = self._banked = leg["reputation"]
             if reputation >= C.REPUTATION_TO_WIN:
-                self.close_campaign(seed, "I retire on it", reputation, walked)
+                self.close_campaign(seed, OUTCOMES["wins"], reputation, walked)
                 return {"outcome": "she wins", "moves": walked,
                         "reputation": reputation, "hours": leg["leaves"]}
 
-        self.close_campaign(seed, "I ran out of road", reputation, walked)
+        self.close_campaign(seed, OUTCOMES["spent"], reputation, walked)
         return {"outcome": "out of moves", "moves": walked,
                 "reputation": reputation, "hours": trail[-1]["leaves"]}
 

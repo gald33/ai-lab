@@ -4758,6 +4758,27 @@ steps of the recipe, and that announcing is what makes a searcher visible —
 none of which she would ever say, and all of which a stranger needs before
 they can do anything at all.
 
+**She steals; she does not stand about.** *Gal, the same day: "more game
+lore, she isn't standing, she is stealing, you aren't standing, you catch
+her."* The first pass had swapped the machinery's nouns for plain English
+but kept its **verbs** — she was *standing still* and a searcher *stood in*
+a place, which is stage direction for a presence check rather than anything
+a robbery would involve. She is robbing the place now, a theft takes as
+long as it takes, and a searcher **comes for her** and has her *"while my
+hands are still full"*. The line the mechanic earned:
+
+> *and for anywhere you think I have gone, you know whether you can be
+> there waiting when I let myself in.*
+
+**A test that checked a sample instead of the set let one straight
+through.** The runner closes a campaign with words that print in her half,
+and the outage ending read *"The hub went dark on me"* — a fugitive naming
+a message broker. `test_she_never_speaks_in_machinery` passed anyway,
+because it invented `"You have me"` and checked that. The four endings are
+`at_large.OUTCOMES` now and the test reads the dict, so a fifth cannot be
+added in machinery. Same defect as a hand-maintained path list, in a test
+written the same week as the rule against them.
+
 **Both halves are asserted, because both will drift.**
 `test_she_never_speaks_in_machinery` holds her half against a word list
 (`room`, `hash`, `salt`, `token`, `roster`, `announce`, `workspace`,
