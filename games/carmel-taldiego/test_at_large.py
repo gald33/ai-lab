@@ -265,6 +265,47 @@ def test_a_stranger_standing_in_the_room_is_the_whole_catch(board):
     assert result["reputation"] == 0, "an interrupted theft is not banked"
 
 
+def test_she_is_caught_in_the_room_she_is_packing_in(board):
+    """Gal, 2026-09-11: *"she could be caught whenever she is in the room
+    with a player, nevermind her state. You don't have to wait for her, you
+    can usually catch her when you land in the room she's in."*
+
+    The route that did not exist. Between writing her line and arriving
+    somewhere new she is standing in the room she wrote from, packing --
+    and `_stand` used to watch her *destination* through that whole
+    stretch, so the one room she was provably in went unwatched. Her notice
+    promises a fresh line means she is still there; this is what makes the
+    promise true.
+
+    Driven through `_stand` directly rather than a whole campaign, because
+    the window is the packing minutes of one leg and a fake clock cannot
+    drop a searcher into the middle of a run.
+    """
+    seed = bytes.fromhex("55" * 32)
+    salt = salt_for(seed)
+    world = C.Map(seed)
+    trail = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=6)
+    # A leg she packs for, leaving somewhere that is not the lobby -- the
+    # lobby is where everyone reads her notice and she is never on its
+    # roster, which is why `leaving` is None on leg one.
+    leg = next(l for l in trail[1:] if l["prep"] > 0)
+
+    rooms = Rooms(board)
+    packing_in = rooms.room(room_token(leg["from"], salt))
+    searcher = board.client(agent_id="latecomer",
+                            workspace=Rooms.workspace(
+                                room_token(leg["from"], salt)), key=KEY)
+    searcher.register(name="latecomer", kind="searcher", ttl=3600)
+
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    started = board.clock() - L.seconds(leg["posted"])
+    caught = her._stand(seed, salt, leg, started, packing_in)
+    assert caught == "latecomer", (
+        "she packed in a room with a searcher in it and walked out free")
+
+
 def test_an_empty_room_is_not_a_catch(board):
     """The other half, and the reason the test above is not vacuous: with
     nobody standing anywhere, the same seed runs to its own end."""

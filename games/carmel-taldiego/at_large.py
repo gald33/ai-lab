@@ -463,8 +463,16 @@ class Fugitive:
                 # the program and was the least protected.
                 self._tolerate("a heartbeat",
                                lambda: room.heartbeat(ttl=ttl))
+
+            # **Whichever room she is actually in.** Gal, 2026-09-11: *"she
+            # could be caught whenever she is in the room with a player,
+            # nevermind her state."* Before `arrived` she is still in the
+            # room she wrote from, packing, and that room used to go
+            # unwatched -- so her own notice promised that a fresh line
+            # meant she was still there while the code made it untrue.
+            here = room if registered else (leaving or room)
             other = self._tolerate("the roster",
-                                   lambda: self._stranger(room))
+                                   lambda: self._stranger(here))
             if other:
                 return other
             self.sleep(min(self.poll,

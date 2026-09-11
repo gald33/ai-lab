@@ -968,8 +968,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
-        "I am somewhere famous, and I am robbing it. Not here -- I am",
-        "already gone from here.",
+        "I am robbing my way around the famous places of the world, and by",
+        "my own rule below I am still here as I write this, with my coat",
+        "half on. Be quick and it will cost me.",
         "",
         "Every time I move on I leave behind one true thing about where I",
         "have gone, and it is the only true thing you will get out of me.",
@@ -980,15 +981,18 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "full and I am yours. Let me finish enough of them and I retire on",
         "the proceeds, and you can read about me.",
         "",
-        "One kindness, because it costs me nothing you could not work out",
-        "for yourself. I write before I pack, and the farther I mean to go",
-        "the longer the packing takes -- and worse than in proportion. A",
-        f"journey of t hours costs me {PREP} x {PREP_PIVOT:.0f} x"
-        f" (t/{PREP_PIVOT:.0f})^{PREP_EXPONENT} hours of packing",
-        "before I can set off. My line is stamped with the hour I wrote it.",
-        "Subtract, and you know how far behind me you are; and for anywhere",
-        "you think I have gone, you know whether you can be there waiting",
-        "when I let myself in.",
+        "Here is how I keep my hours, and I tell you because knowing it has",
+        "never once been enough. I do not write until I have finished with",
+        "a place. Then I write, and only then do I pack -- so a fresh line",
+        "of mine means I am still there, with my coat half on. The farther",
+        "I mean to go the longer the packing takes, and it grows faster",
+        "than the distance does, which is the whole of my difficulty and",
+        "now yours.",
+        "",
+        "My line is stamped with the hour I wrote it. Subtract, and you",
+        "know how long I have been at it; and for anywhere you think I",
+        "have gone, you can reckon whether you would be there waiting when",
+        "I let myself in.",
         "",
         "You cannot do that for everywhere. You can do it for the far ones.",
         "",
@@ -1150,7 +1154,23 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
     """
     lag = joined_at
     for i, leg in enumerate(trail):
+        # How long a searcher has to reach `leg["to"]` and still be beside
+        # her. **Co-presence is the catch, whatever she is doing** -- Gal,
+        # 2026-09-11: *"she could be caught whenever she is in the room with
+        # a player, nevermind her state. You don't have to wait for her, you
+        # can usually catch her when you land in the room she's in."*
+        #
+        # So the window runs from the moment she names the place to the
+        # moment she is gone from it, which is three stretches and not two:
+        # her packing here, her theft there, and **her packing there before
+        # the next leg**. That last term used to be missing on both sides --
+        # the simulation stopped the clock when the theft ended, and
+        # `at_large._stand` watched a room she had already left while
+        # ignoring the one she was standing in. Her own notice promises a
+        # fresh line means she is still there; this is what makes that true.
         window = leg["prep"] + leg["dwell"]
+        if i + 1 < len(trail):
+            window += trail[i + 1]["prep"]
         if lag > window:
             continue                       # too slow to be there at all
         here = leg["from"]
