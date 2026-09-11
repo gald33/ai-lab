@@ -620,3 +620,42 @@ def test_she_hands_over_nothing_when_she_was_not_caught():
     listed = [leg["to"] for leg in trail if leg["to"] in body]
     assert not listed, f"she volunteered her route: {listed}"
     assert SEED.hex() in body, "the seed belongs in every ending"
+
+
+def test_the_notice_says_where_the_close_lands_and_says_it_once():
+    """Two corrections to her notice, 2026-09-11, both of them drift rather
+    than design.
+
+    **It claimed the close was lobby-only.** The sentence read *"She posts
+    the end of the game here and nowhere else"*, which was true when it was
+    written and false the moment the close began broadcasting to every room
+    she robbed. A notice that understates where the news reaches is the
+    exact failure the broadcast was built to fix, restated in her own
+    prose.
+
+    **And it printed the first riddle twice.** The notice inlined it and
+    the runner posted it again, so the lobby carried it in duplicate. The
+    copy dropped is the notice's: the notice lives `NOTICE_TTL_HOURS` and
+    the post lives `HINT_TTL_HOURS`, **ten times longer**, so dropping the
+    runner's copy instead would have quietly cut the first riddle's life by
+    a factor of ten. The same shape as the salt -- a value doing load-
+    bearing work inside a message that looked like a formality.
+
+    Made to fail on purpose by restoring either sentence.
+    """
+    notice = C.open_campaign(SEED, START)
+    plumbing = notice.split(C.PLUMBING_RULE)[1]
+
+    assert "nowhere else" not in plumbing, (
+        "the notice still says the close lands only in the lobby")
+    assert "every place she" in plumbing, (
+        "nothing tells a searcher the close reaches her trail")
+
+    # The riddle appears in the lobby once, and the runner is what puts it
+    # there -- so the notice must not carry a rendered detail of its own.
+    world = C.Map(SEED)
+    first = C.itinerary(SEED, START, world, 1)[0]
+    for line in C.riddle(SEED, first["to"], first["details"]):
+        assert line not in notice, (
+            "the notice inlines the first riddle, which the runner also"
+            " posts: the lobby would show it twice")

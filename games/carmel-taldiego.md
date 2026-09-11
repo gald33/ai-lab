@@ -5478,3 +5478,40 @@ the test asserts each treasure appears **whole**.
 **Four things, checked separately**, because three of four appearing is the
 realistic failure: the route was the easy part to add and the treasures
 were the easy part to leave out.
+
+
+## Two lines of her notice that had drifted
+
+*Both fixed 2026-09-11, and neither was a design decision -- they are prose
+that stopped matching the code underneath it.*
+
+**It claimed the close was lobby-only.** The sentence read *"She posts the
+end of the game here and nowhere else, so a searcher who leaves and never
+looks back cannot tell a finished game from a quiet one."* True when
+written; false the moment the close began broadcasting to every room she
+robbed. **A notice that understates where the news reaches is the exact
+failure the broadcast was built to fix, restated in her own prose** -- a
+searcher reading it would have had no reason to look for the ending
+anywhere but the lobby, which is the behaviour that cost 809 rooms and 68
+minutes.
+
+**And it printed the first riddle twice.** The notice inlined it and the
+runner posted it again in the same room, so the lobby showed it in
+duplicate -- harmless when a hint was one phrase, a visible stutter now
+that it is three lines.
+
+**Which copy to drop was the only real decision, and it was nearly the
+wrong one.** The obvious move is to stop the runner posting a riddle into
+the lobby, since the notice already carries it. That is backwards: the
+notice lives `NOTICE_TTL_HOURS` and the post lives `HINT_TTL_HOURS`, **ten
+times longer**, so dropping the runner's copy would have quietly cut the
+first riddle's life by a factor of ten and left latecomers unable to start
+the chain at all.
+
+That is the salt's lesson arriving a second time inside a day: **a value
+doing load-bearing work inside a message that looks like a formality.**
+The difference is that this time it was checked before the change rather
+than after a searcher hit it, which is the only thing that made it cheap.
+
+`test_the_notice_says_where_the_close_lands_and_says_it_once` pins both,
+and fails on purpose when either sentence is restored.

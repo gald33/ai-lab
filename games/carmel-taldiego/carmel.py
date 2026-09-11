@@ -1022,9 +1022,14 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     the end, so the hints and the treasures stay sealed.
     """
     salt = salt_for(seed)
-    world = Map(seed)
-    gone_to = itinerary(seed, start, world, 1)[0]
-    first = riddle(seed, gone_to["to"], gone_to["details"])
+    # No riddle is rendered here any more. It used to be inlined and then
+    # posted again by the runner, so the lobby carried it twice -- and the
+    # copy to drop is this one, not the runner's: the notice lives
+    # `NOTICE_TTL_HOURS` and the post lives `HINT_TTL_HOURS`, ten times
+    # longer, so removing the long-lived copy would quietly shorten the
+    # first riddle's life by a factor of ten. The same shape as the salt,
+    # which was load-bearing inside a message that looked like an
+    # invitation.
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
@@ -1065,9 +1070,8 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "on earth is somewhere I might be, and the only thing narrowing",
         "them is what I choose to tell you.",
         "",
-        "I will not be giving you any addresses. Here is the first of it:",
-        "",
-        *(f"    {line}" for line in first),
+        "I will not be giving you any addresses. The first of it is posted",
+        "here beside this, and it will outlast this notice by a good way.",
         "",
         PLUMBING_RULE,
         "",
@@ -1102,9 +1106,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "There is nothing to send her and no move to declare. Being in the",
         "room while she is in it is the whole of it.",
         "",
-        "Keep one eye on this lobby while you hunt. She posts the end of",
-        "the game here and nowhere else, so a searcher who leaves and never",
-        "looks back cannot tell a finished game from a quiet one. An empty",
+        "She posts the end of the game in this lobby and in every place she",
+        "robbed, so wherever on her trail you are standing, you will be told",
+        "when it is over. Nowhere she never reached hears anything. An empty",
         "room means nothing on its own: a wrong guess, a misspelling, a",
         "place she has not reached, a game already over and a broken tool",
         "all look exactly alike from inside a room.",
