@@ -4601,6 +4601,172 @@ cannot collide), and fails on any remaining pair. Recreating
 That is the same treatment CI's directory list already gets, for the same
 reason `CLAUDE.md` gives: **derive what exists rather than remembering it.**
 
+### One dropped connection used to end everything, and playing is what found it
+
+*2026-09-11.* The suite was green, 137 tests over two configurations, and a
+live campaign died **150 seconds in**:
+
+    httpx.ConnectError: [SSL: UNEXPECTED_EOF_WHILE_READING]
+      at_large.py  in _stand
+          room.heartbeat(ttl=max(120.0, self.poll * 4))
+
+Nothing retried it and nothing caught it, so the game went with the
+connection: no close in the lobby, hints left in rooms pointing at a
+fugitive who was not coming, and a searcher who guessed right left standing
+in the room forever with no way to tell that from a fugitive who is good at
+hiding.
+
+**It was never survivable, and the arithmetic says so.** `_stand` polls
+twice per `POLL_SECONDS` — a roster read and a heartbeat — so an
+eighty-minute campaign makes about **1,900 hub calls**, every one of them
+able to end it. At any believable per-call failure rate that is not a risk,
+it is a certainty with a wait attached. The one call in the program that
+runs most often was the one with no guard on it.
+
+Every hub call goes through `Fugitive._tolerate` now: retry every
+`RETRY_SECONDS`, give up after `OUTAGE_SECONDS` (90s — past a dropped TLS
+connection and a hub restart, short of a leg), and on giving up raise
+`Outage`, which `run` turns into the outcome **`lost the hub`** and says in
+the lobby if it still can. A campaign that has lost the hub must not look
+like one still being played.
+
+**Why the suite could not have caught it, which is the part worth keeping.**
+Nothing was wrong with the tests' coverage — every line of `_stand` was
+exercised. What was never exercised was a line *failing*. The in-process
+hub is real and it is reliable, so a suite built on it proves the code
+right about a world that never stumbles. The new tests wrap each room
+client in a `Flaky` proxy that raises on chosen calls and passes everything
+else through, so the campaign underneath stays a real campaign:
+
+- `test_a_dropped_connection_does_not_end_the_campaign` fails the 3rd, 9th
+  and 20th call in every room and requires the same outcome, reputation and
+  leg count as an unbroken run;
+- `test_a_hub_that_never_comes_back_ends_it_out_loud` requires the named
+  outcome rather than an exception escaping;
+- `test_she_does_not_retry_forever` bounds the give-up on the clock, because
+  a retry loop with no budget is an outage pretending to be a game.
+
+Reverting the guard on the heartbeat reddens the first and leaves the two
+campaign tests green, which is the split that says the test checks the
+retry rather than the campaign.
+
+**And the first version of that test was green here and red on CI**, which
+is a fifth instance of the same disease in the test rather than the code.
+Its non-vacuity guard was `any(r.calls > 20)` — "some room was polled enough
+for the injected failures to land" — and how many times a room gets polled
+depends on how long the campaign runs, which depends on the treasure table,
+which differs between a checkout holding `absurd.tsv` and CI without it. It
+counts the injections that actually fired now (`Flaky.broke`), which is the
+thing it was trying to establish and does not vary. **Infer nothing you can
+count.**
+
+**The general lesson, and it is the fourth of its kind here.** `CLAUDE.md`
+says a check must be able to fail for the reason it names. This is a check
+that could not fail for a reason nobody had named: *the dependency misbehaves*.
+Coverage of the happy path at any density does not produce it — the failure
+has to be injected. A suite that only ever sees a working hub is a suite
+that has measured the hub, not the program.
+
+### And the diagnosis was wrong twice before it was right
+
+Worth recording because both wrong answers were confidently given.
+
+**First: "she is still running."** The liveness check was
+`pgrep -f "at_large.py --once"`, which matches *its own shell* — the command
+string contains the pattern. It reported her alive for two hours after she
+died, and the same self-matching `pkill` had already killed an earlier
+campaign. A process check that can see itself is not a process check.
+
+**Second: "the container rebooted."** True and irrelevant — `up 5 min`
+against a death twelve hours earlier is real, and this session's machine
+really is torn down between turns. But it was the explanation that was
+*visible*, not the one that was *reproducible*, and it was stated as the
+answer. The reproduction came from re-running the same pacing and getting a
+traceback; a three-minute replay at 30× had finished seventeen legs cleanly
+and looked like an exoneration, because it made 180 calls instead of 1,900.
+
+**Prefer the cause you can reproduce over the cause you can see.** Both
+observations were true; only one of them was the reason.
+
+### Her notice told players to do something that does not work
+
+*2026-09-11, after Gal asked "how do I play?" and I had to answer from the
+code rather than from her words.*
+
+Two defects, both in `carmel.open_campaign`, both there since it was
+written, and both invisible to a suite of 140 tests:
+
+**"Hand what comes out to join_room"** — and `join_room` refuses it:
+`InviteError: not a switchboard invite (expected it to start with 'swb1_')`.
+The recipe yields a room *token*; Switchboard names a room by the *hash* of
+its token (`rooms.workspace_for`), so the notice stopped one step short of
+an address. The notice gives both steps now, and `secret_matrix` carries
+`ADDRESS_RECIPE` and `room_address` so the published words and the code
+cannot drift.
+
+**Nothing said you have to announce yourself.** `say` does not put you on a
+roster — measured: after posting, `agents` returns *"no agents registered"*.
+She knows who is with her by the roster and by nothing else, so a searcher
+who works out the right room, joins it and reads it in silence is invisible
+and cannot win. Presence also lapses in 120s against a six-minute leg. The
+notice now says so in capitals, because it is the one way to play
+perfectly and still lose.
+
+**Why 140 tests missed both, which is the general lesson.** Every test in
+this game drives *her*. The searcher's half of the game exists only as
+sentences in a notice, and **sentences are not executed**. Coverage of the
+program cannot reach a defect in the instructions the program publishes.
+
+So the two new tests read the notice rather than the source.
+`follow()` parses the domain separator out of the quoted recipe, the salt
+out of the line below it, and the second step out of the address line, then
+builds the room by hand — importing nothing from `secret_matrix`, because a
+test that imported the implementation would agree with it no matter what
+the notice said. It is a stranger with the text in front of them. The
+second test requires that a silent lurker really is invisible, so the
+warning cannot quietly become false.
+
+That pairing is the point: one test proves she says it, the other proves it
+is true. Either alone is half a check.
+
+### She stopped reading out an API
+
+*2026-09-11, Gal: "I want everything she says to be in character and within
+the game world. so she isn't talking about rooms, and emptying them. If we
+must give game technical instructions, give them in a separate paragraph so
+it's clear it's not she speaking."*
+
+Both of her posts mixed the two voices in one. She said *"hand what comes
+out to `join_room`"*, and the close read *"14 rooms, 9 of them emptied,
+412 reputation"*. A fugitive reading out a client library is not a
+fugitive, and the reader cannot tell which half is the game and which is
+the fiction.
+
+`PLUMBING_RULE` splits them now. **Above it she says only what a person on
+the run would say** — places, not rooms; *the poorer for it*, not emptied;
+standing still, not dwelling; a true thing, not a hint. **Below it the
+machinery is written about her in the third person**, so nothing has to be
+guessed.
+
+The second requirement is the harder one and is why the block below repeats
+things that look obvious from inside the project. Gal's test: *"even
+(though it's impossible) someone stumble upon the message without knowing
+anything about the game, he can actually join the hue and cry."* So it says
+what hue and cry is, that Switchboard is the hub they are already on, that
+every famous place has a room whose name comes from the place's name, both
+steps of the recipe, and that announcing is what makes a searcher visible —
+none of which she would ever say, and all of which a stranger needs before
+they can do anything at all.
+
+**Both halves are asserted, because both will drift.**
+`test_she_never_speaks_in_machinery` holds her half against a word list
+(`room`, `hash`, `salt`, `token`, `roster`, `announce`, `workspace`,
+`switchboard`, `hub`, `emptied`, `dwell`, …), since the next person to add
+a sentence to her notice will reach for the word the code uses.
+`test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase` holds the
+other half against what a newcomer needs, since the temptation there is the
+opposite one — to assume the reader already knows what this is.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation
@@ -4612,6 +4778,92 @@ and are not yet published — the site (`build_site.py`) shows six simulated
 campaigns and says nothing about a live one. That is a page change and a
 decision about whether this hub is the one she should live on, which is not
 a decision the runner should make on its own.
+
+## The size of the map is a secret, and saying it was the whole leak
+
+*2026-09-10, Gal: "We shouldn't publicize that there are thousand rooms, and
+we definitely shouldn't publicize where are the rooms. It's basically a hash
+function and could have endless possibilities. So any landmark in the world
+can fit."* And then, on whether to grow it instead: *"1000 is a good number,
+but it's a secret."*
+
+### What made this urgent, and how much of it was my own confusion
+
+Three claims were made in this conversation before one survived. Recorded in
+order, because the two that failed are the more instructive:
+
+1. **"A key holder can read every active workspace."** *False.* No endpoint
+   lists workspaces — all twenty take a `workspace` you must already name,
+   and `/stats` returns a count. A client holding the same key, sitting in a
+   different room, sees an empty roster and no channels. **The key is not
+   what hides her; the room id is** — so changing the key, or moving to
+   per-room invitations, buys no concealment at all.
+2. **"Anyone with the salt can sweep the map without a key."** *False as
+   stated.* Every hub read needs the bearer token — raw HTTP with none is
+   `401 invalid or missing bearer token` on `/agents` and `/channels`. The
+   sweep that "proved" it was silently authenticated by `SWITCHBOARD_TOKEN`
+   sitting in the container's environment. **A demonstration that runs in an
+   environment you did not audit is not a demonstration**, and this is the
+   same disease as a check that is green for the wrong reason.
+3. **"A *player* can sweep the map."** *True*, and it is the real one. Every
+   player holds the bearer token by definition, the salt arrives in the
+   notice, and the names were public. Measured: **227 ms per room on one
+   connection, 3.8 minutes for a thousand** — against a leg of about six.
+   The hints were decoration.
+
+### The measurement that reframes it
+
+There is **no membership oracle**. A landmark she is not at, a name in no
+gazetteer at all, and the right place under the wrong spelling are byte
+identical to a prober:
+
+    Stonehenge                       200, count 0, no channels
+    Gal's Kitchen Table              200, count 0, no channels
+    Uluru-Kata Tjuta National Park   200, count 0, no channels
+
+The hub has no notion of a room existing. So the candidate space is not a
+thousand — it is every string anyone can type, and a searcher cannot tell a
+wrong guess from a wrong *spelling*. **The only thing that collapsed that
+into a 3.8-minute sweep was us publishing the list**, which is Gal's point
+exactly and is why the fix is disclosure and not cryptography.
+
+This does not contradict "Presence in a room is public to that room" above —
+that is still the hue and is still not a leak to be plugged. What was a leak
+is publishing the set of rooms to sweep.
+
+### What was closed, and what was not
+
+**Closed**: the count is out of every player-facing surface — her notice
+(`carmel.open_campaign`) and the published site (`build_site.py`, the meta
+description and the lede). The notice now reads *"Every famous place on
+earth is a room already, waiting to be named"*, which is not a euphemism for
+the thousand — it is what the probe above actually shows.
+
+**Not closed, and not closable by us**: `landmarks.tsv` is 999 rows of exact
+spellings, committed, in a public repository. The roadmap item
+`hue-and-cry-purge-the-leaked-tables` already carries the sentence that
+governs this — *"a secret committed to a public repository is not
+recallable by the person who committed it"* — and PR refs survive a
+force-push.
+
+**Sealing the file now would be theatre**, and the distinction is worth
+keeping because it is not obvious: hints and treasures are re-derived from
+each game's seed, so sealing them protected every future game. **The names
+never change.** A `landmarks.enc` over the same 999 names protects nothing,
+and would put a sealed file where a reader would reasonably read secrecy.
+`CLAUDE.md`: the weaker thing is allowed, and never allowed to look like the
+stronger one.
+
+**What would work is redraw *and* seal**: a much larger pool from Wikidata
+(`build_landmarks.py` already builds from it, and the thousand is a cap this
+repo chose rather than what the data holds), the playing thousand selected
+under a key held outside the repository, plaintext gitignored, `.enc`
+committed, and a test that fails if a plaintext map is ever tracked again —
+the treasures pattern applied to the map. Its cost is stated rather than
+discovered later: **every calibration in this game was swept against this
+map** — `WATCH`, `PREP`, `NEAR_KM`, `REPUTATION_TO_WIN` — and the gazetteer
+is part of the level key by this document's own rule, so a redraw re-opens
+all of them. Not done here, and not started without a go.
 
 ## What would have to be built, in order
 

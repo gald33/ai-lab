@@ -111,6 +111,29 @@ HINT_TTL_HOURS = 120.0
 #: not luck, coarse enough not to hammer the hub.
 POLL_SECONDS = 5.0
 
+#: How long the hub may stay unreachable before she gives up the campaign,
+#: and how long she waits between attempts while it is.
+#:
+#: **This exists because one dropped connection used to end everything.**
+#: Found by playing rather than by testing, 2026-09-11: a campaign died 150
+#: seconds in on a single `[SSL: UNEXPECTED_EOF_WHILE_READING]` raised by
+#: `room.heartbeat` inside `_stand`. Nothing was retried and nothing was
+#: caught, so the whole game went with it -- no close in the lobby, hints
+#: left in rooms pointing at a fugitive who was never coming, and a searcher
+#: standing in the right room forever.
+#:
+#: The arithmetic says this was never survivable. `_stand` polls twice per
+#: `POLL_SECONDS` -- a roster read and a heartbeat -- so an eighty-minute
+#: campaign makes about **1,900 hub calls**, every one of them a chance to
+#: end it. At any believable per-call failure rate that is not a risk, it is
+#: a certainty with a wait attached.
+#:
+#: Ninety seconds because it must outlast a blip and not a crash: it is well
+#: past a dropped TLS connection and a hub restart, and well short of a leg,
+#: so a campaign that gives up has really lost the hub rather than hiccupped.
+OUTAGE_SECONDS = 90.0
+RETRY_SECONDS = 2.0
+
 #: The lobby is salt-free -- `carmel.LOBBY`'s reasoning: a lobby that moved
 #: with the game salt could not be found by anybody who was not already
 #: playing, and the salt is *inside* the notice, so a salted lobby could never
@@ -202,6 +225,15 @@ def _invite(token: str, url: str, key: str):
     return Invite(url=url, workspace_token=token, key=key)
 
 
+class Outage(RuntimeError):
+    """The hub stayed unreachable for longer than `OUTAGE_SECONDS`.
+
+    Deliberately not a silent stop. A campaign that ends this way still
+    tries to say so in the lobby, because the alternative -- which is what
+    happened on 2026-09-11 -- is a game that looks live and is not.
+    """
+
+
 class Hub:
     """Where the rooms come from.
 
@@ -246,20 +278,63 @@ class Fugitive:
                  log: Callable[[str], None] = lambda line: None):
         self.hub, self.now, self.sleep = hub, now, sleep
         self.difficulty, self.poll, self.log = difficulty, poll, log
+        # What she has done so far, kept on the instance so that a campaign
+        # cut short by an outage can still report it rather than losing it
+        # with the stack frame.
+        self._walked: list[dict] = []
+        self._banked = 0
+
+    # -- talking to a hub that is allowed to stumble -----------------------
+
+    def _tolerate(self, what: str, call):
+        """Make one hub call, surviving a blip and giving up on an outage.
+
+        Every call she makes goes through here, because there is no such
+        thing as an unimportant one: a failed roster read loses a catch, a
+        failed heartbeat drops her off the roster, and a failed post loses
+        the hint that is the whole of a leg.
+
+        **Retrying is not optimism, it is arithmetic** -- see
+        `OUTAGE_SECONDS`. What it must not become is a loop that hides a
+        real fault, so the budget is wall-clock and small: past
+        `OUTAGE_SECONDS` it raises `Outage` carrying the last error, and the
+        campaign ends saying so.
+        """
+        failing_since = None
+        while True:
+            try:
+                out = call()
+            except Exception as exc:                            # noqa: BLE001
+                now = self.now()
+                if failing_since is None:
+                    failing_since = now
+                    self.log(f"hub unreachable on {what}"
+                             f" ({type(exc).__name__}), retrying")
+                if now - failing_since > OUTAGE_SECONDS:
+                    raise Outage(
+                        f"{what} failed for {OUTAGE_SECONDS:.0f}s:"
+                        f" {type(exc).__name__}: {exc}") from exc
+                self.sleep(RETRY_SECONDS)
+                continue
+            if failing_since is not None:
+                self.log(f"hub back after {self.now() - failing_since:.0f}s")
+            return out
 
     # -- the two posts that bracket a campaign ----------------------------
 
     def open_campaign(self, seed: bytes) -> None:
         notice = C.open_campaign(seed, C.LOBBY_LANDMARK)
-        self.hub.room(lobby_token()).post(
-            CHANNEL, notice, ttl=seconds(NOTICE_TTL_HOURS))
+        room = self.hub.room(lobby_token())
+        self._tolerate("the notice", lambda: room.post(
+            CHANNEL, notice, ttl=seconds(NOTICE_TTL_HOURS)))
         self.log(f"notice up, gone in {NOTICE_TTL_HOURS:.0f}h")
 
     def close_campaign(self, seed: bytes, outcome: str, reputation: int,
                        trail: list[dict]) -> None:
-        self.hub.room(lobby_token()).post(
-            CHANNEL, C.close_campaign(seed, outcome, reputation, trail),
-            ttl=seconds(HINT_TTL_HOURS))
+        room = self.hub.room(lobby_token())
+        body = C.close_campaign(seed, outcome, reputation, trail)
+        self._tolerate("the close", lambda: room.post(
+            CHANNEL, body, ttl=seconds(HINT_TTL_HOURS)))
         self.log(f"closed: {outcome}, {reputation} reputation")
 
     # -- the campaign ------------------------------------------------------
@@ -269,7 +344,28 @@ class Fugitive:
 
         She is caught the moment somebody else is on the roster of the room
         she is standing in. Nothing is parsed and nothing is judged.
+
+        **It returns rather than raising when the hub goes dark**, and says
+        so in the lobby if it still can. A campaign that vanishes leaves
+        hints in rooms pointing at somebody who is not coming, and a
+        searcher has no way to tell that from a fugitive who is simply good
+        at hiding -- so "she lost the hub" is an outcome with a name.
         """
+        try:
+            return self._run(seed)
+        except Outage as gone:
+            self.log(f"giving up: {gone}")
+            try:
+                self.close_campaign(seed, "The hub went dark on me",
+                                    self._banked, self._walked)
+            except Outage:
+                self.log("could not even say so: the lobby is unreachable")
+            return {"outcome": "lost the hub", "moves": self._walked,
+                    "reputation": self._banked, "why": str(gone),
+                    "hours": self._walked[-1]["leaves"] if self._walked
+                    else 0.0}
+
+    def _run(self, seed: bytes) -> dict:
         salt = salt_for(seed)
         world = C.Map(seed)
         trail = C.itinerary(seed, C.LOBBY_LANDMARK, world,
@@ -278,13 +374,14 @@ class Fugitive:
         self.open_campaign(seed)
 
         at = C.LOBBY_LANDMARK
-        reputation, walked = 0, []
+        reputation, walked = 0, self._walked
         for leg in trail:
             self._wait_until(started, leg["posted"])
             here = lobby_token() if at == C.LOBBY_LANDMARK \
                 else room_token(at, salt)
-            self.hub.room(here).post(CHANNEL, leg["hint"].replace("_", " "),
-                                     ttl=seconds(HINT_TTL_HOURS))
+            room, said = self.hub.room(here), leg["hint"].replace("_", " ")
+            self._tolerate(f"leg {len(walked) + 1}'s hint", lambda: room.post(
+                CHANNEL, said, ttl=seconds(HINT_TTL_HOURS)))
             walked.append(leg)
             self.log(f"leg {len(walked)}: {at} -> {leg['to']}"
                      f"  ({leg['hint']})")
@@ -300,7 +397,7 @@ class Fugitive:
                         "hours": leg["leaves"]}
 
             at = leg["to"]
-            reputation = leg["reputation"]
+            reputation = self._banked = leg["reputation"]
             if reputation >= C.REPUTATION_TO_WIN:
                 self.close_campaign(seed, "I retire on it", reputation, walked)
                 return {"outcome": "she wins", "moves": walked,
@@ -333,17 +430,23 @@ class Fugitive:
             elapsed = hours(self.now() - started)
             if elapsed >= leg["leaves"]:
                 return None
+            ttl = max(120.0, self.poll * 4)
             if not registered and elapsed >= leg["arrived"]:
-                room.register(name="carmel", kind="fugitive",
-                              ttl=max(120.0, self.poll * 4))
+                self._tolerate("arriving", lambda: room.register(
+                    name="carmel", kind="fugitive", ttl=ttl))
                 registered = True
                 # She is in one room at a time. Off the old roster at the
                 # same moment she is on the new one, not a leg later.
                 if leaving is not None:
                     self._leave(leaving)
             elif registered:
-                room.heartbeat(ttl=max(120.0, self.poll * 4))
-            other = self._stranger(room)
+                # The line that ended a live campaign on 2026-09-11, on one
+                # dropped TLS connection. It is the most-called hub call in
+                # the program and was the least protected.
+                self._tolerate("a heartbeat",
+                               lambda: room.heartbeat(ttl=ttl))
+            other = self._tolerate("the roster",
+                                   lambda: self._stranger(room))
             if other:
                 return other
             self.sleep(min(self.poll,

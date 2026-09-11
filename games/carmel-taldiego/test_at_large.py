@@ -15,7 +15,10 @@ raising `NOTICE_TTL_HOURS` over a campaign's length; the end-to-end ones by
 posting the notice with no ttl at all, and by having her ignore the roster.
 """
 
+import base64
+import hashlib
 import os
+import re
 import statistics as st
 import sys
 from pathlib import Path
@@ -331,6 +334,226 @@ def test_she_keeps_going_and_never_shows_two_notices(board, monkeypatch):
     assert standing == [1, 1], (
         f"notices legible at each open: {standing}"
         " -- anything but 1 is two salts on one screen")
+
+
+# --- her notice, taken at its word -----------------------------------------
+
+
+def follow(notice: str, landmark: str) -> tuple[bytes, str]:
+    """Do what the notice says, using only what the notice says.
+
+    Nothing from `secret_matrix` is imported here on purpose. This is a
+    stranger with the text in front of them: it pulls the domain separator
+    out of the quoted recipe and the salt out of the line below it, and
+    builds the address by hand. If the notice's wording stops describing
+    what the code does, this stops producing her room.
+    """
+    recipe = next(l for l in notice.splitlines() if "sha256(" in l)
+    info = re.search(r'sha256\("([^"]+)"', recipe).group(1)
+    salt = bytes.fromhex(
+        next(l for l in notice.splitlines() if "salt = " in l).split("= ")[1])
+
+    # the order the recipe states, byte for byte
+    assert recipe.index("salt") < recipe.index("name"), recipe
+    assert "0x00" in recipe, recipe
+    token = "w_" + hashlib.sha256(
+        info.encode() + b"\x00" + salt + b"\x00" + landmark.encode()
+    ).hexdigest()
+
+    address = next(l for l in notice.splitlines() if "base64url" in l)
+    assert "sha256(token)" in address and "[:22]" in address, address
+    room = "w_" + base64.urlsafe_b64encode(
+        hashlib.sha256(token.encode()).digest()).decode().rstrip("=")[:22]
+    return salt, room
+
+
+def test_a_stranger_who_does_exactly_what_the_notice_says_reaches_her(board):
+    """The test this game never had, and the reason two defects survived
+    into a live game.
+
+    Every other test here drives *her*. The searcher's half of the game
+    exists only as sentences in `carmel.open_campaign`, and sentences are
+    not executed -- so the notice told players to *"hand what comes out to
+    `join_room`"*, which refuses a bare token outright, and nobody found out
+    until Gal and I tried to play on 2026-09-10.
+
+    So this follows the notice rather than the source: it parses the recipe
+    and the salt out of the posted text and rebuilds the address by hand. A
+    notice that stops matching the code stops reaching her room, and this
+    goes red.
+    """
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
+
+    notice = C.open_campaign(seed, C.LOBBY_LANDMARK)
+    salt, room = follow(notice, first["to"])
+
+    # the address the notice describes is the room she is really in
+    assert room == Rooms.workspace(room_token(first["to"], salt))
+
+    # and standing in it, as the notice says to, is what she can see
+    searcher = board.client(agent_id="stranger", workspace=room, key=KEY)
+    searcher.register(name="stranger", kind="searcher", ttl=3600)
+    result = driven(board).run(seed)
+    assert result["outcome"] == "caught"
+    assert result["by"] == "stranger"
+
+
+def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
+    """The other defect the same afternoon, and the crueller one.
+
+    `say` does not put you on a roster -- only announcing does -- so a
+    searcher who works out the right room, joins it and reads it in silence
+    is invisible to her and cannot win. The notice said nothing about it.
+
+    Asserted on her words *and* on the mechanism, because either alone is
+    half a check: the first paragraph proves she warns them, the second
+    proves the warning is true.
+    """
+    notice = C.open_campaign(bytes.fromhex("55" * 32), C.LOBBY_LANDMARK)
+    # Below the rule, because this is the machinery talking and not her --
+    # see `test_she_never_speaks_in_machinery`.
+    plumbing = notice.split(C.PLUMBING_RULE)[1]
+    assert "does not put you on its roster" in plumbing
+    assert "announce yourself" in plumbing
+
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
+    _, room = follow(notice, first["to"])
+
+    lurker = board.client(agent_id="lurker", workspace=room, key=KEY)
+    lurker.post(L.CHANNEL, "I am here, surely that is enough")
+    assert lurker.agents() == [], (
+        "posting put somebody on the roster, so the warning is now false")
+
+    result = driven(board).run(seed)
+    assert result["outcome"] != "caught", (
+        "a silent lurker was caught, so the notice's warning is wrong")
+
+
+# --- a hub that is allowed to stumble --------------------------------------
+
+
+class Flaky:
+    """A room client that fails chosen calls and otherwise behaves.
+
+    Wraps a real client rather than replacing one, so everything not being
+    broken on purpose goes to the real hub and the campaign is a real
+    campaign.
+    """
+
+    def __init__(self, inner, fails: set[int] | None = None,
+                 after: int | None = None):
+        self._inner, self._fails, self._after = inner, fails or set(), after
+        self.calls = 0
+        #: Injections that actually fired. Counted rather than inferred:
+        #: asserting `calls > 20` made the test's own non-vacuity depend on
+        #: how long the campaign ran, which depends on the treasure table,
+        #: which differs between a checkout holding `absurd.tsv` and CI.
+        #: It passed here and failed there for a reason that was not a bug.
+        self.broke = 0
+
+    def __getattr__(self, name):
+        attr = getattr(self._inner, name)
+        if not callable(attr):
+            return attr                      # `public_key` and friends
+
+        def call(*a, **k):
+            self.calls += 1
+            if self.calls in self._fails or (
+                    self._after is not None and self.calls > self._after):
+                self.broke += 1
+                raise ConnectionError(f"injected failure #{self.calls}")
+            return attr(*a, **k)
+        return call
+
+
+class Stumbling(Rooms):
+    """`Rooms`, but every client it hands out is `Flaky`."""
+
+    def __init__(self, hub, **how):
+        super().__init__(hub)
+        self._how = how
+
+    def room(self, token: str):
+        if token not in self._open:
+            self._open[token] = Flaky(
+                self.hub.client(agent_id=self.agent_id,
+                                workspace=self.workspace(token), key=KEY),
+                **self._how)
+        return self._open[token]
+
+
+def test_a_dropped_connection_does_not_end_the_campaign(board):
+    """The bug a live game found and the suite did not, 2026-09-11.
+
+    A campaign died 150 seconds in on one
+    `[SSL: UNEXPECTED_EOF_WHILE_READING]` from `room.heartbeat`. Nothing
+    retried it, so the game ended with no close in the lobby and hints left
+    pointing at a fugitive who was not coming.
+
+    It was never survivable: `_stand` polls twice per `POLL_SECONDS`, so an
+    eighty-minute campaign makes about 1,900 hub calls and any one of them
+    could end it. This fails the 3rd, 9th and 20th call in every room she
+    touches and requires the campaign to come out the same as an unbroken
+    one.
+
+    Made to fail on purpose by dropping the `_tolerate` around the
+    heartbeat: the injected error propagates and the campaign never
+    returns.
+    """
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    predicted = C.chase(seed, C.LOBBY_LANDMARK, searchers=0, world=world)
+
+    rooms = Stumbling(board, fails={3, 9, 20})
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    happened = her.run(seed)
+
+    assert happened["outcome"] == predicted["outcome"]
+    assert happened["reputation"] == predicted["reputation"]
+    assert len(happened["moves"]) == len(predicted["moves"])
+    broke = sum(r.broke for r in rooms._open.values())
+    assert broke >= 2, (
+        f"only {broke} injected failures fired: this campaign was too short"
+        " to prove anything, so the test would pass on no retry at all")
+
+
+def test_a_hub_that_never_comes_back_ends_it_out_loud(board):
+    """The other half: a blip is survived, an outage is not pretended away.
+
+    `CLAUDE.md`'s weaker-thing rule, on the wire. A campaign that has lost
+    the hub must not look like one still being played -- it returns an
+    outcome with a name, and it does not raise into whatever started it.
+    """
+    rooms = Stumbling(board, after=4)
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    happened = her.run(bytes.fromhex("55" * 32))
+
+    assert happened["outcome"] == "lost the hub"
+    assert "ConnectionError" in happened["why"]
+
+
+def test_she_does_not_retry_forever(board):
+    """A retry loop that never gives up is an outage pretending to be a
+    game. The budget is wall-clock, so the give-up is bounded however the
+    call fails -- including on a bug that is not the network at all."""
+    rooms = Stumbling(board, after=4)
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    began = board.clock()
+    her.run(bytes.fromhex("55" * 32))
+    spent = board.clock() - began
+    assert spent < 4 * L.OUTAGE_SECONDS, (
+        f"{spent:.0f}s of clock to give up on a {L.OUTAGE_SECONDS:.0f}s"
+        " budget")
 
 
 def test_the_hint_is_left_in_the_room_she_is_leaving(board):

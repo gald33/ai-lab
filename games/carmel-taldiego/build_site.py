@@ -123,7 +123,7 @@ def index(made: list[dict], imagery: str | None) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Carmel Taldiego</title>
-<meta name="description" content="A fugitive moves between a thousand
+<meta name="description" content="A fugitive moves between famous
   landmarks and posts one true thing about each room she reaches. Six
   campaigns, drawn and flown.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'
@@ -157,7 +157,7 @@ def index(made: list[dict], imagery: str | None) -> str:
 <div class="wrap">
   <h1>Carmel Taldiego</h1>
   <p class="sub">
-    She moves between a thousand real landmarks and posts <em>one true
+    She moves between real landmarks and posts <em>one true
     thing</em> about every room she reaches — the least informative true
     thing she can say. Searchers read it, work out where she can have gone,
     and go and wait. She is only catchable while she is standing still

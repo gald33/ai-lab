@@ -429,6 +429,60 @@ def test_the_notice_is_not_a_command():
                 f"{head!r} reads like a command")
 
 
+#: Words that belong to the machinery and never to her. She is a fugitive,
+#: not a client library: she is in a *place*, she leaves a place *the poorer
+#: for it*, and she has never heard of a roster.
+MACHINERY = ("room", "hash", "sha256", "salt", "token", "roster", "announce",
+             "join_room", "workspace", "switchboard", "hub", "emptied",
+             "dwell", "base64", "api", "channel")
+
+
+def _her_half(post: str) -> str:
+    """What she says, which is everything above the rule."""
+    assert C.PLUMBING_RULE in post, "the post has no rule to split on"
+    return post.split(C.PLUMBING_RULE)[0]
+
+
+def test_she_never_speaks_in_machinery():
+    """Gal, 2026-09-11: *"I want everything she says to be in character and
+    within the game world. so she isn't talking about rooms, and emptying
+    them."*
+
+    Both posts used to mix the two in one voice -- *"hand what comes out to
+    join_room"*, and *"14 rooms, 9 of them emptied"*. A fugitive reading
+    out an API is not a fugitive.
+
+    Asserted on a word list because this is the drift that will happen
+    quietly: the next person to add a sentence to her notice will reach for
+    the word the code uses. Everything the machinery needs goes below the
+    rule, where it is written about her in the third person.
+    """
+    trail = C.itinerary(SEED, START, WORLD, 5)
+    for post in (C.open_campaign(SEED, START),
+                 C.close_campaign(SEED, "You have me", 200, trail)):
+        hers = _her_half(post).lower()
+        found = [word for word in MACHINERY if word in hers]
+        assert not found, f"she said {found}: {hers[:160]!r}"
+
+
+def test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase():
+    """The other half of the same decision, and the harder one.
+
+    *"even (though it's impossible) someone stumble upon the message
+    without knowing anything about the game, he can actually join the hue
+    and cry."* So the block below the rule has to say what the game is,
+    where it is played, how a place becomes a room, and what makes a
+    searcher visible -- none of which she would ever say, and all of which
+    a stranger needs before they can do anything at all.
+    """
+    plumbing = C.open_campaign(SEED, START).split(C.PLUMBING_RULE)[1].lower()
+    for needed in ("hue and cry", "switchboard", "sha256", "salt",
+                   "announce", "roster"):
+        assert needed in plumbing, f"a stranger is never told about {needed}"
+    assert "not her" in plumbing, (
+        "nothing marks the block as somebody other than her speaking")
+
+
 def test_the_lobby_is_the_same_room_every_game():
     """A lobby that moved with the game salt could not be found by anybody
     who was not already playing, which is the one thing a lobby is for."""
