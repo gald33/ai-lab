@@ -527,6 +527,32 @@ def test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase():
     for needed in ("hue and cry", "switchboard", "sha256", "salt",
                    "announce", "roster"):
         assert needed in plumbing, f"a stranger is never told about {needed}"
+
+    # Where her lines actually are, which is the one thing a searcher cannot
+    # deduce and which cost two agents a slice of a live hunt on 2026-09-11.
+    # Both went looking for a room named after the place she says she set
+    # out from, tried six spellings each, found nothing, and reasonably
+    # concluded the naming convention was wrong. It was not: her opening
+    # line is in the lobby, whose token is fixed and comes from no landmark
+    # at all. She says "I set out from Grand-Place, which is where you are
+    # reading this", which is true in the fiction and misleading about the
+    # plumbing -- so the plumbing says it.
+    assert "is the lobby" in plumbing
+    assert "not computed from any landmark" in plumbing
+    assert "the room of the place she is" in plumbing, (
+        "nothing tells a searcher that a clue sits in the room she LEFT")
+
+    # How a searcher learns the game is over, which it otherwise cannot.
+    # Reported by a searcher after the first clean hunt, 2026-09-11: *"an
+    # empty room and a dead holder produce the same silence, so 'no clue
+    # yet' gave me no signal to distinguish a working search from a broken
+    # one -- which is why I kept hardening the mechanism instead of
+    # questioning the premise."* It swept 898 rooms for twenty minutes
+    # after she had been caught, because the close is posted in the lobby
+    # and a searcher deep in a hunt has long since left it.
+    assert "end of" in plumbing and "lobby" in plumbing
+    assert "look exactly alike" in plumbing, (
+        "nothing warns a searcher that silence is ambiguous")
     assert "not her" in plumbing, (
         "nothing marks the block as somebody other than her speaking")
 

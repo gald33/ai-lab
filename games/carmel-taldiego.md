@@ -4887,6 +4887,114 @@ directly, because the window is one leg's packing minutes and a fake clock
 cannot drop a searcher into the middle of a campaign. Reverting `here` to
 the destination reddens it and leaves the other two catch tests green.
 
+### A searcher read her diary, and said so
+
+*2026-09-11, the first live hunt with agent searchers.* Three agents chased
+her. One caught her on leg one, in Windsor Castle, from the clue **"a crown
+still on the coins"**. The catch is **void**, and the reason is worth more
+than the catch.
+
+Her run log sat in `/tmp/.../hunt2/carmel.log`, in the same directory the
+searchers were told to `cd` into. It reads:
+
+    leg 1: Grand-Place -> Windsor Castle  (a_crown_still_on_the_coins)
+
+The winning searcher read it before holding a single room, and reported so
+without being asked to defend itself: *"My next message in this session was
+literally 'The log already names leg 1. Starting rooms now, Windsor Castle
+first.'"* It had generated no candidates at all beforehand; `Windsor Castle`
+was line one of its target file because the log named it.
+
+**All three searchers found the file. Two flagged it unprompted; one used
+it.** The one that did not put the consequence better than the design
+document had: *"if it is deliberately shared, then the slices and the
+clue-solving are decorative and the result tells you nothing about search
+quality."* A third noticed the leak was wider — every searcher could read
+the others' target lists and hit output from the same directory.
+
+**This is contamination, which `experiments/GROUNDING.md` exists to
+prevent**, arriving through a channel that document does not cover: not a
+prompt, not a seed, but the filesystem the participants happen to share. It
+is the same disease as every other failure in this file — *a result that
+looks like the one you wanted, reached by a route nobody checked* — and the
+only reason it was caught is that the participants were more careful than
+the experimenter.
+
+What the ground looks like now: her record lives outside the searchers'
+directory on a path they are not given, the searchers' directory holds the
+tool and nothing else, and each searcher works somewhere its rivals cannot
+read. **A game whose fairness depends on nobody looking at an available
+file is not a fair game**, and hiding the file is the weaker fix — the
+strong one is that she should not be writing a plaintext trail on a machine
+her pursuers run on at all.
+
+### The first real catch, and what it convicted
+
+*2026-09-11, second hunt, on ground the searchers could not read.* Three
+agents chased her from **"somebody made this by hand"**. One caught her:
+
+    Stonehenge   carmel  registered 10:35:20    she arrives, starts robbing
+                 near    registered 10:36:36    a searcher walks in
+    close posted                   10:36:39
+
+**Seventy-six seconds**, and the searcher arrived *after* she did — walked
+in on the theft, which is the mechanic exactly as specified. Her record was
+outside their world this time, so the catch is hers to lose rather than
+mine to hand over.
+
+**And the winner refused the flattering account of its own win**, which is
+the finding:
+
+> *Stonehenge sat at line 129 of 151. I treated the clue as
+> non-discriminating and spent my effort on coverage instead of inference.
+> Call it a clean sweep rather than a clean deduction.*
+
+It held all 151 rooms in one 13-second pass. A second searcher reached the
+same conclusion independently and without conferring: *"the clue does not
+discriminate, so it gave me no ranking and I did not invent one"* — and
+swept 898. **Two of three abandoned inference, correctly, because there was
+nothing to rank with.**
+
+So the live game says what no sweep of `pursue` could: **`WATCH` is the
+whole difficulty, and `WATCH` is not enforced.** Every capture rate in this
+file was measured against a searcher that watches one room. A real one
+watches nine hundred. The coordination premium those numbers were tuned to
+maximise is a property of a constraint the game does not impose, and
+`REPUTATION_TO_WIN`, `PREP` and `NEAR_KM` are all calibrated inside that
+fiction.
+
+**What the clue vocabulary would have to become.** Not narrower for its own
+sake: the point is that a descriptor must *rank* candidates, not merely
+admit them. *"Somebody made this by hand"* excludes waterfalls and
+mountains and nothing else. *"A crown still on the coins"* — the other clue
+drawn that day — cuts the world to a dozen countries, and is the shape to
+aim at.
+
+### Three holes the run found that no test could
+
+**A searcher cannot tell a finished game from a quiet one.** Reported by
+the searcher that swept 898 rooms for twenty minutes after she had already
+been caught: *"an empty room and a dead holder produce the same silence, so
+'no clue yet' gave me no signal to distinguish a working search from a
+broken one -- which is why I kept hardening the mechanism instead of
+questioning the premise."* The close is posted in the lobby, and a searcher
+deep in a hunt left the lobby long ago. The notice now says so, and says
+that silence is ambiguous between five different states.
+
+**The slices leaked into each other.** `nordic` was in **151** of `far`'s
+rooms — Egypt, the Levant, Turkey and the Balkans doubly covered — while
+East and South Asia, the Americas, Oceania, sub-Saharan Africa and
+Scandinavia were held by one searcher between them. That is the
+coordination waste the experiment exists to measure, produced in a live
+game by comparing rosters, and the division that failed was hand-drawn by
+the coordinator. It is only visible *because* presence is public: the one
+thing a searcher cannot learn alone.
+
+**The process table is a hole in any directory wall.** `pgrep -af` prints
+other searchers' full command lines, heredocs included, so target lists
+leak regardless of where the files live. Found by a searcher auditing its
+own cleanup, after the catch, against its own interest.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation
