@@ -63,6 +63,27 @@ an entry stops resolving.
 - **Nobody could remember what it meant.** Which is the whole point, and the
   reason the replacement is the question rather than a tidier slug.
 
+## Numbers that look alike across experiments
+
+Three figures in this directory share digits, mean different things, and belong
+to different experiments. Collected here because the reader who conflates them
+is by definition reading across experiments, and no single experiment's
+documents can warn them.
+
+| figure | what it is | where it is defined |
+|---|---|---|
+| **0.229** | run-mean sd of **captured gain** — instrument noise | `do-they-take-a-handed-over-answer/PREREGISTRATION-v3.md`, "What forced a new endpoint" |
+| **1.029** | per-seed sd of the same endpoint across runs (often rounded to 1.03) | same table |
+| **−0.229** | a **median paired difference** on 5 seeds — a treatment effect, not noise | `does-telling-traders-what-to-disclose-help/runs/001-does-saying-the-ratios-help.md` |
+
+The first two are the same quantity at two denominators. The third is a
+different kind of number entirely and merely resembles the first.
+
+Related, and the reason that table exists at all: the run-level variance
+finding is `does-telling-traders-what-to-disclose-help/FINDING-run-level-variance.md`
+(sd 0.322 pooled against 0.175 within a run) — a third experiment again, and
+one of the two that shared the retired number `006`.
+
 ## The rule for a new experiment
 
 Name the directory after the **question**, never the answer or the mechanism.

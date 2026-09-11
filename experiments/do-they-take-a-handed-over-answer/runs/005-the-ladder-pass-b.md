@@ -115,7 +115,17 @@ hardest — whether the bounded endpoints really carry run-noise of 0.085 and
   | `l-both` | −0.223 | −0.099 | **−0.161** |
 
   Pooling is permitted here and nowhere else, per the rule fixed before this
-  run. Every treated cell lowers ruin in both passes; `l-both` lowers it most
+  run.
+
+  > **Provenance, added 2026-09-11.** *The rule is genuinely pre-run — it is in
+  > "How the two passes are combined" above, written before pass B's numbers
+  > existed. But it was fixed **in this run record**, not in
+  > `PREREGISTRATION-v3.md`, where the word "pool" does not appear, nor in
+  > `DEVIATIONS.md`. Since a pre-registration outranks a run record, "the rule
+  > fixed before this run" reads as stronger provenance than it has, and a
+  > reader took it that way. The same passage marks the pooled estimate
+  > **descriptive**; it is not a result and 005's own conjunctive rule makes no
+  > cell one.* Every treated cell lowers ruin in both passes; `l-both` lowers it most
   in both.
 
 - **The instrument check (A1).** `l-bare`, same seeds, two passes:

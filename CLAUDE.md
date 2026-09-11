@@ -23,6 +23,18 @@ So, when a decision is reached in conversation:
 3. **Keep the correction visible** when a decision reverses an earlier one.
    Nothing here is edited to look as though it was always right — the
    superseded reasoning is what stops the circle being walked a third time.
+   **Visible *from the superseded text*, which is the half this rule was
+   missing until 2026-09-11.** A correction that lives in another document is
+   not visible at all to the reader who lands on the old one — and that reader
+   is the one the rule is for. `do-they-take-a-handed-over-answer`'s run 003
+   retired an endpoint in a sentence that read as retiring a whole class of
+   result; what scoped it was a *pre-registration for a later run*, which
+   nobody re-reading run 003 has a reason to open. An agent drafting across the
+   lab's experiments quoted the unscoped sentence to its principal as current
+   lab position and had to retract it. The convention had held inside every
+   document and leaked between them. So: when the superseding statement lands
+   somewhere else, a dated line goes **beside the superseded text** pointing at
+   it, and the superseded text still stands.
 4. **The write-down is part of the change**, not a follow-up: it goes in the
    same commit and the same PR as the code it governs.
 
