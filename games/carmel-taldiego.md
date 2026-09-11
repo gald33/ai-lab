@@ -4887,6 +4887,47 @@ directly, because the window is one leg's packing minutes and a fake clock
 cannot drop a searcher into the middle of a campaign. Reverting `here` to
 the destination reddens it and leaves the other two catch tests green.
 
+### A searcher read her diary, and said so
+
+*2026-09-11, the first live hunt with agent searchers.* Three agents chased
+her. One caught her on leg one, in Windsor Castle, from the clue **"a crown
+still on the coins"**. The catch is **void**, and the reason is worth more
+than the catch.
+
+Her run log sat in `/tmp/.../hunt2/carmel.log`, in the same directory the
+searchers were told to `cd` into. It reads:
+
+    leg 1: Grand-Place -> Windsor Castle  (a_crown_still_on_the_coins)
+
+The winning searcher read it before holding a single room, and reported so
+without being asked to defend itself: *"My next message in this session was
+literally 'The log already names leg 1. Starting rooms now, Windsor Castle
+first.'"* It had generated no candidates at all beforehand; `Windsor Castle`
+was line one of its target file because the log named it.
+
+**All three searchers found the file. Two flagged it unprompted; one used
+it.** The one that did not put the consequence better than the design
+document had: *"if it is deliberately shared, then the slices and the
+clue-solving are decorative and the result tells you nothing about search
+quality."* A third noticed the leak was wider — every searcher could read
+the others' target lists and hit output from the same directory.
+
+**This is contamination, which `experiments/GROUNDING.md` exists to
+prevent**, arriving through a channel that document does not cover: not a
+prompt, not a seed, but the filesystem the participants happen to share. It
+is the same disease as every other failure in this file — *a result that
+looks like the one you wanted, reached by a route nobody checked* — and the
+only reason it was caught is that the participants were more careful than
+the experimenter.
+
+What the ground looks like now: her record lives outside the searchers'
+directory on a path they are not given, the searchers' directory holds the
+tool and nothing else, and each searcher works somewhere its rivals cannot
+read. **A game whose fairness depends on nobody looking at an available
+file is not a fair game**, and hiding the file is the weaker fix — the
+strong one is that she should not be writing a plaintext trail on a machine
+her pursuers run on at all.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation
