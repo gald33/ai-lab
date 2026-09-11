@@ -105,7 +105,23 @@ HOUR_SECONDS = 60.0
 #: the floor in `plan`, which holds whatever the notice costs and is tested
 #: separately. This is a **join window** and nothing else, so it is set to
 #: what a person needs to read a notice and join a room.
-NOTICE_TTL_HOURS = 2.0
+#: **Reverted to 12 on 2026-09-11, hours after being cut to 2, and the cut
+#: is left described because the reasoning that produced it was wrong in a
+#: way worth keeping.** Sizing this as "a join window a person could use"
+#: treated the notice as an invitation that has done its job once somebody
+#: has joined. It is not: **the salt is inside it, and nowhere else.** Every
+#: room in the game is computed from that salt, so when the notice dies the
+#: rest of the campaign becomes unreadable -- her riddles keep arriving and
+#: name places nobody can compute a room for.
+#:
+#: Caught live rather than in a test: a searcher joined a campaign two
+#: minutes in, found the riddle and no salt, and could do nothing with it.
+#: A two-minute window is a window onto a game that then runs for ten.
+#:
+#: So it is sized to **outlive its own campaign**, which is what 12 was
+#: doing before anybody called it a join window. Two salts legible at once
+#: is prevented by the floor in `plan` and never by this number.
+NOTICE_TTL_HOURS = 12.0
 
 #: The quiet between campaigns, in game hours. Two hours is two minutes: long
 #: enough that the close and the next open are not the same moment on a

@@ -106,14 +106,34 @@ def test_a_riddle_is_worth_seconds_to_minutes_of_real_time():
         " not time to read one")
 
 
-def test_the_notice_is_a_join_window_a_person_could_use():
-    """What `NOTICE_TTL_HOURS` means now that it is not a ratio: how long a
-    stranger has to find the lobby, read her, and join the room.
+def test_the_salt_outlives_the_campaign_it_belongs_to():
+    """The notice carries the salt, and the salt is how every room in the
+    game is computed. If it expires first, her later riddles name places
+    nobody can reach.
 
-    Minutes, because seconds is not a window and an hour outlives the game.
+    **This replaced a test that asserted the opposite**, written the same
+    day and wrong within hours:
+
+        def test_the_notice_is_a_join_window_a_person_could_use():
+            real = L.NOTICE_TTL_HOURS * L.HOUR_SECONDS
+            assert 60 <= real <= 600
+
+    That treated the notice as an invitation, done once somebody had
+    joined, and cut it to two minutes. A searcher joined a live campaign
+    two minutes in, found a riddle and no salt, and was stuck. **The notice
+    is not an invitation, it is the key to the map**, and it has to last as
+    long as the game it opens.
+
+    Made to fail on purpose by restoring the two-hour value.
     """
-    real = L.NOTICE_TTL_HOURS * L.HOUR_SECONDS
-    assert 60 <= real <= 600, f"a {real:.0f}s join window"
+    ran = lengths()
+    covered = [h for h in ran if h <= L.NOTICE_TTL_HOURS]
+    assert len(covered) / len(ran) > 0.5, (
+        f"only {len(covered)}/{len(ran)} campaigns finish while their own"
+        f" salt is still readable, at {L.NOTICE_TTL_HOURS:.0f}h")
+    assert L.NOTICE_TTL_HOURS >= st.median(ran), (
+        f"the salt dies at {L.NOTICE_TTL_HOURS:.0f}h and the median campaign"
+        f" runs {st.median(ran):.0f}h")
 
 
 def test_the_next_campaign_never_opens_while_the_old_notice_can_be_read():

@@ -5388,3 +5388,41 @@ when enumeration dominated; with a riddle whose whole difficulty is
 not exist -- and it means the quality Gal asked for is the one quantity the
 numbers cannot see. Every capture rate here is therefore a **floor**, and
 should be read as one until a solve time exists.
+
+
+### The notice is not an invitation, it is the key to the map
+
+*Corrected the same afternoon, hours after the section above was written,
+and by a searcher rather than by a test.*
+
+Sizing `NOTICE_TTL_HOURS` in real minutes was right. **Sizing it as "a join
+window a person could use" was not**, and the mistake is one word: it
+treats the notice as an *invitation*, which has done its job once somebody
+has joined. It is not an invitation. **The salt is inside it and nowhere
+else**, and every room in the game is computed from that salt -- so the
+moment the notice expires her riddles go on arriving and name places nobody
+can derive a room for. The notice is the key to the map, and a key has to
+last as long as the door.
+
+Cut from 12 to 2, it was caught within the hour, live: a searcher joined a
+campaign two minutes in, found a riddle and no salt, and could do nothing
+with it. **A two-minute window onto a game that then runs for ten.**
+
+So 12 goes back, and the test that asserted `60 <= window <= 600` is
+replaced by `test_the_salt_outlives_the_campaign_it_belongs_to`, with the
+superseded assertion quoted inside it. Red at 2h, green at 12h.
+
+**What this is an instance of.** The 12 was not a leftover from the
+long-campaign era waiting to be tidied; it was holding a property nobody
+had written down, and it was removed by someone who could see what it cost
+and not what it bought. The same shape as the `best_cover` term two
+sections up, and the opposite outcome: there a check existed
+(`test_there_are_no_routes`) and caught the removal in seconds; here no
+check existed and a person hit it in production. **The difference between
+those two outcomes is entirely whether somebody had written the property
+down as a test**, which is the argument for this file and for every "made
+to fail on purpose" note in it.
+
+Two properties now have tests they did not have this morning: the salt
+outlives its campaign, and a riddle is worth real minutes. Neither was
+controversial. Neither was written down.
