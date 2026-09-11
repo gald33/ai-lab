@@ -4999,6 +4999,27 @@ the world could tell it so. Its own report reaches for the mechanism
 instead: *"the clue carries almost no discriminating information, so I did
 not solve it; I blanketed."*
 
+**One thing in that report is wrong, and it is the operational advice**, so
+it is corrected here beside the report rather than left to be followed. It
+concluded that *"background tasks are killed at the 600-second cap (exit
+144)"* and that *"any long chase needs the holder re-launched roughly every
+nine minutes."* Two measurements say otherwise. Its **own** holders were at
+`etime` **27:14, 26:27, 20:32 and 12:34** when they were listed and stopped
+-- three of the four long past 600s, in the very launch form the claim is
+about. And Carmel, restarted the same afternoon as a background task, passed
+**653s** still running and went on to leg 2. What the report almost
+certainly met is its other finding, which *is* right: a holder started with
+`nohup ... &` inside a call dies when that call returns, and its first batch
+went that way within minutes. **A cap and a launch bug both produce a dead
+process, and the process does not say which.**
+
+The correction matters because the wrong half is the actionable half: a
+searcher that relaunches every nine minutes spends its chase on
+re-registering, and re-registering is exactly when it is holding nothing.
+Re-check it the way it was checked here -- start a long-running background
+task, then `ps -eo pid,etime,args | grep at_large` -- and believe the
+`etime`, not the report.
+
 That is the first hole measured twice, and the second measurement is worse
 than the first in the way that matters: the twenty-minute sweep overlapped a
 game that ended partway through it, while this one **never overlapped a live
