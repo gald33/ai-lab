@@ -175,11 +175,28 @@ cited.
 > run-mean sd at **0.229** against **0.085** and **0.073** for the two bounded
 > shares, and calls the move "a change of instrument rather than of question".
 >
-> **Runs 004 and 005 then reported a paired between-cell difference on the
-> bounded endpoint, and it stands**: share ruined, sign-agreeing across two
-> passes on the same seeds, pooled −0.108 / −0.118 / −0.161 over 24 seeds. They
-> cite this run's *noise predictions* (004's A1, 005's instrument check) and
-> never this paragraph, which is exactly how the gap stayed invisible.
+> **Runs 004 and 005 then went at the question on the bounded endpoint.** By
+> 005's own rule, fixed before its numbers existed, **no cell is a result**:
+> that rule is a conjunction — same sign on both endpoints in both passes *and*
+> ≥ +0.15 on at least 8 of 12 seeds for the primary in at least one — and the
+> second conjunct fails everywhere, best 7/12. The pooled 24-seed ruin
+> estimates (−0.108 / −0.118 / −0.161) are marked **descriptive** by the same
+> passage. What reproduced independently in both passes is the *ordering*,
+> `l-both` < `l-hint` < `l-protocol` < `l-bare`; and of the three, only
+> `l-both`'s −0.161 exceeds the control's own between-pass movement on that
+> endpoint, measured at 0.114 in 005's instrument check.
+>
+> So the sentence above is too broad in scope, **not** because a later paired
+> difference overturned it. Runs 004 and 005 cite this run's *noise
+> predictions* (004's A1, 005's instrument check) and never this paragraph,
+> which is exactly how the gap stayed invisible.
+>
+> *An earlier draft of this note said 004/005 reported a paired difference that
+> "stands", quoting those three pooled figures. That promoted a number its own
+> record marks descriptive — the same move as the sentence being scoped here,
+> one level down. Caught in review by the agent that reported the defect,
+> before this note merged. Left visible, because a correction note that hid its
+> own correction would be the third instance in three days.*
 >
 > **How it was found.** An agent drafting across the lab's experiments read
 > this run record, quoted the sentence to its principal as the current lab
