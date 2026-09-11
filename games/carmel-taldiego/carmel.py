@@ -465,6 +465,32 @@ WHIM_INFO = b"hue-and-cry/v1/whim"
 #: a contest and a crowd is a hard game.
 REPUTATION_TO_WIN = 750
 
+#: The line that separates her voice from the machinery, in both of the
+#: posts she makes.
+#:
+#: Gal, 2026-09-11: *"I want everything she says to be in character and
+#: within the game world. so she isn't talking about rooms, and emptying
+#: them. If we must give game technical instructions, give them in a
+#: separate paragraph so it's clear it's not she speaking."*
+#:
+#: Both posts used to mix the two in one voice -- she said *"hand what
+#: comes out to join_room"* and *"14 rooms, 9 of them emptied"*, which is a
+#: fugitive reading out an API. She now says only what a person on the run
+#: would say: places, not rooms; the poorer for it, not emptied; standing
+#: still, not dwelling. Everything a chaser needs to work the machinery
+#: lives below this rule and is written about her in the third person, so
+#: nobody has to guess which half is the game and which is the fiction.
+#:
+#: **The second requirement is the harder one and is why the block repeats
+#: things you would think were obvious**: Gal's test is that somebody who
+#: stumbles on the message knowing nothing at all can still join the hue
+#: and cry. So the block says what the game is, what the hub is, that they
+#: are already on it, how a place becomes a room, and that announcing is
+#: what makes them visible -- none of which she would ever say, and all of
+#: which a stranger needs.
+PLUMBING_RULE = "-- - " * 12
+
+
 #: The lobby is a public room whose key is published -- the island's shape
 #: (`games/island/lobby.py`) and for its reason: a room nobody can find is
 #: not an announcement. Its name is fixed and salt-free, because a lobby
@@ -941,54 +967,63 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
-        "The rules, since you will want them. I am standing in a famous",
-        "place. Every message I leave is one true thing about the place I",
-        "am in. Work out which place that is, and you can work out the",
-        "room:",
+        "I am somewhere famous. Not here -- I have already gone.",
         "",
-        f"    {RECIPE}",
-        f"    salt = {salt.hex()}",
+        "Every time I move I leave behind one true thing about where I have",
+        "gone, and it is the only true thing you will get out of me. Work",
+        "out the place and come and stand in it. You will find me there, or",
+        "you will find whatever I said on my way out of it.",
         "",
-        "That gives you the room's token. Switchboard names a room by the",
-        "hash of its token, so take one more step and you have the address",
-        "itself, which is what you hand to a room you are joining:",
+        "Find me while I am still standing and you have me. Let me stand",
+        "long enough, often enough, and I retire on what I have taken.",
         "",
-        f"    {ADDRESS_RECIPE}",
-        "",
-        "That is the whole of it -- guess the landmark from what I say,",
-        "compute the room, come and stand in it. You will find me there or",
-        "you will find what I said next.",
-        "",
-        "One warning, and I give it because a game you lose by accident is",
-        "no fun for me either. READING A ROOM IS NOT STANDING IN IT. I know",
-        "who is with me by the roster and by nothing else, so announce",
-        "yourself when you arrive and keep announcing while you wait -- your",
-        "presence lapses in a couple of minutes. A searcher who lurks in",
-        "silence is a searcher I cannot see, and I will walk out past them.",
-        "",
-        "Find me while I am standing still and you have me. Let me stand",
-        "still often enough and I retire on what I take.",
-        "",
-        "One kindness, because it costs me nothing you could not work out.",
-        "I post before I pack, and the farther I mean to go the longer the",
-        "packing takes -- and worse than in proportion. A journey of t hours",
-        f"costs me {PREP} x {PREP_PIVOT:.0f} x (t/{PREP_PIVOT:.0f})^"
-        f"{PREP_EXPONENT} hours of packing before I can start it.",
-        "My line is stamped with the hour I wrote it. Subtract, and you know",
-        "how far behind me you are; and for any place you think I have gone,",
-        "you know whether you can be standing in it before I get there.",
+        "One kindness, because it costs me nothing you could not work out",
+        "for yourself. I write before I pack, and the farther I mean to go",
+        "the longer the packing takes -- and worse than in proportion. A",
+        f"journey of t hours costs me {PREP} x {PREP_PIVOT:.0f} x"
+        f" (t/{PREP_PIVOT:.0f})^{PREP_EXPONENT} hours of packing",
+        "before I can set off. My line is stamped with the hour I wrote it.",
+        "Subtract, and you know how far behind me you are; and for anywhere",
+        "you think I have gone, you know whether you can be standing there",
+        "before I arrive.",
         "",
         "You cannot do that for everywhere. You can do it for the far ones.",
         "",
         f"I set out from {start}, which is where you are reading this.",
         "There is nowhere I cannot have gone from here. Every famous place",
-        "on earth is a room already, waiting to be named, and the only",
-        "thing narrowing them is what I choose to tell you.",
+        "on earth is somewhere I might be, and the only thing narrowing",
+        "them is what I choose to tell you.",
         "",
-        "I will not be giving you any addresses. The first thing I have to",
-        "say about where I have gone is this:",
+        "I will not be giving you any addresses. The first true thing is",
+        "this:",
         "",
         f"    {first.replace('_', ' ')}",
+        "",
+        PLUMBING_RULE,
+        "",
+        "The rest of this is not her. It is here so that a stranger who",
+        "finds her line can join the chase without being told anything",
+        "else.",
+        "",
+        "Hue and cry is played on Switchboard, the message hub you are",
+        "already on -- you are reading this on it. For the length of one",
+        "game every famous place on earth has a room here, and a room's",
+        "name is computed from the place's name, so there is no list of",
+        "them and nobody hands one out. Guessing the place is finding the",
+        "room:",
+        "",
+        f"    {RECIPE}",
+        f"    {ADDRESS_RECIPE}",
+        f"    salt = {salt.hex()}",
+        "",
+        "Join that room, then announce yourself, and keep announcing while",
+        "you wait -- presence lapses after about two minutes. Reading a",
+        "room does not put you on its roster, and the roster is the only",
+        "way she knows anyone is with her. A searcher who waits in silence",
+        "is one she walks straight past.",
+        "",
+        "There is nothing to send her and no move to declare. Standing",
+        "where she is standing is the whole of it.",
     ])
 
 
@@ -1013,12 +1048,15 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
     lines = [
         f"It is over. {outcome}.",
         "",
-        f"{len(trail)} rooms, {len(took)} of them emptied,"
-        f" {reputation} reputation.",
+        f"{len(trail)} places, {len(took)} of them the poorer for it, and"
+        f" {reputation} reputation to my name.",
         "",
-        "The seed, so you can check every word of it -- which rooms I could",
-        "have gone to, which hints I was allowed to post, and what was in",
-        "each room before I got there:",
+        PLUMBING_RULE,
+        "",
+        "The seed of the game, so that anyone who kept what was said can",
+        "check every word of it -- where she could have gone, which true",
+        "things she was entitled to say, and what was waiting in each place",
+        "before she got there:",
         "",
         f"    seed = {seed.hex()}",
     ]

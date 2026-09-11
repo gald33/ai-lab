@@ -412,8 +412,11 @@ def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
     proves the warning is true.
     """
     notice = C.open_campaign(bytes.fromhex("55" * 32), C.LOBBY_LANDMARK)
-    assert "READING A ROOM IS NOT STANDING IN IT" in notice
-    assert "announce" in notice
+    # Below the rule, because this is the machinery talking and not her --
+    # see `test_she_never_speaks_in_machinery`.
+    plumbing = notice.split(C.PLUMBING_RULE)[1]
+    assert "does not put you on its roster" in plumbing
+    assert "announce yourself" in plumbing
 
     seed = bytes.fromhex("55" * 32)
     world = C.Map(seed)

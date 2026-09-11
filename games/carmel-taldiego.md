@@ -4729,6 +4729,44 @@ warning cannot quietly become false.
 That pairing is the point: one test proves she says it, the other proves it
 is true. Either alone is half a check.
 
+### She stopped reading out an API
+
+*2026-09-11, Gal: "I want everything she says to be in character and within
+the game world. so she isn't talking about rooms, and emptying them. If we
+must give game technical instructions, give them in a separate paragraph so
+it's clear it's not she speaking."*
+
+Both of her posts mixed the two voices in one. She said *"hand what comes
+out to `join_room`"*, and the close read *"14 rooms, 9 of them emptied,
+412 reputation"*. A fugitive reading out a client library is not a
+fugitive, and the reader cannot tell which half is the game and which is
+the fiction.
+
+`PLUMBING_RULE` splits them now. **Above it she says only what a person on
+the run would say** — places, not rooms; *the poorer for it*, not emptied;
+standing still, not dwelling; a true thing, not a hint. **Below it the
+machinery is written about her in the third person**, so nothing has to be
+guessed.
+
+The second requirement is the harder one and is why the block below repeats
+things that look obvious from inside the project. Gal's test: *"even
+(though it's impossible) someone stumble upon the message without knowing
+anything about the game, he can actually join the hue and cry."* So it says
+what hue and cry is, that Switchboard is the hub they are already on, that
+every famous place has a room whose name comes from the place's name, both
+steps of the recipe, and that announcing is what makes a searcher visible —
+none of which she would ever say, and all of which a stranger needs before
+they can do anything at all.
+
+**Both halves are asserted, because both will drift.**
+`test_she_never_speaks_in_machinery` holds her half against a word list
+(`room`, `hash`, `salt`, `token`, `roster`, `announce`, `workspace`,
+`switchboard`, `hub`, `emptied`, `dwell`, …), since the next person to add
+a sentence to her notice will reach for the word the code uses.
+`test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase` holds the
+other half against what a newcomer needs, since the temptation there is the
+opposite one — to assume the reader already knows what this is.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation
