@@ -300,6 +300,7 @@ class Fugitive:
         # with the stack frame.
         self._walked: list[dict] = []
         self._banked = 0
+        self._salt: bytes | None = None
 
     # -- talking to a hub that is allowed to stumble -----------------------
 
@@ -347,12 +348,47 @@ class Fugitive:
         self.log(f"notice up, gone in {NOTICE_TTL_HOURS:.0f}h")
 
     def close_campaign(self, seed: bytes, outcome: str, reputation: int,
-                       trail: list[dict]) -> None:
-        room = self.hub.room(lobby_token())
+                       trail: list[dict], salt: bytes | None = None) -> None:
+        """Say it is over, in the lobby **and in every place she robbed**.
+
+        Gal, 2026-09-11: *"she should post a note (without announcing
+        herself) that the game is over, in every room she's been at."*
+
+        The close used to go to the lobby alone, and a searcher deep in a
+        hunt left the lobby long ago. One of them swept 898 rooms for twenty
+        minutes after she had been caught, and said afterwards exactly why
+        it could not have known: *"an empty room and a dead holder produce
+        the same silence, so 'no clue yet' gave me no signal to distinguish
+        a working search from a broken one."* A searcher standing anywhere
+        on her trail now finds out.
+
+        **Posting is not announcing**, which is what makes this safe and is
+        not obvious: `post` leaves a message, `register` puts you on the
+        roster, and only the roster is the catch. She writes in each place
+        without ever standing in it again -- verified by
+        `test_she_says_it_is_over_without_standing_in_the_room`, because
+        the tempting implementation is to join each room properly and that
+        one would hand a catch to anybody still waiting there.
+        """
         body = C.close_campaign(seed, outcome, reputation, trail)
-        self._tolerate("the close", lambda: room.post(
-            CHANNEL, body, ttl=seconds(HINT_TTL_HOURS)))
-        self.log(f"closed: {outcome}, {reputation} reputation")
+        where = [("the lobby", lobby_token())]
+        if salt is not None:
+            # Every place she reached, which is every leg's destination.
+            # Deduplicated, because she revisits a place she did not empty.
+            for name in dict.fromkeys(leg["to"] for leg in trail):
+                where.append((name, room_token(name, salt)))
+        for name, token in where:
+            room = self.hub.room(token)
+            try:
+                self._tolerate(f"the close in {name}", lambda: room.post(
+                    CHANNEL, body, ttl=seconds(HINT_TTL_HOURS)))
+            except Outage:
+                # The lobby is the one that matters; a place she has left is
+                # a courtesy. Losing the hub mid-close should not turn a
+                # finished campaign into a crash.
+                self.log(f"could not say so in {name}")
+        self.log(f"closed: {outcome}, {reputation} reputation,"
+                 f" said in {len(where)} rooms")
 
     # -- the campaign ------------------------------------------------------
 
@@ -374,7 +410,7 @@ class Fugitive:
             self.log(f"giving up: {gone}")
             try:
                 self.close_campaign(seed, OUTCOMES["lost"],
-                                    self._banked, self._walked)
+                                    self._banked, self._walked, self._salt)
             except Outage:
                 self.log("could not even say so: the lobby is unreachable")
             return {"outcome": "lost the hub", "moves": self._walked,
@@ -383,7 +419,7 @@ class Fugitive:
                     else 0.0}
 
     def _run(self, seed: bytes) -> dict:
-        salt = salt_for(seed)
+        salt = self._salt = salt_for(seed)
         world = C.Map(seed)
         trail = C.itinerary(seed, C.LOBBY_LANDMARK, world,
                             difficulty=self.difficulty)
@@ -409,7 +445,7 @@ class Fugitive:
             if caught_by:
                 self.log(f"caught in {leg['to']} by {caught_by}")
                 self.close_campaign(seed, OUTCOMES["caught"], reputation,
-                                    walked)
+                                    walked, salt)
                 return {"outcome": "caught", "moves": walked,
                         "reputation": reputation, "by": caught_by,
                         "hours": leg["leaves"]}
@@ -417,11 +453,13 @@ class Fugitive:
             at = leg["to"]
             reputation = self._banked = leg["reputation"]
             if reputation >= C.REPUTATION_TO_WIN:
-                self.close_campaign(seed, OUTCOMES["wins"], reputation, walked)
+                self.close_campaign(seed, OUTCOMES["wins"], reputation, walked,
+                                    salt)
                 return {"outcome": "she wins", "moves": walked,
                         "reputation": reputation, "hours": leg["leaves"]}
 
-        self.close_campaign(seed, OUTCOMES["spent"], reputation, walked)
+        self.close_campaign(seed, OUTCOMES["spent"], reputation, walked,
+                            salt)
         return {"outcome": "out of moves", "moves": walked,
                 "reputation": reputation, "hours": trail[-1]["leaves"]}
 

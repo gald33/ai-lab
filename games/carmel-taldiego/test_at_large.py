@@ -597,6 +597,59 @@ def test_she_does_not_retry_forever(board):
         " budget")
 
 
+def test_she_says_it_is_over_everywhere_she_robbed(board):
+    """Gal, 2026-09-11: *"she should post a note (without announcing
+    herself) that the game is over, in every room she's been at."*
+
+    The close went to the lobby alone, and a searcher deep in a hunt left
+    the lobby long ago. One swept 898 rooms for twenty minutes after she was
+    caught, and could not have known: from inside a room, a finished game
+    and a quiet one are the same silence. Now anybody standing anywhere on
+    her trail is told.
+    """
+    seed = bytes.fromhex("55" * 32)
+    salt = salt_for(seed)
+    rooms = Rooms(board)
+    result = driven(board).run(seed)
+
+    visited = list(dict.fromkeys(leg["to"] for leg in result["moves"]))
+    assert len(visited) >= 2, "too short a campaign to prove anything"
+    for name in visited:
+        said = [m["body"] for m in
+                rooms.room(room_token(name, salt)).history(L.CHANNEL, limit=50)]
+        assert any(b.startswith("It is over") for b in said), (
+            f"{name} was never told the game had ended")
+        assert any(seed.hex() in b for b in said), (
+            f"{name} got the news without the seed that makes it checkable")
+
+
+def test_she_says_it_is_over_without_standing_in_the_room(board):
+    """The half that makes the above safe, and the one a reimplementation
+    would get wrong.
+
+    `post` leaves a message; `register` puts you on the roster; **only the
+    roster is the catch**. The tempting way to write the broadcast is to
+    join each room properly on the way out, and that version hands a catch
+    to every searcher still waiting in a place she has left.
+
+    Made to fail on purpose by registering before the close post: every
+    visited room then shows `carmel` on its roster after the campaign.
+    """
+    seed = bytes.fromhex("55" * 32)
+    salt = salt_for(seed)
+    rooms = Rooms(board)
+    result = driven(board).run(seed)
+
+    # She is allowed to still be on the roster of the last place -- she was
+    # standing in it when it ended. Everywhere earlier she must be gone.
+    earlier = list(dict.fromkeys(leg["to"] for leg in result["moves"]))[:-1]
+    for name in earlier:
+        roster = rooms.room(room_token(name, salt)).agents()
+        assert not [a for a in roster if a.get("name") == "carmel"], (
+            f"she is on {name}'s roster after posting the close there,"
+            " which would hand a catch to anyone still waiting")
+
+
 def test_the_hint_is_left_in_the_room_she_is_leaving(board):
     """The chain a searcher actually follows: what she says about leg two is
     in the room leg one took them to, so a searcher who guesses right is

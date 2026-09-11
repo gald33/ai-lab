@@ -4977,9 +4977,25 @@ the searcher that swept 898 rooms for twenty minutes after she had already
 been caught: *"an empty room and a dead holder produce the same silence, so
 'no clue yet' gave me no signal to distinguish a working search from a
 broken one -- which is why I kept hardening the mechanism instead of
-questioning the premise."* The close is posted in the lobby, and a searcher
-deep in a hunt left the lobby long ago. The notice now says so, and says
-that silence is ambiguous between five different states.
+questioning the premise."*
+
+*Closed by Gal the same day: "she should post a note (without announcing
+herself) that the game is over, in every room she's been at."* The close
+goes to the lobby **and to every place she robbed**, so a searcher standing
+anywhere on her trail is told, and the seed travels with it so the news is
+checkable where it lands. The notice also warns that silence is ambiguous
+between five states, for the searcher holding a room she never reached --
+the one case a broadcast cannot help.
+
+**Posting is not announcing, and that is what makes it safe.** `post`
+leaves a message; `register` puts you on the roster; only the roster is the
+catch. She writes in each place without standing in it again. The tempting
+implementation is to join each room properly on the way out, and that
+version hands a catch to every searcher still waiting somewhere she has
+left -- so `test_she_says_it_is_over_without_standing_in_the_room` requires
+her absent from the roster of every room but the last. Registering before
+the close reddens it and leaves the broadcast test green, which is the
+split that says the two tests check different things.
 
 **The slices leaked into each other.** `nordic` was in **151** of `far`'s
 rooms — Egypt, the Levant, Turkey and the Balkans doubly covered — while
