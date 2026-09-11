@@ -330,6 +330,7 @@ class Fugitive:
         self._walked: list[dict] = []
         self._banked = 0
         self._salt: bytes | None = None
+        self._world = None
 
     # -- talking to a hub that is allowed to stumble -----------------------
 
@@ -377,7 +378,8 @@ class Fugitive:
         self.log(f"notice up, gone in {NOTICE_TTL_HOURS:.0f}h")
 
     def close_campaign(self, seed: bytes, outcome: str, reputation: int,
-                       trail: list[dict], salt: bytes | None = None) -> None:
+                       trail: list[dict], salt: bytes | None = None,
+                       caught_by: str | None = None) -> None:
         """Say it is over, in the lobby **and in every place she robbed**.
 
         Gal, 2026-09-11: *"she should post a note (without announcing
@@ -399,7 +401,8 @@ class Fugitive:
         the tempting implementation is to join each room properly and that
         one would hand a catch to anybody still waiting there.
         """
-        body = C.close_campaign(seed, outcome, reputation, trail)
+        body = C.close_campaign(seed, outcome, reputation, trail,
+                                caught_by=caught_by, world=self._world)
         where = [("the lobby", lobby_token())]
         if salt is not None:
             # Every place she reached, which is every leg's destination.
@@ -449,7 +452,7 @@ class Fugitive:
 
     def _run(self, seed: bytes) -> dict:
         salt = self._salt = salt_for(seed)
-        world = C.Map(seed)
+        world = self._world = C.Map(seed)
         trail = C.itinerary(seed, C.LOBBY_LANDMARK, world,
                             difficulty=self.difficulty)
         started = self.now()
@@ -476,7 +479,7 @@ class Fugitive:
             if caught_by:
                 self.log(f"caught in {leg['to']} by {caught_by}")
                 self.close_campaign(seed, OUTCOMES["caught"], reputation,
-                                    walked, salt)
+                                    walked, salt, caught_by=caught_by)
                 return {"outcome": "caught", "moves": walked,
                         "reputation": reputation, "by": caught_by,
                         "hours": leg["leaves"]}

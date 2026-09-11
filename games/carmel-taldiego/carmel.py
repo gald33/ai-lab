@@ -1112,7 +1112,8 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
 
 
 def close_campaign(seed: bytes, outcome: str, reputation: int,
-                   trail: list[dict]) -> str:
+                   trail: list[dict], caught_by: str | None = None,
+                   world: "Map | None" = None) -> str:
     """What she leaves in the lobby when it is over.
 
     Gal: *"She also posts the results back in the lobby when the game
@@ -1129,9 +1130,45 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
     honest one.
     """
     took = [leg["to"] for leg in trail if leg["dwell"]]
-    lines = [
-        f"It is over. {outcome}.",
-        "",
+    lines = [f"It is over. {outcome}.", ""]
+
+    if caught_by:
+        # **Caught, she talks.** Gal, 2026-09-11: *"If she's caught she
+        # should disclose her catcher and her route, what she stole and her
+        # reputation."* Only on a catch: retiring on the proceeds is not an
+        # occasion for handing anybody her itinerary, and the seed below
+        # makes all of it derivable either way. What changes here is that a
+        # reader does not have to derive it -- being handed the run is the
+        # prize for taking her, and it is the only ending where she owes
+        # anyone an account of herself.
+        if world is None:
+            world = Map(seed)
+        lines += [f"It was {caught_by} who had me, in {trail[-1]['to']}.",
+                  "",
+                  "You will want it written down, so here is the run of it,",
+                  "in the order I lived it:",
+                  ""]
+        # Column width is derived from the names actually in this trail.
+        # Nothing here is truncated: a treasure is a written phrase and
+        # sometimes a whole sentence, and "what she stole" is the half of
+        # Gal's instruction that clipping would throw away.
+        wide = max(len(leg["to"]) for leg in trail)
+        before = 0
+        for i, leg in enumerate(trail, 1):
+            gain = leg["reputation"] - before
+            before = leg["reputation"]
+            prize = world.treasure.get(leg["to"], {}).get("treasure", "")
+            if leg["dwell"] and gain:
+                what, worth = prize, f"{gain:+d}"
+            elif leg["dwell"]:
+                what, worth = f"{prize}, and it was already gone", "--"
+            else:
+                what, worth = "walked past it", "--"
+            lines.append(f"    {i:>2}  {leg['to']:<{wide}}  "
+                         f"{worth:>4}  {what}")
+        lines.append("")
+
+    lines += [
         f"{len(trail)} places. {len(took)} of them the poorer for it."
         f" {reputation} to my name, and worth every hour.",
         "",

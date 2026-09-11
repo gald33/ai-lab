@@ -575,3 +575,48 @@ def test_the_lobby_is_the_same_room_every_game():
     """A lobby that moved with the game salt could not be found by anybody
     who was not already playing, which is the one thing a lobby is for."""
     assert isinstance(C.LOBBY, str) and C.LOBBY
+
+
+def test_when_she_is_caught_she_hands_over_the_whole_run():
+    """Gal, 2026-09-11: *"If she's caught she should disclose her catcher and
+    her route, what she stole and her reputation."*
+
+    All four, checked separately, because three of them appearing is the
+    failure this is for -- the route was the easy one to add and the
+    treasures were the easy one to leave out.
+    """
+    trail = C.itinerary(SEED, START, WORLD, 6)
+    body = C.close_campaign(SEED, "You have me", trail[-1]["reputation"],
+                            trail, caught_by="a night porter", world=WORLD)
+
+    assert "a night porter" in body, "she did not name her catcher"
+    assert trail[-1]["to"] in body, "she did not say where she was taken"
+    for leg in trail:
+        assert leg["to"] in body, f"{leg['to']} is missing from the route"
+    for leg in trail:
+        if leg["dwell"]:
+            prize = WORLD.treasure[leg["to"]]["treasure"]
+            assert prize in body, (
+                f"she did not say she took {prize!r} -- and a treasure"
+                " clipped to fit a column is the same defect")
+    assert str(trail[-1]["reputation"]) in body, "no reputation"
+
+
+def test_she_hands_over_nothing_when_she_was_not_caught():
+    """The complement, and the reason this pair can fail: retiring on the
+    proceeds is not an occasion for giving anybody her itinerary. Drop the
+    `caught_by` gate in `close_campaign` and this goes red while the test
+    above stays green, which is what says the two check different things.
+
+    The seed is in both endings either way, so nothing here is concealed --
+    it is the difference between a reader deriving the run and being handed
+    it, and being handed it is the prize for taking her.
+    """
+    trail = C.itinerary(SEED, START, WORLD, 6)
+    body = C.close_campaign(SEED, "I retire on the proceeds",
+                            trail[-1]["reputation"], trail)
+
+    assert "who had me" not in body
+    listed = [leg["to"] for leg in trail if leg["to"] in body]
+    assert not listed, f"she volunteered her route: {listed}"
+    assert SEED.hex() in body, "the seed belongs in every ending"

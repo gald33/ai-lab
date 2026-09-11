@@ -5426,3 +5426,55 @@ to fail on purpose" note in it.
 Two properties now have tests they did not have this morning: the salt
 outlives its campaign, and a riddle is worth real minutes. Neither was
 controversial. Neither was written down.
+
+
+## Caught, she talks
+
+*Gal, 2026-09-11: "If she's caught she should disclose her catcher and her
+route, what she stole and her reputation."*
+
+The close used to give counts -- *"6 places. 6 of them the poorer for it.
+367 to my name"* -- and the seed. Everything else was derivable and nothing
+was handed over. It reads as a scoreboard, and what a catch deserves is an
+account:
+
+    It is over. You have me.
+
+    It was Gal searcher who had me, in Great Himalayan National Park.
+
+    You will want it written down, so here is the run of it,
+    in the order I lived it:
+
+         1  Sagrada Familia                 +60  the finished part
+         2  Mir Castle Complex              +51  the portcullis
+         3  Baalbek                         +71  the site notebook, which was worse than the finds
+         4  Shahr-e Sukhteh                 +53  the finds tray, and the labels with it
+         5  Taj Mahal                       +99  the reflection in the long pool, taken and not returned
+         6  Great Himalayan National Park   +33  the plan the whole thing was laid out from
+
+    6 places. 6 of them the poorer for it. 367 to my name, and worth
+    every hour.
+
+**Only on a catch.** Retiring on the proceeds is not an occasion for
+handing anybody her itinerary, and `test_she_hands_over_nothing_when_she_was_not_caught`
+is what makes that a rule rather than a habit -- remove the `caught_by`
+gate and exactly one of the pair goes red, which is what says the two
+check different things. The seed is in every ending regardless, so nothing
+is concealed either way: the difference is between a reader **deriving**
+the run and being **handed** it, and being handed it is the prize for
+taking her.
+
+**Nothing in the ledger is truncated, and the first version truncated it.**
+A fixed-width column clipped *"the site notebook, which was worse than the
+finds"* to *"the site notebook, which was worse"* and *"Great Himalayan
+National Park"* to *"Great Himalayan National Par"*. A treasure here is a
+written phrase and sometimes a whole sentence, so **"what she stole" was
+the half of the instruction the column was throwing away** -- which is a
+small instance of a habit worth naming: a format chosen for the common case
+silently drops the content in the tail, and the tail is where the writing
+is. The column width is derived from the names in the trail instead, and
+the test asserts each treasure appears **whole**.
+
+**Four things, checked separately**, because three of four appearing is the
+realistic failure: the route was the easy part to add and the treasures
+were the easy part to leave out.
