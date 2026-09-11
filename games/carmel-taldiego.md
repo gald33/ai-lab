@@ -4601,6 +4601,93 @@ cannot collide), and fails on any remaining pair. Recreating
 That is the same treatment CI's directory list already gets, for the same
 reason `CLAUDE.md` gives: **derive what exists rather than remembering it.**
 
+### One dropped connection used to end everything, and playing is what found it
+
+*2026-09-11.* The suite was green, 137 tests over two configurations, and a
+live campaign died **150 seconds in**:
+
+    httpx.ConnectError: [SSL: UNEXPECTED_EOF_WHILE_READING]
+      at_large.py  in _stand
+          room.heartbeat(ttl=max(120.0, self.poll * 4))
+
+Nothing retried it and nothing caught it, so the game went with the
+connection: no close in the lobby, hints left in rooms pointing at a
+fugitive who was not coming, and a searcher who guessed right left standing
+in the room forever with no way to tell that from a fugitive who is good at
+hiding.
+
+**It was never survivable, and the arithmetic says so.** `_stand` polls
+twice per `POLL_SECONDS` — a roster read and a heartbeat — so an
+eighty-minute campaign makes about **1,900 hub calls**, every one of them
+able to end it. At any believable per-call failure rate that is not a risk,
+it is a certainty with a wait attached. The one call in the program that
+runs most often was the one with no guard on it.
+
+Every hub call goes through `Fugitive._tolerate` now: retry every
+`RETRY_SECONDS`, give up after `OUTAGE_SECONDS` (90s — past a dropped TLS
+connection and a hub restart, short of a leg), and on giving up raise
+`Outage`, which `run` turns into the outcome **`lost the hub`** and says in
+the lobby if it still can. A campaign that has lost the hub must not look
+like one still being played.
+
+**Why the suite could not have caught it, which is the part worth keeping.**
+Nothing was wrong with the tests' coverage — every line of `_stand` was
+exercised. What was never exercised was a line *failing*. The in-process
+hub is real and it is reliable, so a suite built on it proves the code
+right about a world that never stumbles. The new tests wrap each room
+client in a `Flaky` proxy that raises on chosen calls and passes everything
+else through, so the campaign underneath stays a real campaign:
+
+- `test_a_dropped_connection_does_not_end_the_campaign` fails the 3rd, 9th
+  and 20th call in every room and requires the same outcome, reputation and
+  leg count as an unbroken run;
+- `test_a_hub_that_never_comes_back_ends_it_out_loud` requires the named
+  outcome rather than an exception escaping;
+- `test_she_does_not_retry_forever` bounds the give-up on the clock, because
+  a retry loop with no budget is an outage pretending to be a game.
+
+Reverting the guard on the heartbeat reddens the first and leaves the two
+campaign tests green, which is the split that says the test checks the
+retry rather than the campaign.
+
+**And the first version of that test was green here and red on CI**, which
+is a fifth instance of the same disease in the test rather than the code.
+Its non-vacuity guard was `any(r.calls > 20)` — "some room was polled enough
+for the injected failures to land" — and how many times a room gets polled
+depends on how long the campaign runs, which depends on the treasure table,
+which differs between a checkout holding `absurd.tsv` and CI without it. It
+counts the injections that actually fired now (`Flaky.broke`), which is the
+thing it was trying to establish and does not vary. **Infer nothing you can
+count.**
+
+**The general lesson, and it is the fourth of its kind here.** `CLAUDE.md`
+says a check must be able to fail for the reason it names. This is a check
+that could not fail for a reason nobody had named: *the dependency misbehaves*.
+Coverage of the happy path at any density does not produce it — the failure
+has to be injected. A suite that only ever sees a working hub is a suite
+that has measured the hub, not the program.
+
+### And the diagnosis was wrong twice before it was right
+
+Worth recording because both wrong answers were confidently given.
+
+**First: "she is still running."** The liveness check was
+`pgrep -f "at_large.py --once"`, which matches *its own shell* — the command
+string contains the pattern. It reported her alive for two hours after she
+died, and the same self-matching `pkill` had already killed an earlier
+campaign. A process check that can see itself is not a process check.
+
+**Second: "the container rebooted."** True and irrelevant — `up 5 min`
+against a death twelve hours earlier is real, and this session's machine
+really is torn down between turns. But it was the explanation that was
+*visible*, not the one that was *reproducible*, and it was stated as the
+answer. The reproduction came from re-running the same pacing and getting a
+traceback; a three-minute replay at 30× had finished seventeen legs cleanly
+and looked like an exoneration, because it made 180 calls instead of 1,900.
+
+**Prefer the cause you can reproduce over the cause you can see.** Both
+observations were true; only one of them was the reason.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation

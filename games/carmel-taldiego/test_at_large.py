@@ -333,6 +333,129 @@ def test_she_keeps_going_and_never_shows_two_notices(board, monkeypatch):
         " -- anything but 1 is two salts on one screen")
 
 
+# --- a hub that is allowed to stumble --------------------------------------
+
+
+class Flaky:
+    """A room client that fails chosen calls and otherwise behaves.
+
+    Wraps a real client rather than replacing one, so everything not being
+    broken on purpose goes to the real hub and the campaign is a real
+    campaign.
+    """
+
+    def __init__(self, inner, fails: set[int] | None = None,
+                 after: int | None = None):
+        self._inner, self._fails, self._after = inner, fails or set(), after
+        self.calls = 0
+        #: Injections that actually fired. Counted rather than inferred:
+        #: asserting `calls > 20` made the test's own non-vacuity depend on
+        #: how long the campaign ran, which depends on the treasure table,
+        #: which differs between a checkout holding `absurd.tsv` and CI.
+        #: It passed here and failed there for a reason that was not a bug.
+        self.broke = 0
+
+    def __getattr__(self, name):
+        attr = getattr(self._inner, name)
+        if not callable(attr):
+            return attr                      # `public_key` and friends
+
+        def call(*a, **k):
+            self.calls += 1
+            if self.calls in self._fails or (
+                    self._after is not None and self.calls > self._after):
+                self.broke += 1
+                raise ConnectionError(f"injected failure #{self.calls}")
+            return attr(*a, **k)
+        return call
+
+
+class Stumbling(Rooms):
+    """`Rooms`, but every client it hands out is `Flaky`."""
+
+    def __init__(self, hub, **how):
+        super().__init__(hub)
+        self._how = how
+
+    def room(self, token: str):
+        if token not in self._open:
+            self._open[token] = Flaky(
+                self.hub.client(agent_id=self.agent_id,
+                                workspace=self.workspace(token), key=KEY),
+                **self._how)
+        return self._open[token]
+
+
+def test_a_dropped_connection_does_not_end_the_campaign(board):
+    """The bug a live game found and the suite did not, 2026-09-11.
+
+    A campaign died 150 seconds in on one
+    `[SSL: UNEXPECTED_EOF_WHILE_READING]` from `room.heartbeat`. Nothing
+    retried it, so the game ended with no close in the lobby and hints left
+    pointing at a fugitive who was not coming.
+
+    It was never survivable: `_stand` polls twice per `POLL_SECONDS`, so an
+    eighty-minute campaign makes about 1,900 hub calls and any one of them
+    could end it. This fails the 3rd, 9th and 20th call in every room she
+    touches and requires the campaign to come out the same as an unbroken
+    one.
+
+    Made to fail on purpose by dropping the `_tolerate` around the
+    heartbeat: the injected error propagates and the campaign never
+    returns.
+    """
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    predicted = C.chase(seed, C.LOBBY_LANDMARK, searchers=0, world=world)
+
+    rooms = Stumbling(board, fails={3, 9, 20})
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    happened = her.run(seed)
+
+    assert happened["outcome"] == predicted["outcome"]
+    assert happened["reputation"] == predicted["reputation"]
+    assert len(happened["moves"]) == len(predicted["moves"])
+    broke = sum(r.broke for r in rooms._open.values())
+    assert broke >= 2, (
+        f"only {broke} injected failures fired: this campaign was too short"
+        " to prove anything, so the test would pass on no retry at all")
+
+
+def test_a_hub_that_never_comes_back_ends_it_out_loud(board):
+    """The other half: a blip is survived, an outage is not pretended away.
+
+    `CLAUDE.md`'s weaker-thing rule, on the wire. A campaign that has lost
+    the hub must not look like one still being played -- it returns an
+    outcome with a name, and it does not raise into whatever started it.
+    """
+    rooms = Stumbling(board, after=4)
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    happened = her.run(bytes.fromhex("55" * 32))
+
+    assert happened["outcome"] == "lost the hub"
+    assert "ConnectionError" in happened["why"]
+
+
+def test_she_does_not_retry_forever(board):
+    """A retry loop that never gives up is an outage pretending to be a
+    game. The budget is wall-clock, so the give-up is bounded however the
+    call fails -- including on a bug that is not the network at all."""
+    rooms = Stumbling(board, after=4)
+    her = L.Fugitive(rooms, now=board.clock,
+                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
+                     poll=POLL, log=lambda line: None)
+    began = board.clock()
+    her.run(bytes.fromhex("55" * 32))
+    spent = board.clock() - began
+    assert spent < 4 * L.OUTAGE_SECONDS, (
+        f"{spent:.0f}s of clock to give up on a {L.OUTAGE_SECONDS:.0f}s"
+        " budget")
+
+
 def test_the_hint_is_left_in_the_room_she_is_leaving(board):
     """The chain a searcher actually follows: what she says about leg two is
     in the room leg one took them to, so a searcher who guesses right is
