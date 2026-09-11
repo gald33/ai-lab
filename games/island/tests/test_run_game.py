@@ -1405,3 +1405,59 @@ def test_the_manager_refuses_a_table_of_a_size_it_has_never_played():
             run_game.refuse_out_of_bounds(bad)
         assert says in str(e.value)
 
+
+
+def test_a_lapsed_row_is_a_latch_unless_presence_registers_again():
+    """One missed window must not cost the row for the life of the process.
+
+    The hub refuses to renew a row it has dropped -- measured against the
+    managed hub on 2026-09-11, deregister then heartbeat answers `unknown or
+    expired agent; call /agents/register again`. So a heartbeat-only refresh
+    latches: the first lapse is permanent, silently, and the only symptom is
+    a line on somebody's stdout once a minute.
+
+    That is not hypothetical. The island ran thirteen hours on 2026-09-10/11
+    with its lobby off the roster while its runner stayed healthy -- the two
+    rows renewed one line apart in the same loop, one surviving and one not.
+    """
+    beats: list[str] = []
+
+    class _Dropped:
+        """A hub that has forgotten this agent, and says so the way it does."""
+
+        def heartbeat(self, **kw):
+            beats.append("beat")
+            raise RuntimeError("unknown or expired agent; "
+                               "call /agents/register again")
+
+    def restore() -> None:
+        beats.append("register")
+
+    run_game._stay_present(_Dropped(), restore=restore)
+    assert beats == ["beat", "register"], (
+        "a refused heartbeat must fall back to registering again; without "
+        "this the row never comes back")
+
+    # And the fallback is a fallback: a hub that still knows the agent is
+    # never re-registered, so the healthy path costs the one call `cost.py`
+    # measured and not two.
+    quiet: list[str] = []
+
+    class _Known:
+        def heartbeat(self, **kw):
+            quiet.append("beat")
+
+    run_game._stay_present(_Known(), restore=lambda: quiet.append("register"))
+    assert quiet == ["beat"], "a live row is renewed, not re-registered"
+
+
+def test_presence_survives_a_restore_that_also_fails():
+    """Both halves down is still not worth killing the round over."""
+    class _Dropped:
+        def heartbeat(self, **kw):
+            raise RuntimeError("unknown or expired agent")
+
+    def restore() -> None:
+        raise RuntimeError("and the hub is still gone")
+
+    run_game._stay_present(_Dropped(), restore=restore)   # must not raise

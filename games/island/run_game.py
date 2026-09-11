@@ -272,7 +272,8 @@ def presence_ttl(table: Table, *, episode_seconds: int, ack_seconds: int) -> flo
     return min(float(whole), PRESENCE_CEILING)
 
 
-def _stay_present(client) -> None:
+def _stay_present(client, *,
+                  restore: Callable[[], None] | None = None) -> None:
     """Keep the manager on the roster, every drain.
 
     **Belt and braces, and the braces are new.** The manager now asks at
@@ -292,11 +293,39 @@ def _stay_present(client) -> None:
 
     Never raises: a failed heartbeat is a manager that may go unreachable, and
     a manager that dies of one is a round that certainly ends.
+
+    **A heartbeat cannot resurrect a row the hub has already dropped, so one
+    that lapses stays lapsed for the life of the process unless something
+    registers again.** That is what `restore` is for. Measured against the
+    managed hub on 2026-09-11: deregister, then heartbeat, and the hub answers
+    `unknown or expired agent; call /agents/register again` -- it refuses, by
+    name, and says what to do instead. Without a `restore` this function then
+    prints that refusal once a minute for ever and nothing else happens.
+
+    It is a **latch**, which is why it is worth the lines: a single missed
+    window -- one blip, one restart that registered into a hub blink -- costs
+    the row permanently, and the cost is silent everywhere it matters. The
+    island ran for thirteen hours on 2026-09-10/11 with its lobby off the
+    roster and its runner otherwise healthy, the two rows renewed one line
+    apart in the same loop, one surviving and one not. `pulse` read that as
+    `lobby process DOWN`; the loop was alive the whole time.
+
+    Reproduce it:
+    `python -m pytest games/island/tests/test_run_game.py -q -k latch`
     """
     try:
         client.heartbeat(renew_leases=False)
+        return
     except Exception as exc:      # noqa: BLE001 -- see the docstring
-        print(f"presence not refreshed: {exc!r}", flush=True)
+        first = exc
+    if restore is not None:
+        try:
+            restore()
+            print(f"presence re-registered after {first!r}", flush=True)
+            return
+        except Exception as exc:  # noqa: BLE001 -- see the docstring
+            first = exc
+    print(f"presence not refreshed: {first!r}", flush=True)
 
 
 def _drain(mgr: Manager) -> None:
@@ -512,10 +541,13 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     # with the *sender's* exchange key, so a manager that never registered
     # publishes no such key and every half it seals arrives unreadable. It
     # cost a test to find, and it would have cost a game.
-    client.register(name=MANAGER, kind="local", branch="main",
-                    task=f"running {table.id}",
-                    ttl=presence_ttl(table, episode_seconds=episode_seconds,
-                                     ack_seconds=ack_seconds))
+    def _register_manager() -> None:
+        client.register(name=MANAGER, kind="local", branch="main",
+                        task=f"running {table.id}",
+                        ttl=presence_ttl(table, episode_seconds=episode_seconds,
+                                         ack_seconds=ack_seconds))
+
+    _register_manager()
     # The first `table.goods` of the vocabulary. The table settled its own
     # count when it opened, and the entrants were briefed on that number -- so
     # this must follow the table rather than a default of its own.
@@ -549,14 +581,14 @@ def play(table: Table, invite: Invite, *, episode_seconds: int,
     def until(deadline: float) -> None:
         while time.time() < deadline:
             bind_seats(mgr, table)
-            _stay_present(mgr.client)
+            _stay_present(mgr.client, restore=_register_manager)
             _drain(mgr)
             _witness(archivist)
             _show(mgr, live)
             _tick(tick)
             time.sleep(DRAIN_EVERY)
         bind_seats(mgr, table)
-        _stay_present(mgr.client)
+        _stay_present(mgr.client, restore=_register_manager)
         _drain(mgr)
         _witness(archivist)
         _show(mgr, live)
@@ -1059,7 +1091,8 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
           ledger: Path | None = None, manager: Client | None = None,
           channel: str = "lobby", max_concurrent: int = MAX_CONCURRENT,
           page: Path | None = None, keep: int = 0, keep_best: int = 0,
-          live_dir: Path | None = None) -> None:
+          live_dir: Path | None = None,
+          manager_present: Callable[[], None] | None = None) -> None:
     """Poll the lobby; claim what nobody is running; play whatever settles.
 
     **Each table plays in its own thread.** A game takes minutes, and two
@@ -1088,10 +1121,10 @@ def watch(lobby: Lobby, *, every: float, episode_seconds: int,
         # to a fraction of the TTL `main` asked for, so the idle host's
         # request rate stays where `cost.py` measured it.
         if manager is not None and time.time() - last_beat >= PRESENCE_BEAT:
-            _stay_present(manager)
+            _stay_present(manager, restore=manager_present)
             # The lobby too: a seat opens the invite whispered to it with the
             # lobby's published exchange key, read off the roster.
-            _stay_present(lobby.client)
+            _stay_present(lobby.client, restore=lobby.present)
             last_beat = time.time()
         if page is not None:
             # This runner embeds the only lobby on its channel, so it is also
@@ -1290,9 +1323,14 @@ def main(argv: list[str] | None = None) -> int:
     manager = _client(MANAGER)
     # A TTL the heartbeat in `watch` renews well inside, so the roster row
     # this creates is a liveness signal rather than a two-minute one.
-    manager.register(name=args.managed_by, kind="local", branch="main",
-                     task=f"running tables in {args.workspace}",
-                     ttl=PRESENCE_CEILING, back_in=PRESENCE_BEAT * 2)
+    def manager_present() -> None:
+        """Re-registration, not a heartbeat -- see `_stay_present`. A row the
+        hub has dropped cannot be renewed, only registered again."""
+        manager.register(name=args.managed_by, kind="local", branch="main",
+                         task=f"running tables in {args.workspace}",
+                         ttl=PRESENCE_CEILING, back_in=PRESENCE_BEAT * 2)
+
+    manager_present()
     print(f"watching {args.hub}/{args.workspace}#{args.channel}, "
           f"offering to manage as {args.managed_by}, "
           f"holding as {lobby.holder}, state in {state}")
@@ -1302,7 +1340,8 @@ def main(argv: list[str] | None = None) -> int:
               ranked_only=args.ranked, ledger=args.ledger,
               manager=manager, channel=args.channel,
               max_concurrent=args.max_games, page=args.page, keep=args.keep,
-              keep_best=args.keep_best, live_dir=args.live)
+              keep_best=args.keep_best, live_dir=args.live,
+              manager_present=manager_present)
     except KeyboardInterrupt:
         print()
     return 0

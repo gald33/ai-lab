@@ -2635,6 +2635,73 @@ report about one, which is the rule for self-reports everywhere else here.
 `harnesses declared  codex x2` -- so the door's new fields are being filled in
 by entrants and not only by us.
 
+## The lobby that fell off the roster and could not climb back
+
+**Found 2026-09-11, thirteen hours in.** `pulse` had been printing
+
+```
+The door (right now -- the hub keeps a room about an hour)
+  lobby process           DOWN
+  table runner            up
+```
+
+hourly since 2026-09-10T23:35Z, and the first reading of it here -- said out
+loud, in this repo, for most of a day -- was wrong. **The lobby process was
+never down.** Its *roster row* was, and `pulse` names that check
+`lobby process`, which is the whole of how a true measurement became a false
+sentence.
+
+**The mechanism is a latch.** `run_game.py` embeds the only lobby on its
+channel, and its `watch` loop refreshes both rows in the same `if`, one line
+apart:
+
+```python
+_stay_present(manager)
+_stay_present(lobby.client)
+```
+
+`_stay_present` heartbeats, and a heartbeat **cannot resurrect a row the hub
+has already dropped**. Measured against the managed hub rather than assumed:
+
+```
+$ deregister, then heartbeat
+heartbeat ERR: SwitchboardError unknown or expired agent; call /agents/register again
+```
+
+The hub refuses by name and says what to do instead. `_stay_present` caught
+that, printed `presence not refreshed: ...` to the host's stdout, and tried
+the same impossible thing sixty seconds later. So **one missed window costs
+the row for the life of the process** -- and the manager's row, renewed by the
+identical call one line above, survived the whole time, because it happened
+never to miss one.
+
+The fix is `restore`: a callable that *registers* rather than renews, tried
+only when the heartbeat is refused. `lobby.present` for the lobby, and the
+registration repeated as a closure for each manager. The healthy path is
+untouched -- one call, the rate `cost.py` measured -- because the fallback
+only runs on a refusal.
+
+**What it actually cost is smaller than "the door was shut", and worth being
+exact about.** Draining the board never depended on the roster row, so lines
+posted to the lobby were still being read. What the row carries is the
+lobby's published exchange key, which a seat needs to open the invite it is
+whispered -- and `_settle` already calls `present()` immediately before
+whispering, so the one moment it matters re-registers anyway. The honest
+statement is that the island spent thirteen hours with a **missing liveness
+signal and a self-healing hole underneath it**, not thirteen hours shut.
+
+Two things follow, and both are the lab's older rules arriving again:
+
+- **A check is green, or red, for the reason it names.** `lobby process DOWN`
+  measures `"lobby" in present`. It should say what it reads.
+- **A silent retry of an impossible operation is the same shape as a skip
+  drawn as a pass.** The loop looked healthy, the log line scrolled past on a
+  host nobody was reading, and the only thing that ever surfaced it was a
+  number on an hourly check-in.
+
+Reproduce the latch:
+`python -m pytest games/island/tests/test_run_game.py -q -k latch`
+
 ## Watching
 
 **A running game is watched through the hub with a read-only invite, and
