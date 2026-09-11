@@ -54,6 +54,7 @@ weaker and is the most that exists.
 
 import argparse
 import hashlib
+import itertools
 import math
 import os
 import sys
@@ -63,6 +64,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import treasures as T  # noqa: E402
 from descriptors import all_descriptors  # noqa: E402
+from hints import riddle  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
 from secret_matrix import (ADDRESS_RECIPE, RECIPE, _prf,  # noqa: E402
                            hints_for,
@@ -366,6 +368,19 @@ ASSUMED_LAG = 12.0
 #:
 #: 0.35 is A GUESS. It is also the row where she is still caught sometimes
 #: at every turnout, which the rows either side of it are not.
+#: The fewest landmarks a riddle may leave standing. **One is the number
+#: this game cannot say**, and the reason is the most expensive measured
+#: lesson in `games/carmel-taldiego.md`: an authored hint true of exactly
+#: one landmark scored 1.03 candidates and ended the chase. `MAX_PINNED`
+#: used to hold that line as a *statistic* over random draws -- at most 20%
+#: of her moves may give her away. Posting all three details pins her 22%
+#: of the time, which breaches it, so the line is held as a *rule she obeys
+#: per move* instead: she drops a detail when three would name her. Across
+#: two seeds that fires on 22% and 24% of moves and leaves **no move
+#: pinned at all**, which is a stronger guarantee than the statistic it
+#: replaces rather than a weaker one.
+RIDDLE_FLOOR = 2
+
 WHIM = 0.35
 
 #: How often she walks past a treasure she could have taken.
@@ -669,15 +684,30 @@ class Map:
         #: the whole of what "cover" means now -- one pass over the map
         #: instead of a per-landmark band computed on demand.
         self.cover: dict[str, int] = {}
-        for words in self.descriptors.values():
+        #: Which landmarks each descriptor is true of. `cover` is this
+        #: counted; a riddle needs the sets themselves, because what it
+        #: leaves standing is their intersection and not any function of
+        #: their sizes.
+        self.carriers: dict[str, set] = {}
+        for name, words in self.descriptors.items():
             for word in words:
                 self.cover[word] = self.cover.get(word, 0) + 1
+                self.carriers.setdefault(word, set()).add(name)
 
     def live_hints(self, landmark: str) -> list[str]:
         """The three descriptors the seed makes postable at this landmark."""
         words = self.descriptors[landmark]
         return [words[i] for i in
                 hints_for(self.seed, landmark, len(words))]
+
+    def standing(self, details) -> set:
+        """The landmarks every one of these details is true of.
+
+        The number a reader actually faces. With one detail it is
+        `cover[word]` and a median of 156; with three it is a median of 3,
+        and that collapse is the whole of the 2026-09-11 change.
+        """
+        return set.intersection(*(self.carriers[d] for d in details))
 
 
 class Carmel:
@@ -766,45 +796,75 @@ class Carmel:
                 continue
             km = distance_km(here, self.world.places[destination])
             rooms.append(destination)
-            weights.append(prize["reputation"]
-                           * self.best_cover(destination)
-                           * math.exp(-km / NEAR_KM))
+            # **No vagueness term.** It used to read
+            # `* self.best_cover(destination)` -- she preferred destinations
+            # whose hint would leave the most of the map standing. Removed
+            # 2026-09-11, and not on taste: with a riddle in place of a
+            # fact, that term sent her to places that *share descriptors*
+            # with where she stood, which is the look-alike band `band()`
+            # used to draw her exits from. `test_there_are_no_routes` went
+            # red on it -- every hop inside the band -- which is the check
+            # doing exactly the job it is named after. Gal deleted routes on
+            # 2026-09-09; weighting by cover was rebuilding them underneath
+            # the deletion.
+            #
+            # It cost the riddle most of its point as well: median
+            # candidates 21 with the term, 4 without.
+            weights.append(prize["reputation"] * math.exp(-km / NEAR_KM))
         return _sample(rooms, weights,
                        _draw(self.seed, self.leg, "where"))
 
-    def best_cover(self, destination: str) -> int:
-        """How much of the map the most ambiguous live hint leaves standing.
-
-        This is the quantity the descriptor layer was built to keep above
-        one. It used to be counted against her five exits; with no routes
-        it is counted against all thousand landmarks, which is the set the
-        reader actually faces.
-        """
-        return max(self.world.cover[word]
-                   for word in self.world.live_hints(destination))
-
     # --- 2. what to say ---------------------------------------------------
-    def choose_hint(self, destination: str) -> str:
-        """The least informative true thing she can say about where she went.
+    def choose_details(self, destination: str) -> list[str]:
+        """The details she posts: her three live ones, less any that name her.
 
-        `games/carmel-taldiego.md`: *"the Fugitive's strategy is now sharp and
-        stateable: post the least informative true fact, which is a real
-        optimisation against a real posterior."* Least informative means
-        covering the most of the set a reader can narrow her to -- and with
-        no routes that set is the map, so the commonest of her three live
-        descriptors is the one she wants.
+        **This reverses the strategy the method above it used to hold**, and
+        the superseded reasoning is kept because it was right about a game
+        that no longer exists. It read:
 
-        **She draws among the three rather than taking it**, weighted the
-        same way as the room (`WHIM`). So she usually says the vaguest
-        thing she holds and sometimes says a sharper one, which is the
-        difference between a searcher knowing what she said and knowing
-        only what she tends to say. Every draw is still one of the three
-        the seed made live, so she is never posting something untrue: *she
-        may lie in prose, she may not lie in a clue.*
+            The least informative true thing she can say about where she
+            went... Least informative means covering the most of the set a
+            reader can narrow her to -- and with no routes that set is the
+            map, so the commonest of her three live descriptors is the one
+            she wants.
+
+        That was a real optimisation against a real posterior, and it was
+        calibrated when a candidate set meant her five exits. With no routes
+        the same rule maximises vagueness against a thousand landmarks, and
+        the measured result is a hint leaving a median of **156** of them.
+        Gal, 2026-09-11: *"The hints are terrible, I never could have
+        guessed it"*, and then the specification --
+
+            hint should fit a few locations only, not many. it should be
+            hard not by revealing one assertion, but from a few details
+            that can relate in different ways but when they do there are
+            only a few results. that is, the search is over possible
+            meanings to the words of the riddle, not on possible landmarks
+            to a fact
+
+        -- which moves the difficulty from enumeration to decoding. She
+        stops hiding in the size of the answer set and hides in the reading.
+
+        So she posts all three live details, and the only judgement left is
+        the floor: three details name her outright on 22% of moves, so when
+        they do she drops the one whose absence leaves the most standing
+        while still clearing `RIDDLE_FLOOR`. Measured over two seeds, that
+        leaves a median of 4 and 5 candidates, **no pinned move at all**,
+        and 87% of moves between two and twelve.
+
+        She may still lie in prose. She may not lie in a clue: every detail
+        returned here is one the seed made live at the destination, so the
+        riddle is true whatever else she writes around it.
         """
         live = sorted(self.world.live_hints(destination))
-        return _sample(live, [float(self.world.cover[w]) for w in live],
-                       _draw(self.seed, self.leg, "say"))
+        if len(self.world.standing(live)) >= RIDDLE_FLOOR:
+            return live
+        kept = [(len(self.world.standing(pair)), pair)
+                for pair in itertools.combinations(live, 2)]
+        safe = [(n, pair) for n, pair in kept if n >= RIDDLE_FLOOR]
+        if not safe:                      # never seen on any seed swept
+            return list(max(kept)[1])     # loudest thing left: never pin
+        return list(min(safe)[1])
 
     # --- 3. whether to stand still ----------------------------------------
     def will_steal(self, destination: str) -> bool:
@@ -964,7 +1024,7 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
     salt = salt_for(seed)
     world = Map(seed)
     gone_to = itinerary(seed, start, world, 1)[0]
-    first = gone_to["hint"]
+    first = riddle(seed, gone_to["to"], gone_to["details"])
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
@@ -972,8 +1032,12 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "my own rule below I am still here as I write this, with my coat",
         "half on. Be quick and it will cost me.",
         "",
-        "Every time I move on I leave behind one true thing about where I",
-        "have gone, and it is the only true thing you will get out of me.",
+        "Every time I move on I leave behind a few true things about where",
+        "I have gone. One of them is mine. The others are whatever the",
+        "locals thought they saw, and they saw more than they know. No one",
+        "of them is worth much. Laid together they fit a handful of places",
+        "and no more, and working out which handful is the game.",
+        "",
         "Work out the place and come for me. You will have me, or you will",
         "have what I said on my way out.",
         "",
@@ -1001,10 +1065,9 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "on earth is somewhere I might be, and the only thing narrowing",
         "them is what I choose to tell you.",
         "",
-        "I will not be giving you any addresses. The first true thing is",
-        "this:",
+        "I will not be giving you any addresses. Here is the first of it:",
         "",
-        f"    {first.replace('_', ' ')}",
+        *(f"    {line}" for line in first),
         "",
         PLUMBING_RULE,
         "",
@@ -1108,7 +1171,7 @@ def itinerary(seed: bytes, start: str, world: Map,
     for leg in range(limit):
         her.leg = leg
         destination = her.choose_destination()
-        hint = her.choose_hint(destination)
+        details = her.choose_details(destination)
         leaves_from = her.at
         prep = prep_hours(world.places[leaves_from],
                           world.places[destination], difficulty)
@@ -1118,7 +1181,8 @@ def itinerary(seed: bytes, start: str, world: Map,
         her.at = destination
         arrived = posted + prep
         dwell = her.take(destination) if her.will_steal(destination) else 0
-        out.append({"from": leaves_from, "to": destination, "hint": hint,
+        out.append({"from": leaves_from, "to": destination,
+                    "details": details,
                     "posted": posted, "prep": prep, "travel": travel,
                     "arrived": arrived, "leaves": arrived + dwell,
                     "dwell": dwell, "reputation": her.reputation})
@@ -1189,8 +1253,7 @@ def pursue(world: Map, start: str, home: str, trail: list[dict],
             continue                       # too slow to be there at all
         here = leg["from"]
         candidates = sorted(
-            (x for x in world.descriptors
-             if leg["hint"] in world.descriptors[x] and x != here),
+            (x for x in world.standing(leg["details"]) if x != here),
             key=lambda x: (distance_km(world.places[here], world.places[x]),
                            x))
         # `share` is (which searcher, how many). A field that divides the

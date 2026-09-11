@@ -415,7 +415,7 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
             last = "nothing taken"
         blocks.append([
             (f'{i}. ' + (name if i else f"{name}  — the lobby"), 17),
-            (f'“{leg["hint"].replace("_", " ")}”' if leg else "", 13),
+            (f'“{leg["details"][0].replace("_", " ")}”' if leg else "", 13),
             (last, 13),
         ])
 

@@ -432,12 +432,14 @@ class Fugitive:
             self._wait_until(started, leg["posted"])
             here = lobby_token() if at == C.LOBBY_LANDMARK \
                 else room_token(at, salt)
-            room, said = self.hub.room(here), leg["hint"].replace("_", " ")
-            self._tolerate(f"leg {len(walked) + 1}'s hint", lambda: room.post(
-                CHANNEL, said, ttl=seconds(HINT_TTL_HOURS)))
+            said = "\n".join(C.riddle(seed, leg["to"], leg["details"]))
+            room = self.hub.room(here)
+            self._tolerate(f"leg {len(walked) + 1}'s riddle",
+                           lambda: room.post(CHANNEL, said,
+                                             ttl=seconds(HINT_TTL_HOURS)))
             walked.append(leg)
             self.log(f"leg {len(walked)}: {at} -> {leg['to']}"
-                     f"  ({leg['hint']})")
+                     f"  ({', '.join(leg['details'])})")
 
             leaving = None if at == C.LOBBY_LANDMARK \
                 else self.hub.room(room_token(at, salt))

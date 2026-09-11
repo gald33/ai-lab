@@ -664,12 +664,14 @@ def test_the_hint_is_left_in_the_room_she_is_leaving(board):
 
     lobby = rooms.room(L.lobby_token())
     said = [m["body"] for m in lobby.history(L.CHANNEL, limit=200)]
-    assert any(trail[0]["hint"].replace("_", " ") in line for line in said), \
-        "the first hint belongs in the lobby, which is where she starts"
+    assert any(C.riddle(seed, trail[0]["to"], trail[0]["details"])[0] in line
+               for line in said), \
+        "the first riddle belongs in the lobby, which is where she starts"
 
     second = rooms.room(room_token(trail[0]["to"], salt))
     said = [m["body"] for m in second.history(L.CHANNEL, limit=200)]
-    assert any(trail[1]["hint"].replace("_", " ") in line for line in said), \
+    assert any(C.riddle(seed, trail[1]["to"], trail[1]["details"])[0] in line
+               for line in said), \
         "the second hint belongs in the room the first one pointed at"
 
 

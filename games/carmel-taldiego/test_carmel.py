@@ -27,8 +27,8 @@ def test_she_is_deterministic_given_the_seed():
     seed are the same chase, hop for hop."""
     a = C.itinerary(SEED, START, WORLD)
     b = C.itinerary(SEED, START, C.Map(SEED))
-    assert [(x["to"], x["dwell"], x["hint"]) for x in a] \
-        == [(x["to"], x["dwell"], x["hint"]) for x in b]
+    assert [(x["to"], x["dwell"], x["details"]) for x in a] \
+        == [(x["to"], x["dwell"], x["details"]) for x in b]
 
 
 def test_there_are_no_routes():
@@ -76,58 +76,61 @@ def test_every_hint_she_posts_is_true_of_where_she_went():
     rejects a false one, so a Carmel who posts one is a Carmel who forfeits
     her own moves."""
     for leg in C.itinerary(SEED, START, WORLD):
-        assert leg["hint"] in WORLD.descriptors[leg["to"]]
+        for detail in leg["details"]:
+            assert detail in WORLD.descriptors[leg["to"]], detail
+        # And the riddle is about that place and no other: the details are
+        # not merely each true, they are jointly true somewhere, and the
+        # somewhere includes where she actually went.
+        assert leg["to"] in WORLD.standing(leg["details"])
 
 
-def test_she_leans_on_the_least_informative_hint_by_exactly_as_much_as_WHIM_says():
-    """Her stated strategy, softened on 2026-09-09 -- Gal: *"add some
-    randomness for all her decisions."*
+def test_she_posts_every_live_detail_unless_that_would_name_her():
+    """Her strategy after 2026-09-11, and the test that replaced the one
+    below it rather than being added beside it.
 
-    This used to assert `cover[hint] == max(cover)` on every leg, which is
-    now false by design: she draws among her three live descriptors
-    weighted by `cover ** (1 / WHIM)`.
+    **What it used to assert, kept because it was right about a game that
+    no longer exists.** The test here was
+    `test_she_leans_on_the_least_informative_hint_by_exactly_as_much_as_WHIM_says`,
+    and it checked that she drew among her three live descriptors weighted
+    by `cover ** (1 / WHIM)` -- that is, that she usually said *the vaguest
+    of the three*. That was a real optimisation while a hint was one fact
+    read against a thousand landmarks, and it is exactly what Gal ruled
+    out: *"The hints are terrible, I never could have guessed it"*, and
+    *"hint should fit a few locations only, not many"*.
 
-    **The replacement asserted `rate > 0.55` and that was the wrong shape
-    of test twice over.** It went red in CI at exactly 0.550, and it was
-    only ever a number somebody had watched once: the rate depends on the
-    treasure table, because the table decides which rooms she goes to and
-    therefore which live hints she is choosing between -- and `absurd.tsv`
-    is gitignored, so a checkout with `HUE_TREASURE_KEY` and CI compute
-    different ones (50% here, 55% there). Calibrating a constant against
-    one of them is the same defect as the seeds in `test_trail_card.py`.
+    So she no longer chooses among the three. She posts all three, and the
+    only judgement left is the floor: `RIDDLE_FLOOR`. Three details name
+    her outright on about 22% of moves; on those she drops one.
 
-    So it derives its own target instead. The sampler's definition gives
-    an exact per-leg probability of taking the vaguest hint; the mean of
-    those is what the run should produce, and the assertion is that it
-    does. Then two bounds that no longer need calibrating: the expectation
-    must sit well clear of the 1/3 a coin would give -- turn `WHIM` up to
-    uniform and it fails -- and the observed rate must not be 100%, which
-    is what reverting the draw to `max` would give.
+    Made to fail on purpose two ways: return `live[:1]` from
+    `choose_details` and the first assertion goes red on the count; drop
+    the floor check from it and the second goes red on a pinned move.
     """
-    def vaguest_odds(landmark: str) -> float:
-        live = [WORLD.cover[w] for w in WORLD.live_hints(landmark)]
-        top = max(live)
-        weights = [(c / top) ** (1 / C.WHIM) for c in live]
-        return max(weights) / sum(weights)
-
-    took, expected, legs = 0, [], 0
+    posted, dropped, legs = 0, 0, 0
     for seed_byte in range(1, 12):
         seed = bytes.fromhex(f"{seed_byte:02x}" * 32)
         for leg in C.itinerary(seed, START, WORLD, 20):
-            live = [WORLD.cover[w] for w in WORLD.live_hints(leg["to"])]
-            took += WORLD.cover[leg["hint"]] == max(live)
-            expected.append(vaguest_odds(leg["to"]))
+            details = leg["details"]
+            live = WORLD.live_hints(leg["to"])
+            assert set(details) <= set(live), (
+                "she posted something the seed did not make live here")
+            assert len(details) in (2, 3), details
+            dropped += len(details) == 2
+            posted += len(details)
             legs += 1
 
+            standing = WORLD.standing(details)
+            assert len(standing) >= C.RIDDLE_FLOOR, (
+                f"{leg['to']} is named outright by {details}: a riddle true"
+                f" of one landmark ends the chase")
+
     assert legs > 100, legs
-    rate, target = took / legs, sum(expected) / len(expected)
-    assert abs(rate - target) < 0.12, (
-        f"she took the vaguest hint on {rate:.1%} of {legs} legs, and"
-        f" WHIM={C.WHIM} predicts {target:.1%}")
-    assert target > 0.45, (
-        f"WHIM={C.WHIM} leaves her only a {target:.1%} lean on the vaguest"
-        f" hint, against {1 / 3:.1%} for a coin: that is not a strategy")
-    assert rate < 0.95, "the draw has been reverted to max"
+    assert posted / legs > 2.5, (
+        f"she averaged {posted / legs:.2f} details a leg: she is back to"
+        " hiding in the size of the answer set")
+    assert 0.05 < dropped / legs < 0.45, (
+        f"she dropped to two details on {dropped / legs:.0%} of legs;"
+        " swept at 22% and 24% on two seeds")
 
 
 def test_she_never_robs_the_same_room_twice():
@@ -205,7 +208,18 @@ def test_a_searcher_too_slow_for_the_window_never_reaches_her():
     guessed -- which is the whole of what the clock still decides now that
     nobody travels."""
     trail = C.itinerary(SEED, START, WORLD, 8)
-    widest = max(leg["prep"] + leg["dwell"] for leg in trail)
+    # The window `pursue` actually uses is three stretches, not two: her
+    # packing here, her theft there, and **her packing there before the
+    # next leg**. This test used to compute `max(prep + dwell)` and was
+    # green on it -- not because two stretches were right but because no
+    # seed had yet produced a next-leg prep long enough to matter. A
+    # verdict that depends on which trail it was handed is `CLAUDE.md`'s
+    # third shape, a coincidence drawn as a pass, and it surfaced the
+    # moment her destinations changed. It is derived from the same
+    # arithmetic now, so it cannot drift from it again.
+    widest = max(leg["prep"] + leg["dwell"]
+                 + (trail[i + 1]["prep"] if i + 1 < len(trail) else 0.0)
+                 for i, leg in enumerate(trail))
     move, _ = C.pursue(WORLD, START, "Uluru", trail, joined_at=widest + 1)
     assert move is None, "it was standing beside her after she had gone"
 
@@ -368,8 +382,8 @@ def test_nothing_she_decides_can_see_the_searchers():
     taken -- and no argument that could carry a searcher."""
     import inspect
 
-    for method in (C.Carmel.choose_destination, C.Carmel.choose_hint,
-                   C.Carmel.will_steal, C.Carmel.best_cover):
+    for method in (C.Carmel.choose_destination, C.Carmel.choose_details,
+                   C.Carmel.will_steal):
         args = set(inspect.signature(method).parameters) - {"self"}
         assert not (args & {"searchers", "hunters", "field", "turnout"}), (
             f"{method.__name__} can see the field")

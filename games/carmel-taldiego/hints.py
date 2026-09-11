@@ -83,6 +83,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from clauses import CLAUSES  # noqa: E402
 from descriptors import all_descriptors  # noqa: E402
+import re  # noqa: E402
 from secret_matrix import _prf  # noqa: E402
 
 #: The encrypted commitment. There is deliberately no plaintext counterpart
@@ -138,6 +139,108 @@ def _cap(text: str) -> str:
 
 def compose(clause: str, witness: str, frame: str) -> str:
     return frame.format(w=witness, W=_cap(witness), c=clause, C=_cap(clause))
+
+
+#: Frames that put a clause in **her own mouth**. Gal, 2026-09-11, choosing
+#: "Mixed" between a pure dossier and a pure note: *her one line plus two
+#: reports from people who saw her*. So a riddle has one narrator who is
+#: Carmel and two who are strangers, and the reader can tell which is which.
+#:
+#: Every frame quotes the clause **verbatim**. That is not a style choice:
+#: a frame that rewrote the clause to fit her grammar would be the system
+#: inventing a sentence, and an invented sentence is one nobody has checked
+#: for truth. `games/carmel-taldiego.md`, "she may lie in prose, she may not
+#: lie in a clue".
+HER_FRAMES = [
+    "One true thing, then: {c}.",
+    "You get this much from me: {c}.",
+    "I will say this and no more: {c}.",
+    "Here is your true thing: {c}.",
+    "Take it or leave it: {c}.",
+    "For the record, and only once: {c}.",
+]
+
+#: A clause she cannot say about herself in the first person, because it
+#: talks about her in the third. She can still be *reported* saying nothing
+#: while a witness says it, so these are fine in `FRAMES` and wrong in
+#: `HER_FRAMES` -- "One true thing, then: she had bought a coat" is Carmel
+#: describing herself from outside, which is nobody's voice.
+#:
+#: **Derived, not listed.** `CLAUDE.md`: where a check has to know what
+#: exists it computes that from the source and fails on what it finds. A
+#: hand-kept list of speakable clauses would drift the first time somebody
+#: wrote a new one. `test_hints.py` pins the two things this derivation has
+#: to get right: every descriptor keeps at least one speakable clause, and
+#: no speakable clause mentions her.
+_ABOUT_HER = re.compile(r"\b(she|her|hers)\b", re.IGNORECASE)
+
+
+def speakable(clause: str) -> bool:
+    """Can she say this one herself, or must a witness say it for her?"""
+    return _ABOUT_HER.search(clause) is None
+
+
+def _clause(seed: bytes, landmark: str, descriptor: str,
+            only_speakable: bool) -> str:
+    """One clause from a descriptor's bank, fixed by the seed."""
+    bank = CLAUSES[descriptor]
+    if only_speakable:
+        bank = [c for c in bank if speakable(c)]
+    digest = _prf(seed, RENDER_INFO, f"{landmark}\0{descriptor}\0her", 0)
+    return bank[int.from_bytes(digest[:8], "big") % len(bank)]
+
+
+def riddle(seed: bytes, landmark: str, details: list[str]) -> list[str]:
+    """Her line, then a report for each remaining detail.
+
+    Gal, 2026-09-11: *"hint should fit a few locations only, not many. it
+    should be hard not by revealing one assertion, but from a few details
+    that can relate in different ways but when they do there are only a few
+    results. that is, the search is over possible meanings to the words of
+    the riddle, not on possible landmarks to a fact"*.
+
+    **Which detail she speaks is not free.** It has to be one whose bank
+    holds a clause that does not mention her -- see `speakable`. Three of
+    the seventy-three descriptors have no such clause, and for those she
+    speaks one of the others and lets a witness carry that one.
+
+    The uniqueness Gal asked for in 2026-09-08 (*"per landmark, unique"*)
+    now lives on **the riddle and not the line**. It has to: a single
+    speakable clause-and-frame pair cannot be unique across the 184
+    landmarks that may carry its descriptor, and demanding that it were
+    would mean writing 184 ways to say one thing. What a reader is handed
+    is the three lines together, and `test_hints.py` pins *that* as
+    distinct per landmark.
+    """
+    order = sorted(details)
+    mine = next((d for d in order
+                 if any(speakable(c) for c in CLAUSES[d])), None)
+    if mine is None:                      # no detail she can say herself
+        mine = order[0]                   # -- never seen; kept loud below
+    lines = []
+    clause = _clause(seed, landmark, mine,
+                     any(speakable(c) for c in CLAUSES[mine]))
+    digest = _prf(seed, RENDER_INFO, f"{landmark}\0frame", 0)
+    lines.append(HER_FRAMES[int.from_bytes(digest[:4], "big")
+                            % len(HER_FRAMES)].format(c=clause,
+                                                      C=_cap(clause)))
+    used: list[int] = []
+    for i, descriptor in enumerate(d for d in order if d != mine):
+        dig = _prf(seed, RENDER_INFO, f"{landmark}\0{descriptor}\0{i}", 0)
+        n = int.from_bytes(dig[:8], "big")
+        bank = CLAUSES[descriptor]
+        # Two reports in the same frame read as one voice repeating itself,
+        # which is the opposite of what a second witness is for. Step to the
+        # next frame rather than redrawing: the walk is as fixed by the seed
+        # as the draw was, and it cannot fail to terminate.
+        f = (n // 4096) % len(FRAMES)
+        while f in used:
+            f = (f + 1) % len(FRAMES)
+        used.append(f)
+        lines.append(compose(bank[n % len(bank)],
+                             WITNESSES[(n // 8) % len(WITNESSES)],
+                             FRAMES[f]))
+    return lines
 
 
 def build(seed: bytes) -> list[tuple[str, str, str]]:
