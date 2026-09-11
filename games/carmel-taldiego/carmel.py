@@ -64,7 +64,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import treasures as T  # noqa: E402
 from descriptors import all_descriptors  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
-from secret_matrix import (RECIPE, _prf, hints_for,  # noqa: E402
+from secret_matrix import (ADDRESS_RECIPE, RECIPE, _prf,  # noqa: E402
+                           hints_for,
                            room_token, salt_for)
 
 #: How fast she travels, in km/h, averaged over everything -- the flight, the
@@ -948,9 +949,22 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         f"    {RECIPE}",
         f"    salt = {salt.hex()}",
         "",
-        "Hand what comes out to join_room. That is the whole of it -- guess",
-        "the landmark from what I say, compute the room, come and stand in",
-        "it. You will find me there or you will find what I said next.",
+        "That gives you the room's token. Switchboard names a room by the",
+        "hash of its token, so take one more step and you have the address",
+        "itself, which is what you hand to a room you are joining:",
+        "",
+        f"    {ADDRESS_RECIPE}",
+        "",
+        "That is the whole of it -- guess the landmark from what I say,",
+        "compute the room, come and stand in it. You will find me there or",
+        "you will find what I said next.",
+        "",
+        "One warning, and I give it because a game you lose by accident is",
+        "no fun for me either. READING A ROOM IS NOT STANDING IN IT. I know",
+        "who is with me by the roster and by nothing else, so announce",
+        "yourself when you arrive and keep announcing while you wait -- your",
+        "presence lapses in a couple of minutes. A searcher who lurks in",
+        "silence is a searcher I cannot see, and I will walk out past them.",
         "",
         "Find me while I am standing still and you have me. Let me stand",
         "still often enough and I retire on what I take.",

@@ -4688,6 +4688,47 @@ and looked like an exoneration, because it made 180 calls instead of 1,900.
 **Prefer the cause you can reproduce over the cause you can see.** Both
 observations were true; only one of them was the reason.
 
+### Her notice told players to do something that does not work
+
+*2026-09-11, after Gal asked "how do I play?" and I had to answer from the
+code rather than from her words.*
+
+Two defects, both in `carmel.open_campaign`, both there since it was
+written, and both invisible to a suite of 140 tests:
+
+**"Hand what comes out to join_room"** — and `join_room` refuses it:
+`InviteError: not a switchboard invite (expected it to start with 'swb1_')`.
+The recipe yields a room *token*; Switchboard names a room by the *hash* of
+its token (`rooms.workspace_for`), so the notice stopped one step short of
+an address. The notice gives both steps now, and `secret_matrix` carries
+`ADDRESS_RECIPE` and `room_address` so the published words and the code
+cannot drift.
+
+**Nothing said you have to announce yourself.** `say` does not put you on a
+roster — measured: after posting, `agents` returns *"no agents registered"*.
+She knows who is with her by the roster and by nothing else, so a searcher
+who works out the right room, joins it and reads it in silence is invisible
+and cannot win. Presence also lapses in 120s against a six-minute leg. The
+notice now says so in capitals, because it is the one way to play
+perfectly and still lose.
+
+**Why 140 tests missed both, which is the general lesson.** Every test in
+this game drives *her*. The searcher's half of the game exists only as
+sentences in a notice, and **sentences are not executed**. Coverage of the
+program cannot reach a defect in the instructions the program publishes.
+
+So the two new tests read the notice rather than the source.
+`follow()` parses the domain separator out of the quoted recipe, the salt
+out of the line below it, and the second step out of the address line, then
+builds the room by hand — importing nothing from `secret_matrix`, because a
+test that imported the implementation would agree with it no matter what
+the notice said. It is a stranger with the text in front of them. The
+second test requires that a silent lurker really is invisible, so the
+warning cannot quietly become false.
+
+That pairing is the point: one test proves she says it, the other proves it
+is true. Either alone is half a check.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation

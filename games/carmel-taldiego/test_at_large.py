@@ -15,7 +15,10 @@ raising `NOTICE_TTL_HOURS` over a campaign's length; the end-to-end ones by
 posting the notice with no ttl at all, and by having her ignore the roster.
 """
 
+import base64
+import hashlib
 import os
+import re
 import statistics as st
 import sys
 from pathlib import Path
@@ -331,6 +334,100 @@ def test_she_keeps_going_and_never_shows_two_notices(board, monkeypatch):
     assert standing == [1, 1], (
         f"notices legible at each open: {standing}"
         " -- anything but 1 is two salts on one screen")
+
+
+# --- her notice, taken at its word -----------------------------------------
+
+
+def follow(notice: str, landmark: str) -> tuple[bytes, str]:
+    """Do what the notice says, using only what the notice says.
+
+    Nothing from `secret_matrix` is imported here on purpose. This is a
+    stranger with the text in front of them: it pulls the domain separator
+    out of the quoted recipe and the salt out of the line below it, and
+    builds the address by hand. If the notice's wording stops describing
+    what the code does, this stops producing her room.
+    """
+    recipe = next(l for l in notice.splitlines() if "sha256(" in l)
+    info = re.search(r'sha256\("([^"]+)"', recipe).group(1)
+    salt = bytes.fromhex(
+        next(l for l in notice.splitlines() if "salt = " in l).split("= ")[1])
+
+    # the order the recipe states, byte for byte
+    assert recipe.index("salt") < recipe.index("name"), recipe
+    assert "0x00" in recipe, recipe
+    token = "w_" + hashlib.sha256(
+        info.encode() + b"\x00" + salt + b"\x00" + landmark.encode()
+    ).hexdigest()
+
+    address = next(l for l in notice.splitlines() if "base64url" in l)
+    assert "sha256(token)" in address and "[:22]" in address, address
+    room = "w_" + base64.urlsafe_b64encode(
+        hashlib.sha256(token.encode()).digest()).decode().rstrip("=")[:22]
+    return salt, room
+
+
+def test_a_stranger_who_does_exactly_what_the_notice_says_reaches_her(board):
+    """The test this game never had, and the reason two defects survived
+    into a live game.
+
+    Every other test here drives *her*. The searcher's half of the game
+    exists only as sentences in `carmel.open_campaign`, and sentences are
+    not executed -- so the notice told players to *"hand what comes out to
+    `join_room`"*, which refuses a bare token outright, and nobody found out
+    until Gal and I tried to play on 2026-09-10.
+
+    So this follows the notice rather than the source: it parses the recipe
+    and the salt out of the posted text and rebuilds the address by hand. A
+    notice that stops matching the code stops reaching her room, and this
+    goes red.
+    """
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
+
+    notice = C.open_campaign(seed, C.LOBBY_LANDMARK)
+    salt, room = follow(notice, first["to"])
+
+    # the address the notice describes is the room she is really in
+    assert room == Rooms.workspace(room_token(first["to"], salt))
+
+    # and standing in it, as the notice says to, is what she can see
+    searcher = board.client(agent_id="stranger", workspace=room, key=KEY)
+    searcher.register(name="stranger", kind="searcher", ttl=3600)
+    result = driven(board).run(seed)
+    assert result["outcome"] == "caught"
+    assert result["by"] == "stranger"
+
+
+def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
+    """The other defect the same afternoon, and the crueller one.
+
+    `say` does not put you on a roster -- only announcing does -- so a
+    searcher who works out the right room, joins it and reads it in silence
+    is invisible to her and cannot win. The notice said nothing about it.
+
+    Asserted on her words *and* on the mechanism, because either alone is
+    half a check: the first paragraph proves she warns them, the second
+    proves the warning is true.
+    """
+    notice = C.open_campaign(bytes.fromhex("55" * 32), C.LOBBY_LANDMARK)
+    assert "READING A ROOM IS NOT STANDING IN IT" in notice
+    assert "announce" in notice
+
+    seed = bytes.fromhex("55" * 32)
+    world = C.Map(seed)
+    first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
+    _, room = follow(notice, first["to"])
+
+    lurker = board.client(agent_id="lurker", workspace=room, key=KEY)
+    lurker.post(L.CHANNEL, "I am here, surely that is enough")
+    assert lurker.agents() == [], (
+        "posting put somebody on the roster, so the warning is now false")
+
+    result = driven(board).run(seed)
+    assert result["outcome"] != "caught", (
+        "a silent lurker was caught, so the notice's warning is wrong")
 
 
 # --- a hub that is allowed to stumble --------------------------------------

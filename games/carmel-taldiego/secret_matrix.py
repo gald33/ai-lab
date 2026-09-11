@@ -38,6 +38,7 @@ starts from a map nobody has seen.
     python3 games/carmel-taldiego/secret_matrix.py
 """
 
+import base64
 import hashlib
 import hmac
 
@@ -102,7 +103,31 @@ SALT_INFO = b"hue-and-cry/v1/salt"
 #: `subscribe`, `unsubscribe`, `leave`, `rendezvous`, `help`, `switchboard`,
 #: `session_*`, `board_*` -- and **not one of them hashes**. The game must
 #: not require a tool nobody was given.
-RECIPE = 'room = "w_" + sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)'
+RECIPE = 'token = "w_" + sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)'
+
+#: The second step, and it is Switchboard's rather than ours.
+#:
+#: `rooms.workspace_for` names a room by the hash of its token, so the token
+#: alone is not an address -- and the notice used to stop at the first line
+#: and say "hand what comes out to join_room", which **refuses it**:
+#: `InviteError: not a switchboard invite (expected it to start with
+#: 'swb1_')`. That was wrong from the day it was written and nothing caught
+#: it, because every test in this game drives *her* and the searcher's side
+#: existed only as words in a notice. Found by trying to play, 2026-09-10.
+ADDRESS_RECIPE = 'room = "w_" + base64url(sha256(token))[:22]'
+
+
+def room_address(landmark: str, salt: bytes) -> str:
+    """The wire identifier a searcher actually joins, from a name and a salt.
+
+    Both steps of the published recipe, in one place, so the notice and the
+    test that follows it cannot drift from each other. It is deliberately
+    the same arithmetic as `switchboard.rooms.workspace_for` and is checked
+    against it in `test_rooms_from_names`.
+    """
+    digest = hashlib.sha256(room_token(landmark, salt).encode()).digest()
+    return ROOM_PREFIX + base64.urlsafe_b64encode(
+        digest).decode().rstrip("=")[:22]
 
 ROOM_PREFIX = "w_"
 
