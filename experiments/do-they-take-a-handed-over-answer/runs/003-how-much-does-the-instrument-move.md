@@ -164,6 +164,31 @@ whose spread on the same cell is 1.03. Run 002's null, 006's null, 005's three
 negatives: none of them measured what their records claim, and none should be
 cited.
 
+> **Scope, added 2026-09-11.** *The paragraph above stands as written and is
+> not edited. What it lacks is the correction beside it that standing decision
+> 3 asks for, and the omission has now cost something — see below.*
+>
+> **It retires the captured-gain endpoint, not paired differences as such**,
+> and it speaks of what this lab *had* reported by 2026-08-24, not of what it
+> may report after. Both limits are real and neither is written above:
+> `PREREGISTRATION-v3.md`, "What forced a new endpoint", puts captured gain's
+> run-mean sd at **0.229** against **0.085** and **0.073** for the two bounded
+> shares, and calls the move "a change of instrument rather than of question".
+>
+> **Runs 004 and 005 then reported a paired between-cell difference on the
+> bounded endpoint, and it stands**: share ruined, sign-agreeing across two
+> passes on the same seeds, pooled −0.108 / −0.118 / −0.161 over 24 seeds. They
+> cite this run's *noise predictions* (004's A1, 005's instrument check) and
+> never this paragraph, which is exactly how the gap stayed invisible.
+>
+> **How it was found.** An agent drafting across the lab's experiments read
+> this run record, quoted the sentence to its principal as the current lab
+> position, and had to retract it. That is the failure mode the standing
+> decision exists to prevent, arriving by a route it does not cover: the
+> convention keeps a correction visible *within* a document, and here the
+> superseding statement lives in a **pre-registration for a later run**, which
+> nobody re-reading this record has a reason to open.
+
 **What survives, unchanged.** Absolute measurements against a closed form, and
 counts too lopsided for noise to explain:
 
