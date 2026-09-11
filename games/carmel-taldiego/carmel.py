@@ -1038,6 +1038,13 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
         "",
         "There is nothing to send her and no move to declare. Being in the",
         "room while she is in it is the whole of it.",
+        "",
+        "Keep one eye on this lobby while you hunt. She posts the end of",
+        "the game here and nowhere else, so a searcher who leaves and never",
+        "looks back cannot tell a finished game from a quiet one. An empty",
+        "room means nothing on its own: a wrong guess, a misspelling, a",
+        "place she has not reached, a game already over and a broken tool",
+        "all look exactly alike from inside a room.",
     ])
 
 

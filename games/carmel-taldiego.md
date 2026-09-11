@@ -4928,6 +4928,73 @@ file is not a fair game**, and hiding the file is the weaker fix — the
 strong one is that she should not be writing a plaintext trail on a machine
 her pursuers run on at all.
 
+### The first real catch, and what it convicted
+
+*2026-09-11, second hunt, on ground the searchers could not read.* Three
+agents chased her from **"somebody made this by hand"**. One caught her:
+
+    Stonehenge   carmel  registered 10:35:20    she arrives, starts robbing
+                 near    registered 10:36:36    a searcher walks in
+    close posted                   10:36:39
+
+**Seventy-six seconds**, and the searcher arrived *after* she did — walked
+in on the theft, which is the mechanic exactly as specified. Her record was
+outside their world this time, so the catch is hers to lose rather than
+mine to hand over.
+
+**And the winner refused the flattering account of its own win**, which is
+the finding:
+
+> *Stonehenge sat at line 129 of 151. I treated the clue as
+> non-discriminating and spent my effort on coverage instead of inference.
+> Call it a clean sweep rather than a clean deduction.*
+
+It held all 151 rooms in one 13-second pass. A second searcher reached the
+same conclusion independently and without conferring: *"the clue does not
+discriminate, so it gave me no ranking and I did not invent one"* — and
+swept 898. **Two of three abandoned inference, correctly, because there was
+nothing to rank with.**
+
+So the live game says what no sweep of `pursue` could: **`WATCH` is the
+whole difficulty, and `WATCH` is not enforced.** Every capture rate in this
+file was measured against a searcher that watches one room. A real one
+watches nine hundred. The coordination premium those numbers were tuned to
+maximise is a property of a constraint the game does not impose, and
+`REPUTATION_TO_WIN`, `PREP` and `NEAR_KM` are all calibrated inside that
+fiction.
+
+**What the clue vocabulary would have to become.** Not narrower for its own
+sake: the point is that a descriptor must *rank* candidates, not merely
+admit them. *"Somebody made this by hand"* excludes waterfalls and
+mountains and nothing else. *"A crown still on the coins"* — the other clue
+drawn that day — cuts the world to a dozen countries, and is the shape to
+aim at.
+
+### Three holes the run found that no test could
+
+**A searcher cannot tell a finished game from a quiet one.** Reported by
+the searcher that swept 898 rooms for twenty minutes after she had already
+been caught: *"an empty room and a dead holder produce the same silence, so
+'no clue yet' gave me no signal to distinguish a working search from a
+broken one -- which is why I kept hardening the mechanism instead of
+questioning the premise."* The close is posted in the lobby, and a searcher
+deep in a hunt left the lobby long ago. The notice now says so, and says
+that silence is ambiguous between five different states.
+
+**The slices leaked into each other.** `nordic` was in **151** of `far`'s
+rooms — Egypt, the Levant, Turkey and the Balkans doubly covered — while
+East and South Asia, the Americas, Oceania, sub-Saharan Africa and
+Scandinavia were held by one searcher between them. That is the
+coordination waste the experiment exists to measure, produced in a live
+game by comparing rosters, and the division that failed was hand-drawn by
+the coordinator. It is only visible *because* presence is public: the one
+thing a searcher cannot learn alone.
+
+**The process table is a hole in any directory wall.** `pgrep -af` prints
+other searchers' full command lines, heredocs included, so target lists
+leak regardless of where the files live. Found by a searcher auditing its
+own cleanup, after the catch, against its own interest.
+
 ### What is still missing before anybody can actually play
 
 **Where she runs.** This repo publishes a static site; a standing invitation
