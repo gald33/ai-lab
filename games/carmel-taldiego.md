@@ -3351,6 +3351,13 @@ Re-check: `python3 games/carmel-taldiego/trail_card.py --survey`. A whole-world 
 pixels wide, which is why the card is the box at a readable scale with the
 world as a locator inset.
 
+> **The second sentence is superseded, 2026-09-12 — the world is the card's
+> main panel now.** See "The world is the map, and the chase is not on it"
+> below, which also measures the first: over 200 campaigns a campaign draws
+> a median 46px across on a 1000px world, not three, and what does not fit
+> at that scale is the writing beside its stops. The claim that demoted the
+> world was never measured in pixels.
+
 It also qualifies the sentence the section above is named after. *"There
 are 1000 landmarks, every one of them is a possibility"* is true of the map
 and false of any single campaign, which touches four countries and never
@@ -5165,6 +5172,316 @@ discovered later: **every calibration in this game was swept against this
 map** — `WATCH`, `PREP`, `NEAR_KM`, `REPUTATION_TO_WIN` — and the gazetteer
 is part of the level key by this document's own rule, so a redraw re-opens
 all of them. Not done here, and not started without a go.
+
+## The world is the map, and the chase is not on it
+
+*Gal, 2026-09-11: "Hue and cry: can we show the chase on the map?" -- then,
+when the first answer was a survey of options, the two sentences that
+settled it: "only landmarks carry coordinates" and "don't have to say
+anything to play". Then "I want a world map", and "I don't think we can
+show live game".*
+
+Two questions in one, and they have opposite answers. **The chase cannot be
+drawn at all. The world can be, and is now the card's main panel.**
+
+### A searcher cannot be plotted, and that is not a disclosure judgement
+
+The first draft of this answer treated "should we draw the searchers"
+as a leak to be weighed -- their watched rooms are landmarks she did not
+visit, so drawing them hands over samples of the descriptor relation, and
+the card's rule is "ask what the picture saves a searcher". True, and
+beside the point. **Only landmarks carry coordinates**, so there is no
+position in this game that is not a landmark's: a mark for a watcher *is* a
+mark on a landmark. It is a contradiction rather than a trade-off.
+
+**And the reverse is worse.** There is no membership oracle -- "The
+measurement that reframes it" above -- so a real searcher's guess is a
+string, and a string is a room whether or not the gazetteer has ever heard
+of it. `Gal's Kitchen Table` has no coordinate. A chase map can therefore
+only draw the guesses that happened to land in the thousand, which are the
+*near* ones, and it would show the field closing in while most of it was
+nowhere near. That is a selection effect drawn as scenery, and it is
+`CLAUDE.md`'s "absence drawn as a pass" with a coastline behind it.
+
+### And there is no record of a chase to draw even where there are coordinates
+
+**Searchers say nothing at all**, which is a design decision three sections
+of this document rest on. The only event any participant witnesses is
+somebody standing in the room she is standing in, and that event *ends the
+game*. A searcher who waited in the wrong room, or in the right room an
+hour late, was seen by nothing: not by her, since `_leave` takes her off
+the roster of the room she has finished with; not by a manager, since there
+is not one; and not by the hub, which answers `GET /agents` live and keeps
+no durable join log ("What that costs, which is verifiability").
+
+So the pursuit is not data being withheld. It does not exist, and cannot be
+reconstructed afterwards. Everything a chase layer could have drawn would
+have been `carmel.pursue` -- a *model* of a searcher, which `chase` does not
+even return: it keeps `caught_on` and the lags and throws the watched rooms
+away. Drawing that and calling it the chase is the weaker thing wearing the
+stronger one's clothes.
+
+**The obvious repair is the one thing that must not be built.** Letting
+searchers report where they are watching would be a second surface, it
+would make silence a disadvantage in a game that deliberately allows silent
+play, and -- worst -- it would *pay people to talk*, when the distance
+between `alone` and `split` is the only quantity this experiment measures.
+Instrumentation that rewards the treatment is not instrumentation.
+
+*Recorded because it has now been proposed twice in one afternoon by the
+same person, who was me.*
+
+### What the card draws instead, which is the world
+
+The still card was the campaign's bounding box at a readable scale with the
+world as a 232x116 locator in the emptiest corner. It is the same two
+pictures with their sizes swapped: **the world, full width, with her trail
+on it and a dashed frame round it; and that frame enlarged below, carrying
+the stops, the hints and what she took.** The locator inset is gone, since
+the panel above it is the thing it pointed at.
+
+    python3 games/carmel-taldiego/trail_card.py --out /tmp/trail.svg
+
+Nothing new was needed to draw it. The locator was already a whole-world
+Mercator camera at `scale = its width`; the world panel is that camera at
+`scale = WIDTH`, over the same coarse coastline layer the locator used
+(52 shapes, 1,958 points, against the detailed layer's 29,949). Decimation
+is honest here in a way it was not for the flight, whose level-of-detail
+scheme was built and deleted because every zoom closer than the crushed
+layer still needs the real one: **a still card never zooms.**
+
+The band is fixed at 75N to 56S and stated rather than fitted, because
+Mercator has no poles to draw and a band fitted to the campaign would make
+six published cards six different maps -- and a band fitted to the
+*gazetteer* would be a statement about where the thousand are. One landmark
+of the thousand sits north of it; a campaign that reaches it widens the
+band, which discloses nothing her own trail does not.
+
+### The claim that demoted the world had never been measured in pixels
+
+`trail_card.py`'s docstring said a whole-world drawing renders the chase as
+"a smudge three pixels wide", and that sentence decided the card's shape for
+three days. Over 200 campaigns (`trail_card.py --survey`, which prints these
+two rows now precisely so the next claim about a drawing is a measurement):
+
+```
+world-scale extent   median 46.2 px   min 0.2   max 288.8
+closest two stops    median 11.7 px   min 0.0   max 110.1
+```
+
+Legible, and nothing like three pixels; the six published seeds run 14 to
+155px. **The extent was never the obstruction.** What does not fit at that
+scale is the writing -- a median campaign is a twentieth of the card wide
+and one stop's label is 17px on three lines -- and in the long tail, at
+nineteen legs, two stops land on the same pixel. Both are answered by an
+enlarged panel and neither by a bigger world map, which is why this is two
+panels rather than a choice between them.
+
+*Measured twice in one sitting and it moved both times.* The first run said
+106.8px and 2.9px over campaigns of 13 legs; then #264 made the hint a
+riddle, campaigns fell to a median 2.5 legs, and the same command said
+46.2px and 11.7px. Neither is wrong. **Campaign shape is downstream of
+every parameter in `carmel.py`** -- "Framing it found the thing the numbers
+had not said" has said so since the third time, and this is the fourth, so
+what the card's shape rests on is the command and not the digits.
+
+Note what the wrong diagnosis cost: it was not that the card was bad, it
+was that **a fixable problem was recorded as a physical limit**, and a
+limit is not something anybody re-examines. The number that would have
+caught it -- pixels, at the width the card is actually drawn -- took four
+lines to measure and nobody had run them.
+
+### Drawing the world found two defects, one vacuous test, and a broken command
+
+**A leg across the antimeridian was drawn back across the Atlantic.** `fit`
+has unwrapped the *stops* since the card was written -- there is a test
+named for it -- and nothing was unwrapping the line between them. Invisible
+while every campaign was European, and unmissable on a world panel. `laid`
+now unwraps the polyline and emits it at every turn of the world the frame
+can see, which is one path usually and two for a leg that leaves one edge
+and arrives at the other.
+
+**The leaders joining labels to pins were invisible.** They were drawn in
+`INK["rule"]`, the chrome's hairline, which is darker than both the land
+and the sea it has to cross. Every test about label placement passed --
+they were placed correctly -- while on screen half the labels floated free
+of the trail with nothing to say which room they were about. At three stops
+nobody noticed; at eighteen the card stops being readable. The new
+`INK["leader"]` is asserted to out-luminance the land, the sea and the
+card's ground, which is a check that can go red for the reason it names.
+
+**And the file's own command was broken on `main` and nobody had typed
+it.** #264 renamed a leg's `hint` to its `details`; `card` was updated and
+`main`'s summary print was not, so `trail_card.py --seed ...` wrote the card
+and then died with a `KeyError` -- the command this module's docstring hands
+a reader, failing on every run, with the whole suite green because every
+test in it calls `card()` and none called `main()`. Found by running it.
+Fixed here rather than filed, since it is a line in the file this branch is
+already rewriting, and `test_the_command_in_the_docstring_runs` now runs it
+as a subprocess so the script path has a check at all.
+
+*And its other half was named after a seed, which lasted about an hour.*
+The same test asserted that a card *draws* a leader, on a seed that drew
+ten of them -- until #264 landed, campaigns fell from eighteen legs to two,
+no label had to move, and the assertion went green over a card with nothing
+to join. The seed is searched for now, and finding none in forty-eight is a
+failure rather than a pass. **A test named after a seed is a test named
+after a campaign shape**, which is the one thing in this game nothing may
+be named after.
+
+**And the caption test was green over an untaken branch.** The span caption
+sits beside the frame and flips to the other side when it would run off the
+card; disabling the flip left the test passing, because on every seed the
+file draws she stays left of centre. The frame that exercises it is built by
+hand now rather than hunted for in a seed. `CLAUDE.md`'s third shape, found
+by the habit the same file prescribes: break it on purpose and watch.
+
+### And the flight opens on the world and ends back out at it
+
+*Gal, 2026-09-12: "do the flight too."*
+
+    globe   the whole world, and a box round the corner she stays in
+    fade    a dissolve, not a zoom
+    ...     the holds and the flights, as before
+    fade    back out
+    globe   the same box, with the whole trail drawn in it
+
+**The dissolve is the whole reason the shots are affordable**, and it
+answers the objection that killed the level-of-detail scheme rather than
+ignoring it. That scheme failed because any zoom close enough to be honest
+still needs the detailed coastline, so a crushed layer pops when it is
+swapped in mid-move. A cut makes no claim about the ground in between:
+there is no zoom at which both layers are on screen. So the world shot is
+the coarse layer — 1,958 points, 4% of the map, the same layer the card's
+world panel uses — and the flight keeps its clipped corridor, and neither
+is ever a lie about the other. `test_the_flight_itself_never_sits_at_world
+_scale` is what stops that quietly ceasing to be true.
+
+**The opening shot shows the box and not the trail.** Where, not what — a
+film that opens on its own ending is not a film, and the trail has not
+happened yet. It is also the one thing about these shots that a test can
+see going wrong, so it has one.
+
+The reduced-motion reader now lands on the closing world shot instead of
+the closing corridor shot, which is strictly more of the answer in one
+frame: the whole trail, and how small a corner of the world it happened in.
+
+### And a chase you win is a link she hands you
+
+*Gal, 2026-09-12: "at the end of a chase, if you catch her, your agent can
+give you a link to a website that shows your chase animation."*
+
+**Her post is the only place it can come from, and that is the design
+rather than a shortcut.** A searcher's agent never saw where she went --
+only where it stood, which is the whole of "A searcher cannot be plotted"
+above. So "your agent gives you a link" reduces to an agent passing on what
+she published, and what she publishes on a catch already includes her whole
+run: `close_campaign` hands over the route, the treasures and the seed,
+because *"being handed the run is the prize for taking her"*. The link is
+that same prize, drawn.
+
+It goes out on a catch only, like the table it sits under. She got away, she
+owes nobody a film.
+
+**The chase is in the address, and the page is static.**
+`trail_flight.link` gzips the plan into the fragment; `trail_flight.viewer`
+is the built flight page with no chase baked into it, published by
+`build_site` at `/carmel-taldiego/chase/`. Nothing after the `#` ever
+reaches the host, so the link works forever, costs nobody a server, and no
+one is told that anybody watched.
+
+Three things come out of the payload because the page can get them for
+itself, and none of them is a fact about the chase:
+
+| | | |
+|---|---|---|
+| the geometry | the world is the same world every time | `chase/basemap.js`, ~790 KB, cached once across every chase anybody is sent |
+| `centres` | it was a second copy of `path` in unit space | a division |
+| most of each arc | `LINK_POINTS = 28` of 65 | tens of kilometres per segment on a camera showing hundreds |
+
+What is left is 1 KB of address for a chase that ended in two rooms and
+about 7 KB for the longest in the published six. Before those three, the
+long one was **45 KB**, which is not a link, it is a file with a colon in
+it.
+
+### It is a credit scene, which is a statement about what it is for
+
+*Gal, 2026-09-12, confirming the shape and naming it: "the page is
+stateless. it gets a bundle in the url, and the url gets to the agent from
+Carmel when she is beaten. That is the **credit scene** reward when the game
+is won."*
+
+Three facts and a purpose, and the purpose is the part that was not written
+down. Stateless page, bundle in the address, minted by her and relayed by
+the agent -- all three are what is built. What "credit scene" adds is that
+**this is the ending of a game somebody won**, not a report on a campaign,
+and that immediately found something missing: the page named nobody.
+
+So the closing shot carries the credit: *taken by <the name they registered
+under>*. On the shot the film ends on, and only there -- the opening shot is
+before any of it happened. **Absent from the published six**, because those
+were caught by `carmel.pursue`, which is a model with no name, and filling
+it in with something plausible is the weaker thing wearing the stronger
+one's clothes.
+
+**A stranger's string in somebody else's address.** The name is whatever a
+searcher typed on a roster; she mints it into a link; a third person opens
+it. That is the shape of every injection, and `textContent` is what makes it
+safe rather than a hope -- with a check that a name made of markup arrives
+as characters and never as an element.
+
+And the end-to-end claim is not that an address exists, it is that the film
+credits the person who actually walked in on her. The live test opens the
+address and reads the name out of it, because every step between the roster
+and the fragment can drop it and `_watch` swallows its own failures by
+design. Dropping `by` there passed for one round before that check existed,
+which is exactly the round it was written for.
+
+**The third seed-shaped test in one branch.** The ceiling above was first
+asserted over three named seeds, every one of them a two-leg campaign under
+the riddle -- so raising `LINK_POINTS` to 9,999 left it green. It searches
+79 seeds for the longest campaign now and fails if none is longer than
+eight. That is the same defect as the leader check earlier in this section
+and as `test_the_command_in_the_docstring_runs`'s absence: **a check named
+after a seed is a check named after a campaign shape**, and campaign shape
+is the one thing in this game that moves under every parameter.
+
+### What it costs, stated rather than absorbed
+
+```
+card, vectors only     148 KB -> 167 KB      (+ the coarse world)
+card, with imagery     675 KB -> 889 KB      (30 -> 43 NASA tiles)
+published site         1.1 MB -> 1.2 MB vectors, 3.7 MB -> 4.9 MB as deployed
+   and, with the chase viewer and its copy of the map,      -> 5.8 MB
+```
+
+**The deployed figure is the one that counts** and is a third more, since
+`pages.yml` builds with `--imagery`: the world panel is a photograph of the
+whole world and there is no cheap way to be that.
+
+One seed, the longest of the published six, measured in a worktree at
+`origin/main` beside this branch rather than remembered. The world panel
+fetches its own tiles at zoom 2 -- thirteen of them, one turn of the world
+at 1024px, the zoom that matches the width rather than a stretched one. The
+card is also about 500px taller. Both are paid for a panel that is most of
+what a reader now looks at, which is the trade being made and not an
+overrun.
+
+### What it still refuses, and the one thing it newly says
+
+Unchanged, and now checked over two panels rather than one: **no landmark
+is named but the ones she visited**, and the count of plotted points is
+asserted exactly -- two per stop, one per panel, plus the ring on a catch
+-- rather than as a ceiling, because a ceiling met by coincidence is how
+the locator's circle hid in the slack the last time.
+
+**What a world map newly hands a reader is the scale of her near-bias.**
+Six cards all staying inside one region draws `NEAR_KM` at about 2,500 km,
+where before it was only stated. That bias is public on purpose -- it is
+the only public term in her score, and it is what makes watching a skill --
+so this is consistent rather than a leak. It is written down because it is
+the first time the magnitude is *shown*, and because "the data is public"
+is the sentence this document has twice caught itself hiding behind.
 
 ## What would have to be built, in order
 

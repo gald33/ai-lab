@@ -363,6 +363,63 @@ def test_a_stranger_standing_in_the_room_is_the_whole_catch(board):
     assert result["reputation"] == 0, "an interrupted theft is not banked"
 
 
+def test_the_catcher_is_handed_a_chase_to_watch(board):
+    """Gal, 2026-09-12: *"at the end of a chase, if you catch her, your
+    agent can give you a link to a website that shows your chase
+    animation."*
+
+    The searcher still says nothing and asks for nothing: it stands in the
+    room, and what it reads afterwards is her closing post. The link is in
+    that post, so an agent that can read the lobby can hand its human a
+    film -- which is the only shape this game's asymmetry allows, since a
+    searcher never saw where she went.
+
+    Driven live rather than through `close_campaign` directly, because what
+    is being checked is that the *runtime* mints it: `_watch` swallows its
+    own failures on purpose, so a broken link here is a silent one.
+    """
+    seed = bytes.fromhex("55" * 32)
+    salt = salt_for(seed)
+    world = C.Map(seed)
+    first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
+
+    searcher = board.client(agent_id="searcher",
+                            workspace=Rooms.workspace(
+                                room_token(first["to"], salt)),
+                            key=KEY)
+    searcher.register(name="searcher", kind="searcher", ttl=3600)
+
+    result = driven(board).run(seed)
+    assert result["outcome"] == "caught"
+
+    lobby = board.client(agent_id="reader",
+                         workspace=Rooms.workspace(L.lobby_token()), key=KEY)
+    said = [m["body"] for m in lobby.history(L.CHANNEL, limit=200)]
+    closing = [body for body in said if "seed = " in body]
+    assert closing, "she never closed the campaign"
+
+    import base64
+    import gzip
+    import json
+
+    import trail_flight as TF
+    address = [line.strip() for line in closing[-1].splitlines()
+               if TF.CHASE_PAGE in line]
+    assert address, f"no chase to watch in:\n{closing[-1]}"
+    assert len(address[0]) > len(TF.CHASE_PAGE) + 200, "an empty address"
+
+    # **And the credit is really in it.** Gal, 2026-09-12: the link is the
+    # *"credit scene" reward when the game is won*, so the end-to-end claim
+    # is not that an address exists -- it is that the film names the person
+    # who walked in on her. Checked by opening the address, because every
+    # step between the roster and the fragment is a step that can drop it,
+    # and `_watch` swallows its own failures by design.
+    body = address[0].split("#", 1)[1]
+    plan = json.loads(gzip.decompress(base64.urlsafe_b64decode(
+        body + "=" * (-len(body) % 4))))
+    assert plan["by"] == "searcher", f"no credit in the chase: {plan['by']!r}"
+
+
 def test_she_is_caught_in_the_room_she_is_packing_in(board):
     """Gal, 2026-09-11: *"she could be caught whenever she is in the room
     with a player, nevermind her state. You don't have to wait for her, you

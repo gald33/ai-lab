@@ -101,3 +101,22 @@ def test_the_page_needs_nothing_from_the_network(site):
     loaded = re.findall(r'(?:src|href)\s*=\s*"(https?://[^"]+)"', page)
     assert all(u.startswith("https://github.com/") for u in loaded), loaded
     assert "<script" not in page.lower()
+
+
+def test_the_link_points_at_where_the_site_actually_puts_the_viewer(tmp_path):
+    """`trail_flight.CHASE_PAGE` is what every chase link she posts points
+    at, and this is what writes the page it points at. Two places, one
+    fact -- so it is derived from the tree rather than agreed by hand, per
+    `CLAUDE.md`'s rule about inventories that drift.
+    """
+    import trail_flight as TF
+
+    BS.build(tmp_path, imagery=None, count=1)
+    tail = TF.CHASE_PAGE.rstrip("/").split("/")[-1]
+    published = tmp_path / tail / "index.html"
+    assert published.exists(), f"nothing published at {tail}/"
+    assert (tmp_path / tail / "basemap.js").exists()
+    assert "BASEMAP" in (tmp_path / tail / "basemap.js").read_text()
+    assert 'src="basemap.js"' in published.read_text()
+    assert 'id="data"></script>' in published.read_text(), (
+        "a chase was baked into the page every link opens")

@@ -32,6 +32,35 @@ labels, on purpose (`build_basemap.py`), so a room's surroundings *are* its
 coast and its border, and those are exactly what the hint vocabulary talks
 about.
 
+IT OPENS ON THE WORLD AND ENDS BACK OUT AT IT. Gal, 2026-09-11: *"I want a
+world map"*, and the next day, *"do the flight too"*. The still card answers
+that with two panels, the world and the box enlarged; a film has the move
+the card does not, which is to start wide and come back.
+
+    globe   the whole world, and a box round the corner she stays in
+    fade    a dissolve, not a zoom
+    ... the holds and the flights, as before ...
+    fade    back out
+    globe   the same box, with the whole trail drawn in it
+
+**The dissolve is what makes the shots affordable**, and it is a real
+argument rather than a stylistic one. A camera that zoomed continuously
+from the world to a valley would be *looking at* the world on the way, so
+the page would have to carry the whole basemap -- 45,548 points against the
+corridor's couple of thousand -- and the two schemes for avoiding that were
+built and deleted (`basemap.near`, and `games/carmel-taldiego.md`, "Two
+schemes to make the page lighter"). Their objection was that any zoom close
+enough to be honest still needs the detailed layer, so a crushed one pops
+when it is swapped in. A dissolve between two shots makes no claim about
+the ground in between: there is no zoom at which both layers are on screen,
+so the world shot can be the coarse layer (1,958 points, 4% of the map) and
+the flight the detailed one, and neither is ever a lie about the other.
+`test_the_flight_itself_never_sits_at_world_scale` is what keeps that true.
+
+**The opening shot shows the box and not the trail.** Where, not what: the
+trail has not happened yet, and a film that opens on its own ending is not
+a film. On the way out the same box holds all of it.
+
 THE SAME REFUSALS AS THE STILL CARD, AND ONE MORE THAT MOTION ADDS.
 It draws no exits and names no landmark but the trail's own -- see
 `trail_card.py` and `games/carmel-taldiego.md`, "Three maps". Motion adds a
@@ -52,6 +81,8 @@ alternative is asserting on a transform string and hoping.
 from __future__ import annotations
 
 import argparse
+import base64
+import gzip
 import json
 import math
 import os
@@ -98,6 +129,20 @@ LEG_PAD, FINAL_PAD = 0.55, 0.35
 #: about 1,500 km against a 500 km hold, so most legs pull back on their
 #: own; this is the floor under the short ones.
 MIN_PULL = 2.4
+
+#: The opening and closing world shots, and the dissolve between each and
+#: the flight, in milliseconds.
+#:
+#: **They are cuts and not zooms, and that is the whole reason they are
+#: affordable.** A camera that zoomed continuously from the world to a
+#: valley would be *looking at* the world on the way, so the page would have
+#: to carry all 45,548 points of the basemap instead of the corridor's
+#: couple of thousand -- and the two schemes for avoiding that were built
+#: and deleted (`basemap.near`, and "Two schemes to make the page lighter").
+#: A dissolve between two shots makes no claim about the ground in between,
+#: so the world shot can be drawn from the coarse layer (1,958 points) and
+#: the flight from the detailed one, with no zoom at which they disagree.
+GLOBE_MS, FADE_MS = 1700, 520
 
 
 def close_scale(lat: float) -> float:
@@ -222,12 +267,86 @@ def plan(result: dict, world: C.Map, start: str) -> dict:
         "stops": stops, "flights": flights,
         "final": {"x": cx, "y": cy, "scale": final},
         "geometry": geometry,
+        "globe": globe(stops_xy, xs, places),
         "outcome": result["outcome"],
+        # **Who took her, when a person did.** Gal, 2026-09-12: the link is
+        # *"the 'credit scene' reward when the game is won"* -- and a credit
+        # scene with no credit in it is a report. Absent on the published
+        # six, because nobody real caught those: `carmel.chase`'s searchers
+        # are a model and have no names, and inventing one for the page
+        # would be the weaker thing wearing the stronger one's clothes.
+        #
+        # It is a searcher's own roster name, so it is a **stranger's
+        # string** arriving in an address somebody else opens. The page
+        # writes it with `textContent` and there is a test that a name full
+        # of markup stays a name.
+        "by": result.get("by"),
         "reputation": result["reputation"],
         "hours": round(result["hours"]),
         "emptied": len(emptied),
         "world": WORLD, "w": WIDTH, "h": HEIGHT,
-        "hold": HOLD_MS,
+        "hold": HOLD_MS, "globeMs": GLOBE_MS, "fadeMs": FADE_MS,
+    }
+
+
+def globe(stops_xy: list[tuple[float, float]], xs: list[float],
+          places: list[dict]) -> dict:
+    """The two world shots: the whole planet, the box she stayed inside, and
+    on the way out the trail she left in it.
+
+    Gal, 2026-09-11: *"I want a world map"*, and 2026-09-12: *"do the flight
+    too"*. The still card answers it with two panels; a film has the other
+    move available, which is to open on the world and end back out at it.
+
+    **The coarse layer, not the detailed one.** At one turn of the world
+    across 1000px the fine coastline is sub-pixel, and the shots are cuts
+    rather than the ends of one long zoom (`GLOBE_MS`), so there is no zoom
+    at which the two layers are visible together and disagree -- which is
+    exactly the objection that killed the level-of-detail scheme.
+
+    **The campaign is moved into the map's turn, not the map into hers.**
+    `unwrap` may leave a trail's x outside [0, 1] so that a leg across the
+    date line is short; the world shot rolls the whole campaign back by
+    whole turns. Rolling the *map* instead would put the seam somewhere new
+    on every card, and a world map with the Pacific split down the middle of
+    one campaign and the Atlantic down the next reads as two different
+    worlds.
+    """
+    turn = round(0.5 - (min(xs) + max(xs)) / 2)
+    rolled = [(x + turn, y) for x, y in stops_xy]
+
+    # One turn of the world is the stage's width. The stage is shorter than
+    # it is wide, so that band is about 75 degrees north and south -- which
+    # holds all but one of the map's landmarks; a stop outside it pulls the
+    # camera back rather than off the top.
+    scale = WIDTH
+    reach = max(abs(y - 0.5) for _, y in rolled) + 0.02
+    if reach > HEIGHT / 2 / scale:
+        scale = HEIGHT / 2 / reach
+
+    pad = 12 / scale
+    x0, x1 = min(x for x, _ in rolled) - pad, max(x for x, _ in rolled) + pad
+    y0, y1 = min(y for _, y in rolled) - pad, max(y for _, y in rolled) + pad
+    span = max((C.travel_hours(a, b) * C.TRAVEL_KMH
+                for a in places for b in places), default=0.0)
+
+    def units(points):
+        return [[round(x * WORLD, 2), round(y * WORLD, 2)] for x, y in points]
+
+    return {
+        "coarse": [units([BM.mercator(lat, lon) for lon, lat in shape])
+                   for shape in BM.load()["land_coarse"]],
+        "x": 0.5, "y": 0.5, "scale": scale,
+        "stops": units(rolled),
+        "trail": [units([(x + turn, y) for x, y in
+                         (BM.mercator(lat, lon) for lat, lon in
+                          BM.great_circle((a["lat"], a["lon"]),
+                                          (b["lat"], b["lon"])))])
+                  for a, b in zip(places, places[1:])],
+        "frame": [round(x0 * WORLD, 2), round(y0 * WORLD, 2),
+                  round((x1 - x0) * WORLD, 2), round((y1 - y0) * WORLD, 2)],
+        "hair": round(WORLD / scale, 3),
+        "span": f"{span:,.0f} KM ACROSS, ON A WORLD 40,075 KM AROUND",
     }
 
 
@@ -266,6 +385,7 @@ PAGE = """<!doctype html>
 <div id="stage">
   <svg id="map" viewBox="0 0 __W__ __H__" aria-label="__TITLE__">
     <g id="camera"></g>
+    <g id="globe"></g>
     <g id="pins"></g>
   </svg>
   <div class="chrome" id="head">
@@ -287,9 +407,59 @@ PAGE = """<!doctype html>
 </div>
 <script type="application/json" id="data">__DATA__</script>
 <script>
+// A chase arrives one of two ways and the drawing does not care which:
+// baked into the document by `page`, or handed to the page in its own
+// address by `link`. The second is compressed, so booting is asynchronous
+// -- and a browser without `DecompressionStream` is told so, since a blank
+// page and a page that decided not to say anything look the same.
 (function () {
   "use strict";
-  var D = JSON.parse(document.getElementById("data").textContent);
+  var baked = document.getElementById("data").textContent.trim();
+  if (baked) { boot(JSON.parse(baked)); return; }
+  var packed = (location.hash || "").replace(/^#/, "");
+  if (!packed) { complain("no chase in this address"); return; }
+  if (!window.DecompressionStream) {
+    complain("this browser cannot open a packed chase:"
+             + " it has no DecompressionStream");
+    return;
+  }
+  var raw = atob(packed.replace(/-/g, "+").replace(/_/g, "/"));
+  var bytes = new Uint8Array(raw.length), b;
+  for (b = 0; b < raw.length; b++) { bytes[b] = raw.charCodeAt(b); }
+  new Response(new Blob([bytes]).stream()
+      .pipeThrough(new DecompressionStream("gzip"))).json()
+    .then(boot)
+    .catch(function (e) { complain("this chase would not unpack: " + e); });
+
+  function complain(why) {
+    var head = document.getElementById("head");
+    head.querySelector("h1").textContent = "Nothing to show";
+    head.querySelector("p").textContent = why;
+    window.flight = { broken: why };
+  }
+
+  function boot(D) {
+  if (D.outcome) {
+    var head = document.getElementById("head");
+    head.querySelector("h1").textContent = "Carmel Taldiego, " + D.outcome;
+    head.querySelector("p").textContent = D.flights.length + " rooms, "
+      + D.emptied + " of them emptied, " + D.reputation + " reputation, "
+      + D.hours + " hours";
+    document.title = "Carmel Taldiego, " + D.outcome;
+  }
+  // A link carries the chase and not the planet: the map is a sibling file
+  // the browser caches once across every chase anybody sends, and the arcs
+  // arrive without their unit-space copies, since a copy is what those
+  // were.
+  if (!D.geometry) { D.geometry = window.BASEMAP; }
+  if (!D.globe.coarse) { D.globe.coarse = window.BASEMAP.coarse; }
+  D.flights.forEach(function (f) {
+    if (!f.centres) {
+      f.centres = f.path.map(function (q) {
+        return [q[0] / D.world, q[1] / D.world];
+      });
+    }
+  });
   var camera = document.getElementById("camera");
   var pins = document.getElementById("pins");
   var NS = "http://www.w3.org/2000/svg";
@@ -323,8 +493,26 @@ PAGE = """<!doctype html>
     "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round",
     "vector-effect": "non-scaling-stroke" });
 
+  // --- the world, drawn once and shown at both ends ---------------------
+  var globe = document.getElementById("globe");
+  D.globe.coarse.forEach(function (s) {
+    add(globe, "path", { d: shape(s, true), fill: "__LAND__" });
+  });
+  var globeTrail = add(globe, "path", {
+    d: D.globe.trail.map(function (leg) { return shape(leg, false); }).join(""),
+    fill: "none", stroke: "__LINE__", "stroke-width": 1.4, opacity: 0,
+    "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" });
+  var globeFrame = add(globe, "rect", {
+    x: D.globe.frame[0], y: D.globe.frame[1],
+    width: D.globe.frame[2], height: D.globe.frame[3], fill: "none",
+    stroke: "__DIM__", opacity: 0.75, "stroke-width": 1,
+    "vector-effect": "non-scaling-stroke" });
+  globe.style.opacity = 0;
+
   // --- the timeline -----------------------------------------------------
   var segments = [], total = 0, i;
+  segments.push({ kind: "globe", when: "open", ms: D.globeMs });
+  segments.push({ kind: "fade", into: "map", ms: D.fadeMs });
   for (i = 0; i < D.stops.length; i++) {
     segments.push({ kind: "hold", stop: i, ms: D.hold });
     if (i < D.flights.length) {
@@ -333,11 +521,28 @@ PAGE = """<!doctype html>
   }
   segments.push({ kind: "pull", ms: 1500 });
   segments.push({ kind: "rest", ms: 2600 });
+  segments.push({ kind: "fade", into: "globe", ms: D.fadeMs });
+  segments.push({ kind: "globe", when: "close", ms: D.globeMs + 900 });
   segments.forEach(function (s) { s.at = total; total += s.ms; });
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function glide(a, b, t) { return Math.exp(lerp(Math.log(a), Math.log(b), t)); }
   function ease(t) { return t * t * (3 - 2 * t); }
+
+  // The frame the world shots dissolve out of and back into: the first
+  // hold at one end, the closing shot at the other. The camera underneath
+  // is already where it will be, so the dissolve is a dissolve and not a
+  // move -- nothing behind the fade is pretending to travel.
+  function held(i) {
+    var st = D.stops[i];
+    return { x: st.x, y: st.y, scale: st.scale, phase: "hold",
+             stop: i, arrived: i, leg: -1, progress: 0 };
+  }
+  function settled() {
+    return { x: D.final.x, y: D.final.y, scale: D.final.scale, phase: "rest",
+             stop: D.stops.length - 1, arrived: D.stops.length - 1,
+             leg: -1, progress: 0 };
+  }
 
   function frame(clock) {
     var s = segments[segments.length - 1], k;
@@ -345,10 +550,22 @@ PAGE = """<!doctype html>
       if (clock < segments[k].at + segments[k].ms) { s = segments[k]; break; }
     }
     var t = Math.min(Math.max((clock - s.at) / s.ms, 0), 1);
+    if (s.kind === "globe") {
+      var under = s.when === "open" ? held(0) : settled();
+      under.globe = 1;
+      under.opening = s.when === "open";
+      under.phase = "globe";
+      return under;
+    }
+    if (s.kind === "fade") {
+      var to = s.into === "map";
+      var base = to ? held(0) : settled();
+      base.globe = to ? 1 - ease(t) : ease(t);
+      base.opening = to;
+      return base;
+    }
     if (s.kind === "hold") {
-      var st = D.stops[s.stop];
-      return { x: st.x, y: st.y, scale: st.scale, phase: "hold",
-               stop: s.stop, arrived: s.stop, leg: -1, progress: 0 };
+      return held(s.stop);
     }
     if (s.kind === "flight") {
       var f = D.flights[s.leg], a = D.stops[s.leg], b = D.stops[s.leg + 1];
@@ -360,19 +577,23 @@ PAGE = """<!doctype html>
       return { x: at[0], y: at[1],
                scale: glide(near, f.wide, Math.sin(Math.PI * t)),
                phase: "flight", stop: s.leg + 1, arrived: s.leg,
-               leg: s.leg, progress: e, km: f.km };
+               leg: s.leg, progress: e, km: f.km, globe: 0 };
     }
     var last = D.stops[D.stops.length - 1];
     var e2 = s.kind === "pull" ? ease(t) : 1;
     return { x: lerp(last.x, D.final.x, e2), y: lerp(last.y, D.final.y, e2),
              scale: glide(last.scale, D.final.scale, e2), phase: "rest",
              stop: D.stops.length - 1, arrived: D.stops.length - 1,
-             leg: -1, progress: 0 };
+             leg: -1, progress: 0, globe: 0 };
   }
 
   // --- drawing ----------------------------------------------------------
   function screen(x, y, f) {
     return [D.w / 2 + (x - f.x) * f.scale, D.h / 2 + (y - f.y) * f.scale];
+  }
+  function screenGlobe(point) {
+    return [D.w / 2 + (point[0] / D.world - D.globe.x) * D.globe.scale,
+            D.h / 2 + (point[1] / D.world - D.globe.y) * D.globe.scale];
   }
   var where = document.getElementById("where");
   var said = document.getElementById("said");
@@ -395,6 +616,19 @@ PAGE = """<!doctype html>
   }
 
   function paint(f) {
+    var over = f.globe || 0;
+    camera.style.opacity = 1 - over;
+    globe.style.opacity = over;
+    if (over > 0) {
+      globe.setAttribute("transform",
+        "translate(" + (D.w / 2) + "," + (D.h / 2) + ") scale("
+        + (D.globe.scale / D.world) + ") translate("
+        + (-D.globe.x * D.world) + "," + (-D.globe.y * D.world) + ")");
+      // The opening shot says where, not what: the box she stayed inside,
+      // and nothing of the trail she is about to leave in it. On the way
+      // out the same box holds the whole thing.
+      globeTrail.setAttribute("opacity", f.opening ? 0 : 1);
+    }
     camera.setAttribute("transform",
       "translate(" + (D.w / 2) + "," + (D.h / 2) + ") scale("
       + (f.scale / D.world) + ") translate(" + (-f.x * D.world) + ","
@@ -402,6 +636,40 @@ PAGE = """<!doctype html>
     trail.setAttribute("d", drawn(f));
 
     while (pins.firstChild) { pins.removeChild(pins.firstChild); }
+    if (over >= 0.5) {
+      // On the world, her stops are drawn where the globe camera puts them
+      // -- and only on the way out, since the opening shot has not happened
+      // yet. `data-stop` is kept so the pin count still means what every
+      // test that reads it thinks it means.
+      if (!f.opening) {
+        for (var g = 0; g < D.globe.stops.length; g++) {
+          var gp = screenGlobe(D.globe.stops[g]);
+          if (D.stops[g].caught) {
+            add(pins, "circle", { cx: gp[0], cy: gp[1], r: 7, fill: "none",
+              stroke: "__THEFT__", "stroke-width": 1.4 });
+          }
+          add(pins, "circle", { cx: gp[0], cy: gp[1], r: 2.6,
+            fill: D.stops[g].stole ? "__THEFT__" : "__STOP__",
+            "data-stop": g });
+        }
+      }
+      where.textContent = f.opening ? "the world" : "the whole chase";
+      said.textContent = f.opening ? "she is somewhere in the box"
+                                   : D.globe.span;
+      // The credit, on the shot the film ends on. `textContent`, because
+      // the name is whatever a searcher typed on a roster.
+      took.textContent = (!f.opening && D.by) ? "taken by " + D.by : "";
+      took.className = "";
+      scaleLabel.textContent = Math.round(D.w / D.globe.scale * 40075)
+        .toLocaleString() + " KM ACROSS";
+      window.flight = { clock: clock, scale: D.globe.scale, x: D.globe.x,
+        y: D.globe.y, phase: "globe", globe: over, opening: !!f.opening,
+        stop: f.stop, leg: -1, progress: 0,
+        trail: trail.getAttribute("d").length,
+        pins: pins.querySelectorAll("[data-stop]").length,
+        marks: pins.childNodes.length, done: clock >= total - 1 };
+      return;
+    }
     for (var j = 0; j <= f.arrived; j++) {
       var st = D.stops[j], at = screen(st.x, st.y, f);
       if (st.caught) {
@@ -446,7 +714,8 @@ PAGE = """<!doctype html>
       * Math.cos(Math.atan(Math.sinh(Math.PI * (1 - 2 * f.y)))));
     scaleLabel.textContent = km.toLocaleString() + " KM ACROSS";
     window.flight = { clock: clock, scale: f.scale, x: f.x, y: f.y,
-      phase: f.phase, stop: f.stop, leg: f.leg, progress: f.progress,
+      phase: f.phase, globe: over, stop: f.stop, leg: f.leg,
+      progress: f.progress,
       trail: trail.getAttribute("d").length,
       pins: pins.querySelectorAll("[data-stop]").length,
       marks: pins.childNodes.length,
@@ -498,21 +767,118 @@ PAGE = """<!doctype html>
   } else {
     requestAnimationFrame(tick);
   }
+  }
 }());
 </script>
 """
 
 
-def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
-    data = plan(result, world, start)
-    took = data["emptied"]
-    subtitle = (f'{len(data["flights"])} rooms, {took} of them emptied, '
-                f'{data["reputation"]} reputation, {data["hours"]} hours')
+#: How many points of a leg's arc a link carries. The built pages keep all
+#: 65; a link is a thing somebody pastes into a message, and the arcs are
+#: most of its weight -- 45 KB of address for a seventeen-room chase, which
+#: is not a link anybody sends. At 28 the longest of the published six packs
+#: to about 7 KB and a caught one to under 2, and the difference on screen
+#: is nothing: a leg's segment is then tens of kilometres on a camera
+#: showing hundreds.
+LINK_POINTS = 28
+
+#: Where `build_site` publishes `viewer`, and therefore what a link points
+#: at. Named here, beside the thing that mints the address, rather than in
+#: the builder that happens to write the file --
+#: `test_the_link_points_at_where_the_site_actually_puts_the_viewer` holds
+#: the two together, because a constant and a path that agree today and are
+#: maintained in two places do not stay agreeing.
+CHASE_PAGE = "https://gald33.github.io/ai-lab/carmel-taldiego/chase/"
+
+
+def thin(points: list, cap: int = LINK_POINTS) -> list:
+    """`points`, at most `cap` of them, both ends kept."""
+    if len(points) <= cap:
+        return points
+    step = (len(points) - 1) / (cap - 1)
+    return [points[min(round(i * step), len(points) - 1)] for i in range(cap)]
+
+
+def packed(data: dict) -> dict:
+    """A plan with everything the page can supply for itself taken out.
+
+    Three things go and none of them is a fact about the chase:
+
+    - **the geometry**, because the world is the same world for every chase
+      and belongs in a file the browser caches once (`basemap_js`);
+    - **`centres`**, which was a second copy of `path` in unit space and is
+      a division away from it;
+    - **most of each arc's points**, per `LINK_POINTS`.
+
+    What is left is the chase: where she went, what she said, what she took,
+    and how long each leg took her.
+    """
+    out = json.loads(json.dumps(data))
+    out.pop("geometry", None)
+    out["globe"].pop("coarse", None)
+    for flight in out["flights"]:
+        flight.pop("centres", None)
+        flight["path"] = thin(flight["path"])
+    out["globe"]["trail"] = [thin(leg) for leg in out["globe"]["trail"]]
+    return out
+
+
+def link(data: dict, base: str) -> str:
+    """One chase as an address: gzip, base64url, in the fragment.
+
+    **In the fragment on purpose.** Everything after `#` stays in the
+    browser: never sent to the host, never in anybody's logs. The chase is
+    post-reveal and public anyway, so this is not concealment -- it is that
+    a link to a static page should not need a server to know anything.
+    """
+    body = json.dumps(packed(data), separators=(",", ":")).encode()
+    return base.rstrip("#") + "#" + base64.urlsafe_b64encode(
+        gzip.compress(body, 9, mtime=0)).decode().rstrip("=")
+
+
+def viewer() -> str:
+    """The page a link opens: the same film with no chase baked into it.
+
+    The built page with its data left out and the basemap moved to a sibling
+    file, so the bytes that differ between two chases are only the chase.
+    Every line about how it draws is the same line -- a second renderer
+    would be a second thing to keep true, and this repo has a rule about
+    second surfaces.
+    """
+    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "")
+    return out.replace('<script type="application/json" id="data"></script>',
+                       '<script type="application/json" id="data"></script>\n'
+                       '<script src="basemap.js"></script>')
+
+
+def basemap_js() -> str:
+    """The whole world in the page's units, for the viewer to cache once.
+
+    A built flight carries the corridor its camera visits and nothing else.
+    A viewer cannot: when it is built it does not know which chase it will
+    be asked to draw. So it carries the map -- about 700 KB, once, cached
+    across every chase anybody sends -- and that is the whole cost of a
+    chase being a link instead of a build.
+
+    It is the same public-domain geography with the same nothing on it: no
+    toponyms at any zoom, which is what makes a real map safe here.
+    """
+    world = BM.load()
+    out = {key: [[[round(x * WORLD, 2), round(y * WORLD, 2)]
+                  for x, y in (BM.mercator(lat, lon) for lon, lat in shape)]
+                 for shape in world[key]]
+           for key in ("land", "lakes", "borders", "land_coarse")}
+    out["coarse"] = out.pop("land_coarse")
+    return "window.BASEMAP=" + json.dumps(out, separators=(",", ":")) + ";"
+
+
+def _fill(template: str, data: str, outcome: str, title: str,
+          subtitle: str) -> str:
     swaps = {
-        "__TITLE__": f'Carmel Taldiego, {result["outcome"]}',
-        "__OUTCOME__": result["outcome"],
+        "__TITLE__": title or f"Carmel Taldiego, {outcome}",
+        "__OUTCOME__": outcome,
         "__SUBTITLE__": subtitle,
-        "__DATA__": json.dumps(data, separators=(",", ":")),
+        "__DATA__": data,
         "__W__": str(WIDTH), "__H__": str(HEIGHT),
         "__GROUND__": INK["ground"], "__SEA__": INK["sea"],
         "__LAND__": INK["land"], "__BORDER__": INK["border"],
@@ -520,10 +886,19 @@ def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
         "__TEXT__": INK["text"], "__DIM__": INK["dim"],
         "__THEFT__": INK["theft"], "__RULE__": INK["rule"],
     }
-    out = PAGE
+    out = template
     for token, value in swaps.items():
         out = out.replace(token, value)
     return out
+
+
+def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
+    data = plan(result, world, start)
+    took = data["emptied"]
+    subtitle = (f'{len(data["flights"])} rooms, {took} of them emptied, '
+                f'{data["reputation"]} reputation, {data["hours"]} hours')
+    return _fill(PAGE, json.dumps(data, separators=(",", ":")),
+                 result["outcome"], "", subtitle)
 
 
 def main() -> None:

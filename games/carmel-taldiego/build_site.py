@@ -93,6 +93,15 @@ def build(out: Path, imagery: str | None = "relief",
             "last": legs[-1]["to"] if legs else C.LOBBY_LANDMARK,
         })
 
+    # The page a chase link opens. One renderer and one copy of the map,
+    # cached by the browser across every chase anybody is ever sent -- see
+    # `trail_flight.viewer`, and `carmel.close_campaign`, which is where the
+    # link is handed to the person who caught her.
+    chase = out / "chase"
+    chase.mkdir(exist_ok=True)
+    (chase / "index.html").write_text(TF.viewer(), encoding="utf-8")
+    (chase / "basemap.js").write_text(TF.basemap_js(), encoding="utf-8")
+
     (out / "index.html").write_text(index(made, imagery), encoding="utf-8")
     return made
 

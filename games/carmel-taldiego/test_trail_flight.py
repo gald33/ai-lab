@@ -152,6 +152,53 @@ class Flight:
         return self.tab.inner_text(selector)
 
 
+def linked(seed: bytes, fragment: str | None = None,
+           plan: dict | None = None):
+    """A `Flight` on the *published* viewer, opened at a chase's address.
+
+    The same browser and the same `Flight`, but the page under it is
+    `F.viewer()` beside `F.basemap_js()` -- what `build_site` writes -- so
+    what this drives is the artifact a link actually opens rather than a
+    page assembled for the test.
+    """
+    import contextlib
+
+    @contextlib.contextmanager
+    def open_it():
+        try:
+            from playwright import sync_api as play
+        except ImportError:
+            missing("no playwright to drive a page with")
+        chrome = next((p for p in pathlib.Path("/opt/pw-browsers")
+                       .glob("chromium*") if p.is_file()), None)
+        home = pathlib.Path(os.environ.get("PYTEST_TMP", "/tmp")) / "chase"
+        home.mkdir(parents=True, exist_ok=True)
+        (home / "index.html").write_text(F.viewer(), encoding="utf-8")
+        (home / "basemap.js").write_text(F.basemap_js(), encoding="utf-8")
+        tail = (F.link(plan or embedded(seed), "x").split("#", 1)[1]
+                if fragment is None else fragment)
+        with play.sync_playwright() as pw:
+            try:
+                browser = pw.chromium.launch(
+                    executable_path=str(chrome) if chrome else None)
+            except Exception as exc:                        # noqa: BLE001
+                missing(f"no chromium to drive a page with: {exc!r}")
+            tab = browser.new_context(
+                viewport={"width": 1000, "height": 700}).new_page()
+            broke = []
+            tab.on("pageerror", lambda e: broke.append(str(e)))
+            tab.goto((home / "index.html").as_uri() + "#" + tail)
+            tab.wait_for_function("() => window.flight !== undefined",
+                                  timeout=10000)
+            try:
+                yield Flight(tab)
+            finally:
+                browser.close()
+            assert not broke, broke
+
+    return open_it()
+
+
 def flown(seed: bytes = FLOWN, reduced: bool = False):
     """A context manager yielding a `Flight`, or a skip."""
     import contextlib
@@ -313,6 +360,173 @@ def test_asking_for_no_motion_gets_the_whole_trail_at_once():
         before = at["trail"]
         flight.tab.wait_for_timeout(1200)
         assert flight.now["trail"] == before, "it moved anyway"
+
+
+# --- the world at both ends ----------------------------------------------
+
+def test_it_opens_on_the_world_and_ends_back_out_at_it():
+    """Gal, 2026-09-12: *"do the flight too"*. Two shots, not one long zoom
+    -- and the difference is checkable: at both ends the camera is the whole
+    world, and the opening one shows the box without the trail, because the
+    trail has not happened yet."""
+    with flown(seed=arrested_seed()) as flight:
+        shots = [s for s in flight.plan["segments"] if s["kind"] == "globe"]
+        assert len(shots) == 2, "an opening shot and a closing one"
+
+        opening = flight.seek(shots[0]["at"] + shots[0]["ms"] / 2)
+        assert opening["globe"] == 1 and opening["opening"] is True
+        assert opening["pins"] == 0, "the opening shot gave the trail away"
+        assert "40,075" in flight.text("#scale"), "not the whole world"
+
+        closing = flight.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert closing["globe"] == 1 and closing["opening"] is False
+        assert closing["pins"] == len(embedded(arrested_seed())["stops"])
+        assert "40,075" in flight.text("#scale")
+        assert "KM AROUND" in flight.text("#said"), "no span on the way out"
+
+
+def test_the_flight_itself_never_sits_at_world_scale():
+    """The shots are affordable because they are *cuts*: the camera never
+    passes through the middle, so the page never has to carry a detailed
+    world. If a hold or a leg ever widened that far, the corridor geometry
+    would be a lie at that zoom and the weight test below would be next."""
+    with flown() as flight:
+        for s in flight.plan["segments"]:
+            if s["kind"] in ("globe", "fade"):
+                continue
+            at = flight.seek(s["at"] + s["ms"] / 2)
+            assert at["scale"] > F.WIDTH * 4, (s["kind"], at["scale"])
+
+
+def test_the_world_shot_is_the_coarse_layer_and_only_that():
+    """`test_the_geometry_is_cut_to_the_frame` measures the corridor and
+    would not see a second copy of the planet arriving beside it. This
+    measures the other layer, and pins it to the one that costs 4% of the
+    map rather than the one that costs all of it."""
+    coarse = F.BM.load()["land_coarse"]
+    carried = embedded(FLOWN)["globe"]["coarse"]
+    assert len(carried) == len(coarse)
+    assert (sum(len(s) for s in carried)
+            == sum(len(s) for s in coarse) == 1958)
+
+
+# --- a chase as a link ----------------------------------------------------
+
+def test_a_link_carries_the_chase_and_not_the_planet():
+    """Gal, 2026-09-12: *"your agent can give you a link to a website that
+    shows your chase animation"*. What makes that a link and not a build is
+    that the three heavy things in a plan are all things the page can get
+    for itself."""
+    import gzip
+    import base64
+
+    full = embedded(FLOWN)
+    small = F.packed(full)
+    assert "geometry" not in small and "coarse" not in small["globe"]
+    assert all("centres" not in f for f in small["flights"])
+    assert all(len(f["path"]) <= F.LINK_POINTS for f in small["flights"])
+
+    # and the chase itself survives intact: every stop, every word
+    assert [x["name"] for x in small["stops"]] == [x["name"] for x in
+                                                   full["stops"]]
+    assert [x["took"] for x in small["stops"]] == [x["took"] for x in
+                                                   full["stops"]]
+    assert [f["km"] for f in small["flights"]] == [f["km"] for f in
+                                                   full["flights"]]
+
+    url = F.link(full, F.CHASE_PAGE)
+    body = url.split("#", 1)[1]
+    back = json.loads(gzip.decompress(base64.urlsafe_b64decode(
+        body + "=" * (-len(body) % 4))))
+    assert back == small, "the address is not the payload"
+
+
+def test_even_the_longest_chase_is_a_link_somebody_would_send():
+    """The ceiling exists because the first version was 45 KB of address for
+    a seventeen-room chase, which is not a link, it is a file with a colon
+    in it.
+
+    **The campaign is searched for, not named**, and the first version of
+    this test is why: it asserted the ceiling over `FLOWN`, `CAUGHT` and
+    `local_seed`, and every one of those is a two-leg chase under the
+    riddle, so raising `LINK_POINTS` to 9,999 left it green. That is the
+    third time in this branch that a check named after a seed turned out to
+    be a check named after a campaign shape -- and campaign shape is
+    downstream of every parameter in `carmel.py`. Running out of long
+    campaigns fails rather than passes, for the same reason.
+    """
+    longest, stops = None, 0
+    for b in range(1, 80):
+        seed = bytes.fromhex(f"{b:02x}" * 32)
+        found = embedded(seed)
+        if len(found["stops"]) > stops:
+            longest, stops = found, len(found["stops"])
+    assert stops >= 8, f"no campaign in 79 seeds is longer than {stops}"
+    assert len(F.link(longest, F.CHASE_PAGE)) < 12_000, stops
+    assert len(F.link(embedded(arrested_seed()), F.CHASE_PAGE)) < 4_000
+
+
+def test_a_link_plays_with_no_chase_baked_into_the_page():
+    """The whole claim, in a browser: a static page, a chase in the
+    fragment, and a film. Nothing else on the page knows which chase it is
+    -- the head, the title and every caption come out of the address."""
+    with linked(arrested_seed()) as flight:
+        assert flight.now.get("broken") is None, flight.now
+        holds = [s for s in flight.plan["segments"] if s["kind"] == "hold"]
+        at = flight.seek(holds[-1]["at"] + holds[-1]["ms"] / 2)
+        assert at["phase"] == "hold"
+        assert at["pins"] == len(holds)
+        assert "Carmel Taldiego" in flight.tab.title()
+        stops = embedded(arrested_seed())["stops"]
+        assert stops[-1]["name"] in flight.text("#where")
+
+
+def test_the_credit_scene_names_who_took_her():
+    """Gal, 2026-09-12: the link is *"the 'credit scene' reward when the game
+    is won"*. A credit scene with no credit in it is a report, so the shot
+    the film ends on carries the name of whoever walked in on her.
+
+    Only there, and only when somebody did: the opening shot is before any
+    of it happened, and the published six were caught by a model with no
+    name -- which is why `by` is absent from those rather than filled in
+    with something plausible.
+    """
+    plan = embedded(arrested_seed())
+    assert plan["by"] is None, "a simulated searcher was given a name"
+
+    with linked(arrested_seed(), plan=dict(plan, by="a night porter")) as f:
+        shots = [s for s in f.plan["segments"] if s["kind"] == "globe"]
+        f.seek(shots[0]["at"] + shots[0]["ms"] / 2)
+        assert "night porter" not in f.text("#say"), "credited before the end"
+        f.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert "taken by a night porter" in f.text("#say")
+
+
+def test_a_catcher_called_something_hostile_is_still_just_a_name():
+    """The name is a searcher's own roster string, minted into an address by
+    her and opened by somebody else -- so it is a stranger's text arriving on
+    a page a third party is reading, which is the shape every injection has.
+
+    `textContent` is what makes it safe, and this is the check that says so:
+    the markup arrives as characters on the screen and never as an element.
+    """
+    hostile = '<img src=x onerror="window.pwned=1">'
+    plan = dict(embedded(arrested_seed()), by=hostile)
+    with linked(arrested_seed(), plan=plan) as f:
+        shots = [s for s in f.plan["segments"] if s["kind"] == "globe"]
+        f.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert hostile in f.text("#say"), "the name was not shown verbatim"
+        assert f.tab.evaluate("window.pwned") is None
+        assert f.tab.evaluate("document.querySelectorAll('#say img').length") == 0
+
+
+def test_a_link_with_nothing_in_it_says_so():
+    """`CLAUDE.md`: a skip drawn as a pass, in its user-facing form. An
+    empty map and a page that gave up look identical from the sofa, so the
+    page says which it is."""
+    with linked(arrested_seed(), fragment="") as flight:
+        assert "no chase" in (flight.now.get("broken") or "")
+        assert "Nothing to show" in flight.text("#head")
 
 
 # --- what it must not disclose -------------------------------------------
