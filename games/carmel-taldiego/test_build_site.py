@@ -12,6 +12,7 @@ than a card does.
 """
 
 import hashlib
+import html
 import re
 import sys
 from pathlib import Path
@@ -120,3 +121,55 @@ def test_the_link_points_at_where_the_site_actually_puts_the_viewer(tmp_path):
     assert 'src="basemap.js"' in published.read_text()
     assert 'id="data"></script>' in published.read_text(), (
         "a chase was baked into the page every link opens")
+
+
+def test_the_front_door_says_everything_a_stranger_needs():
+    """Gal, 2026-09-12: *"the base url for the page is the landing page for
+    the game, giving the user the agent prompt."*
+
+    This game has published instructions that did not work twice -- a recipe
+    one step short of an address, and a notice that never said announcing
+    yourself is what makes you visible -- and both survived 140 tests
+    because, in the record's words, *sentences are not executed*. So the
+    page is held to the strings the code computes rather than to strings
+    somebody typed next to them.
+    """
+    import at_large as L
+    import trail_flight as TF
+    from secret_matrix import ADDRESS_RECIPE, RECIPE
+
+    # What the *reader* sees: the recipe is full of quotes, so the markup
+    # carries `&quot;` where the page shows `"`. Asserting on the source
+    # would be asserting on the escaping.
+    front = html.unescape(BS.landing())
+
+    # the three publishable things, as the runtime computes them today
+    assert L.HUB_URL in front
+    assert L.lobby_token() in front
+    assert L.LOBBY_KEY in front
+
+    # both steps of the recipe, because stopping at the first one is the
+    # defect this game already shipped once
+    assert RECIPE in front and ADDRESS_RECIPE in front
+
+    # and the one way to play perfectly and still lose
+    words = " ".join(front.split()).lower()
+    assert "register" in words and "roster" in words
+    assert "lapses" in words, "nothing says presence has to be renewed"
+
+    # the prompt is a block to hand over, not a description of one
+    prompt = front.split("<pre>")[1].split("</pre>")[0]
+    assert L.lobby_token() in prompt and L.HUB_URL in prompt
+    assert "hue and cry" in prompt.lower()
+
+    # and the page it lands on is the one that shows it
+    assert TF.viewer(BS.landing()).count(BS.landing()) == 1
+
+
+def test_the_front_door_is_only_the_front_door(tmp_path):
+    """It is published bare, with no chase in it: the same URL carries a
+    campaign only when somebody sends you one in a fragment."""
+    BS.build(tmp_path, imagery=None, count=1)
+    page = (tmp_path / "chase" / "index.html").read_text()
+    assert "Hand this to your agent" in page
+    assert 'id="data"></script>' in page, "a chase was baked into the door"

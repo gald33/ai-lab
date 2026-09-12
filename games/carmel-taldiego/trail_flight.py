@@ -381,6 +381,17 @@ PAGE = """<!doctype html>
   #play:hover { border-color: __LINE__; }
   #credit { position: absolute; right: 10px; top: 10px; font-size: 10px;
             color: __DIM__; opacity: 0.55; pointer-events: none; }
+  #landing { max-width: __W__px; margin: 0 auto; padding: 28px 22px 60px; }
+  #landing:empty { display: none; }
+  #landing h2 { font-size: clamp(17px, 2.4vw, 22px); font-weight: normal;
+                margin: 34px 0 10px; }
+  #landing p { max-width: 62ch; line-height: 1.55; color: __TEXT__;
+               font-size: clamp(13px, 1.7vw, 16px); }
+  #landing pre { background: __SEA__; border: 1px solid __RULE__;
+                 border-radius: 3px; padding: 14px 16px; overflow-x: auto;
+                 font-size: 12px; line-height: 1.5; color: __STOP__;
+                 white-space: pre-wrap; word-break: break-word; }
+  #landing .dim { color: __DIM__; font-size: 13px; }
 </style>
 <div id="stage">
   <svg id="map" viewBox="0 0 __W__ __H__" aria-label="__TITLE__">
@@ -405,6 +416,7 @@ PAGE = """<!doctype html>
   </div>
   <div id="credit">basemap: Natural Earth (public domain)</div>
 </div>
+<div id="landing">__LANDING__</div>
 <script type="application/json" id="data">__DATA__</script>
 <script>
 // A chase arrives one of two ways and the drawing does not care which:
@@ -414,10 +426,27 @@ PAGE = """<!doctype html>
 // page and a page that decided not to say anything look the same.
 (function () {
   "use strict";
+  var stage = document.getElementById("stage");
+  var landing = document.getElementById("landing");
   var baked = document.getElementById("data").textContent.trim();
   if (baked) { boot(JSON.parse(baked)); return; }
   var packed = (location.hash || "").replace(/^#/, "");
-  if (!packed) { complain("no chase in this address"); return; }
+  if (!packed) {
+    // **No chase in the address is the front door, not an error.** This
+    // page has one URL and two jobs: bare, it is where a player is sent to
+    // find out what the game is and what to hand their agent; with a chase
+    // in its fragment it is the film somebody won. A landing page is only
+    // published on the site's copy, so a viewer built without one still
+    // says plainly that there is nothing here.
+    if (landing && landing.textContent.trim()) {
+      stage.style.display = "none";
+      window.flight = { landing: true };
+      return;
+    }
+    complain("no chase in this address");
+    return;
+  }
+  if (landing) { landing.textContent = ""; }
   if (!window.DecompressionStream) {
     complain("this browser cannot open a packed chase:"
              + " it has no DecompressionStream");
@@ -836,7 +865,7 @@ def link(data: dict, base: str) -> str:
         gzip.compress(body, 9, mtime=0)).decode().rstrip("=")
 
 
-def viewer() -> str:
+def viewer(landing: str = "") -> str:
     """The page a link opens: the same film with no chase baked into it.
 
     The built page with its data left out and the basemap moved to a sibling
@@ -845,7 +874,8 @@ def viewer() -> str:
     would be a second thing to keep true, and this repo has a rule about
     second surfaces.
     """
-    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "")
+    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "",
+                landing=landing)
     return out.replace('<script type="application/json" id="data"></script>',
                        '<script type="application/json" id="data"></script>\n'
                        '<script src="basemap.js"></script>')
@@ -873,8 +903,9 @@ def basemap_js() -> str:
 
 
 def _fill(template: str, data: str, outcome: str, title: str,
-          subtitle: str) -> str:
+          subtitle: str, landing: str = "") -> str:
     swaps = {
+        "__LANDING__": landing,
         "__TITLE__": title or f"Carmel Taldiego, {outcome}",
         "__OUTCOME__": outcome,
         "__SUBTITLE__": subtitle,

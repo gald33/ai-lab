@@ -153,7 +153,7 @@ class Flight:
 
 
 def linked(seed: bytes, fragment: str | None = None,
-           plan: dict | None = None):
+           plan: dict | None = None, landing: str = ""):
     """A `Flight` on the *published* viewer, opened at a chase's address.
 
     The same browser and the same `Flight`, but the page under it is
@@ -173,7 +173,8 @@ def linked(seed: bytes, fragment: str | None = None,
                        .glob("chromium*") if p.is_file()), None)
         home = pathlib.Path(os.environ.get("PYTEST_TMP", "/tmp")) / "chase"
         home.mkdir(parents=True, exist_ok=True)
-        (home / "index.html").write_text(F.viewer(), encoding="utf-8")
+        (home / "index.html").write_text(F.viewer(landing),
+                                         encoding="utf-8")
         (home / "basemap.js").write_text(F.basemap_js(), encoding="utf-8")
         tail = (F.link(plan or embedded(seed), "x").split("#", 1)[1]
                 if fragment is None else fragment)
@@ -518,6 +519,47 @@ def test_a_catcher_called_something_hostile_is_still_just_a_name():
         assert hostile in f.text("#say"), "the name was not shown verbatim"
         assert f.tab.evaluate("window.pwned") is None
         assert f.tab.evaluate("document.querySelectorAll('#say img').length") == 0
+
+
+def test_one_url_is_the_front_door_and_the_film():
+    """Gal, 2026-09-12: *"the base url for the page is the landing page for
+    the game."* Bare it is where a player starts; with a chase in its
+    fragment it is the chase. Both states, in a browser, because which one
+    a reader gets is behaviour and markup cannot see it."""
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import build_site as BS
+
+    front = BS.landing()
+    with linked(arrested_seed(), fragment="", landing=front) as f:
+        assert f.now.get("landing") is True
+        assert "Hand this to your agent" in f.text("#landing")
+        assert f.tab.evaluate(
+            "getComputedStyle(document.getElementById('stage')).display"
+        ) == "none", "the film played with no chase in the address"
+
+    with linked(arrested_seed(), landing=front) as f:
+        assert f.now.get("landing") is None
+        assert f.text("#landing").strip() == "", "the door stayed open"
+        holds = [s for s in f.plan["segments"] if s["kind"] == "hold"]
+        assert f.seek(holds[-1]["at"] + holds[-1]["ms"] / 2)["phase"] == "hold"
+
+
+def test_a_broken_chase_still_complains_even_with_a_front_door():
+    """The front door is for an address with *nothing* in it. One that
+    carries a chase which will not unpack is a broken link, and saying
+    "welcome, here are the rules" to somebody holding one is a failure drawn
+    as a greeting."""
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import build_site as BS
+
+    with linked(arrested_seed(), fragment="not-a-chase",
+                landing=BS.landing()) as f:
+        assert "would not unpack" in (f.now.get("broken") or "")
+        assert "Nothing to show" in f.text("#head")
 
 
 def test_a_link_with_nothing_in_it_says_so():

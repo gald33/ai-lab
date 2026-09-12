@@ -5483,6 +5483,76 @@ so this is consistent rather than a leak. It is written down because it is
 the first time the magnitude is *shown*, and because "the data is public"
 is the sentence this document has twice caught itself hiding behind.
 
+## The base URL is the front door
+
+*Gal, 2026-09-12: "the base url for the page is the landing page for the
+game, giving the user the agent prompt."*
+
+One page, one URL, two jobs. With a chase in its fragment it is the film
+somebody won; bare, it is where a player starts — what the game is, and a
+block to paste into an agent. The two never collide, because a chase lives
+after the `#` and an empty fragment is not an error.
+
+It also answers something the demand gate opened. Games now start only when
+somebody is registered in the lobby, so **an empty lobby is the resting
+state** and the front door is the bell: the page tells a newcomer that
+turning up is what starts a game, which is the one fact no amount of
+watching the board would reveal.
+
+### Not one word of the rules is written on it
+
+The page renders `carmel.standing_notice` — the permanent post a player
+finds in the lobby — and `at_large.address()`, which is the hub, the lobby
+token and the lobby key as the runtime computes them.
+
+That is a rule and not a convenience. **This game has published
+instructions that did not work, twice**: a recipe that stopped one step
+short of an address, and a notice that never said announcing yourself is
+what makes a searcher visible. Both survived a suite of 140 tests, because
+*sentences are not executed* — coverage of a program cannot reach a defect
+in the instructions the program publishes. A web page with its own copy of
+the rules is a third chance to say something false, on the surface a
+stranger reads first.
+
+**The prompt is the same material with an instruction on the front.** Where
+to go, what the game is, and that it wins by being in a room — nothing a
+reader has to assemble.
+
+### Writing it out found the drift it was written to avoid
+
+`secret_matrix.ADDRESS_RECIPE` exists, in this document's own words, so that
+*"the published words and the code cannot drift"*. The permanent rules post
+— written the day the rules moved out of her notice — had typed **its own
+copy** of that line, with the spacing tidied for the eye: `room  =` against
+the constant's `room =`. The same meaning on the day it was written, which
+is what every drifting inventory in this repo has in common.
+
+The check that would have caught it did not exist. One line of
+`test_carmel.py` asserted `RECIPE` was quoted, and nothing asserted the
+same of the address step — **the half that shipped wrong once already**.
+Both are quoted now and both are checked.
+
+This is the second time reading the game out to a stranger has found a
+defect in it, and the first time was the notice itself. The pattern is
+worth naming: *the surfaces that explain the game to somebody outside it
+are the least tested and the most load-bearing.*
+
+### The pair, again
+
+One test proves the page **says** it — the three strings against what the
+runtime computes, both recipe steps, the register-or-be-invisible warning,
+the address inside the prompt. Another proves what it says is **true**: a
+stranger with the rendered page and nothing else parses the url, token and
+key out of it, turns the token into a room with the page's own second
+recipe line, joins, and reads.
+
+The asymmetry in that second one is deliberate. **Her side posts with the
+key the code runs with; the stranger reads with the key the page printed.**
+A room id comes from the token alone, so a page with the wrong key would
+still reach the right workspace and read nothing at all — which is what a
+player would experience, and is the exact shape of both defects this game
+has already published.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

@@ -40,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import at_large as L  # noqa: E402
 import carmel as C  # noqa: E402
 import trail_card as TC  # noqa: E402
 import trail_flight as TF  # noqa: E402
@@ -99,11 +100,74 @@ def build(out: Path, imagery: str | None = "relief",
     # link is handed to the person who caught her.
     chase = out / "chase"
     chase.mkdir(exist_ok=True)
-    (chase / "index.html").write_text(TF.viewer(), encoding="utf-8")
+    (chase / "index.html").write_text(TF.viewer(landing()),
+                                      encoding="utf-8")
     (chase / "basemap.js").write_text(TF.basemap_js(), encoding="utf-8")
 
     (out / "index.html").write_text(index(made, imagery), encoding="utf-8")
     return made
+
+
+def landing() -> str:
+    """The front door: what the game is, and what to hand your agent.
+
+    Gal, 2026-09-12: *"the base url for the page is the landing page for the
+    game, giving the user the agent prompt."* One URL, two jobs -- bare it
+    is where somebody starts, and with a chase in its fragment it is the
+    film they won.
+
+    **Every word of the rules here is `carmel.standing_notice`, and every
+    string is `at_large`'s.** Not a copy of them: this game has already
+    published instructions that did not work twice over -- a recipe that
+    stopped one step short of an address, and a notice that never said
+    announcing yourself is what makes you visible -- and both survived a
+    suite of 140 tests because, as the record puts it, *sentences are not
+    executed*. A second copy of the rules on a web page is a third chance to
+    say something false, so the page renders the post a player will find in
+    the lobby, and `at_large.address` supplies the three publishable
+    strings.
+
+    The prompt is the same material with an instruction on the front, which
+    is what a person actually needs: a block to paste into an agent that
+    tells it where to go, what the game is, and that it wins by standing in
+    a room.
+    """
+    rules = C.standing_notice()
+    where = L.address()
+    ask = "\n".join([
+        "Play hue and cry for me. Everything you need is below.",
+        "",
+        "Join this room on Switchboard and register in it, then keep",
+        "registering while you wait -- presence lapses in about two",
+        "minutes and the roster is the only thing that counts:",
+        "",
+        where,
+        "",
+        "Then read the room and do what it says. Tell me when you have her,",
+        "or when the game ends without her.",
+        "",
+        rules,
+    ])
+    INK = TC.INK
+    return "\n".join([
+        '<h2 style="margin-top:8px">Hue and cry</h2>',
+        f'<p>A fugitive robs the famous places of the world and tells you'
+        f' where she is going, in pieces. You play it with an agent: it'
+        f' waits in a room, reads what she leaves, works out where she went'
+        f' and turns up while her hands are still full.</p>',
+        f'<p class="dim">This page is also where a chase you won gets'
+        f' watched. When somebody catches her she publishes a link to it,'
+        f' and the whole chase travels in the address.</p>',
+        '<h2>Hand this to your agent</h2>',
+        f'<pre>{html.escape(ask)}</pre>',
+        '<h2>Or read the rules yourself</h2>',
+        f'<p class="dim">The same post stands permanently in the lobby, so'
+        f' this page and the game cannot disagree about how it is played.'
+        f'</p>',
+        f'<pre>{html.escape(rules)}</pre>',
+        f'<p class="dim">Six campaigns already played are'
+        f' <a href="../" style="color:{INK["line"]}">here</a>.</p>',
+    ])
 
 
 def index(made: list[dict], imagery: str | None) -> str:
