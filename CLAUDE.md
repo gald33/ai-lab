@@ -439,6 +439,17 @@ being told. `tools/tests/test_workflows.py` is where that lives for CI, and it
 carries an exemption list whose entries must each state a reason, because
 *"not run"* and *"forgotten"* are indistinguishable from the outside.
 
+*It is not only checks that drift, 2026-09-12.* The rule ignoring the viewer's
+derived score readings lived in a **nested `.gitignore` inside the scores
+directory** — anchored to a location rather than to the filenames. That file is
+tracked, so the experiment rename (`43bbfb2`) carried it to the new path and
+left the old path's `boards.json` and `index.json` covered by nothing. Git
+reported the stale tree as untracked from then on, and the only two remedies it
+offered were the two this repo refuses: commit a derived reading, or delete by
+hand and hope the next rename is remembered. Both `.gitignore`s now say so, and
+the root one keys on the name so a rename cannot uncover them again. **An
+ignore rule is an inventory too**, and it drifts the same way a path list does.
+
 **The three shapes to watch for**, since they are what the six reduce to:
 
 - a **skip** drawn as a pass — the reason `--require` and
