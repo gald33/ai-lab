@@ -1825,6 +1825,14 @@ the only reason she is catchable at all. So the impossible treasures are
 worth the most and take the longest, and going after one is a bet that
 nobody reads the room in time.
 
+> *2026-09-12: "the only reason she is catchable" is superseded — the catch
+> is co-presence, whatever she is doing (see "One rule, where there were
+> two", and `carmel.chase`). The paragraph stands because the economics it
+> describes do: a long theft is still a long time in one room. The word
+> that went is "only". The pointer is here rather than only at the
+> decision, because a reader who lands on this section has no reason to
+> open that one.*
+
 *The table that stood here, five landmarks against what she takes from
 them, was deleted on 2026-09-09 along with the file it was drawn from. It
 is the leak this section now describes, and quoting it to illustrate the
@@ -6207,3 +6215,96 @@ key does not belong in a session transcript. Everything else in
 run, and the unit's exact `ExecStart`. The standing rules post reaching the
 real lobby, with no live salt beside it, is that rehearsal's visible
 residue.
+
+## The public page described a game that had been replaced
+
+*2026-09-12. Gal asked for the link, got it, and the page at the other end
+was accurate about nothing that had changed in the previous two days.*
+
+The site rebuilds itself on every push — the copy served when the link was
+handed over was stamped five minutes after #270 merged, so CI had done its
+job. The stale part was not the deploy, it was the **prose**, and the prose
+is hand-written inside `build_site.py`. Three claims on it:
+
+- *"posts one true thing about every room she reaches"* — she posts a
+  riddle of three details;
+- *"the least informative true thing she can say"* — that strategy was
+  reversed on 2026-09-11, measured at a median of 156 candidates;
+- *"She is only catchable while she is standing still stealing
+  something"* — the catch has been co-presence since 2026-09-10, whatever
+  she is doing.
+
+**Every one of those was corrected where the code lives and nowhere a
+reader would land.** `carmel.Map.choose_details` carries the clue reversal
+with the superseded reasoning quoted; `carmel.chase` carries the catch rule
+with the unplayable pair it replaced. Both are exemplary. Neither is the
+front page, and the front page is the only one of these documents a
+stranger reads. This is `CLAUDE.md`'s third rule — *a correction that lives
+in another document is not visible at all to the reader who lands on the
+old one* — failing on the one surface where the reader is a stranger rather
+than an agent drafting across the repo.
+
+### Why no check caught it, and the check that does now
+
+The page's tests asserted structure: six campaigns, the seeds printed, the
+imagery credit present, the chase link resolving. Nothing asserted that a
+sentence was still true, because **no test can be told what is true** —
+which is the reason the absence looked like coverage for two days.
+
+What is checkable is the inverse: the page must not contain the phrases of
+the game that was replaced. `test_the_page_does_not_describe_a_game_that_was_replaced`
+builds the real tree and requires that `"one true thing"`, `"least
+informative"` and `"only catchable while she is standing still"` appear in
+**none** of it — and that `"few true"` is **present** in the index, so the
+test cannot be satisfied by deleting the paragraph. It was demonstrated red
+by restoring the old prose before it was trusted, per *"a check nobody has
+seen fail is a check nobody has seen work"*.
+
+**It walks the built tree rather than naming the pages**, and that was not
+foresight — it was a near miss the same afternoon. The first version
+checked `index()`, because `index()` was the page. While it was being
+written, `landing()` landed on `main` and became the front door, so a
+phrase-list check on a page-list of one would have been green about the
+surface that matters most. The list of retired phrases is already an
+inventory that has to be maintained by hand; a second inventory naming the
+pages is the shape `CLAUDE.md` says to derive instead, and four of its six
+green-for-the-wrong-reason cases are exactly that. `sorted(out.rglob("*.html"))`
+with a floor of three pages, so the sweep cannot silently find nothing
+either.
+
+Demonstrated on both surfaces, because "it went red" is not the same claim
+as "it went red for the new page": a retired phrase planted in `index()`
+fails naming `index.html`, and the same phrase planted in the `landing()`
+fragment fails naming `chase/index.html` — the page the list form would
+have skipped.
+
+`landing()`, checked after the fact, was already clean — it was written
+after the redesign and says *a few true details* itself. `index()` was not,
+and had not been touched by the landing-page change that shipped hours
+earlier: **a new front door does not correct the old one.**
+
+It is a blacklist, and a blacklist only catches the rule you already know
+changed. That is the honest limit: the next design change will need its own
+line here, and the thing that will prompt it is somebody re-reading the
+page. Kept anyway, because the cost of the three phrases above was a
+stranger being told the wrong game for two days, and the cost of the line
+is one string.
+
+### The same fix, applied to the four places that had no marker
+
+Grepping the game for the superseded phrasings found the page and four
+more, all of them live documents whose correction lived elsewhere:
+
+| where | what it still asserted |
+|---|---|
+| `treasures.py`, "the joke is load-bearing" | standing still is *the only reason* she is catchable |
+| this document, "the treasures" | the same sentence |
+| `worked_example.py` module head | *"the left-hand half is now simply the game"* — the half that posts one least-informative clue |
+| `worked_example.py`, `her_best_clue` | *"her whole strategy in one line"* |
+
+Each now carries a dated line beside the superseded text pointing at the
+decision, and **none of the superseded text was edited away**. Two of them
+are still *mostly* right and that is why they were easy to miss: a long
+theft really is a long time in one room, and the routes comparison really
+does hold under either clue rule. The word that went was *only*, and the
+sentence that went was *"is now simply the game"*.

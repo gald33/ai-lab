@@ -282,8 +282,8 @@ def index(made: list[dict], imagery: str | None) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Carmel Taldiego</title>
 <meta name="description" content="A fugitive moves between famous
-  landmarks and posts one true thing about each room she reaches. Six
-  campaigns, drawn and flown.">
+  landmarks and leaves a riddle of a few true details about each room she
+  reaches. Campaigns, drawn and flown.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'
   viewBox='0 0 16 16'><text y='14' font-size='14'>&#128506;</text></svg>">
 <style>
@@ -315,11 +315,13 @@ def index(made: list[dict], imagery: str | None) -> str:
 <div class="wrap">
   <h1>Carmel Taldiego</h1>
   <p class="sub">
-    She moves between real landmarks and posts <em>one true
-    thing</em> about every room she reaches — the least informative true
-    thing she can say. Searchers read it, work out where she can have gone,
-    and go and wait. She is only catchable while she is standing still
-    stealing something.
+    She moves between real landmarks and leaves <em>a few true
+    details</em> about every room she reaches — one from her, the rest from
+    whoever saw her. No single one is worth much; laid together they fit a
+    handful of places and no more, and working out which handful is the
+    game. Searchers read them, work out where she can have gone, and go and
+    wait. She is caught by anyone who is in the room she is in, whatever
+    she is doing there.
     <a href="https://github.com/gald33/ai-lab/blob/main/games/carmel-taldiego.md">How
     it works</a> ·
     <a href="https://github.com/gald33/ai-lab/tree/main/games/carmel-taldiego">Source</a>

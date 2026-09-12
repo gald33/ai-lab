@@ -8,6 +8,18 @@ was made against; `games/carmel-taldiego.md`, "There are no routes", carries
 the decision and the numbers at 1000 landmarks. The left-hand half,
 "without routes -- she may go anywhere", is now simply the game.
 
+SO WAS THE CLUE, 2026-09-11, AND THAT SENTENCE ABOVE IS NOW HALF WRONG.
+Both halves of this file post *one* clue, chosen to separate least, and
+that is no longer what she says: she posts a riddle of three true details
+whose intersection is small, because one least-informative fact left a
+median of 156 of 1000 landmarks standing. `carmel.Map.choose_details`
+carries the reversal and keeps the old reasoning; `games/carmel-taldiego.md`,
+"The hint is a riddle", carries the specification and the measurement. What
+this file still establishes is what it was written for -- that routes are
+what make a trail worth following -- and that holds under either clue rule.
+So "is now simply the game" should be read as "is now simply the map she
+moves on". The strategy printed below is not the strategy.
+
 
 `games/carmel-taldiego.md` claims, in "The map has routes, and without them there
 is no game", that a fugitive free to move anywhere leaves a searcher 5 or 6 of
@@ -63,6 +75,12 @@ ROUTES: dict[str, list[str]] = {
 
 def her_best_clue(destination: str, reachable: list[str]) -> tuple[str, list[str]]:
     """The least informative true attribute, and what it leaves standing.
+
+    NOT HER STRATEGY SINCE 2026-09-11 -- see the module head, and
+    `carmel.Map.choose_details` for what replaced it and why. Kept because
+    the routes comparison this file exists for needs *some* fixed clue rule
+    on both sides of it, and this is the one the comparison was measured
+    with.
 
     Her whole strategy in one line: every attribute here is true of where she
     has gone, so she is choosing among honest clues for the one that separates

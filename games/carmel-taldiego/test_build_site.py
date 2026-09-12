@@ -219,3 +219,54 @@ def test_the_prompt_tells_an_agent_to_announce_itself_in_her_room():
     assert "every room" in head and "register" in head, (
         "the prompt scopes registering to the lobby it starts in")
     assert "reading a room is not being in it" in head
+
+
+def test_the_page_does_not_describe_a_game_that_was_replaced(tmp_path):
+    """The public page's blurb is hand-written prose, so it drifts from the
+    code silently — and it had, for a day, on a page anybody could read.
+
+    Found by being asked for the game's link. CI had rebuilt the page
+    minutes earlier, so it was *current*, and it still said she posts
+    **"one true thing ... the least informative true thing she can say"**
+    and that she is **"only catchable while she is standing still stealing
+    something"**. All three claims were true when written and all three had
+    been superseded: the riddle replaced one fact with three details, the
+    least-informative strategy was reversed, and Gal's *"she could be caught
+    whenever she is in the room with a player, nevermind her state"* ended
+    the standing-still rule.
+
+    **A rebuilt page is not a current page.** The build was derived and the
+    words were not, which is this repo's recurring shape — an inventory that
+    drifts while the mechanism around it stays right.
+
+    So the retired phrases are pinned. Not the whole blurb, which should
+    stay editable prose, but the specific claims that are now false: a page
+    that reintroduces any of them fails here rather than going live.
+    """
+    made = BS.build(tmp_path, imagery=None, count=1)
+
+    retired = [
+        "one true thing",
+        "least informative",
+        "only catchable while she is standing still",
+    ]
+
+    # Every page the build writes, found by walking the tree rather than
+    # by naming the two that exist today. `landing()` arrived in the same
+    # afternoon as this test and is now the front door -- the phrase list
+    # is already an inventory, and a *page* list would be a second one
+    # (`CLAUDE.md`, "derive the list rather than maintaining it").
+    pages = sorted(tmp_path.rglob("*.html"))
+    assert len(pages) >= 3, f"the build stopped writing pages: {pages}"
+    for page in pages:
+        text = page.read_text()
+        for phrase in retired:
+            assert phrase not in text, (
+                f"{page.relative_to(tmp_path)} says {phrase!r}, which"
+                " describes the game as it was before the riddle and"
+                " before co-presence became the catch")
+
+    # And the replacement is present, so this cannot pass by the blurb
+    # having been deleted instead of corrected.
+    assert "few true" in BS.index(made, imagery=None), (
+        "the blurb no longer describes the riddle")
