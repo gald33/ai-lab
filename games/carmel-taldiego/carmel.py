@@ -1056,8 +1056,15 @@ def standing_notice(start: str = LOBBY_LANDMARK) -> str:
         "",
         "A place's room is computed from its name and that game's salt:",
         "",
-        "    token = \"w_\" + sha256(\"hue-and-cry/v1/landmark\" || 0x00 || salt || 0x00 || name)",
-        "    room  = \"w_\" + base64url(sha256(token))[:22]",
+        # Quoted, not retyped. `ADDRESS_RECIPE` exists precisely so "the
+        # published words and the code cannot drift" -- and this post,
+        # written the day the rules moved out of her notice, had typed its
+        # own copy with the spacing tidied. The two agreed on the day it was
+        # written, which is what every drifting inventory in this repo has
+        # in common. `test_the_rules_quote_the_recipe_rather_than_repeat_it`
+        # is the check that was missing.
+        f"    {RECIPE}",
+        f"    {ADDRESS_RECIPE}",
         "",
         "There is no list of rooms and nobody hands one out. Guessing the",
         "place is finding the room. Use the same key you are using here.",
@@ -1069,7 +1076,12 @@ def standing_notice(start: str = LOBBY_LANDMARK) -> str:
         "later riddle of hers is posted in the room of the place she is",
         "LEAVING, so each one is found by solving the one before it.",
         "",
-        "Being in the room while she is in it is the whole of the catch.",
+        "Being in the room while she is in it is the whole of the catch --",
+        "and being there means being on THAT room's roster, exactly as it",
+        "does here. Register when you arrive and keep registering while you",
+        "wait. A searcher who solves the riddle, walks into the right room",
+        "and reads it in silence is invisible, and she leaves past them.",
+        "",
         "There is nothing to send her and no move to declare. She cannot see",
         "you anywhere else, so a wrong guess is not a near miss.",
         "",

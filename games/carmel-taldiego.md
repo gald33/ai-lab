@@ -5483,6 +5483,167 @@ so this is consistent rather than a leak. It is written down because it is
 the first time the magnitude is *shown*, and because "the data is public"
 is the sentence this document has twice caught itself hiding behind.
 
+## The base URL is the front door
+
+*Gal, 2026-09-12: "the base url for the page is the landing page for the
+game, giving the user the agent prompt."*
+
+One page, one URL, two jobs. With a chase in its fragment it is the film
+somebody won; bare, it is where a player starts — what the game is, and a
+block to paste into an agent. The two never collide, because a chase lives
+after the `#` and an empty fragment is not an error.
+
+It also answers something the demand gate opened. Games now start only when
+somebody is registered in the lobby, so **an empty lobby is the resting
+state** and the front door is the bell: the page tells a newcomer that
+turning up is what starts a game, which is the one fact no amount of
+watching the board would reveal.
+
+### Not one word of the rules is written on it
+
+The page renders `carmel.standing_notice` — the permanent post a player
+finds in the lobby — and `at_large.address()`, which is the hub, the lobby
+token and the lobby key as the runtime computes them.
+
+That is a rule and not a convenience. **This game has published
+instructions that did not work, twice**: a recipe that stopped one step
+short of an address, and a notice that never said announcing yourself is
+what makes a searcher visible. Both survived a suite of 140 tests, because
+*sentences are not executed* — coverage of a program cannot reach a defect
+in the instructions the program publishes. A web page with its own copy of
+the rules is a third chance to say something false, on the surface a
+stranger reads first.
+
+**The prompt is the same material with an instruction on the front.** Where
+to go, what the game is, and that it wins by being in a room — nothing a
+reader has to assemble.
+
+### Writing it out found the drift it was written to avoid
+
+`secret_matrix.ADDRESS_RECIPE` exists, in this document's own words, so that
+*"the published words and the code cannot drift"*. The permanent rules post
+— written the day the rules moved out of her notice — had typed **its own
+copy** of that line, with the spacing tidied for the eye: `room  =` against
+the constant's `room =`. The same meaning on the day it was written, which
+is what every drifting inventory in this repo has in common.
+
+The check that would have caught it did not exist. One line of
+`test_carmel.py` asserted `RECIPE` was quoted, and nothing asserted the
+same of the address step — **the half that shipped wrong once already**.
+Both are quoted now and both are checked.
+
+This is the second time reading the game out to a stranger has found a
+defect in it, and the first time was the notice itself. The pattern is
+worth naming: *the surfaces that explain the game to somebody outside it
+are the least tested and the most load-bearing.*
+
+### It is a room in the map, not a poster about it
+
+*Gal, 2026-09-12: "the background is the same world map. the snippet window
+is small. add copy button. keep all in theme and with game lore."*
+
+**The world behind the door is the same coarse coastline** the card's top
+panel and the flight's two shots draw — `trail_card.world_camera` over
+`land_coarse`, at a fraction of its ink. Not a texture and not a second
+drawing of the world: a player meets the map here and recognises it when it
+moves. The disclosure rule holds on a landing page exactly as on a card, so
+a test walks it for landmark names and finds none.
+
+*One correction worth keeping.* The first version filled the viewport with
+`preserveAspectRatio="slice"`, which at any tall window is a **crop** — a
+continent, not the world, and unrecognisable as either. It is the whole
+world at its own aspect now, centred. A background that is a detail of the
+map says nothing about the map.
+
+**The snippet is what a reader came for**, so it is given the width and the
+size to be read rather than a window to squint through, and the copy button
+sits above it. The button follows `games/island/lobby_page.py` exactly,
+including why: **the prompt is on the page, not behind the button**,
+because a button that copies something a reader cannot see asks them to
+paste an unread instruction into an agent they are responsible for. It
+falls back to selecting the block when the clipboard refuses, and says
+which happened.
+
+**And the lore stops where the instructions start.** Above, she is a thief
+who cannot help telling you where she is going; below, the address and the
+recipe are plain. That is "She stopped reading out an API" applied to the
+one surface a stranger reads *before* they know any of it — the fiction
+sets the scene and nothing load-bearing is said in character.
+
+### The warning was in the one room where it wins nothing
+
+*Gal, 2026-09-12: "the agent actually has to announce himself so she sees
+him, I hope that's in the prompt."*
+
+It was, of the lobby, and **only** of the lobby. The rules said *"TO PLAY,
+register in this room and stay registered"* — this room being the one
+nobody is ever caught in — and then said the catch is *"being in the room
+while she is in it"*, which a careful agent reads as being joined. Follow it
+exactly and you solve the riddle, walk into her room, wait in silence, and
+she leaves past you.
+
+**This is the same defect as 2026-09-11, one room along.** That one was
+*"nothing said you have to announce yourself"*; it was fixed where it was
+noticed — the lobby — and the fix never reached the room the game is won
+in. A correction applied at the place the complaint came from is not the
+same as a correction applied where the rule bites.
+
+The two tests that should have caught it both passed. The mechanism half
+already proved a silent lurker is invisible **in a landmark room**, so the
+truth was never in doubt; the saying half asserted `"does not register
+you"` and `"keep announcing"` appear *somewhere* in the rules, and the
+lobby paragraph satisfied both. **An assertion that a warning exists
+somewhere is not an assertion that it is where the reader needs it.** It
+reads the catch paragraph now.
+
+### And the game had been renamed everywhere but its front door
+
+*Gal, the same message: "we didn't write carmel taldiego anywhere."*
+
+The rename of 2026-09-10 — *"a picture of this game is a picture of Carmel
+Taldiego"* — kept two deliberate exceptions, the wire and a roadmap id,
+both identifiers rather than names. The landing page was neither: it was
+titled "Hue and cry", and an agent was asked to *"play hue and cry for
+me"*. The one surface a stranger reads first was the one the rename had not
+reached, because it did not exist when the rename happened.
+
+`hue and cry` still belongs on it and the test does not forbid it — it is
+the phrase for the chase, and the searchers are still the Hue. What is
+checked is that the game is named, in the title and in the prompt.
+
+### A check that was a word search, found by breaking it
+
+The copy button's fallback was asserted by looking for `selectNodeContents`
+in the page source. Pointing the selection at `document.body` instead of at
+the prompt left that green — the word was still there. It drives the branch
+now: the clipboard is replaced with one that refuses, the button is
+clicked, and **what the reader is left holding — the selection — is what is
+asserted**.
+
+Worth recording because of how it was found. The break was run, came back
+green, and the first instinct was that the edit had not applied. It had
+not, twice, and the third attempt was the one that showed the check had
+never been about behaviour at all. *A break that does not go red is
+information either way*: either the check is weak, or the break missed —
+and the way to tell them apart is to make the break undeniable rather than
+to assume which it was.
+
+### The pair, again
+
+One test proves the page **says** it — the three strings against what the
+runtime computes, both recipe steps, the register-or-be-invisible warning,
+the address inside the prompt. Another proves what it says is **true**: a
+stranger with the rendered page and nothing else parses the url, token and
+key out of it, turns the token into a room with the page's own second
+recipe line, joins, and reads.
+
+The asymmetry in that second one is deliberate. **Her side posts with the
+key the code runs with; the stranger reads with the key the page printed.**
+A room id comes from the token alone, so a page with the wrong key would
+still reach the right workspace and read nothing at all — which is what a
+player would experience, and is the exact shape of both defects this game
+has already published.
+
 ## What would have to be built, in order
 
 Nothing here exists yet. The order is chosen so that the piece most likely

@@ -381,6 +381,41 @@ PAGE = """<!doctype html>
   #play:hover { border-color: __LINE__; }
   #credit { position: absolute; right: 10px; top: 10px; font-size: 10px;
             color: __DIM__; opacity: 0.55; pointer-events: none; }
+  /* The front door. The world sits behind it at a fraction of its ink --
+     the same coarse coastline the card's top panel and the flight's two
+     shots draw, so the map a reader meets here is the map they play on. */
+  #landing:empty { display: none; }
+  /* The whole world, not a crop of it: `slice` filled the viewport with
+     whichever continent happened to be in the middle, which is a texture.
+     Full width, centred, its own aspect -- so it is recognisably the map. */
+  #world { position: fixed; left: 0; right: 0; top: 50%;
+           transform: translateY(-50%); width: 100%; height: auto;
+           z-index: 0; opacity: 0.62; }
+  #door { position: relative; z-index: 1; max-width: 860px; margin: 0 auto;
+          padding: 8vh 22px 14vh; }
+  #landing h1 { font-size: clamp(30px, 6vw, 54px); font-weight: normal;
+                margin: 0 0 18px; letter-spacing: 0.5px; }
+  #landing h2 { font-size: clamp(18px, 2.6vw, 24px); font-weight: normal;
+                margin: 52px 0 12px; color: __STOP__; }
+  #landing p { max-width: 64ch; line-height: 1.62; color: __TEXT__;
+               font-size: clamp(14px, 1.8vw, 17px); }
+  #landing .lede { font-size: clamp(15px, 2vw, 19px); color: __STOP__; }
+  #landing .dim { color: __DIM__; font-size: clamp(13px, 1.6vw, 15px); }
+  /* The snippet is the thing a reader is here to take, so it is given the
+     room to be read rather than a window to squint through. */
+  #landing pre { background: rgba(13, 21, 27, 0.93); border: 1px solid __RULE__;
+                 border-radius: 4px; padding: 20px 22px; margin: 14px 0 0;
+                 overflow-x: auto; font-size: 14px; line-height: 1.62;
+                 color: __STOP__; white-space: pre-wrap;
+                 overflow-wrap: anywhere;
+                 font-family: ui-monospace, Menlo, Consolas, monospace; }
+  #landing pre.quiet { color: __DIM__; font-size: 13px;
+                       background: rgba(13, 21, 27, 0.8); }
+  #take { background: __LINE__; color: #17120c; border: none;
+          border-radius: 3px; padding: 10px 18px; font: inherit;
+          font-size: 15px; cursor: pointer; margin-top: 6px; }
+  #take:hover { filter: brightness(1.08); }
+  #take[data-took] { background: __STOP__; }
 </style>
 <div id="stage">
   <svg id="map" viewBox="0 0 __W__ __H__" aria-label="__TITLE__">
@@ -405,6 +440,7 @@ PAGE = """<!doctype html>
   </div>
   <div id="credit">basemap: Natural Earth (public domain)</div>
 </div>
+<div id="landing">__LANDING__</div>
 <script type="application/json" id="data">__DATA__</script>
 <script>
 // A chase arrives one of two ways and the drawing does not care which:
@@ -414,10 +450,27 @@ PAGE = """<!doctype html>
 // page and a page that decided not to say anything look the same.
 (function () {
   "use strict";
+  var stage = document.getElementById("stage");
+  var landing = document.getElementById("landing");
   var baked = document.getElementById("data").textContent.trim();
   if (baked) { boot(JSON.parse(baked)); return; }
   var packed = (location.hash || "").replace(/^#/, "");
-  if (!packed) { complain("no chase in this address"); return; }
+  if (!packed) {
+    // **No chase in the address is the front door, not an error.** This
+    // page has one URL and two jobs: bare, it is where a player is sent to
+    // find out what the game is and what to hand their agent; with a chase
+    // in its fragment it is the film somebody won. A landing page is only
+    // published on the site's copy, so a viewer built without one still
+    // says plainly that there is nothing here.
+    if (landing && landing.textContent.trim()) {
+      stage.style.display = "none";
+      window.flight = { landing: true };
+      return;
+    }
+    complain("no chase in this address");
+    return;
+  }
+  if (landing) { landing.textContent = ""; }
   if (!window.DecompressionStream) {
     complain("this browser cannot open a packed chase:"
              + " it has no DecompressionStream");
@@ -836,7 +889,7 @@ def link(data: dict, base: str) -> str:
         gzip.compress(body, 9, mtime=0)).decode().rstrip("=")
 
 
-def viewer() -> str:
+def viewer(landing: str = "") -> str:
     """The page a link opens: the same film with no chase baked into it.
 
     The built page with its data left out and the basemap moved to a sibling
@@ -845,7 +898,8 @@ def viewer() -> str:
     would be a second thing to keep true, and this repo has a rule about
     second surfaces.
     """
-    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "")
+    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "",
+                landing=landing)
     return out.replace('<script type="application/json" id="data"></script>',
                        '<script type="application/json" id="data"></script>\n'
                        '<script src="basemap.js"></script>')
@@ -873,8 +927,9 @@ def basemap_js() -> str:
 
 
 def _fill(template: str, data: str, outcome: str, title: str,
-          subtitle: str) -> str:
+          subtitle: str, landing: str = "") -> str:
     swaps = {
+        "__LANDING__": landing,
         "__TITLE__": title or f"Carmel Taldiego, {outcome}",
         "__OUTCOME__": outcome,
         "__SUBTITLE__": subtitle,

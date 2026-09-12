@@ -40,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import at_large as L  # noqa: E402
 import carmel as C  # noqa: E402
 import trail_card as TC  # noqa: E402
 import trail_flight as TF  # noqa: E402
@@ -99,11 +100,159 @@ def build(out: Path, imagery: str | None = "relief",
     # link is handed to the person who caught her.
     chase = out / "chase"
     chase.mkdir(exist_ok=True)
-    (chase / "index.html").write_text(TF.viewer(), encoding="utf-8")
+    (chase / "index.html").write_text(TF.viewer(landing()),
+                                      encoding="utf-8")
     (chase / "basemap.js").write_text(TF.basemap_js(), encoding="utf-8")
 
     (out / "index.html").write_text(index(made, imagery), encoding="utf-8")
     return made
+
+
+def backdrop() -> str:
+    """The same world the film ends on, laid under the front door.
+
+    Gal, 2026-09-12: *"the background is the same world map."* Not a
+    decorative texture and not a second drawing: it is `trail_card`'s world
+    camera over the same coarse coastline the card's top panel and the
+    flight's two shots use, so a player meets the map before they meet the
+    game and recognises it when they see it move.
+
+    It is behind the text at a fraction of its ink, and it is the only thing
+    on this page that is a picture -- the map is where the game happens, so
+    the front door is a room in it rather than a poster about it.
+    """
+    camera = TC.world_camera([(0.0, 0.0)], 0.0)
+    return (f'<svg id="world" viewBox="0 0 {TC.WIDTH} {camera.h:.0f}"'
+            f' preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
+            + "".join(TC.whole_world(camera)) + "</svg>")
+
+
+def landing() -> str:
+    """The front door: what the game is, and what to hand your agent.
+
+    Gal, 2026-09-12: *"the base url for the page is the landing page for the
+    game, giving the user the agent prompt."* One URL, two jobs -- bare it
+    is where somebody starts, and with a chase in its fragment it is the
+    film they won.
+
+    **Every word of the rules here is `carmel.standing_notice`, and every
+    string is `at_large`'s.** Not a copy of them: this game has already
+    published instructions that did not work twice over -- a recipe that
+    stopped one step short of an address, and a notice that never said
+    announcing yourself is what makes you visible -- and both survived a
+    suite of 140 tests because, as the record puts it, *sentences are not
+    executed*. A second copy of the rules on a web page is a third chance to
+    say something false, so the page renders the post a player will find in
+    the lobby, and `at_large.address` supplies the three publishable
+    strings.
+
+    **The prose around them is the game's and the instructions are plain.**
+    `games/carmel-taldiego.md`, "She stopped reading out an API": above the
+    rule she is a fugitive and below it the machinery is written about her
+    in the third person. A landing page is the one surface a stranger reads
+    *before* they know any of it, so the lore sets the scene and nothing
+    load-bearing is said in character.
+    """
+    rules = C.standing_notice()
+    where = L.address()
+    ask = "\n".join([
+        "Play Carmel Taldiego for me -- a chase, on a message hub, against",
+        "a thief who tells you where she is going. Everything you need is",
+        "below.",
+        "",
+        "Join this room on Switchboard and register in it, then keep",
+        "registering while you wait -- presence lapses in about two",
+        "minutes and the roster is the only thing that counts:",
+        "",
+        where,
+        "",
+        "Then read the room and do what it says. **Register in every room",
+        "you enter, hers included, and keep registering while you wait**:",
+        "reading a room is not being in it, and she can only see the",
+        "roster. A searcher who works out the right room and waits there in",
+        "silence is invisible and she walks out past them.",
+        "",
+        "Tell me when you have her, or when the game ends without her.",
+        "",
+        rules,
+    ])
+    INK = TC.INK
+    return "\n".join([
+        backdrop(),
+        '<div id="door">',
+        '<h1>Carmel Taldiego</h1>',
+        '<p class="lede">Somewhere on that map Carmel Taldiego is working'
+        ' her way round the famous places of the world, and she cannot help'
+        ' telling you where she is going. Not plainly. A few true things'
+        ' each time she moves on \u2014 one of them hers, the rest from'
+        ' whoever saw her pass.</p>',
+        '<p class="lede">Raising the <i>hue and cry</i> is the old name for'
+        ' everyone dropping what they are doing to run after a thief, and'
+        ' the people who do it are the Hue. Here it is your agent that runs:'
+        ' it waits where she might come, reads what she leaves, works out'
+        ' where she went, and is standing there when she lets herself in'
+        ' \u2014 announced, because she can only see who is on the roster.'
+        ' That is the whole of the catch: nothing to declare, nothing to'
+        ' send her.</p>',
+        '<h2>Send somebody after her</h2>',
+        '<p>Hand this to your agent. It is the address of the room the'
+        ' chase starts in and the rules as they stand in it \u2014 nothing'
+        ' to install, and nothing here is a secret.</p>',
+        '<button id="take">Copy it</button>',
+        f'<pre id="ask">{html.escape(ask)}</pre>',
+        '<h2>Or read it yourself first</h2>',
+        '<p class="dim">The same post stands permanently in the lobby, so'
+        ' this page and the game cannot disagree about how it is played.'
+        ' What is not here is the salt \u2014 that arrives with her first'
+        ' taunt, once a game has begun.</p>',
+        f'<pre class="quiet">{html.escape(rules)}</pre>',
+        '<h2>When you take her</h2>',
+        '<p class="dim">She publishes the chase you just won, drawn and'
+        ' flown, and this page is what plays it: the whole of it travels in'
+        ' the address, so the link is yours to keep and to send on.'
+        f' <a href="../" style="color:{INK["line"]}">Six she has already'
+        ' run</a> are here to watch.</p>',
+        '</div>',
+        _COPY_SCRIPT,
+    ])
+
+
+#: The copy control, in the shape `games/island/lobby_page.py` settled on
+#: and for its reasons: **the prompt is on the page, not behind the
+#: button**, because a button that copies something a reader cannot see
+#: asks them to paste an unread instruction into an agent they are
+#: responsible for. The copy is the convenience; the text is the thing.
+#:
+#: It falls back to selecting the block when the clipboard is unavailable --
+#: plain http, an embedded browser, a refused permission -- and says which
+#: happened. `CLAUDE.md`: a control that silently does nothing is worse than
+#: no control, and this one is watched in a real browser
+#: (`test_the_copy_button_puts_the_prompt_on_the_clipboard`).
+_COPY_SCRIPT = """<script>
+(function () {
+  var b = document.getElementById('take');
+  var p = document.getElementById('ask');
+  if (!b || !p) { return; }
+  function pick() {
+    var r = document.createRange(); r.selectNodeContents(p);
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  b.addEventListener('click', function () {
+    var done = function () {
+      b.textContent = 'Copied \u2014 now give it to your agent';
+      b.setAttribute('data-took', 'yes');
+      setTimeout(function () { b.textContent = 'Copy it'; }, 4000);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(p.textContent).then(done, function () {
+        pick(); b.textContent = 'Select-copy it yourself \u2014 clipboard refused';
+      });
+    } else {
+      pick(); b.textContent = 'Select-copy it yourself \u2014 no clipboard here';
+    }
+  });
+}());
+</script>"""
 
 
 def index(made: list[dict], imagery: str | None) -> str:

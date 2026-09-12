@@ -715,3 +715,25 @@ def test_the_rules_say_where_the_close_lands_and_her_note_stays_short():
     assert len(note.splitlines()) < len(rules.splitlines()), (
         "her note is no shorter than the rules, which is what moving the"
         " explanation out was for")
+
+
+def test_the_rules_quote_the_recipe_rather_than_repeat_it():
+    """`secret_matrix` carries `RECIPE` and `ADDRESS_RECIPE` so that, in
+    this game's own words, *the published words and the code cannot drift*.
+
+    The permanent rules post had its own copy of the second line with the
+    spacing tidied for the eye -- `room  =` against the constant's
+    `room =`. Identical in meaning on the day it was written, which is what
+    every drifting inventory in this repo has in common, and the check that
+    would have caught it did not exist: one line above asserts `RECIPE` is
+    quoted and nothing asserted the same of the address step, which is the
+    half that shipped wrong once already.
+
+    Found by building a web page from this post, which is the second time
+    reading a thing out to a stranger has found a defect in it.
+    """
+    from secret_matrix import ADDRESS_RECIPE, RECIPE
+
+    rules = C.standing_notice()
+    for step in (RECIPE, ADDRESS_RECIPE):
+        assert step in rules, f"the rules retype rather than quote: {step}"

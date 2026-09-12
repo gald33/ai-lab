@@ -611,6 +611,58 @@ def follow(notice: str, landmark: str) -> tuple[bytes, str]:
     return salt, room
 
 
+def test_the_landing_page_sends_a_stranger_where_she_runs(board):
+    """The front door's half of the pair: one test proves the page *says*
+    it (`test_build_site.py`), this proves what it says is *true*.
+
+    A stranger with the web page in front of them and nothing else: it takes
+    the url, the token and the key out of the rendered text, turns the token
+    into a room address using the page's own second recipe line, joins, and
+    reads. Nothing here imports `secret_matrix` or `at_large`'s helpers for
+    the derivation -- a test that used the implementation would agree with
+    the page no matter what the page said, which is the trap the notice
+    version of this test was written to escape.
+
+    The url is checked against `HUB_URL` rather than followed, since the
+    hub under test is in this process; everything else is done the way a
+    reader would have to do it.
+    """
+    import html as htmlmod
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    import build_site as BS
+
+    page = htmlmod.unescape(BS.landing())
+
+    url = next(l for l in page.splitlines() if l.strip().startswith("url"))
+    token = next(l for l in page.splitlines()
+                 if l.strip().startswith("token")).split()[1]
+    key = next(l for l in page.splitlines()
+               if l.strip().startswith("key")).split()[1]
+    assert url.split()[1] == L.HUB_URL, "the page points somewhere else"
+
+    # the second step of the recipe, read off the page and applied by hand
+    step = next(l for l in page.splitlines() if "base64url" in l)
+    assert "sha256(token)" in step and "[:22]" in step, step
+    room = "w_" + base64.urlsafe_b64encode(
+        hashlib.sha256(token.encode()).digest()).decode().rstrip("=")[:22]
+
+    # Her side uses the key the *code* runs with (`--key` defaults to
+    # `LOBBY_KEY`) and the stranger uses the key the *page* printed. That
+    # asymmetry is the point: the room id comes from the token alone, so a
+    # page with the wrong key would still reach the right workspace and read
+    # nothing at all -- which is what a player would experience, and is
+    # exactly the shape of the two defects this game has already published.
+    hers = board.client(agent_id="carmel", workspace=room, key=L.LOBBY_KEY)
+    hers.post(L.CHANNEL, C.standing_notice(), ttl=3600)
+
+    stranger = board.client(agent_id="stranger", workspace=room, key=key)
+    read = [m["body"] for m in stranger.history(L.CHANNEL, limit=20)]
+    assert any("HUE AND CRY" in body for body in read), (
+        "the page's own three strings did not reach the lobby")
+
+
 def test_a_stranger_who_does_exactly_what_the_notice_says_reaches_her(board):
     """The test this game never had, and the reason two defects survived
     into a live game.
@@ -660,6 +712,20 @@ def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
     rules = " ".join(C.standing_notice().split())
     assert "does not register you" in rules
     assert "keep announcing" in rules
+
+    # **And it has to be said where the catch happens.** Both assertions
+    # above are satisfied by the paragraph about *this* room -- the lobby --
+    # so the rules could tell a searcher to announce themselves in the one
+    # room where announcing wins nothing and say nothing about her room, and
+    # stay green. That is the same defect this test exists for, one room
+    # along: Gal, 2026-09-12, *"the agent actually has to announce himself
+    # so she sees him."* The mechanism half below already proves it in a
+    # landmark room; this is the half that proves she says so.
+    catch = next(para for para in C.standing_notice().split("\n\n")
+                 if "whole of the catch" in para)
+    flat = " ".join(catch.split()).lower()
+    assert "roster" in flat and "register" in flat, (
+        "the catch paragraph never says being there means being registered")
 
     seed = bytes.fromhex("55" * 32)
     world = C.Map(seed)

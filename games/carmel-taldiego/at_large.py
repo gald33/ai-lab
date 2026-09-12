@@ -944,7 +944,19 @@ def forever(make_hub: Callable[[], Hub], *,
 # --- what it looks like without a hub -------------------------------------
 
 
-def address(url: str) -> str:
+#: The hub she runs on, and the one a landing page sends a stranger to.
+#:
+#: **One definition.** It was written out twice -- in `dry_run`'s printout
+#: and as `--url`'s default -- and a published page quoting a third copy is
+#: how an address that is right in two places goes wrong in the one a
+#: player actually reads. `SWITCHBOARD_URL` still overrides it for a private
+#: hub; `test_the_landing_page_sends_a_stranger_where_she_runs` holds the
+#: page to whatever this says.
+HUB_URL = os.environ.get("SWITCHBOARD_URL",
+                         "https://switchboard.lucille-ai.com")
+
+
+def address(url: str = HUB_URL) -> str:
     """The three things a searcher needs to stand in the lobby.
 
     All three are publishable and none of them is a credential: the hub is
@@ -993,7 +1005,7 @@ def dry_run(count: int = 20) -> None:
           f" {C.START_EVERY_HOURS:.0f}h between starts, so two of")
     print("  her notes can never be legible at once.")
     print("\n  the lobby, which is publishable in full:")
-    print(address("https://switchboard.lucille-ai.com"))
+    print(address())
 
 
 def main() -> None:
@@ -1002,8 +1014,7 @@ def main() -> None:
                     help="print the schedule and exit; no hub, no clock")
     ap.add_argument("--once", action="store_true",
                     help="run one campaign and stop")
-    ap.add_argument("--url", default=os.environ.get(
-        "SWITCHBOARD_URL", "https://switchboard.lucille-ai.com"))
+    ap.add_argument("--url", default=HUB_URL)
     ap.add_argument("--key", default=LOBBY_KEY,
                     help="the game's room key, which is published (see"
                          " LOBBY_KEY) -- override only to run a private game")
