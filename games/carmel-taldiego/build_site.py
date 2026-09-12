@@ -6,6 +6,16 @@ Gal, 2026-09-10: *"make it available online as a github page"*. This writes
 the tree `pages.yml` stages at
 `https://gald33.github.io/ai-lab/carmel-taldiego/`.
 
+**The base URL is the front door** -- `landing`, with the prompt on it and
+the world map behind it -- and it is the same page a chase link opens, bare
+when there is nothing in its fragment. The campaign gallery is under
+`campaigns/`. It was the other way round for a few hours on 2026-09-12,
+which meant the one address a player is handed showed them recordings and
+no way to play; `games/carmel-taldiego.md`, "The front door was published
+at an address nobody is given", has why no test caught it. Nothing here
+names a directory for the door: `viewer_path` subtracts `SITE_URL` from
+`trail_flight.CHASE_PAGE`, so the address and the path are one fact.
+
 **THE FIRST N CAMPAIGNS, NEVER THE BEST N.** The seeds are
 `sha256(SEED_ROOT || i)` for i in 0..N, and whatever those produce is what
 goes up -- the short ones, the ones where she is caught in two rooms, the
@@ -55,6 +65,72 @@ CAMPAIGNS = 6
 
 SEARCHERS = 2
 
+#: The published site's own address. `trail_flight.CHASE_PAGE` is a URL
+#: under it and `viewer_path` subtracts the one from the other, so the
+#: address a chase link carries and the path the page is written to are one
+#: fact rather than two that agree by hand. They did not agree: the door
+#: was published at `chase/` and the address a player was given was the
+#: base URL, so the front door was a page nobody was sent to.
+SITE_URL = "https://gald33.github.io/ai-lab/carmel-taldiego/"
+
+#: Where the campaign gallery lives, now that the base URL is the front
+#: door. It was the root until 2026-09-12; a stranger arriving at the game
+#: should meet the game and not six recordings of it.
+GALLERY = "campaigns"
+
+#: Addresses that used to be the page a chase link opens. Every one keeps a
+#: forwarder, because a chase travels entirely in the fragment and a link
+#: she already posted is somebody's copy of a game they won.
+RETIRED_DOORS = ("chase",)
+
+
+def viewer_path() -> str:
+    """Where in the tree the page a chase link opens has to be written.
+
+    Derived from `trail_flight.CHASE_PAGE` rather than agreed with it. The
+    empty string means the base URL, which is what it is today.
+    """
+    if not TF.CHASE_PAGE.startswith(SITE_URL):
+        raise ValueError(
+            f"{TF.CHASE_PAGE} is not under {SITE_URL}, so the page a link "
+            "opens cannot be written into this tree at all")
+    return TF.CHASE_PAGE[len(SITE_URL):].strip("/")
+
+
+def _up_from(path: str) -> str:
+    """The prefix that gets from `path` in the tree back to the root."""
+    return "../" * len([p for p in path.split("/") if p])
+
+
+def gallery_href() -> str:
+    """`GALLERY`, as seen from the front door."""
+    return _up_from(viewer_path()) + GALLERY + "/"
+
+
+def door_href() -> str:
+    """The front door, as seen from the gallery."""
+    return _up_from(GALLERY) + viewer_path() + ("/" if viewer_path() else "")
+
+
+def forwarder(door: str) -> str:
+    """A retired door: the same chase, at the address it moved to.
+
+    **It has to be script and cannot be a `<meta refresh>`.** The whole
+    chase is in the fragment (`trail_flight.link`, and it is there so a
+    static page needs no server to know anything), and a refresh drops the
+    fragment -- which would turn every link she has already handed out into
+    an empty film rather than a dead one, and an empty film looks like a
+    bug in the drawing.
+    """
+    to = _up_from(door) + viewer_path() + ("/" if viewer_path() else "")
+    return "\n".join([
+        "<!doctype html>",
+        '<meta charset="utf-8">',
+        "<title>Carmel Taldiego</title>",
+        f'<script>location.replace({to!r} + location.hash);</script>',
+        f'<p>This moved. <a href="{to}">Carmel Taldiego is here</a>.</p>',
+    ])
+
 
 def seeds(count: int = CAMPAIGNS, root: bytes = SEED_ROOT) -> list[bytes]:
     return [hashlib.sha256(root + i.to_bytes(4, "big")).digest()
@@ -75,8 +151,8 @@ def build(out: Path, imagery: str | None = "relief",
         result = C.chase(seed, C.LOBBY_LANDMARK, searchers=SEARCHERS,
                          world=world)
 
-        room = out / f"{i:02d}"
-        room.mkdir(exist_ok=True)
+        room = out / GALLERY / f"{i:02d}"
+        room.mkdir(parents=True, exist_ok=True)
         (room / "card.svg").write_text(
             TC.card(result, world, seed, C.LOBBY_LANDMARK, imagery=imagery),
             encoding="utf-8")
@@ -94,17 +170,26 @@ def build(out: Path, imagery: str | None = "relief",
             "last": legs[-1]["to"] if legs else C.LOBBY_LANDMARK,
         })
 
-    # The page a chase link opens. One renderer and one copy of the map,
-    # cached by the browser across every chase anybody is ever sent -- see
+    # The front door, which is also the page a chase link opens: bare it is
+    # where a stranger starts, and with a chase in its fragment it is the
+    # film they won. One renderer and one copy of the map, cached by the
+    # browser across every chase anybody is ever sent -- see
     # `trail_flight.viewer`, and `carmel.close_campaign`, which is where the
     # link is handed to the person who caught her.
-    chase = out / "chase"
-    chase.mkdir(exist_ok=True)
-    (chase / "index.html").write_text(TF.viewer(landing()),
-                                      encoding="utf-8")
-    (chase / "basemap.js").write_text(TF.basemap_js(), encoding="utf-8")
+    door = out / viewer_path()
+    door.mkdir(parents=True, exist_ok=True)
+    (door / "index.html").write_text(TF.viewer(landing()), encoding="utf-8")
+    (door / "basemap.js").write_text(TF.basemap_js(), encoding="utf-8")
 
-    (out / "index.html").write_text(index(made, imagery), encoding="utf-8")
+    for old in RETIRED_DOORS:
+        if old.strip("/") == viewer_path():
+            continue
+        moved = out / old
+        moved.mkdir(parents=True, exist_ok=True)
+        (moved / "index.html").write_text(forwarder(old), encoding="utf-8")
+
+    (out / GALLERY / "index.html").write_text(index(made, imagery),
+                                              encoding="utf-8")
     return made
 
 
@@ -210,8 +295,8 @@ def landing() -> str:
         '<p class="dim">She publishes the chase you just won, drawn and'
         ' flown, and this page is what plays it: the whole of it travels in'
         ' the address, so the link is yours to keep and to send on.'
-        f' <a href="../" style="color:{INK["line"]}">Six she has already'
-        ' run</a> are here to watch.</p>',
+        f' <a href="{gallery_href()}" style="color:{INK["line"]}">Six she'
+        ' has already run</a> are here to watch.</p>',
         '</div>',
         _COPY_SCRIPT,
     ])
@@ -256,7 +341,15 @@ _COPY_SCRIPT = """<script>
 
 
 def index(made: list[dict], imagery: str | None) -> str:
+    """The gallery. It lives under `GALLERY`, not at the base URL.
+
+    It was the base URL until 2026-09-12, which meant the address a player
+    was handed showed them six recordings and no way to play. The front
+    door is `landing`; this page links back to it, by `door_href` rather
+    than by a written `../`, because the two moved once already.
+    """
     INK = TC.INK
+    door = door_href()
     rows = []
     for m in made:
         rows.append(f"""
@@ -322,6 +415,7 @@ def index(made: list[dict], imagery: str | None) -> str:
     game. Searchers read them, work out where she can have gone, and go and
     wait. She is caught by anyone who is in the room she is in, whatever
     she is doing there.
+    <a href="{door}"><strong>Send somebody after her</strong></a> ·
     <a href="https://github.com/gald33/ai-lab/blob/main/games/carmel-taldiego.md">How
     it works</a> ·
     <a href="https://github.com/gald33/ai-lab/tree/main/games/carmel-taldiego">Source</a>

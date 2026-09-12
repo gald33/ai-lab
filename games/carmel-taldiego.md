@@ -6308,3 +6308,93 @@ are still *mostly* right and that is why they were easy to miss: a long
 theft really is a long time in one room, and the routes comparison really
 does hold under either clue rule. The word that went was *only*, and the
 sentence that went was *"is now simply the game"*.
+
+## The front door was published at an address nobody is given
+
+*2026-09-12. Gal, handed the link: "This is not the page we designed with
+the button to copy."*
+
+It was not. `landing()` had shipped hours earlier with the world map behind
+it, the prompt on the page and a copy button watched in a real browser —
+and `build()` wrote it to **`/chase/`**, while the base URL kept the
+campaign gallery. So the one address a stranger is given showed them six
+recordings of games other people played and no way to play one.
+
+**The docstring said the right thing the whole time.** `landing()` opens by
+quoting the decision it was built for — *"the base url for the page is the
+landing page for the game, giving the user the agent prompt"* — and then
+links to the gallery as `../`, which only makes sense from one directory
+down. The prose and the tree disagreed, and `games/island/HOSTING.md`
+already has the rule for that: *the command and the paragraph have to say
+the same thing, and when they differ it is the command that is believed*.
+Here the paragraph was right and the code was wrong, which is the same
+defect wearing the other face.
+
+### Why fourteen green tests said nothing
+
+Every check around the door asked what it **said** and none asked where it
+**was**:
+
+- the recipe is complete, both steps (`test_the_front_door_says_everything_a_stranger_needs`)
+- the prompt is the lobby's own post, not a retyping of it
+- the button copies in a real browser, and falls back to selecting when the
+  clipboard refuses
+- the door is published bare, with no chase baked in
+- and `test_the_link_points_at_where_the_site_actually_puts_the_viewer`
+  even derived the path from `CHASE_PAGE` rather than agreeing with it by
+  hand — it just derived the wrong end. It took the URL's **last segment**,
+  which was `chase` when the address was `.../carmel-taldiego/chase/`, so
+  it confirmed the door was where the constant said and never asked
+  whether the constant said the base URL.
+
+This is `CLAUDE.md`'s second shape — **an absence drawn as a pass**. No
+check named the base URL, so nothing failed. It is the same shape as the
+eight test directories in no path list: what is not named reports nothing,
+and nothing looks exactly like fine.
+
+### The fix is subtraction, not a second constant
+
+`SITE_URL` is the published site's own address; `trail_flight.CHASE_PAGE`
+is a URL under it; `viewer_path()` **subtracts one from the other** and
+returns where in the tree the page goes — `""`, the base URL, today. The
+gallery moved to `campaigns/`, and `gallery_href()` / `door_href()` compute
+the two links between them from those same strings rather than writing
+`../` anywhere.
+
+So there is one fact — the address — and the tree is derived from it. A
+constant and a directory that agree today and are maintained in two places
+do not stay agreeing, which the old comment beside `CHASE_PAGE` says in
+those words while the code underneath it did the other thing.
+
+### A link she has already posted still opens its chase
+
+`RETIRED_DOORS` keeps a forwarder at every address the door has left.
+**It is script and not a `<meta refresh>`**, because the whole chase is in
+the fragment — `trail_flight.link` puts it there so a static page needs no
+server to know anything — and a refresh drops the fragment. A dropped
+fragment does not give a dead link, it gives an **empty film**, which reads
+as a bug in the drawing rather than as a page that moved. There is a
+`<noscript>`-visible link under it for a reader with no script at all.
+
+### What is checked now
+
+- `test_the_address_a_player_is_given_is_the_front_door` — the base URL
+  carries `#take` and `#ask`, and `CHASE_PAGE == SITE_URL`.
+- `test_a_link_already_handed_out_still_opens_its_chase` — every retired
+  door forwards, carries `location.hash`, and resolves to the real door.
+- `test_the_link_points_at_where_the_site_actually_puts_the_viewer` now
+  subtracts `SITE_URL` instead of taking a last segment, and additionally
+  requires the copy button at that address — the assertion whose absence
+  was the whole defect.
+- `test_no_page_needs_anything_from_the_network` walks the tree instead of
+  asking about one page, since the page it asked about stopped being the
+  important one on the day it was written.
+- `test_every_relative_link_on_the_gallery_resolves` reads the page's own
+  `href`s rather than the builder's layout, so the next move cannot leave
+  it looking for files at an old path — which is exactly what it did do
+  when the campaigns went under `campaigns/`.
+
+Both new checks were demonstrated red by putting `CHASE_PAGE` back to
+`/chase/`: *"nothing at all is published at the base URL"*, and the
+forwarder assertion failing on a tree where `chase/` is the real page.
+170 passed.
