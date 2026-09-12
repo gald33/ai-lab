@@ -5366,12 +5366,60 @@ The reduced-motion reader now lands on the closing world shot instead of
 the closing corridor shot, which is strictly more of the answer in one
 frame: the whole trail, and how small a corner of the world it happened in.
 
+### And a chase you win is a link she hands you
+
+*Gal, 2026-09-12: "at the end of a chase, if you catch her, your agent can
+give you a link to a website that shows your chase animation."*
+
+**Her post is the only place it can come from, and that is the design
+rather than a shortcut.** A searcher's agent never saw where she went --
+only where it stood, which is the whole of "A searcher cannot be plotted"
+above. So "your agent gives you a link" reduces to an agent passing on what
+she published, and what she publishes on a catch already includes her whole
+run: `close_campaign` hands over the route, the treasures and the seed,
+because *"being handed the run is the prize for taking her"*. The link is
+that same prize, drawn.
+
+It goes out on a catch only, like the table it sits under. She got away, she
+owes nobody a film.
+
+**The chase is in the address, and the page is static.**
+`trail_flight.link` gzips the plan into the fragment; `trail_flight.viewer`
+is the built flight page with no chase baked into it, published by
+`build_site` at `/carmel-taldiego/chase/`. Nothing after the `#` ever
+reaches the host, so the link works forever, costs nobody a server, and no
+one is told that anybody watched.
+
+Three things come out of the payload because the page can get them for
+itself, and none of them is a fact about the chase:
+
+| | | |
+|---|---|---|
+| the geometry | the world is the same world every time | `chase/basemap.js`, ~790 KB, cached once across every chase anybody is sent |
+| `centres` | it was a second copy of `path` in unit space | a division |
+| most of each arc | `LINK_POINTS = 28` of 65 | tens of kilometres per segment on a camera showing hundreds |
+
+What is left is 1 KB of address for a chase that ended in two rooms and
+about 7 KB for the longest in the published six. Before those three, the
+long one was **45 KB**, which is not a link, it is a file with a colon in
+it.
+
+**The third seed-shaped test in one branch.** The ceiling above was first
+asserted over three named seeds, every one of them a two-leg campaign under
+the riddle -- so raising `LINK_POINTS` to 9,999 left it green. It searches
+79 seeds for the longest campaign now and fails if none is longer than
+eight. That is the same defect as the leader check earlier in this section
+and as `test_the_command_in_the_docstring_runs`'s absence: **a check named
+after a seed is a check named after a campaign shape**, and campaign shape
+is the one thing in this game that moves under every parameter.
+
 ### What it costs, stated rather than absorbed
 
 ```
 card, vectors only     148 KB -> 167 KB      (+ the coarse world)
 card, with imagery     675 KB -> 889 KB      (30 -> 43 NASA tiles)
 published site         1.1 MB -> 1.2 MB vectors, 3.7 MB -> 4.9 MB as deployed
+   and, with the chase viewer and its copy of the map,      -> 5.8 MB
 ```
 
 **The deployed figure is the one that counts** and is a third more, since

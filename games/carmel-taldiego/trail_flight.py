@@ -81,6 +81,8 @@ alternative is asserting on a transform string and hoping.
 from __future__ import annotations
 
 import argparse
+import base64
+import gzip
 import json
 import math
 import os
@@ -393,9 +395,59 @@ PAGE = """<!doctype html>
 </div>
 <script type="application/json" id="data">__DATA__</script>
 <script>
+// A chase arrives one of two ways and the drawing does not care which:
+// baked into the document by `page`, or handed to the page in its own
+// address by `link`. The second is compressed, so booting is asynchronous
+// -- and a browser without `DecompressionStream` is told so, since a blank
+// page and a page that decided not to say anything look the same.
 (function () {
   "use strict";
-  var D = JSON.parse(document.getElementById("data").textContent);
+  var baked = document.getElementById("data").textContent.trim();
+  if (baked) { boot(JSON.parse(baked)); return; }
+  var packed = (location.hash || "").replace(/^#/, "");
+  if (!packed) { complain("no chase in this address"); return; }
+  if (!window.DecompressionStream) {
+    complain("this browser cannot open a packed chase:"
+             + " it has no DecompressionStream");
+    return;
+  }
+  var raw = atob(packed.replace(/-/g, "+").replace(/_/g, "/"));
+  var bytes = new Uint8Array(raw.length), b;
+  for (b = 0; b < raw.length; b++) { bytes[b] = raw.charCodeAt(b); }
+  new Response(new Blob([bytes]).stream()
+      .pipeThrough(new DecompressionStream("gzip"))).json()
+    .then(boot)
+    .catch(function (e) { complain("this chase would not unpack: " + e); });
+
+  function complain(why) {
+    var head = document.getElementById("head");
+    head.querySelector("h1").textContent = "Nothing to show";
+    head.querySelector("p").textContent = why;
+    window.flight = { broken: why };
+  }
+
+  function boot(D) {
+  if (D.outcome) {
+    var head = document.getElementById("head");
+    head.querySelector("h1").textContent = "Carmel Taldiego, " + D.outcome;
+    head.querySelector("p").textContent = D.flights.length + " rooms, "
+      + D.emptied + " of them emptied, " + D.reputation + " reputation, "
+      + D.hours + " hours";
+    document.title = "Carmel Taldiego, " + D.outcome;
+  }
+  // A link carries the chase and not the planet: the map is a sibling file
+  // the browser caches once across every chase anybody sends, and the arcs
+  // arrive without their unit-space copies, since a copy is what those
+  // were.
+  if (!D.geometry) { D.geometry = window.BASEMAP; }
+  if (!D.globe.coarse) { D.globe.coarse = window.BASEMAP.coarse; }
+  D.flights.forEach(function (f) {
+    if (!f.centres) {
+      f.centres = f.path.map(function (q) {
+        return [q[0] / D.world, q[1] / D.world];
+      });
+    }
+  });
   var camera = document.getElementById("camera");
   var pins = document.getElementById("pins");
   var NS = "http://www.w3.org/2000/svg";
@@ -701,21 +753,118 @@ PAGE = """<!doctype html>
   } else {
     requestAnimationFrame(tick);
   }
+  }
 }());
 </script>
 """
 
 
-def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
-    data = plan(result, world, start)
-    took = data["emptied"]
-    subtitle = (f'{len(data["flights"])} rooms, {took} of them emptied, '
-                f'{data["reputation"]} reputation, {data["hours"]} hours')
+#: How many points of a leg's arc a link carries. The built pages keep all
+#: 65; a link is a thing somebody pastes into a message, and the arcs are
+#: most of its weight -- 45 KB of address for a seventeen-room chase, which
+#: is not a link anybody sends. At 28 the longest of the published six packs
+#: to about 7 KB and a caught one to under 2, and the difference on screen
+#: is nothing: a leg's segment is then tens of kilometres on a camera
+#: showing hundreds.
+LINK_POINTS = 28
+
+#: Where `build_site` publishes `viewer`, and therefore what a link points
+#: at. Named here, beside the thing that mints the address, rather than in
+#: the builder that happens to write the file --
+#: `test_the_link_points_at_where_the_site_actually_puts_the_viewer` holds
+#: the two together, because a constant and a path that agree today and are
+#: maintained in two places do not stay agreeing.
+CHASE_PAGE = "https://gald33.github.io/ai-lab/carmel-taldiego/chase/"
+
+
+def thin(points: list, cap: int = LINK_POINTS) -> list:
+    """`points`, at most `cap` of them, both ends kept."""
+    if len(points) <= cap:
+        return points
+    step = (len(points) - 1) / (cap - 1)
+    return [points[min(round(i * step), len(points) - 1)] for i in range(cap)]
+
+
+def packed(data: dict) -> dict:
+    """A plan with everything the page can supply for itself taken out.
+
+    Three things go and none of them is a fact about the chase:
+
+    - **the geometry**, because the world is the same world for every chase
+      and belongs in a file the browser caches once (`basemap_js`);
+    - **`centres`**, which was a second copy of `path` in unit space and is
+      a division away from it;
+    - **most of each arc's points**, per `LINK_POINTS`.
+
+    What is left is the chase: where she went, what she said, what she took,
+    and how long each leg took her.
+    """
+    out = json.loads(json.dumps(data))
+    out.pop("geometry", None)
+    out["globe"].pop("coarse", None)
+    for flight in out["flights"]:
+        flight.pop("centres", None)
+        flight["path"] = thin(flight["path"])
+    out["globe"]["trail"] = [thin(leg) for leg in out["globe"]["trail"]]
+    return out
+
+
+def link(data: dict, base: str) -> str:
+    """One chase as an address: gzip, base64url, in the fragment.
+
+    **In the fragment on purpose.** Everything after `#` stays in the
+    browser: never sent to the host, never in anybody's logs. The chase is
+    post-reveal and public anyway, so this is not concealment -- it is that
+    a link to a static page should not need a server to know anything.
+    """
+    body = json.dumps(packed(data), separators=(",", ":")).encode()
+    return base.rstrip("#") + "#" + base64.urlsafe_b64encode(
+        gzip.compress(body, 9, mtime=0)).decode().rstrip("=")
+
+
+def viewer() -> str:
+    """The page a link opens: the same film with no chase baked into it.
+
+    The built page with its data left out and the basemap moved to a sibling
+    file, so the bytes that differ between two chases are only the chase.
+    Every line about how it draws is the same line -- a second renderer
+    would be a second thing to keep true, and this repo has a rule about
+    second surfaces.
+    """
+    out = _fill(PAGE, "", "a chase", "Carmel Taldiego", "")
+    return out.replace('<script type="application/json" id="data"></script>',
+                       '<script type="application/json" id="data"></script>\n'
+                       '<script src="basemap.js"></script>')
+
+
+def basemap_js() -> str:
+    """The whole world in the page's units, for the viewer to cache once.
+
+    A built flight carries the corridor its camera visits and nothing else.
+    A viewer cannot: when it is built it does not know which chase it will
+    be asked to draw. So it carries the map -- about 700 KB, once, cached
+    across every chase anybody sends -- and that is the whole cost of a
+    chase being a link instead of a build.
+
+    It is the same public-domain geography with the same nothing on it: no
+    toponyms at any zoom, which is what makes a real map safe here.
+    """
+    world = BM.load()
+    out = {key: [[[round(x * WORLD, 2), round(y * WORLD, 2)]
+                  for x, y in (BM.mercator(lat, lon) for lon, lat in shape)]
+                 for shape in world[key]]
+           for key in ("land", "lakes", "borders", "land_coarse")}
+    out["coarse"] = out.pop("land_coarse")
+    return "window.BASEMAP=" + json.dumps(out, separators=(",", ":")) + ";"
+
+
+def _fill(template: str, data: str, outcome: str, title: str,
+          subtitle: str) -> str:
     swaps = {
-        "__TITLE__": f'Carmel Taldiego, {result["outcome"]}',
-        "__OUTCOME__": result["outcome"],
+        "__TITLE__": title or f"Carmel Taldiego, {outcome}",
+        "__OUTCOME__": outcome,
         "__SUBTITLE__": subtitle,
-        "__DATA__": json.dumps(data, separators=(",", ":")),
+        "__DATA__": data,
         "__W__": str(WIDTH), "__H__": str(HEIGHT),
         "__GROUND__": INK["ground"], "__SEA__": INK["sea"],
         "__LAND__": INK["land"], "__BORDER__": INK["border"],
@@ -723,10 +872,19 @@ def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
         "__TEXT__": INK["text"], "__DIM__": INK["dim"],
         "__THEFT__": INK["theft"], "__RULE__": INK["rule"],
     }
-    out = PAGE
+    out = template
     for token, value in swaps.items():
         out = out.replace(token, value)
     return out
+
+
+def page(result: dict, world: C.Map, seed: bytes, start: str) -> str:
+    data = plan(result, world, start)
+    took = data["emptied"]
+    subtitle = (f'{len(data["flights"])} rooms, {took} of them emptied, '
+                f'{data["reputation"]} reputation, {data["hours"]} hours')
+    return _fill(PAGE, json.dumps(data, separators=(",", ":")),
+                 result["outcome"], "", subtitle)
 
 
 def main() -> None:
