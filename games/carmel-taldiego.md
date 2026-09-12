@@ -3351,6 +3351,13 @@ Re-check: `python3 games/carmel-taldiego/trail_card.py --survey`. A whole-world 
 pixels wide, which is why the card is the box at a readable scale with the
 world as a locator inset.
 
+> **The second sentence is superseded, 2026-09-12 — the world is the card's
+> main panel now.** See "The world is the map, and the chase is not on it"
+> below, which also measures the first: over 200 campaigns a campaign draws
+> 107px across on a 1000px world, not three, and what is unreadable at that
+> scale is its *stops*, which land a median 2.9px apart. The claim that
+> demoted the world was never measured in pixels.
+
 It also qualifies the sentence the section above is named after. *"There
 are 1000 landmarks, every one of them is a possibility"* is true of the map
 and false of any single campaign, which touches four countries and never
@@ -5165,6 +5172,171 @@ discovered later: **every calibration in this game was swept against this
 map** — `WATCH`, `PREP`, `NEAR_KM`, `REPUTATION_TO_WIN` — and the gazetteer
 is part of the level key by this document's own rule, so a redraw re-opens
 all of them. Not done here, and not started without a go.
+
+## The world is the map, and the chase is not on it
+
+*Gal, 2026-09-11: "Hue and cry: can we show the chase on the map?" -- then,
+when the first answer was a survey of options, the two sentences that
+settled it: "only landmarks carry coordinates" and "don't have to say
+anything to play". Then "I want a world map", and "I don't think we can
+show live game".*
+
+Two questions in one, and they have opposite answers. **The chase cannot be
+drawn at all. The world can be, and is now the card's main panel.**
+
+### A searcher cannot be plotted, and that is not a disclosure judgement
+
+The first draft of this answer treated "should we draw the searchers"
+as a leak to be weighed -- their watched rooms are landmarks she did not
+visit, so drawing them hands over samples of the descriptor relation, and
+the card's rule is "ask what the picture saves a searcher". True, and
+beside the point. **Only landmarks carry coordinates**, so there is no
+position in this game that is not a landmark's: a mark for a watcher *is* a
+mark on a landmark. It is a contradiction rather than a trade-off.
+
+**And the reverse is worse.** There is no membership oracle -- "The
+measurement that reframes it" above -- so a real searcher's guess is a
+string, and a string is a room whether or not the gazetteer has ever heard
+of it. `Gal's Kitchen Table` has no coordinate. A chase map can therefore
+only draw the guesses that happened to land in the thousand, which are the
+*near* ones, and it would show the field closing in while most of it was
+nowhere near. That is a selection effect drawn as scenery, and it is
+`CLAUDE.md`'s "absence drawn as a pass" with a coastline behind it.
+
+### And there is no record of a chase to draw even where there are coordinates
+
+**Searchers say nothing at all**, which is a design decision three sections
+of this document rest on. The only event any participant witnesses is
+somebody standing in the room she is standing in, and that event *ends the
+game*. A searcher who waited in the wrong room, or in the right room an
+hour late, was seen by nothing: not by her, since `_leave` takes her off
+the roster of the room she has finished with; not by a manager, since there
+is not one; and not by the hub, which answers `GET /agents` live and keeps
+no durable join log ("What that costs, which is verifiability").
+
+So the pursuit is not data being withheld. It does not exist, and cannot be
+reconstructed afterwards. Everything a chase layer could have drawn would
+have been `carmel.pursue` -- a *model* of a searcher, which `chase` does not
+even return: it keeps `caught_on` and the lags and throws the watched rooms
+away. Drawing that and calling it the chase is the weaker thing wearing the
+stronger one's clothes.
+
+**The obvious repair is the one thing that must not be built.** Letting
+searchers report where they are watching would be a second surface, it
+would make silence a disadvantage in a game that deliberately allows silent
+play, and -- worst -- it would *pay people to talk*, when the distance
+between `alone` and `split` is the only quantity this experiment measures.
+Instrumentation that rewards the treatment is not instrumentation.
+
+*Recorded because it has now been proposed twice in one afternoon by the
+same person, who was me.*
+
+### What the card draws instead, which is the world
+
+The still card was the campaign's bounding box at a readable scale with the
+world as a 232x116 locator in the emptiest corner. It is the same two
+pictures with their sizes swapped: **the world, full width, with her trail
+on it and a dashed frame round it; and that frame enlarged below, carrying
+the stops, the hints and what she took.** The locator inset is gone, since
+the panel above it is the thing it pointed at.
+
+    python3 games/carmel-taldiego/trail_card.py --out /tmp/trail.svg
+
+Nothing new was needed to draw it. The locator was already a whole-world
+Mercator camera at `scale = its width`; the world panel is that camera at
+`scale = WIDTH`, over the same coarse coastline layer the locator used
+(52 shapes, 1,958 points, against the detailed layer's 29,949). Decimation
+is honest here in a way it was not for the flight, whose level-of-detail
+scheme was built and deleted because every zoom closer than the crushed
+layer still needs the real one: **a still card never zooms.**
+
+The band is fixed at 75N to 56S and stated rather than fitted, because
+Mercator has no poles to draw and a band fitted to the campaign would make
+six published cards six different maps -- and a band fitted to the
+*gazetteer* would be a statement about where the thousand are. One landmark
+of the thousand sits north of it; a campaign that reaches it widens the
+band, which discloses nothing her own trail does not.
+
+### The claim that demoted the world had never been measured in pixels
+
+`trail_card.py`'s docstring said a whole-world drawing renders the chase as
+"a smudge three pixels wide", and that sentence decided the card's shape for
+three days. Over 200 campaigns (`trail_card.py --survey`, which prints these
+two rows now precisely so the next claim about a drawing is a measurement):
+
+```
+world-scale extent   median 106.8 px   min 4.8   max 355.5
+closest two stops    median   2.9 px   min 0.0   max  71.9
+```
+
+A tenth of the card's width. The six published seeds run 54 to 168px. **The
+extent was never the obstruction; the density is** -- fifteen to twenty-one
+stops inside a hundred pixels, a median 2.9px apart, and on the same pixel
+in four of the six published campaigns. That is a problem an enlarged panel
+solves and a bigger world map does not, which is why the answer is two
+panels and not a choice between them.
+
+Note what the wrong diagnosis cost: it was not that the card was bad, it
+was that **a fixable problem was recorded as a physical limit**, and a
+limit is not something anybody re-examines. The number that would have
+caught it -- pixels, at the width the card is actually drawn -- took four
+lines to measure and nobody had run them.
+
+### Drawing the world found two defects and one vacuous test
+
+**A leg across the antimeridian was drawn back across the Atlantic.** `fit`
+has unwrapped the *stops* since the card was written -- there is a test
+named for it -- and nothing was unwrapping the line between them. Invisible
+while every campaign was European, and unmissable on a world panel. `laid`
+now unwraps the polyline and emits it at every turn of the world the frame
+can see, which is one path usually and two for a leg that leaves one edge
+and arrives at the other.
+
+**The leaders joining labels to pins were invisible.** They were drawn in
+`INK["rule"]`, the chrome's hairline, which is darker than both the land
+and the sea it has to cross. Every test about label placement passed --
+they were placed correctly -- while on screen half the labels floated free
+of the trail with nothing to say which room they were about. At three stops
+nobody noticed; at eighteen the card stops being readable. The new
+`INK["leader"]` is asserted to out-luminance the land, the sea and the
+card's ground, which is a check that can go red for the reason it names.
+
+**And the caption test was green over an untaken branch.** The span caption
+sits beside the frame and flips to the other side when it would run off the
+card; disabling the flip left the test passing, because on every seed the
+file draws she stays left of centre. The frame that exercises it is built by
+hand now rather than hunted for in a seed. `CLAUDE.md`'s third shape, found
+by the habit the same file prescribes: break it on purpose and watch.
+
+### What it costs, stated rather than absorbed
+
+```
+card, vectors only     115 KB -> 137 KB      (+ the coarse world)
+card, with imagery     381 KB -> 580 KB      (17 -> 30 NASA tiles)
+published site         2.3 MB -> 2.5 MB vectors; about +1.2 MB with imagery
+```
+
+The world panel fetches its own tiles at zoom 2 -- twelve of them, one turn
+of the world at 1024px, which is the zoom that matches the width rather
+than a stretched one. The card is also about 500px taller. Both are paid
+for a panel that is most of what a reader now looks at, which is the trade
+being made and not an overrun.
+
+### What it still refuses, and the one thing it newly says
+
+Unchanged, and now checked over two panels rather than one: **no landmark
+is named but the ones she visited**, and the count of plotted points is
+asserted exactly -- two per stop, one per panel, plus the ring on a catch
+-- rather than as a ceiling, because a ceiling met by coincidence is how
+the locator's circle hid in the slack the last time.
+
+**What a world map newly hands a reader is the scale of her near-bias.**
+Six cards all staying inside one region draws `NEAR_KM` at about 2,500 km,
+where before it was only stated. That bias is public on purpose -- it is
+the only public term in her score, and it is what makes watching a skill --
+so this is consistent rather than a leak. It is written down because it is
+the first time the magnitude is *shown*, and because "the data is public"
+is the sentence this document has twice caught itself hiding behind.
 
 ## What would have to be built, in order
 

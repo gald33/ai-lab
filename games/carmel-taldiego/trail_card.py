@@ -45,6 +45,31 @@ corner of the map is a property the numbers in that document had not
 surfaced, and it was drawing it that surfaced it. Re-check both rows with
 `--survey`.
 
+    THE PARAGRAPH ABOVE IS SUPERSEDED, 2026-09-12, AND KEPT WHERE IT STOOD
+    because its measurement is the one that was quoted onward. Gal: *"I want
+    a world map."* The world is the card's main panel now and the box is the
+    panel below it, which is the same two pictures with their sizes swapped.
+
+    **The smudge is not what stops a world drawing, and never was.** Over
+    200 campaigns (`--survey`, which prints these two rows now precisely so
+    that the next claim about a drawing is measured):
+
+        world-scale extent   median 106.8 px   min 4.8   max 355.5
+        closest two stops    median   2.9 px   min 0.0   max  71.9
+
+    A tenth of the card's width, and legible -- the six published seeds run
+    54 to 168px. What is unreadable at that scale is the *stops*: fifteen to
+    twenty-one of them inside a hundred pixels, landing a median 2.9px
+    apart and, in four of the six published campaigns, on the same pixel.
+    Extent was never the obstruction; density is, and density is what an
+    enlarged panel fixes and a bigger world map would not.
+
+    The old numbers are also a campaign shape the game no longer has -- 3
+    legs became 15-21 when `REPUTATION_TO_WIN` was calibrated to 750 -- so
+    the rows above are a 2026-09-09 game, correct when measured. Both sets
+    are re-checked by `--survey`, which now prints the world-scale pixels
+    too rather than leaving a claim about a drawing to be eyeballed.
+
 THE BASEMAP WAS THE GAZETTEER, AND THAT WAS A DISCLOSURE. The first
 version of this file drew the thousand landmarks as a field of faint dots
 and argued they were free, since `landmarks.tsv` is public. Gal,
@@ -101,9 +126,19 @@ WIDTH, HEIGHT = 1000, 640
 #: two fit across 1000px but stack to 984px, still short. Nothing about the
 #: layout was wrong -- the card was sized for the campaign the game used to
 #: have.
-def card_height(stops: int) -> int:
-    """Tall enough that every stop's label has somewhere to go."""
-    return max(HEIGHT, TOP + BOTTOM + 40 + 60 * ((stops + 1) // 2))
+def plot_height(stops: int) -> int:
+    """The enlarged panel: tall enough that every stop's label has somewhere
+    to go."""
+    return max(HEIGHT - TOP - BOTTOM, 40 + 60 * ((stops + 1) // 2))
+
+
+def card_height(stops: int, world_h: float) -> int:
+    """The whole card: title strip, the world, the enlarged box, footer.
+
+    `world_h` is a campaign's, not a constant, because a stop outside the
+    band widens it (`world_camera`).
+    """
+    return int(TOP + round(world_h) + plot_height(stops) + BOTTOM)
 
 #: Space kept clear for the title strip and the footer.
 TOP, BOTTOM = 92, 56
@@ -121,8 +156,23 @@ PAD = 0.28
 #: is a number that wanted more trials.
 SURVEY_ROOT = bytes.fromhex("5e ed 00 00".replace(" ", "") * 8)
 
-#: The locator inset, bottom right.
-INSET_W, INSET_H, INSET_PAD = 232, 116, 18
+#: The world band's north and south edges, in degrees.
+#:
+#: **A whole-world Mercator panel is always a choice about where to stop**,
+#: since the projection runs to infinity at the poles. The band is fixed
+#: rather than fitted to the campaign, for two reasons: six published cards
+#: are then the same map six times, which is what lets a reader compare them
+#: at a glance; and a fitted band would be a statement about where the
+#: thousand landmarks are, which is the one thing this card does not say.
+#:
+#: It widens for a stop outside it -- one landmark in the thousand sits
+#: north of 75 -- and that discloses nothing her own published trail does
+#: not. See `world_camera`.
+NORTH, SOUTH = 75.0, -56.0
+
+#: Room left around a stop that widened the band, in unit-square terms:
+#: about 12px at `WIDTH`, so a polar pin is not welded to the frame.
+POLAR_MARGIN = 0.012
 
 INK = {
     "ground": "#14110e",     # the card's chrome: title strip and footer
@@ -136,6 +186,12 @@ INK = {
     "dim": "#94897a",
     "theft": "#d4573f",
     "rule": "#2a241e",
+    # A leader joins a label to its pin, and `rule` is not a colour that can
+    # do that: it is the chrome's hairline, chosen against the title strip,
+    # and over the map it is darker than the land it crosses. At three stops
+    # nobody noticed; at eighteen, half the labels float free of the trail
+    # and the card stops saying which room it is talking about.
+    "leader": "#6d6052",
 }
 
 
@@ -194,6 +250,71 @@ def fit(points: list[tuple[float, float]], x, y, w, h,
                   x, y, w, h)
 
 
+def world_camera(points: list[tuple[float, float]], y: float) -> Camera:
+    """The whole world at the card's full width, `NORTH` to `SOUTH`.
+
+    Gal, 2026-09-11: *"I want a world map."* This is the card's main panel
+    and `fit` draws the panel below it, which is the same two pictures the
+    card always had with their sizes swapped -- see the correction in this
+    module's docstring for why the measurement that demoted the world was
+    answering a question nobody had asked.
+
+    The camera is the locator inset's, widened: scale is `WIDTH`, so one
+    turn of the world is exactly the card, and the band decides the height.
+    """
+    top, bottom = BM.mercator(NORTH, 0.0)[1], BM.mercator(SOUTH, 0.0)[1]
+    for lat, lon in points:
+        py = BM.mercator(lat, lon)[1]
+        top, bottom = min(top, py - POLAR_MARGIN), max(bottom,
+                                                       py + POLAR_MARGIN)
+    return Camera(0.5, (top + bottom) / 2, WIDTH, 0, y, WIDTH,
+                  (bottom - top) * WIDTH)
+
+
+def laid(camera: Camera, projected: list[tuple[float, float]]) -> list[str]:
+    """A polyline as SVG paths, one per turn of the world the camera sees.
+
+    Two jobs in one function, and the second is a bug fix. Mercator x is
+    cyclic, so a line from Kamchatka to Alaska runs 0.96 -> 0.03 in the
+    projection and draws, naively, all the way back across the Atlantic:
+    `unwrap` makes it continuous first. Then the continuous line is emitted
+    at whichever turns overlap the frame -- usually one, and two for a leg
+    that crosses the seam, which a whole-world panel can show at both edges
+    and the box panel never could.
+
+    `fit` already unwrapped the *stops* to choose the frame
+    (`test_a_trail_across_the_antimeridian_is_not_the_width_of_the_world`);
+    nothing was doing it for the line between them.
+    """
+    xs = unwrap([x for x, _ in projected])
+    ys = [y for _, y in projected]
+    left, _, right, _ = camera.box()
+    out = []
+    for turn in (-1.0, 0.0, 1.0):
+        if min(xs) + turn <= right and max(xs) + turn >= left:
+            out.append(BM.path([(x + turn, y) for x, y in zip(xs, ys)],
+                               camera.unit))
+    return out
+
+
+def whole_world(camera: Camera) -> list[str]:
+    """The world at a glance, from the coarse layer the locator inset used.
+
+    1,958 points against the detailed layer's 29,949. **Decimation is
+    honest here in a way it was not for the flight**, whose level-of-detail
+    scheme was built and deleted because every zoom closer than the crushed
+    one still needs the real coastline (`games/carmel-taldiego.md`, "Two
+    schemes to make the page lighter"). A still card never zooms, and at
+    1000px for the whole world the fine coastline is sub-pixel anyway.
+
+    No borders: at this width they are a grey haze over the land, and the
+    panel below draws them where `no_passport_needed_next_door` can be read.
+    """
+    return [f'<path d="{BM.path([BM.mercator(lat, lon) for lon, lat in shape], camera.unit, close=True)}"'
+            f' fill="{INK["land"]}"/>'
+            for shape in BM.load()["land_coarse"]]
+
+
 #: Rough width of a glyph as a fraction of the font size, for Georgia. Only
 #: used to decide which side of a pin a label goes on, so it needs to be
 #: about right rather than right -- but too small is the dangerous
@@ -209,9 +330,15 @@ def _block(rows) -> tuple[float, float]:
     return width, height
 
 
-def lay_out(pins, blocks, height: int = HEIGHT
+def lay_out(pins, blocks, height: int = HEIGHT, top: int = TOP
             ) -> list[tuple[float, float, str]]:
     """Where each stop's label goes: (x, y-of-first-line, text-anchor).
+
+    `top` is the first row the labels may use. It is a parameter since the
+    world panel arrived: a label that is free to go anywhere goes onto the
+    world map, beside a 2px pin that is not the pin it belongs to, and the
+    card then has two drawings of the same campaign with the writing on the
+    wrong one.
 
     THIS IS NOT DECORATION AND THE FIRST TWO VERSIONS WERE WRONG IN THE SAME
     WAY. The first put a label left of its pin on the right third of the
@@ -234,7 +361,7 @@ def lay_out(pins, blocks, height: int = HEIGHT
     placed: list[tuple[float, float, float, float]] = []
 
     def clear(x, y, w, h):
-        if x < 20 or x + w > WIDTH - 20 or y < TOP + 4 or y + h > height - BOTTOM:
+        if x < 20 or x + w > WIDTH - 20 or y < top + 4 or y + h > height - BOTTOM:
             return False
         return all(not (x < ox + ow and ox < x + w
                         and y < oy + oh and oy < y + h)
@@ -265,7 +392,7 @@ def lay_out(pins, blocks, height: int = HEIGHT
             # line spacing the blocks already use, first slot that clears.
             for x in (min(max(px + 12, 20), WIDTH - 20 - w),
                       20, WIDTH - 20 - w):
-                y = TOP + 8
+                y = top + 8
                 while y + h <= height - BOTTOM:
                     if clear(x, y, w, h):
                         chosen = (x, y)
@@ -279,7 +406,7 @@ def lay_out(pins, blocks, height: int = HEIGHT
             # left visible rather than papered over.
             x = min(max(px + 12, 20), WIDTH - 20 - w)
             y = min(max([oy + oh + 4 for ox, oy, ow, oh in placed]
-                        or [TOP + 8]), height - BOTTOM - h)
+                        or [top + 8]), height - BOTTOM - h)
             chosen = (x, y)
         placed.append((chosen[0], chosen[1], w, h))
         # the anchor sits on the edge of the block nearest its pin, so the
@@ -288,24 +415,6 @@ def lay_out(pins, blocks, height: int = HEIGHT
         out.append((chosen[0] + (w if anchor == "end" else 0),
                     chosen[1] + 13, anchor))
     return out
-
-
-def _emptiest_corner(pins, height: int = HEIGHT) -> tuple[float, float]:
-    """Where to put the locator so it does not sit on the trail.
-
-    Fixed at bottom-right until a trail ran through it. Four candidates,
-    take the one whose nearest pin is farthest away.
-    """
-    candidates = [
-        (INSET_PAD, TOP + INSET_PAD),
-        (WIDTH - INSET_W - INSET_PAD, TOP + INSET_PAD),
-        (INSET_PAD, height - BOTTOM - INSET_H - INSET_PAD),
-        (WIDTH - INSET_W - INSET_PAD, height - BOTTOM - INSET_H - INSET_PAD),
-    ]
-    def clearance(corner):
-        cx, cy = corner[0] + INSET_W / 2, corner[1] + INSET_H / 2
-        return min(math.hypot(px - cx, py - cy) for px, py in pins)
-    return max(candidates, key=clearance)
 
 
 # --- the card -------------------------------------------------------------
@@ -353,32 +462,67 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
          imagery: str | None = None) -> str:
     """One finished campaign, drawn. `result` is `carmel.chase`'s.
 
-    `imagery` names a NASA GIBS layer to lay under it (see `imagery.py`);
-    without one the basemap is the committed vectors.
+    Two panels: the world, and the box on it that the campaign happened in,
+    enlarged. `imagery` names a NASA GIBS layer to lay under both (see
+    `imagery.py`); without one the basemap is the committed vectors.
     """
     legs = result["moves"]
     stops = [start] + [leg["to"] for leg in legs]
     places = [world.places[name] for name in stops]
     points = [(p["lat"], p["lon"]) for p in places]
 
-    height = card_height(len(stops))
-    plot_h = height - TOP - BOTTOM
-    main = fit(points, 0, TOP, WIDTH, plot_h)
+    globe = world_camera(points, TOP)
+    detail_y = TOP + globe.h
+    plot_h = plot_height(len(stops))
+    height = card_height(len(stops), globe.h)
+    main = fit(points, 0, detail_y, WIDTH, plot_h)
     pins = [main.at(lat, lon) for lat, lon in points]
-    ix, iy = _emptiest_corner(pins, height)
-    inset = Camera(0.5, 0.5, INSET_W, ix, iy, INSET_W, INSET_H)
+    projected = [BM.mercator(lat, lon) for lat, lon in points]
 
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}"'
            f' height="{height}" viewBox="0 0 {WIDTH} {height}"'
            f' font-family="Georgia, serif">',
-           f'<rect width="{WIDTH}" height="{height}" fill="{INK["ground"]}"/>',
-           f'<clipPath id="plot"><rect y="{TOP}" width="{WIDTH}"'
-           f' height="{plot_h}"/></clipPath>',
-           f'<rect y="{TOP}" width="{WIDTH}" height="{plot_h}"'
-           f' fill="{INK["sea"]}"/>',
-           f'<g clip-path="url(#plot)">']
+           f'<rect width="{WIDTH}" height="{height}" fill="{INK["ground"]}"/>']
+
+    # --- the world, and the frame the panel below enlarges ----------------
+    svg += [f'<clipPath id="world"><rect y="{TOP}" width="{WIDTH}"'
+            f' height="{globe.h:.0f}"/></clipPath>',
+            f'<rect y="{TOP}" width="{WIDTH}" height="{globe.h:.0f}"'
+            f' fill="{INK["sea"]}"/>',
+            '<g clip-path="url(#world)">']
     if imagery:
-        svg += IM.wrapper(WIDTH, plot_h, TOP,
+        svg += IM.wrapper(WIDTH, int(globe.h), TOP,
+                          IM.background(globe, imagery))
+    else:
+        svg += whole_world(globe)
+    for a, b in zip(places, places[1:]):
+        line = [BM.mercator(lat, lon) for lat, lon in
+                BM.great_circle((a["lat"], a["lon"]), (b["lat"], b["lon"]))]
+        for drawn in laid(globe, line):
+            svg.append(f'<path d="{drawn}" fill="none"'
+                       f' stroke="{INK["line"]}" stroke-width="1.4"'
+                       f' stroke-linecap="round" opacity="0.9"/>')
+    for px, py in (globe.unit(point) for point in projected):
+        svg.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.2"'
+                   f' fill="{INK["stop"]}"/>')
+
+    frame = _frame(globe, projected)
+    for fx, fy, fw, fh in frame:
+        svg.append(f'<rect x="{fx:.1f}" y="{fy:.1f}" width="{fw:.1f}"'
+                   f' height="{fh:.1f}" fill="none" stroke="{INK["dim"]}"'
+                   f' stroke-width="1" stroke-dasharray="3 3"'
+                   f' opacity="0.8"/>')
+    svg.append('</g>')
+    svg.append(_caption(frame, globe, _span(places)))
+
+    # --- that box, enlarged -----------------------------------------------
+    svg += [f'<clipPath id="plot"><rect y="{detail_y:.0f}" width="{WIDTH}"'
+            f' height="{plot_h}"/></clipPath>',
+            f'<rect y="{detail_y:.0f}" width="{WIDTH}" height="{plot_h}"'
+            f' fill="{INK["sea"]}"/>',
+            '<g clip-path="url(#plot)">']
+    if imagery:
+        svg += IM.wrapper(WIDTH, plot_h, int(detail_y),
                           IM.background(main, imagery))
     svg += geometry(main, over_imagery=bool(imagery))
     svg.append('</g>')
@@ -386,19 +530,19 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
     # the trail
     emptied = kept(result)
     for index, (leg, a, b) in enumerate(zip(legs, places, places[1:])):
-        line = BM.great_circle((a["lat"], a["lon"]), (b["lat"], b["lon"]))
-        drawn = BM.path([BM.mercator(lat, lon) for lat, lon in line],
-                        main.unit)
-        if imagery:
-            svg.append(f'<path d="{drawn}" fill="none" stroke="#000"'
-                       f' stroke-width="4.6" opacity="0.4"'
-                       f' stroke-linecap="round"/>')
-        svg.append(f'<path d="{drawn}" fill="none"'
-                   f' stroke="{INK["line"]}" stroke-width="2.2"'
-                   f' stroke-linecap="round"'
-                   f' opacity="{0.95 if index in emptied else 0.5}"'
-                   + ('' if index in emptied else ' stroke-dasharray="5 5"')
-                   + '/>')
+        line = [BM.mercator(lat, lon) for lat, lon in
+                BM.great_circle((a["lat"], a["lon"]), (b["lat"], b["lon"]))]
+        for drawn in laid(main, line):
+            if imagery:
+                svg.append(f'<path d="{drawn}" fill="none" stroke="#000"'
+                           f' stroke-width="4.6" opacity="0.4"'
+                           f' stroke-linecap="round"/>')
+            svg.append(f'<path d="{drawn}" fill="none"'
+                       f' stroke="{INK["line"]}" stroke-width="2.2"'
+                       f' stroke-linecap="round"'
+                       f' opacity="{0.95 if index in emptied else 0.5}"'
+                       + ('' if index in emptied else ' stroke-dasharray="5 5"')
+                       + '/>')
 
     # the stops, and what she said and took at each
     caught_at = len(legs) if result["outcome"] == "caught" else None
@@ -424,13 +568,14 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
     halo = (' stroke="#0b0906" stroke-width="3" paint-order="stroke"'
             ' stroke-linejoin="round"') if imagery else ""
     for i, ((px, py), rows, (tx, ty, anchor)) in enumerate(
-            zip(pins, blocks, lay_out(pins, blocks, height))):
+            zip(pins, blocks,
+                lay_out(pins, blocks, height, top=int(detail_y)))):
         stole = i - 1 in emptied if i else False
         # a leader, when the label had to move away from its pin
         if abs(tx - px) > 26 or not (py - 22 < ty < py + 30):
             svg.append(f'<path d="M{px:.1f},{py:.1f} L{tx:.1f},'
-                       f'{ty - 5:.1f}" stroke="{INK["rule"]}"'
-                       f' stroke-width="1"/>')
+                       f'{ty - 5:.1f}" stroke="{INK["leader"]}"'
+                       f' stroke-width="1" opacity="0.8"/>')
         if i == caught_at:
             svg.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="11"'
                        f' fill="none" stroke="{INK["theft"]}"'
@@ -452,37 +597,6 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
                        f'{_esc(text)}</text>')
             line += 1
 
-    # the inset: where on earth that was, on the coarse world
-    svg.append(f'<rect x="{inset.x}" y="{inset.y}" width="{inset.w}"'
-               f' height="{inset.h}" fill="{INK["sea"]}"'
-               f' stroke="{INK["rule"]}"/>')
-    svg.append(f'<clipPath id="inset"><rect x="{inset.x}" y="{inset.y}"'
-               f' width="{inset.w}" height="{inset.h}"/></clipPath>')
-    svg.append('<g clip-path="url(#inset)">')
-    if imagery:
-        # the whole world is one tile at this size, so the locator costs a
-        # single fetch -- and a vector inset under a photographic map looks
-        # like a different card pasted into the corner
-        svg += IM.wrapper(inset.w, inset.h, inset.y,
-                          IM.background(inset, imagery))
-    else:
-        for shape in BM.load()["land_coarse"]:
-            drawn = BM.path([BM.mercator(lat, lon) for lon, lat in shape],
-                            inset.unit, close=True)
-            svg.append(f'<path d="{drawn}" fill="{INK["land"]}"/>')
-    cx, cy = inset.unit((main.cx % 1.0, main.cy))
-    svg.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="7" fill="none"'
-               f' stroke="{INK["line"]}" stroke-width="1.6"/>')
-    svg.append('</g>')
-    # the caption is wider than the inset, so it hangs towards the middle of
-    # the card rather than off whichever edge the inset was moved to
-    left = inset.x < WIDTH / 2
-    svg.append(f'<text x="{inset.x if left else inset.x + inset.w}"'
-               f' y="{inset.y - 8}" fill="{INK["dim"]}" font-size="11"'
-               f' letter-spacing="1.2"'
-               f' text-anchor="{"start" if left else "end"}"{halo}>'
-               f'{_esc(_span(places))}</text>')
-
     # title and footer
     took = len(emptied)
     svg.append(f'<text x="34" y="46" fill="{INK["text"]}" font-size="30">'
@@ -500,6 +614,51 @@ def card(result: dict, world: C.Map, seed: bytes, start: str,
                    f'{_esc(IM.CREDIT)}</text>')
     svg.append('</svg>')
     return "\n".join(svg)
+
+
+def _frame(camera: Camera, projected: list[tuple[float, float]],
+           margin: float = 12.0) -> list[tuple[float, float, float, float]]:
+    """The dashed box on the world, in pixels -- one rect per turn of the
+    world it is visible at, which is two when a campaign straddles the seam.
+
+    `margin` is in pixels and the camera's scale is `WIDTH`, so the
+    conversion is a division rather than a fudge factor.
+    """
+    xs = unwrap([x for x, _ in projected])
+    ys = [y for _, y in projected]
+    pad = margin / camera.scale
+    x0, x1 = min(xs) - pad, max(xs) + pad
+    y0, y1 = min(ys) - pad, max(ys) + pad
+    left, _, right, _ = camera.box()
+    out = []
+    for turn in (-1.0, 0.0, 1.0):
+        if x0 + turn <= right and x1 + turn >= left:
+            ax, ay = camera.unit((x0 + turn, y0))
+            bx, by = camera.unit((x1 + turn, y1))
+            out.append((ax, ay, bx - ax, by - ay))
+    return out
+
+
+def _caption(frame, camera: Camera, text: str) -> str:
+    """The span, written beside the frame it describes.
+
+    It has to be *beside* it: the whole point of the line is that the box is
+    that small, and a caption in the corner of the panel is a statistic
+    instead. So it goes right of the box, or left when that would run off
+    the card, and above unless the box is against the top of the panel.
+    """
+    fx, fy, fw, fh = frame[0]
+    width = len(text) * 11 * GLYPH + 1.2 * len(text)
+    if fx + fw + 8 + width <= WIDTH - 20:
+        x, anchor = fx + fw + 8, "start"
+    elif fx - 8 - width >= 20:
+        x, anchor = fx - 8, "end"
+    else:
+        x, anchor = 20, "start"
+    y = fy - 7 if fy - 7 >= camera.y + 14 else fy + fh + 16
+    return (f'<text x="{x:.1f}" y="{y:.1f}" fill="{INK["dim"]}"'
+            f' font-size="11" letter-spacing="1.2"'
+            f' text-anchor="{anchor}">{_esc(text)}</text>')
 
 
 def kept(result: dict) -> set[int]:
@@ -529,7 +688,7 @@ def _span(places: list[dict]) -> str:
     return f"{widest:,.0f} KM ACROSS, ON A WORLD 40,075 KM AROUND"
 
 
-# --- the measurement the inset exists because of --------------------------
+# --- the measurement the card's two panels rest on -------------------------
 
 def _quantile(values: list[float], q: float) -> float:
     ordered = sorted(values)
@@ -604,6 +763,7 @@ def survey(trials: int = 200, searchers: int = 2,
 
     base = C.Map(root)
     lengths, spans, countries = [], [], []
+    extents, closest = [], []
     for trial in range(trials):
         seed = hashlib.sha256(root + trial.to_bytes(4, "big")).digest()
         world = C.Map(seed)
@@ -618,15 +778,35 @@ def survey(trials: int = 200, searchers: int = 2,
                          for a in places for b in places))
         countries.append(len({p["country"] for p in places}))
 
+        # What the world panel actually does with that campaign, in pixels,
+        # because the sentence this card's shape used to rest on was about
+        # a drawing and was never measured as one.
+        drawn = [BM.mercator(p["lat"], p["lon"]) for p in places]
+        xs = unwrap([x for x, _ in drawn])
+        ys = [y for _, y in drawn]
+        extents.append(max(max(xs) - min(xs), max(ys) - min(ys)) * WIDTH)
+        pairs = [math.hypot(ax - bx, ay - by) * WIDTH
+                 for i, (ax, ay) in enumerate(zip(xs, ys))
+                 for bx, by in list(zip(xs, ys))[i + 1:]
+                 if (ax, ay) != (bx, by)]
+        closest.append(min(pairs) if pairs else 0.0)
+
     print(f"over {trials} campaigns, {searchers} searchers\n")
     for label, values, unit in (("legs per campaign", lengths, ""),
                                 ("span", spans, " km"),
-                                ("countries visited", countries, "")):
-        print(f"  {label:20} median {statistics.median(values):>9,.0f}{unit}"
-              f"   min {min(values):>7,.0f}   max {max(values):>9,.0f}")
-    print("\nA campaign happens inside a box a few thousand kilometres\n"
-          "across, on a map 40,075 km around. That is why the card is the\n"
-          "box with the world as an inset, and not the world.")
+                                ("countries visited", countries, ""),
+                                ("world-scale extent", extents, " px"),
+                                ("closest two stops", closest, " px")):
+        print(f"  {label:20} median {statistics.median(values):>9,.1f}{unit}"
+              f"   min {min(values):>7,.1f}   max {max(values):>9,.1f}")
+    print(f"\nThe last two rows are the card, on a {WIDTH}px world. A campaign"
+          "\nis a few thousand kilometres across on a map 40,075 km around,"
+          "\nand that is legible: a tenth of the width, drawn small. What is"
+          "\nnot legible is its stops, which land on each other. **Extent is"
+          "\nnot why the world needed a second panel; density is** -- see the"
+          "\ncorrection in this module's docstring, where a claim about a"
+          "\nsmudge three pixels wide stood for three days without anybody"
+          "\nmeasuring a pixel.")
 
 
 def main() -> None:

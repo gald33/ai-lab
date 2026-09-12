@@ -18,11 +18,28 @@ Every test below has been made to fail on purpose, per `CLAUDE.md`'s "a
 check is green for the reason it names": the accounting ones by reverting
 `kept` to `leg["dwell"]`, the layout ones by returning the naive
 right-of-the-pin position, and the naming one by labelling the basemap.
+
+*The world panel's six were run the same way, 2026-09-12*, and the runs are
+worth listing because one of them came back green and had to be replaced:
+scaling the world camera by 1.4 (the panel stops being the whole world),
+dropping the widening loop (a polar stop off the card), returning only turn
+zero from `laid` (the seam drawn as one path), putting `leader` back to the
+chrome's `rule` (leaders invisible), and dropping `top=` at `lay_out`'s call
+site (labels on the world) each go red.
+
+**Disabling the caption's flip did not**, because on every seed this file
+draws she stays left of centre and the caption never has to move -- an
+untaken branch asserted by a test that looked like it covered it, which is
+`CLAUDE.md`'s "absence drawn as a pass" in miniature. The frame that
+exercises it is built by hand in
+`test_the_span_caption_flips_when_the_frame_is_against_the_edge`.
 """
 
 import re
 import sys
 import xml.etree.ElementTree as ET
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -159,30 +176,35 @@ def test_it_is_well_formed():
 
 # --- the layout -----------------------------------------------------------
 
-def rects(pins, blocks):
+def rects(pins, blocks, detail_y, height):
     # The card grows with the campaign (`trail_card.card_height`), so the
     # layout has to be checked against the height actually drawn. Checking
     # it against the 640 default was checking a card nobody renders.
-    height = TC.card_height(len(pins))
     out = []
-    for (px, _), rows, (x, y, anchor) in zip(pins, blocks,
-                                             TC.lay_out(pins, blocks, height)):
+    for (px, _), rows, (x, y, anchor) in zip(
+            pins, blocks,
+            TC.lay_out(pins, blocks, height, top=int(detail_y))):
         w, h = TC._block(rows)
         out.append((x - w if anchor == "end" else x, y - 13, w, h))
     return out
 
 
 def scene(seed: bytes):
+    """The lower panel exactly as `card` builds it: the world's height
+    decides where it starts, so a scene that assumed `TOP` would be
+    checking a panel the card does not draw."""
     world, result = run(seed)
     stops = [C.LOBBY_LANDMARK] + [leg["to"] for leg in result["moves"]]
     points = [(world.places[n]["lat"], world.places[n]["lon"]) for n in stops]
-    plot_h = TC.HEIGHT - TC.TOP - TC.BOTTOM
-    camera = TC.fit(points, 0, TC.TOP, TC.WIDTH, plot_h)
+    globe = TC.world_camera(points, TC.TOP)
+    detail_y = TC.TOP + globe.h
+    plot_h = TC.plot_height(len(stops))
+    camera = TC.fit(points, 0, detail_y, TC.WIDTH, plot_h)
     pins = [camera.at(lat, lon) for lat, lon in points]
     blocks = [[(f"{i}. {name}", 17), ("“a hint of some length”", 13),
                ("something she took, at length", 13)]
               for i, name in enumerate(stops)]
-    return pins, blocks
+    return pins, blocks, detail_y, TC.card_height(len(stops), globe.h)
 
 
 def test_no_two_labels_overlap():
@@ -199,11 +221,40 @@ def test_no_two_labels_overlap():
 
 def test_every_label_stays_on_the_card():
     for seed in (CAUGHT, ESCAPED, bytes.fromhex("55" * 32)):
-        pins, blocks = scene(seed)
-        height = TC.card_height(len(pins))
-        for x, y, w, h in rects(pins, blocks):
+        pins, blocks, detail_y, height = scene(seed)
+        for x, y, w, h in rects(pins, blocks, detail_y, height):
             assert 0 <= x and x + w <= TC.WIDTH, seed.hex()[:4]
             assert TC.TOP <= y and y + h <= height - TC.BOTTOM
+
+
+def test_no_label_lands_on_the_world():
+    """The card draws the same campaign twice, at two scales. A label is
+    about a pin in the lower panel, and a label that drifts onto the world
+    sits beside a 2px dot that is a *different* stop -- so the writing ends
+    up on the wrong drawing, which is worse than the crowding it escaped.
+
+    It reads the drawn card rather than `lay_out`, and that is the whole
+    point of it: `lay_out` honours whatever `top` it is handed, so a test
+    that hands it one is asserting its own argument. What can go wrong is
+    the *call*, and dropping `top=` in `card` is how this was found.
+
+    The one thing allowed to be written on the world is the span caption,
+    which is about the frame and not about a stop."""
+    for seed in (CAUGHT, ESCAPED, bytes.fromhex("55" * 32),
+                 bytes.fromhex("11" * 32)):
+        world, result = run(seed)
+        stops = [C.LOBBY_LANDMARK] + [leg["to"] for leg in result["moves"]]
+        points = [(world.places[n]["lat"], world.places[n]["lon"])
+                  for n in stops]
+        detail_y = TC.TOP + TC.world_camera(points, TC.TOP).h
+        for node in ET.fromstring(
+                TC.card(result, world, seed, C.LOBBY_LANDMARK)).iter():
+            if not node.tag.endswith("text"):
+                continue
+            y = float(node.get("y"))
+            if TC.TOP <= y < detail_y:
+                assert (node.text or "").endswith("KM AROUND"), (
+                    f"{node.text!r} is written on the world")
 
 
 # --- the projection -------------------------------------------------------
@@ -235,6 +286,103 @@ def test_mercator_round_trips():
 
 # --- what replaced the field of dots ---------------------------------------
 
+# --- the world panel ------------------------------------------------------
+
+def test_the_world_panel_is_the_whole_world():
+    """Not most of it. A world map that quietly cropped east and west would
+    still look like a world map, and would be drawing a claim about where
+    she can be."""
+    globe = TC.world_camera([(48.0, 2.0)], TC.TOP)
+    left, top, right, bottom = globe.box()
+    assert right - left == pytest.approx(1.0), "one turn of the world"
+    assert top == pytest.approx(BM.mercator(TC.NORTH, 0.0)[1])
+    assert bottom == pytest.approx(BM.mercator(TC.SOUTH, 0.0)[1])
+    assert globe.h == pytest.approx((bottom - top) * TC.WIDTH)
+
+
+def test_a_stop_outside_the_band_widens_it():
+    """Mercator has no poles to draw, so the band stops somewhere; one
+    landmark of the thousand is north of it. A fixed frame would put her pin
+    off the card, and a card that loses a stop is worse than a tall one."""
+    far = 78.24                      # the northernmost landmark in the map
+    globe = TC.world_camera([(48.0, 2.0), (far, 15.0)], TC.TOP)
+    _, top, _, bottom = globe.box()
+    assert top < BM.mercator(far, 15.0)[1] < bottom
+    x, y = globe.at(far, 15.0)
+    assert TC.TOP < y < TC.TOP + globe.h, "the polar stop is on the panel"
+
+
+def test_a_leg_across_the_seam_is_drawn_at_both_edges():
+    """Kamchatka to Alaska is a short hop east and 0.96 -> 0.03 in the
+    projection. `fit` has unwrapped the *stops* since the card was written;
+    nothing was unwrapping the line between them, so the leg was drawn back
+    across the Atlantic -- invisible while every campaign was European.
+
+    A whole-world panel is where that finally shows, and where the fix is
+    not a single path: the leg leaves one edge of the world and arrives at
+    the other, so it is two."""
+    globe = TC.world_camera([(53.0, 158.0), (57.0, -153.0)], TC.TOP)
+    line = [BM.mercator(lat, lon) for lat, lon in
+            BM.great_circle((53.0, 158.0), (57.0, -153.0))]
+    assert len(TC.laid(globe, line)) == 2
+
+    # and the naive drawing is the thing being ruled out: unwrapped, the
+    # leg spans the 49 degrees between them, not the 311 the other way
+    xs = TC.unwrap([x for x, _ in line])
+    assert max(xs) - min(xs) == pytest.approx(49 / 360, abs=0.01)
+
+
+def test_a_leader_is_visible_against_the_map_it_crosses():
+    """`CLAUDE.md`: a check is green for the reason it names. The leaders
+    were drawn in `rule`, which is the chrome's hairline and darker than
+    both the land and the sea it has to cross -- so every test about label
+    placement passed while the labels had, on screen, nothing joining them
+    to their pins."""
+    def luminance(colour: str) -> float:
+        r, g, b = (int(colour[i:i + 2], 16) / 255 for i in (1, 3, 5))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    leader = luminance(TC.INK["leader"])
+    for under in ("land", "sea", "ground"):
+        assert leader > luminance(TC.INK[under]) + 0.06, under
+    assert f'stroke="{TC.INK["leader"]}"' in draw(ESCAPED)
+
+
+def test_the_span_caption_stays_on_the_card():
+    """It is written beside the frame it describes rather than in a corner,
+    which means it moves -- and a caption that runs off the edge is the
+    failure mode that costs the panel its whole point."""
+    for seed in (CAUGHT, ESCAPED, bytes.fromhex("55" * 32)):
+        world, result = run(seed)
+        svg = TC.card(result, world, seed, C.LOBBY_LANDMARK)
+        caption = [n for n in ET.fromstring(svg).iter()
+                   if n.tag.endswith("text")
+                   and (n.text or "").endswith("KM AROUND")]
+        assert len(caption) == 1
+        x = float(caption[0].get("x"))
+        width = len(caption[0].text) * 11 * TC.GLYPH
+        assert 20 <= x <= TC.WIDTH - 20
+        if caption[0].get("text-anchor") == "start":
+            assert x + width <= TC.WIDTH
+        else:
+            assert x - width >= 0
+
+
+def test_the_span_caption_flips_when_the_frame_is_against_the_edge():
+    """The loop above is not enough on its own and saying why is the point:
+    on every seed it draws, the campaign sits left of centre and the caption
+    never has to move, so disabling the flip leaves it green. A campaign in
+    the far east of the map is the case that exercises it, and the frame is
+    built here rather than hunted for in a seed."""
+    globe = TC.world_camera([(35.0, 139.0)], TC.TOP)
+    text = "18,000 KM ACROSS, ON A WORLD 40,075 KM AROUND"
+    against_the_edge = [(TC.WIDTH - 60.0, 300.0, 40.0, 30.0)]
+    drawn = TC._caption(against_the_edge, globe, text)
+    x = float(re.search(r'x="([-\d.]+)"', drawn).group(1))
+    assert 'text-anchor="end"' in drawn, "it stayed on the right of the frame"
+    assert x - len(text) * 11 * TC.GLYPH >= 0, "and ran off the card"
+
+
 def test_the_card_draws_real_geography_and_not_the_gazetteer():
     """Gal, 2026-09-09: *"don't disclose the potential landmarks"*. The
     first version drew all thousand as a dot field and argued they were
@@ -254,10 +402,15 @@ def test_the_card_draws_real_geography_and_not_the_gazetteer():
     # she did not empty, which shrinks the set below the trail, and catches
     # stopped being rare. A ceiling that is met by a coincidence is
     # `CLAUDE.md`'s third shape; this counts what is drawn.
-    extras = 1 + (1 if result["outcome"] == "caught" else 0)
+    #
+    # *Recounted 2026-09-12*, when the world became the card's main panel:
+    # every stop is now drawn twice, once on each panel, and the locator's
+    # single circle is gone with the inset it marked. The count is still
+    # stated exactly, and it is still the whole of what the card plots.
+    extras = 1 if result["outcome"] == "caught" else 0
     circles = [n for n in ET.fromstring(svg).iter()
                if n.tag.endswith("circle")]
-    assert len(circles) == len(stops) + extras, (
+    assert len(circles) == 2 * len(stops) + extras, (
         f"{len(circles)} circles for {len(stops)} stops"
         f" on a {result['outcome']} campaign")
 
