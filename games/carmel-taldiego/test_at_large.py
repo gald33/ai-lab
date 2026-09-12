@@ -367,11 +367,26 @@ def test_the_catcher_is_handed_a_chase_to_watch(board):
     closing = [body for body in said if "seed = " in body]
     assert closing, "she never closed the campaign"
 
+    import base64
+    import gzip
+    import json
+
     import trail_flight as TF
     address = [line.strip() for line in closing[-1].splitlines()
                if TF.CHASE_PAGE in line]
     assert address, f"no chase to watch in:\n{closing[-1]}"
     assert len(address[0]) > len(TF.CHASE_PAGE) + 200, "an empty address"
+
+    # **And the credit is really in it.** Gal, 2026-09-12: the link is the
+    # *"credit scene" reward when the game is won*, so the end-to-end claim
+    # is not that an address exists -- it is that the film names the person
+    # who walked in on her. Checked by opening the address, because every
+    # step between the roster and the fragment is a step that can drop it,
+    # and `_watch` swallows its own failures by design.
+    body = address[0].split("#", 1)[1]
+    plan = json.loads(gzip.decompress(base64.urlsafe_b64decode(
+        body + "=" * (-len(body) % 4))))
+    assert plan["by"] == "searcher", f"no credit in the chase: {plan['by']!r}"
 
 
 def test_she_is_caught_in_the_room_she_is_packing_in(board):

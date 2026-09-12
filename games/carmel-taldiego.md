@@ -5404,6 +5404,39 @@ about 7 KB for the longest in the published six. Before those three, the
 long one was **45 KB**, which is not a link, it is a file with a colon in
 it.
 
+### It is a credit scene, which is a statement about what it is for
+
+*Gal, 2026-09-12, confirming the shape and naming it: "the page is
+stateless. it gets a bundle in the url, and the url gets to the agent from
+Carmel when she is beaten. That is the **credit scene** reward when the game
+is won."*
+
+Three facts and a purpose, and the purpose is the part that was not written
+down. Stateless page, bundle in the address, minted by her and relayed by
+the agent -- all three are what is built. What "credit scene" adds is that
+**this is the ending of a game somebody won**, not a report on a campaign,
+and that immediately found something missing: the page named nobody.
+
+So the closing shot carries the credit: *taken by <the name they registered
+under>*. On the shot the film ends on, and only there -- the opening shot is
+before any of it happened. **Absent from the published six**, because those
+were caught by `carmel.pursue`, which is a model with no name, and filling
+it in with something plausible is the weaker thing wearing the stronger
+one's clothes.
+
+**A stranger's string in somebody else's address.** The name is whatever a
+searcher typed on a roster; she mints it into a link; a third person opens
+it. That is the shape of every injection, and `textContent` is what makes it
+safe rather than a hope -- with a check that a name made of markup arrives
+as characters and never as an element.
+
+And the end-to-end claim is not that an address exists, it is that the film
+credits the person who actually walked in on her. The live test opens the
+address and reads the name out of it, because every step between the roster
+and the fragment can drop it and `_watch` swallows its own failures by
+design. Dropping `by` there passed for one round before that check existed,
+which is exactly the round it was written for.
+
 **The third seed-shaped test in one branch.** The ceiling above was first
 asserted over three named seeds, every one of them a two-leg campaign under
 the riddle -- so raising `LINK_POINTS` to 9,999 left it green. It searches

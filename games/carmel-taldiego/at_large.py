@@ -403,7 +403,8 @@ class Fugitive:
         """
         body = C.close_campaign(seed, outcome, reputation, trail,
                                 caught_by=caught_by, world=self._world,
-                                watch=self._watch(seed, trail, reputation)
+                                watch=self._watch(seed, trail, reputation,
+                                                  caught_by)
                                 if caught_by else None)
         where = [("the lobby", lobby_token())]
         if salt is not None:
@@ -553,8 +554,8 @@ class Fugitive:
                            max(0.0, seconds(leg["leaves"]) -
                                (self.now() - started))))
 
-    def _watch(self, seed: bytes, trail: list[dict],
-               reputation: int) -> str | None:
+    def _watch(self, seed: bytes, trail: list[dict], reputation: int,
+               caught_by: str | None = None) -> str | None:
         """The chase, as an address, for the searcher who caught her.
 
         `"caught"` and not `OUTCOMES["caught"]`: her phrase for it is her
@@ -572,7 +573,7 @@ class Fugitive:
             import trail_flight as TF
 
             result = {"outcome": "caught", "moves": trail,
-                      "reputation": reputation,
+                      "reputation": reputation, "by": caught_by,
                       "hours": trail[-1]["leaves"]}
             return TF.link(TF.plan(result, self._world, C.LOBBY_LANDMARK),
                            TF.CHASE_PAGE)

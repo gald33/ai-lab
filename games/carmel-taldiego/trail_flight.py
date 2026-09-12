@@ -269,6 +269,18 @@ def plan(result: dict, world: C.Map, start: str) -> dict:
         "geometry": geometry,
         "globe": globe(stops_xy, xs, places),
         "outcome": result["outcome"],
+        # **Who took her, when a person did.** Gal, 2026-09-12: the link is
+        # *"the 'credit scene' reward when the game is won"* -- and a credit
+        # scene with no credit in it is a report. Absent on the published
+        # six, because nobody real caught those: `carmel.chase`'s searchers
+        # are a model and have no names, and inventing one for the page
+        # would be the weaker thing wearing the stronger one's clothes.
+        #
+        # It is a searcher's own roster name, so it is a **stranger's
+        # string** arriving in an address somebody else opens. The page
+        # writes it with `textContent` and there is a test that a name full
+        # of markup stays a name.
+        "by": result.get("by"),
         "reputation": result["reputation"],
         "hours": round(result["hours"]),
         "emptied": len(emptied),
@@ -644,7 +656,9 @@ PAGE = """<!doctype html>
       where.textContent = f.opening ? "the world" : "the whole chase";
       said.textContent = f.opening ? "she is somewhere in the box"
                                    : D.globe.span;
-      took.textContent = "";
+      // The credit, on the shot the film ends on. `textContent`, because
+      // the name is whatever a searcher typed on a roster.
+      took.textContent = (!f.opening && D.by) ? "taken by " + D.by : "";
       took.className = "";
       scaleLabel.textContent = Math.round(D.w / D.globe.scale * 40075)
         .toLocaleString() + " KM ACROSS";

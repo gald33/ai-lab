@@ -152,7 +152,8 @@ class Flight:
         return self.tab.inner_text(selector)
 
 
-def linked(seed: bytes, fragment: str | None = None):
+def linked(seed: bytes, fragment: str | None = None,
+           plan: dict | None = None):
     """A `Flight` on the *published* viewer, opened at a chase's address.
 
     The same browser and the same `Flight`, but the page under it is
@@ -174,7 +175,7 @@ def linked(seed: bytes, fragment: str | None = None):
         home.mkdir(parents=True, exist_ok=True)
         (home / "index.html").write_text(F.viewer(), encoding="utf-8")
         (home / "basemap.js").write_text(F.basemap_js(), encoding="utf-8")
-        tail = (F.link(embedded(seed), "x").split("#", 1)[1]
+        tail = (F.link(plan or embedded(seed), "x").split("#", 1)[1]
                 if fragment is None else fragment)
         with play.sync_playwright() as pw:
             try:
@@ -478,6 +479,45 @@ def test_a_link_plays_with_no_chase_baked_into_the_page():
         assert "Carmel Taldiego" in flight.tab.title()
         stops = embedded(arrested_seed())["stops"]
         assert stops[-1]["name"] in flight.text("#where")
+
+
+def test_the_credit_scene_names_who_took_her():
+    """Gal, 2026-09-12: the link is *"the 'credit scene' reward when the game
+    is won"*. A credit scene with no credit in it is a report, so the shot
+    the film ends on carries the name of whoever walked in on her.
+
+    Only there, and only when somebody did: the opening shot is before any
+    of it happened, and the published six were caught by a model with no
+    name -- which is why `by` is absent from those rather than filled in
+    with something plausible.
+    """
+    plan = embedded(arrested_seed())
+    assert plan["by"] is None, "a simulated searcher was given a name"
+
+    with linked(arrested_seed(), plan=dict(plan, by="a night porter")) as f:
+        shots = [s for s in f.plan["segments"] if s["kind"] == "globe"]
+        f.seek(shots[0]["at"] + shots[0]["ms"] / 2)
+        assert "night porter" not in f.text("#say"), "credited before the end"
+        f.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert "taken by a night porter" in f.text("#say")
+
+
+def test_a_catcher_called_something_hostile_is_still_just_a_name():
+    """The name is a searcher's own roster string, minted into an address by
+    her and opened by somebody else -- so it is a stranger's text arriving on
+    a page a third party is reading, which is the shape every injection has.
+
+    `textContent` is what makes it safe, and this is the check that says so:
+    the markup arrives as characters on the screen and never as an element.
+    """
+    hostile = '<img src=x onerror="window.pwned=1">'
+    plan = dict(embedded(arrested_seed()), by=hostile)
+    with linked(arrested_seed(), plan=plan) as f:
+        shots = [s for s in f.plan["segments"] if s["kind"] == "globe"]
+        f.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert hostile in f.text("#say"), "the name was not shown verbatim"
+        assert f.tab.evaluate("window.pwned") is None
+        assert f.tab.evaluate("document.querySelectorAll('#say img').length") == 0
 
 
 def test_a_link_with_nothing_in_it_says_so():
