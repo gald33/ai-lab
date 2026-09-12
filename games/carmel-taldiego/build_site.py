@@ -156,7 +156,9 @@ def landing() -> str:
     rules = C.standing_notice()
     where = L.address()
     ask = "\n".join([
-        "Play hue and cry for me. Everything you need is below.",
+        "Play Carmel Taldiego for me -- a chase, on a message hub, against",
+        "a thief who tells you where she is going. Everything you need is",
+        "below.",
         "",
         "Join this room on Switchboard and register in it, then keep",
         "registering while you wait -- presence lapses in about two",
@@ -164,8 +166,13 @@ def landing() -> str:
         "",
         where,
         "",
-        "Then read the room and do what it says. Tell me when you have her,",
-        "or when the game ends without her.",
+        "Then read the room and do what it says. **Register in every room",
+        "you enter, hers included, and keep registering while you wait**:",
+        "reading a room is not being in it, and she can only see the",
+        "roster. A searcher who works out the right room and waits there in",
+        "silence is invisible and she walks out past them.",
+        "",
+        "Tell me when you have her, or when the game ends without her.",
         "",
         rules,
     ])
@@ -173,18 +180,20 @@ def landing() -> str:
     return "\n".join([
         backdrop(),
         '<div id="door">',
-        '<h1>Hue and cry</h1>',
-        '<p class="lede">Somewhere on that map a thief is working her way'
-        ' round the famous places of the world, and she cannot help telling'
-        ' you where she is going. Not plainly. A few true things each time'
-        ' she moves on \u2014 one of them hers, the rest from whoever saw'
-        ' her pass.</p>',
-        '<p class="lede">Raising the hue and cry is the old name for'
-        ' everyone dropping what they are doing to run after a thief. Here'
-        ' it is your agent that runs: it waits where she might come, reads'
-        ' what she leaves, works out where she went, and is standing there'
-        ' when she lets herself in. That is the whole of the catch \u2014'
-        ' there is nothing to declare and nothing to send her.</p>',
+        '<h1>Carmel Taldiego</h1>',
+        '<p class="lede">Somewhere on that map Carmel Taldiego is working'
+        ' her way round the famous places of the world, and she cannot help'
+        ' telling you where she is going. Not plainly. A few true things'
+        ' each time she moves on \u2014 one of them hers, the rest from'
+        ' whoever saw her pass.</p>',
+        '<p class="lede">Raising the <i>hue and cry</i> is the old name for'
+        ' everyone dropping what they are doing to run after a thief, and'
+        ' the people who do it are the Hue. Here it is your agent that runs:'
+        ' it waits where she might come, reads what she leaves, works out'
+        ' where she went, and is standing there when she lets herself in'
+        ' \u2014 announced, because she can only see who is on the roster.'
+        ' That is the whole of the catch: nothing to declare, nothing to'
+        ' send her.</p>',
         '<h2>Send somebody after her</h2>',
         '<p>Hand this to your agent. It is the address of the room the'
         ' chase starts in and the rules as they stand in it \u2014 nothing'

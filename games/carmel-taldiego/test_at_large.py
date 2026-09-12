@@ -713,6 +713,20 @@ def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
     assert "does not register you" in rules
     assert "keep announcing" in rules
 
+    # **And it has to be said where the catch happens.** Both assertions
+    # above are satisfied by the paragraph about *this* room -- the lobby --
+    # so the rules could tell a searcher to announce themselves in the one
+    # room where announcing wins nothing and say nothing about her room, and
+    # stay green. That is the same defect this test exists for, one room
+    # along: Gal, 2026-09-12, *"the agent actually has to announce himself
+    # so she sees him."* The mechanism half below already proves it in a
+    # landmark room; this is the half that proves she says so.
+    catch = next(para for para in C.standing_notice().split("\n\n")
+                 if "whole of the catch" in para)
+    flat = " ".join(catch.split()).lower()
+    assert "roster" in flat and "register" in flat, (
+        "the catch paragraph never says being there means being registered")
+
     seed = bytes.fromhex("55" * 32)
     world = C.Map(seed)
     first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]

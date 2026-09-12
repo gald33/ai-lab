@@ -175,3 +175,47 @@ def test_the_front_door_is_only_the_front_door(tmp_path):
     page = (tmp_path / "chase" / "index.html").read_text()
     assert "Hand this to your agent" in page
     assert 'id="data"></script>' in page, "a chase was baked into the door"
+
+
+def test_the_front_door_names_the_game():
+    """Gal, 2026-09-12: *"we didn't write carmel taldiego anywhere."*
+
+    The game was renamed to hers on 2026-09-10 -- *"a picture of this game
+    is a picture of Carmel Taldiego"* -- with two deliberate exceptions,
+    the wire and a roadmap id, both identifiers rather than names. A landing
+    page that called it by the old name was the rename missing the one
+    surface a stranger reads first.
+
+    `hue and cry` still belongs on the page and this does not forbid it:
+    it is the phrase for the chase, and the searchers are still the Hue.
+    What is checked is that the game is named.
+    """
+    import html as htmlmod
+
+    front = htmlmod.unescape(BS.landing())
+    assert "Carmel Taldiego" in front.split("<h1>")[1].split("</h1>")[0], (
+        "the front door is titled something other than the game")
+    prompt = front.split('<pre id="ask">')[1].split("</pre>")[0]
+    assert "Carmel Taldiego" in prompt, (
+        "an agent is asked to play a game nobody named")
+
+
+def test_the_prompt_tells_an_agent_to_announce_itself_in_her_room():
+    """Gal, 2026-09-12: *"the agent actually has to announce himself so she
+    sees him, I hope that's in the prompt."*
+
+    It is the one way to play perfectly and still lose, and the version
+    before this said it only of the lobby -- an agent that followed the
+    prompt exactly would solve the riddle, walk into her room, wait in
+    silence and be invisible. Asserted on the instruction the agent is
+    handed rather than on the rules it quotes, because the first paragraph
+    is what a model acts on.
+    """
+    import html as htmlmod
+
+    prompt = htmlmod.unescape(BS.landing()).split('<pre id="ask">')[1]
+    ask = " ".join(prompt.split("</pre>")[0].split()).lower()
+    head = ask.split("hue and cry --")[0]   # its own words, before the rules
+    assert "every room" in head and "register" in head, (
+        "the prompt scopes registering to the lobby it starts in")
+    assert "reading a room is not being in it" in head
