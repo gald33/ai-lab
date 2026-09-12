@@ -1,0 +1,32 @@
+# What Carmel Taldiego needs to *run*. `HOSTING.md` installs from this file
+# so the host and this repository cannot disagree about a version by
+# accident -- the island learned that one the hard way and the note is in
+# `games/island/requirements.txt`.
+#
+# **The floor is what was actually run, not what is newest**, and the two
+# are different today. Checked 2026-09-12 with the command this repo
+# requires (`CLAUDE.md`, "a release is a fact you download, not a fact you
+# are told"):
+#
+#     pip download agent-switchboard -d /tmp/x --no-deps
+#
+# PyPI's newest is **2.3.0**; the version this game's 130 tests pass on is
+# **2.2.1**, which is what is installed here. So the floor is 2.2.1 and
+# 2.3.0 is recorded as untested rather than pinned: raising a floor to a
+# release nobody has run is a prediction, and this repo has written three
+# of those about this one library and been wrong each time.
+#
+# Carmel asks very little of the library -- `Client.from_invite`, `post`,
+# `register`, `agents`, `history`, `heartbeat` -- so the floor is about the
+# invite form and the write key rather than about any new tool:
+#
+#   - **2.0.1** is where a room's write key travels in its invite, which is
+#     how she posts into a room she computed rather than one she was given.
+#   - **2.2.x** is where `whisper` is the wire form as well as the tool
+#     name. She never whispers, so this is not her floor -- it is here so a
+#     host running Carmel beside the island does not need two answers.
+#
+# To raise it: install the newer wheel, run
+# `python -m pytest games/carmel-taldiego -q`, and move the number only if
+# that is green. Then say here what you ran.
+agent-switchboard>=2.2.1

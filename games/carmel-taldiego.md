@@ -5515,3 +5515,142 @@ than after a searcher hit it, which is the only thing that made it cheap.
 
 `test_the_notice_says_where_the_close_lands_and_says_it_once` pins both,
 and fails on purpose when either sentence is restored.
+
+
+## The schedule, and a runner that lives on a VM
+
+*Decided by Gal, 2026-09-12, in three sentences that turned out to settle
+five questions between them.*
+
+> a new game can start every 5 minutes but only if there's at least one
+> player in the room (or registered listener). and no more than 4 parallel
+> games.
+
+> her initial message needs to disappear quickly to not confuse newcomers
+
+> no two Carmel notes can be presented at the same time
+
+### What forced the question: every unopposed game outlives its own salt
+
+The salt lives in her note and nowhere else, so a note that expires mid-game
+leaves every later riddle uncomputable. Measured over 24 seeds, unopposed:
+
+| unopposed campaign | game hours = real minutes |
+|---|---|
+| median | **84** |
+| range | 72 - 94 |
+
+against a 12-hour notice: **24 of 24 outlived it.** So for roughly 72 of
+every 84 minutes a newcomer could read her riddles and compute nothing.
+
+That is the same defect as the one fixed the day before, arriving from the
+other end of the distribution. The replacement test only required that
+*half* of campaigns finish inside the notice, and it sampled the
+**contested** distribution, where a searcher ends things in six minutes.
+**A test that samples the easy half of a distribution passes on the half
+nobody was worried about.** Reproduce with the sweep in `at_large.dry_run`.
+
+### The proposal that was wrong, and why the decision is better
+
+I proposed reposting the salt on a cadence while a game was live -- keep the
+key to the map fresh for as long as the map is worth having. Gal's schedule
+dissolves the problem instead of managing it: **a newcomer no longer joins a
+running game at all.** A fresh one is never more than five minutes away, so
+the note may be short, and once games run in parallel it *must* be.
+
+### "No two notes" is arithmetic, not a lock
+
+`NOTICE_TTL_HOURS = 4` sits under `START_EVERY_HOURS = 5`, so one note is
+always gone before the next may appear -- whatever order four games
+interleave in. A lock would have to be raced to be tested; this is one
+comparison, and it is the comparison the rule rests on.
+`test_two_of_her_notes_are_never_legible_at_once` reddens the moment the
+number rises to the interval.
+
+**It also reversed a decision from the previous day, in the same file.** The
+first riddle had been pulled *out* of her note because the runner posted it
+separately at ten times the lifetime, and dropping the long-lived copy would
+have cut the first riddle's life tenfold. What that copy bought was a
+latecomer's ability to start the chain late -- exactly the thing the new
+schedule removes. So the riddle is inline again and the long-lived lobby
+copy is gone: under four parallel games it was no longer protection but the
+very thing that would put two openings in the room at once.
+
+### Two messages, because they have different lifetimes
+
+Gal: *"we can move the whole technical explanation to the long TTL constant
+message and her voice is only the taunt and hint."*
+
+| | lives | carries |
+|---|---|---|
+| `standing_notice()` | 4 real hours, refreshed at half | the rules, the recipe, how to register, where riddles and endings appear. **No salt, no riddle, no seed** |
+| `open_campaign()` | 4 real **minutes** | her taunt, the riddle, that game's salt |
+
+The split is what makes both TTLs honest: a permanent post carrying a
+per-game value is a post that is wrong for most of its life, and a note that
+has to vanish cannot be where the rules live.
+
+**It also answers the problem the demand gate creates.** With games starting
+only when somebody is listening, an empty lobby is the resting state -- and a
+newcomer who finds one needs telling that registering is what starts a game.
+Without the standing post the gate is a closed door with no bell, which is
+the one way a demand-gated game can be unplayable while every component
+works.
+
+### A game with no searchers closes itself
+
+Unopposed games run 84 minutes and contested ones about six, so four
+unopposed games fill every slot for over an hour and the cap meant to bound
+the board would instead bar every newcomer from it. `ABANDON_AFTER_HOURS`
+closes a game whose lobby has stayed empty, and it becomes a fifth ending:
+*"Nobody came, so I have stopped bothering."*
+
+**It reads the lobby and not her own room, which is not a detail.** She only
+watches the place she has just named -- a searcher who guessed wrong is
+invisible to her -- so *"nobody is chasing me"* is not something she can
+observe from where she stands. The lobby roster is the only honest signal,
+and it is the same one the start gate reads.
+
+### Four runners is the permitted shape, not the forbidden one
+
+`CLAUDE.md`'s *"Agents run themselves. There is no scheduler"* forbids a loop
+that calls each agent in turn and applies its replies. Nothing here calls an
+agent: these are four long-lived games that neither read nor wait for one
+another, and the supervisor only decides whether to begin another. It never
+drives one that has begun.
+
+The **policy** is a pure function (`may_start`) of three numbers, tested at
+every boundary, because a thread plus a fake clock is a verdict that depends
+on how the two interleaved -- the *coincidence drawn as a pass* shape. The
+threading takes a `spawn` seam so a test can run a game inline.
+
+### The runner, and one secret the island does not have
+
+[`games/carmel-taldiego/HOSTING.md`](carmel-taldiego/HOSTING.md), written
+against the island's, whose hardest-won sentence governs it: *the command and
+the paragraph have to say the same thing, and when they differ it is the
+command that is believed.*
+
+One process, no disk, nothing inbound, **and no tokens at all** -- she is
+deterministic Python. Measured: **~22 hub calls a minute per game, ~88 at
+four**, less than the island's "couple of requests a second".
+
+**Unlike the island, this host needs a secret**, and until 2026-09-12 nothing
+said so. Without `HUE_TREASURE_KEY`, `treasures.py` builds its own table
+instead of unsealing the committed one -- different prizes, different
+reputation, every calibrated number measuring something else -- and
+`at_large.py` did not mention the variable anywhere. The game ran, posted,
+robbed and closed, and looked exactly like the canonical one. That is *"the
+weaker thing is allowed, and never allowed to look like the stronger one"*
+failing in the quietest possible way. It now says so on startup, loudly, and
+still plays: the weaker game is allowed, it just may not pass for the other.
+
+### What `plan()` is now
+
+Not the schedule. Nothing in `forever` calls it: games start on a fixed
+interval gated by demand, not when the previous one closes. Its floor -- the
+next campaign never opening while the last notice was readable -- was how
+"no two salts at once" used to be guaranteed, and the guarantee moved to
+arithmetic. It is kept, unused by the runner, because `--dry-run` reads it
+and because its reasoning is the only record of why the old guarantee
+existed; a paragraph at its head says plainly that it does not govern.

@@ -542,6 +542,24 @@ LOBBY_LANDMARK = "Grand-Place"
 #: hunting her until somebody reads the lobby.
 JOIN_WINDOW_HOURS = 12
 
+#: How often a new game may start, in game hours. Gal, 2026-09-12: *"a new
+#: game can start every 5 minutes but only if there's at least one player in
+#: the room (or registered listener). and no more than 4 parallel games."*
+#:
+#: **It is also what keeps two of her notes off the board at once**, which
+#: was the third half of that instruction: *"no two Carmel notes can be
+#: presented at the same time."* Her opening note's lifetime is set below
+#: this number in `at_large.NOTICE_TTL_HOURS`, so one is always gone before
+#: the next can appear -- the rule held by arithmetic rather than by a lock,
+#: which is the only kind of rule that cannot be raced.
+#:
+#: This number and `MAX_PARALLEL` together bound the board: at most four
+#: games alive, and at most one of her notes legible.
+START_EVERY_HOURS = 5.0
+
+#: How many games may be alive at once. Gal's number, 2026-09-12.
+MAX_PARALLEL = 4
+
 #: What standing still costs her, as a multiplier on the hours. 1.0 is the
 #: treasure's own dwell and the nominal prep.
 #:
@@ -987,131 +1005,132 @@ def next_difficulty(recent: list[bool], current: float = DIFFICULTY,
     return round(min(hi, max(lo, factor)), 3)
 
 
-def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
-    """What she leaves in the lobby when she starts stealing.
+def standing_notice(start: str = LOBBY_LANDMARK) -> str:
+    """The lobby's permanent post: what this is and how to play it.
 
-    Gal, 2026-09-09, in three passes: *"she needs to post a note in some
-    lobby... whoever wants to join the hunt, just join the hunt"*, then
-    *"including the technique to get the workspace from the landmark"*, then
-    *"she can also taunt in her message there by explaining the game"*.
+    Gal, 2026-09-12: *"her initial message needs to disappear quickly to not
+    confuse newcomers"*, and then the resolution -- *"we can move the whole
+    technical explanation to the long TTL constant message and her voice is
+    only the taunt and hint."*
 
-    Those are the same post, and the taunt is what makes it work. **She has
-    to explain the game to have anybody to play it against** -- a fugitive
-    nobody can find is not a fugitive -- so the rules, the recipe and the
-    boast are one message, and her interest in being chased is why she
-    publishes the method for chasing her.
+    **This is not her, and it never expires within a game.** Everything a
+    stranger needs is here: what the game is, how a place becomes a room,
+    what makes a searcher visible, where her later lines appear, and how to
+    get a game to start. What is deliberately *not* here is anything that
+    changes per game -- no salt, no riddle, no seed -- because a permanent
+    post carrying a per-game value is a post that is wrong for most of its
+    life.
 
-    **It is not a command.** Nothing parses it, there is no verb to
-    recognise and nothing to settle: *"we have no commands here, either
-    Carmel sees you in the room and you win, or she goes to hiding with her
-    loot with enough reputation and you lose."*
-
-    WHAT THE RECIPE COSTS A READER, which had to be checked rather than
-    hoped. It is the technique Switchboard already uses, one step earlier --
-    `name + salt -sha256-> token -sha256-> workspace`, and the library owns
-    the second arrow. So joining a room given a token needs no hashing by
-    the agent at all; turning a landmark's *name* into that token is the one
-    hash it must do itself, and none of Switchboard's 27 MCP tools hashes.
-    The gap is exactly one SHA-256: a line for any agent with a shell, and
-    impossible for one holding only Switchboard. See `secret_matrix.RECIPE`.
-
-    The salt goes in the clear and the seed does not. Publishing the salt is
-    what lets a searcher think of a name and go to it, which
-    `games/carmel-taldiego.md` says the game needs -- without it "you can follow
-    her but never get ahead, which is too weak". The seed stays hers until
-    the end, so the hints and the treasures stay sealed.
+    It also answers the question the demand gate creates: with games
+    starting only when somebody is listening, an empty lobby is the normal
+    resting state, and a newcomer who finds one needs to be told that
+    registering is what starts a game. Without this post the gate is a
+    closed door with no bell.
     """
-    salt = salt_for(seed)
-    # No riddle is rendered here any more. It used to be inlined and then
-    # posted again by the runner, so the lobby carried it twice -- and the
-    # copy to drop is this one, not the runner's: the notice lives
-    # `NOTICE_TTL_HOURS` and the post lives `HINT_TTL_HOURS`, ten times
-    # longer, so removing the long-lived copy would quietly shorten the
-    # first riddle's life by a factor of ten. The same shape as the salt,
-    # which was load-bearing inside a message that looked like an
-    # invitation.
+    return "\n".join([
+        "HUE AND CRY -- a chase, played in this room and in rooms you work",
+        "out for yourself. This post is the rules and it is always here.",
+        "It is not her.",
+        "",
+        "It is played on Switchboard, the message hub you are already on --",
+        "you are reading this on it. Nothing else is needed and there is",
+        "nothing to install.",
+        "",
+        "Carmel Taldiego robs the famous places of the world. Every time she",
+        "moves on she leaves a few true things about where she has gone: one",
+        "from her, the rest from whoever saw her. No single one is worth",
+        "much. Laid together they fit a handful of places and no more, and",
+        "working out which handful is the whole game.",
+        "",
+        "TO PLAY, register in this room and stay registered. A game starts",
+        f"within about {int(START_EVERY_HOURS)} minutes of somebody being here to play it, and",
+        "none starts while nobody is. Reading a room does not register you",
+        "and does not put you on its roster: announce yourself, and keep",
+        "announcing, because presence lapses after about two minutes. The",
+        "roster is the only way she knows anyone is there.",
+        "",
+        "When a game starts she posts one note here -- a taunt, her first",
+        "riddle, and the salt that game is played with. THAT NOTE GOES AWAY",
+        "QUICKLY and is never replaced. Take the salt when you see it, or",
+        "wait for the next game; there is always another.",
+        "",
+        "A place's room is computed from its name and that game's salt:",
+        "",
+        "    token = \"w_\" + sha256(\"hue-and-cry/v1/landmark\" || 0x00 || salt || 0x00 || name)",
+        "    room  = \"w_\" + base64url(sha256(token))[:22]",
+        "",
+        "There is no list of rooms and nobody hands one out. Guessing the",
+        "place is finding the room. Use the same key you are using here.",
+        "",
+        "This room is the lobby. Its name is fixed and is not computed from",
+        "any landmark, so do not go looking for a room named after",
+        f"{start} -- you are already standing in it. Her opening note is",
+        "here; every",
+        "later riddle of hers is posted in the room of the place she is",
+        "LEAVING, so each one is found by solving the one before it.",
+        "",
+        "Being in the room while she is in it is the whole of the catch.",
+        "There is nothing to send her and no move to declare. She cannot see",
+        "you anywhere else, so a wrong guess is not a near miss.",
+        "",
+        "She posts the end of the game here and in every place she robbed, so",
+        "wherever on her trail you are standing you will be told. Nowhere she",
+        "never reached hears anything -- and an empty room means nothing on",
+        "its own: a wrong guess, a misspelling, a place she never reached, a",
+        "game already over and a broken tool all look exactly alike from",
+        "inside a room.",
+    ])
+
+
+def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
+    """Her note when a game starts: a taunt, the riddle, and the salt.
+
+    *Cut down to this on 2026-09-12.* It used to carry the whole
+    explanation of the game in her voice -- how she keeps her hours, what a
+    hint is, where the rooms come from -- which was right when one campaign
+    ran at a time and her notice was the only thing in the lobby. With games
+    starting every few minutes it is the wrong shape twice over: a long
+    notice is what a newcomer reads instead of the game, and a notice that
+    has to disappear quickly cannot be where the rules live. The rules moved
+    to `standing_notice`; this is only her.
+
+    **The riddle is inline again, and that reverses a decision from the
+    previous day.** It had been pulled out because the runner posted it
+    separately at ten times the lifetime, and dropping the long-lived copy
+    would have shortened the first riddle's life tenfold -- see the comment
+    that used to stand here. What that copy bought was a latecomer's ability
+    to start the chain late, and under Gal's schedule a latecomer does not
+    join a running game at all: they take the next one, minutes away. So the
+    reason is gone, and a long-lived riddle in the lobby is now a liability
+    -- it is the thing that would put two games' openings in the room at
+    once, which Gal ruled out: *"no two Carmel notes can be presented at the
+    same time."*
+
+    That rule is kept **by construction and not by a lock**: this note's TTL
+    is shorter than the interval between game starts, so two of them cannot
+    overlap. See `at_large.NOTICE_TTL_HOURS`.
+    """
+    world = Map(seed)
+    gone_to = itinerary(seed, start, world, 1)[0]
+    first = riddle(seed, gone_to["to"], gone_to["details"])
     return "\n".join([
         "I have begun, and I am telling you because it is no fun otherwise.",
         "",
-        "I am robbing my way around the famous places of the world, and by",
-        "my own rule below I am still here as I write this, with my coat",
-        "half on. Be quick and it will cost me.",
+        "I am robbing my way around the famous places of the world, and I am",
+        "still here as I write this, with my coat half on. Be quick and it",
+        "will cost me. Let me finish enough of them and I retire on the",
+        "proceeds, and you can read about me.",
         "",
-        "Every time I move on I leave behind a few true things about where",
-        "I have gone. One of them is mine. The others are whatever the",
-        "locals thought they saw, and they saw more than they know. No one",
-        "of them is worth much. Laid together they fit a handful of places",
-        "and no more, and working out which handful is the game.",
+        "You will have me, or you will have what I said on my way out:",
         "",
-        "Work out the place and come for me. You will have me, or you will",
-        "have what I said on my way out.",
-        "",
-        "A theft takes as long as it takes. Come while my hands are still",
-        "full and I am yours. Let me finish enough of them and I retire on",
-        "the proceeds, and you can read about me.",
-        "",
-        "Here is how I keep my hours, and I tell you because knowing it has",
-        "never once been enough. I do not write until I have finished with",
-        "a place. Then I write, and only then do I pack -- so a fresh line",
-        "of mine means I am still there, with my coat half on. The farther",
-        "I mean to go the longer the packing takes, and it grows faster",
-        "than the distance does, which is the whole of my difficulty and",
-        "now yours.",
-        "",
-        "My line is stamped with the hour I wrote it. Subtract, and you",
-        "know how long I have been at it; and for anywhere you think I",
-        "have gone, you can reckon whether you would be there waiting when",
-        "I let myself in.",
-        "",
-        "You cannot do that for everywhere. You can do it for the far ones.",
-        "",
-        f"I set out from {start}, which is where you are reading this.",
-        "There is nowhere I cannot have gone from here. Every famous place",
-        "on earth is somewhere I might be, and the only thing narrowing",
-        "them is what I choose to tell you.",
-        "",
-        "I will not be giving you any addresses. The first of it is posted",
-        "here beside this, and it will outlast this notice by a good way.",
+        *(f"    {line}" for line in first),
         "",
         PLUMBING_RULE,
         "",
-        "The rest of this is not her. It is here so that a stranger who",
-        "finds her line can join the chase without being told anything",
-        "else.",
+        "Not her. The rules are in the standing post in this room.",
+        "This game is played with:",
         "",
-        "Hue and cry is played on Switchboard, the message hub you are",
-        "already on -- you are reading this on it. For the length of one",
-        "game every famous place on earth has a room here, and a room's",
-        "name is computed from the place's name, so there is no list of",
-        "them and nobody hands one out. Guessing the place is finding the",
-        "room:",
-        "",
-        f"    {RECIPE}",
-        f"    {ADDRESS_RECIPE}",
-        f"    salt = {salt.hex()}",
-        "",
-        "This room, the one you are reading, is the lobby. It is the only",
-        "room with a fixed name and it is not computed from any landmark --",
-        "do not go looking for the place she says she set out from, you are",
-        "already standing in it. Her opening line is posted here; every",
-        "later line of hers is posted in the room of the place she is",
-        "leaving, so each line is found by solving the one before it.",
-        "",
-        "Join that room, then announce yourself, and keep announcing while",
-        "you wait -- presence lapses after about two minutes. Reading a",
-        "room does not put you on its roster, and the roster is the only",
-        "way she knows anyone is with her. A searcher who waits in silence",
-        "is one she walks straight past.",
-        "",
-        "There is nothing to send her and no move to declare. Being in the",
-        "room while she is in it is the whole of it.",
-        "",
-        "She posts the end of the game in this lobby and in every place she",
-        "robbed, so wherever on her trail you are standing, you will be told",
-        "when it is over. Nowhere she never reached hears anything. An empty",
-        "room means nothing on its own: a wrong guess, a misspelling, a",
-        "place she has not reached, a game already over and a broken tool",
-        "all look exactly alike from inside a room.",
+        f"    salt = {salt_for(seed).hex()}",
     ])
 
 
