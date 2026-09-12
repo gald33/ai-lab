@@ -162,7 +162,7 @@ def plan(result: dict, world: C.Map, start: str) -> dict:
         stops.append({
             "name": name, "x": x, "y": y,
             "scale": close_scale(place["lat"]),
-            "said": leg["hint"].replace("_", " ") if leg else "",
+            "said": leg["details"][0].replace("_", " ") if leg else "",
             "took": took, "stole": stole, "caught": i == caught_at,
             "lobby": i == 0,
         })

@@ -317,6 +317,16 @@ script, whether the room's treasure has already been taken. A clue is
 in the vocabulary's own words. The manager checks it against the table.
 Deterministic, one lookup, no judgement.
 
+> **Superseded 2026-09-11, and the sentence above still stands as what was
+> thought.** A clue is **three** attributes now, not one, and the reason is
+> measured: one attribute left a median of **156** landmarks of 1000
+> standing, which is not a riddle, it is a category. Gal: *"The hints are
+> terrible, I never could have guessed it."* See "One fact is a category;
+> three are a riddle" below for the numbers and for what it cost. The
+> paragraph's other claims -- gazetteer not prose, closed vocabulary, one
+> lookup, no judgement -- are all still true, and are exactly why three
+> attributes was a small change rather than a rewrite.
+
 Nothing is lost by this and something is gained. The Fugitive's strategy is
 now sharp and stateable: *post the least informative true fact*, which is a
 real optimisation against a real posterior. And the whole information
@@ -4977,9 +4987,72 @@ the searcher that swept 898 rooms for twenty minutes after she had already
 been caught: *"an empty room and a dead holder produce the same silence, so
 'no clue yet' gave me no signal to distinguish a working search from a
 broken one -- which is why I kept hardening the mechanism instead of
-questioning the premise."* The close is posted in the lobby, and a searcher
-deep in a hunt left the lobby long ago. The notice now says so, and says
-that silence is ambiguous between five different states.
+questioning the premise."*
+
+*Closed by Gal the same day: "she should post a note (without announcing
+herself) that the game is over, in every room she's been at."* The close
+goes to the lobby **and to every place she robbed**, so a searcher standing
+anywhere on her trail is told, and the seed travels with it so the news is
+checkable where it lands. The notice also warns that silence is ambiguous
+between five states, for the searcher holding a room she never reached --
+the one case a broadcast cannot help.
+
+*Measured again the same day, larger and sharper, by the hunt that ran
+while the fix was being written.* The campaign closed at **10:36:39** --
+caught in Stonehenge by `near`, on **leg 1**, at 0 reputation. A third
+searcher, `nordic`, wrote its first target list at **10:45:33**, nine
+minutes after the game was already over, and was still holding **809
+rooms** when it was stopped at 11:54. Sixty-eight minutes of sweeping, four
+holder processes, zero clues found and zero sightings -- not because the
+search was bad but because there was nothing left to find, and nothing in
+the world could tell it so. Its own report reaches for the mechanism
+instead: *"the clue carries almost no discriminating information, so I did
+not solve it; I blanketed."*
+
+**One thing in that report is wrong, and it is the operational advice**, so
+it is corrected here beside the report rather than left to be followed. It
+concluded that *"background tasks are killed at the 600-second cap (exit
+144)"* and that *"any long chase needs the holder re-launched roughly every
+nine minutes."* Two measurements say otherwise. Its **own** holders were at
+`etime` **27:14, 26:27, 20:32 and 12:34** when they were listed and stopped
+-- three of the four long past 600s, in the very launch form the claim is
+about. And Carmel, restarted the same afternoon as a background task, passed
+**653s** still running and went on to leg 2. What the report almost
+certainly met is its other finding, which *is* right: a holder started with
+`nohup ... &` inside a call dies when that call returns, and its first batch
+went that way within minutes. **A cap and a launch bug both produce a dead
+process, and the process does not say which.**
+
+The correction matters because the wrong half is the actionable half: a
+searcher that relaunches every nine minutes spends its chase on
+re-registering, and re-registering is exactly when it is holding nothing.
+Re-check it the way it was checked here -- start a long-running background
+task, then `ps -eo pid,etime,args | grep at_large` -- and believe the
+`etime`, not the report.
+
+That is the first hole measured twice, and the second measurement is worse
+than the first in the way that matters: the twenty-minute sweep overlapped a
+game that ended partway through it, while this one **never overlapped a live
+game at all**. The running build was the lobby-only close (the broadcast
+landed at 11:49, an hour after the catch), so `nordic` had no line to read
+anywhere on the map. Under this change it would have been told at its first
+room on her trail -- though *leg 1* is the case that shows the limit
+honestly: a trail one leg long puts the news in one room out of a thousand,
+and a searcher who never held Stonehenge or the Grand-Place still learns
+nothing. **A broadcast reaches the rooms she robbed, and a short campaign
+robs few rooms.** The lobby copy is the only one every searcher can find,
+and a searcher deep in a hunt is exactly the one who has stopped looking
+there.
+
+**Posting is not announcing, and that is what makes it safe.** `post`
+leaves a message; `register` puts you on the roster; only the roster is the
+catch. She writes in each place without standing in it again. The tempting
+implementation is to join each room properly on the way out, and that
+version hands a catch to every searcher still waiting somewhere she has
+left -- so `test_she_says_it_is_over_without_standing_in_the_room` requires
+her absent from the roster of every room but the last. Registering before
+the close reddens it and leaves the broadcast test green, which is the
+split that says the two tests check different things.
 
 **The slices leaked into each other.** `nordic` was in **151** of `far`'s
 rooms — Egypt, the Levant, Turkey and the Balkans doubly covered — while
@@ -5157,3 +5230,288 @@ the tool.
 - **What happens with one searcher?** A solo Hue removes all coordination
   and leaves pure search under a clock, which may be the cleaner instrument
   for the timing question and a worse game. Both, probably; run both.
+
+
+## One fact is a category; three are a riddle
+
+*Decided by Gal, 2026-09-11, and this is the section the standing decision
+at the top of this file now points at.*
+
+The complaint came first and it was about a live game: *"The hints are
+terrible, I never could have guessed it."* The measurement agreed, and it
+was worse than the complaint.
+
+| what a searcher was handed | landmarks left standing, of 1000 |
+|---|---|
+| the detail she actually posted | **median 156** |
+| the sharpest of her three live details | median 77 |
+| a uniformly drawn detail | median 113 |
+
+She was posting the **vaguest** of the three by design -- `choose_hint`'s
+*"post the least informative true fact"*, which was a real optimisation
+against a real posterior when a candidate set meant her five exits, and
+which outlived its denominator when Gal deleted routes on 2026-09-09.
+Against a thousand landmarks, maximising vagueness picks 156 over 27. **A
+strategy calibrated in one world and left running in another is this
+repo's most reliable way to produce a number that is still computed, still
+tested, and no longer means anything.**
+
+### The specification, which is about reading and not counting
+
+> hint should fit a few locations only, not many. it should be hard not by
+> revealing one assertion, but from a few details that can relate in
+> different ways but when they do there are only a few results. that is,
+> the search is over possible meanings to the words of the riddle, not on
+> possible landmarks to a fact
+
+And, separately and firmly: *"don't tell the searchers anything, not even
+the bias. nothing. they only get one signal - the hint."*
+
+That second instruction corrected **the apparatus and not the game.** Her
+notice never disclosed the near bias -- it says the opposite, *"there is
+nowhere I cannot have gone from here"*. The bias leaked through the
+briefings the searchers were given by hand, which is the same class of
+error as the `carmel.log` left in their working directory: **the game was
+clean and the harness around it was not.**
+
+### What the vocabulary can do, measured before anything was built
+
+Intersecting details, over every combination each landmark carries:
+
+| details | median candidates | pins to exactly one |
+|---|---|---|
+| 1 | 156 | -- |
+| 2 | 16 | 2.5% |
+| **3** | **3** | 23.7% |
+| 4 | 1 | 53.8% |
+
+Three is the number, and the 23.7% is not a blocker because **she
+chooses**. `live_hints` already handed her exactly three per place, so she
+posts all three, and drops one when three would name her outright. Two
+seeds: that fires on 22% and 24% of moves and leaves **no pinned move at
+all** -- which is why `RIDDLE_FLOOR` is a rule she obeys per move rather
+than the statistic `MAX_PINNED` held over random draws. A stronger
+guarantee than the one it replaces, not a weaker one.
+
+End to end: **median 4 candidates, 89% of legs between 2 and 12, zero
+pins.**
+
+### The vagueness term was rebuilding the routes Gal deleted
+
+`choose_destination` weighted every candidate by `best_cover` -- how much
+of the map her hint there would leave standing. Harmless-looking, and with
+a riddle it sends her to places that **share descriptors** with where she
+stands, which is precisely the look-alike band `band()` drew her five exits
+from before routes were deleted. `test_there_are_no_routes` went red on it:
+every hop inside the band.
+
+That check was written in September to catch somebody reintroducing
+`exits()`. It caught a weighting term instead, in a change nobody wrote it
+for, which is the whole argument for a check that names a property rather
+than an implementation. The term is gone and `best_cover` with it; it was
+also costing the riddle most of its point (median 21 candidates with it, 4
+without).
+
+### The voice is Mixed, and a frame may never reword a clause
+
+Gal, choosing between a pure dossier and a pure note: **"Mixed"** -- her one
+line, then two reports from people who saw her.
+
+    One true thing, then: the place had been a town once and nobody has
+    lived in it since.
+    STATEMENT. A postal sorter, who has no reason to invent it, says the
+    wire came up through South America.
+    HEARSAY. A bookseller told it to somebody who told us. The moon was the
+    wrong way up.
+
+    -> Machu Picchu, Tiwanaku, Valongo Wharf
+
+Every frame quotes its clause **verbatim**, and that is a correctness rule
+rather than a style one: a frame that reworded a clause to fit her grammar
+would be the system inventing a sentence, and an invented sentence is one
+nobody checked for truth. *She may lie in prose. She may not lie in a
+clue.*
+
+Three of the 73 descriptors have no clause she can speak in the first
+person -- every clause in their bank describes her from outside -- so for
+those she speaks a different detail and lets a witness carry that one.
+Which clauses those are is **derived and not listed**, per `CLAUDE.md`: a
+hand-kept list would drift the first time somebody wrote a new clause.
+
+Two reports drawing the same frame read as one voice repeating itself, so
+the second steps to the next frame -- a walk as fixed by the seed as the
+draw was.
+
+### What it cost, and the invariant that had to go
+
+Every constant in this game was calibrated against a hint leaving 156
+candidates. At 4 she is caught on the first or second leg:
+
+| | median campaign |
+|---|---|
+| before | over 48 game hours |
+| searcher ranking candidates by distance | **6.2 game hours** |
+| searcher told nothing at all | **11.9 game hours** |
+
+`REPUTATION_TO_WIN` is **not** the lever -- swept at 750, 1500, 2500 and
+4000 it moves the median by nothing, because she never lives to spend it.
+
+Gal: *"10 minutes is great"*, and then the correction that settled it:
+*"The game time is less important. First I'd make the real world time
+seconds to minutes per riddle."*
+
+So the unit changed. `test_the_notice_dies_long_before_the_campaign_it_announces`
+asserted a **ratio between two game-time quantities** as a proxy for *"her
+lobby message is long gone before the game ends"*; the proxy held while a
+campaign ran for days of game time and cannot hold now, since a quarter of
+campaigns end inside forty seconds. What it was standing in for -- never
+two salts legible at once -- is held by the floor in `plan`, which does not
+depend on the notice length at all and is tested separately.
+
+It is replaced by the thing actually asked for, in the unit asked for:
+**what one riddle is worth in real seconds.** The window is her packing,
+her theft, and her packing before the next leg -- the same three stretches
+`pursue` counts -- and it measures **median 6.6 real minutes, range about
+2 to 12**. `NOTICE_TTL_HOURS` stops being a ratio and becomes a join
+window, sized in real minutes for a person who has to read a notice and
+join a room.
+
+Both new checks were made to fail on purpose: `HOUR_SECONDS = 6` reddens
+the lower bound, `600` the upper.
+
+### Still open
+
+**A searcher solves the riddle instantly, in the simulation.** It reads the
+details, intersects them and is standing in the room. That was harmless
+when enumeration dominated; with a riddle whose whole difficulty is
+*decoding*, a solver with no think-time is modelling something that does
+not exist -- and it means the quality Gal asked for is the one quantity the
+numbers cannot see. Every capture rate here is therefore a **floor**, and
+should be read as one until a solve time exists.
+
+
+### The notice is not an invitation, it is the key to the map
+
+*Corrected the same afternoon, hours after the section above was written,
+and by a searcher rather than by a test.*
+
+Sizing `NOTICE_TTL_HOURS` in real minutes was right. **Sizing it as "a join
+window a person could use" was not**, and the mistake is one word: it
+treats the notice as an *invitation*, which has done its job once somebody
+has joined. It is not an invitation. **The salt is inside it and nowhere
+else**, and every room in the game is computed from that salt -- so the
+moment the notice expires her riddles go on arriving and name places nobody
+can derive a room for. The notice is the key to the map, and a key has to
+last as long as the door.
+
+Cut from 12 to 2, it was caught within the hour, live: a searcher joined a
+campaign two minutes in, found a riddle and no salt, and could do nothing
+with it. **A two-minute window onto a game that then runs for ten.**
+
+So 12 goes back, and the test that asserted `60 <= window <= 600` is
+replaced by `test_the_salt_outlives_the_campaign_it_belongs_to`, with the
+superseded assertion quoted inside it. Red at 2h, green at 12h.
+
+**What this is an instance of.** The 12 was not a leftover from the
+long-campaign era waiting to be tidied; it was holding a property nobody
+had written down, and it was removed by someone who could see what it cost
+and not what it bought. The same shape as the `best_cover` term two
+sections up, and the opposite outcome: there a check existed
+(`test_there_are_no_routes`) and caught the removal in seconds; here no
+check existed and a person hit it in production. **The difference between
+those two outcomes is entirely whether somebody had written the property
+down as a test**, which is the argument for this file and for every "made
+to fail on purpose" note in it.
+
+Two properties now have tests they did not have this morning: the salt
+outlives its campaign, and a riddle is worth real minutes. Neither was
+controversial. Neither was written down.
+
+
+## Caught, she talks
+
+*Gal, 2026-09-11: "If she's caught she should disclose her catcher and her
+route, what she stole and her reputation."*
+
+The close used to give counts -- *"6 places. 6 of them the poorer for it.
+367 to my name"* -- and the seed. Everything else was derivable and nothing
+was handed over. It reads as a scoreboard, and what a catch deserves is an
+account:
+
+    It is over. You have me.
+
+    It was Gal searcher who had me, in Great Himalayan National Park.
+
+    You will want it written down, so here is the run of it,
+    in the order I lived it:
+
+         1  Sagrada Familia                 +60  the finished part
+         2  Mir Castle Complex              +51  the portcullis
+         3  Baalbek                         +71  the site notebook, which was worse than the finds
+         4  Shahr-e Sukhteh                 +53  the finds tray, and the labels with it
+         5  Taj Mahal                       +99  the reflection in the long pool, taken and not returned
+         6  Great Himalayan National Park   +33  the plan the whole thing was laid out from
+
+    6 places. 6 of them the poorer for it. 367 to my name, and worth
+    every hour.
+
+**Only on a catch.** Retiring on the proceeds is not an occasion for
+handing anybody her itinerary, and `test_she_hands_over_nothing_when_she_was_not_caught`
+is what makes that a rule rather than a habit -- remove the `caught_by`
+gate and exactly one of the pair goes red, which is what says the two
+check different things. The seed is in every ending regardless, so nothing
+is concealed either way: the difference is between a reader **deriving**
+the run and being **handed** it, and being handed it is the prize for
+taking her.
+
+**Nothing in the ledger is truncated, and the first version truncated it.**
+A fixed-width column clipped *"the site notebook, which was worse than the
+finds"* to *"the site notebook, which was worse"* and *"Great Himalayan
+National Park"* to *"Great Himalayan National Par"*. A treasure here is a
+written phrase and sometimes a whole sentence, so **"what she stole" was
+the half of the instruction the column was throwing away** -- which is a
+small instance of a habit worth naming: a format chosen for the common case
+silently drops the content in the tail, and the tail is where the writing
+is. The column width is derived from the names in the trail instead, and
+the test asserts each treasure appears **whole**.
+
+**Four things, checked separately**, because three of four appearing is the
+realistic failure: the route was the easy part to add and the treasures
+were the easy part to leave out.
+
+
+## Two lines of her notice that had drifted
+
+*Both fixed 2026-09-11, and neither was a design decision -- they are prose
+that stopped matching the code underneath it.*
+
+**It claimed the close was lobby-only.** The sentence read *"She posts the
+end of the game here and nowhere else, so a searcher who leaves and never
+looks back cannot tell a finished game from a quiet one."* True when
+written; false the moment the close began broadcasting to every room she
+robbed. **A notice that understates where the news reaches is the exact
+failure the broadcast was built to fix, restated in her own prose** -- a
+searcher reading it would have had no reason to look for the ending
+anywhere but the lobby, which is the behaviour that cost 809 rooms and 68
+minutes.
+
+**And it printed the first riddle twice.** The notice inlined it and the
+runner posted it again in the same room, so the lobby showed it in
+duplicate -- harmless when a hint was one phrase, a visible stutter now
+that it is three lines.
+
+**Which copy to drop was the only real decision, and it was nearly the
+wrong one.** The obvious move is to stop the runner posting a riddle into
+the lobby, since the notice already carries it. That is backwards: the
+notice lives `NOTICE_TTL_HOURS` and the post lives `HINT_TTL_HOURS`, **ten
+times longer**, so dropping the runner's copy would have quietly cut the
+first riddle's life by a factor of ten and left latecomers unable to start
+the chain at all.
+
+That is the salt's lesson arriving a second time inside a day: **a value
+doing load-bearing work inside a message that looks like a formality.**
+The difference is that this time it was checked before the change rather
+than after a searcher hit it, which is the only thing that made it cheap.
+
+`test_the_notice_says_where_the_close_lands_and_says_it_once` pins both,
+and fails on purpose when either sentence is restored.
