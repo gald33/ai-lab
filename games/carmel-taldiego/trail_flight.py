@@ -409,8 +409,6 @@ PAGE = """<!doctype html>
                  color: __STOP__; white-space: pre-wrap;
                  overflow-wrap: anywhere;
                  font-family: ui-monospace, Menlo, Consolas, monospace; }
-  #landing pre.quiet { color: __DIM__; font-size: 13px;
-                       background: rgba(13, 21, 27, 0.8); }
   #take { background: __LINE__; color: #17120c; border: none;
           border-radius: 3px; padding: 10px 18px; font: inherit;
           font-size: 15px; cursor: pointer; margin-top: 6px; }

@@ -6398,3 +6398,84 @@ Both new checks were demonstrated red by putting `CHASE_PAGE` back to
 `/chase/`: *"nothing at all is published at the base URL"*, and the
 forwarder assertion failing on a tree where `chase/` is the real page.
 170 passed.
+
+## The page said everything twice, and the prompt never asked what it wanted
+
+*2026-09-12. Gal: "some details are redundant on the page including in the
+prompt. also do ask the agent to tell you about any landmark he travels
+to, and why, in a sentence."*
+
+### The rules were on the front door twice
+
+`standing_notice()` was rendered **twice** — once inside the block handed to
+the agent, and again below it under *"Or read it yourself first"*. About
+2,900 characters of the same page saying the same thing to the same reader.
+
+**Both halves had a good reason, and that is why it happened.** The prompt
+carries the rules verbatim because *a second copy of the rules on a web
+page is a third chance to say something false* — this game has published
+instructions that did not work twice over. The quiet block existed because
+**the prompt is on the page, not behind the button**: a reader must be able
+to see what they are pasting into an agent they are responsible for
+(`games/island/lobby_page.py` settled that shape).
+
+The first requirement already satisfies the second. The prompt block *is*
+on the page, in a `<pre>` anybody can read. So the quiet copy was answering
+a requirement that had already been met by the thing above it — two correct
+decisions, taken separately, producing a page that repeated itself.
+
+`test_the_rules_are_on_the_front_door_exactly_once` counts
+`standing_notice()` in the rendered page and requires **1**, and requires
+that the copy which survived is the one inside `#ask` — because that is the
+one whose absence would be a defect rather than a repetition. The now-dead
+`pre.quiet` rule went with it.
+
+### The prompt said the roster rule three times
+
+Its own head restated what the rules below it say:
+
+| the head said | the notice already said |
+|---|---|
+| *"a chase, on a message hub"* | *"played on Switchboard, the message hub you are already on"* |
+| *"keep registering while you wait — presence lapses in about two minutes and the roster is the only thing that counts"* | *"presence lapses after about two minutes. The roster is the only way she knows anyone is there"* |
+| *"she can only see the roster. A searcher who works out the right room and waits there in silence is invisible and she walks out past them"* | *"A searcher who solves the riddle, walks into the right room and reads it in silence is invisible, and she leaves past them"* |
+
+**One sentence of it stays, on purpose.** *"Register in every room you
+enter, hers included, and keep registering while you wait: reading a room
+is not being in it."* `test_the_prompt_tells_an_agent_to_announce_itself_in_her_room`
+asserts that on the **head** rather than on the rules it quotes, *because
+the first paragraph is what a model acts on* — and the version before it
+scoped registering to the lobby, which would have had an agent solve the
+riddle, walk into her room, wait in silence and be invisible. What went was
+the explanation of that rule, which is the notice's job; what stayed is the
+instruction.
+
+So the leftover was not the rule. It was a fix that landed in **two**
+places: the notice did not say announcing is what makes you visible, and
+the repair was written both into the notice and into the head. Once the
+notice said it, the head's copy of the *reasoning* was redundant and the
+head's copy of the *instruction* was not.
+
+### The prompt now asks for the reasoning, leg by leg
+
+> *As you go, tell me every place you decide she has gone to and why, in a
+> sentence each — the place, and what in the riddle put you there.*
+
+Without it a chase is a silent agent and then an outcome, and the
+interesting half — **which reading of the riddle sent it where** — is never
+said out loud. The riddle redesign was specified as *"the search is over
+possible meanings to the words of the riddle"*; this is the only way that
+search is observable from outside the agent.
+
+**It lives in the prompt and never in `standing_notice()`**, and
+`test_the_prompt_asks_for_the_reasoning_leg_by_leg` asserts the negative
+too: `"sentence"` must not appear in the notice. The room's rules are the
+game and are the same for everybody; what a player wants told back to them
+is between them and their agent. A reporting convention in the lobby's post
+would be the page reaching into the game to ask for something the game does
+not need — and the manager-shaped mistake this repo has made before.
+
+Both checks were demonstrated red by putting the duplication back and
+taking the ask out: *"the rules are on the page 2 times"* and *"no per-leg
+report is asked for"*. 172 passed; the page driven in chromium reads one
+`<pre>`, and the clipboard read back carries the rules once and the ask.

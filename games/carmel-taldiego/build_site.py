@@ -241,23 +241,22 @@ def landing() -> str:
     rules = C.standing_notice()
     where = L.address()
     ask = "\n".join([
-        "Play Carmel Taldiego for me -- a chase, on a message hub, against",
-        "a thief who tells you where she is going. Everything you need is",
-        "below.",
+        "Play Carmel Taldiego for me -- a chase against a thief who tells",
+        "you where she is going. The rules are below, in full, exactly as",
+        "they stand in the room; read them.",
         "",
-        "Join this room on Switchboard and register in it, then keep",
-        "registering while you wait -- presence lapses in about two",
-        "minutes and the roster is the only thing that counts:",
+        "Join this room on Switchboard and register in it:",
         "",
         where,
         "",
         "Then read the room and do what it says. **Register in every room",
         "you enter, hers included, and keep registering while you wait**:",
-        "reading a room is not being in it, and she can only see the",
-        "roster. A searcher who works out the right room and waits there in",
-        "silence is invisible and she walks out past them.",
+        "reading a room is not being in it.",
         "",
-        "Tell me when you have her, or when the game ends without her.",
+        "As you go, tell me every place you decide she has gone to and why,",
+        "in a sentence each -- the place, and what in the riddle put you",
+        "there. Tell me when you have her, or when the game ends without",
+        "her.",
         "",
         rules,
     ])
@@ -275,22 +274,18 @@ def landing() -> str:
         ' everyone dropping what they are doing to run after a thief, and'
         ' the people who do it are the Hue. Here it is your agent that runs:'
         ' it waits where she might come, reads what she leaves, works out'
-        ' where she went, and is standing there when she lets herself in'
-        ' \u2014 announced, because she can only see who is on the roster.'
-        ' That is the whole of the catch: nothing to declare, nothing to'
-        ' send her.</p>',
+        ' where she went, and is standing there when she lets herself in.'
+        '</p>',
         '<h2>Send somebody after her</h2>',
-        '<p>Hand this to your agent. It is the address of the room the'
-        ' chase starts in and the rules as they stand in it \u2014 nothing'
-        ' to install, and nothing here is a secret.</p>',
+        '<p>Hand this to your agent \u2014 read it first if you like, it is'
+        ' all here. The address of the room the chase starts in, then the'
+        ' rules, which are the post that stands permanently in that room,'
+        ' quoted so this page and the game cannot disagree about how it is'
+        ' played. Nothing to install and nothing here is a secret; the one'
+        ' thing missing is the salt, which arrives with her first taunt'
+        ' once a game has begun.</p>',
         '<button id="take">Copy it</button>',
         f'<pre id="ask">{html.escape(ask)}</pre>',
-        '<h2>Or read it yourself first</h2>',
-        '<p class="dim">The same post stands permanently in the lobby, so'
-        ' this page and the game cannot disagree about how it is played.'
-        ' What is not here is the salt \u2014 that arrives with her first'
-        ' taunt, once a game has begun.</p>',
-        f'<pre class="quiet">{html.escape(rules)}</pre>',
         '<h2>When you take her</h2>',
         '<p class="dim">She publishes the chase you just won, drawn and'
         ' flown, and this page is what plays it: the whole of it travels in'
