@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import build_site as BS  # noqa: E402
 import carmel as C  # noqa: E402
+import trail_flight as TF  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +49,8 @@ def test_the_seeds_are_the_first_n_and_not_a_chosen_n():
 def test_every_campaign_that_ran_is_on_the_page(site):
     """No campaign is dropped for being short, dull, or a loss."""
     out, made = site
-    page = (out / "index.html").read_text(encoding="utf-8")
+    page = (out / BS.GALLERY / "index.html").read_text(
+        encoding="utf-8")
     assert len(made) == 3
     for m in made:
         assert f'{m["dir"]}/flight.html' in page
@@ -59,17 +61,33 @@ def test_every_campaign_that_ran_is_on_the_page(site):
 def test_a_caught_campaign_is_not_quietly_relabelled(site):
     """The outcome on the page is `chase`'s own word for it."""
     out, made = site
-    page = (out / "index.html").read_text(encoding="utf-8")
+    page = (out / BS.GALLERY / "index.html").read_text(
+        encoding="utf-8")
     for m in made:
         assert m["outcome"] in ("she wins", "caught", "unfinished")
         assert f'>{m["outcome"]}<' in page
 
 
-def test_the_files_are_actually_there(site):
+def test_every_relative_link_on_the_gallery_resolves(site):
+    """Named for the files until 2026-09-12, when the gallery moved under
+    `GALLERY` and this test went looking for them at the old path.
+
+    It reads the page's own `src` and `href` instead of the layout the
+    builder happens to use today: a link on a published page either
+    resolves or it is a broken link, whatever directory it is written from.
+    """
     out, made = site
-    for m in made:
-        assert (out / m["dir"] / "card.svg").stat().st_size > 2000
-        assert (out / m["dir"] / "flight.html").stat().st_size > 2000
+    gallery = out / BS.GALLERY / "index.html"
+    page = gallery.read_text(encoding="utf-8")
+
+    links = re.findall(r'(?:src|href)\s*=\s*"(?!https?:|data:|#)([^"]+)"',
+                       page)
+    assert len(links) >= 2 * len(made), links
+    for link in links:
+        target = (gallery.parent / link.split("#")[0]).resolve()
+        assert target.exists(), f"{link} on the gallery goes nowhere"
+        if target.is_file():
+            assert target.stat().st_size > 2000, link
 
 
 # --- what it must not disclose -------------------------------------------
@@ -79,7 +97,8 @@ def test_the_index_names_no_landmark_off_the_trails(site):
     named and nothing else. The index shows her last stop, so this is the
     guard that it shows only that."""
     out, made = site
-    page = (out / "index.html").read_text(encoding="utf-8")
+    page = (out / BS.GALLERY / "index.html").read_text(
+        encoding="utf-8")
     world = C.Map(bytes(32))
 
     walked = {C.LOBBY_LANDMARK}
@@ -93,15 +112,28 @@ def test_the_index_names_no_landmark_off_the_trails(site):
     assert named <= walked, named - walked
 
 
-def test_the_page_needs_nothing_from_the_network(site):
-    """It opens from a file. No CDN, no font host, no analytics -- the only
-    absolute links are to GitHub, which are links a reader clicks rather
-    than resources the page loads."""
+def test_no_page_needs_anything_from_the_network(site):
+    """Every page opens from a file. No CDN, no font host, no analytics --
+    the only absolute links are to GitHub, which are links a reader clicks
+    rather than resources the page loads.
+
+    It asked about one page until 2026-09-12, and that page stopped being
+    the one a player is sent to on the same day. So it walks the tree: a
+    page the build adds is covered by existing, not by being added here.
+    """
     out, _ = site
-    page = (out / "index.html").read_text(encoding="utf-8")
-    loaded = re.findall(r'(?:src|href)\s*=\s*"(https?://[^"]+)"', page)
-    assert all(u.startswith("https://github.com/") for u in loaded), loaded
-    assert "<script" not in page.lower()
+    pages = sorted(out.rglob("*.html"))
+    assert len(pages) >= 4, f"the build stopped writing pages: {pages}"
+    for page in pages:
+        text = page.read_text(encoding="utf-8")
+        loaded = re.findall(r'(?:src|href)\s*=\s*"(https?://[^"]+)"', text)
+        assert all(u.startswith("https://github.com/") for u in loaded), (
+            page.relative_to(out), loaded)
+
+    # The gallery carries no script at all. The front door and the film do
+    # -- a copy button and the flight -- and both are local.
+    gallery = (out / BS.GALLERY / "index.html").read_text(encoding="utf-8")
+    assert "<script" not in gallery.lower()
 
 
 def test_the_link_points_at_where_the_site_actually_puts_the_viewer(tmp_path):
@@ -113,14 +145,29 @@ def test_the_link_points_at_where_the_site_actually_puts_the_viewer(tmp_path):
     import trail_flight as TF
 
     BS.build(tmp_path, imagery=None, count=1)
-    tail = TF.CHASE_PAGE.rstrip("/").split("/")[-1]
-    published = tmp_path / tail / "index.html"
-    assert published.exists(), f"nothing published at {tail}/"
-    assert (tmp_path / tail / "basemap.js").exists()
-    assert "BASEMAP" in (tmp_path / tail / "basemap.js").read_text()
+
+    # The tail is what is left of the address after the site's own URL --
+    # not its last segment, which was the same thing only while the page
+    # sat one directory down, and which would read "carmel-taldiego" now.
+    assert TF.CHASE_PAGE.startswith(BS.SITE_URL), (
+        "the address a chase link carries is not under the published site")
+    tail = TF.CHASE_PAGE[len(BS.SITE_URL):].strip("/")
+    assert tail == BS.viewer_path()
+
+    here = tmp_path / tail
+    published = here / "index.html"
+    assert published.exists(), f"nothing published at {tail or 'the base URL'}"
+    assert (here / "basemap.js").exists()
+    assert "BASEMAP" in (here / "basemap.js").read_text()
     assert 'src="basemap.js"' in published.read_text()
     assert 'id="data"></script>' in published.read_text(), (
         "a chase was baked into the page every link opens")
+
+    # and the page at that address is the front door, which is the defect
+    # this test did not catch: it was green on a tree whose base URL was
+    # the gallery, because it only ever asked about `chase/`.
+    assert 'id="take"' in published.read_text(), (
+        "the address a player is given does not carry the copy button")
 
 
 def test_the_front_door_says_everything_a_stranger_needs():
@@ -172,7 +219,7 @@ def test_the_front_door_is_only_the_front_door(tmp_path):
     """It is published bare, with no chase in it: the same URL carries a
     campaign only when somebody sends you one in a fragment."""
     BS.build(tmp_path, imagery=None, count=1)
-    page = (tmp_path / "chase" / "index.html").read_text()
+    page = (tmp_path / BS.viewer_path() / "index.html").read_text()
     assert "Hand this to your agent" in page
     assert 'id="data"></script>' in page, "a chase was baked into the door"
 
@@ -219,3 +266,111 @@ def test_the_prompt_tells_an_agent_to_announce_itself_in_her_room():
     assert "every room" in head and "register" in head, (
         "the prompt scopes registering to the lobby it starts in")
     assert "reading a room is not being in it" in head
+
+
+def test_the_page_does_not_describe_a_game_that_was_replaced(tmp_path):
+    """The public page's blurb is hand-written prose, so it drifts from the
+    code silently — and it had, for a day, on a page anybody could read.
+
+    Found by being asked for the game's link. CI had rebuilt the page
+    minutes earlier, so it was *current*, and it still said she posts
+    **"one true thing ... the least informative true thing she can say"**
+    and that she is **"only catchable while she is standing still stealing
+    something"**. All three claims were true when written and all three had
+    been superseded: the riddle replaced one fact with three details, the
+    least-informative strategy was reversed, and Gal's *"she could be caught
+    whenever she is in the room with a player, nevermind her state"* ended
+    the standing-still rule.
+
+    **A rebuilt page is not a current page.** The build was derived and the
+    words were not, which is this repo's recurring shape — an inventory that
+    drifts while the mechanism around it stays right.
+
+    So the retired phrases are pinned. Not the whole blurb, which should
+    stay editable prose, but the specific claims that are now false: a page
+    that reintroduces any of them fails here rather than going live.
+    """
+    made = BS.build(tmp_path, imagery=None, count=1)
+
+    retired = [
+        "one true thing",
+        "least informative",
+        "only catchable while she is standing still",
+    ]
+
+    # Every page the build writes, found by walking the tree rather than
+    # by naming the two that exist today. `landing()` arrived in the same
+    # afternoon as this test and is now the front door -- the phrase list
+    # is already an inventory, and a *page* list would be a second one
+    # (`CLAUDE.md`, "derive the list rather than maintaining it").
+    pages = sorted(tmp_path.rglob("*.html"))
+    assert len(pages) >= 3, f"the build stopped writing pages: {pages}"
+    for page in pages:
+        text = page.read_text()
+        for phrase in retired:
+            assert phrase not in text, (
+                f"{page.relative_to(tmp_path)} says {phrase!r}, which"
+                " describes the game as it was before the riddle and"
+                " before co-presence became the catch")
+
+    # And the replacement is present, so this cannot pass by the blurb
+    # having been deleted instead of corrected.
+    assert "few true" in BS.index(made, imagery=None), (
+        "the blurb no longer describes the riddle")
+
+
+def test_the_address_a_player_is_given_is_the_front_door(tmp_path):
+    """Gal, 2026-09-12: *"This is not the page we designed with the button
+    to copy."*
+
+    `landing()` shipped the same afternoon with a docstring quoting the
+    decision it was built for — *"the base url for the page is the landing
+    page for the game"* — and `build()` published it at `chase/` while the
+    base URL kept the campaign gallery. Every test around it was green:
+    the door said the right things, the button worked in a real browser,
+    the recipe was complete. **Nothing asked where it was**, so the one
+    address a stranger is handed showed them six recordings and no way to
+    play.
+
+    A skip and an absence are the two shapes `CLAUDE.md` warns about, and
+    this is the second: no check named the base URL, so nothing failed.
+    """
+    BS.build(tmp_path, imagery=None, count=1)
+
+    base = tmp_path / "index.html"
+    assert base.exists(), "nothing at all is published at the base URL"
+    front = base.read_text(encoding="utf-8")
+
+    assert 'id="take"' in front, "the base URL has no copy button"
+    assert 'id="ask"' in front, "the base URL does not carry the prompt"
+    assert "Hand this to your agent" in front
+
+    # and it is the address she posts, so the link and the door are one page
+    assert TF.CHASE_PAGE == BS.SITE_URL
+    assert BS.viewer_path() == ""
+
+
+def test_a_link_already_handed_out_still_opens_its_chase(tmp_path):
+    """The door moved, and a chase she has already posted is somebody's
+    copy of a game they won. Every retired address keeps a forwarder.
+
+    **It has to carry the fragment**, which is why the forwarder is script
+    and not a `<meta refresh>`: the whole chase is after the `#`
+    (`trail_flight.link`), so a redirect that drops it opens an empty film
+    — which looks like a bug in the drawing rather than a moved page.
+    """
+    BS.build(tmp_path, imagery=None, count=1)
+
+    for old in BS.RETIRED_DOORS:
+        page = (tmp_path / old / "index.html")
+        assert page.exists(), f"{old}/ was retired without a forwarder"
+        text = page.read_text(encoding="utf-8")
+        assert "location.hash" in text, (
+            f"{old}/ forwards without the chase, so the film opens empty")
+        assert "location.replace" in text
+        # it points at the door, and the door is where the door is
+        to = text.split("location.replace(")[1].split(" +")[0].strip("'\"")
+        assert (tmp_path / old / to).resolve() == (
+            tmp_path / BS.viewer_path()).resolve()
+        # and a reader with no script gets a link rather than a blank page
+        assert f'href="{to}"' in text

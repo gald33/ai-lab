@@ -841,7 +841,16 @@ LINK_POINTS = 28
 #: `test_the_link_points_at_where_the_site_actually_puts_the_viewer` holds
 #: the two together, because a constant and a path that agree today and are
 #: maintained in two places do not stay agreeing.
-CHASE_PAGE = "https://gald33.github.io/ai-lab/carmel-taldiego/chase/"
+#:
+#: **It is the base URL, and was `/chase/` for a few hours on 2026-09-12.**
+#: `viewer(landing())` is one page with two jobs -- bare it is the front
+#: door, with a chase in its fragment it is the film -- and `build_site`
+#: published it one directory down while `build_site.landing`'s own
+#: docstring said *"the base url for the page is the landing page"*. So the
+#: address a stranger is given showed them the campaign gallery and never
+#: the copy button. `build_site.viewer_path` derives the path in the tree
+#: from this string now, rather than naming a directory beside it.
+CHASE_PAGE = "https://gald33.github.io/ai-lab/carmel-taldiego/"
 
 
 def thin(points: list, cap: int = LINK_POINTS) -> list:

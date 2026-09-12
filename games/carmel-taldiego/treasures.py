@@ -46,7 +46,17 @@ flavour text. Instead it is the mechanic, because the theft is a **dwell**:
 she must stand still to take a thing, and standing still is the only reason
 she is catchable at all. So the impossible ones are worth the most and take
 the longest, and going after one is a bet that nobody reads the room in
-time. Taking the sound of the bells at a cathedral is nine hours of
+time.
+
+**"the only reason she is catchable" was superseded on 2026-09-10** and the
+sentence above is left standing because the economics it explains are still
+the economics. The catch rule is Gal's: *sharing a room with her is the
+win*, however she came to be in it and whatever she is doing there -- see
+`carmel.chase`, which carries the decision and why the old pair of rules
+was unplayable. What survives here is that a long theft is a long time in
+one room, so the impossible treasures are still the risky ones; what does
+not survive is "only".
+ Taking the sound of the bells at a cathedral is nine hours of
 standing where a searcher can find her; taking a fistful of gravel from a
 minor site is one.
 
