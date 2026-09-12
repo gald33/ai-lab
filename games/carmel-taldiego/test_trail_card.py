@@ -286,6 +286,28 @@ def test_mercator_round_trips():
 
 # --- what replaced the field of dots ---------------------------------------
 
+def test_the_command_in_the_docstring_runs():
+    """Every other test in this file calls `card`, and `main` is what a
+    reader is told to run. #264 renamed a leg's hint to its details and left
+    `main`'s summary raising `KeyError` after the card had been written --
+    green suite, broken command, for as long as nobody typed it.
+
+    A subprocess rather than a call, because the failure was in the script
+    path: argument parsing, the write, and the print after it."""
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "card.svg"
+        done = subprocess.run(
+            [sys.executable, str(Path(TC.__file__)),
+             "--seed", ESCAPED.hex(), "--out", str(out)],
+            capture_output=True, text=True, timeout=300)
+        assert done.returncode == 0, done.stderr[-2000:]
+        assert out.read_text().startswith("<svg")
+        assert "wrote" in done.stdout
+
+
 # --- the world panel ------------------------------------------------------
 
 def test_the_world_panel_is_the_whole_world():
@@ -345,7 +367,21 @@ def test_a_leader_is_visible_against_the_map_it_crosses():
     leader = luminance(TC.INK["leader"])
     for under in ("land", "sea", "ground"):
         assert leader > luminance(TC.INK[under]) + 0.06, under
-    assert f'stroke="{TC.INK["leader"]}"' in draw(ESCAPED)
+
+    # A leader is only drawn when a label had to move, so the other half of
+    # this check needs a card that moved one -- and campaign shape is
+    # downstream of every parameter in `carmel.py`, which is why the seed is
+    # **found and not named**. It was named once: the hint became a riddle
+    # (#264), campaigns fell from eighteen legs to two, and a check that had
+    # been about ink went quietly green about nothing. Running out of seeds
+    # is a failure here rather than a skip, for the same reason.
+    for n in range(0x10, 0x40):
+        drawn = draw(bytes([n]) * 32)
+        if f'stroke="{TC.INK["leader"]}"' in drawn:
+            break
+    else:
+        raise AssertionError("no campaign in 48 seeds displaced a label; "
+                             "this half of the check is asserting nothing")
 
 
 def test_the_span_caption_stays_on_the_card():

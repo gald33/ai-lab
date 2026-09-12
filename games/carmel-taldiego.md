@@ -3354,9 +3354,9 @@ world as a locator inset.
 > **The second sentence is superseded, 2026-09-12 — the world is the card's
 > main panel now.** See "The world is the map, and the chase is not on it"
 > below, which also measures the first: over 200 campaigns a campaign draws
-> 107px across on a 1000px world, not three, and what is unreadable at that
-> scale is its *stops*, which land a median 2.9px apart. The claim that
-> demoted the world was never measured in pixels.
+> a median 46px across on a 1000px world, not three, and what does not fit
+> at that scale is the writing beside its stops. The claim that demoted the
+> world was never measured in pixels.
 
 It also qualifies the sentence the section above is named after. *"There
 are 1000 landmarks, every one of them is a possibility"* is true of the map
@@ -5265,16 +5265,25 @@ three days. Over 200 campaigns (`trail_card.py --survey`, which prints these
 two rows now precisely so the next claim about a drawing is a measurement):
 
 ```
-world-scale extent   median 106.8 px   min 4.8   max 355.5
-closest two stops    median   2.9 px   min 0.0   max  71.9
+world-scale extent   median 46.2 px   min 0.2   max 288.8
+closest two stops    median 11.7 px   min 0.0   max 110.1
 ```
 
-A tenth of the card's width. The six published seeds run 54 to 168px. **The
-extent was never the obstruction; the density is** -- fifteen to twenty-one
-stops inside a hundred pixels, a median 2.9px apart, and on the same pixel
-in four of the six published campaigns. That is a problem an enlarged panel
-solves and a bigger world map does not, which is why the answer is two
-panels and not a choice between them.
+Legible, and nothing like three pixels; the six published seeds run 14 to
+155px. **The extent was never the obstruction.** What does not fit at that
+scale is the writing -- a median campaign is a twentieth of the card wide
+and one stop's label is 17px on three lines -- and in the long tail, at
+nineteen legs, two stops land on the same pixel. Both are answered by an
+enlarged panel and neither by a bigger world map, which is why this is two
+panels rather than a choice between them.
+
+*Measured twice in one sitting and it moved both times.* The first run said
+106.8px and 2.9px over campaigns of 13 legs; then #264 made the hint a
+riddle, campaigns fell to a median 2.5 legs, and the same command said
+46.2px and 11.7px. Neither is wrong. **Campaign shape is downstream of
+every parameter in `carmel.py`** -- "Framing it found the thing the numbers
+had not said" has said so since the third time, and this is the fourth, so
+what the card's shape rests on is the command and not the digits.
 
 Note what the wrong diagnosis cost: it was not that the card was bad, it
 was that **a fixable problem was recorded as a physical limit**, and a
@@ -5282,7 +5291,7 @@ limit is not something anybody re-examines. The number that would have
 caught it -- pixels, at the width the card is actually drawn -- took four
 lines to measure and nobody had run them.
 
-### Drawing the world found two defects and one vacuous test
+### Drawing the world found two defects, one vacuous test, and a broken command
 
 **A leg across the antimeridian was drawn back across the Atlantic.** `fit`
 has unwrapped the *stops* since the card was written -- there is a test
@@ -5301,6 +5310,25 @@ nobody noticed; at eighteen the card stops being readable. The new
 `INK["leader"]` is asserted to out-luminance the land, the sea and the
 card's ground, which is a check that can go red for the reason it names.
 
+**And the file's own command was broken on `main` and nobody had typed
+it.** #264 renamed a leg's `hint` to its `details`; `card` was updated and
+`main`'s summary print was not, so `trail_card.py --seed ...` wrote the card
+and then died with a `KeyError` -- the command this module's docstring hands
+a reader, failing on every run, with the whole suite green because every
+test in it calls `card()` and none called `main()`. Found by running it.
+Fixed here rather than filed, since it is a line in the file this branch is
+already rewriting, and `test_the_command_in_the_docstring_runs` now runs it
+as a subprocess so the script path has a check at all.
+
+*And its other half was named after a seed, which lasted about an hour.*
+The same test asserted that a card *draws* a leader, on a seed that drew
+ten of them -- until #264 landed, campaigns fell from eighteen legs to two,
+no label had to move, and the assertion went green over a card with nothing
+to join. The seed is searched for now, and finding none in forty-eight is a
+failure rather than a pass. **A test named after a seed is a test named
+after a campaign shape**, which is the one thing in this game nothing may
+be named after.
+
 **And the caption test was green over an untaken branch.** The span caption
 sits beside the frame and flips to the other side when it would run off the
 card; disabling the flip left the test passing, because on every seed the
@@ -5311,16 +5339,18 @@ by the habit the same file prescribes: break it on purpose and watch.
 ### What it costs, stated rather than absorbed
 
 ```
-card, vectors only     115 KB -> 137 KB      (+ the coarse world)
-card, with imagery     381 KB -> 580 KB      (17 -> 30 NASA tiles)
-published site         2.3 MB -> 2.5 MB vectors; about +1.2 MB with imagery
+card, vectors only     148 KB -> 167 KB      (+ the coarse world)
+card, with imagery     675 KB -> 889 KB      (30 -> 43 NASA tiles)
+published site (vec)   1.1 MB -> 1.2 MB
 ```
 
-The world panel fetches its own tiles at zoom 2 -- twelve of them, one turn
-of the world at 1024px, which is the zoom that matches the width rather
-than a stretched one. The card is also about 500px taller. Both are paid
-for a panel that is most of what a reader now looks at, which is the trade
-being made and not an overrun.
+One seed, the longest of the published six, measured in a worktree at
+`origin/main` beside this branch rather than remembered. The world panel
+fetches its own tiles at zoom 2 -- thirteen of them, one turn of the world
+at 1024px, the zoom that matches the width rather than a stretched one. The
+card is also about 500px taller. Both are paid for a panel that is most of
+what a reader now looks at, which is the trade being made and not an
+overrun.
 
 ### What it still refuses, and the one thing it newly says
 

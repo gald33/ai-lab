@@ -54,15 +54,27 @@ surfaced, and it was drawing it that surfaced it. Re-check both rows with
     200 campaigns (`--survey`, which prints these two rows now precisely so
     that the next claim about a drawing is measured):
 
-        world-scale extent   median 106.8 px   min 4.8   max 355.5
-        closest two stops    median   2.9 px   min 0.0   max  71.9
+        world-scale extent   median 46.2 px   min 0.2   max 288.8
+        closest two stops    median 11.7 px   min 0.0   max 110.1
 
-    A tenth of the card's width, and legible -- the six published seeds run
-    54 to 168px. What is unreadable at that scale is the *stops*: fifteen to
-    twenty-one of them inside a hundred pixels, landing a median 2.9px
-    apart and, in four of the six published campaigns, on the same pixel.
-    Extent was never the obstruction; density is, and density is what an
-    enlarged panel fixes and a bigger world map would not.
+    Legible, and nothing like three pixels -- the six published seeds run 14
+    to 155px. What does not fit at that scale is the *writing*: a median
+    campaign is a twentieth of the card wide and a stop's label is 17px
+    tall on three lines, so a card that only showed the world would be a
+    world with an unreadable pile in one corner of it. The long tail is
+    worse and in the other direction -- nineteen legs, with two stops on the
+    same pixel. **Extent was never the obstruction**, and an enlarged panel
+    is what answers the thing that is.
+
+    *Measured twice in one sitting, and it moved both times, which is the
+    part to keep.* The first run said 106.8px and 2.9px, over campaigns of
+    13 legs; then the hint became a riddle (#264), campaigns fell to a
+    median of 2.5 legs, and the same command said 46.2px and 11.7px. Nothing
+    was wrong with either. **Campaign shape is downstream of every parameter
+    in `carmel.py`, so it is a thing to measure and never a thing to
+    quote** -- `games/carmel-taldiego.md` has said so under "Framing it
+    found the thing the numbers had not said" since the third time it
+    happened, and this is the fourth.
 
     The old numbers are also a campaign shape the game no longer has -- 3
     legs became 15-21 when `REPUTATION_TO_WIN` was calibrated to 750 -- so
@@ -799,14 +811,15 @@ def survey(trials: int = 200, searchers: int = 2,
                                 ("closest two stops", closest, " px")):
         print(f"  {label:20} median {statistics.median(values):>9,.1f}{unit}"
               f"   min {min(values):>7,.1f}   max {max(values):>9,.1f}")
-    print(f"\nThe last two rows are the card, on a {WIDTH}px world. A campaign"
-          "\nis a few thousand kilometres across on a map 40,075 km around,"
-          "\nand that is legible: a tenth of the width, drawn small. What is"
-          "\nnot legible is its stops, which land on each other. **Extent is"
-          "\nnot why the world needed a second panel; density is** -- see the"
-          "\ncorrection in this module's docstring, where a claim about a"
-          "\nsmudge three pixels wide stood for three days without anybody"
-          "\nmeasuring a pixel.")
+    print(f"\nThe last two rows are the card, on a {WIDTH}px world: how wide"
+          "\nthe campaign draws, and how close its two nearest stops land."
+          "\nBoth are why the card has two panels rather than one -- at the"
+          "\nmedian a campaign is a twentieth of the width and a stop's label"
+          "\nis not, and in the long tail two stops share a pixel. **Extent"
+          "\nwas never why the world could not be drawn.**"
+          "\n\nNeither row is a constant. Campaign shape is downstream of"
+          "\nevery parameter in carmel.py, and these two moved by 2x when the"
+          "\nhint became a riddle. Run this; do not quote it.")
 
 
 def main() -> None:
@@ -846,7 +859,14 @@ def main() -> None:
     for i, leg in enumerate(result["moves"]):
         took = (world.treasure[leg["to"]]["treasure"] if i in emptied
                 else "caught in the act" if leg["dwell"] else "-")
-        print(f"  {i + 1}. {leg['to'][:34]:34} “{leg['hint']}”  {took}")
+        # `leg["hint"]` until #264, which made the hint three details and
+        # left this line to raise `KeyError` *after* the card was written --
+        # so the file's own command crashed on every run while every test in
+        # `test_trail_card.py` stayed green, because they all call `card()`
+        # and none of them calls `main()`. Fixed here rather than filed:
+        # it is the command this module's docstring tells a reader to run.
+        said = ", ".join(d.replace("_", " ") for d in leg["details"])
+        print(f"  {i + 1}. {leg['to'][:34]:34} “{said}”  {took}")
     print(f"\nwrote {args.out}   seed {seed.hex()}")
 
 
