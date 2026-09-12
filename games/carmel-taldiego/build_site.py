@@ -108,6 +108,25 @@ def build(out: Path, imagery: str | None = "relief",
     return made
 
 
+def backdrop() -> str:
+    """The same world the film ends on, laid under the front door.
+
+    Gal, 2026-09-12: *"the background is the same world map."* Not a
+    decorative texture and not a second drawing: it is `trail_card`'s world
+    camera over the same coarse coastline the card's top panel and the
+    flight's two shots use, so a player meets the map before they meet the
+    game and recognises it when they see it move.
+
+    It is behind the text at a fraction of its ink, and it is the only thing
+    on this page that is a picture -- the map is where the game happens, so
+    the front door is a room in it rather than a poster about it.
+    """
+    camera = TC.world_camera([(0.0, 0.0)], 0.0)
+    return (f'<svg id="world" viewBox="0 0 {TC.WIDTH} {camera.h:.0f}"'
+            f' preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
+            + "".join(TC.whole_world(camera)) + "</svg>")
+
+
 def landing() -> str:
     """The front door: what the game is, and what to hand your agent.
 
@@ -127,10 +146,12 @@ def landing() -> str:
     the lobby, and `at_large.address` supplies the three publishable
     strings.
 
-    The prompt is the same material with an instruction on the front, which
-    is what a person actually needs: a block to paste into an agent that
-    tells it where to go, what the game is, and that it wins by standing in
-    a room.
+    **The prose around them is the game's and the instructions are plain.**
+    `games/carmel-taldiego.md`, "She stopped reading out an API": above the
+    rule she is a fugitive and below it the machinery is written about her
+    in the third person. A landing page is the one surface a stranger reads
+    *before* they know any of it, so the lore sets the scene and nothing
+    load-bearing is said in character.
     """
     rules = C.standing_notice()
     where = L.address()
@@ -150,24 +171,79 @@ def landing() -> str:
     ])
     INK = TC.INK
     return "\n".join([
-        '<h2 style="margin-top:8px">Hue and cry</h2>',
-        f'<p>A fugitive robs the famous places of the world and tells you'
-        f' where she is going, in pieces. You play it with an agent: it'
-        f' waits in a room, reads what she leaves, works out where she went'
-        f' and turns up while her hands are still full.</p>',
-        f'<p class="dim">This page is also where a chase you won gets'
-        f' watched. When somebody catches her she publishes a link to it,'
-        f' and the whole chase travels in the address.</p>',
-        '<h2>Hand this to your agent</h2>',
-        f'<pre>{html.escape(ask)}</pre>',
-        '<h2>Or read the rules yourself</h2>',
-        f'<p class="dim">The same post stands permanently in the lobby, so'
-        f' this page and the game cannot disagree about how it is played.'
-        f'</p>',
-        f'<pre>{html.escape(rules)}</pre>',
-        f'<p class="dim">Six campaigns already played are'
-        f' <a href="../" style="color:{INK["line"]}">here</a>.</p>',
+        backdrop(),
+        '<div id="door">',
+        '<h1>Hue and cry</h1>',
+        '<p class="lede">Somewhere on that map a thief is working her way'
+        ' round the famous places of the world, and she cannot help telling'
+        ' you where she is going. Not plainly. A few true things each time'
+        ' she moves on \u2014 one of them hers, the rest from whoever saw'
+        ' her pass.</p>',
+        '<p class="lede">Raising the hue and cry is the old name for'
+        ' everyone dropping what they are doing to run after a thief. Here'
+        ' it is your agent that runs: it waits where she might come, reads'
+        ' what she leaves, works out where she went, and is standing there'
+        ' when she lets herself in. That is the whole of the catch \u2014'
+        ' there is nothing to declare and nothing to send her.</p>',
+        '<h2>Send somebody after her</h2>',
+        '<p>Hand this to your agent. It is the address of the room the'
+        ' chase starts in and the rules as they stand in it \u2014 nothing'
+        ' to install, and nothing here is a secret.</p>',
+        '<button id="take">Copy it</button>',
+        f'<pre id="ask">{html.escape(ask)}</pre>',
+        '<h2>Or read it yourself first</h2>',
+        '<p class="dim">The same post stands permanently in the lobby, so'
+        ' this page and the game cannot disagree about how it is played.'
+        ' What is not here is the salt \u2014 that arrives with her first'
+        ' taunt, once a game has begun.</p>',
+        f'<pre class="quiet">{html.escape(rules)}</pre>',
+        '<h2>When you take her</h2>',
+        '<p class="dim">She publishes the chase you just won, drawn and'
+        ' flown, and this page is what plays it: the whole of it travels in'
+        ' the address, so the link is yours to keep and to send on.'
+        f' <a href="../" style="color:{INK["line"]}">Six she has already'
+        ' run</a> are here to watch.</p>',
+        '</div>',
+        _COPY_SCRIPT,
     ])
+
+
+#: The copy control, in the shape `games/island/lobby_page.py` settled on
+#: and for its reasons: **the prompt is on the page, not behind the
+#: button**, because a button that copies something a reader cannot see
+#: asks them to paste an unread instruction into an agent they are
+#: responsible for. The copy is the convenience; the text is the thing.
+#:
+#: It falls back to selecting the block when the clipboard is unavailable --
+#: plain http, an embedded browser, a refused permission -- and says which
+#: happened. `CLAUDE.md`: a control that silently does nothing is worse than
+#: no control, and this one is watched in a real browser
+#: (`test_the_copy_button_puts_the_prompt_on_the_clipboard`).
+_COPY_SCRIPT = """<script>
+(function () {
+  var b = document.getElementById('take');
+  var p = document.getElementById('ask');
+  if (!b || !p) { return; }
+  function pick() {
+    var r = document.createRange(); r.selectNodeContents(p);
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  b.addEventListener('click', function () {
+    var done = function () {
+      b.textContent = 'Copied \u2014 now give it to your agent';
+      b.setAttribute('data-took', 'yes');
+      setTimeout(function () { b.textContent = 'Copy it'; }, 4000);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(p.textContent).then(done, function () {
+        pick(); b.textContent = 'Select-copy it yourself \u2014 clipboard refused';
+      });
+    } else {
+      pick(); b.textContent = 'Select-copy it yourself \u2014 no clipboard here';
+    }
+  });
+}());
+</script>"""
 
 
 def index(made: list[dict], imagery: str | None) -> str:

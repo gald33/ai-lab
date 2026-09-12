@@ -381,17 +381,41 @@ PAGE = """<!doctype html>
   #play:hover { border-color: __LINE__; }
   #credit { position: absolute; right: 10px; top: 10px; font-size: 10px;
             color: __DIM__; opacity: 0.55; pointer-events: none; }
-  #landing { max-width: __W__px; margin: 0 auto; padding: 28px 22px 60px; }
+  /* The front door. The world sits behind it at a fraction of its ink --
+     the same coarse coastline the card's top panel and the flight's two
+     shots draw, so the map a reader meets here is the map they play on. */
   #landing:empty { display: none; }
-  #landing h2 { font-size: clamp(17px, 2.4vw, 22px); font-weight: normal;
-                margin: 34px 0 10px; }
-  #landing p { max-width: 62ch; line-height: 1.55; color: __TEXT__;
-               font-size: clamp(13px, 1.7vw, 16px); }
-  #landing pre { background: __SEA__; border: 1px solid __RULE__;
-                 border-radius: 3px; padding: 14px 16px; overflow-x: auto;
-                 font-size: 12px; line-height: 1.5; color: __STOP__;
-                 white-space: pre-wrap; word-break: break-word; }
-  #landing .dim { color: __DIM__; font-size: 13px; }
+  /* The whole world, not a crop of it: `slice` filled the viewport with
+     whichever continent happened to be in the middle, which is a texture.
+     Full width, centred, its own aspect -- so it is recognisably the map. */
+  #world { position: fixed; left: 0; right: 0; top: 50%;
+           transform: translateY(-50%); width: 100%; height: auto;
+           z-index: 0; opacity: 0.62; }
+  #door { position: relative; z-index: 1; max-width: 860px; margin: 0 auto;
+          padding: 8vh 22px 14vh; }
+  #landing h1 { font-size: clamp(30px, 6vw, 54px); font-weight: normal;
+                margin: 0 0 18px; letter-spacing: 0.5px; }
+  #landing h2 { font-size: clamp(18px, 2.6vw, 24px); font-weight: normal;
+                margin: 52px 0 12px; color: __STOP__; }
+  #landing p { max-width: 64ch; line-height: 1.62; color: __TEXT__;
+               font-size: clamp(14px, 1.8vw, 17px); }
+  #landing .lede { font-size: clamp(15px, 2vw, 19px); color: __STOP__; }
+  #landing .dim { color: __DIM__; font-size: clamp(13px, 1.6vw, 15px); }
+  /* The snippet is the thing a reader is here to take, so it is given the
+     room to be read rather than a window to squint through. */
+  #landing pre { background: rgba(13, 21, 27, 0.93); border: 1px solid __RULE__;
+                 border-radius: 4px; padding: 20px 22px; margin: 14px 0 0;
+                 overflow-x: auto; font-size: 14px; line-height: 1.62;
+                 color: __STOP__; white-space: pre-wrap;
+                 overflow-wrap: anywhere;
+                 font-family: ui-monospace, Menlo, Consolas, monospace; }
+  #landing pre.quiet { color: __DIM__; font-size: 13px;
+                       background: rgba(13, 21, 27, 0.8); }
+  #take { background: __LINE__; color: #17120c; border: none;
+          border-radius: 3px; padding: 10px 18px; font: inherit;
+          font-size: 15px; cursor: pointer; margin-top: 6px; }
+  #take:hover { filter: brightness(1.08); }
+  #take[data-took] { background: __STOP__; }
 </style>
 <div id="stage">
   <svg id="map" viewBox="0 0 __W__ __H__" aria-label="__TITLE__">

@@ -157,8 +157,10 @@ def test_the_front_door_says_everything_a_stranger_needs():
     assert "register" in words and "roster" in words
     assert "lapses" in words, "nothing says presence has to be renewed"
 
-    # the prompt is a block to hand over, not a description of one
-    prompt = front.split("<pre>")[1].split("</pre>")[0]
+    # The prompt is a block to hand over, not a description of one -- and
+    # it is found by the id the copy button binds to, so this and the button
+    # cannot end up talking about different blocks.
+    prompt = front.split('<pre id="ask">')[1].split("</pre>")[0]
     assert L.lobby_token() in prompt and L.HUB_URL in prompt
     assert "hue and cry" in prompt.lower()
 

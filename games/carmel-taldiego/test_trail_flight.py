@@ -153,7 +153,8 @@ class Flight:
 
 
 def linked(seed: bytes, fragment: str | None = None,
-           plan: dict | None = None, landing: str = ""):
+           plan: dict | None = None, landing: str = "",
+           clipboard: bool = False):
     """A `Flight` on the *published* viewer, opened at a chase's address.
 
     The same browser and the same `Flight`, but the page under it is
@@ -185,7 +186,9 @@ def linked(seed: bytes, fragment: str | None = None,
             except Exception as exc:                        # noqa: BLE001
                 missing(f"no chromium to drive a page with: {exc!r}")
             tab = browser.new_context(
-                viewport={"width": 1000, "height": 700}).new_page()
+                viewport={"width": 1000, "height": 700},
+                permissions=(["clipboard-read", "clipboard-write"]
+                             if clipboard else [])).new_page()
             broke = []
             tab.on("pageerror", lambda e: broke.append(str(e)))
             tab.goto((home / "index.html").as_uri() + "#" + tail)
@@ -544,6 +547,85 @@ def test_one_url_is_the_front_door_and_the_film():
         assert f.text("#landing").strip() == "", "the door stayed open"
         holds = [s for s in f.plan["segments"] if s["kind"] == "hold"]
         assert f.seek(holds[-1]["at"] + holds[-1]["ms"] / 2)["phase"] == "hold"
+
+
+def test_the_copy_button_puts_the_prompt_on_the_clipboard():
+    """Gal, 2026-09-12: *"add copy button."* `CLAUDE.md`: anything a page
+    *does* is asserted in a real browser, and a control that silently does
+    nothing is worse than no control -- so this clicks it and reads the
+    clipboard back rather than checking that a button is present.
+
+    What it must copy is **the block on the page**, not a second copy of the
+    prompt kept beside it: `games/island/lobby_page.py` settled that shape
+    and the reason, which is that a button copying something a reader cannot
+    see asks them to paste an unread instruction into an agent they are
+    responsible for.
+    """
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import build_site as BS
+
+    with linked(arrested_seed(), fragment="", landing=BS.landing(),
+                clipboard=True) as f:
+        f.tab.click("#take")
+        f.tab.wait_for_selector("#take[data-took]", timeout=4000)
+        assert "Copied" in f.text("#take")
+        took = f.tab.evaluate("navigator.clipboard.readText()")
+        assert took.strip() == f.text("#ask").strip(), (
+            "the button copied something other than the block on the page")
+        assert "hue and cry" in took.lower()
+
+
+def test_the_copy_button_says_so_when_it_cannot_copy():
+    """The other branch, and the one a reader actually meets: plain http, an
+    embedded browser, a refused permission. It selects the block instead and
+    says which happened.
+
+    **Driven rather than grepped.** The first version of this asserted that
+    the page contained the string `selectNodeContents`, which is a check
+    that the word is present: pointing the selection at `document.body`
+    instead of at the prompt left it green. So the clipboard is replaced
+    with one that refuses, and what the reader is left holding -- the
+    selection -- is what gets asserted.
+    """
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import build_site as BS
+
+    with linked(arrested_seed(), fragment="", landing=BS.landing()) as f:
+        f.tab.evaluate("""() => Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: () => Promise.reject(new Error('nope')) },
+            configurable: true });""")
+        f.tab.click("#take")
+        f.tab.wait_for_function(
+            "() => /clipboard refused/.test("
+            "document.getElementById('take').textContent)", timeout=4000)
+        picked = f.tab.evaluate("window.getSelection().toString()")
+        assert picked.strip() == f.text("#ask").strip(), (
+            "the fallback selected something other than the prompt")
+
+
+def test_the_front_door_is_backed_by_the_map_the_game_is_played_on():
+    """Gal: *"the background is the same world map."* The same coarse layer
+    the card's world panel and the flight's two shots draw -- not a second
+    drawing of the world, and not a gazetteer: the disclosure rule holds on
+    a landing page exactly as it does on a card."""
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import build_site as BS
+    import carmel as C2
+
+    door = BS.backdrop()
+    coarse = F.BM.load()["land_coarse"]
+    assert door.count("<path") == len(coarse), "not the coarse world"
+    assert F.INK["land"] in door
+
+    world = C2.Map(bytes(32))
+    named = [name for name in world.places if name in door]
+    assert not named, f"the front door names landmarks: {named[:3]}"
 
 
 def test_a_broken_chase_still_complains_even_with_a_front_door():

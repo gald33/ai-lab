@@ -5537,6 +5537,56 @@ defect in it, and the first time was the notice itself. The pattern is
 worth naming: *the surfaces that explain the game to somebody outside it
 are the least tested and the most load-bearing.*
 
+### It is a room in the map, not a poster about it
+
+*Gal, 2026-09-12: "the background is the same world map. the snippet window
+is small. add copy button. keep all in theme and with game lore."*
+
+**The world behind the door is the same coarse coastline** the card's top
+panel and the flight's two shots draw — `trail_card.world_camera` over
+`land_coarse`, at a fraction of its ink. Not a texture and not a second
+drawing of the world: a player meets the map here and recognises it when it
+moves. The disclosure rule holds on a landing page exactly as on a card, so
+a test walks it for landmark names and finds none.
+
+*One correction worth keeping.* The first version filled the viewport with
+`preserveAspectRatio="slice"`, which at any tall window is a **crop** — a
+continent, not the world, and unrecognisable as either. It is the whole
+world at its own aspect now, centred. A background that is a detail of the
+map says nothing about the map.
+
+**The snippet is what a reader came for**, so it is given the width and the
+size to be read rather than a window to squint through, and the copy button
+sits above it. The button follows `games/island/lobby_page.py` exactly,
+including why: **the prompt is on the page, not behind the button**,
+because a button that copies something a reader cannot see asks them to
+paste an unread instruction into an agent they are responsible for. It
+falls back to selecting the block when the clipboard refuses, and says
+which happened.
+
+**And the lore stops where the instructions start.** Above, she is a thief
+who cannot help telling you where she is going; below, the address and the
+recipe are plain. That is "She stopped reading out an API" applied to the
+one surface a stranger reads *before* they know any of it — the fiction
+sets the scene and nothing load-bearing is said in character.
+
+### A check that was a word search, found by breaking it
+
+The copy button's fallback was asserted by looking for `selectNodeContents`
+in the page source. Pointing the selection at `document.body` instead of at
+the prompt left that green — the word was still there. It drives the branch
+now: the clipboard is replaced with one that refuses, the button is
+clicked, and **what the reader is left holding — the selection — is what is
+asserted**.
+
+Worth recording because of how it was found. The break was run, came back
+green, and the first instinct was that the edit had not applied. It had
+not, twice, and the third attempt was the one that showed the check had
+never been about behaviour at all. *A break that does not go red is
+information either way*: either the check is weak, or the break missed —
+and the way to tell them apart is to make the break undeniable rather than
+to assume which it was.
+
 ### The pair, again
 
 One test proves the page **says** it — the three strings against what the
