@@ -5341,8 +5341,12 @@ by the habit the same file prescribes: break it on purpose and watch.
 ```
 card, vectors only     148 KB -> 167 KB      (+ the coarse world)
 card, with imagery     675 KB -> 889 KB      (30 -> 43 NASA tiles)
-published site (vec)   1.1 MB -> 1.2 MB
+published site         1.1 MB -> 1.2 MB vectors, 3.7 MB -> 4.9 MB as deployed
 ```
+
+**The deployed figure is the one that counts** and is a third more, since
+`pages.yml` builds with `--imagery`: the world panel is a photograph of the
+whole world and there is no cheap way to be that.
 
 One seed, the longest of the published six, measured in a worktree at
 `origin/main` beside this branch rather than remembered. The world panel
