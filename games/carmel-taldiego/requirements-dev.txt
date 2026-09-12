@@ -1,0 +1,27 @@
+# What the tests need on top of `requirements.txt`.
+#
+# They stand a **real hub** in-process rather than mocking the client, so the
+# thing under test is the thing that runs -- and that means the server half of
+# Switchboard, which a host never installs because it never serves. The
+# island's `requirements-dev.txt` says the same thing for the same reason;
+# this file exists because Carmel had none and the omission cost a real
+# deploy.
+#
+# **Written after chasing these one failure at a time on the VM**, which is
+# the whole argument for the file. The first run there reported *21 errors*
+# and `ModuleNotFoundError: No module named 'starlette'`; installing starlette
+# produced 21 errors and `No module named 'fastapi'`; installing fastapi gave
+# 143 passed. Two round trips of three minutes each to rediscover a set that
+# `agent-switchboard[server]` already declares -- `fastapi`, `pydantic`,
+# `uvicorn[standard]`, with starlette arriving under fastapi. Verified by
+# reading the wheel's METADATA rather than by inference:
+#
+#     pip download "agent-switchboard[server]" -d /tmp/x --no-deps
+#
+# The extra is the mechanism to name, not its transitive members: naming
+# starlette and fastapi here would be a hand-kept inventory of somebody
+# else's dependency tree, and it would drift the first time they reorganise
+# it.
+-r requirements.txt
+agent-switchboard[server]>=2.2.1
+pytest
