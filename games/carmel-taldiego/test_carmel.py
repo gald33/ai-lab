@@ -417,9 +417,15 @@ def test_the_notice_publishes_the_salt_and_never_the_seed():
     and the seed is the other half of that sentence: it stays hers, because
     it is what keeps the hints and the treasures sealed until the end."""
     notice = C.open_campaign(SEED, START)
-    assert salt_for(SEED).hex() in notice
-    assert SEED.hex() not in notice
-    assert RECIPE in notice
+    assert salt_for(SEED).hex() in notice, "her note must carry the salt"
+    assert SEED.hex() not in notice, "the seed stays hers until the end"
+    # The recipe moved to the standing post on 2026-09-12: it never changes,
+    # and a permanent post is where a permanent fact belongs. The salt stays
+    # in her note because it is the one thing here that is per-game.
+    assert RECIPE in C.standing_notice()
+    assert salt_for(SEED).hex() not in C.standing_notice(), (
+        "a permanent post carrying one game's salt is wrong for the rest of"
+        " its life")
 
 
 def test_the_closing_post_publishes_the_seed():
@@ -537,7 +543,10 @@ def test_a_stranger_who_knows_nothing_is_told_enough_to_give_chase():
     searcher visible -- none of which she would ever say, and all of which
     a stranger needs before they can do anything at all.
     """
-    plumbing = C.open_campaign(SEED, START).split(C.PLUMBING_RULE)[1].lower()
+    # Whitespace-collapsed: these assertions are about what a stranger is
+    # told, not about where the lines happen to wrap. A prose test that
+    # breaks when a sentence is re-flowed is a test of the formatting.
+    plumbing = " ".join(C.standing_notice(START).split()).lower()
     for needed in ("hue and cry", "switchboard", "sha256", "salt",
                    "announce", "roster"):
         assert needed in plumbing, f"a stranger is never told about {needed}"
@@ -622,40 +631,61 @@ def test_she_hands_over_nothing_when_she_was_not_caught():
     assert SEED.hex() in body, "the seed belongs in every ending"
 
 
-def test_the_notice_says_where_the_close_lands_and_says_it_once():
-    """Two corrections to her notice, 2026-09-11, both of them drift rather
-    than design.
+def test_the_rules_say_where_the_close_lands_and_her_note_stays_short():
+    """Where each half of the lobby's text belongs, since 2026-09-12.
 
-    **It claimed the close was lobby-only.** The sentence read *"She posts
-    the end of the game here and nowhere else"*, which was true when it was
-    written and false the moment the close began broadcasting to every room
-    she robbed. A notice that understates where the news reaches is the
-    exact failure the broadcast was built to fix, restated in her own
-    prose.
+    **This replaced a test written the day before, and reverses half of
+    it.** The superseded body:
 
-    **And it printed the first riddle twice.** The notice inlined it and
-    the runner posted it again, so the lobby carried it in duplicate. The
-    copy dropped is the notice's: the notice lives `NOTICE_TTL_HOURS` and
-    the post lives `HINT_TTL_HOURS`, **ten times longer**, so dropping the
-    runner's copy instead would have quietly cut the first riddle's life by
-    a factor of ten. The same shape as the salt -- a value doing load-
-    bearing work inside a message that looked like a formality.
+        notice = C.open_campaign(SEED, START)
+        plumbing = notice.split(C.PLUMBING_RULE)[1]
+        assert "nowhere else" not in plumbing
+        assert "every place she" in plumbing
+        world = C.Map(SEED)
+        first = C.itinerary(SEED, START, world, 1)[0]
+        for line in C.riddle(SEED, first["to"], first["details"]):
+            assert line not in notice, (
+                "the notice inlines the first riddle, which the runner also"
+                " posts: the lobby would show it twice")
 
-    Made to fail on purpose by restoring either sentence.
+    The first half still holds and has moved: the close reaches every room
+    she robbed, and saying so is the standing post's job now.
+
+    **The second half is now false on purpose.** The riddle was pulled out
+    of her note because the runner posted it separately at ten times the
+    lifetime, and dropping the long-lived copy would have cut the first
+    riddle's life tenfold. What that copy bought was a latecomer's ability
+    to start the chain late -- and under Gal's schedule a latecomer takes
+    the next game instead, minutes away. So the riddle is inline again, and
+    a long-lived riddle in the lobby became the liability rather than the
+    protection: it is what would put two games' openings in the room at
+    once, which Gal ruled out.
+
+    Kept as one test rather than two because the two halves are one
+    decision about what belongs where, and splitting them would let either
+    drift without the other noticing.
     """
-    notice = C.open_campaign(SEED, START)
-    plumbing = notice.split(C.PLUMBING_RULE)[1]
+    rules = C.standing_notice(START)
+    note = C.open_campaign(SEED, START)
 
-    assert "nowhere else" not in plumbing, (
-        "the notice still says the close lands only in the lobby")
-    assert "every place she" in plumbing, (
-        "nothing tells a searcher the close reaches her trail")
+    # the rules say where an ending is announced
+    assert "nowhere else" not in rules
+    assert "every place she robbed" in rules
 
-    # The riddle appears in the lobby once, and the runner is what puts it
-    # there -- so the notice must not carry a rendered detail of its own.
+    # her note is her: the taunt, the riddle, the salt, and no machinery
     world = C.Map(SEED)
     first = C.itinerary(SEED, START, world, 1)[0]
-    for line in C.riddle(SEED, first["to"], first["details"]):
-        assert line not in notice, (
-            "the notice inlines the first riddle, which the runner also"
-            " posts: the lobby would show it twice")
+    lines = C.riddle(SEED, first["to"], first["details"])
+    for line in lines:
+        assert line in note, "her note must carry the riddle it announces"
+
+    hers = note.split(C.PLUMBING_RULE)[0]
+    for machinery in ("sha256", "roster", "register", "Switchboard", "token"):
+        assert machinery.lower() not in hers.lower(), (
+            f"she says {machinery!r} in her own voice; the rules belong in"
+            " the standing post")
+
+    # short enough to disappear before the next game may begin
+    assert len(note.splitlines()) < len(rules.splitlines()), (
+        "her note is no shorter than the rules, which is what moving the"
+        " explanation out was for")

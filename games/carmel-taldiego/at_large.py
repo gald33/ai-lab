@@ -57,6 +57,7 @@ import base64
 import hashlib
 import os
 import secrets
+import threading
 import sys
 import time
 from pathlib import Path
@@ -65,6 +66,7 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).parent))
 
 import carmel as C  # noqa: E402
+import treasures as T  # noqa: E402
 from secret_matrix import room_token, salt_for  # noqa: E402
 
 
@@ -105,28 +107,56 @@ HOUR_SECONDS = 60.0
 #: the floor in `plan`, which holds whatever the notice costs and is tested
 #: separately. This is a **join window** and nothing else, so it is set to
 #: what a person needs to read a notice and join a room.
-#: **Reverted to 12 on 2026-09-11, hours after being cut to 2, and the cut
-#: is left described because the reasoning that produced it was wrong in a
-#: way worth keeping.** Sizing this as "a join window a person could use"
-#: treated the notice as an invitation that has done its job once somebody
-#: has joined. It is not: **the salt is inside it, and nowhere else.** Every
-#: room in the game is computed from that salt, so when the notice dies the
-#: rest of the campaign becomes unreadable -- her riddles keep arriving and
-#: name places nobody can compute a room for.
+#: How long her opening note stays readable. **Below `START_EVERY_HOURS`,
+#: and that is the whole reason for the number.** Gal, 2026-09-12: *"no two
+#: Carmel notes can be presented at the same time"* -- and a note that dies
+#: before the next game may begin cannot overlap one, so the rule is held by
+#: arithmetic and not by a lock. `test_two_of_her_notes_are_never_legible_at_once`
+#: fails the moment this rises above the interval.
 #:
-#: Caught live rather than in a test: a searcher joined a campaign two
-#: minutes in, found the riddle and no salt, and could do nothing with it.
-#: A two-minute window is a window onto a game that then runs for ten.
+#: *It was 12 for one day, and the reasoning that put it there is worth
+#: keeping because it was correct about a game that no longer exists.* The
+#: salt lives in this note and nowhere else, so a note dying before its
+#: campaign left every later riddle uncomputable -- measured live, a
+#: searcher joined two minutes in, found a riddle and no salt, and was
+#: stuck. The fix then was to make the note outlive the campaign (12h), and
+#: `test_the_salt_outlives_the_campaign_it_belongs_to` pinned it.
 #:
-#: So it is sized to **outlive its own campaign**, which is what 12 was
-#: doing before anybody called it a join window. Two salts legible at once
-#: is prevented by the floor in `plan` and never by this number.
-NOTICE_TTL_HOURS = 12.0
+#: **What dissolves that argument is the schedule, not a change of mind.**
+#: A newcomer no longer needs a salt to survive an 84-minute campaign,
+#: because a fresh game is never more than `START_EVERY_HOURS` away: you
+#: take the next one. So the note may be short, and now must be -- a
+#: long-lived note is exactly what would put two games' openings in the
+#: lobby at once.
+NOTICE_TTL_HOURS = 4.0
 
 #: The quiet between campaigns, in game hours. Two hours is two minutes: long
 #: enough that the close and the next open are not the same moment on a
 #: reader's screen, short enough that she is a standing invitation.
 INTERMISSION_HOURS = 2.0
+
+#: How long a live game tolerates an empty lobby before closing itself.
+#: Gal, 2026-09-12, agreeing that a game whose searchers have gone should
+#: end: without it the four slots fill in twenty minutes and stay full for
+#: the eighty-four an unopposed campaign runs, so the cap that was meant to
+#: bound the board would instead bar every newcomer from it.
+#:
+#: **It reads the lobby and not her own room, which is not a detail.** She
+#: only ever watches the place she has just named -- a searcher who guessed
+#: wrong is invisible to her -- so "nobody is chasing me" is not a thing she
+#: can observe from where she stands. The lobby roster is the only honest
+#: signal, and it is the same one the start gate reads.
+ABANDON_AFTER_HOURS = 10.0
+
+#: How long the standing rules post lives, and it is reposted at half this
+#: so the lobby is never without one. Long, because it is the one thing in
+#: the room that is true between games: it carries no salt, no riddle and no
+#: seed, so there is nothing in it that can go stale.
+#:
+#: Four real hours. The cap Switchboard puts on a message is 24 real hours,
+#: so this is well inside it -- and short enough that a change to the rules
+#: reaches the lobby the same afternoon rather than the next day.
+RULES_TTL_HOURS = 240.0
 
 #: What a hint left in a room is worth after she has gone: the rest of the
 #: campaign. A searcher who works out leg 3 an hour late should still find
@@ -178,6 +208,7 @@ OUTCOMES = {
     "wins": "I retire on the proceeds",
     "spent": "I ran out of road",
     "lost": "It ended badly, and not by your hand",
+    "abandoned": "Nobody came, so I have stopped bothering",
 }
 
 #: The lobby is salt-free -- `carmel.LOBBY`'s reasoning: a lobby that moved
@@ -224,6 +255,20 @@ def plan(campaign_hours: float,
          intermission: float | None = None) -> dict:
     """When the notice dies, when the campaign closes, when the next opens.
 
+    **NOT THE SCHEDULE ANY MORE, since 2026-09-12.** Nothing in `forever`
+    calls this: games now start on a fixed interval gated by demand
+    (`may_start`), not when the previous one closes, and up to
+    `C.MAX_PARALLEL` run at once. The floor described below -- the next
+    campaign never opening while the last notice is readable -- was how "no
+    two salts at once" used to be guaranteed; it is now guaranteed by
+    `NOTICE_TTL_HOURS < C.START_EVERY_HOURS`, which is arithmetic rather
+    than sequencing and survives four games running together.
+    
+    It is kept, unused by the runner, because `--dry-run` reads it and
+    because deleting the reasoning below would delete the only record of why
+    the old guarantee existed. **A reader should not mistake it for what
+    governs the runner**, which is what this paragraph is for.
+
     All in game hours from the moment the notice goes up.
 
     The last line is the whole point. **The next campaign never opens while
@@ -255,6 +300,37 @@ def plan(campaign_hours: float,
     }
 
 
+def may_start(live: int, listeners: int, waited: float,
+              max_parallel: int | None = None,
+              start_every: float | None = None) -> bool:
+    """May another game begin right now? Three conditions, all necessary.
+
+    Gal, 2026-09-12: *"a new game can start every 5 minutes but only if
+    there's at least one player in the room (or registered listener). and no
+    more than 4 parallel games."*
+
+    **Pure on purpose.** The supervisor that uses this runs games in
+    threads, and a thread plus a fake clock is a test that passes for
+    whatever reason the scheduler happened to interleave. The policy is the
+    part worth checking exhaustively, so it is a function of three numbers
+    and nothing else -- no hub, no clock, no thread. `test_may_start_*`
+    covers every boundary; the threading above it is thin enough to read.
+
+    `listeners` is how many are registered in the lobby who are not her.
+    **Zero means no game starts**, which is the demand gate: an unopposed
+    campaign posts riddles nobody reads, wins by default, and fills the
+    record with games that answer no question. It also means an idle lobby
+    costs nothing at all.
+    """
+    if listeners <= 0:
+        return False
+    max_parallel = C.MAX_PARALLEL if max_parallel is None else max_parallel
+    start_every = C.START_EVERY_HOURS if start_every is None else start_every
+    if live >= max_parallel:
+        return False
+    return waited >= start_every
+
+
 def hours(seconds: float) -> float:
     return seconds / HOUR_SECONDS
 
@@ -269,6 +345,15 @@ def seconds(game_hours: float) -> float:
 def _invite(token: str, url: str, key: str):
     from switchboard.invite import Invite
     return Invite(url=url, workspace_token=token, key=key)
+
+
+class Abandoned(RuntimeError):
+    """Nobody has been in the lobby for `ABANDON_AFTER_HOURS`.
+
+    Raised out of the watch and turned into an ending, rather than a silent
+    stop, for the reason `Outage` gives: a game that looks live and is not
+    is the failure this whole file keeps finding.
+    """
 
 
 class Outage(RuntimeError):
@@ -321,9 +406,17 @@ class Fugitive:
                  sleep: Callable[[float], None] = time.sleep,
                  difficulty: float = C.DIFFICULTY,
                  poll: float = POLL_SECONDS,
-                 log: Callable[[str], None] = lambda line: None):
+                 log: Callable[[str], None] = lambda line: None,
+                 listening: Callable[[], bool] = lambda: True):
         self.hub, self.now, self.sleep = hub, now, sleep
         self.difficulty, self.poll, self.log = difficulty, poll, log
+        #: Is anybody in the lobby? Read from the lobby's roster by the
+        #: supervisor, handed in rather than looked up, because she must not
+        #: register there -- standing in the lobby would otherwise be a
+        #: catch on her first second. Defaults to "yes, always", so a
+        #: single-campaign run and every existing test are unaffected.
+        self.listening = listening
+        self._lonely_since: float | None = None
         # What she has done so far, kept on the instance so that a campaign
         # cut short by an outage can still report it rather than losing it
         # with the stack frame.
@@ -438,6 +531,17 @@ class Fugitive:
         """
         try:
             return self._run(seed)
+        except Abandoned as alone:
+            self.log(f"stopping: {alone}")
+            try:
+                self.close_campaign(seed, OUTCOMES["abandoned"],
+                                    self._banked, self._walked, self._salt)
+            except Outage:
+                self.log("could not say so: the lobby is unreachable")
+            return {"outcome": "abandoned", "moves": self._walked,
+                    "reputation": self._banked, "why": str(alone),
+                    "hours": self._walked[-1]["leaves"] if self._walked
+                    else 0.0}
         except Outage as gone:
             self.log(f"giving up: {gone}")
             try:
@@ -499,6 +603,24 @@ class Fugitive:
 
     # -- standing still ----------------------------------------------------
 
+    def _check_the_lobby_is_not_empty(self) -> None:
+        """Stop a game whose searchers have all gone home.
+
+        The clock starts at the first look that finds nobody and resets on
+        any look that finds somebody, so a searcher whose presence lapses
+        between polls does not end the game -- lapsing is normal, and
+        `ABANDON_AFTER_HOURS` is many multiples of the two minutes it takes.
+        """
+        if self.listening():
+            self._lonely_since = None
+            return
+        if self._lonely_since is None:
+            self._lonely_since = self.now()
+            return
+        alone = hours(self.now() - self._lonely_since)
+        if alone >= ABANDON_AFTER_HOURS:
+            raise Abandoned(f"the lobby has been empty for {alone:.0f}h")
+
     def _stand(self, seed: bytes, salt: bytes, leg: dict,
                started: float, leaving=None) -> str | None:
         """Watch the destination from the moment she named it until she goes.
@@ -520,6 +642,7 @@ class Fugitive:
             elapsed = hours(self.now() - started)
             if elapsed >= leg["leaves"]:
                 return None
+            self._check_the_lobby_is_not_empty()
             ttl = max(120.0, self.poll * 4)
             if not registered and elapsed >= leg["arrived"]:
                 self._tolerate("arriving", lambda: room.register(
@@ -606,40 +729,148 @@ class Fugitive:
 # --- the standing invitation ----------------------------------------------
 
 
-def forever(hub: Hub, *, seeds: Callable[[], bytes] = lambda: secrets
-            .token_bytes(32),
+def treasure_warning() -> str | None:
+    """Say so if this host is playing with a different treasure table.
+
+    `treasures.py` unseals `treasures.enc` when `HUE_TREASURE_KEY` is in the
+    environment and **builds its own table when it is not** -- so a host
+    without the key runs a game whose rooms hold different prizes worth
+    different reputation, and every number calibrated against the sealed
+    table is measuring something else.
+
+    Nothing said so until 2026-09-12. `at_large.py` did not mention the
+    variable at all, which is `CLAUDE.md`'s *"the weaker thing is allowed,
+    and never allowed to look like the stronger one"* failing in the
+    quietest possible way: the game ran, posted riddles, took treasures and
+    closed, and looked exactly like the canonical one.
+
+    It is a warning and not a refusal, because the weaker game is allowed:
+    a host without the key can still play, and what it may not do is pass
+    for the other thing.
+    """
+    if os.environ.get(T.KEY_ENV):
+        return None
+    return (f"  !! {T.KEY_ENV} is not set, so the treasures are REBUILT and"
+            " not the sealed ones.\n"
+            "     The game plays, and its reputation numbers are not"
+            " comparable to a\n"
+            "     host that has the key. This is a different table, not a"
+            " missing one.")
+
+
+def listeners(room, log=lambda line: None) -> int:
+    """How many are registered in the lobby who are not her.
+
+    She reads this and never registers here -- standing in the lobby would
+    otherwise be a catch on her first second (`_stand` says why). A read
+    does not put you on a roster, which is the same fact the rules warn
+    searchers about, working in her favour for once.
+
+    Unreachable counts as **nobody**, deliberately: a hub she cannot read is
+    not a hub anybody is playing on, and the alternative is starting games
+    into a void because the gate failed open.
+    """
+    try:
+        return sum(1 for a in room.agents()
+                   if (a.get("name") or "") != "carmel")
+    except Exception as why:                      # noqa: BLE001
+        log(f"could not read the lobby ({type(why).__name__})")
+        return 0
+
+
+def forever(make_hub: Callable[[], Hub], *,
+            seeds: Callable[[], bytes] = lambda: secrets.token_bytes(32),
             now: Callable[[], float] = time.time,
             sleep: Callable[[float], None] = time.sleep,
             limit: int | None = None, poll: float = POLL_SECONDS,
-            log: Callable[[str], None] = print) -> list[dict]:
-    """Campaign after campaign, at roughly the length of a campaign.
+            log: Callable[[str], None] = print,
+            spawn: Callable | None = None,
+            rounds: int | None = None) -> list[dict]:
+    """Up to four games at once, a new one every five minutes, and only
+    while somebody is in the lobby to play it.
 
-    Gal, 2026-09-10: *"let her start a new game every ~game_play_time."* The
-    tilde is doing the work and is honoured by construction rather than by a
-    timer: **the next campaign opens when the last one closes**, so the
-    cadence is the play time by definition and two campaigns can never be
-    live at once. A fixed period would have to be set to the worst case and
-    would leave her idle through every campaign that was not it.
+    Gal, 2026-09-12: *"a new game can start every 5 minutes but only if
+    there's at least one player in the room (or registered listener). and no
+    more than 4 parallel games."*
 
-    The one wait that is not the campaign's own length is the floor in
-    `plan`: after an early arrest she sits out the rest of the old notice.
+    **This replaces a sequential loop, and the reasoning it replaces was
+    sound for the game it described:**
+
+        Campaign after campaign, at roughly the length of a campaign. Gal,
+        2026-09-10: *"let her start a new game every ~game_play_time."* The
+        tilde is doing the work and is honoured by construction rather than
+        by a timer: the next campaign opens when the last one closes, so the
+        cadence is the play time by definition and two campaigns can never
+        be live at once.
+
+    What broke it is the riddle. A campaign used to run for days of game
+    time, so "one at a time" and "always joinable" were the same
+    arrangement. Now an *unopposed* campaign runs a median of 84 minutes
+    while a *contested* one ends in about six, so a lone sequential game
+    means a newcomer waits on whichever kind happens to be running -- and
+    with nobody chasing, that is always the long kind.
+
+    **Four independent runners is the permitted shape, not the forbidden
+    one.** `CLAUDE.md`'s "Agents run themselves. There is no scheduler."
+    forbids a loop that calls each agent in turn and applies its replies.
+    Nothing here calls an agent: these are four long-lived games that
+    neither read nor wait for one another, and the supervisor only decides
+    whether to begin another. It never drives one that has begun.
+
+    `spawn` is the seam. Production hands threads; a test hands something
+    that runs the game inline, so the policy can be checked without a
+    scheduler deciding the answer.
     """
-    done = []
-    while limit is None or len(done) < limit:
-        seed = seeds()
-        result = Fugitive(hub, now=now, sleep=sleep, poll=poll,
-                          log=log).run(seed)
-        done.append(result)
-        if limit is not None and len(done) >= limit:
-            break
-        after = plan(result["hours"])
-        quiet = seconds(after["next_opens"] - after["closes"])
-        log(f"quiet for {hours(quiet):.0f}h")
-        # Her rooms go with the campaign that made them: the salt moves, so
-        # every one of them is an address nobody will use again, and holding
-        # the clients open would leak one per landmark per campaign.
-        hub.close()
-        sleep(quiet)
+    if spawn is None:
+        def spawn(fn):
+            t = threading.Thread(target=fn, daemon=True)
+            t.start()
+            return t
+
+    done: list[dict] = []
+    live: list = []
+    lobby = make_hub().room(lobby_token())
+    last_start = now() - seconds(C.START_EVERY_HOURS)   # ready immediately
+    posted_rules = 0.0
+
+    def play(seed: bytes, hub: Hub) -> None:
+        try:
+            done.append(Fugitive(hub, now=now, sleep=sleep, poll=poll,
+                                 log=log,
+                                 listening=lambda: listeners(lobby) > 0
+                                 ).run(seed))
+        finally:
+            hub.close()
+
+    # `limit` counts *finished* games and `rounds` counts supervisor passes.
+    # Both exist because a test that never lets a game finish cannot bound
+    # the loop by games, and one that bounds it by passes cannot say how
+    # many games it wanted. Production passes neither.
+    passes = 0
+    while ((limit is None or len(done) < limit)
+           and (rounds is None or passes < rounds)):
+        passes += 1
+        live = [t for t in live if getattr(t, "is_alive", lambda: False)()]
+
+        # The rules post is kept fresh whether or not anybody is here: it is
+        # what tells a newcomer that registering is what starts a game, so a
+        # lobby that has gone quiet must still explain itself. Without it the
+        # demand gate is a closed door with no bell.
+        if now() - posted_rules >= seconds(RULES_TTL_HOURS) / 2:
+            try:
+                lobby.post(CHANNEL, C.standing_notice(),
+                           ttl=seconds(RULES_TTL_HOURS))
+                posted_rules = now()
+            except Exception as why:              # noqa: BLE001
+                log(f"could not post the rules ({type(why).__name__})")
+
+        here = listeners(lobby, log)
+        if may_start(len(live), here, hours(now() - last_start)):
+            seed = seeds()
+            last_start = now()
+            log(f"starting a game: {here} listening, {len(live) + 1} live")
+            live.append(spawn(lambda s=seed: play(s, make_hub())))
+        sleep(poll)
     return done
 
 
@@ -684,12 +915,16 @@ def dry_run(count: int = 20) -> None:
           f" ({seconds(st.median(lengths)) / 60:.0f} real minutes),"
           f" {min(lengths):.0f}h shortest")
     print(f"  ended inside their own notice: {inside}/{count}"
-          "  <- what the floor in `plan` is for")
-    example = plan(st.median(lengths))
-    print(f"\n  a median campaign: notice gone at"
-          f" {example['notice_gone']:.0f}h, closes at"
-          f" {example['closes']:.0f}h, next opens at"
-          f" {example['next_opens']:.0f}h")
+          "  <- fine: a newcomer takes the next game, minutes away")
+    print(f"\n  a new game every {C.START_EVERY_HOURS:.0f}h"
+          f" ({seconds(C.START_EVERY_HOURS) / 60:.0f} real minutes),"
+          f" at most {C.MAX_PARALLEL} alive,")
+    print(f"  and none at all while the lobby is empty."
+          f" A game whose lobby stays")
+    print(f"  empty for {ABANDON_AFTER_HOURS:.0f}h closes itself.")
+    print(f"\n  her note lives {NOTICE_TTL_HOURS:.0f}h, under the"
+          f" {C.START_EVERY_HOURS:.0f}h between starts, so two of")
+    print("  her notes can never be legible at once.")
     print("\n  the lobby, which is publishable in full:")
     print(address("https://switchboard.lucille-ai.com"))
 
@@ -712,21 +947,31 @@ def main() -> None:
         dry_run()
         return
 
-    hub = Hub(args.url, args.key)
+    # A hub per game, not one shared: each game holds its own clients, on
+    # its own salt's rooms, from its own thread. Sharing one would put two
+    # threads through a client that was never asked to carry both.
     print(address(args.url))
-    try:
-        if args.once:
+    warning = treasure_warning()
+    if warning:
+        print(warning)
+    if args.once:
+        hub = Hub(args.url, args.key)
+        try:
             seed = bytes.fromhex(args.seed) if args.seed \
                 else secrets.token_bytes(32)
             result = Fugitive(hub, log=print).run(seed)
             print(f"\n  {result['outcome']} after {result['hours']:.0f}h,"
                   f" {result['reputation']} reputation")
-        else:
-            forever(hub)
+        except KeyboardInterrupt:
+            print("\nshe stops")
+        finally:
+            hub.close()
+        return
+
+    try:
+        forever(lambda: Hub(args.url, args.key))
     except KeyboardInterrupt:
         print("\nshe stops")
-    finally:
-        hub.close()
 
 
 if __name__ == "__main__":

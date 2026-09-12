@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import carmel as C  # noqa: E402
 import at_large as L  # noqa: E402
+import treasures as T  # noqa: E402
 from secret_matrix import room_token, salt_for  # noqa: E402
 
 KEY = "k" * 43 + "="
@@ -106,34 +107,64 @@ def test_a_riddle_is_worth_seconds_to_minutes_of_real_time():
         " not time to read one")
 
 
-def test_the_salt_outlives_the_campaign_it_belongs_to():
-    """The notice carries the salt, and the salt is how every room in the
-    game is computed. If it expires first, her later riddles name places
-    nobody can reach.
+def test_two_of_her_notes_are_never_legible_at_once():
+    """Gal, 2026-09-12: *"no two Carmel notes can be presented at the same
+    time."*
 
-    **This replaced a test that asserted the opposite**, written the same
-    day and wrong within hours:
+    Held by arithmetic rather than by a lock: her note dies before the next
+    game may start, so two cannot overlap however the supervisor interleaves
+    them. A lock would have to be raced to be tested; this is one
+    comparison, and it is the comparison the rule actually rests on.
 
-        def test_the_notice_is_a_join_window_a_person_could_use():
-            real = L.NOTICE_TTL_HOURS * L.HOUR_SECONDS
-            assert 60 <= real <= 600
+    **This replaced the test that stood here for one day**, and the
+    superseded assertion is kept because it was right about a schedule that
+    no longer exists:
 
-    That treated the notice as an invitation, done once somebody had
-    joined, and cut it to two minutes. A searcher joined a live campaign
-    two minutes in, found a riddle and no salt, and was stuck. **The notice
-    is not an invitation, it is the key to the map**, and it has to last as
-    long as the game it opens.
+        def test_the_salt_outlives_the_campaign_it_belongs_to():
+            ran = lengths()
+            covered = [h for h in ran if h <= L.NOTICE_TTL_HOURS]
+            assert len(covered) / len(ran) > 0.5
+            assert L.NOTICE_TTL_HOURS >= st.median(ran)
 
-    Made to fail on purpose by restoring the two-hour value.
+    That required the note to outlive its own campaign, because the salt
+    lives in the note and nowhere else -- a newcomer who arrived after it
+    expired could read her riddles and compute nothing, which was measured
+    live rather than predicted. The schedule dissolves the argument instead
+    of contradicting it: a newcomer no longer joins a running game, because
+    a fresh one is never more than `START_EVERY_HOURS` away. Under the new
+    constants that old assertion fails 25 campaigns out of 40, and it should.
+
+    Made to fail on purpose by raising `NOTICE_TTL_HOURS` to the interval or
+    above.
     """
-    ran = lengths()
-    covered = [h for h in ran if h <= L.NOTICE_TTL_HOURS]
-    assert len(covered) / len(ran) > 0.5, (
-        f"only {len(covered)}/{len(ran)} campaigns finish while their own"
-        f" salt is still readable, at {L.NOTICE_TTL_HOURS:.0f}h")
-    assert L.NOTICE_TTL_HOURS >= st.median(ran), (
-        f"the salt dies at {L.NOTICE_TTL_HOURS:.0f}h and the median campaign"
-        f" runs {st.median(ran):.0f}h")
+    assert L.NOTICE_TTL_HOURS < C.START_EVERY_HOURS, (
+        f"her note lives {L.NOTICE_TTL_HOURS}h and games start every"
+        f" {C.START_EVERY_HOURS}h, so two of her notes can be up together")
+
+
+def test_may_start_needs_a_listener_a_free_slot_and_the_interval():
+    """The whole start policy, at every boundary. Gal's three conditions:
+    *"a new game can start every 5 minutes but only if there's at least one
+    player in the room (or registered listener). and no more than 4 parallel
+    games."*
+
+    Each condition is checked alone, because a policy that happens to be
+    right when all three agree is one that has not been checked at all --
+    two of the three could be ignored and every all-agreeing case would
+    still pass.
+    """
+    # the demand gate: nobody listening, nothing starts, however long it has
+    # been and however empty the board is.
+    assert not L.may_start(live=0, listeners=0, waited=999.0)
+
+    # the cap
+    assert not L.may_start(live=C.MAX_PARALLEL, listeners=5, waited=999.0)
+    assert L.may_start(live=C.MAX_PARALLEL - 1, listeners=1, waited=999.0)
+
+    # the interval, at the boundary from both sides
+    assert not L.may_start(live=0, listeners=1,
+                           waited=C.START_EVERY_HOURS - 0.01)
+    assert L.may_start(live=0, listeners=1, waited=C.START_EVERY_HOURS)
 
 
 def test_the_next_campaign_never_opens_while_the_old_notice_can_be_read():
@@ -405,56 +436,104 @@ def test_an_uncontested_campaign_is_the_one_the_simulation_predicted(board):
         == [leg["to"] for leg in predicted["moves"]]
 
 
-def test_she_keeps_going_and_never_shows_two_notices(board, monkeypatch):
-    """The loop itself, which is the part that has to survive unattended.
+def test_no_listener_means_no_game(board):
+    """The demand gate, end to end. Gal, 2026-09-12: a game starts *"only if
+    there's at least one player in the room (or registered listener)."*
 
-    Two campaigns end to end through `forever`, on the hub's clock. The
-    lobby is read at the one moment that can break -- immediately after the
-    second notice goes up -- and holds one. It also exercises the client
-    cache being dropped between campaigns, which is untested wiring
-    everywhere else and is exactly what fails at three in the morning.
+    Nobody registers, so however long the supervisor runs, nothing begins.
+    The complement below is what stops this passing for the wrong reason:
+    on its own, a `forever` that could never start a game at all would
+    satisfy it.
     """
-    # A notice that outlives every campaign, so the floor in `plan` is
-    # what is under test rather than a lucky seed. At the shipped 12 hours
-    # a campaign runs seven times longer than its notice and this passes
-    # whether or not the floor exists -- which it does, deleting the floor
-    # leaves this green at 12 and reddens it here.
-    monkeypatch.setattr(L, "NOTICE_TTL_HOURS", 500.0)
-
     rooms = Rooms(board)
-    made = iter([bytes.fromhex("55" * 32), bytes.fromhex("77" * 32)])
-
-    # Sampled at each open rather than at the end: by the time the loop
-    # returns both notices have expired, so a count taken then is 0 and
-    # says nothing. The only moment the invariant can break is the instant
-    # a notice goes up, and that is the moment she logs.
-    standing = []
-
-    def watch(line: str) -> None:
-        if line.startswith("notice up"):
-            standing.append(len(notices(rooms.room(L.lobby_token()))))
-
-    done = L.forever(rooms, seeds=lambda: next(made), now=board.clock,
-                     sleep=lambda s: board.clock.advance(max(s, 1.0)),
-                     limit=2, poll=POLL, log=watch)
-
-    assert len(done) == 2
-    assert standing == [1, 1], (
-        f"notices legible at each open: {standing}"
-        " -- anything but 1 is two salts on one screen")
+    ran = []
+    L.forever(lambda: rooms, seeds=lambda: bytes.fromhex("55" * 32),
+              now=board.clock,
+              sleep=lambda s: board.clock.advance(max(s, 60.0)),
+              rounds=3, poll=POLL, log=lambda line: None,
+              spawn=lambda fn: ran.append(fn) or _Dead())
+    assert ran == [], "a game started with nobody in the lobby"
 
 
-# --- her notice, taken at its word -----------------------------------------
+class _Dead:
+    """A thread that was never alive, so the supervisor counts no game."""
+
+    def is_alive(self) -> bool:
+        return False
+
+
+def test_one_listener_starts_a_game(board):
+    """The other half: somebody registers in the lobby and a game begins.
+
+    `spawn` runs the game **inline** rather than on a thread. That is the
+    seam `forever` takes for exactly this reason: a thread plus the hub's
+    fake clock is a test whose verdict depends on how the two interleaved,
+    which is the "coincidence drawn as a pass" shape in `CLAUDE.md`. The
+    policy is checked exhaustively in `test_may_start_*`; this checks the
+    wiring around it.
+    """
+    rooms = Rooms(board)
+    lobby = rooms.room(L.lobby_token())
+    watcher = board.client(agent_id="listener",
+                           workspace=Rooms.workspace(L.lobby_token()),
+                           key=KEY)
+    watcher.register(name="listener", kind="searcher", ttl=36000)
+
+    assert L.listeners(lobby) == 1, "the lobby roster is not being read"
+
+    started = []
+    L.forever(lambda: rooms, seeds=lambda: bytes.fromhex("55" * 32),
+              now=board.clock,
+              sleep=lambda s: board.clock.advance(max(s, 60.0)),
+              rounds=3, poll=POLL, log=lambda line: None,
+              spawn=lambda fn: started.append(fn) or _Dead())
+    assert len(started) >= 1, "somebody was listening and no game started"
+
+
+def test_the_rules_are_posted_for_a_lobby_nobody_is_in(board):
+    """The answer to the gate's own problem: with games starting only on
+    demand, an empty lobby is the resting state -- so the room has to
+    explain that registering is what starts one.
+
+    Without this the gate is a closed door with no bell, which is the one
+    way a demand-gated game can be unplayable while every component
+    works.
+    """
+    rooms = Rooms(board)
+    L.forever(lambda: rooms, seeds=lambda: bytes.fromhex("55" * 32),
+              now=board.clock,
+              sleep=lambda s: board.clock.advance(max(s, 60.0)),
+              rounds=3, poll=POLL, log=lambda line: None,
+              spawn=lambda fn: _Dead())
+    said = [m["body"] for m
+            in rooms.room(L.lobby_token()).history(L.CHANNEL, limit=20)]
+    assert any("TO PLAY" in b for b in said), (
+        "an empty lobby says nothing about how to make a game happen")
+    assert not any("salt = " in b for b in said), (
+        "the standing post must carry no salt: it outlives every game")
+
+
+def lobby_text(seed: bytes, start: str = None) -> str:
+    """Everything a searcher can read in the lobby: the rules, then her note.
+
+    Two posts since 2026-09-12, and concatenating them is the honest model
+    rather than a convenience -- the recipe lives in the standing post and
+    the salt in her note, and a searcher needs both, from one room, at one
+    moment. A test that read only one of them would pass while a player who
+    read the lobby could still get nowhere.
+    """
+    return (C.standing_notice(start or C.LOBBY_LANDMARK) + "\n"
+            + C.open_campaign(seed, start or C.LOBBY_LANDMARK))
 
 
 def follow(notice: str, landmark: str) -> tuple[bytes, str]:
-    """Do what the notice says, using only what the notice says.
+    """Do what the lobby says, using only what the lobby says.
 
     Nothing from `secret_matrix` is imported here on purpose. This is a
     stranger with the text in front of them: it pulls the domain separator
     out of the quoted recipe and the salt out of the line below it, and
-    builds the address by hand. If the notice's wording stops describing
-    what the code does, this stops producing her room.
+    builds the address by hand. If the wording stops describing what the
+    code does, this stops producing her room.
     """
     recipe = next(l for l in notice.splitlines() if "sha256(" in l)
     info = re.search(r'sha256\("([^"]+)"', recipe).group(1)
@@ -494,8 +573,7 @@ def test_a_stranger_who_does_exactly_what_the_notice_says_reaches_her(board):
     world = C.Map(seed)
     first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
 
-    notice = C.open_campaign(seed, C.LOBBY_LANDMARK)
-    salt, room = follow(notice, first["to"])
+    salt, room = follow(lobby_text(seed), first["to"])
 
     # the address the notice describes is the room she is really in
     assert room == Rooms.workspace(room_token(first["to"], salt))
@@ -519,17 +597,17 @@ def test_the_notice_says_that_reading_a_room_is_not_standing_in_it(board):
     half a check: the first paragraph proves she warns them, the second
     proves the warning is true.
     """
-    notice = C.open_campaign(bytes.fromhex("55" * 32), C.LOBBY_LANDMARK)
-    # Below the rule, because this is the machinery talking and not her --
-    # see `test_she_never_speaks_in_machinery`.
-    plumbing = notice.split(C.PLUMBING_RULE)[1]
-    assert "does not put you on its roster" in plumbing
-    assert "announce yourself" in plumbing
+    # The standing post, because this is the machinery talking and not her.
+    # Since 2026-09-12 her own note carries only the taunt, the riddle and
+    # the salt, so a warning about rosters could only ever live here.
+    rules = " ".join(C.standing_notice().split())
+    assert "does not register you" in rules
+    assert "keep announcing" in rules
 
     seed = bytes.fromhex("55" * 32)
     world = C.Map(seed)
     first = C.itinerary(seed, C.LOBBY_LANDMARK, world, limit=1)[0]
-    _, room = follow(notice, first["to"])
+    _, room = follow(lobby_text(seed), first["to"])
 
     lurker = board.client(agent_id="lurker", workspace=room, key=KEY)
     lurker.post(L.CHANNEL, "I am here, surely that is enough")
@@ -766,3 +844,28 @@ def test_she_names_no_room_and_no_landmark_she_has_not_been_in(board):
         assert place not in body, place
     for name in walked[1:]:
         assert room_token(name, salt) not in body, "she published an address"
+
+
+def test_a_host_without_the_treasure_key_is_told_so(monkeypatch):
+    """`CLAUDE.md`: *"the weaker thing is allowed, and never allowed to look
+    like the stronger one."*
+
+    Without `HUE_TREASURE_KEY`, `treasures.py` builds its own table instead
+    of unsealing the committed one, so the rooms hold different prizes worth
+    different reputation and every calibrated number is measuring something
+    else. Until 2026-09-12 `at_large.py` did not name the variable at all:
+    the game ran, posted, robbed and closed, and looked exactly like the
+    canonical one.
+
+    Both directions, because a warning that is always on is not a warning.
+    """
+    monkeypatch.delenv(T.KEY_ENV, raising=False)
+    said = L.treasure_warning()
+    assert said is not None, "a host with no key is told nothing"
+    assert T.KEY_ENV in said
+    assert "not comparable" in said, (
+        "the warning must say what it costs, not just that a key is absent")
+
+    monkeypatch.setenv(T.KEY_ENV, "0" * 64)
+    assert L.treasure_warning() is None, (
+        "the warning fires even with the key set, so it says nothing")
