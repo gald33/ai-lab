@@ -71,3 +71,20 @@ games/carmel-taldiego/hints.tsv
 # taken names the room. Only games/carmel-taldiego/treasures.enc is committed.
 games/carmel-taldiego/treasures.tsv
 games/carmel-taldiego/absurd.tsv
+
+# The viewer's derived score readings, ignored by NAME rather than by the
+# directory they happen to sit in. The reasoning for ignoring them at all is
+# at experiments/does-a-content-free-protocol-help/viewer/scores/.gitignore,
+# where it stays, next to the ledger it is about.
+#
+# Added 2026-09-12, because the rule was anchored to a location and the
+# location moved. That nested .gitignore is a tracked file, so the experiment
+# rename (43bbfb2) carried it to the new path -- while the OLD path's
+# boards.json and index.json stayed on disk, now covered by nothing. Git
+# reported the stale tree as untracked every hour, and the only two remedies
+# on offer were to commit a derived reading or to delete by hand. This is the
+# repo's own "derive rather than maintain" failure in a new place: a
+# hand-written path drifting from the tree. Keyed to the name, a rename cannot
+# uncover them again.
+**/viewer/scores/boards.json
+**/viewer/scores/index.json

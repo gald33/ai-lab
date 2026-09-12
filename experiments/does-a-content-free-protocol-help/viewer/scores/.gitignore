@@ -3,3 +3,9 @@
 # to git is one that can be wrong in a way nobody notices.
 boards.json
 index.json
+
+# 2026-09-12: this rule is also stated by name in the root .gitignore, and
+# that is the one to rely on. This file is tracked, so a rename carries it
+# along and leaves the old path's derived readings covered by nothing -- which
+# is what happened at 43bbfb2. The reasoning above is still the reasoning;
+# only its reach was wrong.
