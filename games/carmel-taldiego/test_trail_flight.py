@@ -315,6 +315,54 @@ def test_asking_for_no_motion_gets_the_whole_trail_at_once():
         assert flight.now["trail"] == before, "it moved anyway"
 
 
+# --- the world at both ends ----------------------------------------------
+
+def test_it_opens_on_the_world_and_ends_back_out_at_it():
+    """Gal, 2026-09-12: *"do the flight too"*. Two shots, not one long zoom
+    -- and the difference is checkable: at both ends the camera is the whole
+    world, and the opening one shows the box without the trail, because the
+    trail has not happened yet."""
+    with flown(seed=arrested_seed()) as flight:
+        shots = [s for s in flight.plan["segments"] if s["kind"] == "globe"]
+        assert len(shots) == 2, "an opening shot and a closing one"
+
+        opening = flight.seek(shots[0]["at"] + shots[0]["ms"] / 2)
+        assert opening["globe"] == 1 and opening["opening"] is True
+        assert opening["pins"] == 0, "the opening shot gave the trail away"
+        assert "40,075" in flight.text("#scale"), "not the whole world"
+
+        closing = flight.seek(shots[1]["at"] + shots[1]["ms"] / 2)
+        assert closing["globe"] == 1 and closing["opening"] is False
+        assert closing["pins"] == len(embedded(arrested_seed())["stops"])
+        assert "40,075" in flight.text("#scale")
+        assert "KM AROUND" in flight.text("#said"), "no span on the way out"
+
+
+def test_the_flight_itself_never_sits_at_world_scale():
+    """The shots are affordable because they are *cuts*: the camera never
+    passes through the middle, so the page never has to carry a detailed
+    world. If a hold or a leg ever widened that far, the corridor geometry
+    would be a lie at that zoom and the weight test below would be next."""
+    with flown() as flight:
+        for s in flight.plan["segments"]:
+            if s["kind"] in ("globe", "fade"):
+                continue
+            at = flight.seek(s["at"] + s["ms"] / 2)
+            assert at["scale"] > F.WIDTH * 4, (s["kind"], at["scale"])
+
+
+def test_the_world_shot_is_the_coarse_layer_and_only_that():
+    """`test_the_geometry_is_cut_to_the_frame` measures the corridor and
+    would not see a second copy of the planet arriving beside it. This
+    measures the other layer, and pins it to the one that costs 4% of the
+    map rather than the one that costs all of it."""
+    coarse = F.BM.load()["land_coarse"]
+    carried = embedded(FLOWN)["globe"]["coarse"]
+    assert len(carried) == len(coarse)
+    assert (sum(len(s) for s in carried)
+            == sum(len(s) for s in coarse) == 1958)
+
+
 # --- what it must not disclose -------------------------------------------
 
 def test_the_page_names_no_landmark_but_the_ones_she_visited():

@@ -5336,6 +5336,36 @@ file draws she stays left of centre. The frame that exercises it is built by
 hand now rather than hunted for in a seed. `CLAUDE.md`'s third shape, found
 by the habit the same file prescribes: break it on purpose and watch.
 
+### And the flight opens on the world and ends back out at it
+
+*Gal, 2026-09-12: "do the flight too."*
+
+    globe   the whole world, and a box round the corner she stays in
+    fade    a dissolve, not a zoom
+    ...     the holds and the flights, as before
+    fade    back out
+    globe   the same box, with the whole trail drawn in it
+
+**The dissolve is the whole reason the shots are affordable**, and it
+answers the objection that killed the level-of-detail scheme rather than
+ignoring it. That scheme failed because any zoom close enough to be honest
+still needs the detailed coastline, so a crushed layer pops when it is
+swapped in mid-move. A cut makes no claim about the ground in between:
+there is no zoom at which both layers are on screen. So the world shot is
+the coarse layer — 1,958 points, 4% of the map, the same layer the card's
+world panel uses — and the flight keeps its clipped corridor, and neither
+is ever a lie about the other. `test_the_flight_itself_never_sits_at_world
+_scale` is what stops that quietly ceasing to be true.
+
+**The opening shot shows the box and not the trail.** Where, not what — a
+film that opens on its own ending is not a film, and the trail has not
+happened yet. It is also the one thing about these shots that a test can
+see going wrong, so it has one.
+
+The reduced-motion reader now lands on the closing world shot instead of
+the closing corridor shot, which is strictly more of the answer in one
+frame: the whole trail, and how small a corner of the world it happened in.
+
 ### What it costs, stated rather than absorbed
 
 ```
