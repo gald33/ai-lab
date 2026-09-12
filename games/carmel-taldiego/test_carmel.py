@@ -611,6 +611,32 @@ def test_when_she_is_caught_she_hands_over_the_whole_run():
     assert str(trail[-1]["reputation"]) in body, "no reputation"
 
 
+def test_the_catcher_is_handed_the_chase_to_watch():
+    """Gal, 2026-09-12: *"at the end of a chase, if you catch her, your
+    agent can give you a link to a website that shows your chase
+    animation."*
+
+    Her post is where it can come from: a searcher's agent never saw where
+    she went, only where it stood, so "your agent gives you a link" is an
+    agent passing on what she published. On a catch only, like the table
+    above it -- and `at_large._watch` is what mints the address, so this
+    checks the post carries what it is given and drops it when she was not
+    taken.
+    """
+    trail = C.itinerary(SEED, START, WORLD, 6)
+    address = "https://example.test/chase/#AAAA"
+
+    caught = C.close_campaign(SEED, "You have me", trail[-1]["reputation"],
+                              trail, caught_by="a night porter", world=WORLD,
+                              watch=address)
+    assert address in caught
+
+    got_away = C.close_campaign(SEED, "I retire on the proceeds",
+                                trail[-1]["reputation"], trail,
+                                watch=address)
+    assert address not in got_away, "she drew a map for nobody"
+
+
 def test_she_hands_over_nothing_when_she_was_not_caught():
     """The complement, and the reason this pair can fail: retiring on the
     proceeds is not an occasion for giving anybody her itinerary. Drop the

@@ -1136,7 +1136,8 @@ def open_campaign(seed: bytes, start: str = LOBBY_LANDMARK) -> str:
 
 def close_campaign(seed: bytes, outcome: str, reputation: int,
                    trail: list[dict], caught_by: str | None = None,
-                   world: "Map | None" = None) -> str:
+                   world: "Map | None" = None,
+                   watch: str | None = None) -> str:
     """What she leaves in the lobby when it is over.
 
     Gal: *"She also posts the results back in the lobby when the game
@@ -1190,6 +1191,28 @@ def close_campaign(seed: bytes, outcome: str, reputation: int,
             lines.append(f"    {i:>2}  {leg['to']:<{wide}}  "
                          f"{worth:>4}  {what}")
         lines.append("")
+
+        # **And drawn, for the person who took her.** Gal, 2026-09-12: *"at
+        # the end of a chase, if you catch her, your agent can give you a
+        # link to a website that shows your chase animation."*
+        #
+        # On a catch only, which is the rule the table above already
+        # follows: being handed the run is the prize for taking her. A
+        # searcher's agent does not mint this and could not -- it never saw
+        # where she went, only where it stood -- so what "your agent gives
+        # you a link" reduces to is an agent passing on what she published,
+        # which is the only shape this game's asymmetry allows.
+        #
+        # The whole chase is in the address itself: nothing after the `#`
+        # ever reaches the host, so the page is static, the link works
+        # forever, and no server learns that anybody watched.
+        if watch:
+            lines += ["You will want to show somebody. Here it is, drawn --",
+                      "the chase is in the address, so it asks nothing of",
+                      "anyone and nobody is told you looked:",
+                      "",
+                      f"    {watch}",
+                      ""]
 
     lines += [
         f"{len(trail)} places. {len(took)} of them the poorer for it."

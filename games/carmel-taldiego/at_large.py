@@ -501,7 +501,10 @@ class Fugitive:
         one would hand a catch to anybody still waiting there.
         """
         body = C.close_campaign(seed, outcome, reputation, trail,
-                                caught_by=caught_by, world=self._world)
+                                caught_by=caught_by, world=self._world,
+                                watch=self._watch(seed, trail, reputation,
+                                                  caught_by)
+                                if caught_by else None)
         where = [("the lobby", lobby_token())]
         if salt is not None:
             # Every place she reached, which is every leg's destination.
@@ -679,6 +682,33 @@ class Fugitive:
             self.sleep(min(self.poll,
                            max(0.0, seconds(leg["leaves"]) -
                                (self.now() - started))))
+
+    def _watch(self, seed: bytes, trail: list[dict], reputation: int,
+               caught_by: str | None = None) -> str | None:
+        """The chase, as an address, for the searcher who caught her.
+
+        `"caught"` and not `OUTCOMES["caught"]`: her phrase for it is her
+        phrase, and `trail_card.kept` reads this string to decide whether
+        the last room was a theft she finished or one she was taken in the
+        middle of. Handing it her prose would credit her with the treasure
+        she was holding when somebody walked in.
+
+        **A failure here must not cost her the closing post**, which is
+        where the seed goes and therefore where the whole campaign becomes
+        checkable. One dropped connection ended everything once; a drawing
+        is not allowed to be the second thing that does.
+        """
+        try:
+            import trail_flight as TF
+
+            result = {"outcome": "caught", "moves": trail,
+                      "reputation": reputation, "by": caught_by,
+                      "hours": trail[-1]["leaves"]}
+            return TF.link(TF.plan(result, self._world, C.LOBBY_LANDMARK),
+                           TF.CHASE_PAGE)
+        except Exception as exc:                                # noqa: BLE001
+            self.log(f"no drawing for this one: {exc!r}")
+            return None
 
     def _leave(self, room) -> None:
         """Off the roster of the room she has finished with.
