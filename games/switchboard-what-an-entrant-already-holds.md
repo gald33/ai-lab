@@ -526,3 +526,70 @@ A workaround built on a wrong model is worth re-opening even when it works —
 the heartbeat is a thing that can stop, and when it stops the manager goes
 unreachable in a way that does not look like a presence problem. It looks like
 the manager ignoring you.
+
+
+## 7. `--invite` carries everything except the hub token, which the shell wins
+
+*Measured 2026-09-12, against `agent-switchboard` 2.2.1 and the managed hub,
+because Gal asked the right question about a command I had written: "isn't
+the invite itself including all the parameters already?"*
+
+**Yes, and the bare command works.** One invite string, nothing stripped:
+
+```
+switchboard --invite swb1_... history hue
+```
+
+An invite carries the hub URL, the workspace, the workspace token and the
+room key. Only one environment variable can interfere with it, and it is the
+one nobody thinks about:
+
+| set in the shell | who wins | what happens |
+|---|---|---|
+| `SWITCHBOARD_KEY` | **the invite** | read the room correctly with a garbage key in the environment |
+| `SWITCHBOARD_URL` | **the invite** | the error even says *"(from the invite)"* |
+| `SWITCHBOARD_TOKEN` | **the shell** | the call fails if that token is not valid for this hub |
+
+Re-check each row by exporting a deliberately wrong value and reading a room
+you can otherwise reach:
+
+```
+SWITCHBOARD_KEY=zzz...= switchboard --invite swb1_... history hue   # works
+SWITCHBOARD_TOKEN=not-a-token switchboard --invite swb1_... history hue   # fails
+```
+
+**The token row is not silent, and that matters more than the row itself.**
+It prints:
+
+```
+error: invalid or missing bearer token
+  tried https://switchboard.lucille-ai.com (from the invite) with a token
+  from SWITCHBOARD_TOKEN in this shell.
+```
+
+which names the variable, the hub, and where each came from — about as good
+as an error gets.
+
+### Why this is here rather than in a game's document
+
+Because I asserted the opposite of all of it, in a snippet handed to a
+searcher, and was wrong three ways at once. Carmel Taldiego's play
+instructions carried `env -u SWITCHBOARD_TOKEN -u SWITCHBOARD_KEY -u
+SWITCHBOARD_URL -u SWITCHBOARD_AGENT_ID` in front of every command, and when
+an agent could not see the game I explained it as *"probably its own
+`SWITCHBOARD_KEY` or `TOKEN` overriding the invite's, and that failure is
+silent by design."*
+
+- The **key** does not override at all.
+- The **URL** does not override at all.
+- The token failure is **loud**, not silent.
+
+So three of the four variables were cargo-culted, and the diagnosis they were
+offered in support of was unfounded — a mechanism that sounded plausible,
+stated as though it had been checked. **A plausible mechanism offered as a
+diagnosis costs more than "I don't know"**, because it stops the person
+reading the error that would actually have told them.
+
+The one defensive case worth keeping: a shell holding a token for a
+*different* hub. `env -u SWITCHBOARD_TOKEN` fixes that and nothing else needs
+stripping.
