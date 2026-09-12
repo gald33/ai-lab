@@ -51,8 +51,12 @@ Two flags exist and neither belongs in a service unit:
 
 | | |
 |---|---|
-| `HUE_TREASURE_KEY` | **required for a canonical game.** 64 hex characters. |
 | `SWITCHBOARD_URL` | optional; defaults to `https://switchboard.lucille-ai.com`. |
+
+**The service needs no secret at all.** `HUE_TREASURE_KEY` is for one
+command at install time and must *not* go in the unit — see "The
+hand-written treasures" below. This document said the opposite for one
+commit and the correction is there.
 
 **There is no `SWITCHBOARD_TOKEN` and no `SWITCHBOARD_KEY` here, and that is
 on purpose.** The lobby key is derived from a constant in `at_large.py`
@@ -61,15 +65,42 @@ operator's is ever posted. `python3 at_large.py --dry-run` prints the whole
 address; a test sweeps the environment for any `*KEY*` / `*TOKEN*` /
 `*SECRET*` value appearing in it.
 
-**Without `HUE_TREASURE_KEY` the game still plays, and it is a different
-game.** `treasures.py` unseals `treasures.enc` when the key is present and
-**builds its own table when it is not**, so the rooms hold different prizes
-worth different reputation, and every calibrated number is measuring
-something else. The process says so on startup — loudly, because until
-2026-09-12 it said nothing at all and a host missing the key was
-indistinguishable from one that had it. That is `CLAUDE.md`'s *"the weaker
-thing is allowed, and never allowed to look like the stronger one"*, and it
-had failed in the quietest possible way.
+## The hand-written treasures
+
+Eighty landmarks have a treasure somebody wrote by hand; the other 920 are
+derived from what the place is. The eighty live encrypted in
+`treasures.enc`, and the game reads them from **`absurd.tsv`**, which is
+gitignored and absent from a fresh clone.
+
+**Run this once, at install, and never again:**
+
+```
+HUE_TREASURE_KEY=<64 hex characters> \
+  python3 games/carmel-taldiego/treasures.py --open
+```
+
+That writes `absurd.tsv`. **The running service never reads the key** — it
+reads the file — so the key belongs in your shell history and not in a unit
+file.
+
+*This document said the opposite for one commit, and the mistake is worth
+keeping visible because it was the more plausible-looking arrangement.* It
+told hosts to put `Environment=HUE_TREASURE_KEY=...` in the unit, and the
+startup check agreed with it by asking whether that variable was set. But
+`carmel.Map` calls `treasures.build()` → `load_absurd()` → **`absurd.tsv` on
+disk**, and never the key. So a host that followed this file exactly would
+have set the variable, skipped `--open`, played with eighty placeholder
+treasures, and **been told nothing, because the variable it was asked for
+was present.** A false all-clear is worse than no check, and this one was
+shipped.
+
+**Without `absurd.tsv` the game still plays, and it is a different game** —
+eighty rooms hold placeholders worth different reputation, so no number is
+comparable to a host that has them. The process says so on startup, loudly,
+and counts what actually loaded rather than asking whether a key is set.
+That is `CLAUDE.md`'s *"the weaker thing is allowed, and never allowed to
+look like the stronger one"*: the weaker game is allowed, it just may not
+pass for the other.
 
 ## Install
 
@@ -84,8 +115,17 @@ The floor and the reason for it are in
 tests were actually run against and not to the newest release, which is a
 distinction that file explains.
 
+Then, once, open the hand-written treasures (see below) — without that step
+the game runs on placeholders and says so on every start:
+
+```
+HUE_TREASURE_KEY=<64 hex characters> \
+  python3 games/carmel-taldiego/treasures.py --open
+```
+
 Updating is `git pull` and restart. Nothing here writes a migration and
-nothing reads state from the last run.
+nothing reads state from the last run. `absurd.tsv` is gitignored, so a
+`git pull` never disturbs it and `--open` does not need re-running.
 
 ## The schedule, which is the part a host should understand
 
@@ -158,7 +198,6 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/ai-lab
-Environment=HUE_TREASURE_KEY=...
 ExecStart=/usr/bin/python3 games/carmel-taldiego/at_large.py
 Restart=always
 RestartSec=10
@@ -183,7 +222,17 @@ exactly like one that is working — this game's recurring failure:
 journalctl --user -u carmel | tail -20
 ```
 
-A healthy idle host says nothing but posts the rules; a healthy busy one logs
-`starting a game`, then a `leg N` line every few minutes per game. **Silence
-with nobody in the lobby is correct.** Silence *with* somebody registered is
-not, and is the thing to escalate.
+A healthy host logs `N in the lobby, M live` — immediately whenever either
+number changes, and otherwise about every ten minutes as a heartbeat. A busy
+one also logs `starting a game` and then a `leg N` line every few minutes per
+game.
+
+**Silence is always wrong now, and it did not used to be.** This document
+previously said *"a healthy idle host says nothing"*, which was true and
+useless: a correct idle host and a hung loop produced identical journals, and
+the check above could not tell them apart. Found by rehearsing this very
+section — `python3 at_large.py` printed the address and then nothing for
+forty seconds, which was exactly correct behaviour and completely
+uninformative. So the loop now says it is turning even when it has nothing to
+do, and **no line for more than ten minutes means the process is stuck**,
+whatever the lobby looks like.

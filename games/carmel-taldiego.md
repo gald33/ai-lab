@@ -5635,6 +5635,12 @@ One process, no disk, nothing inbound, **and no tokens at all** -- she is
 deterministic Python. Measured: **~22 hub calls a minute per game, ~88 at
 four**, less than the island's "couple of requests a second".
 
+> **Wrong, and corrected the same day — see "Rehearsing the deployment
+> found two defects" below.** The host needs no secret at all: the key is
+> for one command at install time, and the check described here asked
+> whether an environment variable was set when the game never reads it.
+> The paragraph stands as what was thought.
+
 **Unlike the island, this host needs a secret**, and until 2026-09-12 nothing
 said so. Without `HUE_TREASURE_KEY`, `treasures.py` builds its own table
 instead of unsealing the committed one -- different prizes, different
@@ -5654,3 +5660,72 @@ next campaign never opening while the last notice was readable -- was how
 arithmetic. It is kept, unused by the runner, because `--dry-run` reads it
 and because its reasoning is the only record of why the old guarantee
 existed; a paragraph at its head says plainly that it does not govern.
+
+
+## Rehearsing the deployment found two defects, and one was mine to be ashamed of
+
+*2026-09-12. Gal: "let's put her on the VM."* There is no path from a
+session to that VM — no SSH, no deploy tooling, and `games/island.md` says
+plainly that **no one calls the VM**. So what was available was to run
+`HOSTING.md`'s own commands here, in order, as a rehearsal. Both defects
+came out of that, and neither would have come out of re-reading.
+
+### The startup check asked about a variable the game never reads
+
+`HOSTING.md` told a host to put `Environment=HUE_TREASURE_KEY=...` in its
+unit, and `treasure_warning()` agreed by returning quietly whenever that
+variable was set.
+
+**The game never reads it.** `carmel.Map` calls `treasures.build()`, which
+calls `load_absurd()`, which reads **`absurd.tsv` from disk**. The key
+belongs to `treasures.py --open`, a one-off that decrypts that file out of
+`treasures.enc`. So a host following the document exactly would have set the
+variable, skipped `--open`, played eighty landmarks as placeholders, and
+**been told nothing — because the thing it was asked for was present.**
+
+That is worse than the no-check state it replaced, and it shipped. A false
+all-clear costs more than silence, because silence at least prompts a look.
+**The check now counts the hand-written treasures that actually loaded**,
+which is the fact rather than a proxy for it, and the test has three cases
+because the two that agreed under the old check were the two that did not
+matter. The third — *key set, file missing* — is the one the shipped version
+called fine.
+
+Worth keeping: the proxy was the **more** plausible-looking of the two. It
+passed a reading of the code that stopped one call short of the answer.
+
+*A second-order version of the same thing, found immediately after:* the new
+check read `T.load_absurd()` with its default path, and a default binds at
+import, so a test repointing `T.ABSURD_SOURCE` changed nothing and passed
+for the wrong reason. `plan()` carries a comment about this exact trap, in
+this exact file. The path is read off the module at call time now.
+
+### A correct idle host was indistinguishable from a hung one
+
+`python3 at_large.py` printed the lobby address and then **nothing at all**
+for forty seconds. That was exactly right — no listeners, so no game starts
+— and completely uninformative, and `HOSTING.md` told an operator to check
+the process with `journalctl`, which had nothing in it to check. The
+document even said so approvingly: *"a healthy idle host says nothing."*
+
+So the demand gate had quietly reintroduced this game's own recurring
+failure into its runner: **a component that stops doing its job reports
+nothing, and nothing looks exactly like fine.** With games starting only on
+demand, silence became the *normal* state, which is precisely when silence
+stops being evidence of anything.
+
+The supervisor now logs `N in the lobby, M live` — at once on any change,
+and otherwise every `IDLE_LOG_EVERY` passes as a heartbeat, about ten
+minutes. Two tests, because either alone is half a check: one requires that
+an idle loop says something, the other requires that it does not say it
+every pass. **No line for over ten minutes now means stuck**, whatever the
+lobby looks like.
+
+### What the rehearsal could not cover
+
+`--open` was not run, because this checkout already has `absurd.tsv` and the
+key does not belong in a session transcript. Everything else in
+`HOSTING.md` was executed in the order it is written: the install, the dry
+run, and the unit's exact `ExecStart`. The standing rules post reaching the
+real lobby, with no live salt beside it, is that rehearsal's visible
+residue.
