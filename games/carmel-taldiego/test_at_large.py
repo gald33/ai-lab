@@ -903,26 +903,93 @@ def test_she_names_no_room_and_no_landmark_she_has_not_been_in(board):
         assert room_token(name, salt) not in body, "she published an address"
 
 
-def test_a_host_without_the_treasure_key_is_told_so(monkeypatch):
+def test_a_host_with_placeholder_treasures_is_told_so(monkeypatch, tmp_path):
     """`CLAUDE.md`: *"the weaker thing is allowed, and never allowed to look
     like the stronger one."*
 
-    Without `HUE_TREASURE_KEY`, `treasures.py` builds its own table instead
-    of unsealing the committed one, so the rooms hold different prizes worth
-    different reputation and every calibrated number is measuring something
-    else. Until 2026-09-12 `at_large.py` did not name the variable at all:
-    the game ran, posted, robbed and closed, and looked exactly like the
-    canonical one.
+    **The version of this test that shipped checked the wrong thing**, and
+    the wrong thing was worse than no check:
 
-    Both directions, because a warning that is always on is not a warning.
+        monkeypatch.delenv(T.KEY_ENV, raising=False)
+        assert L.treasure_warning() is not None
+        monkeypatch.setenv(T.KEY_ENV, "0" * 64)
+        assert L.treasure_warning() is None
+
+    It asked whether `HUE_TREASURE_KEY` was set. The key is not what the
+    game reads: `carmel.Map` calls `treasures.build()` -> `load_absurd()` ->
+    **`absurd.tsv` on disk**, and the key belongs to `treasures.py --open`,
+    which writes that file. So the third case below -- the variable set and
+    the file missing, which is precisely what the shipped `HOSTING.md` told
+    a host to arrange -- passed as *silent* while the game ran on eighty
+    placeholders.
+
+    Three cases now, because two of them agreed under the old check and the
+    third is the one that matters.
     """
+    monkeypatch.setattr(T, "ABSURD_SOURCE", tmp_path / "absurd.tsv")
+
+    # 1. no file: warned, and told what to run
     monkeypatch.delenv(T.KEY_ENV, raising=False)
     said = L.treasure_warning()
-    assert said is not None, "a host with no key is told nothing"
-    assert T.KEY_ENV in said
+    assert said is not None, "a host with placeholders is told nothing"
     assert "not comparable" in said, (
-        "the warning must say what it costs, not just that a key is absent")
+        "the warning must say what it costs, not just what is absent")
+    assert "--open" in said, "the warning does not say how to fix it"
 
+    # 2. **the trap**: the key set and the file still missing. This is the
+    #    case the old check called fine.
     monkeypatch.setenv(T.KEY_ENV, "0" * 64)
+    assert L.treasure_warning() is not None, (
+        "the key is set and the treasures are still placeholders, and this"
+        " said nothing -- the exact false all-clear that shipped")
+
+    # 3. the file present: silent, with no key anywhere. A warning that is
+    #    always on is not a warning.
+    (tmp_path / "absurd.tsv").write_text("Vatican City\tthe keys\n",
+                                         encoding="utf-8")
+    monkeypatch.delenv(T.KEY_ENV, raising=False)
     assert L.treasure_warning() is None, (
-        "the warning fires even with the key set, so it says nothing")
+        "the treasures are here and it warned anyway")
+
+
+def test_an_idle_supervisor_says_it_is_alive(board):
+    """A correct idle host is silent and a wedged one is silent too.
+
+    Found by rehearsing the documented deployment rather than by reading:
+    `python3 at_large.py` printed the lobby address and then nothing at all
+    for forty seconds, which is exactly right -- no listeners, so no game --
+    and indistinguishable from a hung loop. `HOSTING.md` told an operator to
+    check with `journalctl`, and the journal had nothing in it to check.
+
+    That is this game's recurring failure in its own runner: *a component
+    that stops doing its job reports nothing, and nothing looks exactly like
+    fine.*
+    """
+    rooms = Rooms(board)
+    lines: list[str] = []
+    L.forever(lambda: rooms, seeds=lambda: bytes.fromhex("55" * 32),
+              now=board.clock,
+              sleep=lambda s: board.clock.advance(max(s, 60.0)),
+              rounds=3, poll=POLL, log=lines.append,
+              spawn=lambda fn: _Dead())
+    assert any("in the lobby" in line for line in lines), (
+        "an idle supervisor said nothing, so a journal cannot tell it from"
+        " a hung one")
+
+
+def test_the_heartbeat_is_a_heartbeat_and_not_a_stream(board):
+    """The complement, and the reason the first test is not enough on its
+    own: logging every pass would satisfy it and make a week of journal
+    unreadable. An unchanged state is repeated only on the slow tick.
+    """
+    rooms = Rooms(board)
+    lines: list[str] = []
+    L.forever(lambda: rooms, seeds=lambda: bytes.fromhex("55" * 32),
+              now=board.clock,
+              sleep=lambda s: board.clock.advance(max(s, 60.0)),
+              rounds=8, poll=POLL, log=lines.append,
+              spawn=lambda fn: _Dead())
+    beats = [line for line in lines if "in the lobby" in line]
+    assert len(beats) == 1, (
+        f"nothing changed over eight passes and it said so {len(beats)}"
+        " times")

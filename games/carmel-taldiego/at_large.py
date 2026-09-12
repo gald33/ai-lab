@@ -158,6 +158,12 @@ ABANDON_AFTER_HOURS = 10.0
 #: reaches the lobby the same afternoon rather than the next day.
 RULES_TTL_HOURS = 240.0
 
+#: How many supervisor passes between heartbeat lines when nothing changes.
+#: At `POLL_SECONDS` that is one line roughly every ten minutes: enough to
+#: prove the loop is turning, few enough that a week of journal is readable.
+#: Any *change* in the lobby is said immediately regardless.
+IDLE_LOG_EVERY = 120
+
 #: What a hint left in a room is worth after she has gone: the rest of the
 #: campaign. A searcher who works out leg 3 an hour late should still find
 #: what she said there and be able to follow it, which is the design's *"you
@@ -760,32 +766,50 @@ class Fugitive:
 
 
 def treasure_warning() -> str | None:
-    """Say so if this host is playing with a different treasure table.
+    """Say so if this host is playing with placeholder treasures.
 
-    `treasures.py` unseals `treasures.enc` when `HUE_TREASURE_KEY` is in the
-    environment and **builds its own table when it is not** -- so a host
-    without the key runs a game whose rooms hold different prizes worth
-    different reputation, and every number calibrated against the sealed
-    table is measuring something else.
+    **This checked the wrong thing for one commit, and the wrong thing was
+    worse than no check at all.** The first version asked whether
+    `HUE_TREASURE_KEY` was in the environment:
 
-    Nothing said so until 2026-09-12. `at_large.py` did not mention the
-    variable at all, which is `CLAUDE.md`'s *"the weaker thing is allowed,
-    and never allowed to look like the stronger one"* failing in the
-    quietest possible way: the game ran, posted riddles, took treasures and
-    closed, and looked exactly like the canonical one.
+        if os.environ.get(T.KEY_ENV):
+            return None
 
-    It is a warning and not a refusal, because the weaker game is allowed:
-    a host without the key can still play, and what it may not do is pass
-    for the other thing.
+    The key is not what the game reads. `carmel.Map` calls
+    `treasures.build()`, which calls `load_absurd()`, which reads
+    **`absurd.tsv` from disk**; the key belongs to `treasures.py --open`,
+    the one-off that decrypts that file out of `treasures.enc`. So a host
+    that set the variable in its service unit and never ran `--open` would
+    play with eighty placeholder treasures **and be told nothing**, because
+    the variable it was asked for was present. `HOSTING.md` told hosts to do
+    exactly that.
+
+    A check on a proxy for the fact is not a check on the fact -- and the
+    proxy was the more plausible-looking of the two, which is why this is
+    worth the paragraph: it passed a reading of the code that stopped one
+    call too early.
+
+    So it counts the hand-written treasures that actually loaded. It is a
+    warning and not a refusal, because the weaker game is allowed
+    (`CLAUDE.md`): a host without them can still play, and what it may not
+    do is pass for the other thing.
     """
-    if os.environ.get(T.KEY_ENV):
+    # The path is read off the module at call time, not left to
+    # `load_absurd`'s default -- a default binds at import, so a test that
+    # repoints the module attribute would change nothing and pass for the
+    # wrong reason. `plan` carries the same note for the same reason.
+    have = len(T.load_absurd(T.ABSURD_SOURCE))
+    if have:
         return None
-    return (f"  !! {T.KEY_ENV} is not set, so the treasures are REBUILT and"
-            " not the sealed ones.\n"
-            "     The game plays, and its reputation numbers are not"
-            " comparable to a\n"
-            "     host that has the key. This is a different table, not a"
-            " missing one.")
+    return (f"  !! no hand-written treasures: {T.ABSURD_SOURCE.name} is not"
+            " here, so 80 landmarks\n"
+            "     hold placeholders and this game's reputation numbers are"
+            " not comparable\n"
+            "     to a host that has them. Fix with, once:\n"
+            f"       {T.KEY_ENV}=<64 hex> python3"
+            " games/carmel-taldiego/treasures.py --open\n"
+            "     The key is for that command only. The service does not"
+            " need it.")
 
 
 def listeners(room, log=lambda line: None) -> int:
@@ -877,6 +901,7 @@ def forever(make_hub: Callable[[], Hub], *,
     # the loop by games, and one that bounds it by passes cannot say how
     # many games it wanted. Production passes neither.
     passes = 0
+    said_state: tuple | None = None
     while ((limit is None or len(done) < limit)
            and (rounds is None or passes < rounds)):
         passes += 1
@@ -895,6 +920,18 @@ def forever(make_hub: Callable[[], Hub], *,
                 log(f"could not post the rules ({type(why).__name__})")
 
         here = listeners(lobby, log)
+        # **Say something even when there is nothing to do.** A correct idle
+        # host is silent -- no listeners, so no game starts -- and a wedged
+        # one is silent too, so the journal cannot tell them apart. That is
+        # this game's recurring failure (`games/carmel-taldiego.md`: a
+        # component that stops doing its job reports nothing, and nothing
+        # looks exactly like fine), and it is cheapest to fix here.
+        #
+        # Every change is said at once; an unchanged state is repeated on a
+        # slow tick so the line is a heartbeat rather than a stream.
+        if (here, len(live)) != said_state or passes % IDLE_LOG_EVERY == 0:
+            log(f"{here} in the lobby, {len(live)} live")
+            said_state = (here, len(live))
         if may_start(len(live), here, hours(now() - last_start)):
             seed = seeds()
             last_start = now()
