@@ -105,10 +105,26 @@ pass for the other.
 ## Install
 
 ```
-pip install -r games/carmel-taldiego/requirements.txt
+python3 -m venv ~/carmel/venv
+~/carmel/venv/bin/pip install -r games/carmel-taldiego/requirements.txt
 ```
 
-Python 3.11+, and this repository on the path. **Install from the file, not
+To run the tests on a host, add the dev set — the suite stands a **real hub**
+in-process, so it needs the server half of Switchboard that a host otherwise
+never installs:
+
+```
+~/carmel/venv/bin/pip install -r games/carmel-taldiego/requirements-dev.txt
+~/carmel/venv/bin/python -m pytest games/carmel-taldiego -q
+```
+
+*That file exists because this one did not mention it.* A first deploy ran the
+suite with only the runtime requirements and got **21 errors** naming
+`starlette`; installing that gave 21 errors naming `fastapi`; installing that
+gave **143 passed**. Two blind round trips to rediscover what
+`agent-switchboard[server]` already declares.
+
+Python 3.11+ (the host runs 3.12.3), and this repository on the path. **Install from the file, not
 by name**, so the host and the repository cannot drift apart on a version.
 The floor and the reason for it are in
 [`requirements.txt`](requirements.txt); it is pinned to the version the
@@ -189,22 +205,45 @@ one roster read per poll and nothing else.
 
 The island runs `systemctl --user`; this is the same shape.
 
+**This is the unit that is actually running**, copied off the host rather
+than written here and hoped for — the island's rule about the command being
+what gets believed applies to its own document too, and the first draft of
+this block diverged from what got deployed within the hour (no `-u`, no
+`MemoryMax`, no venv, the wrong `WorkingDirectory`).
+
 ```
 # ~/.config/systemd/user/carmel.service
 [Unit]
-Description=Carmel Taldiego, at large
+Description=Carmel Taldiego, at large (games/carmel-taldiego/at_large.py)
 After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/ai-lab
-ExecStart=/usr/bin/python3 games/carmel-taldiego/at_large.py
+WorkingDirectory=%h/carmel/ai-lab
+ExecStart=%h/carmel/venv/bin/python -u games/carmel-taldiego/at_large.py
 Restart=always
 RestartSec=10
+MemoryMax=400M
 
 [Install]
 WantedBy=default.target
 ```
+
+Three things in there are not decoration:
+
+- **`-u`.** Without it Python block-buffers stdout when it is not a terminal,
+  and `journalctl -f` shows nothing for minutes at a time. A heartbeat that
+  arrives in clumps is not a heartbeat.
+- **`MemoryMax=400M`**, matching `island-lobby.service` on the same box. She
+  needs about a tenth of that; the cap is there so a leak is a restart rather
+  than a host under memory pressure.
+- **Her own venv and checkout** (`%h/carmel/{ai-lab,venv}`), beside the
+  island's `%h/island/{ai-lab,venv}` rather than sharing them. Sharing the
+  checkout would mean a `git pull` for her changing the island's code
+  mid-game; sharing the venv would couple their library floors, and on the
+  host they are genuinely different — the island's venv was on 2.1.0 when
+  Carmel's was installed at 2.3.0.
 
 ```
 systemctl --user daemon-reload
