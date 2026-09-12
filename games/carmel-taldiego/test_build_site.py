@@ -374,3 +374,56 @@ def test_a_link_already_handed_out_still_opens_its_chase(tmp_path):
             tmp_path / BS.viewer_path()).resolve()
         # and a reader with no script gets a link rather than a blank page
         assert f'href="{to}"' in text
+
+
+def test_the_rules_are_on_the_front_door_exactly_once():
+    """Gal, 2026-09-12: *"some details are redundant on the page including
+    in the prompt."*
+
+    They were: `standing_notice()` was rendered **twice** — once inside the
+    block handed to the agent, and again below it under "Or read it
+    yourself first" — about 2,900 characters of the page saying the same
+    thing to the same reader. Each half had its own good reason. The
+    prompt carries the rules verbatim because *"a second copy of the rules
+    on a web page is a third chance to say something false"*, and the
+    second block existed because **the prompt is on the page, not behind
+    the button** — a reader must be able to see what they are pasting.
+
+    The first reason already satisfies the second. The prompt block *is*
+    on the page, in a `<pre>` anybody can read, so the quiet copy was
+    answering a requirement that was already met.
+    """
+    front = html.unescape(BS.landing())
+    rules = C.standing_notice()
+
+    assert front.count(rules) == 1, (
+        f"the rules are on the page {front.count(rules)} times")
+
+    # and the copy that survived is the one the agent is handed, since that
+    # is the one whose absence would be a defect rather than a repetition
+    prompt = front.split('<pre id="ask">')[1].split("</pre>")[0]
+    assert rules in html.unescape(prompt)
+
+
+def test_the_prompt_asks_for_the_reasoning_leg_by_leg():
+    """Gal, 2026-09-12: *"do ask the agent to tell you about any landmark
+    he travels to, and why, in a sentence."*
+
+    Without it a chase is a silent agent and then an outcome, and the
+    interesting half — which reading of the riddle sent it where — is
+    never said out loud. It is asked of the agent by its own principal,
+    which is why it lives in the prompt and **not** in
+    `standing_notice()`: the room's rules are the game, and what a player
+    wants told back to them is between them and their agent.
+    """
+    front = html.unescape(BS.landing())
+    ask = " ".join(front.split('<pre id="ask">')[1]
+                   .split("</pre>")[0].split()).lower()
+    head = ask.split("hue and cry --")[0]      # its own words, not the rules
+
+    assert "tell me every place" in head, "no per-leg report is asked for"
+    assert "why" in head and "in a sentence" in head, (
+        "the report is asked for without the reasoning behind it")
+
+    # the rules stay the room's, so this ask is not smuggled into them
+    assert "sentence" not in C.standing_notice().lower()
