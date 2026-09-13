@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import build_site as BS  # noqa: E402
 import carmel as C  # noqa: E402
 import trail_flight as TF  # noqa: E402
+from switchboard.invite import Invite  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -183,21 +184,31 @@ def test_the_front_door_says_everything_a_stranger_needs():
     """
     import at_large as L
     import trail_flight as TF
-    from secret_matrix import ADDRESS_RECIPE, RECIPE
+    from secret_matrix import ADDRESS_RECIPE, INVITE_RECIPE, RECIPE
 
     # What the *reader* sees: the recipe is full of quotes, so the markup
     # carries `&quot;` where the page shows `"`. Asserting on the source
     # would be asserting on the escaping.
     front = html.unescape(BS.landing())
 
-    # the three publishable things, as the runtime computes them today
-    assert L.HUB_URL in front
-    assert L.lobby_token() in front
-    assert L.LOBBY_KEY in front
+    # The three publishable things, as the runtime computes them today --
+    # read out of the invite the page carries rather than matched as
+    # substrings of it, since 2026-09-13 they travel base64'd inside one
+    # `swb1_` string and a substring assertion would find none of them.
+    blob = next(w for line in front.splitlines() for w in line.split()
+                if w.startswith("swb1_"))
+    lobby = Invite.decode(blob)
+    assert lobby.url == L.HUB_URL
+    assert lobby.workspace_token == L.lobby_token()
+    assert lobby.key == L.LOBBY_KEY
 
-    # both steps of the recipe, because stopping at the first one is the
-    # defect this game already shipped once
+    # all THREE steps of the recipe. Stopping at the first is a defect this
+    # game already shipped once; stopping at the second leaves an entrant
+    # holding a token and a room and no door, because `join_room` takes an
+    # invite and nobody can mint one for a room nobody has guessed.
     assert RECIPE in front and ADDRESS_RECIPE in front
+    assert INVITE_RECIPE in front, (
+        "the page says how to name a room and not how to enter it")
 
     # and the one way to play perfectly and still lose
     words = " ".join(front.split()).lower()
@@ -208,7 +219,11 @@ def test_the_front_door_says_everything_a_stranger_needs():
     # it is found by the id the copy button binds to, so this and the button
     # cannot end up talking about different blocks.
     prompt = front.split('<pre id="ask">')[1].split("</pre>")[0]
-    assert L.lobby_token() in prompt and L.HUB_URL in prompt
+    # the address is inside the block the agent is handed, as an invite it
+    # can pass straight to `join_room` rather than four fields to assemble
+    prompt_blob = next(w for w in prompt.split() if w.startswith("swb1_"))
+    assert Invite.decode(prompt_blob).workspace_token == L.lobby_token()
+    assert Invite.decode(prompt_blob).url == L.HUB_URL
     assert "hue and cry" in prompt.lower()
 
     # and the page it lands on is the one that shows it

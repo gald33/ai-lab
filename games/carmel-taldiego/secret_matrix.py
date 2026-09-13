@@ -116,6 +116,48 @@ RECIPE = 'token = "w_" + sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x0
 #: existed only as words in a notice. Found by trying to play, 2026-09-10.
 ADDRESS_RECIPE = 'room = "w_" + base64url(sha256(token))[:22]'
 
+#: The third step, and the one whose absence made the first two useless to
+#: an agent holding Switchboard's tools.
+#:
+#: `join_room` is the only door those tools offer and it takes **an invite**
+#: -- one `swb1_` string, not the four fields separately, "because each of
+#: those must match the sender's exactly, and each one fails SILENTLY when it
+#: does not". Nobody can mint an invite for a room nobody has guessed yet, so
+#: a searcher who solves a riddle has to build its own, and until 2026-09-13
+#: the notice never said how: it handed out a token, a room and a key and
+#: left the entrant to discover the envelope from the library's source.
+#:
+#: Verified against `switchboard.invite.Invite.decode` (2.2.1): a payload of
+#: exactly these five fields decodes, and lands in the same workspace as the
+#: invite `Invite(...).encode()` mints. `w` is required and is not derived
+#: from `wt` on the way in, which is why the second line above is not
+#: optional.
+INVITE_RECIPE = (
+    'invite = "swb1_" + base64url(json{"v":1,"u":hub,"w":room,"wt":token,'
+    '"k":key})'
+)
+
+#: The third step, and the one whose absence made the first two useless to
+#: an agent holding Switchboard's tools.
+#:
+#: `join_room` is the only door those tools offer and it takes **an invite**
+#: -- one `swb1_` string, not the four fields separately, "because each of
+#: those must match the sender's exactly, and each one fails SILENTLY when it
+#: does not". Nobody can mint an invite for a room nobody has guessed yet, so
+#: a searcher who solves a riddle has to build its own, and until 2026-09-13
+#: the notice never said how: it handed out a token, a room and a key and
+#: left the entrant to discover the envelope from the library's source.
+#:
+#: Verified against `switchboard.invite.Invite.decode` (2.2.1): a payload of
+#: exactly these five fields decodes, and lands in the same workspace as the
+#: invite `Invite(...).encode()` mints. `w` is required and is not derived
+#: from `wt` on the way in, which is why the second line above is not
+#: optional.
+INVITE_RECIPE = (
+    'invite = "swb1_" + base64url(json{"v":1,"u":hub,"w":room,"wt":token,'
+    '"k":key})'
+)
+
 
 def room_address(landmark: str, salt: bytes) -> str:
     """The wire identifier a searcher actually joins, from a name and a salt.

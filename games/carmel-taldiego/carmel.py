@@ -66,7 +66,8 @@ import treasures as T  # noqa: E402
 from descriptors import all_descriptors  # noqa: E402
 from hints import riddle  # noqa: E402
 from landmarks import load as load_landmarks  # noqa: E402
-from secret_matrix import (ADDRESS_RECIPE, RECIPE, _prf,  # noqa: E402
+from secret_matrix import (ADDRESS_RECIPE, INVITE_RECIPE,  # noqa: E402
+                           RECIPE, _prf,
                            hints_for,
                            room_token, salt_for)
 
@@ -1065,9 +1066,15 @@ def standing_notice(start: str = LOBBY_LANDMARK) -> str:
         # is the check that was missing.
         f"    {RECIPE}",
         f"    {ADDRESS_RECIPE}",
+        f"    {INVITE_RECIPE}",
+        "",
+        "Three steps and not two: the tools take an invite, not the parts,",
+        "and nobody can hand you one for a room nobody has guessed. So you",
+        "build it -- same hub and same key as the invite that brought you",
+        "here, base64url with no padding.",
         "",
         "There is no list of rooms and nobody hands one out. Guessing the",
-        "place is finding the room. Use the same key you are using here.",
+        "place is finding the room.",
         "",
         "This room is the lobby. Its name is fixed and is not computed from",
         "any landmark, so do not go looking for a room named after",

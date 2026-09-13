@@ -208,15 +208,28 @@ def test_the_lobby_is_publishable_in_full_and_borrows_no_credential():
     reaching for `SWITCHBOARD_KEY`: it is right there in the environment,
     it works, and publishing the resulting address would publish it too.
     """
+    from switchboard.invite import Invite
+
     body = L.address("https://hub.example")
-    assert L.lobby_token() in body
-    assert L.LOBBY_KEY in body
+    lobby = Invite.decode(body.strip())
+    assert lobby.url == "https://hub.example"
+    assert lobby.workspace_token == L.lobby_token()
+    assert lobby.key == L.LOBBY_KEY
     assert L.LOBBY_KEY == L._derived_key(b"hue-and-cry/v1/room-key")
 
+    # **Against the decoded fields, not the published string.** The address
+    # became one base64 invite on 2026-09-13, and a substring guard on the
+    # encoded form would have gone on passing while catching nothing: a
+    # leaked `SWITCHBOARD_KEY` inside an invite is not a substring of it.
+    # This is the failure mode the guard exists for, arriving by the change
+    # that was supposed to be an improvement.
+    carried = {lobby.url, lobby.key or "", lobby.token or "",
+               lobby.workspace, lobby.workspace_token, lobby.write_key or ""}
     for name, value in os.environ.items():
         if len(value) > 16 and any(word in name.upper()
                                    for word in ("KEY", "TOKEN", "SECRET")):
             assert value not in body, f"the address carries ${name}"
+            assert value not in carried, f"the invite carries ${name}"
 
 
 def test_the_salt_is_not_in_the_address_because_it_is_in_the_notice():
@@ -633,20 +646,28 @@ def test_the_landing_page_sends_a_stranger_where_she_runs(board):
     sys.path.insert(0, str(Path(__file__).parent))
     import build_site as BS
 
+    from switchboard.invite import Invite
+
     page = htmlmod.unescape(BS.landing())
 
-    url = next(l for l in page.splitlines() if l.strip().startswith("url"))
-    token = next(l for l in page.splitlines()
-                 if l.strip().startswith("token")).split()[1]
-    key = next(l for l in page.splitlines()
-               if l.strip().startswith("key")).split()[1]
-    assert url.split()[1] == L.HUB_URL, "the page points somewhere else"
+    # One string off the page, opened the way `join_room` opens it. Three
+    # labelled lines until 2026-09-13; the entrant's job is now to paste,
+    # which is the whole reason for the shape.
+    blob = next(w for line in page.splitlines() for w in line.split()
+                if w.startswith("swb1_"))
+    lobby = Invite.decode(blob)
+    assert lobby.url == L.HUB_URL, "the page points somewhere else"
+    token, key = lobby.workspace_token, lobby.key
 
-    # the second step of the recipe, read off the page and applied by hand
-    step = next(l for l in page.splitlines() if "base64url" in l)
-    assert "sha256(token)" in step and "[:22]" in step, step
+    # the second step of the recipe, read off the page and applied by hand --
+    # and checked against what the invite itself says the room is, so the
+    # page's recipe and the page's invite cannot disagree about one room
+    step = next(l for l in page.splitlines() if "base64url(sha256(token))" in l)
+    assert "[:22]" in step, step
     room = "w_" + base64.urlsafe_b64encode(
         hashlib.sha256(token.encode()).digest()).decode().rstrip("=")[:22]
+    assert room == lobby.workspace, (
+        "the recipe on the page and the invite on the page name two rooms")
 
     # Her side uses the key the *code* runs with (`--key` defaults to
     # `LOBBY_KEY`) and the stranger uses the key the *page* printed. That
@@ -1059,3 +1080,68 @@ def test_the_heartbeat_is_a_heartbeat_and_not_a_stream(board):
     assert len(beats) == 1, (
         f"nothing changed over eight passes and it said so {len(beats)}"
         " times")
+
+
+def test_an_entrant_can_enter_a_room_nobody_minted_an_invite_for(board):
+    """Gal, 2026-09-13: *"the prompt you have a proper invitation."*
+
+    The lobby is one `swb1_` string now, which is the shape the tools take:
+    through `switchboard-mcp` the only door into a room is `join_room`, and
+    it takes an invite, *"because each of those must match the sender's
+    exactly, and each one fails SILENTLY when it does not"*.
+
+    **Which exposed the hole this test is really about.** Nobody can mint an
+    invite for a room nobody has guessed yet — that is the whole
+    name-is-the-room construction — so a searcher who solves a riddle has to
+    build its own, and the notice published two recipe lines and stopped.
+    An entrant following it exactly ended up holding a token and a room and
+    no door, and would have had to find the envelope in the library's
+    source. `INVITE_RECIPE` is the third line.
+
+    This does the whole thing the way an entrant must: it reads the notice,
+    takes the three recipe lines out of the *rendered text*, applies them by
+    hand, joins the room it built, and reads what she left there. Nothing
+    here imports `secret_matrix` — a test using the implementation would
+    agree with the notice no matter what the notice said.
+    """
+    import base64 as b64
+    import hashlib as hl
+    import json as js
+
+    from switchboard.invite import Invite
+
+    notice = C.standing_notice()
+    lobby = Invite.decode(L.address().strip())
+
+    # the three lines, off the notice
+    assert 'sha256("hue-and-cry/v1/landmark"' in notice
+    assert "base64url(sha256(token))" in notice
+    envelope = next(l for l in notice.splitlines() if "swb1_" in l)
+    assert '"wt":token' in envelope and '"k":key' in envelope, envelope
+
+    salt = C.salt_for(b"a-seed-for-this-check" * 2)
+    name = "Eiffel Tower"
+
+    token = "w_" + hl.sha256(b"hue-and-cry/v1/landmark" + b"\x00" + salt
+                             + b"\x00" + name.encode()).hexdigest()
+    room = "w_" + b64.urlsafe_b64encode(
+        hl.sha256(token.encode()).digest()).decode().rstrip("=")[:22]
+    built = "swb1_" + b64.urlsafe_b64encode(js.dumps(
+        {"v": 1, "u": lobby.url, "w": room, "wt": token, "k": lobby.key},
+        separators=(",", ":")).encode()).decode().rstrip("=")
+
+    # it is a real invite, and it names the room the game uses
+    opened = Invite.decode(built)
+    assert opened.workspace == room
+    assert opened.key == lobby.key, "the entrant lost the key on the way"
+
+    # and standing in it reaches what she left there
+    hers = board.client(agent_id="carmel", workspace=opened.workspace,
+                        key=L.LOBBY_KEY)
+    hers.post(L.CHANNEL, "I was here and I am not now.", ttl=3600)
+
+    entrant = board.client(agent_id="searcher", workspace=opened.workspace,
+                           key=opened.key)
+    read = [m["body"] for m in entrant.history(L.CHANNEL, limit=20)]
+    assert any("I was here" in body for body in read), (
+        "an entrant following the notice exactly ends up in an empty room")
