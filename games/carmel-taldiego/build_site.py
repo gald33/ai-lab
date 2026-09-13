@@ -277,21 +277,14 @@ def landing() -> str:
         ' where she went, and is standing there when she lets herself in.'
         '</p>',
         '<h2>Send somebody after her</h2>',
-        '<p>Hand this to your agent \u2014 read it first if you like, it is'
-        ' all here. The address of the room the chase starts in, then the'
-        ' rules, which are the post that stands permanently in that room,'
-        ' quoted so this page and the game cannot disagree about how it is'
-        ' played. Nothing to install and nothing here is a secret; the one'
-        ' thing missing is the salt, which arrives with her first taunt'
-        ' once a game has begun.</p>',
+        '<p>Hand this to your agent \u2014 or read it first, it is all'
+        ' here: the address of the room the chase starts in, then the'
+        ' rules exactly as they stand in it. The only thing missing is the'
+        ' salt, which comes with her first taunt once a game begins.'
+        f' <a href="{gallery_href()}" style="color:{INK["line"]}">Chases'
+        ' she has already run</a> are here to watch.</p>',
         '<button id="take">Copy it</button>',
         f'<pre id="ask">{html.escape(ask)}</pre>',
-        '<h2>When you take her</h2>',
-        '<p class="dim">She publishes the chase you just won, drawn and'
-        ' flown, and this page is what plays it: the whole of it travels in'
-        ' the address, so the link is yours to keep and to send on.'
-        f' <a href="{gallery_href()}" style="color:{INK["line"]}">Six she'
-        ' has already run</a> are here to watch.</p>',
         '</div>',
         _COPY_SCRIPT,
     ])

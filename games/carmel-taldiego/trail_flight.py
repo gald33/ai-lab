@@ -391,27 +391,70 @@ PAGE = """<!doctype html>
   #world { position: fixed; left: 0; right: 0; top: 50%;
            transform: translateY(-50%); width: 100%; height: auto;
            z-index: 0; opacity: 0.62; }
+  /* Gal, 2026-09-12: *"fit everything without scroll on desktop. the
+     snippet box can be scrollable inside"*. The door is exactly one
+     viewport and a flex column, so the prose keeps its natural height and
+     `#ask` -- the only part that is arbitrarily long, since it carries the
+     room's whole standing notice -- takes what is left and scrolls inside
+     its own box.
+
+     It is safe to size `#door` unconditionally even though this stylesheet
+     is also the film's: when a chase is playing the script empties
+     `#landing`, `#door` goes with it, and `#landing:empty` hides what is
+     left. No class to set and nothing to unset, so there is no frame in
+     which the wrong one is applied. */
   #door { position: relative; z-index: 1; max-width: 860px; margin: 0 auto;
-          padding: 8vh 22px 14vh; }
-  #landing h1 { font-size: clamp(30px, 6vw, 54px); font-weight: normal;
-                margin: 0 0 18px; letter-spacing: 0.5px; }
-  #landing h2 { font-size: clamp(18px, 2.6vw, 24px); font-weight: normal;
-                margin: 52px 0 12px; color: __STOP__; }
-  #landing p { max-width: 64ch; line-height: 1.62; color: __TEXT__;
-               font-size: clamp(14px, 1.8vw, 17px); }
-  #landing .lede { font-size: clamp(15px, 2vw, 19px); color: __STOP__; }
+          padding: 5vh 22px 6vh; }
+  /* **The one-screen layout is scoped, and the scope is the point.** A
+     100vh flex column does not scroll -- which is the ask on a desktop and
+     a way to lose the bottom of the page on a phone, where the prose alone
+     is taller than the viewport and the only shrinkable child would be
+     squeezed to nothing. Below this size the door is ordinary flow and the
+     page scrolls, which is the right behaviour there and was measured
+     rather than assumed: `test_the_front_door_fits_one_screen` drives both
+     and requires no-scroll above and readable content below. */
+  @media (min-width: 900px) and (min-height: 620px) {
+    #door { padding: 3.5vh 22px 3.5vh; height: 100vh; height: 100dvh;
+            box-sizing: border-box; display: flex; flex-direction: column; }
+  }
+  #landing h1 { font-size: clamp(28px, 5vw, 46px); font-weight: normal;
+                margin: 0 0 12px; letter-spacing: 0.5px; flex: none; }
+  #landing h2 { font-size: clamp(17px, 2.4vw, 22px); font-weight: normal;
+                margin: 26px 0 10px; color: __STOP__; flex: none; }
+  #landing p { max-width: 64ch; line-height: 1.55; color: __TEXT__;
+               font-size: clamp(14px, 1.7vw, 16px); margin: 0 0 10px;
+               flex: none; }
+  #landing .lede { font-size: clamp(14px, 1.85vw, 17px); color: __STOP__; }
   #landing .dim { color: __DIM__; font-size: clamp(13px, 1.6vw, 15px); }
   /* The snippet is the thing a reader is here to take, so it is given the
      room to be read rather than a window to squint through. */
+  /* The one element allowed to be taller than the room it is in: it
+     carries the standing notice verbatim, which is as long as the rules
+     are.
+
+     **`overflow: auto` is what lets it shrink**, and that is worth saying
+     because the usual advice is `min-height: 0` -- a flex item's automatic
+     minimum size normally refuses to go below its content, so the page
+     scrolls anyway. It does not apply here: the automatic minimum is only
+     in force while overflow is `visible`, and a scroll container has none.
+
+     This comment said `min-height: 0` was load-bearing until it was
+     measured, which it had not been -- removing it changed nothing, and
+     the check written to catch exactly this stayed green. At 1366x768:
+     `min-height: 0` + `overflow: auto` -> 768, no `min-height` +
+     `overflow: auto` -> 768, `min-height: 0` + `overflow: visible` ->
+     2131. So the property was dropped rather than left standing under a
+     reason that was not true. */
   #landing pre { background: rgba(13, 21, 27, 0.93); border: 1px solid __RULE__;
-                 border-radius: 4px; padding: 20px 22px; margin: 14px 0 0;
-                 overflow-x: auto; font-size: 14px; line-height: 1.62;
+                 border-radius: 4px; padding: 16px 20px; margin: 12px 0 0;
+                 overflow: auto; font-size: 13.5px; line-height: 1.55;
                  color: __STOP__; white-space: pre-wrap;
-                 overflow-wrap: anywhere;
+                 overflow-wrap: anywhere; flex: 1 1 auto;
                  font-family: ui-monospace, Menlo, Consolas, monospace; }
   #take { background: __LINE__; color: #17120c; border: none;
-          border-radius: 3px; padding: 10px 18px; font: inherit;
-          font-size: 15px; cursor: pointer; margin-top: 6px; }
+          border-radius: 3px; padding: 9px 17px; font: inherit;
+          font-size: 15px; cursor: pointer; margin-top: 4px; flex: none;
+          align-self: flex-start; }
   #take:hover { filter: brightness(1.08); }
   #take[data-took] { background: __STOP__; }
 </style>

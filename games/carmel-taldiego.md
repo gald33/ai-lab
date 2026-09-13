@@ -6479,3 +6479,72 @@ Both checks were demonstrated red by putting the duplication back and
 taking the ask out: *"the rules are on the page 2 times"* and *"no per-leg
 report is asked for"*. 172 passed; the page driven in chromium reads one
 `<pre>`, and the clipboard read back carries the rules once and the ask.
+
+## The door is one screen, and the snippet scrolls inside it
+
+*2026-09-13. Gal, on the closing section: "not needed". And: "fit
+everything without scroll on desktop. the snippet box can be scrollable
+inside."*
+
+**"When you take her" is gone.** It described what happens after a catch —
+that she publishes the chase, that the whole film travels in the address —
+to a reader who has not played yet and may never. The gallery link inside
+it survives as a clause on the paragraph above, because dropping the
+section entirely would have left `campaigns/` reachable from nothing and
+`gallery_href()` with no caller.
+
+### The layout
+
+`#door` is a flex column exactly one viewport tall. The prose keeps its
+natural height; `#ask` — the only part that is arbitrarily long, since it
+carries the room's whole standing notice — takes what is left and scrolls
+inside its own box.
+
+**It is scoped to desktop, and the scope is the point.** A 100vh flex
+column does not scroll, which is the ask on a desktop and a way to lose the
+bottom of the page on a phone: there the prose alone is taller than the
+viewport and the only shrinkable child would be squeezed to nothing. Below
+`900px × 620px` the door is ordinary flow. Both sides are driven:
+`test_the_front_door_fits_one_screen_on_a_desktop` at five sizes, and
+`test_a_narrow_screen_scrolls_rather_than_clipping` at two.
+
+1366×768 is in the list because it is the tightest common laptop, and
+900×620 because it is **the breakpoint's own floor** — the first size that
+claims to fit is the one most likely not to.
+
+Sizing `#door` needs no class and no media-query gymnastics for the film,
+because when a chase is playing the script empties `#landing`, `#door` goes
+with it, and `#landing:empty` hides the rest. There is no frame in which
+the wrong layout is applied.
+
+### The comment was wrong about its own mechanism, and the test did not care
+
+The rule went in with `min-height: 0` and a comment saying that was what
+let the flex child shrink — *"a flex item's default `min-height: auto`
+refuses to go below its content"*. That is the standard advice and it is
+true in general.
+
+**It is not what was holding this layout up.** Removing `min-height: 0`
+changed nothing, and the check written to catch exactly this stayed green.
+Measured at 1366×768:
+
+| | document height |
+|---|---|
+| `min-height: 0` + `overflow: auto` | 768 |
+| no `min-height` + `overflow: auto` | **768** |
+| `min-height: 0` + `overflow: visible` | 2131 |
+| no `min-height` + `overflow: visible` | 2148 |
+
+`overflow: auto` is the load-bearing property: a flex item's automatic
+minimum size only applies while overflow is `visible`, and a scroll
+container has none. `min-height: 0` was redundant, so it was **dropped**
+rather than left standing under a reason that was not true — and the
+comment now names `overflow` and carries the table.
+
+This is what *"break the thing on purpose, watch the check go red"* is for,
+and it caught something a green suite never would have: not a broken check,
+but a **true check guarding a false explanation**. The demonstration was
+re-run against the real mechanism — `overflow: visible` fails at every
+size, by 1,079 to 1,380 pixels.
+
+179 passed with `HUE_REQUIRE_BROWSER=1`.
