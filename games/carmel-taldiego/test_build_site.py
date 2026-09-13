@@ -220,7 +220,10 @@ def test_the_front_door_is_only_the_front_door(tmp_path):
     campaign only when somebody sends you one in a fragment."""
     BS.build(tmp_path, imagery=None, count=1)
     page = (tmp_path / BS.viewer_path() / "index.html").read_text()
-    assert "Hand this to your agent" in page
+    # the door by its controls, not by a sentence: it asked for "Hand this
+    # to your agent" until 2026-09-13 and went red on a copy edit, which
+    # tells you nothing about whether the door is a door
+    assert 'id="take"' in page and 'id="ask"' in page
     assert 'id="data"></script>' in page, "a chase was baked into the door"
 
 
@@ -343,7 +346,6 @@ def test_the_address_a_player_is_given_is_the_front_door(tmp_path):
 
     assert 'id="take"' in front, "the base URL has no copy button"
     assert 'id="ask"' in front, "the base URL does not carry the prompt"
-    assert "Hand this to your agent" in front
 
     # and it is the address she posts, so the link and the door are one page
     assert TF.CHASE_PAGE == BS.SITE_URL
@@ -427,3 +429,41 @@ def test_the_prompt_asks_for_the_reasoning_leg_by_leg():
 
     # the rules stay the room's, so this ask is not smuggled into them
     assert "sentence" not in C.standing_notice().lower()
+
+
+def test_the_front_door_stays_short():
+    """Gal, 2026-09-13: *"there's too much to read, we might lose
+    audience."*
+
+    It had grown to **177 words** of prose before the block — two lore
+    paragraphs, a section heading, and a paragraph explaining what the
+    block below it was. Every sentence had been added for a reason and
+    none of them was wrong; what they added up to was a wall in front of a
+    button, and a visitor who is deciding whether to play reads none of it.
+
+    Down to 97: one paragraph saying what the game is, one line saying what
+    to do, the button, the block. **The cut paid twice** — the snippet is
+    the flexible child of a one-screen layout, so prose it does not spend
+    goes to the thing a reader is actually here to take: 196px to 426px at
+    1366x768.
+
+    The ceiling is a ceiling and not a target. It counts what a human has
+    to read, so the `<pre>` is excluded: that block carries the room's
+    standing notice verbatim and is as long as the rules are — it is
+    scanned, copied, and handed on, not read.
+    """
+    front = html.unescape(BS.landing())
+    prose = re.sub(r"<svg.*?</svg>|<script.*?</script>|<pre.*?</pre>", "",
+                   front, flags=re.S)
+    words = re.sub(r"<[^>]+>", " ", prose).split()
+
+    assert len(words) <= 120, (
+        f"the front door is {len(words)} words of prose before the block;"
+        " it was cut to 97 because 177 was a wall in front of a button")
+
+    # and it still says what the game is, so this cannot pass by the page
+    # being emptied instead of tightened
+    said = " ".join(words).lower()
+    assert "carmel taldiego" in said
+    assert "hue and cry" in said, "the page no longer names the chase"
+    assert "agent" in said, "nothing tells a visitor what to do"

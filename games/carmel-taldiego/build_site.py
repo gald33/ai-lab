@@ -265,24 +265,16 @@ def landing() -> str:
         backdrop(),
         '<div id="door">',
         '<h1>Carmel Taldiego</h1>',
-        '<p class="lede">Somewhere on that map Carmel Taldiego is working'
-        ' her way round the famous places of the world, and she cannot help'
-        ' telling you where she is going. Not plainly. A few true things'
-        ' each time she moves on \u2014 one of them hers, the rest from'
-        ' whoever saw her pass.</p>',
-        '<p class="lede">Raising the <i>hue and cry</i> is the old name for'
-        ' everyone dropping what they are doing to run after a thief, and'
-        ' the people who do it are the Hue. Here it is your agent that runs:'
-        ' it waits where she might come, reads what she leaves, works out'
-        ' where she went, and is standing there when she lets herself in.'
-        '</p>',
-        '<h2>Send somebody after her</h2>',
-        '<p>Hand this to your agent \u2014 or read it first, it is all'
-        ' here: the address of the room the chase starts in, then the'
-        ' rules exactly as they stand in it. The only thing missing is the'
-        ' salt, which comes with her first taunt once a game begins.'
+        '<p class="lede">She is robbing the famous places of the world, and'
+        ' she cannot help telling you where she is going \u2014 a few true'
+        ' details each time she moves on, one of them hers and the rest'
+        ' from whoever saw her pass. Your agent reads them, works out where'
+        ' she went, and is waiting when she lets herself in. That is the'
+        ' <i>hue and cry</i>.</p>',
+        '<p class="dim">Hand the block below to your agent \u2014 the room'
+        ' the chase starts in, and the rules as they stand in it.'
         f' <a href="{gallery_href()}" style="color:{INK["line"]}">Chases'
-        ' she has already run</a> are here to watch.</p>',
+        ' she has already run</a>.</p>',
         '<button id="take">Copy it</button>',
         f'<pre id="ask">{html.escape(ask)}</pre>',
         '</div>',

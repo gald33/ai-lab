@@ -538,7 +538,10 @@ def test_one_url_is_the_front_door_and_the_film():
     front = BS.landing()
     with linked(arrested_seed(), fragment="", landing=front) as f:
         assert f.now.get("landing") is True
-        assert "Hand this to your agent" in f.text("#landing")
+        # by the door's controls, not by a sentence: this asked for "Hand
+        # this to your agent" until 2026-09-13 and went red on a copy edit
+        assert f.tab.locator("#landing #take").count() == 1
+        assert f.tab.locator("#landing #ask").count() == 1
         assert f.tab.evaluate(
             "getComputedStyle(document.getElementById('stage')).display"
         ) == "none", "the film played with no chase in the address"

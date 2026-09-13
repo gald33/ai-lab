@@ -6548,3 +6548,51 @@ re-run against the real mechanism — `overflow: visible` fails at every
 size, by 1,079 to 1,380 pixels.
 
 179 passed with `HUE_REQUIRE_BROWSER=1`.
+
+### And then there was too much to read
+
+*Gal, the same day: "there's too much to read, we might lose audience."*
+
+**177 words of prose before the block**, in four paragraphs and a section
+heading. Every sentence had been added for a reason and none of them was
+wrong: the lore that sets the scene, the explanation of what *hue and cry*
+means, the paragraph saying what the block below is and that the salt is
+the one thing missing. What they added up to was **a wall in front of a
+button**, read by nobody who is deciding whether to play.
+
+**97 now**: one paragraph saying what the game is, one line saying what to
+do, the button, the block.
+
+**The cut paid twice.** The snippet is the flexible child of the
+one-screen layout above, so prose the page does not spend goes straight to
+the thing a reader is here to take:
+
+| | 1366×768 | 900×620 |
+|---|---|---|
+| before | 196px | 69px |
+| after | **426px** | **294px** |
+
+`test_the_front_door_stays_short` puts a ceiling of 120 words on the prose,
+counted with the `<pre>` excluded — that block carries the standing notice
+verbatim and is as long as the rules are; it is scanned and copied, not
+read. It also requires the page to still name the game, the chase and the
+agent, so it cannot be satisfied by emptying the page instead of tightening
+it. Demonstrated red both ways: restoring one paragraph gives *"the front
+door is 162 words"*, deleting the lede gives *"the page no longer names the
+chase"*.
+
+### Three tests were pinning a sentence
+
+`"Hand this to your agent"` was asserted in **three** places —
+`test_the_front_door_is_only_the_front_door`,
+`test_the_address_a_player_is_given_is_the_front_door`, and
+`test_one_url_is_the_front_door_and_the_film`. All three went red on a copy
+edit, and none of them was about that sentence: each means *this page is
+the front door*, which is `#take` and `#ask` being present. They assert
+that now.
+
+A wording assertion is the weakest thing a test can hold: it fails on every
+edit and passes on a page whose button does nothing. The phrase was chosen
+as a proxy for the door because it happened to be unique to it — the same
+mistake in miniature as the startup check that asked about an environment
+variable instead of counting the treasures it was worried about.

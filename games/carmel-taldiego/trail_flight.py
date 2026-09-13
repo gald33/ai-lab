@@ -419,8 +419,6 @@ PAGE = """<!doctype html>
   }
   #landing h1 { font-size: clamp(28px, 5vw, 46px); font-weight: normal;
                 margin: 0 0 12px; letter-spacing: 0.5px; flex: none; }
-  #landing h2 { font-size: clamp(17px, 2.4vw, 22px); font-weight: normal;
-                margin: 26px 0 10px; color: __STOP__; flex: none; }
   #landing p { max-width: 64ch; line-height: 1.55; color: __TEXT__;
                font-size: clamp(14px, 1.7vw, 16px); margin: 0 0 10px;
                flex: none; }
