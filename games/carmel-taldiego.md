@@ -566,6 +566,15 @@ everywhere, so you have to choose, and being wrong costs you the tick.
 *That supersedes "the invite is the scarce thing" a second time, and this
 version is the one that survives a public map.*
 
+> *2026-09-13: **"you cannot watch everywhere" is false, and it is the
+> assumption this whole section rests on.** Measured: holding all 1,000
+> rooms costs 3.4s, renewing them 3.2s, against a ~120s presence window.
+> An agent can watch everywhere. The paragraph stands because its first
+> half is still right — a published salt is what lets anybody compute a
+> room — but "attention is scarce" was a claim about humans. See "The
+> repository was the shortcut, and the catalog is the bigger one" at the
+> end of this document.*
+
 ### The map is drawn, not chosen
 
 Decided 2026-09-07 in the same sitting, by the island's precedent (`the
@@ -6689,3 +6698,126 @@ page name one room**, which nothing checked before.
 181 passed with `HUE_REQUIRE_BROWSER=1`. The 344-character unbroken token
 was checked in a browser at three widths: no horizontal scroll on the page
 or inside the block, and the clipboard round-trips it.
+
+## The repository was the shortcut, and the catalog is the bigger one
+
+*2026-09-13. A searcher agent reported, unprompted and honestly, that it had
+solved the first leg from the source rather than from the riddle:*
+
+> I found the three exact clue sentences in `clauses.py`, which revealed
+> their underlying descriptors ... I then ran the repo's public descriptor
+> logic against its landmark catalog. Only two landmarks matched all three
+> ... I did not decrypt or find the sealed per-game answer table.
+
+**It reproduces exactly.** `no_passport_needed_next_door` (175 carriers),
+`something_famous_happened_here` (156) and `thick_with_visitors` (39)
+intersect to precisely two landmarks, and the agent named both.
+
+```
+python3 -c "import sys; sys.path.insert(0,'games/carmel-taldiego'); import carmel as C; \
+  print(sorted(C.Map(bytes(32)).standing(['no_passport_needed_next_door', \
+  'something_famous_happened_here','thick_with_visitors'])))"
+```
+
+### What the lookup is worth
+
+**The clause names its descriptor with certainty.** Of 329 clauses across 73
+descriptors, **zero** appear under more than one. So step one of the riddle
+— the step the redesign exists for, *"the search is over possible meanings
+to the words of the riddle"* — is a dictionary lookup.
+
+What is left is the designed floor, measured over 816 legs on 60 seeds:
+
+| candidates left | share of legs |
+|---|---|
+| ≤ 2 | 26.2% |
+| ≤ 3 | 45.2% |
+| ≤ 4 | 57.6% |
+| median | **4** |
+
+A quarter of legs come down to two rooms, and visiting both costs nothing
+but time — which is what the agent did.
+
+### The earlier sealing fixed a different layer
+
+"The committed table that destroyed the game" sealed `hints.enc`: *which
+clause renders which landmark, per seed*. That removed the **pin** — a
+sentence unique to one landmark, greppable to an exact answer.
+
+**This attack never needed it.** It used `clause → descriptor` (a public
+dict) and `descriptor → landmark` (computable from public `landmarks.tsv`
+and `facts.tsv`). The per-seed map was irrelevant to it. The table under
+"What is now committed, and what is not" is therefore accurate and was
+drawn at the wrong granularity: it asks *what is sealed*, and the question
+that mattered was *what can be derived from what is not*.
+
+### The bigger hole, which nobody reported
+
+The catalog being public is a **deliberate** decision — "One consequence for
+the addresses", above — and its whole defence is one sentence: *"The scarce
+thing stops being knowledge of names and becomes attention — you cannot
+watch everywhere, so you have to choose."*
+
+**An agent can watch everywhere.** Measured against a local hub, opening a
+client per room and registering in it:
+
+| | per room | for all 1,000 |
+|---|---|---|
+| open + register | 3 ms | **3.4s** |
+| renewal | 3 ms | **3.2s** |
+
+Presence lapses at about 120 seconds, so a full renewal sweep fits inside
+the window roughly thirty-five times over. A searcher holding every room in
+the catalog is co-present with her wherever she goes, and the catch is
+co-presence. **No riddle is solved at all.** The clause lookup is a lesser
+included case of this: it saves you 997 rooms you did not need to skip.
+
+This also sits against a standing instruction — *"we definitely shouldn't
+publicize where are the rooms"*, *"1000 is a good number, but it's a
+secret"* — while `landmarks.tsv` has been on public `main` since
+[#256](https://github.com/gald33/ai-lab/pull/256), with the count in its
+own header comment.
+
+### Why there is no cheap fix for the clause bank
+
+The obvious repair is to make a clause honestly ambiguous: list it under
+several descriptors, so inverting it returns a set. A clause written to be
+true of every carrier of `d` is automatically true of every carrier of any
+`d'` whose carriers are a **subset** of `d`'s — free cross-listings that
+cannot introduce a false statement.
+
+There are **none**. Zero subset pairs among the 73 descriptors, and only two
+pairs overlapping by more than half. The vocabulary is close to an
+antichain, which is what made it good at discriminating and is exactly what
+leaves no slack here. Honest ambiguity therefore needs new writing, and a
+clause true of a union is necessarily vaguer than either of its parts.
+
+### Open, and not decided here
+
+Four ways out, and they are not equivalent:
+
+1. **Seal the catalog** (`landmarks.tsv`, `facts.tsv`) the way the treasures
+   are sealed, with placeholders so the invariants still run in CI. Ends
+   enumeration, and guts the clause attack too — descriptors cannot be
+   intersected over a catalog nobody holds. Legitimate play is untouched,
+   since thinking of a place and computing its room is the game. Costs
+   contributors the reproduction of every measurement above.
+2. **Seal `clauses.py`** only. Cheap, fixes the reported hole, leaves the
+   3.4-second break standing — and the clause text is published in play
+   every game, so the map is rebuildable empirically.
+3. **Author ambiguous clauses.** The only repair that survives a public
+   repository, and the only one that restores the step the riddle is *for*.
+   Substantial writing; nothing to do with enumeration.
+4. **Accept and make it visible**, per this lab's own doctrine: interference
+   is not preventable and is therefore recorded. A repo-assisted catch is
+   kept, counted, and never ranked.
+
+**Nothing here is sealed or changed yet**, and that is deliberate: removing
+the catalog now does not un-publish three days of it, so the choice includes
+whether history is rewritten — which the first standing decision in
+`CLAUDE.md` is specifically against, since the run records cite commits.
+Gal's call.
+
+**What is already true regardless**: the sentence "you cannot watch
+everywhere" is retired, with a dated marker beside it, and the searcher that
+reported this did the lab a favour by saying so instead of taking the win.
