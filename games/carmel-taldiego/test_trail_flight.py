@@ -32,6 +32,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import carmel as C  # noqa: E402
 import trail_flight as F  # noqa: E402
+import build_site as BS  # noqa: E402
 
 #: One campaign she wins across three continents, and one she is caught on.
 FLOWN = bytes.fromhex("55" * 32)
@@ -154,7 +155,7 @@ class Flight:
 
 def linked(seed: bytes, fragment: str | None = None,
            plan: dict | None = None, landing: str = "",
-           clipboard: bool = False):
+           clipboard: bool = False, viewport: tuple[int, int] = (1000, 700)):
     """A `Flight` on the *published* viewer, opened at a chase's address.
 
     The same browser and the same `Flight`, but the page under it is
@@ -186,7 +187,7 @@ def linked(seed: bytes, fragment: str | None = None,
             except Exception as exc:                        # noqa: BLE001
                 missing(f"no chromium to drive a page with: {exc!r}")
             tab = browser.new_context(
-                viewport={"width": 1000, "height": 700},
+                viewport={"width": viewport[0], "height": viewport[1]},
                 permissions=(["clipboard-read", "clipboard-write"]
                              if clipboard else [])).new_page()
             broke = []
@@ -537,7 +538,10 @@ def test_one_url_is_the_front_door_and_the_film():
     front = BS.landing()
     with linked(arrested_seed(), fragment="", landing=front) as f:
         assert f.now.get("landing") is True
-        assert "Hand this to your agent" in f.text("#landing")
+        # by the door's controls, not by a sentence: this asked for "Hand
+        # this to your agent" until 2026-09-13 and went red on a copy edit
+        assert f.tab.locator("#landing #take").count() == 1
+        assert f.tab.locator("#landing #ask").count() == 1
         assert f.tab.evaluate(
             "getComputedStyle(document.getElementById('stage')).display"
         ) == "none", "the film played with no chase in the address"
@@ -763,3 +767,72 @@ def test_the_require_flag_turns_a_skip_into_a_failure(monkeypatch):
     with pytest.raises(BaseException) as skipped:
         missing("no browser here")
     assert "Skipped" in type(skipped.value).__name__ or skipped.value.msg
+
+
+@pytest.mark.parametrize("size", [(1920, 1080), (1440, 900), (1366, 768),
+                                  (1280, 800), (900, 620)])
+def test_the_front_door_fits_one_screen_on_a_desktop(size):
+    """Gal, 2026-09-12: *"fit everything without scroll on desktop. the
+    snippet box can be scrollable inside"*.
+
+    Asserted in a browser and at several sizes, because it is a claim about
+    **layout** and nothing in the markup carries it: the page is a flex
+    column of natural-height prose with one shrinkable child, and whether
+    that lands inside the viewport depends on wrapping, clamped font sizes
+    and the height of the snippet — none of which a fragment assertion can
+    see. `CLAUDE.md`: *a page's behaviour is checked in a browser, or it is
+    not checked.*
+
+    1366x768 is here because it is the tightest common laptop, and 900x620
+    because it is the breakpoint's own floor — the first size that claims
+    to fit is the one most likely not to.
+    """
+    with linked(arrested_seed(), fragment="", landing=BS.landing(),
+                viewport=size) as f:
+        m = f.tab.evaluate("""() => {
+          const p = document.getElementById('ask');
+          return {doc: document.documentElement.scrollHeight,
+                  win: window.innerHeight,
+                  ask: Math.round(p.getBoundingClientRect().height),
+                  inner: p.scrollHeight > p.clientHeight + 1,
+                  buttonIn: document.getElementById('take')
+                              .getBoundingClientRect().bottom
+                            <= window.innerHeight};}""")
+
+        assert m["doc"] <= m["win"] + 1, (
+            f"the door scrolls by {m['doc'] - m['win']}px at {size}")
+        assert m["buttonIn"], "the copy button is below the fold"
+        assert m["ask"] > 40, (
+            f"the snippet was squeezed to {m['ask']}px to make it fit")
+        assert m["inner"], (
+            "the snippet fits without scrolling, so this size proves"
+            " nothing about the box that is supposed to scroll")
+
+
+@pytest.mark.parametrize("size", [(390, 844), (430, 930)])
+def test_a_narrow_screen_scrolls_rather_than_clipping(size):
+    """The other half of the rule above, and the reason it is scoped.
+
+    A 100vh flex column does not scroll — which is the ask on a desktop and
+    a way to lose the bottom of the page on a phone, where the prose alone
+    is taller than the viewport and the only shrinkable child would be
+    squeezed to nothing. So the one-screen layout sits behind a media query
+    and this drives the other side of it: the page flows, and the whole
+    snippet is there to be read rather than trapped in a 0px box.
+    """
+    with linked(arrested_seed(), fragment="", landing=BS.landing(),
+                viewport=size) as f:
+        m = f.tab.evaluate("""() => {
+          const p = document.getElementById('ask');
+          return {doc: document.documentElement.scrollHeight,
+                  win: window.innerHeight,
+                  ask: Math.round(p.getBoundingClientRect().height),
+                  clipped: p.scrollHeight > p.clientHeight + 1};}""")
+
+        assert m["doc"] > m["win"], (
+            f"a {size} screen is not scrolling, so the door is one screen"
+            " there too and something is cut off")
+        assert not m["clipped"], "the snippet is boxed and scrolling on a phone"
+        assert m["ask"] > m["win"], (
+            "the snippet is shorter than the screen, which it cannot be"
+            " while it carries the whole standing notice")
