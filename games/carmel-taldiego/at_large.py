@@ -348,9 +348,9 @@ def seconds(game_hours: float) -> float:
 # --- the room she is standing in ------------------------------------------
 
 
-def _invite(token: str, url: str, key: str):
+def _invite(token: str, url: str, key: str, note: str = ""):
     from switchboard.invite import Invite
-    return Invite(url=url, workspace_token=token, key=key)
+    return Invite(url=url, workspace_token=token, key=key, note=note)
 
 
 class Abandoned(RuntimeError):
@@ -957,19 +957,29 @@ HUB_URL = os.environ.get("SWITCHBOARD_URL",
 
 
 def address(url: str = HUB_URL) -> str:
-    """The three things a searcher needs to stand in the lobby.
+    """The lobby as one invite, which is the shape the tools actually take.
 
-    All three are publishable and none of them is a credential: the hub is
-    an address, the token is derived from the game's own name, and the key
-    is derived from a constant (`LOBBY_KEY`). What is *not* here is the
-    salt -- that arrives in the notice, once she has begun, which is what
-    makes the lobby worth standing in rather than a thing to bookmark.
+    **It was three labelled fields until 2026-09-13** -- `url`, `token`,
+    `key`, one per line -- and Gal's note was *"the prompt you have a proper
+    invitation."* The three were correct and were the wrong object: through
+    `switchboard-mcp` the only door into a room is `join_room`, and it takes
+    a `swb1_` string, so an agent handed the parts had to assemble the
+    envelope itself from a format nothing published. Switchboard's own
+    reason for the string is the one that matters here -- each field "must
+    match the sender's exactly, and each one fails SILENTLY when it does
+    not": wrong key, wrong workspace, wrong hub all connect, and leave you
+    on a roster in a room you are alone in. Five chances to differ become
+    one, and a mistyped invite fails at the parse.
+
+    Nothing in it is a credential even though `invite.py` says an invite
+    generally is. The hub is an address, the token is derived from the
+    game's own name, the key from a constant (`LOBBY_KEY`). What is *not*
+    here is the salt -- that arrives in the notice, once she has begun,
+    which is what makes the lobby worth standing in rather than a thing to
+    bookmark.
     """
-    return "\n".join([
-        f"    url   {url}",
-        f"    token {lobby_token()}",
-        f"    key   {LOBBY_KEY}",
-    ])
+    return "    " + _invite(lobby_token(), url, LOBBY_KEY,
+                            note="Hue and Cry: the lobby").encode()
 
 
 def dry_run(count: int = 20) -> None:

@@ -6596,3 +6596,96 @@ edit and passes on a page whose button does nothing. The phrase was chosen
 as a proxy for the door because it happened to be unique to it — the same
 mistake in miniature as the startup check that asked about an environment
 variable instead of counting the treasures it was worried about.
+
+## The lobby is an invitation, and a room nobody has guessed needs one too
+
+*2026-09-13. Gal: "The prompt you have a proper invitation."*
+
+The prompt handed an agent three labelled lines — `url`, `token`, `key`.
+All three were right and they were **the wrong object**. Through
+`switchboard-mcp` the only door into a room is `join_room`, and its
+signature is `join_room(invite: str)`: one `swb1_` string, never the parts.
+An agent given the parts had to assemble the envelope itself out of a
+format nothing in this game published.
+
+Switchboard's own reason for the string is the one that decides it, and it
+is the failure this whole game keeps rediscovering:
+
+> each of those must match the sender's exactly, and each one fails
+> SILENTLY when it does not. You would connect, announce, and appear on a
+> roster beside agents you cannot read, in a room that looks quiet.
+
+Five chances to differ become one, and a mistyped invite fails at the parse
+rather than an hour later in an empty room. `address()` returns
+`Invite(url, workspace_token, key, note="Hue and Cry: the lobby").encode()`
+— 344 characters, pasteable, and nothing in it is a credential even though
+`invite.py` warns that an invite generally is: the hub is an address, the
+token is derived from the game's own name, the key from a constant.
+
+### The hole it exposed: two recipe lines and no door
+
+**Nobody can mint an invite for a room nobody has guessed.** That is the
+whole name-is-the-room construction. So a searcher who solves a riddle has
+to build its own — and the notice published two lines and stopped:
+
+```
+token = "w_" + sha256("hue-and-cry/v1/landmark" || 0x00 || salt || 0x00 || name)
+room  = "w_" + base64url(sha256(token))[:22]
+```
+
+An entrant following that exactly ends up **holding a token and a room and
+no door**, and has to find the envelope in the library's source. This is
+the same shape as the recipe that stopped one step short of an address —
+the defect this game has now shipped twice — and it was invisible for the
+same reason: everything published was true.
+
+`INVITE_RECIPE` is the third line:
+
+```
+invite = "swb1_" + base64url(json{"v":1,"u":hub,"w":room,"wt":token,"k":key})
+```
+
+Verified against `switchboard.invite.Invite.decode` (2.2.1) rather than
+written from the dataclass: a payload of exactly those five fields decodes,
+and lands in the same workspace as a minted invite for the same room.
+**`w` is required and is not derived from `wt` on the way in** — `decode`
+rejects a payload without it before `__post_init__` ever runs — which is
+precisely why the second recipe line is not optional and why an entrant
+needs both.
+
+`test_an_entrant_can_enter_a_room_nobody_minted_an_invite_for` does the
+whole thing from the rendered notice: takes the three lines out of the
+text, applies them by hand, builds the invite, joins the room, and reads
+what she left there. Nothing in it imports `secret_matrix` — a test using
+the implementation would agree with the notice no matter what the notice
+said.
+
+### The change nearly disarmed the guard that was watching it
+
+`test_the_lobby_is_publishable_in_full_and_borrows_no_credential` walks the
+environment and asserts no `*KEY*`/`*TOKEN*`/`*SECRET*` value appears in the
+published address — the guard against the easy mistake of reaching for
+`SWITCHBOARD_KEY`, which is right there and works.
+
+**It was a substring check, and the address is now base64.** A leaked
+`SWITCHBOARD_KEY` inside an invite is not a substring of it, so the guard
+would have gone on passing while catching nothing — an *improvement*
+silently switching off the check that was watching it. Measured rather than
+reasoned about:
+
+```
+substring guard (the old one): PASSES — misses it
+decoded guard  (the new one): catches it
+```
+
+It asserts on the decoded fields now — `url`, `key`, `token`, `workspace`,
+`workspace_token`, `write_key` — as well as on the raw string.
+
+The same correction ran through the two other tests that read the address
+as text: the page test decodes the invite the way `join_room` would, and
+additionally requires that **the recipe on the page and the invite on the
+page name one room**, which nothing checked before.
+
+181 passed with `HUE_REQUIRE_BROWSER=1`. The 344-character unbroken token
+was checked in a browser at three widths: no horizontal scroll on the page
+or inside the block, and the clipboard round-trips it.
